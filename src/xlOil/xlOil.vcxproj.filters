@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Date.cpp" />
+    <ClCompile Include="ExcelState.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Events.cpp" />
+    <ClCompile Include="ExcelCall.cpp" />
+    <ClCompile Include="FuncRegistry.cpp" />
+    <ClCompile Include="Interface.cpp" />
+    <ClCompile Include="Loader.cpp" />
+    <ClCompile Include="Log.cpp" />
+    <ClCompile Include="Settings.cpp" />
+    <ClCompile Include="XlCall.cpp" />
+    <ClCompile Include="ExcelObjCache.cpp" />
+    <ClCompile Include="Register.cpp" />
+    <ClCompile Include="Test.cpp" />
+    <ClCompile Include="internal\PEHelper.cpp">
+      <Filter>internal</Filter>
+    </ClCompile>
+    <ClCompile Include="internal\Thunker.cpp">
+      <Filter>internal</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="AsyncHelper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AsyncHelper.h" />
+    <ClInclude Include="Date.h" />
+    <ClInclude Include="EntryPoint.h" />
+    <ClInclude Include="ExportMacro.h" />
+    <ClInclude Include="Events.h" />
+    <ClInclude Include="ExcelCall.h" />
+    <ClInclude Include="FuncRegistry.h" />
+    <ClInclude Include="Interface.h" />
+    <ClInclude Include="Loader.h" />
+    <ClInclude Include="Log.h" />
+    <ClInclude Include="ExcelObjCache.h" />
+    <ClInclude Include="ObjectCache.h" />
+    <ClInclude Include="Register.h" />
+    <ClInclude Include="Settings.h" />
+    <ClInclude Include="WindowsSlim.h" />
+    <ClInclude Include="Utils.h" />
+    <ClInclude Include="Options.h" />
+    <ClInclude Include="internal\PEHelper.h">
+      <Filter>internal</Filter>
+    </ClInclude>
+    <ClInclude Include="internal\Thunker.h">
+      <Filter>internal</Filter>
+    </ClInclude>
+    <ClInclude Include="ExcelState.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="internal">
+      <UniqueIdentifier>{b91aa7a8-a3bf-42e0-8c6c-caaa6932c881}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

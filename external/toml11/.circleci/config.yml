@@ -1,0 +1,83 @@
+version: 2.1
+
+jobs:
+  test_suite:
+    environment:
+      - GOPATH: /home/circleci/go
+    docker:
+      - image: circleci/golang:1.9
+    steps:
+      - checkout
+      - run:
+          command: |
+              g++ --version
+              cd tests/
+              g++ -std=c++11 -O2 -Wall -Wextra -Werror -DTOML11_COLORIZE_ERROR_MESSAGE -I../ check_toml_test.cpp -o check_toml_test
+              go get github.com/BurntSushi/toml-test
+              $GOPATH/bin/toml-test ./check_toml_test
+  test_serialization:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    steps:
+      - checkout
+      - run:
+          command: |
+              g++ --version
+              cd tests/
+              g++ -std=c++11 -O2 -Wall -Wextra -Wpedantic -Werror -DTOML11_COLORIZE_ERROR_MESSAGE -I../ check_serialization.cpp -o check_serialization
+              git clone https://github.com/BurntSushi/toml-test.git
+              cp check_serialization toml-test/tests/valid
+              cd toml-test/tests/valid
+              for f in $(ls ./*.toml);
+                do echo "==> ${f}";
+                cat ${f};
+                echo "---------------------------------------";
+                ./check_serialization ${f};
+                if [ $? -ne 0 ] ; then
+                  exit 1
+                fi
+                echo "=======================================";
+              done
+  output_result:
+    docker:
+      - image: circleci/buildpack-deps:bionic
+    steps:
+      - checkout
+      - run:
+          command: |
+              g++ --version
+              cd tests/
+              g++ -std=c++11 -O2 -Wall -Wextra -Wpedantic -Werror -DTOML11_COLORIZE_ERROR_MESSAGE -I../ check.cpp -o check
+              git clone https://github.com/BurntSushi/toml-test.git
+              cp check toml-test/tests/invalid
+              cp check toml-test/tests/valid
+              cd toml-test/tests/invalid
+              for f in $(ls ./*.toml);
+                do echo "==> ${f}";
+                cat ${f};
+                echo "---------------------------------------";
+                ./check ${f} invalid;
+                if [ $? -ne 0 ] ; then
+                  exit 1
+                fi
+                echo "=======================================";
+              done
+              cd ../valid
+              for f in $(ls ./*.toml);
+                do echo "==> ${f}";
+                cat ${f};
+                echo "---------------------------------------";
+                ./check ${f} valid;
+                if [ $? -ne 0 ] ; then
+                  exit 1
+                fi
+                echo "=======================================";
+              done
+
+workflows:
+  version: 2.1
+  test:
+    jobs:
+      - test_suite
+      - test_serialization
+      - output_result
