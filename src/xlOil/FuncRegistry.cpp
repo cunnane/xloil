@@ -45,7 +45,6 @@ namespace xloil
 
 namespace xloil
 {
-
   class FunctionRegistry
   {
   public:
@@ -56,7 +55,7 @@ namespace xloil
 
     // TODO: We can allocate wipthin our DLL's address space by using
     // NtAllocateVirtualMemory or VirtualAlloc with MEM_TOP_DOWN
-    static char theCodeCave[16384];
+    static char theCodeCave[16384 * 2];
 
     /// <summary>
     /// The next available spot in our code cave
@@ -79,7 +78,7 @@ namespace xloil
       auto* thunk = buildThunk(callback, contextData, numArgs,
         theCodePtr, codeBufferSize, codeBytesWritten);
 
-      assert(thunk == (void*)theCodePtr);
+      XLO_ASSERT(thunk == (void*)theCodePtr);
       theCodePtr += codeBytesWritten;
       return std::make_pair(thunk, codeBytesWritten);
     }
@@ -91,7 +90,7 @@ namespace xloil
     /// <param name="info"></param>
     /// <param name="thunk"></param>
     /// <returns>The name of the entry point selected</returns>
-    const char* hookEntryPoint(const FuncInfo& info, const void* thunk)
+    const char* hookEntryPoint(const FuncInfo&, const void* thunk)
     {
       auto funcNum = theRegistry.size() % XLOIL_MAX_FUNCS;
 
@@ -109,7 +108,7 @@ namespace xloil
 #ifdef _DEBUG
       // Check the thunk is hooked to Windows' satisfaction
       void* procNew = GetProcAddress((HMODULE)coreModuleHandle(), stubName);
-      assert(procNew == thunk);
+      XLO_ASSERT(procNew == thunk);
 #endif
 
       return stubName;
@@ -130,7 +129,7 @@ namespace xloil
         argTypes += 'Q';  // Other functions return an XLOPER
 
       // Arg type Q is XLOPER12 values/arrays
-      // TODO: support type U, range references?
+      // TODO: support type U, range references for macros
       argTypes += string(numArgs, 'Q');
 
       // TODO: check for invalid combinations
@@ -275,7 +274,7 @@ namespace xloil
     bool _freeThunksAvailable;
   };
 
-  char FunctionRegistry::theCodeCave[16384];
+  char FunctionRegistry::theCodeCave[16384 * 2];
   char* FunctionRegistry::theCodePtr = theCodeCave;
 
 
@@ -310,18 +309,13 @@ namespace xloil
     if (result.type() != ExcelType::Bool || !result.toBool())
       XLO_WARN(L"Unregister failed for {0}", name);
 
-    // Remove entry from the function wizard. Due to an Excel bug this doesn't really work
-    // Do we even need to bother?
-    //std::tie(result, ret) = tryCallExcel(xlfSetName, name);
-    // if (result.type() != ExcelType::Bool || !result.toBool())
-    // XLO_WARN(L"Unset name (xlfSetName) failed for {0}", name);
-
-    // Cunning trick to workaround SetName bug by registering a hidden function (command)
-    // then removing it.  It doesn't matter which entry point we bind to as long as
-    // the function pointer won't be registered as an Excel func.
+    // Cunning trick to workaround SetName where function is not removed from wizard
+    // by registering a hidden function (i.e. a command) then removing it.  It 
+    // doesn't matter which entry point we bind to as long as the function pointer
+    // won't be registered as an Excel func.
     // https://stackoverflow.com/questions/15343282/how-to-remove-an-excel-udf-programmatically
     auto[tempRegId, retVal] = tryCallExcel(xlfRegister, FunctionRegistry::get().theXllName, "xlAutoOpen", "I", name, nullptr, 2);
-    tryCallExcel(xlfSetName, name);
+    tryCallExcel(xlfSetName, name); // SetName with no arg un-sets the name
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;
   }
@@ -340,10 +334,9 @@ namespace xloil
     const std::shared_ptr<const FuncInfo>& newInfo,
     const std::shared_ptr<void>& newContext)
   {
+    XLO_ASSERT(_info->name == newInfo->name);
     if (_thunk && _info->numArgs() == newInfo->numArgs() && _info->options == newInfo->options)
     {
-      XLO_TRACE(L"Reregistering function '{0}'", newInfo->name);
-
       if (_context != newContext)
       {
         XLO_TRACE(L"Patching function context for '{0}'", newInfo->name);
@@ -354,13 +347,17 @@ namespace xloil
         }
         _context = newContext;
       }
+
+      // If the FuncInfo is identical, no need to re-register
       if (*_info == *newInfo)
       {
-        _info = newInfo; // Sure they are equal, but seems the least astonishment approach
+        _info = newInfo; // They are already equal by value, but seems the least astonishment approach
         return true;
       }
 
-      // Re-use the thunk
+      // Otherwise re-use the possibly patched thunk
+
+      XLO_TRACE(L"Reregistering function '{0}'", newInfo->name);
       deregister();
       auto& registry = FunctionRegistry::get();
       auto* entryPoint = registry.hookEntryPoint(*_info, _thunk);
@@ -374,7 +371,6 @@ namespace xloil
 
   namespace
   {
-  
     struct FunctionPrototypeData
     {
       FunctionPrototypeData(const ExcelFuncPrototype& f, shared_ptr<const FuncInfo> i)
@@ -478,7 +474,6 @@ namespace xloil
   {
     FunctionRegistry::get().remove(ptr);
   }
-
 
   namespace
   {

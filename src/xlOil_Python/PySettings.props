@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
-  <PropertyGroup Label="UserMacros">
-    <LinkPyVersion>36</LinkPyVersion>
-  </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>C:\lib\Anaconda3\Lib\site-packages\numpy\core\include;C:\lib\Anaconda3\include;$(SolutionDir)external\pybind11\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\lib\Anaconda3\Lib\site-packages\numpy\core\include;$(SolutionDir)external\pybind11\include;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(LinkPyVersion)</TargetName>
-    <LibraryPath>C:\lib\Anaconda3\libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>PYTHON_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <Link>
-      <AdditionalDependencies>python$(LinkPyVersion).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>python$(LinkPyVersion).lib;spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <BuildMacro Include="LinkPyVersion">
-      <Value>$(LinkPyVersion)</Value>
-    </BuildMacro>
-  </ItemGroup>
 </Project>

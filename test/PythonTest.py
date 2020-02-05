@@ -67,7 +67,7 @@ def pyTestArr1d(x: xlo.Array[float](dims=1), multiple):
 
 class CustomObj:
     def __init__(self):
-        self._greeting = 'Hello world'
+        self.greeting = 'Hello world'
 
 #
 # If you attempt to return a non-convertable object to Excel, xloil
@@ -77,9 +77,9 @@ class CustomObj:
 # to cache objects and, if so, fetch them.
 #
 @xlo.func
-def pyTestCache(cachedObj):
+def pyTestCache(cachedObj=None):
     if type(cachedObj) is CustomObj:
-        return cachedObj._greeting
+        return cachedObj.greeting
     return CustomObj()
    
 
@@ -111,17 +111,17 @@ def pyTestKwargs(argName, **kwargs):
 # declared async and the await keyword is used.
 #
 @xlo.func
-async def pyTestAsync(x):
-    await asyncio.sleep(4)
+async def pyTestAsync(x, time:int):
+    await asyncio.sleep(time)
     return x
 
 @xlo.func(thread_safe=True)
-async def pyTestAsyncThread(x):
-    await asyncio.sleep(4)
+async def pyTestAsyncThread(x, time:int):
+    await asyncio.sleep(time)
     return x
     
 @xlo.func
-def pyTestIter(size, dims):
+def pyTestIter(size:int, dims:int):
     if dims == 1:
         return [1] * size
     elif dims == 2:
@@ -129,12 +129,12 @@ def pyTestIter(size, dims):
     else:
         return [] 
 
-
+"""  
 @xlo.func
 def pyTestXXXFunc(x):
     return 2
 
-"""
+
 @xlo.func
 def pyTestYYYFunc(x):
     return x

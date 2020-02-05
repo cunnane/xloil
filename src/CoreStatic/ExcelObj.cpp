@@ -1,15 +1,15 @@
-#include <vector>
-#include <string>
-#include <codecvt>
-#include "xloil/ExcelCall.h"
 #include "ExcelObj.h"
-#include "TypeConversion.h"
+#include "xloil/ExcelCall.h"
+#include "StandardConverters.h"
 #include "xloil/Log.h"
 #include "xloil/Date.h"
 #include "xloil/Utils.h"
 #include "ExcelArray.h"
 #include <algorithm>
 #include <cstring>
+#include <vector>
+#include <string>
+#include <codecvt>
 
 #define MAX_XL11_ROWS            65536
 #define MAX_XL11_COLS              256
@@ -33,7 +33,8 @@ using namespace msxll;
 //    xltype = xltypeNil;
 //  }
 //};
-
+namespace xloil
+{
 namespace
 {
   static_assert(sizeof(xloper12) == sizeof(xloil::ExcelObj));
@@ -78,16 +79,107 @@ namespace
         total += arr->val.str[0];
     return total;
   }
+
+  void overwrite(ExcelObj& to, const ExcelObj& from)
+  {
+    // TODO: can't we memcpy the simple types here?
+    switch (from.xltype & ~(xlbitXLFree | xlbitDLLFree))
+    {
+    case xltypeNum:
+      to.val.num = from.val.num;
+      to.xltype = xltypeNum;
+      break;
+
+    case xltypeBool:
+      to.val.xbool = from.val.xbool;
+      to.xltype = xltypeBool;
+      break;
+
+    case xltypeErr:
+      to.xltype = xltypeErr;
+      to.val.err = from.val.err;
+      break;
+
+    case xltypeMissing:
+    case xltypeNil:
+      to.xltype = from.xltype;
+      break;
+
+    case xltypeInt:
+      to.xltype = xltypeInt;
+      to.val.w = from.val.w;
+      break;
+
+    case xltypeStr:
+    {
+      size_t len = from.val.str[0];
+      to.val.str = new wchar_t[len + 2];
+      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
+      to.val.str[len + 1] = L'\0';  // Allows debugger to read string
+      to.xltype = xltypeStr;
+      break;
+    }
+    case xltypeMulti:
+    {
+      auto nRows = from.val.array.rows;
+      auto nCols = from.val.array.columns;
+      auto size = nRows * nCols;
+
+      auto pSrc = from.val.array.lparray;
+
+      size_t strLength = totalStringLength(pSrc, nRows, nCols);
+      ExcelArrayBuilder arr(nRows, nCols, strLength, false);
+
+      for (auto i = 0; i < nRows; ++i)
+        for (auto j = 0; j < nCols; ++j)
+        {
+          switch (pSrc->xltype)
+          {
+          case xltypeStr:
+          {
+            wchar_t* buf;
+            size_t len = pSrc->val.str[0];
+            arr.emplace_at(i, j, buf, len);
+            wmemcpy_s(buf, len, pSrc->val.str + 1, len);
+            break;
+          }
+          default:
+            arr.emplace_at(i, j, *(ExcelObj*)pSrc);
+          }
+          ++pSrc;
+        }
+
+      to.val.array.lparray = (XLOIL_XLOPER*)arr.at(0, 0);
+      to.val.array.rows = nRows;
+      to.val.array.columns = nCols;
+      to.xltype = xltypeMulti;
+      break;
+    }
+    case xltypeBigData:
+    {
+      auto cbData = from.val.bigdata.cbData;
+
+      // Either it's a block of data to copy or a handle from Excel
+      if (cbData > 0 && from.val.bigdata.h.lpbData)
+      {
+        auto pbyte = new char[cbData];
+        memcpy_s(pbyte, cbData, from.val.bigdata.h.lpbData, cbData);
+        to.val.bigdata.h.lpbData = (BYTE*)pbyte;
+      }
+      else
+        to.val.bigdata.h.hdata = from.val.bigdata.h.hdata;
+
+      to.val.bigdata.cbData = cbData;
+      to.xltype = xltypeBigData;
+
+      break;
+    }
+    default:
+      XLO_THROW("Unhandled xltype during copy");
+    }
+  }
 }
 
-
-
-
-
-
-
-namespace xloil
-{
   // TODO: https://stackoverflow.com/questions/52737760/how-to-define-string-literal-with-character-type-that-depends-on-template-parame
   const wchar_t* toWCString(CellError e)
   {
@@ -105,7 +197,6 @@ namespace xloil
       return L"#ERR!";
     }
   }
-
 
   enum class Alloc
   {
@@ -175,7 +266,7 @@ namespace xloil
     xltype = xltypeStr;
   }
 
-  ExcelObj::ExcelObj(const std::string & s)
+  ExcelObj::ExcelObj(const std::string& s)
     :ExcelObj(s.c_str())
   {
   }
@@ -192,12 +283,15 @@ namespace xloil
 
   ExcelObj::ExcelObj(const ExcelObj & that)
   {
-    copy(*this, that);
+    overwrite(*this, that);
   }
 
-  ExcelObj::ExcelObj(ExcelObj && that)
+  ExcelObj::ExcelObj(ExcelObj&& that)
   {
-    *this = that;
+    // Steal all data
+    this->val = that.val;
+    this->xltype = that.xltype;
+    // Mark donor object as empty
     that.xltype = xltypeNil;
   }
 
@@ -218,101 +312,7 @@ namespace xloil
   void ExcelObj::copy(ExcelObj& to, const ExcelObj& from)
   {
     to.reset();
-    // TODO: can't we memcpy the simple types here?
-    switch (from.xtype())
-    {
-    case xltypeNum:
-      to.val.num = from.val.num;
-      to.xltype = xltypeNum;
-      break;
-
-    case xltypeBool:
-      to.val.xbool = from.val.xbool;
-      to.xltype = xltypeBool;
-      break;
-
-    case xltypeErr:
-      to.xltype = xltypeErr;
-      to.val.err = from.val.err;
-      break;
-
-    case xltypeMissing:
-    case xltypeNil:
-      to.xltype = from.xltype;
-      break;
-
-    case xltypeInt:
-      to.xltype = xltypeInt;
-      to.val.w = from.val.w;
-      break;
-
-    case xltypeStr:
-    {
-      size_t len = from.val.str[0];
-      to.val.str = new Char[len + 2];
-      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
-      to.val.str[len + 1] = L'\0';  // Allows debugger to read string
-      to.xltype = xltypeStr;
-      break;
-    }
-    case xltypeMulti:
-    {
-      auto nRows = from.val.array.rows;
-      auto nCols = from.val.array.columns;
-      auto size = nRows * nCols;
-
-      auto pSrc = from.val.array.lparray;
-
-      size_t strLength = totalStringLength(pSrc, nRows, nCols);
-      ExcelArrayBuilder arr(nRows, nCols, strLength, false);
-
-      for (auto i = 0; i < nRows; ++i)
-        for (auto j = 0; j < nCols; ++j)
-        {
-          switch (pSrc->xltype)
-          {
-          case xltypeStr:
-          {
-            wchar_t* buf;
-            size_t len = pSrc->val.str[0];
-            arr.emplace_at(i, j, buf, len);
-            wmemcpy_s(buf, len, pSrc->val.str + 1, len);
-            break;
-          }
-          default:
-            copy(*arr.at(i, j), *(ExcelObj*)pSrc);
-          }
-          ++pSrc;
-        }
-
-      to.val.array.lparray = (XLOIL_XLOPER*)arr.at(0, 0);
-      to.val.array.rows = nRows;
-      to.val.array.columns = nCols;
-      to.xltype = xltypeMulti;
-      break;
-    }
-    case xltypeBigData:
-    {
-      auto cbData = from.val.bigdata.cbData;
-
-      // Either it's a block of data to copy or a handle from Excel
-      if (cbData > 0 && from.val.bigdata.h.lpbData)
-      {
-        auto pbyte = new char[cbData];
-        memcpy_s(pbyte, cbData, from.val.bigdata.h.lpbData, cbData);
-        to.val.bigdata.h.lpbData = (BYTE*)pbyte;
-      }
-      else
-        to.val.bigdata.h.hdata = from.val.bigdata.h.hdata;
-
-      to.val.bigdata.cbData = cbData;
-      to.xltype = xltypeBigData;
-      
-      break;
-    }
-    default:
-      XLO_THROW("Unhandled xltype during copy");
-    }
+    overwrite(to, from);
   }
 
   ExcelObj & ExcelObj::fromExcel()

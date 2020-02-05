@@ -2,7 +2,7 @@
 #include "Numpy.h"
 #include "BasicTypes.h"
 #include "TypeConverters.h"
-#include "TypeConversion.h"
+#include "StandardConverters.h"
 #include "ExcelArray.h"
 #include "ArrayHelpers.h"
 #include <numpy/arrayobject.h>
@@ -60,7 +60,7 @@ namespace xloil
     };
 
     template <class TConv, class TDataType, int TNpType>
-    class PyFromArray1d : public ConverterImpl<PyObject*>
+    class PyFromArray1d : public PyFromCache<PyFromArray1d<TConv, TDataType, TNpType>>
     {
       bool _trim;
       TConv _conv;
@@ -96,7 +96,7 @@ namespace xloil
     };
 
     template <class TConv, class TDataType, int TNpType>
-    class PyFromArray2d : public ConverterImpl<PyObject*>
+    class PyFromArray2d : public PyFromCache<PyFromArray2d<TConv, TDataType, TNpType>>
     {
       bool _trim;
       TConv _conv;
@@ -308,15 +308,10 @@ namespace xloil
     namespace
     {
       template <class TConv, class TDataType, int TNpType>
-      using Array1dFromXL = ConvertFromExcel<
-        CheckedFromExcel<PyFromArray1d<TConv, TDataType, TNpType>>>;
+      using Array1dFromXL = PyFromExcel<PyFromArray1d<TConv, TDataType, TNpType>>;
 
       template <class TConv, class TDataType, int TNpType>
-      struct Array2dFromXL : public ConvertFromExcel<
-        CheckedFromExcel<PyFromArray2d<TConv, TDataType, TNpType>>>
-      {
-        Array2dFromXL(bool trim) : base_type(trim) {}
-      };
+      using Array2dFromXL = PyFromExcel<PyFromArray2d<TConv, TDataType, TNpType>>;
 
       template<class T>
       void declare(pybind11::module& mod, const char* name)

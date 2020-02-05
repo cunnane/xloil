@@ -23,9 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ExcelArray.h" />
-    <ClInclude Include="ExcelDict.h" />
     <ClInclude Include="ExcelObj.h" />
-    <ClInclude Include="TypeConversion.h" />
+    <ClInclude Include="StandardConverters.h" />
     <ClInclude Include="TypeConverters.h" />
     <ClInclude Include="XlCallSlim.h" />
   </ItemGroup>

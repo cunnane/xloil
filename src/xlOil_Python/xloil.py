@@ -13,12 +13,16 @@ class TypeConvertor:
 
 """
     Magic tag which we use to find functions to register with Excel
-    It is added by the xloil.func decorater
+    It is added by the xloil.func decorator to the target func's 
+    __dict__
 """
 _META_TAG = "_xlOilFunc_"
 
 
 class ArgSpec:
+    """
+    Holds the description of a function argument
+    """
     def __init__(self, name, default=None, is_keywords = False):
         self.typeof = None
         self.name = str(name)
@@ -35,6 +39,10 @@ class ArgSpec:
         return self.default is not inspect._empty
 
 def _function_argspec(func):
+    """
+    Returns a list of ArgSpec for a given function which describe
+    the function's arguments
+    """
     sig = inspect.signature(func)
     params = sig.parameters
     args = []
@@ -44,12 +52,11 @@ def _function_argspec(func):
             anno = param.annotation
             if anno is not param.empty:
                 spec.typeof = anno
-                # TODO: whilst this is nice, it will force a reregister if the type annotations
-                # are changed
+                # Add a little help string based on the type annotation
                 if isinstance(anno, type):
                     spec.help = f"({anno.__name__})"
                 else:
-                    spec.help = f"({repr(anno)})"
+                    spec.help = f"({str(anno)})"
             args.append(spec)
         elif param.kind == param.VAR_POSITIONAL:
              raise Exception(f"Unhandled argument type positional for {name}")
@@ -126,7 +133,7 @@ class FuncMeta:
 
 class _xloilArray(np.ndarray):
     """
-        Should never be invoked directly, exists to ensure Array[...] can return a type.
+        Should never be invoked directly. It exists to ensure Array[...] can return a type.
         This allows intellisense to work when it is used as an annotations and is 
         consistent with the 'typing' module
     """
@@ -138,6 +145,9 @@ class _xloilArray(np.ndarray):
     
     def __call__(self, dims=None, trim=True):
         return self._set_array(self._pytype, dims, trim)
+
+    def __str__(self):
+        return f"Array[{self.dtype}]"
 
     def _set_array(self, elem_type=object, dims=None, trim=True):
         self.shape = (1,) if dims == 1 else (1,1)
@@ -265,11 +275,9 @@ def arg(name, typeof=None, help=None):
 def _import_from_path(path, module_name=None):
     import importlib.util
     if module_name is None:
-        module_name = os.path.splitext(os.path.basename(path))[0]
+        module_name = "xloil." + os.path.splitext(os.path.basename(path))[0]
+    # This recipe is copied from the importlib documentation
     spec = importlib.util.spec_from_file_location(module_name, path)
-    # We insert this little hack because there seems to be no way of knowing
-    # whether a module was loaded from sys.path or with absolute path
-    spec.__dict__['loaded_from_path'] = True
     mod = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = mod
     spec.loader.exec_module(mod)
@@ -288,7 +296,8 @@ def scan_module(m):
     if inspect.ismodule(m):
         # imp.reload throws strange errors if the module in not on sys.path
         # e.g. https://stackoverflow.com/questions/27272574/imp-reload-nonetype-object-has-no-attribute-name
-        if hasattr(m.__spec__, 'loaded_from_path'):
+        # So handle modules we loaded with absolute path separately
+        if m.__name__.startswith("xloil"):
             handle = _import_from_path(m.__spec__.origin, m.__name__)
         else:
             handle = importlib.reload(m) 

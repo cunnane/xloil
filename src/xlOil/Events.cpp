@@ -42,7 +42,7 @@ namespace xloil
       theFileWatcher.removeWatch(_watchId);
     }
 
-    void handleFileAction(FW::WatchID watchid, const std::wstring& dir, const std::wstring& filename,
+    void handleFileAction(FW::WatchID, const std::wstring& dir, const std::wstring& filename,
       FW::Action action) override
     {
       // File updates seem to generate two identical calls so implement a time granularity

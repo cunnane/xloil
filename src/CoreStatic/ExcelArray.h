@@ -89,7 +89,7 @@ namespace xloil
     }
     int emplace_at(size_t i, size_t j)
     {
-      new (at(i, j)) ExcelObj();
+      new (at(i, j)) ExcelObj(CellError::NA);
       return 0;
     }
     // TODO: this is lazy, only int, bool, double and ExcelError are supported here, others are UB

@@ -16,7 +16,7 @@ namespace xloil
     {
       auto p = const_cast<PyObject*>(obj);
 
-      assert(PyIter_Check(p));
+      assert(PyIterable_Check(p));
 
       auto* iter = PyObject_GetIter(p);
       if (!iter)
@@ -30,7 +30,7 @@ namespace xloil
       while (item = PyIter_Next(iter)) 
       {
         ++nRows;
-        if (PyIter_Check(item))
+        if (PyIterable_Check(item))
         {
           size_t j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
@@ -65,13 +65,12 @@ namespace xloil
       while (item = PyIter_Next(iter))
       {
         size_t j = 0;
-        if (PyIter_Check(item))
+        if (PyIterable_Check(item))
         {
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while (innerItem = PyIter_Next(innerIter))
           {
-            ++j;
-            builder.emplace_at(i, j, FromPyObj()(innerItem));
+            builder.emplace_at(i, j++, FromPyObj()(innerItem));
             Py_DECREF(innerItem);
           }
           if (PyErr_Occurred())
@@ -79,7 +78,7 @@ namespace xloil
           Py_DECREF(innerIter);
         }
         else
-          builder.emplace_at(i, j, FromPyObj()(item));
+          builder.emplace_at(i, j++, FromPyObj()(item));
 
         // Fill with N/A
         for (; j < nCols; ++j)

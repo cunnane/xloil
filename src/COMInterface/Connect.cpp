@@ -230,7 +230,8 @@ public:
       CoInitialize(NULL);
       auto windowsHandle = xloil::callExcel(msxll::xlGetHwnd);
       // This conversion is OK even in x64 because the window handle is an index
-      // into an array, not a pointer.  
+      // into an array, not a pointer. 
+#pragma warning(disable: 4312)
       XL = getExcelInstance((HWND)windowsHandle.toInt());
       
       Excel::_Application* p = XL;

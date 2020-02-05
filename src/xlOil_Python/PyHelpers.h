@@ -1,5 +1,5 @@
 #pragma once
-// Horrible hack to allow linking with release python lib to avoid building debug python
+// Horrible hack to allow our debug build to link with release python lib and so avoid building debug python
 // Can remove this for Python >= 3.8
 // https://stackoverflow.com/questions/17028576/using-python-3-3-in-c-python33-d-lib-not-found
 #ifdef _DEBUG
@@ -16,6 +16,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <string>
+
+// Seems useful, wonder why it's not in the API?
+#define PyIterable_Check(obj) \
+    ((obj)->ob_type->tp_iter != NULL && \
+     (obj)->ob_type->tp_iter != &_PyObject_NextNotImplemented)
 
 namespace pybind11
 {

@@ -11,7 +11,7 @@ namespace xloil
   namespace Python
   {
     template <class TKeyConv, class TValConv>
-    class PyDictFromArray : public ConverterImpl<PyObject*>
+    class PyDictFromArray : public PyFromCache<PyDictFromArray<TKeyConv, TValConv>>
     {
       TKeyConv _keyConv;
       TValConv _valConv;

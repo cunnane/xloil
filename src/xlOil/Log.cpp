@@ -4,48 +4,34 @@
 #include "Events.h"
 #include "Interface.h"
 #include "EntryPoint.h"
-#include "spdlog/sinks/basic_file_sink.h"
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/msvc_sink.h>
 #include <filesystem>
-#include <algorithm>
+
 namespace fs = std::filesystem;
 
+using std::wstring;
+using std::string;
+using std::make_shared;
 
 namespace xloil
 {
-  namespace
-  {
-    std::string constructErrorString(const char* path, const int line, const char* func, const char* message)
-    {
-      std::string result(message);
-
-      if (path)
-      {
-        const char* lastSlash = strrchr(path, '\\');
-        if (lastSlash == 0)
-          lastSlash = path;
-        else
-          ++lastSlash;
-        const size_t pathLength = strlen(lastSlash);
-        result += " (in ";
-        std::transform(lastSlash, lastSlash + pathLength, std::back_inserter(result), tolower);
-        result += ":" + std::to_string(line) + ")";
-      }
-
-      return result;
-    }
-  }
-
   XLOIL_EXPORT Exception::Exception(
     const char* path, const int line, const char* func, std::basic_string_view<char> msg)
-    : runtime_error(constructErrorString(path, line, func, msg.data()).c_str())
-  {}
+    : runtime_error(msg.data())
+    , _line(line)
+    , _file(path)
+    , _function(func)
+  {
+    XLO_ERROR("{0} (in {2}:{3} during {1})", msg.data(), func, fs::path(path).filename().string(), line);
+  }
 
   XLOIL_EXPORT Exception::~Exception() noexcept
   {}
 
   std::wstring writeWindowsError()
   {
-    LPVOID lpMsgBuf;
+    wchar_t* lpMsgBuf = nullptr;
     auto dw = GetLastError();
 
     auto size = FormatMessage(
@@ -58,9 +44,9 @@ namespace xloil
       (LPTSTR)&lpMsgBuf,
       0, NULL);
 
-    std::wstring result((wchar_t*)lpMsgBuf, size);
-    LocalFree(lpMsgBuf);
-    return result;
+    auto msgBuf = std::shared_ptr<wchar_t>(lpMsgBuf, LocalFree);
+
+    return wstring(msgBuf.get(), size);
   }
 
   void initialiseLogger(const std::string& logLevel, const std::string* logFilePath)
@@ -69,15 +55,18 @@ namespace xloil
       ? *logFilePath 
       : wstring_to_utf8(fs::path(theXllPath()).replace_extension(".log").c_str());
 
-    auto file_logger = spdlog::basic_logger_mt("basic_logger", logFile);
+    auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
+    auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(logFile, false);
+    auto logger = make_shared<spdlog::logger>("logger", spdlog::sinks_init_list{ dbgWrite, fileWrite });
 
+    spdlog::initialize_logger(logger);
     // Flush on warnings or above
-    file_logger->flush_on(spdlog::level::warn);
-    spdlog::set_default_logger(file_logger);
+    logger->flush_on(spdlog::level::warn);
+    spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::from_str(logLevel));
 
     // Flush log after each Excel calc cycle
-    static auto handler = xloil::Event_CalcEnded() += [file_logger]() { file_logger->flush(); };
+    static auto handler = xloil::Event_CalcEnded() += [logger]() { logger->flush(); };
   }
 
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry()

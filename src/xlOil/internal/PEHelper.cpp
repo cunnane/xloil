@@ -41,7 +41,6 @@ size_t xloil::DllExportTable::findOffset(const char * funcName)
       return i;
   }
   abort();
-  return -1;
 }
 
 #pragma warning(disable: 4302 4311)

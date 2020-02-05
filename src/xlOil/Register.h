@@ -144,7 +144,7 @@ namespace xloil
   };
 
   template <class R, class... Args> constexpr size_t
-    getArgumentCount(R(*f)(Args...))
+    getArgumentCount(R(*)(Args...))
   {
     return sizeof...(Args);
   }

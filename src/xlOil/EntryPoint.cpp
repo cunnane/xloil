@@ -12,18 +12,13 @@
 #include "COMInterface/Connect.h"
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/repeat.hpp>
+#include <delayimp.h>
 
 using std::wstring;
 
 namespace
 {
   xloil::coreLoadHook theCoreLoader = nullptr;
-
-  //void setCoreLoaderThunk(xloil::coreLoadHook hook)
-  //{
-  //  theCoreLoader = hook;
-  //  //__HrLoadAllImportsForDll("Core.dll");
-  //}
 
   FARPROC coreLoadThunk(unsigned dliNotify, PDelayLoadInfo pdli)
   {
@@ -32,8 +27,6 @@ namespace
 }
 
 extern "C" const PfnDliHook __pfnDliNotifyHook2 = coreLoadThunk;
-
-
 
 namespace
 {
@@ -84,6 +77,7 @@ namespace xloil
       ScopeInXllContext xllContext;
 
       theCoreLoader = coreLoaderHook;
+      //__HrLoadAllImportsForDll("Core.dll");
       ourXllPath = xllPath;
       auto& settings = theCoreSettings();
 
@@ -119,7 +113,7 @@ namespace xloil
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
   _In_ DWORD     fdwReason,
-  _In_ LPVOID    lpvReserved
+  _In_ LPVOID    /*lpvReserved*/
 )
 {
   if (fdwReason == DLL_PROCESS_ATTACH)
@@ -131,9 +125,6 @@ XLO_ENTRY_POINT(int) DllMain(
   return TRUE;
 }
 
-// TODO: Do we really need multiple entry points?
-// Surely Excel does GetProcAddress on the value we pass so we can just use one and
-// keep fiddling the Export table?  (Assuming GetProcAddress doesn't cache stuff)
 #define XLO_WRITE_STUB(z, n, dummy) extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB(n)() { return nullptr; }
 BOOST_PP_REPEAT(XLOIL_MAX_FUNCS, XLO_WRITE_STUB, 0)
 #undef XLO_WRITE_STUB

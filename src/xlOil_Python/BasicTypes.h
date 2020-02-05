@@ -23,13 +23,34 @@ namespace xloil
     using IPyFromExcel = IConvertFromExcel<PyObject*> ;
     using IPyToExcel = IConvertToExcel<PyObject> ;
 
-    class PyFromDouble : public ConverterImpl<PyObject*>
+    template<class TParent>
+    class PyFromCache : public ConverterImpl<PyObject*>
+    {
+    public:
+      PyObject* fromString(const wchar_t* buf, size_t len) const
+      {
+        pybind11::object cached;
+        if (theCore->maybeCacheReference(buf, len))
+        {
+          std::shared_ptr<const ExcelObj> obj;
+          // TODO: Wouldn't it be easier to just check for cache strings in CheckedFromExcel?
+          // I know this template meta-programming is amazing but....
+          if (theCore->fetchCache(buf, len, obj))
+            return FromExcel<TParent>(static_cast<const TParent&>(*this))(*obj);
+        }
+        else if (fetchCache(buf, len, cached))
+          return cached.release().ptr();
+        return nullptr;
+      }
+    };
+
+    class PyFromDouble : public PyFromCache<PyFromDouble>
     {
     public:
       PyObject * fromDouble(double x) const { return PyFloat_FromDouble(x); }
     };
 
-    class PyFromBool : public ConverterImpl<PyObject*>
+    class PyFromBool : public PyFromCache<PyFromBool>
     {
     public:
       PyObject * fromBool(bool x) const { if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE; }
@@ -48,7 +69,7 @@ namespace xloil
       PyObject* fromDouble(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
     };
 
-    class PyFromInt : public ConverterImpl<PyObject*>
+    class PyFromInt : public PyFromCache<PyFromInt>
     {
     public:
       PyObject* fromInt(int x) const { return PyLong_FromLong(long(x)); }
@@ -61,7 +82,7 @@ namespace xloil
       }
     };
 
-    class PyFromAny : public ConverterImpl<PyObject*>
+    class PyFromAny : public PyFromCache<PyFromAny>
     {
     public:
       PyObject* fromInt(int x) const { return PyFromInt().fromInt(x); }
@@ -74,19 +95,16 @@ namespace xloil
 
       PyObject* fromString(const wchar_t* buf, size_t len) const 
       { 
-        PyObject* cached = nullptr;
-        if (theCore->maybeCacheReference(buf, len))
-        {
-          std::shared_ptr<const ExcelObj> obj;
-          if (theCore->fetchCache(buf, len, obj))
-            return FromExcel<PyFromAny>()(*obj);
-        }
-        else if (fetchCache(buf, len, cached))
-          return cached;
+        auto result = PyFromCache<PyFromAny>::fromString(buf, len);
+        if (result)
+          return result;
         return PyFromString().fromString(buf, len); 
       }
     };
     
+    /// <summary>
+    /// TODO: Not currently used but seems like a nice idea some time
+    /// </summary>
     class PyCacheObject : public ConverterImpl<PyObject*>
     {
       PyObject* _typeCheck = nullptr;
@@ -95,13 +113,13 @@ namespace xloil
 
       PyObject* fromString(const wchar_t* buf, size_t len) const
       {
-        PyObject* cached = nullptr;
+        pybind11::object cached;
         if (fetchCache(buf, len, cached))
         {
           // Type checking seems nice, but it's unpythonic to raise an error here
-          if (_typeCheck && PyObject_IsInstance(cached, _typeCheck) == 0)
+          if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
             XLO_WARN(L"Found `{0}` in cache but type was expected", std::wstring(buf, buf + len));
-          return cached;
+          return cached.release().ptr();
         }
         return nullptr;
       }
@@ -138,16 +156,6 @@ namespace xloil
         : ConvertFromExcel(std::forward<Args>(args)...) 
       {}
     };
-
-    //template<class T>
-    //class Defaulted : public T
-    //{
-    //  PyObject* _default;
-    //public:
-    //  template <class...Args>
-    //  Defaulted(PyObject* val, Args&&...args) : T(args...), _default(val) {}
-    //  PyObject* fromMissing(const PyObject*) const { Py_IncRef(_default); return _default; }
-    //};
 
     inline ExcelObj fromPyLong(const PyObject* obj)
     {
@@ -217,13 +225,13 @@ namespace xloil
         {
           return FromPyString()(p, ctor);
         }
-        else if (PyIter_Check(p))
+        else if (PyIterable_Check(p))
         {
           return ctor(nestedIterableToExcel(p));
         }
         else
         {
-          return ctor(addCache(p));
+          return ctor(addCache(PyBorrow<pybind11::object>(p)));
         }
 
         //if (tmp = PySteal<decltype(tmp)>(PyObject_Str(p)))

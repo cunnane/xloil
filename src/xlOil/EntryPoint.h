@@ -1,12 +1,19 @@
 #pragma once
 #include "ExportMacro.h"
-#include "WindowsSlim.h"
-#include <delayimp.h>
+
+#ifdef _WIN64
+typedef __int64 (_stdcall *FARPROC)();
+#else
+typedef int ( _stdcall *FARPROC)();
+#endif  // _WIN64
+
+struct DelayLoadInfo;
 
 namespace xloil
 {
   class Core;
-  typedef FARPROC(*coreLoadHook)(unsigned dliNotify, PDelayLoadInfo pdli);
+  typedef FARPROC(*coreLoadHook)(unsigned dliNotify, DelayLoadInfo* pdli);
+  //typedef __int64 (*__stdcall coreLoadHook)(unsigned dliNotify, DelayLoadInfo* pdli);
 
   void* coreModuleHandle();
 
@@ -14,6 +21,9 @@ namespace xloil
   
   const wchar_t* theCoreName();
 
+  /// <summary>
+  /// Path to the xll loaded by Excel, not the core DLL
+  /// </summary>
   const wchar_t* theXllPath();
 
   XLOIL_EXPORT int coreInit(coreLoadHook coreLoaderHook, const wchar_t* xllPath) noexcept;

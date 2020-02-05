@@ -52,7 +52,7 @@ namespace xloil
     std::wregex _cacheRefMatcher;
     wchar_t _uniquifier;
     Lookup<WorkbookCache> _cache;
-    std::unordered_map<TObj, std::wstring> _reverseLookup;
+    typename std::conditional<TReverseLookup, std::unordered_map<TObj, std::wstring>, int>::type  _reverseLookup;
     size_t _calcId;
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
@@ -66,7 +66,7 @@ namespace xloil
     {
       if (cacheVal.removeExpired(_calcId))
       {
-        if (TReverseLookup)
+        if constexpr (TReverseLookup)
         {
           for (auto o : cacheVal.objects)
             _reverseLookup.erase(o);
@@ -196,7 +196,7 @@ namespace xloil
       }
 
       auto key = PString(pascalStr);
-      if (TReverseLookup)
+      if constexpr (TReverseLookup)
         _reverseLookup.insert(std::make_pair(obj, key.string()));
 
       return ExcelObj(key);
@@ -233,7 +233,7 @@ namespace xloil
 
     void onWorkbookClose(const wchar_t* wbName)
     {
-      if (TReverseLookup)
+      if constexpr (TReverseLookup)
       {
         auto found = _cache.find(wbName);
         if (found != _cache.end())

@@ -32,6 +32,8 @@ namespace xloil
 
   XLOIL_EXPORT const wchar_t* xlRetCodeToString(int xlret);
 
+  // TODO: This is all bit of early morning canine food. Sort out.
+
   template<class TTarget, class TTemp, class TFirst>
   void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const TFirst& first)
   {
@@ -46,18 +48,18 @@ namespace xloil
     appendVector(v, tmp, tmp.back().cptr());
   }
   template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const ExcelObj& first)
+  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const ExcelObj& first)
   {
     v.push_back(&first);
   }
   template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const ExcelObj* first)
+  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const ExcelObj* first)
   {
     v.push_back(first);
   }
 
   template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const XLOIL_XLOPER* first)
+  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const XLOIL_XLOPER* first)
   {
     v.push_back((const ExcelObj*) first);
   }
@@ -106,7 +108,7 @@ namespace xloil
     }
 
     // TODO: do we need this separatly?
-    template<> void add(const nullptr_t& first)
+    template<> void add(const nullptr_t&)
     {
       auto p = std::make_shared<ExcelObj>(nullptr);
       _temporary.push_back(p);

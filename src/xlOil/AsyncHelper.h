@@ -17,7 +17,7 @@ namespace xloil
       , _asyncHandle(*asyncHandle)
     {
     }
-    void operator()(int threadId) const
+    void operator()(int /*threadId*/) const
     {
       const ExcelObj* callBackArgs[2];
       callBackArgs[0] = &_asyncHandle;

@@ -88,8 +88,6 @@ namespace xloil
     if (iFunc == _functions.end())
       return false;
     auto[name, ptr] = *iFunc;
-    if (*ptr->info() != *info)
-      return false;
     auto success = ptr->reregister(info, newContext);
     if (!success)
       ptr->deregister();

@@ -18,6 +18,10 @@
 #define XLO_WARN(...) SPDLOG_WARN(__VA_ARGS__)
 #define XLO_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
 
+/// <summary>
+/// Throws an xloil::Exception. Accepts python format strings like the logging functions
+/// e.g. XLO_THROW("Bad: {0} {1}", errCode, e.what()) 
+/// </summary>
 #define XLO_THROW(...) do { throw xloil::Exception(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__); } while(false)
 #define XLO_ASSERT(condition) assert((condition) && #condition)
 //#define XLO_REQUIRES(condition) do { if (!(condition)) XLO_THROW("xloil requires: " #condition); } while(false)
@@ -28,8 +32,16 @@ namespace xloil
 {
   void initialiseLogger(const std::string& logLevel, const std::string* logFilePath);
 
+  /// <summary>
+  /// Wrapper around GetLastError and FormatMessage to write out any error condition
+  /// set by Windows API functions.
+  /// </summary>
   std::wstring writeWindowsError();
 
+  /// <summary>
+  /// Gets the logger registry for the core dll so plugins can output to the same
+  /// log file
+  /// </summary>
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry();
 
 #pragma warning(disable: 4275) // Complaints about dll-interface. MS suggests disabling
@@ -54,6 +66,10 @@ namespace xloil
     XLOIL_EXPORT virtual ~Exception() throw();
 
   private:
+    int _line;
+    std::string _file;
+    std::string _function;
+
     template<class TChar, class... Args>
     std::basic_string<TChar> formatMessage(
       std::basic_string_view<TChar> formatStr,

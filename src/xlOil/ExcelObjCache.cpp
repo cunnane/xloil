@@ -46,7 +46,6 @@ XLO_FUNC xloDeref(ExcelObj* pxOper)
   {
     shared_ptr<const ExcelObj> result;
     // TODO: can we do the regex match without this string copy?
-    // TODO: check the followng is safe
 
     // We return a pointer to the stored object directly without setting
     // the flag which tells Excel to free it.
