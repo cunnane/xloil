@@ -255,7 +255,7 @@ namespace xloil
       theCoreDllName = ExcelObj(Core::theCoreName());
       theXllName = ExcelObj(fs::path(theXllPath()).filename().wstring());
       theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
-      theFirstStub = theExportTable->findOffset(XLO_STR_IMPL(XLOIL_STUB_NAME));
+      theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));
       _freeThunksAvailable = false;
     }
 

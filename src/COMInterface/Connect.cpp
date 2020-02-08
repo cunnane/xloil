@@ -1,13 +1,12 @@
 
 #include "Connect.h"
-#include <oleacc.h>
+
 #include "xloil/Events.h"
-#include "ExcelObj.h"
-#include "xloil/Register.h"
 #include "xloil/ExcelCall.h"
-#include <memory>
+#include <oleacc.h> // must include before ExcelTypeLib
 #include "ExcelTypeLib.h"
 #include <unordered_set>
+#include <memory>
 
 using std::make_shared;
 using std::wstring;
@@ -219,75 +218,46 @@ private:
   LONG _cRef;
 };
 
-
-class COMConnector
-{
-public:
-  COMConnector()
-  {
-    try
-    {
-      CoInitialize(NULL);
-      auto windowsHandle = xloil::callExcel(msxll::xlGetHwnd);
-      // This conversion is OK even in x64 because the window handle is an index
-      // into an array, not a pointer. 
-#pragma warning(disable: 4312)
-      XL = getExcelInstance((HWND)windowsHandle.toInt());
-      
-      Excel::_Application* p = XL;
-      _handler.reset(new EventHandler(p));
-
-
-    }
-    catch (_com_error& error)
-    {
-      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-    }
-  }
-
-  ~COMConnector()
-  {
-    CoUninitialize();
-  }
-
-  Excel::_ApplicationPtr& ExcelApp() { return XL; }
-
-private:
-  Excel::_ApplicationPtr XL;
-  std::unique_ptr<EventHandler> _handler;
-};
-
-// See https://social.msdn.microsoft.com/Forums/vstudio/en-US/9168f9f2-e5bc-4535-8d7d-4e374ab8ff09/hresult-800ac472-from-set-operations-in-excel?forum=vsto
-constexpr HRESULT VBA_E_IGNORE = 0x800ac472;
-
-template <class TFunc>
-bool retryComCall(TFunc fn)
-{
-  XLO_TRACE("Calling into XLL context fn= {0:#x}", (size_t)&fn);
-  for (auto tries = 0; tries < 10; ++tries)
-  {
-    try
-    {
-      fn();
-      return true;
-    }
-    catch (_com_error& error)
-    {
-      if (error.Error() != VBA_E_IGNORE)
-      {
-        XLO_ERROR(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-        break;
-      }
-    }
-    Sleep(50);
-    XLO_TRACE("Retry # {0} for COM call", (tries + 1));
-  }
-  return false;
-}
 namespace xloil
 {
   namespace
   {
+    class COMConnector
+    {
+    public:
+      COMConnector()
+      {
+        try
+        {
+          CoInitialize(NULL);
+          auto windowsHandle = callExcel(msxll::xlGetHwnd);
+          // This conversion is OK even in x64 because the window handle is an index
+          // into an array, not a pointer. 
+#pragma warning(disable: 4312)
+          _xlApp = getExcelInstance((HWND)windowsHandle.toInt());
+      
+          Excel::_Application* p = _xlApp;
+          _handler.reset(new EventHandler(p));
+        }
+        catch (_com_error& error)
+        {
+          XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+        }
+      }
+
+      ~COMConnector()
+      {
+        CoUninitialize();
+      }
+
+      Excel::_ApplicationPtr& ExcelApp() { return _xlApp; }
+
+    private:
+      Excel::_ApplicationPtr _xlApp;
+      std::unique_ptr<EventHandler> _handler;
+    };
+
+
     struct RegisterMe
     {
       RegisterMe()
@@ -303,93 +273,5 @@ namespace xloil
   {
     static RegisterMe c;
     return c.connector->ExcelApp();
-  }
-
-  static const std::function<void()>* theTargetFunc = nullptr;
-
-  // TODO: make these commmands so they are hidden and have void return?
-  XLO_ENTRY_POINT(XLOIL_XLOPER*) xloRunFuncInXLLContext()
-  {
-    // Do we need this result?
-    static ExcelObj result;
-    try
-    {
-      ScopeInXllContext context;
-      (*theTargetFunc)();
-    }
-    catch (...)
-    {}
-    return &result;
-  }
-  XLO_REGISTER(xloRunFuncInXLLContext)
-    .macro();
-
-  static int theExcelCallFunc = 0;
-  static XLOIL_XLOPER* theExcelCallResult = nullptr;
-  static XLOIL_XLOPER** theExcelCallArgs = nullptr;
-  static int theExcelCallNumArgs = 0;
-
-  XLO_ENTRY_POINT(XLOIL_XLOPER*) xloRunInXLLContext()
-  {
-    static ExcelObj result;
-    try
-    {
-      ScopeInXllContext context;
-      Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
-    }
-    catch (...)
-    { }
-    return &result;
-  }
-  XLO_REGISTER(xloRunInXLLContext)
-    .macro();
-  
-  ScopeInXllContext::ScopeInXllContext()
-  {
-    ++_count;
-  }
-  ScopeInXllContext::~ScopeInXllContext()
-  {
-    --_count;
-  }
-  bool ScopeInXllContext::check() 
-  { 
-    return _count > 0; 
-  }
-
-  int ScopeInXllContext::_count = 0;
-
-  bool runInXllContext(const std::function<void()>& f)
-  {
-    if (ScopeInXllContext::check())
-    {
-      f();
-      return true;
-    }
-   
-    auto[result, xlret] = tryCallExcel(msxll::xlfGetDocument, 1);
-    if (xlret == 0)
-    {
-      f();
-      return true;
-    }
-
-    theTargetFunc = &f;
-
-    return retryComCall([]() { excelApp().Run("xloRunFuncInXLLContext"); });
-  }
-
-  int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
-  {
-    if (ScopeInXllContext::check())
-    {
-      Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
-      return true;
-    }
-    theExcelCallFunc = func;
-    theExcelCallResult = result;
-    theExcelCallArgs = (XLOIL_XLOPER**)args;
-    theExcelCallNumArgs = nArgs;
-    return retryComCall([]() { excelApp().Run("xloRunInXLLContext"); });
   }
 }
