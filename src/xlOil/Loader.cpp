@@ -4,7 +4,7 @@
 #include "Log.h"
 #include "Register.h"
 #include "Settings.h"
-#include "FuncRegistry.h"
+#include "internal/FuncRegistry.h"
 #include <toml11/toml.hpp>
 #include <vector>
 #include <string>

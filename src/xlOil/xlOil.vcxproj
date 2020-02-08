@@ -105,8 +105,8 @@
     <ClInclude Include="ExportMacro.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="ExcelCall.h" />
-    <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="Interface.h" />
+    <ClInclude Include="internal\FuncRegistry.h" />
     <ClInclude Include="internal\PEHelper.h" />
     <ClInclude Include="internal\Thunker.h" />
     <ClInclude Include="Loader.h" />
@@ -126,8 +126,8 @@
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
-    <ClCompile Include="FuncRegistry.cpp" />
     <ClCompile Include="Interface.cpp" />
+    <ClCompile Include="internal\FuncRegistry.cpp" />
     <ClCompile Include="internal\PEHelper.cpp" />
     <ClCompile Include="internal\Thunker.cpp" />
     <ClCompile Include="Loader.cpp" />

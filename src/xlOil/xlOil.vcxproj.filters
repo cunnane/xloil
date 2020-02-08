@@ -6,7 +6,6 @@
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
-    <ClCompile Include="FuncRegistry.cpp" />
     <ClCompile Include="Interface.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="Log.cpp" />
@@ -23,6 +22,9 @@
     </ClCompile>
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="AsyncHelper.cpp" />
+    <ClCompile Include="internal\FuncRegistry.cpp">
+      <Filter>internal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncHelper.h" />
@@ -31,7 +33,6 @@
     <ClInclude Include="ExportMacro.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="ExcelCall.h" />
-    <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="Interface.h" />
     <ClInclude Include="Loader.h" />
     <ClInclude Include="Log.h" />
@@ -49,6 +50,9 @@
       <Filter>internal</Filter>
     </ClInclude>
     <ClInclude Include="ExcelState.h" />
+    <ClInclude Include="internal\FuncRegistry.h">
+      <Filter>internal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

@@ -1,7 +1,6 @@
 #include "Events.h"
-#include "FuncRegistry.h"
+#include "internal/FuncRegistry.h"
 #include "ExcelObj.h"
-#include "Options.h"
 #include "ExcelCall.h"
 #include "Interface.h"
 #include "ComInterface/Connect.h"

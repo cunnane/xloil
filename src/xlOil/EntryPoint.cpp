@@ -9,7 +9,8 @@
 #include "ExportMacro.h"
 #include "Log.h"
 #include "Settings.h"
-#include "COMInterface/Connect.h"
+#include <COMInterface/Connect.h>
+#include <COMInterface/XllContextInvoke.h>
 #include <delayimp.h>
 
 using std::wstring;

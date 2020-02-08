@@ -1,5 +1,5 @@
 #pragma once
-#include "Register.h"
+#include <xlOil/Register.h>
 #include <memory>
 
 namespace xloil

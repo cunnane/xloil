@@ -1,5 +1,5 @@
 #pragma once
-#include "xloil/WindowsSlim.h"
+#include <xloil/WindowsSlim.h>
 
 namespace xloil
 {

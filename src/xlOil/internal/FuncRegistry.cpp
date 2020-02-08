@@ -1,16 +1,14 @@
 #include "FuncRegistry.h"
-#include "Register.h"
-#include "ExcelCall.h"
-#include "Interface.h"
-#include "Events.h"
-#include "internal/PEHelper.h"
+#include <xlOil/Register.h>
+#include <xlOil/ExcelCall.h>
+#include <xlOil/Events.h>
+#include "PEHelper.h"
 #include "ExcelObj.h"
-#include "Loader.h"
-#include "Log.h"
-#include "Utils.h"
-#include "EntryPoint.h"
-#include "AsyncHelper.h"
-#include "internal/Thunker.h"
+#include <xlOil/Log.h>
+#include <xlOil/Utils.h>
+#include <xlOil/EntryPoint.h>
+#include <xlOil/AsyncHelper.h>
+#include "Thunker.h"
 #include <unordered_set>
 #include <codecvt>
 #include <future>
@@ -252,7 +250,7 @@ namespace xloil
     FunctionRegistry()
     {
       //theDllName = callExcel(xlGetName);
-      theCoreDllName = ExcelObj(Core::theCoreName());
+      theCoreDllName = ExcelObj(theCoreName());
       theXllName = ExcelObj(fs::path(theXllPath()).filename().wstring());
       theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
       theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));

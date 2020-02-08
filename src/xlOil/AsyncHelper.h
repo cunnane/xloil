@@ -1,7 +1,6 @@
 #pragma once
 #include "ExcelObj.h"
 #include "Register.h"
-#include "FuncRegistry.h"
 #include "ExcelCall.h"
 #include <functional>
 

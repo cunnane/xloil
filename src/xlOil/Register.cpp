@@ -3,7 +3,7 @@
 #include "Interface.h"
 #include "Events.h"
 #include "Log.h"
-#include "FuncRegistry.h"
+#include "internal/FuncRegistry.h"
 #include <asmjit/src/asmjit/asmjit.h>
 #include <codecvt>
 

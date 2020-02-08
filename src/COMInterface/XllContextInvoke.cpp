@@ -3,9 +3,9 @@
 #include "Connect.h"
 #include "ExcelObj.h"
 #include "CallHelper.h"
-#include "xloil/Register.h"
-#include "xloil/ExcelCall.h"
-#include "xloil/Log.h"
+#include <xloil/Register.h>
+#include <xloil/ExcelCall.h>
+#include <xloil/Log.h>
 
 namespace xloil
 {

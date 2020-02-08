@@ -1,9 +1,9 @@
 #include "Interface.h"
-#include "FuncRegistry.h"
+#include "internal/FuncRegistry.h"
 #include "ObjectCache.h"
 #include "Settings.h"
 #include "EntryPoint.h"
-#include "ComInterface/Connect.h"
+#include <ComInterface/Connect.h>
 #include <toml11/toml.hpp>
 
 using std::make_pair;
@@ -49,8 +49,7 @@ namespace xloil
     Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, RegisterCallback callback, 
       const std::shared_ptr<void>& data) noexcept
   {
-    RegisteredFuncPtr ptr;
-    runInXllContext([&]() { ptr = xloil::registerFunc(info, callback, data); });
+    auto ptr = xloil::registerFunc(info, callback, data);
     if (!ptr) return 0;
     _functions.emplace(info->name, ptr);
     return ptr->registerId();
@@ -60,8 +59,7 @@ namespace xloil
     Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, AsyncCallback callback,
       const std::shared_ptr<void>& data) noexcept
   {
-    RegisteredFuncPtr ptr;
-    runInXllContext([&]() { ptr = xloil::registerFunc(info, callback, data); });
+    auto ptr = xloil::registerFunc(info, callback, data);
     if (!ptr) return 0;
     _functions.emplace(info->name, ptr);
     return ptr->registerId();
@@ -70,8 +68,7 @@ namespace xloil
   int
     Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, const char* functionName) noexcept
   {
-    RegisteredFuncPtr ptr;
-    runInXllContext([&]() { ptr = xloil::registerFunc(info, functionName, _pluginName.c_str()); });
+    auto ptr = xloil::registerFunc(info, functionName, _pluginName.c_str());
     if (!ptr) return 0;
     _functions.emplace(info->name, ptr);
     return ptr->registerId();
