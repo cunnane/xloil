@@ -51,9 +51,6 @@
     <ClInclude Include="ExcelState.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="internal">
       <UniqueIdentifier>{b91aa7a8-a3bf-42e0-8c6c-caaa6932c881}</UniqueIdentifier>
     </Filter>

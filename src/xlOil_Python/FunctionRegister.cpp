@@ -6,7 +6,7 @@
 #include "xloil/ExcelCall.h"
 #include "xloil/AsyncHelper.h"
 #include <pybind11/stl.h>
-#include <CTPL/ctpl.h>
+#include <CTPL/ctpl_stl.h>
 #include <map>
 #include <filesystem>
 

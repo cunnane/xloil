@@ -9,8 +9,6 @@
 #include <vector>
 #include <string>
 #include <filesystem>
-#include <boost/preprocessor/stringize.hpp>
-#include <filesystem>
 namespace fs = std::filesystem;
 
 using std::vector;
@@ -95,7 +93,7 @@ namespace xloil
         continue;
       }
 
-      auto initFunc = (pluginInitFunc)GetProcAddress(lib, BOOST_PP_STRINGIZE(XLO_PLUGIN_INIT_FUNC));
+      auto initFunc = (pluginInitFunc)GetProcAddress(lib, XLO_STR(XLO_PLUGIN_INIT_FUNC));
       if (!initFunc)
       {
         XLO_WARN(L"Couldn't find entry point for plugin {0}", pluginPath);
@@ -130,7 +128,7 @@ namespace xloil
     for (auto& m : getLoadedPlugins())
     {
       XLO_TRACE(L"Unloading plugin {0}", m.second->pluginName());
-      auto exitFunc = (pluginExitFunc)GetProcAddress(m.first, BOOST_PP_STRINGIZE(XLO_PLUGIN_EXIT_FUNC));
+      auto exitFunc = (pluginExitFunc)GetProcAddress(m.first, XLO_STR(XLO_PLUGIN_EXIT_FUNC));
       if (exitFunc)
         exitFunc();
       //m.second->deregisterAll();

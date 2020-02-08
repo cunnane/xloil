@@ -2,6 +2,9 @@
 #include <string>
 #include <codecvt>
 
+#define XLO_STR(s) XLO_STR_IMPL(s)
+#define XLO_STR_IMPL(s) #s
+
 namespace xloil
 {
   inline std::string wstring_to_utf8( const std::wstring_view& str)

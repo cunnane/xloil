@@ -10,8 +10,6 @@
 #include "Log.h"
 #include "Settings.h"
 #include "COMInterface/Connect.h"
-#include <boost/preprocessor/cat.hpp>
-#include <boost/preprocessor/repeat.hpp>
 #include <delayimp.h>
 
 using std::wstring;
@@ -125,6 +123,7 @@ XLO_ENTRY_POINT(int) DllMain(
   return TRUE;
 }
 
-#define XLO_WRITE_STUB(z, n, dummy) extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB(n)() { return nullptr; }
-BOOST_PP_REPEAT(XLOIL_MAX_FUNCS, XLO_WRITE_STUB, 0)
-#undef XLO_WRITE_STUB
+extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB_NAME() 
+{ 
+  return nullptr; 
+}

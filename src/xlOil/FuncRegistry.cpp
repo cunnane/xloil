@@ -11,8 +11,6 @@
 #include "EntryPoint.h"
 #include "AsyncHelper.h"
 #include "internal/Thunker.h"
-#include <boost/algorithm/string/join.hpp>
-#include <boost/preprocessor/cat.hpp>
 #include <unordered_set>
 #include <codecvt>
 #include <future>
@@ -92,18 +90,12 @@ namespace xloil
     /// <returns>The name of the entry point selected</returns>
     const char* hookEntryPoint(const FuncInfo&, const void* thunk)
     {
-      auto funcNum = theRegistry.size() % XLOIL_MAX_FUNCS;
-
-      // TODO: as noted elsewhere I think we can keep reusing the same one!
-      /* if (funcNum > XLOIL_MAX_FUNCS)
-        XLO_THROW("Reached max number of registered functions");*/
-
-      auto* stubName = theExportTable->getName(theFirstStub + funcNum);
+      auto* stubName = theExportTable->getName(theFirstStub);
 
       // Hook the thunk by modifying the export address table
       XLO_TRACE("Hooking thunk to name {0}", stubName);
       
-      theExportTable->hook(theFirstStub + funcNum, (void*)thunk);
+      theExportTable->hook(theFirstStub, (void*)thunk);
 
 #ifdef _DEBUG
       // Check the thunk is hooked to Windows' satisfaction
@@ -263,7 +255,7 @@ namespace xloil
       theCoreDllName = ExcelObj(Core::theCoreName());
       theXllName = ExcelObj(fs::path(theXllPath()).filename().wstring());
       theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
-      theFirstStub = theExportTable->findOffset(BOOST_PP_STRINGIZE(XLOIL_STUB(0)));
+      theFirstStub = theExportTable->findOffset(XLO_STR_IMPL(XLOIL_STUB_NAME));
       _freeThunksAvailable = false;
     }
 

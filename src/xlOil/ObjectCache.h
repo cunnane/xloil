@@ -155,7 +155,7 @@ namespace xloil
     }
 
     // Like wmemchr but backwards!
-    const wchar_t* wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
+    static const wchar_t* wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
     {
       for (; num; --ptr, --num)
         if (*ptr == wc)
@@ -166,7 +166,7 @@ namespace xloil
     ExcelObj add(const TObj& obj)
     {
       CallerInfo caller;
-      const int padding = 4;
+      constexpr int padding = 4;
 
       auto* pascalStr = writeCacheId(_uniquifier, caller, padding);
 
@@ -180,7 +180,6 @@ namespace xloil
 
       // Capture sheet ref.  
       // Can use wcslen here because of the null padding
-      //assert(wcslen(lastBracket) == len - (lastBracket - str) - padding);
       auto wsRef = std::wstring_view(lastBracket + 1, len - (lastBracket - str) - 1 - padding);
 
       auto& cellCache = fetchOrAddCell(wbName, wsRef);
@@ -229,7 +228,6 @@ namespace xloil
       pascalStr[0] = wchar_t(addressLen + 1 + padding);
 
       return pascalStr;
-      // return ret.release();
     }
 
     void onWorkbookClose(const wchar_t* wbName)
