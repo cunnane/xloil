@@ -386,6 +386,14 @@ namespace
     copy(*this, that);
     return *this;
   }
+  ExcelObj & ExcelObj::operator=(ExcelObj&& that)
+  {
+    reset();
+    this->val = that.val;
+    this->xltype = that.xltype;
+    that.xltype = xltypeNil;
+    return *this;
+  }
   bool ExcelObj::operator==(const ExcelObj& that) const
   {
     return compare(*this, that) == 0;

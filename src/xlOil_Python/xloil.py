@@ -78,7 +78,8 @@ def _get_typeconverter(type_name, from_excel=True):
         
     except:
         raise Exception(f"No converter for {type_name} {to_from} Excel. Expected {name}")
-        
+
+
 class FuncMeta:
     def __init__(self, func):
         self._func = func
@@ -271,6 +272,20 @@ def arg(name, typeof=None, help=None):
 
     return decorate
 
+_excel_application_com_obj = None
+
+# TODO: Option to use win32com instead of comtypes?
+def app():
+    global _excel_application_com_obj
+    if _excel_application_com_obj is None:
+        import comtypes.client
+        import comtypes
+        import ctypes
+        clsid = comtypes.GUID.from_progid("Excel.Application")
+        obj = ctypes.POINTER(comtypes.IUnknown)(xloil_core.application())
+        _excel_application_com_obj = comtypes.client._manage(obj, clsid, None)
+    return _excel_application_com_obj
+     
 
 def _import_from_path(path, module_name=None):
     import importlib.util

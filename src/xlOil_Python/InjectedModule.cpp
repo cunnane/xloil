@@ -38,7 +38,7 @@ namespace xloil {
 
     PyObject* buildInjectedModule()
     {
-      auto mod = py::module(XLO_PY_MOD_STR);
+      auto mod = py::module(theInjectedModuleName);
       BinderRegistry::get().bindAll(mod);
       return mod.release().ptr();
     }

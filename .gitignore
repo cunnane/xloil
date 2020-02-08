@@ -37,3 +37,4 @@ build/
 packages/
 graveyard/
 *.vcxproj.user
+__pycache__

@@ -42,6 +42,7 @@ namespace xloil
 
         logFilePath = toml::find_or<std::string>(core, "LogFile", "");
         logLevel = toml::find_or<std::string>(core, "LogLevel", "warn");
+        pluginSearchPattern = toml::find_or<string>(root, "Plugins.PluginSearchPattern", "");
 
         // Process plugin settings
         auto& plugins = toml::find<toml::table>(root, "Plugins");

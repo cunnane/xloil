@@ -24,13 +24,6 @@ using std::string;
 
 namespace xloil
 {
-  // TODO: any way to pick this up automatically?
-#define XLO_CORE_DLL_NAME "xlOil_Core.dll"
-#define XLO_CORE_DLL_NAMEW L"xlOil_Core.dll"
-
-
-  static constexpr wchar_t* thePluginPrefix = L"xloil_";
-
   static auto& getLoadedPlugins()
   {
     static auto instance = vector<pair<HMODULE, shared_ptr<Core>>>();
@@ -49,14 +42,14 @@ namespace xloil
     WIN32_FIND_DATA fileData;
 
     // Find the DLLs in the plugin folder and add them to our plugins
-    auto searchPath = corePath / (wstring(thePluginPrefix) + L"*.dll");
+    auto searchPath = corePath / theCoreSettings().pluginSearchPattern;
     auto fileHandle = FindFirstFile(searchPath.c_str(), &fileData);
     if (fileHandle != INVALID_HANDLE_VALUE &&
       fileHandle != (void*)ERROR_FILE_NOT_FOUND)
     {
       do
       {
-        if (_wcsicmp(fileData.cFileName, XLO_CORE_DLL_NAMEW) == 0)
+        if (_wcsicmp(fileData.cFileName, Core::theCoreName()) == 0)
           continue;
         if (_wcsicmp(fileData.cFileName, L"xlOil_Loader.dll") == 0)
           continue;
@@ -72,17 +65,16 @@ namespace xloil
 
     SetDllDirectory(corePath.c_str());
 
-    // Pair is (plugin_name, file_path_
-    for (auto plug : plugins)
+    for (auto[pluginName, pluginPath] : plugins)
     {
       vector<shared_ptr<PushEnvVar>> pathPusher;
 
-      XLO_TRACE(L"Found plugin {}", plug.first);
-      auto path = fs::path(plug.second);
+      XLO_TRACE(L"Found plugin {}", pluginName);
+      auto path = fs::path(pluginPath);
       if (path.is_relative())
         path = corePath / path;
 
-      auto settings = fetchPluginSettings(plug.first.c_str());
+      auto settings = fetchPluginSettings(pluginName.c_str());
       if (settings)
       {
         auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
@@ -106,7 +98,7 @@ namespace xloil
       auto initFunc = (pluginInitFunc)GetProcAddress(lib, BOOST_PP_STRINGIZE(XLO_PLUGIN_INIT_FUNC));
       if (!initFunc)
       {
-        XLO_WARN(L"Couldn't find entry point for plugin {0}", plug.second);
+        XLO_WARN(L"Couldn't find entry point for plugin {0}", pluginPath);
         continue;
       }
 
@@ -117,11 +109,11 @@ namespace xloil
       //  continue;
       //}
       
-      auto coreObj = make_shared<Core>(plug.first.c_str());
+      auto coreObj = make_shared<Core>(pluginName.c_str());
       if (initFunc(*coreObj) < 0)
       {
         // TODO:  Can we roll back any bad registrations?
-        XLO_ERROR(L"Plugin initialisation failed for {}", plug.second);
+        XLO_ERROR(L"Plugin initialisation failed for {}", pluginPath);
         FreeLibrary(lib);
         continue;
       }

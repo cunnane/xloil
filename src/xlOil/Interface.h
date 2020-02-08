@@ -12,7 +12,9 @@ namespace toml {
   struct discard_comments;
   using value = basic_value<discard_comments, std::unordered_map, std::vector>;
 }
+namespace Excel { struct _Application; }
 namespace xloil { class RegisteredFunc; }
+
 namespace xloil
 {
 
@@ -33,6 +35,8 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     static const wchar_t* theCoreName();
+
+    static Excel::_Application& theExcelApp();
 
     /// <summary>
     /// See templated version <see cref="registerFunc"/>

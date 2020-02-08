@@ -20,6 +20,7 @@ namespace xloil
     std::string logFilePath;
     std::string logLevel;
     std::vector<std::pair<std::wstring, std::wstring>> pluginNamesAndPath;
+    std::string pluginSearchPattern;
   };
 
   Settings& theCoreSettings();

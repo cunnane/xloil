@@ -129,6 +129,11 @@ def pyTestIter(size:int, dims:int):
     else:
         return [] 
 
+@xlo.func(macro=True)
+def pyTestCom():
+    app = xlo.app()
+    return app.ProductCode
+
 """  
 @xlo.func
 def pyTestXXXFunc(x):

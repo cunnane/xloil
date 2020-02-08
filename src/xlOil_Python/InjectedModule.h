@@ -2,15 +2,12 @@
 #include <pybind11/pybind11.h>
 #include <functional>
 
-// couldn't we use a global variable for this?
-
-#define XLO_PY_MOD xloil_core
-#define XLO_PY_MOD_STR "xloil_core"
-
 namespace xloil
 {
   namespace Python
   {
+    constexpr char* const theInjectedModuleName = "xloil_core";
+
     PyObject* buildInjectedModule();
     int addBinder(std::function<void(pybind11::module&)> binder);
 

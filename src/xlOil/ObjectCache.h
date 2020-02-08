@@ -216,6 +216,7 @@ namespace xloil
 
       // Cache uniquifier character
       *(buf++) = uniquifier;
+      --totalLen;
 
       // Full cell address: eg. [wbName]wsName!RxCy
       auto addressLen = caller.writeFullAddress(buf, totalLen);

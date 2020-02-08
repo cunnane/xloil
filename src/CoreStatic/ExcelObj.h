@@ -158,6 +158,8 @@ namespace xloil
     void reset();
 
     ExcelObj& operator=(const ExcelObj& that);
+    ExcelObj& operator=(ExcelObj&& that);
+
     bool operator==(const ExcelObj& that) const;
     static int compare(const ExcelObj& left, const ExcelObj& right);
 

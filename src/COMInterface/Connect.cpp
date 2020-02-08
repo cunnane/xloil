@@ -236,6 +236,8 @@ public:
       
       Excel::_Application* p = XL;
       _handler.reset(new EventHandler(p));
+
+
     }
     catch (_com_error& error)
     {
@@ -284,10 +286,23 @@ bool retryComCall(TFunc fn)
 }
 namespace xloil
 {
+  namespace
+  {
+    struct RegisterMe
+    {
+      RegisterMe()
+      {
+        connector = new COMConnector();
+        static auto handler = xloil::Event_AutoClose() += [this]() { delete connector; };
+      }
+      COMConnector* connector;
+    };
+  }
+
   Excel::_Application& excelApp()
   {
-    static COMConnector c;
-    return c.ExcelApp();
+    static RegisterMe c;
+    return c.connector->ExcelApp();
   }
 
   static const std::function<void()>* theTargetFunc = nullptr;
@@ -303,8 +318,7 @@ namespace xloil
       (*theTargetFunc)();
     }
     catch (...)
-    {
-    }
+    {}
     return &result;
   }
   XLO_REGISTER(xloRunFuncInXLLContext)
@@ -324,8 +338,7 @@ namespace xloil
       Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
-    {
-    }
+    { }
     return &result;
   }
   XLO_REGISTER(xloRunInXLLContext)
@@ -345,8 +358,6 @@ namespace xloil
   }
 
   int ScopeInXllContext::_count = 0;
-
-
 
   bool runInXllContext(const std::function<void()>& f)
   {

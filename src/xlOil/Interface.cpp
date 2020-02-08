@@ -40,6 +40,11 @@ namespace xloil
     return xloil::theCoreName();
   }
 
+  Excel::_Application & Core::theExcelApp()
+  {
+    return excelApp();
+  }
+
   int
     Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, RegisterCallback callback, 
       const std::shared_ptr<void>& data) noexcept
