@@ -12,7 +12,7 @@ namespace xloil
 
   static const std::function<void()>* theTargetFunc = nullptr;
 
-  // TODO: make these commmands so they are hidden and have void return?
+  // TODO: make these commmands so they are hidden?
   XLO_ENTRY_POINT(XLOIL_XLOPER*) xloRunFuncInXLLContext()
   {
     // Do we need this result?
@@ -28,7 +28,7 @@ namespace xloil
     return &result;
   }
   XLO_REGISTER(xloRunFuncInXLLContext)
-    .macro().command();
+    .macro();
 
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
@@ -37,11 +37,11 @@ namespace xloil
 
   XLO_ENTRY_POINT(XLOIL_XLOPER*) xloRunInXLLContext()
   {
-    static ExcelObj result;
+    static ExcelObj result(0);
     try
     {
       ScopeInXllContext context;
-      Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
+      result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
     {
@@ -49,7 +49,7 @@ namespace xloil
     return &result;
   }
   XLO_REGISTER(xloRunInXLLContext)
-    .macro().command();
+    .macro();
 
   ScopeInXllContext::ScopeInXllContext()
   {
@@ -83,7 +83,8 @@ namespace xloil
 
     theTargetFunc = &f;
 
-    return retryComCall([]() { excelApp().Run("xloRunFuncInXLLContext"); });
+    auto ret = retryComCall([]() { return excelApp().Run("xloRunFuncInXLLContext"); });
+    return ret.has_value();
   }
 
   int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
@@ -97,6 +98,15 @@ namespace xloil
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;
     theExcelCallNumArgs = nArgs;
-    return retryComCall([]() { excelApp().Run("xloRunInXLLContext"); });
+    //XLO_TRACE("Calling into XLL context fn= {0:#x}", (size_t)&fn);
+    auto ret = retryComCall([]() { return excelApp().Run("xloRunInXLLContext"); });
+    if (!ret)
+      return msxll::xlretInvXlfn;
+    auto variant = ret.value();
+    
+    if (SUCCEEDED(VariantChangeType(&variant, &variant, 0, VT_I4)))
+      return variant.lVal;
+
+    return msxll::xlretInvXlfn;
   }
 }
