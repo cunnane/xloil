@@ -13,6 +13,7 @@ name scope, like an Excel addin.  The plugin can also look for modules of the fo
 <workbook_name>.py and load these too.  Any module which contains Excel functions is 
 watched for file modifications so code changes are reflected immediately in Excel.
 
+Have a look at `<root>/test/PythonTest.py` for lots of examples. 
 
 Concepts: Cached Objects
 ------------------------
@@ -105,8 +106,8 @@ except Exception:
 
     class CellError:
         """
-        Enum-type class created when an Excel error condition of the form
-        #FOO! is passed a a function argument.
+        Enum-type class created when an Excel error condition of the 
+        form #FOO! is passed a a function argument.
         """
         Null = None
         Div0 = None
