@@ -119,8 +119,8 @@ namespace xloil
         argTypes += 'Q';  // Other functions return an XLOPER
 
       // Arg type Q is XLOPER12 values/arrays
-      // TODO: support type U, range references for macros
-      argTypes += string(numArgs, 'Q');
+      for (auto& arg : info->args)
+        argTypes += arg.allowRange ? 'U' : 'Q';
 
       // TODO: check for invalid combinations
       if (opts & FuncInfo::VOLATILE)
@@ -148,7 +148,7 @@ namespace xloil
           argHelp.back() += L"  ";
       }
 
-      auto macroType = opts & FuncInfo::COMMAND ? 2 : 1;
+      auto macroType = (opts & FuncInfo::COMMAND) ? 2 : 1;
 
       // TODO: this copies the excelobj
       XLO_TRACE(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8_to_wstring(entryPoint), numArgs);

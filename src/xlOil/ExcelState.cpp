@@ -2,42 +2,6 @@
 #include "ExcelCall.h"
 using namespace msxll;
 
-namespace xloil
-{
-
-  CallerInfo::CallerInfo()
-    : _Address(new ExcelObj())
-    , _SheetName(new ExcelObj())
-  {
-    callExcelRaw(xlfCaller, const_cast<ExcelObj*>(_Address.get()));
-    callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
-  }
-  size_t CallerInfo::fullAddressLength() const
-  {
-    size_t wsLen;
-    _SheetName->asPascalStr(wsLen);
-    // 29 chars is the max for RaCb:RxRy references - any value in more precise guess?
-    return wsLen + 1 + 29; 
-  }
-  size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
-  {
-    size_t wsLen;
-    auto* wsName = _SheetName->asPascalStr(wsLen);
-    assert(bufLen > wsLen);
-    wmemcpy(buf, wsName, wsLen);
-    buf += wsLen;
-
-    // Separator character
-    *(buf++) = L'!';
-
-    // TODO: handle other caller cases?
-    assert(_Address->type() == ExcelType::SRef);
-    auto addressLen = xlrefToString(_Address->val.sref.ref, buf, bufLen - wsLen - 1);
-
-    return addressLen + wsLen + 1;
-  }
-
-}
 
 namespace
 {
@@ -114,5 +78,138 @@ namespace
     xldlg_enum_struct es = { FALSE, xHwnd.val.w, "" };
     EnumWindows((WNDENUMPROC)xldlg_enum_proc, (LPARAM)&es);
     return es.is_dlg;
+  }
+}
+
+namespace xloil
+{
+
+  CallerInfo::CallerInfo()
+    : _Address(new ExcelObj())
+    , _SheetName(new ExcelObj())
+  {
+    callExcelRaw(xlfCaller, const_cast<ExcelObj*>(_Address.get()));
+    callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
+  }
+  size_t CallerInfo::fullAddressLength() const
+  {
+    auto s = _SheetName->asPascalStr();
+    // 29 chars is the max for RaCb:RxRy references - any value in more precise guess?
+    return s.size() + 1 + 29; 
+  }
+  size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
+  {
+    auto wsName = _SheetName->asPascalStr();
+    assert(bufLen > wsName.size());
+    wmemcpy(buf, wsName.pstr(), wsName.size());
+    buf += wsName.size();
+
+    // Separator character
+    *(buf++) = L'!';
+
+    // TODO: handle other caller cases?
+    assert(_Address->type() == ExcelType::SRef);
+    auto addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.size() - 1);
+
+    return addressLen + wsName.size() + 1;
+  }
+
+  constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
+
+  auto fillColumnNameCache()
+  {
+    static std::array<char, COL_NAME_CACHE_SIZE * 2> cache;
+    auto* pcolumns = cache.data();
+    memset(pcolumns, cache.size(), 0);
+
+    for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
+      pcolumns[0] = d;
+
+    for (auto c = 'A'; c <= 'Z'; ++c)
+      for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
+      {
+        pcolumns[0] = c;
+        pcolumns[1] = d;
+      }
+    return cache;
+  }
+
+  static auto theColumnNameCache = fillColumnNameCache();
+
+  void writeColumnName(size_t colIndex, char buf[4])
+  {
+    if (colIndex < COL_NAME_CACHE_SIZE)
+    {
+      memcpy_s(buf, 4, &theColumnNameCache[colIndex * 2], 2);
+      buf[2] = '\0';
+    }
+    else
+    {
+      constexpr size_t Ato0 = 'A' - '0';
+      constexpr size_t Atoa = 'A' - 'a' + 10;
+
+      _itoa_s(colIndex - 26, buf, 4, 26);
+      buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
+      buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
+      buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
+    }
+  }
+
+  void writeColumnNameW(size_t colIndex, wchar_t buf[4])
+  {
+    size_t dummy;
+    char colBuf[4];
+    writeColumnName(colIndex, colBuf);
+    mbstowcs_s(&dummy, buf, 4, colBuf, 4);
+  }
+
+  XLOIL_EXPORT size_t xlrefToStringA1(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
+  {
+    // Add one everywhere here as rwFirst is zero-based but A1 format is 1-based
+    if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
+    {
+      wchar_t wcol[4];
+      writeColumnNameW(ref.colFirst, wcol);
+      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d", wcol, ref.rwFirst + 1);
+    }
+    else
+    {
+      wchar_t wcolFirst[4], wcolLast[4];
+      writeColumnNameW(ref.colFirst, wcolFirst);
+      writeColumnNameW(ref.colLast, wcolLast);
+      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d", 
+        wcolFirst, ref.rwFirst + 1, wcolLast, ref.rwLast + 1);
+    }
+  }
+
+  XLOIL_EXPORT size_t xlrefSheetAddressA1(
+    const msxll::IDSHEET& sheet,
+    const msxll::XLREF12& ref,
+    wchar_t* buf,
+    size_t bufSize,
+    bool A1Style)
+  {
+    ExcelObj sheetNm;
+    sheetNm.xltype = msxll::xltypeRef;
+    sheetNm.val.mref.idSheet = sheet;
+    callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
+
+    auto wsName = sheetNm.asPascalStr();
+    assert(bufSize > wsName.size());
+    wmemcpy(buf, wsName.pstr(), wsName.size());
+    buf += wsName.size();
+
+    // Separator character
+    *(buf++) = L'!';
+      
+    auto addressLen = A1Style 
+      ? xlrefToStringA1(ref, buf, bufSize - wsName.size() - 1)
+      : xlrefToStringRC(ref, buf, bufSize - wsName.size() - 1);
+
+    return addressLen + wsName.size() + 1;
+  }
+  XLOIL_EXPORT bool inFunctionWizard()
+  {
+    return called_from_paste_fn_dlg();
   }
 }

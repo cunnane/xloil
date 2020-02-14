@@ -134,13 +134,15 @@ def pyTestCom():
     app = xlo.app()
     return app.ProductCode
 
-"""  
+
+@xlo.func(macro=True)
+def pyTestRange(r: xlo.AllowRange):
+    r2 = r.cell(1, 1).value
+    return r.cell(1, 1).address()
+    
+"""
 @xlo.func
 def pyTestXXXFunc(x):
     return 2
 
-
-@xlo.func
-def pyTestYYYFunc(x):
-    return x
 """

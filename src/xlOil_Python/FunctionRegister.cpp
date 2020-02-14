@@ -3,8 +3,9 @@
 #include "Main.h"
 #include "BasicTypes.h"
 #include "Dictionary.h"
-#include "xloil/ExcelCall.h"
-#include "xloil/AsyncHelper.h"
+#include <xloil/ExcelCall.h>
+#include <xloil/AsyncHelper.h>
+#include <xloil/ExcelState.h>
 #include <pybind11/stl.h>
 #include <CTPL/ctpl_stl.h>
 #include <map>
@@ -338,7 +339,11 @@ namespace xloil
     {
       FunctionRegistry::get().addModule(moduleHandle.cast<py::module>(), functions);
     }
-
+    void writeToLog(const char* message, const char* level)
+    {
+      SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::from_str(level), message);
+    }
+    
     namespace
     {
       static int theBinder = addBinder([](py::module& mod)
@@ -346,7 +351,8 @@ namespace xloil
         py::class_<FuncArg>(mod, "FuncArg")
           .def(py::init<const wchar_t*, const wchar_t*>())
           .def_readwrite("name", &FuncArg::name)
-          .def_readwrite("help", &FuncArg::help);
+          .def_readwrite("help", &FuncArg::help)
+          .def_readwrite("allow_range", &FuncArg::allowRange);
 
         py::class_<FuncInfo, shared_ptr<FuncInfo>>(mod, "FuncInfo")
           .def(py::init())
@@ -371,7 +377,10 @@ namespace xloil
         py::class_<ThreadContext>(mod, "ThreadContext")
           .def("cancelled", &ThreadContext::cancelled);
        
+
+        mod.def("in_wizard", &xloil::inFunctionWizard);
         mod.def("register_functions", &registerFunctions);
+        mod.def("log", &writeToLog, py::arg("msg"), py::arg("level")="info");
       });
     }
   }

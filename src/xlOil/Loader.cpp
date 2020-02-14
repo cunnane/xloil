@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 #include <filesystem>
+#include <regex>
+
 namespace fs = std::filesystem;
 
 using std::vector;
@@ -19,6 +21,29 @@ using std::pair;
 using std::make_pair;
 using std::string;
 
+namespace
+{
+  wstring getRegistryValue(wstring location)
+  {
+    const auto lastSlash = location.rfind(L'\\');
+    const auto subKey = location.substr(0, lastSlash);
+    const auto value = lastSlash + 1 < location.size() ? location.substr(lastSlash + 1) : wstring();
+    wchar_t buffer[1024];
+    DWORD bufSize = sizeof(buffer) / sizeof(wchar_t);
+    if (ERROR_SUCCESS == RegGetValue(
+      HKEY_LOCAL_MACHINE,
+      subKey.c_str(),
+      value.c_str(),
+      RRF_RT_REG_SZ,
+      nullptr /*type not required*/,
+      &buffer,
+      &bufSize))
+    {
+      return wstring(buffer, buffer + bufSize);
+    }
+    XLO_THROW(L"HKLM\\{0} not found", location);
+  }
+}
 
 namespace xloil
 {
@@ -59,9 +84,11 @@ namespace xloil
         }
       } while (FindNextFile(fileHandle, &fileData));
     }
-   
 
     SetDllDirectory(corePath.c_str());
+
+    // Should match "<HKLM\(Reg\Key\Value)>"
+    std::wregex registryExpander(L"<HKLM\\\\([^>]*)>", std::regex_constants::optimize);
 
     for (auto[pluginName, pluginPath] : plugins)
     {
@@ -76,11 +103,17 @@ namespace xloil
       if (settings)
       {
         auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
-        for (auto var : environment)
+        for (auto[key, val] : environment)
         {
+          wstring value = utf8_to_wstring(val.as_string().str);
+          std::wsmatch match;
+          std::regex_match(value, match, registryExpander);
+          if (match.size() == 2)
+            value = getRegistryValue(match[1].str());
+
           pathPusher.emplace_back(make_shared<PushEnvVar>(
-            utf8_to_wstring(var.first).c_str(), 
-            utf8_to_wstring((string)var.second.as_string()).c_str()));
+            utf8_to_wstring(key).c_str(),
+            value.c_str()));
         }
       }
 

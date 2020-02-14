@@ -8,6 +8,8 @@
 using std::wstring;
 using namespace msxll;
 
+#ifdef _DEBUG
+
 namespace xloil
 {
   ExcelObj* testCallback(FuncInfo* info, const ExcelObj**)
@@ -89,3 +91,6 @@ namespace xloil
     .arg(L"foo", L"does foo")
     .async();
 }
+
+#endif
+

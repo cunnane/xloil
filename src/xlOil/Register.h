@@ -23,6 +23,7 @@ namespace xloil
     FuncArg(const wchar_t* name_, const wchar_t* help_ = nullptr)
       : name(name_ ? name_ : L"")
       , help(help_ ? help_ : L"")
+      , allowRange(false)
     {}
     /// <summary>
     /// The name of the argument shown in the function wizard.
@@ -32,6 +33,13 @@ namespace xloil
     /// An optional help string for the argument displayed in the function wizard.
     /// </summary>
     std::wstring help;
+
+    /// <summary>
+    /// If true, when the user specifies a cell reference in a function argument,
+    /// Excel will pass a range, which xloil converts to an ExcelRange object.
+    /// If false, cell references are converted to arrays or primitive types.
+    /// </summary>
+    bool allowRange;
 
     bool operator==(const FuncArg& that) const
     {

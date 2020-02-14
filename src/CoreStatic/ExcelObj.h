@@ -54,15 +54,45 @@ namespace xloil
 
   class ExcelArray;
 
-  template <class TChar>
+  template <class TChar=wchar_t>
   class PString
   {
   public:
-    PString(const TChar* pascalStr) : _data(pascalStr) {}
+    PString(const TChar* pascalStr = nullptr) : _data(pascalStr) {}
 
-    size_t size() const { return _data[0]; }
+    bool operator!() const { return !!_data; }
+    size_t size() const { return _data ? _data[0] : 0; }
     const TChar* buf() const { return _data; }
-    std::wstring string() const { return std::wstring(_data, _data + _data[0]); }
+    const TChar* pstr() const { return _data + 1; }
+    std::wstring string() const { return std::wstring(pstr(), pstr() + size()); }
+
+    static constexpr size_t npos = size_t (-1);
+
+    // Like wmemchr but backwards!
+    static const wchar_t* wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
+    {
+      for (; num; --ptr, --num)
+        if (*ptr == wc)
+          return ptr;
+      return nullptr;
+    }
+
+    size_t chr(wchar_t wc) const
+    {
+      auto p = wmemchr(pstr(), wc, size());
+      return p ? p - pstr() : npos;
+    }
+
+    size_t rchr(wchar_t wc) const
+    {
+      auto p = wmemrchr(pstr() + size(), wc, size());
+      return p ? p - pstr() : npos;
+    }
+
+    std::basic_string_view<TChar> view(size_t from, size_t count = npos)
+    {
+      return std::basic_string_view<TChar>(pstr() + from, count != npos ? count : size() - from);
+    }
 
   private:
     const TChar* _data;
@@ -82,7 +112,7 @@ namespace xloil
     typedef wchar_t Char;
     typedef XLOIL_XLOPER Base;
 
-    // If you got here, consider casting. It's main purpose is to avoid
+    // If you got here, consider casting. Its main purpose is to avoid
     // pointers being auto-cast to integral / bool types
     template <class T> ExcelObj(T t) { static_assert(false); }
 
@@ -145,11 +175,6 @@ namespace xloil
       fn(do_not_use_buf, nChars);
     }
 
-    //template<class T> ExcelObj(const T* array, int nRows, int nCols)
-    //  : ExcelObj(emplace(array, nRows, nCols), nRows, nCols)
-    //{
-    //}
-
     ~ExcelObj();
 
     /// <summary>
@@ -193,7 +218,6 @@ namespace xloil
     int toInt() const;
     bool toBool() const;
 
-
     double asDouble() const;
     int asInt() const;
     bool asBool() const;
@@ -208,9 +232,8 @@ namespace xloil
     /// Gets the start of the object's string data and the length
     /// of that string. The string may not be null-terminated.
     /// </summary>
-    /// <param name="length"></param>
-    /// <returns>Pointer to string data or null if not a string</returns>
-    const wchar_t* asPascalStr(size_t& length) const;
+    /// <returns>Pointer to PString data which may be a null object if not a string</returns>
+    PString<> asPascalStr() const;
 
     /// <summary>
     /// Writes the characters in supplied buffer to object's internal
@@ -276,6 +299,5 @@ namespace xloil
     int xtype() const;
   };
 
-  size_t xlrefToString(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);
-
+  size_t xlrefToStringRC(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);
 }

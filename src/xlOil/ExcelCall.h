@@ -140,9 +140,16 @@ namespace xloil
   inline ExcelObj callExcel(int func, Args&&... args)
   {
     auto[result, ret] = tryCallExcel(func, std::forward<Args>(args)...);
-    if (ret != msxll::xlretSuccess)
+    switch (ret)
+    {
+    case msxll::xlretSuccess:
+      break;
+    case msxll::xlretAbort:
+      throw new ExcelAbort();
+    default:
       XLO_THROW(L"Call to Excel failed: {0}", xlRetCodeToString(ret));
-    return result;
+    }
+    return std::forward<ExcelObj>(result);
   }
 
   template<typename... Args>
@@ -154,7 +161,7 @@ namespace xloil
     appendVector(argVec, tmpVec, std::forward<Args>(args)...);
     result.second = callExcelRaw(func, &result.first, int(argVec.size()), toArgPtr(argVec));
     result.first.fromExcel();
-    return result;
+    return std::forward<std::pair<ExcelObj, int>>(result);
   }
 
   inline std::pair<ExcelObj, int> tryCallExcel(int func)
@@ -173,5 +180,11 @@ namespace xloil
     result.first.fromExcel();
     return result;
   }
+
+  class ExcelAbort : public std::runtime_error
+  {
+  public:
+    ExcelAbort() : std::runtime_error("Excel abort called") {}
+  };
 }
 

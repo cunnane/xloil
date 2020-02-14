@@ -101,6 +101,7 @@
     <ClInclude Include="AsyncHelper.h" />
     <ClInclude Include="Date.h" />
     <ClInclude Include="EntryPoint.h" />
+    <ClInclude Include="ExcelRange.h" />
     <ClInclude Include="ExcelState.h" />
     <ClInclude Include="ExportMacro.h" />
     <ClInclude Include="Events.h" />
@@ -122,6 +123,7 @@
   <ItemGroup>
     <ClCompile Include="AsyncHelper.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="ExcelState.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />

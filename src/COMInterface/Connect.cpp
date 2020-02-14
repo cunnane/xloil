@@ -25,11 +25,11 @@ Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
   Excel::Window* pWindow = NULL;
 
   // Sometimes AccessibleObjectFromWindow fails for no apparent reason. Retry
-  for (auto tries = 0; tries < 10; ++tries)
+  for (auto tries = 0; tries < 20; ++tries)
   {
     if (AccessibleObjectFromWindow(hwnd3, OBJID_NATIVEOM, __uuidof(IDispatch), (void**)&pWindow) == S_OK)
       return pWindow->Application;
-    Sleep(100);
+    Sleep(150);
   }
   XLO_THROW("Failed to get Excel COM object");
 }

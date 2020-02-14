@@ -80,6 +80,9 @@ namespace xloil
       case ExcelType::Missing: return _impl.fromMissing(defaultVal);
       case ExcelType::Err: return _impl.fromError(CellError(xl.val.err));
       case ExcelType::Nil: return _impl.fromEmpty(defaultVal);
+      case ExcelType::SRef:
+      case ExcelType::Ref:
+        return _impl.fromRef(xl);
       default:
         XLO_THROW("Unexpected XL type");
       }
@@ -108,6 +111,7 @@ namespace xloil
         return *defaultVal;
       XLO_THROW("Missing argument");
     }
+    TResult fromRef(const ExcelObj& obj) const { return error(); }
 
     TResult error() const { XLO_THROW("Cannot convert"); }
   };
@@ -134,5 +138,6 @@ namespace xloil
         return const_cast<TResult*>(defaultVal);
       XLO_THROW("Missing argument");
     }
+    TResult* fromRef(const ExcelObj& obj) const { return nullptr; }
   };
 }

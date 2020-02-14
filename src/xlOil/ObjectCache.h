@@ -154,15 +154,6 @@ namespace xloil
       return true;
     }
 
-    // Like wmemchr but backwards!
-    static const wchar_t* wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
-    {
-      for (; num; --ptr, --num)
-        if (*ptr == wc)
-          return ptr;
-      return nullptr;
-    }
-
     ExcelObj add(const TObj& obj)
     {
       CallerInfo caller;
@@ -175,7 +166,7 @@ namespace xloil
       wchar_t* str = pascalStr + 1;
 
       // Capture workbook name.  We should have X[wbName]wsName!cellRef
-      auto lastBracket = wmemrchr(str + len, L']', len);
+      auto lastBracket = PString<>::wmemrchr(str + len, L']', len);
       auto wbName = std::wstring_view(str + 2, lastBracket - str - 2);
 
       // Capture sheet ref.  

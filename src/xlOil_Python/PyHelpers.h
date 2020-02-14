@@ -97,7 +97,7 @@ namespace xloil
         throw pybind11::error_already_set();
       return 0;
     }
-    template<class TType> inline TType PySteal(PyObject* obj)
+    template<class TType = pybind11::object> inline TType PySteal(PyObject* obj)
     {
       if (!obj)
         throw pybind11::error_already_set();

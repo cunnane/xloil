@@ -155,6 +155,7 @@ namespace
       to.xltype = xltypeMulti;
       break;
     }
+
     case xltypeBigData:
     {
       auto cbData = from.val.bigdata.cbData;
@@ -171,6 +172,30 @@ namespace
 
       to.val.bigdata.cbData = cbData;
       to.xltype = xltypeBigData;
+
+      break;
+    }
+
+    case xltypeSRef:
+    {
+      to.val.sref = from.val.sref;
+      to.xltype = xltypeSRef;
+      break;
+    }
+
+    case xltypeRef:
+    {
+      auto* fromMRef = from.val.mref.lpmref;
+      auto count = fromMRef ? fromMRef->count : 0;
+      if (count > 0)
+      {
+        auto size = sizeof(XLMREF12) + sizeof(XLREF12)*(count - 1);
+        auto* newMRef = new char[size];
+        memcpy_s(newMRef, size, (char*)fromMRef, size);
+        to.val.mref.lpmref = (LPXLMREF12)newMRef;
+      }
+      to.val.mref.idSheet = from.val.mref.idSheet;
+      to.xltype = xltypeRef;
 
       break;
     }
@@ -353,8 +378,7 @@ namespace
   {
       if ((xltype & xlbitXLFree) != 0)
       {
-        const auto* p = this;
-        callExcelRaw(xlFree, this, 1, &p); // TODO: so arg is const eh?
+        callExcelRaw(xlFree, this, this); // arg is not really const
       }
       else
       {
@@ -373,6 +397,10 @@ namespace
 
         case xltypeBigData: break;
           //TODO: Not implemented yet, we don't create our own bigdata
+
+        case xltypeRef:
+          delete[](char*)val.mref.lpmref;
+          break;
         }
       }
 
@@ -493,7 +521,7 @@ namespace
     {
       size_t len = 30;
       auto buf = wstring(len, L'\0');
-      len = xlrefToString(val.sref.ref, (wchar_t*)buf.data(), len);
+      len = xlrefToStringRC(val.sref.ref, (wchar_t*)buf.data(), len);
       buf.resize(len);
       return buf;
     }
@@ -535,26 +563,20 @@ namespace
     return val.xbool;
   }
 
-  const wchar_t * ExcelObj::asPascalStr(size_t & length) const
+  PString<> ExcelObj::asPascalStr() const
   {
     if ((xtype() & xltypeStr) == 0)
-    {
-      length = 0;
-      return nullptr;
-    }
-
-    length = val.str[0];
-    return val.str + 1;
+      return PString<>();
+    return PString<>(val.str);
   }
 
   size_t ExcelObj::writeString(wchar_t* buf, size_t bufSize) const
   {
-    size_t len;
-    auto s = this->asPascalStr(len);
+    auto s = this->asPascalStr();
     if (!s) // We are not a string
       return 0;
-    len = std::min(len, bufSize - 1);
-    wmemcpy_s(buf, len, s, len);
+    auto len = std::min(s.size(), bufSize - 1);
+    wmemcpy_s(buf, len, s.pstr(), len);
     buf[len] = L'\0';
     return len;
   }
@@ -592,7 +614,7 @@ namespace
 
   StartColSearch:
     for (; nCols > 0; --nCols)
-      for (p = start + nCols; p <= (start + nCols * nRows); p += val.array.columns)
+      for (p = start + nCols - 1; p < (start + nCols * nRows); p += val.array.columns)
         if (p->isNonEmpty())
           goto SearchDone;
 
@@ -601,7 +623,7 @@ namespace
   }
 
   // Uses RxCy format as it's easier for the programmer!
-  size_t xlrefToString(const XLREF12& ref, wchar_t* buf, size_t bufSize)
+  size_t xlrefToStringRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
     // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)

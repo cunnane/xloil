@@ -100,6 +100,8 @@ namespace xloil
           return result;
         return PyFromString().fromString(buf, len); 
       }
+
+      PyObject* fromRef(const ExcelObj& obj) const;
     };
     
     /// <summary>
@@ -233,8 +235,6 @@ namespace xloil
         {
           return ctor(addCache(PyBorrow<pybind11::object>(p)));
         }
-
-        //if (tmp = PySteal<decltype(tmp)>(PyObject_Str(p)))
       }
       auto operator()(const PyObject* obj) const
       {
