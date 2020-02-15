@@ -8,12 +8,13 @@ using std::shared_ptr;
 
 namespace xloil
 {
-  static ObjectCache<std::shared_ptr<const ExcelObj>, false> theExcelObjCache 
-    = ObjectCache<std::shared_ptr<const ExcelObj>, false>(theObjectCacheUnquifier);
+  // TODO: why a shared-ptr?
+  static ObjectCache<shared_ptr<const ExcelObj>, false> theExcelObjCache 
+    = ObjectCache<shared_ptr<const ExcelObj>, false>(theObjectCacheUnquifier);
   
-  ExcelObj addCacheObject(const shared_ptr<const ExcelObj>& obj)
+  ExcelObj addCacheObject(shared_ptr<const ExcelObj>&& obj)
   {
-    return theExcelObjCache.add(obj);
+    return theExcelObjCache.add(std::forward<shared_ptr<const ExcelObj>>(obj));
   }
   bool fetchCacheObject(const wchar_t* cacheString, size_t length, shared_ptr<const ExcelObj>& obj)
   {
@@ -23,24 +24,25 @@ namespace xloil
 
 using namespace xloil;
 
-XLO_FUNC xloRef(ExcelObj* pxOper)
+XLO_FUNC xloPush(ExcelObj* pxOper)
 {
   try
   {
-    auto q = make_shared<const ExcelObj>(*pxOper);
-    return ExcelObj::returnValue(theExcelObjCache.add(q));
+    return ExcelObj::returnValue(
+      theExcelObjCache.add(
+        make_shared<const ExcelObj>(*pxOper)));
   }
   catch (...)
   {
     return new ExcelObj();
   }
 }
-XLO_REGISTER(xloRef)
+XLO_REGISTER(xloPush)
 .help(L"Adds the specified cell or array to the object cache and returns a string reference")
 .arg(L"CellOrArray", L"Data to be stored");
 
 
-XLO_FUNC xloDeref(ExcelObj* pxOper)
+XLO_FUNC xloPull(ExcelObj* pxOper)
 {
   try
   {
@@ -59,7 +61,7 @@ XLO_FUNC xloDeref(ExcelObj* pxOper)
     return new ExcelObj();
   }
 }
-XLO_REGISTER(xloDeref)
+XLO_REGISTER(xloPull)
 .help(L"Given a string reference, returns a stored array or cell value. "
   "The cache is not saved so will need to be recreated by a full recalc (Ctrl-Alt-F9) on workbook open")
 .arg(L"CacheRef", L"Cache reference string");

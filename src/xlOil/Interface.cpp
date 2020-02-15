@@ -11,9 +11,9 @@ using std::wstring;
 
 namespace xloil
 {
-  Core::Core(const wchar_t* pluginName)
+  Core::Core(const wchar_t* pluginName, std::shared_ptr<const toml::value> settings)
     : _pluginName(pluginName)
-    , _settings(fetchPluginSettings(pluginName))
+    , _settings(settings)
   {
     if (_settings)
     {
@@ -121,8 +121,8 @@ namespace xloil
   }
 
   ExcelObj
-    Core::insertCache(const std::shared_ptr<const ExcelObj>& obj)
+    Core::insertCache(std::shared_ptr<const ExcelObj>&& obj)
   {
-    return xloil::addCacheObject(obj);
+    return xloil::addCacheObject(std::forward<std::shared_ptr<const ExcelObj>>(obj));
   }
 }

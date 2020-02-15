@@ -8,7 +8,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <LinkIncremental>false</LinkIncremental>
-    <LibraryPath>$(SolutionDir)build\$(Platform)\Release;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectRoot)build\$(Platform)\Release;$(LibraryPath)</LibraryPath>
+	<OutDir>$(ProjectRoot)build\$(Platform)\Release\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

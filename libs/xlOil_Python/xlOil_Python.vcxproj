@@ -24,7 +24,7 @@
     <ProjectConfiguration Include="DebugPy37|x64">
       <Configuration>DebugPy37</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>	
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
@@ -40,119 +40,90 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
-  <ConfigurationType>DynamicLibrary</ConfigurationType>
-  <PlatformToolset>v141</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)'=='DebugPy37'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='ReleasePy36'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)'=='ReleasePy37'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPy37|x64'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
-  </PropertyGroup>  
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <WholeProgramOptimization>true</WholeProgramOptimization> 
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="SetRoot.props" />
+    <Import Project="..\..\src\Common.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
     <Import Project="PySettings36.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Debug.props" />
+    <Import Project="..\..\src\Debug.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
     <Import Project="PySettings36.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Release.props" />
+    <Import Project="..\..\src\Release.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
     <Import Project="PySettings37.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Release.props" />
+    <Import Project="..\..\src\Release.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
-    <Import Project="..\x64.props" />
+    <Import Project="..\..\src\x64.props" />
     <Import Project="PySettings36.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Debug.props" />
+    <Import Project="..\..\src\Debug.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
-    <Import Project="..\x64.props" />
+    <Import Project="..\..\src\x64.props" />
     <Import Project="PySettings36.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Release.props" />
+    <Import Project="..\..\src\Release.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
-    <Import Project="..\x64.props" />
+    <Import Project="..\..\src\x64.props" />
     <Import Project="PySettings37.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Release.props" />
+    <Import Project="..\..\src\Release.props" />
   </ImportGroup>
-   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugPy37|x64'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugPy37|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\Common.props" />
-    <Import Project="..\x64.props" />
+    <Import Project="..\..\src\x64.props" />
     <Import Project="PySettings37.props" />
     <Import Project="PySettings.props" />
-    <Import Project="..\Debug.props" />
-  </ImportGroup> 
+    <Import Project="..\..\src\Debug.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <LinkIncremental>true</LinkIncremental>
-	<OutDir>$(SolutionDir)build\$(Platform)\Debug</OutDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugPy37|x64'">
+  <PropertyGroup Condition="'$(Configuration)'=='DebugPy37'">
     <LinkIncremental>true</LinkIncremental>
-	<OutDir>$(SolutionDir)build\$(Platform)\Debug</OutDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-	<OutDir>$(SolutionDir)build\$(Platform)\Debug</OutDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|Win32'">
+  <PropertyGroup Condition="'$(Configuration)'=='ReleasePy37'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)\Release</OutDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-	<OutDir>$(SolutionDir)build\$(Platform)\Release</OutDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleasePy37|x64'">
-    <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)build\$(Platform)\Release</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -177,7 +148,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-  </ItemDefinitionGroup>  
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -271,14 +242,14 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
-  <ItemGroup>
+  <!--<ItemGroup>
     <ProjectReference Include="..\CoreStatic\CoreStatic.vcxproj">
       <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
     </ProjectReference>
     <ProjectReference Include="..\xlOil\xlOil.vcxproj">
       <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
-  </ItemGroup>
+  </ItemGroup>-->
   <ItemGroup>
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="Cache.h" />
@@ -291,6 +262,14 @@
     <ClInclude Include="Numpy.h" />
     <ClInclude Include="PyHelpers.h" />
     <ClInclude Include="Tuple.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="xlOil_Python.tt">
+      <FileType>Document</FileType>
+      <Outputs>$(OutDir)$(TargetName).ini</Outputs>
+      <Command>echo "$(DevEnvDir)TextTransform.exe" -a !!PyVersion!$(PyMajorVer).$(PyMinorVer) -out %(Outputs) %(FullPath)
+"$(DevEnvDir)TextTransform.exe" -a !!PyVersion!$(PyMajorVer).$(PyMinorVer) -out %(Outputs) %(FullPath)</Command>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

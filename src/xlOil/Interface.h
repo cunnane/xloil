@@ -21,7 +21,7 @@ namespace xloil
   class XLOIL_EXPORT Core
   {
   public:
-    Core(const wchar_t* pluginName);
+    Core(const wchar_t* pluginName, std::shared_ptr<const toml::value> settings);
     ~Core();
 
     /// <summary>
@@ -161,7 +161,7 @@ namespace xloil
       fetchCache(const wchar_t* cacheString, size_t length, std::shared_ptr<const ExcelObj>& obj);
 
     ExcelObj 
-      insertCache(const std::shared_ptr<const ExcelObj>& obj);
+      insertCache(std::shared_ptr<const ExcelObj>&& obj);
 
     inline ExcelObj 
       insertCache(ExcelObj&& obj)
@@ -174,13 +174,13 @@ namespace xloil
       return loggerRegistry().default_logger();
     }
 
-    const toml::value* settings() const { return _settings; }
+    const toml::value* settings() const { return _settings.get(); }
     const std::wstring& pluginName() const { return _pluginName; }
 
   private:
     const std::wstring _pluginName;
     std::string _functionPrefix;
-    const toml::value* _settings;
+    std::shared_ptr<const toml::value> _settings;
     std::map<std::wstring, std::shared_ptr<RegisteredFunc>> _functions;
   };
 

@@ -7,7 +7,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(SolutionDir)build\$(Platform)\Debug\;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectRoot)build\$(Platform)\Debug;$(LibraryPath)</LibraryPath>
+	<OutDir>$(ProjectRoot)build\$(Platform)\Debug\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

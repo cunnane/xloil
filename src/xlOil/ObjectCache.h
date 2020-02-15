@@ -8,6 +8,7 @@
 #include <regex>
 #include <unordered_map>
 #include <string_view>
+#include <mutex>
 
 namespace xloil
 {
@@ -20,66 +21,75 @@ namespace xloil
     {
     private:
       size_t _calcId;
-
-    public:
       std::vector<TObj> objects;
 
+    public:
       CellCache() : _calcId(0) {}
 
-      void expireAll() { _calcId = 0; }
-
-      bool removeExpired(size_t calcId)
+      bool getStaleObjects(size_t calcId, std::vector<TObj>& stale)
       {
         if (_calcId != calcId)
         {
           _calcId = calcId;
+          objects.swap(stale);
           return true;
         }
         return false;
       }
 
-      size_t add(const TObj& obj)
+      size_t add(TObj&& obj)
       {
-        objects.emplace_back(obj);
+        objects.emplace_back(std::forward<TObj>(obj));
         return objects.size() - 1;
       }
+
+      bool tryFetch(size_t i, TObj& obj)
+      {
+        if (i >= objects.size())
+          return false;
+        obj = objects[i];
+        return true;
+      }
+
     };
 
   private:
-    template <class Val> using Lookup = std::unordered_map<std::wstring, std::shared_ptr<Val>>;
-    typedef Lookup<CellCache> WorkbookCache;
+    template <class Val> 
+    using Lookup = std::unordered_map<std::wstring, std::shared_ptr<Val>>;
+    using WorkbookCache = Lookup<CellCache>;
 
-    std::wregex _cacheRefMatcher;
-    wchar_t _uniquifier;
     Lookup<WorkbookCache> _cache;
-    typename std::conditional<TReverseLookup, std::unordered_map<TObj, std::wstring>, int>::type  _reverseLookup;
+    mutable std::mutex _cacheLock;
+
+    const std::wregex _cacheRefMatcher;
+    const wchar_t _uniquifier;
     size_t _calcId;
+
+    typename std::conditional<TReverseLookup, 
+      std::unordered_map<TObj, std::wstring>, 
+      int>::type  _reverseLookup;
+    typename std::conditional<TReverseLookup,
+      std::mutex, 
+      int>::type _reverseLookupLock;
+
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
 
     void expireObjects()
     {
+      // Called by Excel event so will always be synchonised
       ++_calcId; // Wraps at MAX_UINT- doesn't matter
     }
 
-    size_t addToCell(const TObj& obj, CellCache& cacheVal)
+    size_t addToCell(TObj&& obj, CellCache& cacheVal, std::vector<TObj>& staleObjects)
     {
-      if (cacheVal.removeExpired(_calcId))
-      {
-        if constexpr (TReverseLookup)
-        {
-          for (auto o : cacheVal.objects)
-            _reverseLookup.erase(o);
-        }
-        cacheVal.objects.clear();
-      }
-
-      return cacheVal.add(obj);
+      cacheVal.getStaleObjects(_calcId, staleObjects);
+      return cacheVal.add(std::forward<TObj>(obj));
     }
 
     template<class V> V& findOrAdd(Lookup<V>& m, std::wstring_view keyView)
     {
-      // TODO: YUK! Fix with boost
+      // TODO: YUK! Fix with boost?
       std::wstring key(keyView);
       auto found = m.find(key);
       if (found == m.end())
@@ -139,22 +149,22 @@ namespace xloil
       auto position = match[3].str();
       size_t iResult = position.empty() ? 0 : _wtoi64(position.c_str());
 
-      auto* wbCache = find(_cache, workbook);
-      if (!wbCache)
-        return false;
+      {
+        std::scoped_lock lock(_cacheLock);
 
-      auto* cellCache = find(*wbCache, sheetRef);
-      if (!cellCache)
-        return false;
+        auto* wbCache = find(_cache, workbook);
+        if (!wbCache)
+          return false;
 
-      if (cellCache->objects.size() <= iResult)
-        return false;
+        auto* cellCache = find(*wbCache, sheetRef);
+        if (!cellCache)
+          return false;
 
-      obj = cellCache->objects[iResult];
-      return true;
+        return cellCache->tryFetch(iResult, obj);
+      }
     }
 
-    ExcelObj add(const TObj& obj)
+    ExcelObj add(TObj&& obj)
     {
       CallerInfo caller;
       constexpr int padding = 4;
@@ -173,8 +183,14 @@ namespace xloil
       // Can use wcslen here because of the null padding
       auto wsRef = std::wstring_view(lastBracket + 1, len - (lastBracket - str) - 1 - padding);
 
-      auto& cellCache = fetchOrAddCell(wbName, wsRef);
-      auto iPos = addToCell(obj, cellCache);
+      std::vector<TObj> staleObjects;
+      size_t iPos = 0;
+      {
+        std::scoped_lock lock(_cacheLock);
+
+        auto& cellCache = fetchOrAddCell(wbName, wsRef);
+        iPos = addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
+      }
 
       // Add cell object count in form ",XXX"
       if (iPos > 0)
@@ -186,12 +202,19 @@ namespace xloil
       }
 
       auto key = PString(pascalStr);
+
       if constexpr (TReverseLookup)
+      {
+        std::scoped_lock lock(_reverseLookupLock);
+        for (auto o : staleObjects)
+          _reverseLookup.erase(o);
         _reverseLookup.insert(std::make_pair(obj, key.string()));
+      }
 
       return ExcelObj(key);
     }
 
+  private:
     CellCache& fetchOrAddCell(const std::wstring_view& wbName, const std::wstring_view& wsRef)
     {
       auto& wbCache = findOrAdd(_cache, wbName);
@@ -223,6 +246,7 @@ namespace xloil
 
     void onWorkbookClose(const wchar_t* wbName)
     {
+      // Called by Excel Event so will always be synchonised
       if constexpr (TReverseLookup)
       {
         auto found = _cache.find(wbName);

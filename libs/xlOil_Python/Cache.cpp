@@ -17,9 +17,9 @@ namespace xloil {
       });
     }
 
-    ExcelObj addCache(py::object& obj)
+    ExcelObj addCache(py::object&& obj)
     {
-      return thePythonObjCache->add(obj);
+      return thePythonObjCache->add(std::forward<py::object>(obj));
     }
     bool fetchCache(const wchar_t* cacheString, size_t length, py::object& obj)
     {

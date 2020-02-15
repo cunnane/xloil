@@ -1,0 +1,44 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.960
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python", "xlOil_Python.vcxproj", "{CE2AD1AD-E034-4C06-943F-8251C05AD37A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{417B27AC-5D45-41F8-A3EB-AE63E4A39277}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		DebugPy37|x64 = DebugPy37|x64
+		DebugPy37|x86 = DebugPy37|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+		ReleasePy37|x64 = ReleasePy37|x64
+		ReleasePy37|x86 = ReleasePy37|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x64.ActiveCfg = Debug|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x64.Build.0 = Debug|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x86.ActiveCfg = Debug|Win32
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x86.Build.0 = Debug|Win32
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|x64.ActiveCfg = DebugPy37|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|x64.Build.0 = DebugPy37|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|x86.ActiveCfg = DebugPy37|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x64.ActiveCfg = Release|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x64.Build.0 = Release|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x86.ActiveCfg = Release|Win32
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x86.Build.0 = Release|Win32
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x64.ActiveCfg = ReleasePy37|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x64.Build.0 = ReleasePy37|x64
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x86.ActiveCfg = ReleasePy37|Win32
+		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x86.Build.0 = ReleasePy37|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1D905112-6261-401A-B8CC-FE753ABC4CC1}
+	EndGlobalSection
+EndGlobal

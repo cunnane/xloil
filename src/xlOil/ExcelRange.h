@@ -57,11 +57,11 @@ namespace xloil
 
     XLOIL_EXPORT std::wstring address(bool local = false) const;
  
-    ExcelRange& operator=(const ExcelObj& val)
+    ExcelRange& operator=(const ExcelObj& value)
     {
       const ExcelObj* args[2];
       args[0] = this;
-      args[1] = &val;
+      args[1] = &value;
       callExcelRaw(msxll::xlSet, nullptr, 2, args);
       return *this;
     }

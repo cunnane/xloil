@@ -249,7 +249,6 @@ namespace xloil
   private:
     FunctionRegistry()
     {
-      //theDllName = callExcel(xlGetName);
       theCoreDllName = ExcelObj(theCoreName());
       theXllName = ExcelObj(fs::path(theXllPath()).filename().wstring());
       theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));

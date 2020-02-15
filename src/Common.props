@@ -3,9 +3,10 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(SolutionDir)\external\Excel2013SDK\INCLUDE;$(SolutionDir)\external\Excel2013SDK\SRC;$(SolutionDir)\external\spdlog\include;$(SolutionDir)\external;$(SolutionDir)\src;$(SolutionDir)\src\CoreStatic;$(IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectRoot)\external\Excel2013SDK\INCLUDE;$(ProjectRoot)\external\Excel2013SDK\SRC;$(ProjectRoot)\external\spdlog\include;$(ProjectRoot)\external;$(ProjectRoot)\src;$(ProjectRoot)\src\CoreStatic;$(IncludePath)</IncludePath>
+    <OutDir>
+    </OutDir>
+    <IntDir>$(ProjectRoot)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

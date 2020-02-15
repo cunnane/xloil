@@ -18,15 +18,15 @@ namespace xloil
     return checkObjectCacheReference(s.pstr(), s.size());
   }
  
-  ExcelObj addCacheObject(const std::shared_ptr<const ExcelObj>& obj);
+  ExcelObj addCacheObject(std::shared_ptr<const ExcelObj>&& obj);
 
-  // TODO: Could consder non const fetch in case we want to implement something like sort in-place
+  // TODO: Could consider non const fetch in case we want to implement something like sort in-place
   // but only if we are in the same cell as object was created in
   bool fetchCacheObject(const wchar_t* cacheString, size_t length, std::shared_ptr<const ExcelObj>& obj);
 
   inline ExcelObj addCacheObject(ExcelObj&& obj)
   {
-    return addCacheObject(std::shared_ptr<const ExcelObj>(new ExcelObj(obj)));
+    return addCacheObject(std::make_shared<const ExcelObj>(obj));
   }
 
   // TODO: registry of caches to avoid two uniquifiers

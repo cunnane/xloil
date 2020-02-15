@@ -120,10 +120,12 @@ namespace xloil
   {
     static std::array<char, COL_NAME_CACHE_SIZE * 2> cache;
     auto* pcolumns = cache.data();
-    memset(pcolumns, cache.size(), 0);
 
     for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
+    {
       pcolumns[0] = d;
+      pcolumns[1] = 0;
+    }
 
     for (auto c = 'A'; c <= 'Z'; ++c)
       for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
@@ -145,8 +147,8 @@ namespace xloil
     }
     else
     {
-      constexpr size_t Ato0 = 'A' - '0';
-      constexpr size_t Atoa = 'A' - 'a' + 10;
+      constexpr short Ato0 = 'A' - '0';
+      constexpr short Atoa = 'A' - 'a' + 10;
 
       _itoa_s(colIndex - 26, buf, 4, 26);
       buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;

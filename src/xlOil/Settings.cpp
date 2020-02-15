@@ -37,32 +37,10 @@ namespace xloil
         auto corePath = fs::path(theXllPath()).replace_extension(XLOIL_SETTINGS_FILE_EXT);
         const toml::value root = toml::parse(corePath.string());
 
-        // Process core settings
-        auto& core = toml::find(root, "Core");
-
-        logFilePath = toml::find_or<std::string>(core, "LogFile", "");
-        logLevel = toml::find_or<std::string>(core, "LogLevel", "warn");
-        pluginSearchPattern = toml::find_or<string>(root, "Plugins.PluginSearchPattern", "");
-
-        // Process plugin settings
-        auto& plugins = toml::find<toml::table>(root, "Plugins");
-        for (auto i : plugins)
-        {
-          if (i.second.is_table())
-            _pluginSettings.insert(make_pair(i.first, i.second));
-        }
-
-        for (auto[key, val] : _pluginSettings)
-        {
-          auto& table = val.as_table();
-          auto ipath = table.find("PluginPath");
-          auto path = ipath != table.end() 
-            ? ipath->second.as_string() 
-            : (key + ".dll");
-          pluginNamesAndPath.emplace_back(
-            utf8_to_wstring(key.c_str()),
-            utf8_to_wstring(path.str.c_str()));
-        }
+        logFilePath = toml::find_or<string>(root, "LogFile", "");
+        logLevel = toml::find_or<string>(root, "LogLevel", "warn");
+        pluginSearchPattern = toml::find_or<string>(root, "PluginSearchPattern", "");
+        plugins = utf8_to_wstring_v(toml::find_or<vector<string>>(root, "Plugins", vector<string>()));
       }
       catch (const std::exception& e)
       {
@@ -78,15 +56,4 @@ namespace xloil
   {
     return SettingsReader::get();
   }
-
-  const toml::value* fetchPluginSettings(const wchar_t* pluginName)
-  {
-    auto& pluginSettings = SettingsReader::get().pluginSettings();
-    auto i = pluginSettings.find(wstring_to_utf8(pluginName));
-    if (i != pluginSettings.end())
-      return &i->second;
-    
-    return nullptr;
-  }
-
 }

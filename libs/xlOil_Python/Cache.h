@@ -6,7 +6,7 @@ namespace xloil {
 
     void createCache();
 
-    ExcelObj addCache(pybind11::object& obj);
+    ExcelObj addCache(pybind11::object&& obj);
 
     bool fetchCache(const wchar_t* cacheString, size_t length, pybind11::object& obj);
   }

@@ -18,7 +18,16 @@ namespace xloil
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     return converter.from_bytes(str.data());
   }
-
+  template <class ...Args, template<class ...Args> class TContainer>
+  inline auto utf8_to_wstring_v(const TContainer<Args...>& v)
+  {
+    return [v] {
+      TContainer<std::wstring> tmp;
+      tmp.reserve(v.size());
+      std::transform(v.begin(), v.end(), back_inserter(tmp), utf8_to_wstring);
+      return tmp;
+    }();
+  }
   template <class TInt> inline
   bool floatingToInt(double d, TInt& i)
   {

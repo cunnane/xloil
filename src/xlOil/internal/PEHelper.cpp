@@ -1,6 +1,5 @@
 #include "PEHelper.h"
-#include "xloil/Interface.h"
-#include "xloil/Log.h"
+#include <xloil/Log.h>
 #include <algorithm>
 
 xloil::DllExportTable::DllExportTable(HMODULE hInstance)

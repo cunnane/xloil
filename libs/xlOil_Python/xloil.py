@@ -15,6 +15,35 @@ watched for file modifications so code changes are reflected immediately in Exce
 
 Have a look at `<root>/test/PythonTest.py` for lots of examples. 
 
+Concepts: Excel Functions (UDFs)
+--------------------------------
+Excel supports several classes of user-defined functions:
+
+- Macros: run at user request, have write access to workbook
+- Worksheet functions: run by Excel's calculation cycle. Several sub-types:
+  - Vanilla
+  - Thread-safe: can be run concurrently (not very useful for Python)
+  - Macro-type: can read from sheet addresses and invoke a wider variety of Excel interface functions
+  - Async: can run asynchronously during the calc cycle, but not in the background
+  - RTD: (real time data) background threads which push data onto the sheet when it becomes available
+  - Cluster: can be packaged to run on a remote Excel compute cluster
+
+xlOil supports all but RTD and Cluster functions.
+
+Excel can pass functions / macros data in one of these types:
+
+- Integer
+- Boolean
+- Floating point
+- String
+- Error, e.g. #NUM!, #VALUE!
+- Empty
+- Array of any of the above
+- Range refering to a worksheet address
+
+There is no date type. Excel's builtin date functions interpret numbers as days since 1900. 
+Excel does not support timezones.
+
 Concepts: Cached Objects
 ------------------------
 If xlOil cannot convert a returned python object to Excel, it will place it in an object
@@ -127,6 +156,7 @@ by the xloil.func decorator to the target func's __dict__
 """
 _META_TAG = "_xlOilFunc_"
 
+
 ExcelValue = typing.Union[int, str, float, np.ndarray, dict, list]
 AllowRange = typing.Union[ExcelValue, Range]
 
@@ -230,6 +260,8 @@ class _FuncMeta:
                     converter = _get_typeconverter(x.typeof._xloil_type_info, from_excel=True)
                 elif x.typeof is AllowRange:
                     info.args[i].allow_range = True
+                elif x.typeof is ExcelValue:
+                    pass # This the explicit generic type, so do nothing
                 elif isinstance(x.typeof, type) and x.typeof is not object:
                     converter = _get_typeconverter(x.typeof.__name__, from_excel=True)
             if x.has_default:
@@ -381,7 +413,7 @@ def func(fn=None,
 
     return decorate if fn is None else decorate(fn)
 
-def arg(name, typeof=None, help=None):
+def arg(name, typeof=None, help=None, range=None):
     """ 
         Decorator to specify argument type and help for a function exposed to Excel.
         The help is displayed in the function wizard. 
@@ -405,7 +437,8 @@ def arg(name, typeof=None, help=None):
         
         if typeof is not None: match.typeof = typeof
         if help is not None: match.help = help
-    
+        if range is True: match.typeof = AllowRange
+
         return fn
 
     return decorate

@@ -18,9 +18,10 @@ You can use xlOil as an end-user of these plugins or you can use it to write you
   - For xlOil_Python: Python 3.6 or 3.7 with numpy
 - Extract files from the latest release zip to a single directory
   - You need the `xloil.xll`, `xlOil_Core.dll` and `xloil.ini` files
-  - For the Python plugin, you need `xlOil_Python.dll`, `xloil.py`
-- (Optional) Edit the `xloil.ini` file
-  - For the Python plugin, you usually need to set the correct paths
+  - For the Python plugin, you need `xlOil_PythonXY.dll`, `xloil.py` and `xlOil_PythonXY.ini` where XY is the Python version you want to use
+- (Optional) Edit the ini files
+  - Choose which plugins to load in `xloil.ini`
+  - For the Python plugin, you may need to set the correct Python paths
 - Drop `xloil.xll` into an Excel session
 - Read the docs for the plugins you want to use
 - Enjoy!
@@ -30,26 +31,17 @@ To install the add-in so it starts with Excel, place all the files in your XLSTA
 
 ### Editing the ini file
 
-It's actually a TOML file. It has the general format:
+They are actually a TOML files. The settings are explaing in comments. The main choice is whether to load specific plugins with:
 
-    [Core]
+    Plugins=["xloil_Python37.dll", "foobar.dll"]
 
-    <Some core settings>
+Or search for plugins in the same directory as xloil.xll with:
 
-    [Plugins]
+    PluginSearchPattern="xloil_*.dll"
 
-    [Plugins.foobar]
+You can specifiy both.
 
-        PluginPath= <optional name of dll>
-
-    [Plugins.foobar.Environment]
-
-        All name=value pairs in this block are set in the order
-        specifed as environment variables *before* the plug-in is 
-        loaded. Environment strings in %...% are expanded
-
-        Writing name="<HKLM\RegKey\Value>" will fetch the requested key 
-        from the registry.
+Plugin ini files can contain a special section called `[Environment]`.  All name=value pairs in this block are set in the order specifed as environment variables *before* the plug-in is loaded. Environment strings in %...% are expanded.  Writing name="<HKLM\RegKey\Value>" will fetch the requested key from the registry.
 
 ## Getting started (xlOil developer)
 

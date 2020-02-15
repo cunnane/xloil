@@ -10,6 +10,7 @@
 #include <string>
 #include <filesystem>
 #include <regex>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -57,7 +58,9 @@ namespace xloil
   {
     processRegistryQueue(Core::theCoreName());
 
-    auto& plugins = theCoreSettings().pluginNamesAndPath;
+    auto plugins = std::set<wstring>(
+      theCoreSettings().plugins.cbegin(),
+      theCoreSettings().plugins.cend());
 
     auto corePath = fs::path(Core::theCorePath()).remove_filename();
 
@@ -76,12 +79,8 @@ namespace xloil
           continue;
         if (_wcsicmp(fileData.cFileName, L"xlOil_Loader.dll") == 0)
           continue;
-        // Check we don't already have this filename (2nd pair item)
-        if (std::none_of(plugins.begin(), plugins.end(),
-          [fileData](auto x) { return _wcsicmp(fileData.cFileName, x.second.c_str()) == 0; }))
-        {
-          plugins.emplace_back(fileData.cFileName, fileData.cFileName);
-        }
+
+        plugins.emplace(fileData.cFileName);
       } while (FindNextFile(fileHandle, &fileData));
     }
 
@@ -90,18 +89,17 @@ namespace xloil
     // Should match "<HKLM\(Reg\Key\Value)>"
     std::wregex registryExpander(L"<HKLM\\\\([^>]*)>", std::regex_constants::optimize);
 
-    for (auto[pluginName, pluginPath] : plugins)
+    for (auto pluginName : plugins)
     {
+      const auto path = corePath / pluginName;
       vector<shared_ptr<PushEnvVar>> pathPusher;
 
       XLO_TRACE(L"Found plugin {}", pluginName);
-      auto path = fs::path(pluginPath);
-      if (path.is_relative())
-        path = corePath / path;
-
-      auto settings = fetchPluginSettings(pluginName.c_str());
-      if (settings)
+      const auto settingsFile = fs::path(path).replace_extension(".ini");
+      shared_ptr<toml::value> settings;
+      if (fs::exists(settingsFile))
       {
+        settings = make_shared<toml::value>(toml::parse(settingsFile.string()));
         auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
         for (auto[key, val] : environment)
         {
@@ -129,7 +127,7 @@ namespace xloil
       auto initFunc = (pluginInitFunc)GetProcAddress(lib, XLO_STR(XLO_PLUGIN_INIT_FUNC));
       if (!initFunc)
       {
-        XLO_WARN(L"Couldn't find entry point for plugin {0}", pluginPath);
+        XLO_WARN("Couldn't find entry point for plugin {0}", path.string());
         continue;
       }
 
@@ -140,11 +138,11 @@ namespace xloil
       //  continue;
       //}
       
-      auto coreObj = make_shared<Core>(pluginName.c_str());
+      auto coreObj = make_shared<Core>(pluginName.c_str(), settings);
       if (initFunc(*coreObj) < 0)
       {
         // TODO:  Can we roll back any bad registrations?
-        XLO_ERROR(L"Plugin initialisation failed for {}", pluginPath);
+        XLO_ERROR("Plugin initialisation failed for {}", path.string());
         FreeLibrary(lib);
         continue;
       }

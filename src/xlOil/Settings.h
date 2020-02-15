@@ -19,10 +19,10 @@ namespace xloil
   {
     std::string logFilePath;
     std::string logLevel;
-    std::vector<std::pair<std::wstring, std::wstring>> pluginNamesAndPath;
+    std::vector<std::wstring> plugins;
     std::string pluginSearchPattern;
   };
 
   Settings& theCoreSettings();
-  const toml::value* fetchPluginSettings(const wchar_t* pluginName);
+  //const toml::value* fetchPluginSettings(const wchar_t* pluginName);
 }
