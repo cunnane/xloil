@@ -221,12 +221,16 @@ namespace xloil
       return addToRegistry(info, id, shared_ptr<void>(), nullptr, 0);
     }
 
-    void remove(const shared_ptr<RegisteredFunc>& func)
+    bool remove(const shared_ptr<RegisteredFunc>& func)
     {
-      theRegistry.erase(func->info()->name);
-      func->deregister();
-      // Note this DOES NOT recover the space used for thunks, so we make a note
-      _freeThunksAvailable = true;
+      if (func->deregister())
+      {
+        theRegistry.erase(func->info()->name);
+        // Note this DOES NOT recover the space used for thunks, so we make a note
+        _freeThunksAvailable = true;
+        return true;
+      }
+      return false;
     }
 
     bool compactThunks()
@@ -286,27 +290,33 @@ namespace xloil
     deregister();
   }
 
-  void RegisteredFunc::deregister()
+  bool RegisteredFunc::deregister()
   {
     if (_registerId == 0)
-      return;
+      return false;
 
     auto& name = _info->name;
     XLO_TRACE(L"Deregistering {0}", name);
 
     auto[result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
-    if (result.type() != ExcelType::Bool || !result.toBool())
+    if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.toBool())
+    {
       XLO_WARN(L"Unregister failed for {0}", name);
+      return false;
+    }
 
     // Cunning trick to workaround SetName where function is not removed from wizard
     // by registering a hidden function (i.e. a command) then removing it.  It 
     // doesn't matter which entry point we bind to as long as the function pointer
     // won't be registered as an Excel func.
     // https://stackoverflow.com/questions/15343282/how-to-remove-an-excel-udf-programmatically
-    auto[tempRegId, retVal] = tryCallExcel(xlfRegister, FunctionRegistry::get().theXllName, "xlAutoOpen", "I", name, nullptr, 2);
+    auto[tempRegId, retVal] = tryCallExcel(
+      xlfRegister, FunctionRegistry::get().theXllName, "xlAutoOpen", "I", name, nullptr, 2);
     tryCallExcel(xlfSetName, name); // SetName with no arg un-sets the name
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;
+    
+    return true;
   }
 
   int RegisteredFunc::registerId() const
@@ -459,9 +469,9 @@ namespace xloil
       return registerFunc(info, &launchFunctionObj, shared_ptr<void>(new FunctionPrototypeData(f, info)));
   }
 
-  void deregisterFunc(const shared_ptr<RegisteredFunc>& ptr)
+  bool deregisterFunc(const shared_ptr<RegisteredFunc>& ptr)
   {
-    FunctionRegistry::get().remove(ptr);
+    return FunctionRegistry::get().remove(ptr);
   }
 
   namespace

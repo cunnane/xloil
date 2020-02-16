@@ -4,6 +4,7 @@
 #include "ExcelCall.h"
 #include "Interface.h"
 #include "ComInterface/Connect.h"
+#include <xloil/StaticRegister.h>
 #include <future>
 using std::wstring;
 using namespace msxll;

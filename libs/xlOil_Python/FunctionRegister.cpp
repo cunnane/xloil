@@ -272,9 +272,11 @@ namespace xloil
             }
 
             // Any functions remaining in the old map must have been removed from the module
-            // so we can deregister them
+            // so we can deregister them, but if that fails we have to keep them or they
+            // will be orphaned
             for (auto& f : _functions)
-              theCore->deregister(f.second->info->name);
+              if (!theCore->deregister(f.second->info->name))
+                newMap.emplace(f);
 
             _functions = newMap;
           }

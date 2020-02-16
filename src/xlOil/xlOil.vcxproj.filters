@@ -26,6 +26,7 @@
       <Filter>internal</Filter>
     </ClCompile>
     <ClCompile Include="ExcelRange.cpp" />
+    <ClCompile Include="StaticRegister.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncHelper.h" />
@@ -55,6 +56,7 @@
       <Filter>internal</Filter>
     </ClInclude>
     <ClInclude Include="ExcelRange.h" />
+    <ClInclude Include="StaticRegister.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

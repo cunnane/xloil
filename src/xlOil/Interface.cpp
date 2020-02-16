@@ -101,9 +101,12 @@ namespace xloil
     auto iFunc = _functions.find(name);
     if (iFunc == _functions.end())
       return false;
-    xloil::deregisterFunc(iFunc->second);
-    _functions.erase(iFunc);
-    return true;
+    if (xloil::deregisterFunc(iFunc->second))
+    {
+      _functions.erase(iFunc);
+      return true;
+    }
+    return false;
   }
 
   void

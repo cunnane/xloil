@@ -19,9 +19,10 @@ namespace xloil
     ~RegisteredFunc();
 
     /// <summary>
-    /// De-registers the function in Excel and invalidates this object
+    /// De-registers the function in Excel and invalidates this object.
+    /// Returns true on success.
     /// </summary>
-    void deregister();
+    bool deregister();
 
     int registerId() const;
 
@@ -69,7 +70,7 @@ namespace xloil
   }
 
   /// Remove a registered function. Zeros the passed pointer
-  void deregisterFunc(const std::shared_ptr<RegisteredFunc>& ptr);
+  bool deregisterFunc(const std::shared_ptr<RegisteredFunc>& ptr);
 
   // TODO: the body of this is actually in Register.cpp
   std::vector<RegisteredFuncPtr> processRegistryQueue(const wchar_t* moduleName);
