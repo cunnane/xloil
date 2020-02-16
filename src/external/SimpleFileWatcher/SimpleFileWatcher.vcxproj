@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\external\simplefilewatcher\source\FileWatcher.cpp" />
-    <ClCompile Include="..\..\external\simplefilewatcher\source\FileWatcherWin32.cpp" />
+    <ClCompile Include="..\..\..\external\simplefilewatcher\source\FileWatcher.cpp" />
+    <ClCompile Include="..\..\..\external\simplefilewatcher\source\FileWatcherWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\external\simplefilewatcher\include\FileWatcher\FileWatcher.h" />
-    <ClInclude Include="..\..\external\simplefilewatcher\include\FileWatcher\FileWatcherImpl.h" />
-    <ClInclude Include="..\..\external\simplefilewatcher\include\FileWatcher\FileWatcherWin32.h" />
+    <ClInclude Include="..\..\..\external\simplefilewatcher\include\FileWatcher\FileWatcher.h" />
+    <ClInclude Include="..\..\..\external\simplefilewatcher\include\FileWatcher\FileWatcherImpl.h" />
+    <ClInclude Include="..\..\..\external\simplefilewatcher\include\FileWatcher\FileWatcherWin32.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
