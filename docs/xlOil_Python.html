@@ -32,6 +32,32 @@ The plugin can also look for modules of the form
 Any module which contains Excel functions is
 watched for file modifications so code changes are reflected immediately in Excel.</p>
 <p>Have a look at <code>&lt;root&gt;/test/PythonTest.py</code> for lots of examples. </p>
+<h2 id="concepts-excel-functions-udfs">Concepts: Excel Functions (UDFs)</h2>
+<p>Excel supports several classes of user-defined functions:</p>
+<ul>
+<li>Macros: run at user request, have write access to workbook</li>
+<li>Worksheet functions: run by Excel's calculation cycle. Several sub-types:</li>
+<li>Vanilla</li>
+<li>Thread-safe: can be run concurrently (not very useful for Python)</li>
+<li>Macro-type: can read from sheet addresses and invoke a wider variety of Excel interface functions</li>
+<li>Async: can run asynchronously during the calc cycle, but not in the background</li>
+<li>RTD: (real time data) background threads which push data onto the sheet when it becomes available</li>
+<li>Cluster: can be packaged to run on a remote Excel compute cluster</li>
+</ul>
+<p>xlOil supports all but RTD and Cluster functions.</p>
+<p>Excel can pass functions / macros data in one of these types:</p>
+<ul>
+<li>Integer</li>
+<li>Boolean</li>
+<li>Floating point</li>
+<li>String</li>
+<li>Error, e.g. #NUM!, #VALUE!</li>
+<li>Empty</li>
+<li>Array of any of the above</li>
+<li>Range refering to a worksheet address</li>
+</ul>
+<p>There is no date type. Excel's builtin date functions interpret numbers as days since 1900.
+Excel does not support timezones.</p>
 <h2 id="concepts-cached-objects">Concepts: Cached Objects</h2>
 <p>If xlOil cannot convert a returned python object to Excel, it will place it in an object
 cache and return a cache reference string of the form
@@ -62,6 +88,35 @@ name scope, like an Excel addin.  The plugin can also look for modules of the fo
 watched for file modifications so code changes are reflected immediately in Excel.
 
 Have a look at `&lt;root&gt;/test/PythonTest.py` for lots of examples. 
+
+Concepts: Excel Functions (UDFs)
+--------------------------------
+Excel supports several classes of user-defined functions:
+
+- Macros: run at user request, have write access to workbook
+- Worksheet functions: run by Excel&#39;s calculation cycle. Several sub-types:
+  - Vanilla
+  - Thread-safe: can be run concurrently (not very useful for Python)
+  - Macro-type: can read from sheet addresses and invoke a wider variety of Excel interface functions
+  - Async: can run asynchronously during the calc cycle, but not in the background
+  - RTD: (real time data) background threads which push data onto the sheet when it becomes available
+  - Cluster: can be packaged to run on a remote Excel compute cluster
+
+xlOil supports all but RTD and Cluster functions.
+
+Excel can pass functions / macros data in one of these types:
+
+- Integer
+- Boolean
+- Floating point
+- String
+- Error, e.g. #NUM!, #VALUE!
+- Empty
+- Array of any of the above
+- Range refering to a worksheet address
+
+There is no date type. Excel&#39;s builtin date functions interpret numbers as days since 1900. 
+Excel does not support timezones.
 
 Concepts: Cached Objects
 ------------------------
@@ -175,6 +230,7 @@ by the xloil.func decorator to the target func&#39;s __dict__
 &#34;&#34;&#34;
 _META_TAG = &#34;_xlOilFunc_&#34;
 
+
 ExcelValue = typing.Union[int, str, float, np.ndarray, dict, list]
 AllowRange = typing.Union[ExcelValue, Range]
 
@@ -278,6 +334,8 @@ class _FuncMeta:
                     converter = _get_typeconverter(x.typeof._xloil_type_info, from_excel=True)
                 elif x.typeof is AllowRange:
                     info.args[i].allow_range = True
+                elif x.typeof is ExcelValue:
+                    pass # This the explicit generic type, so do nothing
                 elif isinstance(x.typeof, type) and x.typeof is not object:
                     converter = _get_typeconverter(x.typeof.__name__, from_excel=True)
             if x.has_default:
@@ -429,7 +487,7 @@ def func(fn=None,
 
     return decorate if fn is None else decorate(fn)
 
-def arg(name, typeof=None, help=None):
+def arg(name, typeof=None, help=None, range=None):
     &#34;&#34;&#34; 
         Decorator to specify argument type and help for a function exposed to Excel.
         The help is displayed in the function wizard. 
@@ -453,7 +511,8 @@ def arg(name, typeof=None, help=None):
         
         if typeof is not None: match.typeof = typeof
         if help is not None: match.help = help
-    
+        if range is True: match.typeof = AllowRange
+
         return fn
 
     return decorate
@@ -690,7 +749,7 @@ xlo.app().ActiveSheet.Name</p></section>
 </details>
 </dd>
 <dt id="xloil.arg"><code class="name flex">
-<span>def <span class="ident">arg</span></span>(<span>name, typeof=None, help=None)</span>
+<span>def <span class="ident">arg</span></span>(<span>name, typeof=None, help=None, range=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Decorator to specify argument type and help for a function exposed to Excel.
@@ -702,7 +761,7 @@ if 'typing' annotations are unavailable.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def arg(name, typeof=None, help=None):
+<pre><code class="python">def arg(name, typeof=None, help=None, range=None):
     &#34;&#34;&#34; 
         Decorator to specify argument type and help for a function exposed to Excel.
         The help is displayed in the function wizard. 
@@ -726,7 +785,8 @@ if 'typing' annotations are unavailable.</p></section>
         
         if typeof is not None: match.typeof = typeof
         if help is not None: match.help = help
-    
+        if range is True: match.typeof = AllowRange
+
         return fn
 
     return decorate</code></pre>
@@ -1377,6 +1437,7 @@ as per the usual python array conventions.</p></section>
 <div class="toc">
 <ul>
 <li><a href="#xloil-python">xlOil Python</a><ul>
+<li><a href="#concepts-excel-functions-udfs">Concepts: Excel Functions (UDFs)</a></li>
 <li><a href="#concepts-cached-objects">Concepts: Cached Objects</a></li>
 </ul>
 </li>
