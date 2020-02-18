@@ -12,10 +12,8 @@ using std::make_shared;
 using std::wstring;
 using std::unordered_set;
 
-/// <summary>
-/// A naive GetActiveObject("Excel.Application") gets the first instance of Excel
-/// </summary>
-Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
+
+Excel::_ApplicationPtr getExcelObjFromWindow(HWND xlmainHandle)
 {
   // Based on discussion here:
   // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
@@ -23,14 +21,38 @@ Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
   hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
   hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
   Excel::Window* pWindow = NULL;
+  if (AccessibleObjectFromWindow(hwnd3, OBJID_NATIVEOM, __uuidof(IDispatch), (void**)&pWindow) == S_OK)
+    return pWindow->Application;
+  return nullptr;
+}
 
-  // Sometimes AccessibleObjectFromWindow fails for no apparent reason. Retry
-  for (auto tries = 0; tries < 20; ++tries)
+/// <summary>
+/// A naive GetActiveObject("Excel.Application") gets the first registered 
+/// instance of Excel which may not be our instance. Instead we get the one
+/// corresponding to the window handle we get from xlGetHwnd.
+/// </summary>
+/// 
+Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
+{
+  auto hwndCurrent = ::GetForegroundWindow();
+
+  // This apparently bizarre approach is suggested here
+  // https://support.microsoft.com/en-za/help/238610/getobject-or-getactiveobject-cannot-find-a-running-office-application
+  for (auto moreTries = 0; moreTries < 5; ++moreTries)
   {
-    if (AccessibleObjectFromWindow(hwnd3, OBJID_NATIVEOM, __uuidof(IDispatch), (void**)&pWindow) == S_OK)
-      return pWindow->Application;
-    Sleep(150);
+    ::SetForegroundWindow(hwndCurrent);
+    auto ptr = getExcelObjFromWindow(xlmainHandle);
+    if (ptr)
+      return ptr;
+
+    // Chances of an explorer window being available are good
+    auto explorerWindow = FindWindow(L"CabinetWClass", nullptr);
+    ::SetForegroundWindow(explorerWindow);
+    Sleep(300);
   }
+
+  // Need to ensure the foreground window is restored
+  ::SetForegroundWindow(hwndCurrent);
   XLO_THROW("Failed to get Excel COM object");
 }
 
@@ -247,6 +269,7 @@ namespace xloil
 
       ~COMConnector()
       {
+        _handler.reset();
         CoUninitialize();
       }
 
