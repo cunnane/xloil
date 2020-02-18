@@ -68,7 +68,7 @@ namespace
 }
 namespace xloil
 {
-  void createArrayOfArgsOnStack(asmjit::x86::Compiler& cc, x86::Gp& stackPtr, size_t startArg, size_t endArg)
+  void createArrayOfArgsOnStack(asmjit::x86::Compiler& cc, x86::Mem& stackPtr, size_t startArg, size_t endArg)
   {
     const size_t numArgs = endArg - startArg;
     if (numArgs == 0)
@@ -77,17 +77,16 @@ namespace xloil
     const auto ptrSize = (int32_t)sizeof(void*);
 
     // Get some space on the stack
-    x86::Mem args = cc.newStack((unsigned)numArgs * ptrSize, alignof(void*));
-    cc.lea(stackPtr, args);
+    stackPtr = cc.newStack((unsigned)numArgs * ptrSize, alignof(void*));
 
     // Copy function arguments to array on the stack
     for (auto i = (int32_t)startArg; i < (int32_t)endArg; i++)
     {
+      const auto offset = (ptrSize * (i - (uint32_t)startArg));
+      x86::Mem stackPos = stackPtr.cloneAdjusted(offset);
       x86::Gp arg = cc.newUIntPtr("arg");
-      auto offset = (ptrSize * (i - (uint32_t)startArg));
-      x86::Mem stackP = x86::ptr(stackPtr, offset);
       cc.setArg(i, arg);
-      cc.mov(stackP, arg);
+      cc.mov(stackPos, arg);
     }
   }
 
@@ -99,15 +98,29 @@ namespace xloil
   {
     // Take args passed to thunk and put them into an array on the stack
     // This should give us an xloper12** which we load into argsPtr
-    x86::Gp argsPtr = cc.newUIntPtr("argsPtr");
+    x86::Mem argsPtr;
     createArrayOfArgsOnStack(cc, argsPtr, 0, numArgs);
+    
+    // No need for setArg as we have loaded everything for an x64 call.
+    // We do this explictly as asmjit's register allocator is sub-optimal
+    // (less badly than for the async case)
+#ifdef _WIN64
+    cc.mov(x86::rcx, imm(data));
+    cc.lea(x86::rdx, argsPtr);
+#endif
 
     // Setup the signature to call the target callback
     FuncCallNode* call(
       cc.call(imm((void*)callback), FuncSignatureT<ExcelObj*, const void*, const ExcelObj**>(CallConv::kIdHost)));
 
-    call->setArg(0, imm(data));
-    call->setArg(1, argsPtr);
+#ifndef _WIN64 
+    x86::Gp arg1 = cc.newUIntPtr("arg1");
+    x86::Gp arg2 = cc.newUIntPtr("arg2");
+    cc.mov(arg1, imm(data));
+    cc.lea(arg2, argsPtr);
+    call->setArg(0, arg1);
+    call->setArg(1, arg2);
+#endif
 
     x86::Gp ret = cc.newUIntPtr("ret");
 
@@ -128,11 +141,21 @@ namespace xloil
     // This should give us an xloper12** which we load into argsPtr.
     // We separate out the first argument as this will contain the async handle
     // which needs to be returned to Excel.
-    x86::Gp firstArg = cc.newUIntPtr("firstArg");
-    x86::Gp argsPtr = cc.newUIntPtr("argsPtr");
+    x86::Mem argsPtr;
+    x86::Gp handle = cc.newUIntPtr("handle");
 
-    cc.setArg(0, firstArg);
+    cc.setArg(0, handle); // Will be rcx on x64
     createArrayOfArgsOnStack(cc, argsPtr, 1, numArgs + 1);
+
+
+#ifdef _WIN64
+    // No need for setArg as we have loaded everything for an x64 call.
+    // We do this explictly as asmjit's register allocator seems to get
+    // confused and spill and generally sub-optimally allocate registers
+    cc.mov(x86::rdx, handle);
+    cc.mov(x86::rcx, imm(data));
+    cc.lea(x86::r8, argsPtr);
+#endif
 
     // Setup the signature to call the target callback. Note the void return type
     // as the function will return it's value by invoking xlAsyncReturn.
@@ -140,9 +163,13 @@ namespace xloil
       cc.call(imm((void*)callback),
         FuncSignatureT<void, const void*, const ExcelObj*, const ExcelObj**>(CallConv::kIdHost)));
 
-    call->setArg(0, imm(data));
-    call->setArg(1, firstArg);
-    call->setArg(2, argsPtr);
+#ifndef _WIN64
+    call->setArg(0, handle);
+    call->setArg(1, imm(data));
+    x86::Gp args = cc.newUIntPtr("args");
+    cc.lea(args, argsPtr);
+    call->setArg(2, args);
+#endif
 
     // No return from async
     cc.ret();
@@ -229,18 +256,21 @@ namespace xloil
 
     char bufferBefore[10], bufferAfter[10];
     auto bufsize = sizeof(bufferBefore);
+    // TODO: This will only work in 64-bits as asmjit will load the data 
+    // into another register, maybe ecx, but we can't be sure.
+    // Probably better to just scan memory for the mov instruction
     {
       CodeHolder code;
       code.init(theRunTime.codeInfo());
       x86::Assembler as(&code);
-      as.mov(x86::rax, imm(fromData));
+      as.mov(x86::rcx, imm(fromData));
       asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize);
     }
     {
       CodeHolder code;
       code.init(theRunTime.codeInfo());
       x86::Assembler as(&code);
-      as.mov(x86::rax, imm(toData));
+      as.mov(x86::rcx, imm(toData));
       asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize);
     }
    

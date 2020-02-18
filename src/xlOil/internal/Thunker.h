@@ -3,20 +3,32 @@
 namespace xloil
 {
   /// <summary>
-  /// Builds a thunk like this:
-  /// 53                            push    rbx  
-  /// 48 83 EC 40                   sub     rsp, 40h
-  /// 48 8D 5C 24 20                lea     rbx, [rsp + 20h]
-  /// 48 89 0B                      mov     qword ptr[rbx], rcx
-  /// 48 89 53 08                   mov     qword ptr[rbx + 8], rdx
-  /// 4C 89 43 10                   mov     qword ptr[rbx + 10h], r8
-  /// 48 B8 80 61 01 10 DE 01 00 00 mov     rax, 1DE10016180h
-  /// 48 8B C8                      mov     rcx, rax
-  /// 48 8B D3                      mov     rdx, rbx
-  /// 40 E8 52 E6 8C F3             call    xloil::Python::pythonCallback(07FFD297052F5h)
-  /// 48 83 C4 40                   add     rsp, 40h
-  /// 5B                            pop     rbx
-  /// C3                            ret
+  /// Builds a thunk like the following
+  ///   xloper12* func(xloper12* arg1, xloper12* arg2, ...)
+  ///   {
+  ///     xloper12* args[numArgs];
+  ///     args[0] = arg1; args[1] = arg2; ...
+  ///     return callback(contextData, args);
+  ///   }
+  /// 
+  /// Or for async functions:
+  ///   xloper12* func(xloper12* handle, xloper12* arg1, xloper12* arg2, ...)
+  ///   {
+  ///     xloper12* args[numArgs];
+  ///     args[0] = arg1; args[1] = arg2; ...
+  ///     asyncCallback(contextData, handle, args);
+  ///   }
+  /// 
+  /// In x86_64 assembly, this looks like:
+  ///   sub         rsp,38h  
+  ///   mov         qword ptr[rsp + 20h], rcx
+  ///   mov         qword ptr[rsp + 28h], rdx
+  ///   mov         qword ptr[rsp + 30h], r8
+  ///   mov         rcx, 23250C10570h
+  ///   lea         rdx, [rsp + 20h]
+  ///   call        xloil::callback(07FFD47DAA89Ch)
+  ///   add         rsp, 38h
+  ///   ret
   /// </summary>
   template <class TCallback>
   void* buildThunk(
@@ -28,7 +40,8 @@ namespace xloil
     size_t& codeSize);
 
   /// <summary>
-  /// Patches the data object in a provided thunk to a new location.
+  /// Patches the context data object in a given thunk to a new location.
+  /// @see buildThunk.
   /// </summary>
   bool patchThunkData(
     char* thunk,
