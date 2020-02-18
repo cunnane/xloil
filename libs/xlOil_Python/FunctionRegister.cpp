@@ -229,7 +229,7 @@ namespace xloil
         }
         ~RegisteredModule()
         {
-          XLO_TRACE(L"Deregistering functions in module '{0}'", _modulePath);
+          XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
           for (auto& f : _functions)
             theCore->deregister(f.second->info->name);
         }

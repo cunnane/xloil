@@ -91,7 +91,7 @@ namespace xloil
       auto* stubName = theExportTable->getName(theFirstStub);
 
       // Hook the thunk by modifying the export address table
-      XLO_TRACE("Hooking thunk to name {0}", stubName);
+      XLO_DEBUG("Hooking thunk to name {0}", stubName);
       
       theExportTable->hook(theFirstStub, (void*)thunk);
 
@@ -151,7 +151,7 @@ namespace xloil
       auto macroType = (opts & FuncInfo::COMMAND) ? 2 : 1;
 
       // TODO: this copies the excelobj
-      XLO_TRACE(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8_to_wstring(entryPoint), numArgs);
+      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8_to_wstring(entryPoint), numArgs);
       auto registerId = callExcel(xlfRegister,
         moduleName, 
         entryPoint, 
@@ -296,7 +296,7 @@ namespace xloil
       return false;
 
     auto& name = _info->name;
-    XLO_TRACE(L"Deregistering {0}", name);
+    XLO_DEBUG(L"Deregistering {0}", name);
 
     auto[result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
     if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.toBool())
@@ -338,7 +338,7 @@ namespace xloil
     {
       if (_context != newContext)
       {
-        XLO_TRACE(L"Patching function context for '{0}'", newInfo->name);
+        XLO_DEBUG(L"Patching function context for '{0}'", newInfo->name);
         if (!patchThunkData((char*)_thunk, _thunkSize, _context.get(), newContext.get()))
         {
           XLO_ERROR(L"Failed to patch context for '{0}'", newInfo->name);
@@ -356,7 +356,7 @@ namespace xloil
 
       // Otherwise re-use the possibly patched thunk
 
-      XLO_TRACE(L"Reregistering function '{0}'", newInfo->name);
+      XLO_DEBUG(L"Reregistering function '{0}'", newInfo->name);
       deregister();
       auto& registry = FunctionRegistry::get();
       auto* entryPoint = registry.hookEntryPoint(*_info, _thunk);

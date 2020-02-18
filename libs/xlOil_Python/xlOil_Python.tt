@@ -1,6 +1,4 @@
-<#@ output extension=".ini" #>
-<#@ template language="c#" hostspecific="true"#> 
-
+<#@ output extension=".ini" #> <#@ template language="c#" hostspecific="true"#> 
 #
 ####### xlOil Python Settings
 #
@@ -16,6 +14,8 @@ FunctionPrefix="py"
 # On workbook open, look for a python file matching this template 
 # where * is replaced by the Excel workbook name
 WorkbookModule="*.py"
+
+
 [Environment]
 	#
 	##### Registry Magic settings #######

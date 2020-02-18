@@ -32,7 +32,6 @@
     <ProjectGuid>{18FE65C5-AEAC-4500-9571-4BB05EB81B19}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>SimpleFileWatcher</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -42,7 +42,7 @@ namespace
     {
       return wstring(buffer, buffer + bufSize);
     }
-    XLO_THROW(L"HKLM\\{0} not found", location);
+    XLO_THROW(L"Registry key HKLM\\{0} missing when reading settings file", location);
   }
 }
 
@@ -92,64 +92,63 @@ namespace xloil
     for (auto pluginName : plugins)
     {
       const auto path = corePath / pluginName;
-      vector<shared_ptr<PushEnvVar>> pathPusher;
 
-      XLO_TRACE(L"Found plugin {}", pluginName);
-      const auto settingsFile = fs::path(path).replace_extension(".ini");
-      shared_ptr<toml::value> settings;
-      if (fs::exists(settingsFile))
+      try
       {
-        settings = make_shared<toml::value>(toml::parse(settingsFile.string()));
-        auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
-        for (auto[key, val] : environment)
+        vector<shared_ptr<PushEnvVar>> pathPusher;
+
+        XLO_INFO(L"Found plugin {}", pluginName);
+        const auto settingsFile = fs::path(path).replace_extension(".ini");
+        shared_ptr<toml::value> settings;
+        if (fs::exists(settingsFile))
         {
-          wstring value = utf8_to_wstring(val.as_string().str);
-          std::wsmatch match;
-          std::regex_match(value, match, registryExpander);
-          if (match.size() == 2)
-            value = getRegistryValue(match[1].str());
+          settings = make_shared<toml::value>(toml::parse(settingsFile.string()));
+          auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
+          for (auto[key, val] : environment)
+          {
+            wstring value = utf8_to_wstring(val.as_string().str);
+            std::wsmatch match;
+            std::regex_match(value, match, registryExpander);
+            if (match.size() == 2)
+              value = getRegistryValue(match[1].str());
 
-          pathPusher.emplace_back(make_shared<PushEnvVar>(
-            utf8_to_wstring(key).c_str(),
-            value.c_str()));
+            pathPusher.emplace_back(make_shared<PushEnvVar>(
+              utf8_to_wstring(key).c_str(),
+              value.c_str()));
+          }
         }
-      }
 
-      // Load the plugin
-      auto lib = LoadLibrary(path.c_str());
-      if (!lib)
+        // Load the plugin
+        auto lib = LoadLibrary(path.c_str());
+        if (!lib)
+          XLO_THROW(writeWindowsError());
+
+        auto initFunc = (pluginInitFunc)GetProcAddress(lib, XLO_STR(XLO_PLUGIN_INIT_FUNC));
+        if (!initFunc)
+          XLO_THROW("Couldn't find plugin entry point");
+
+        // TODO: check build key xloil_buildId for version control
+        //if ( != 0)  
+        //{
+        //  FreeLibrary(lib);
+        //  continue;
+        //}
+
+        auto coreObj = make_shared<Core>(pluginName.c_str(), settings);
+        if (initFunc(*coreObj) < 0)
+        {
+          // TODO:  Can we roll back any bad registrations?
+          FreeLibrary(lib);
+          XLO_THROW("Initialisation failed");
+        }
+
+        getLoadedPlugins().emplace_back(lib, coreObj);
+      }
+      catch (const std::exception& e)
       {
-        auto err = writeWindowsError();
-        XLO_WARN(L"Couldn't load plugin at {0}: {1}", path.c_str(), err);
-        continue;
+        XLO_ERROR("Plugin load failed for {0}: {1}", path.string(), e.what());
       }
-
-      auto initFunc = (pluginInitFunc)GetProcAddress(lib, XLO_STR(XLO_PLUGIN_INIT_FUNC));
-      if (!initFunc)
-      {
-        XLO_WARN("Couldn't find entry point for plugin {0}", path.string());
-        continue;
-      }
-
-      // TODO: check build key xloil_buildId for version control
-      //if ( != 0)  
-      //{
-      //  FreeLibrary(lib);
-      //  continue;
-      //}
-      
-      auto coreObj = make_shared<Core>(pluginName.c_str(), settings);
-      if (initFunc(*coreObj) < 0)
-      {
-        // TODO:  Can we roll back any bad registrations?
-        XLO_ERROR("Plugin initialisation failed for {}", path.string());
-        FreeLibrary(lib);
-        continue;
-      }
-
-      getLoadedPlugins().emplace_back(lib, coreObj);
-    } 
-
+    }
     // Undo addition to DLL search path 
     SetDllDirectory(NULL);
   }
@@ -158,7 +157,7 @@ namespace xloil
   {
     for (auto& m : getLoadedPlugins())
     {
-      XLO_TRACE(L"Unloading plugin {0}", m.second->pluginName());
+      XLO_DEBUG(L"Unloading plugin {0}", m.second->pluginName());
       auto exitFunc = (pluginExitFunc)GetProcAddress(m.first, XLO_STR(XLO_PLUGIN_EXIT_FUNC));
       if (exitFunc)
         exitFunc();

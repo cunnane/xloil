@@ -160,7 +160,7 @@ namespace xloil
   {
     using namespace asmjit;
 
-    XLO_TRACE("Building thunk with {0} arguments", numArgs);
+    XLO_DEBUG("Building thunk with {0} arguments", numArgs);
 
     // Initialise place to hold code before compilation
     CodeHolder codeHolder;

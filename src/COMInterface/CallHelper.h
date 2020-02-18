@@ -25,7 +25,7 @@ namespace xloil
         }
       }
       Sleep(50);
-      XLO_TRACE("Retry # {0} for COM call", (tries + 1));
+      XLO_DEBUG("Retry # {0} for COM call", (tries + 1));
     }
 
     XLO_ERROR(L"Excel COM is busy. A dialog box may be open");
