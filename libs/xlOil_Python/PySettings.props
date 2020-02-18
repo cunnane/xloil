@@ -2,8 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup>
-    <IncludePath>C:\lib\Anaconda3\Lib\site-packages\numpy\core\include;$(ProjectRoot)external\pybind11\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(ProjectRoot)external\numpy\include;$(ProjectRoot)external\pybind11\include;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PyMajorVer)$(PyMinorVer)</TargetName>
+    <LibraryPath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

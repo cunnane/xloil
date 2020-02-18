@@ -5,10 +5,7 @@
     <PyMajorVer>3</PyMajorVer>
     <PyMinorVer>7</PyMinorVer>
   </PropertyGroup>
-  <PropertyGroup>
-    <LibraryPath>C:\lib\cpython\python-3.7.6-embed-amd64;$(LibraryPath)</LibraryPath>
-    <IncludePath>C:\lib\cpython\python-3.7.6-embed-amd64\include;C:\lib\Anaconda3\Lib\site-packages\numpy\core\include;$(IncludePath)</IncludePath>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemDefinitionGroup />
   <ItemGroup>
     <BuildMacro Include="PyMajorVer">

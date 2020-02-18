@@ -5,10 +5,7 @@
     <PyMajorVer>3</PyMajorVer>
     <PyMinorVer>6</PyMinorVer>
   </PropertyGroup>
-  <PropertyGroup>
-    <IncludePath>C:\lib\Anaconda3\Lib\site-packages\numpy\core\include;C:\lib\Anaconda3\include;$(SolutionDir)external\pybind11\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\lib\Anaconda3\libs;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
