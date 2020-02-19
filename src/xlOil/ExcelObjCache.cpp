@@ -9,8 +9,8 @@ using std::shared_ptr;
 namespace xloil
 {
   // TODO: why a shared-ptr?
-  static ObjectCache<shared_ptr<const ExcelObj>, false> theExcelObjCache 
-    = ObjectCache<shared_ptr<const ExcelObj>, false>(theObjectCacheUnquifier);
+  static ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false> theExcelObjCache
+    = ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false>();
   
   ExcelObj addCacheObject(shared_ptr<const ExcelObj>&& obj)
   {

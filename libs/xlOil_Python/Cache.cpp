@@ -5,11 +5,12 @@ namespace py = pybind11;
 
 namespace xloil {
   namespace Python {
-    static std::unique_ptr<ObjectCache<py::object>> thePythonObjCache;
+    constexpr wchar_t thePyCacheUniquifier = L'\x6B23';
+    static std::unique_ptr<ObjectCache<py::object, thePyCacheUniquifier>> thePythonObjCache;
 
     void createCache()
     {
-      thePythonObjCache.reset(new ObjectCache<py::object>(L'\x6B23'));
+      thePythonObjCache.reset(new ObjectCache<py::object, thePyCacheUniquifier>());
       static auto handler = Event_PyBye().bind([]() 
       {
         py::gil_scoped_acquire gil;

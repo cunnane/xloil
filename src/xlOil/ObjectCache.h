@@ -12,11 +12,37 @@
 
 namespace xloil
 {
-  template<class TObj, bool TReverseLookup = false>
+  namespace impl
+  {
+    inline wchar_t* writeCacheId(wchar_t uniquifier, const CallerInfo& caller, int padding)
+    {
+      size_t totalLen = caller.fullAddressLength() + 1 + padding;
+      wchar_t* pascalStr = new wchar_t[totalLen + 1];
+      auto* buf = pascalStr + 1;
+
+      // Cache uniquifier character
+      *(buf++) = uniquifier;
+      --totalLen;
+
+      // Full cell address: eg. [wbName]wsName!RxCy
+      auto addressLen = caller.writeFullAddress(buf, totalLen);
+      buf += addressLen;
+
+      // Pad with nulls
+      wmemset(buf, L'\0', padding);
+
+      // Fix up length
+      pascalStr[0] = wchar_t(addressLen + 1 + padding);
+
+      return pascalStr;
+    }
+  }
+
+  template<class TObj, wchar_t TUniquifier, bool TReverseLookup = false>
   class ObjectCache
   {
   private:
-    typedef ObjectCache<TObj, TReverseLookup> self;
+    typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
     class CellCache
     {
     private:
@@ -62,7 +88,6 @@ namespace xloil
     mutable std::mutex _cacheLock;
 
     const std::wregex _cacheRefMatcher;
-    const wchar_t _uniquifier;
     size_t _calcId;
 
     typename std::conditional<TReverseLookup, 
@@ -111,9 +136,8 @@ namespace xloil
     }
 
   public:
-    ObjectCache(wchar_t cacheUniquifier)
+    ObjectCache()
       : _cacheRefMatcher(LR"(\[([^\]]+)\]([^,]+),?(\d*).*)", std::regex_constants::optimize)
-      , _uniquifier(cacheUniquifier)
       , _calcId(1)
     {
       using namespace std::placeholders;
@@ -136,7 +160,7 @@ namespace xloil
       // TODO: write function without using regex, surely it would be quicker?
       // And we can remove nastytemp!
 
-      if (cacheString[0] != _uniquifier || cacheString[1] != L'[')
+      if (cacheString[0] != TUniquifier || cacheString[1] != L'[')
         return false;
 
       std::wcmatch match;
@@ -169,7 +193,7 @@ namespace xloil
       CallerInfo caller;
       constexpr int padding = 4;
 
-      auto* pascalStr = writeCacheId(_uniquifier, caller, padding);
+      auto* pascalStr = impl::writeCacheId(TUniquifier, caller, padding);
 
       // Oh the things we do to avoid a string copy
       size_t len = pascalStr[0];
@@ -219,29 +243,6 @@ namespace xloil
     {
       auto& wbCache = findOrAdd(_cache, wbName);
       return findOrAdd(wbCache, wsRef);
-    }
-
-    static wchar_t* writeCacheId(wchar_t uniquifier, const CallerInfo& caller, int padding)
-    {
-      size_t totalLen = caller.fullAddressLength() + 1 + padding;
-      wchar_t* pascalStr = new wchar_t[totalLen + 1];
-      auto* buf = pascalStr + 1;
-
-      // Cache uniquifier character
-      *(buf++) = uniquifier;
-      --totalLen;
-
-      // Full cell address: eg. [wbName]wsName!RxCy
-      auto addressLen = caller.writeFullAddress(buf, totalLen);
-      buf += addressLen;
-
-      // Pad with nulls
-      wmemset(buf, L'\0', padding);
-
-      // Fix up length
-      pascalStr[0] = wchar_t(addressLen + 1 + padding);
-
-      return pascalStr;
     }
 
     void onWorkbookClose(const wchar_t* wbName)
