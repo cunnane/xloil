@@ -122,6 +122,7 @@ namespace xloil
     explicit ExcelObj(int);
     explicit ExcelObj(unsigned int x) : ExcelObj((int)x) {}
     explicit ExcelObj(long x) : ExcelObj((int)x) {}
+    explicit ExcelObj(long long x) : ExcelObj((int)x) {}
     explicit ExcelObj(unsigned long x) : ExcelObj((int)x) {}
     explicit ExcelObj(unsigned short x) : ExcelObj((int)x) {}
     explicit ExcelObj(short x) : ExcelObj((int)x) {}
