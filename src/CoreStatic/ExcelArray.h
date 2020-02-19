@@ -40,6 +40,51 @@ namespace xloil
     const ExcelObj* row_end(int i)   const { return data() + (i * baseCols() + nCols()); }
     ExcelObj* row_end(int i) { return data() + (i * baseCols() + nCols()); }
 
+    /// <summary>
+    /// Determines the type of data stored in the array if it is homogenous. If it is
+    /// not, it returns the type BigData.
+    ///
+    /// It assumes that boolean can be interprets as integers and that integers can 
+    /// be interpreted as float.  It also assumes "empty" can be interpreted as a floating
+    /// point (e.g. NaN), but other error types cannot.
+    ///
+    /// Note that objects in Excel arrays can be one of: int, bool, double, error, string, empty.
+    /// </summary>
+    ExcelType dataType() const
+    {
+      using namespace msxll;
+      int type = 0;
+      for (auto i = 0; i < _rows; ++i)
+        for (auto j = row_begin(i); j < row_end(i); ++j)
+          type |= j->xltype;
+
+      switch (type)
+      {
+      case xltypeBool:
+        return ExcelType::Bool;
+
+      case xltypeInt:
+      case xltypeInt | xltypeBool:
+        return ExcelType::Int;
+
+      case xltypeNum:
+      case xltypeInt | xltypeNum:
+      case xltypeInt | xltypeNum | xltypeBool:
+      case xltypeInt | xltypeNum | xltypeNil:
+      case xltypeInt | xltypeNum | xltypeBool | xltypeNil:
+        return ExcelType::Num;
+
+      case xltypeStr:
+        return ExcelType::Str;
+
+      case xltypeErr:
+        return ExcelType::Err;
+
+      default:
+        return ExcelType::BigData;
+      }
+    }
+
   private:
     const ExcelObj& _base;
     int _rows;

@@ -5,9 +5,11 @@
 #include "StandardConverters.h"
 #include "ExcelArray.h"
 #include "ArrayHelpers.h"
+#include <xloil/Date.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
+#include <numpy/ndarrayobject.h>
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -56,6 +58,25 @@ namespace xloil
           return NPY_NAN;
         }
         return ToDouble::fromError(err);
+      }
+    };
+
+    class NumpyDateFromDate : public ConverterImpl<npy_datetime>
+    {
+    public:
+      npy_datetime fromInt(int x) const
+      {
+        int day, month, year;
+        excelSerialDateToDMY(x, day, month, year);
+        npy_datetimestruct dt = { year, month, day };
+        return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
+      }
+      npy_datetime fromDouble(double x) const
+      {
+        int day, month, year, hours, mins, secs, usecs;
+        excelSerialDatetoDMYHMS(x, day, month, year, hours, mins, secs, usecs);
+        npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
+        return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
     };
 
@@ -247,7 +268,19 @@ namespace xloil
     PyObject* excelArrayToNumpyArray2d(const ExcelObj& obj)
     {
       ExcelArray arr(obj);
-      return PyFromArray2d<CheckedFromExcel<PyFromAny>, PyObject*, NPY_OBJECT>(true).fromArray(arr);
+      switch (arr.dataType())
+      {
+      case ExcelType::Bool:
+        return PyFromArray2d<FromExcel<ToBool>, bool, NPY_BOOL>(true).fromArray(arr);
+      case ExcelType::Num:
+        return PyFromArray2d<FromExcel<ToDoubleNPYNan>, double, NPY_DOUBLE>(true).fromArray(arr);
+      case ExcelType::Int:
+        return PyFromArray2d<FromExcel<ToInt>, int, NPY_INT>(true).fromArray(arr);
+      case ExcelType::Str:
+        return PyFromArray2d<CheckedFromExcel<PyFromString>, PyObject*, NPY_STRING>(true).fromArray(arr);
+      default:
+        return PyFromArray2d<CheckedFromExcel<PyFromAny>, PyObject*, NPY_OBJECT>(true).fromArray(arr);
+      }
     }
 
     template <template <class> class TThing>
@@ -275,7 +308,9 @@ namespace xloil
       case NPY_DOUBLE: return TThing<FromArrayDTypeImpl<double, NPY_DOUBLE>>()(p);
       //case NPY_LONGDOUBLE: return TThing<FromArrayTypeImpl<long double, NPY_LONGDOUBLE>>()(p);
 
-      // ????? case NPY_DATETIME:
+
+      // Both datetime and timedelta are stored as int64
+      case NPY_DATETIME: return TThing<FromArrayDTypeImpl<npy_datetime, NPY_DATETIME>>()(p);
       case NPY_OBJECT: return TThing<FromArrayPyObjectImpl<FromPyObj>>()(p);
 
       case NPY_STRING: 
@@ -331,12 +366,14 @@ namespace xloil
         declare<Array1dFromXL<FromExcel<ToInt>, int, NPY_INT>                        >(mod, "Array_int_1d_from_Excel");
         declare<Array1dFromXL<FromExcel<ToDoubleNPYNan>, double, NPY_DOUBLE>         >(mod, "Array_float_1d_from_Excel");
         declare<Array1dFromXL<FromExcel<ToBool>, bool, NPY_BOOL>                     >(mod, "Array_bool_1d_from_Excel");
+        declare<Array1dFromXL<FromExcel<NumpyDateFromDate>, npy_datetime, NPY_DATETIME> >(mod, "Array_date_1d_from_Excel");
         declare<Array1dFromXL<CheckedFromExcel<PyFromString>, PyObject*, NPY_STRING> >(mod, "Array_str_1d_from_Excel");
         declare<Array1dFromXL<CheckedFromExcel<PyFromAny>, PyObject*, NPY_OBJECT>    >(mod, "Array_object_1d_from_Excel");
 
         declare<Array2dFromXL<FromExcel<ToInt>, int, NPY_INT>                        >(mod, "Array_int_2d_from_Excel");
         declare<Array2dFromXL<FromExcel<ToDoubleNPYNan>, double, NPY_DOUBLE>         >(mod, "Array_float_2d_from_Excel");
         declare<Array2dFromXL<FromExcel<ToBool>, bool, NPY_BOOL>                     >(mod, "Array_bool_2d_from_Excel");
+        declare<Array2dFromXL<FromExcel<NumpyDateFromDate>, npy_datetime, NPY_DATETIME> >(mod, "Array_date_2d_from_Excel");
         declare<Array2dFromXL<CheckedFromExcel<PyFromString>, PyObject*, NPY_STRING> >(mod, "Array_str_2d_from_Excel");
         declare<Array2dFromXL<CheckedFromExcel<PyFromAny>, PyObject*, NPY_OBJECT>    >(mod, "Array_object_2d_from_Excel");
 
