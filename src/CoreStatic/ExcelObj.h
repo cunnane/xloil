@@ -61,10 +61,10 @@ namespace xloil
     PString(const TChar* pascalStr = nullptr) : _data(pascalStr) {}
 
     bool operator!() const { return !!_data; }
-    size_t size() const { return _data ? _data[0] : 0; }
-    const TChar* buf() const { return _data; }
+    size_t length() const { return _data ? _data[0] : 0; }
+    const TChar* rawbuf() const { return _data; }
     const TChar* pstr() const { return _data + 1; }
-    std::wstring string() const { return std::wstring(pstr(), pstr() + size()); }
+    std::wstring string() const { return std::wstring(pstr(), pstr() + length()); }
 
     static constexpr size_t npos = size_t (-1);
 
@@ -79,19 +79,19 @@ namespace xloil
 
     size_t chr(wchar_t wc) const
     {
-      auto p = wmemchr(pstr(), wc, size());
+      auto p = wmemchr(pstr(), wc, length());
       return p ? p - pstr() : npos;
     }
 
     size_t rchr(wchar_t wc) const
     {
-      auto p = wmemrchr(pstr() + size(), wc, size());
+      auto p = wmemrchr(pstr() + length(), wc, length());
       return p ? p - pstr() : npos;
     }
 
     std::basic_string_view<TChar> view(size_t from, size_t count = npos)
     {
-      return std::basic_string_view<TChar>(pstr() + from, count != npos ? count : size() - from);
+      return std::basic_string_view<TChar>(pstr() + from, count != npos ? count : length() - from);
     }
 
   private:
@@ -215,6 +215,7 @@ namespace xloil
     /// <param name="strict"></param>
     /// <returns></returns>
     std::wstring toString(bool strict = false) const;
+    size_t maxStringLength() const;
     double toDouble() const;
     int toInt() const;
     bool toBool() const;
@@ -292,7 +293,7 @@ namespace xloil
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
     /// <returns>false if object is not an array, else true</returns>
-    bool trimmedArraySize(int& nRows, int& nCols) const;
+    bool trimmedArraySize(size_t& nRows, size_t& nCols) const;
 
   private:
     /// The xloper type made safe for use in switch statements by zeroing

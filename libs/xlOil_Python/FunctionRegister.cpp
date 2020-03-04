@@ -18,6 +18,7 @@ using std::pair;
 using std::map;
 using std::wstring;
 using std::string;
+using std::make_shared;
 using std::make_pair;
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -214,108 +215,108 @@ namespace xloil
 
     void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action);
 
-    class FunctionRegistry
+    class RegisteredModule
     {
     public:
-      class RegisteredModule
+      RegisteredModule(const wstring& modulePath)
+        : _modulePath(modulePath)
       {
-      public:
-        RegisteredModule(const wstring& modulePath)
-          : _modulePath(modulePath)
-        {
-          auto path = fs::path(modulePath);
-          _fileWatcher = std::static_pointer_cast<const void>
-            (Event_DirectoryChange(path.remove_filename().wstring()).bind(handleFileChange));
-        }
-        ~RegisteredModule()
-        {
-          XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
-          for (auto& f : _functions)
-            theCore->deregister(f.second->info->name);
-        }
+        auto path = fs::path(modulePath);
+        _fileWatcher = std::static_pointer_cast<const void>
+          (Event_DirectoryChange(path.remove_filename().wstring()).bind(handleFileChange));
+      }
+      ~RegisteredModule()
+      {
+        XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
+        for (auto& f : _functions)
+          theCore->deregister(f.second->info->name);
+      }
 
-        void registerFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
+      void registerFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
+      {
+        if (_functions.empty())
         {
-          if (_functions.empty())
+          // Fresh registration, just add functions
+          for (auto& f : functions)
           {
-            // Fresh registration, just add functions
-            for (auto& f : functions)
-            {
-              _functions.emplace(f->info->name, f);
-              registerFunc(f);
-            }
+            _functions.emplace(f->info->name, f);
+            registerFunc(f);
           }
-          else
+        }
+        else
+        {
+          // Trickier case: potentially re-registering functions
+          map<wstring, shared_ptr<PyFuncInfo>> newMap;
+
+          for (auto& f : functions)
           {
-            // Trickier case: potentially re-registering functions
-            map<wstring, shared_ptr<PyFuncInfo>> newMap;
+            auto iFunc = _functions.find(f->info->name);
 
-            for (auto& f : functions)
+            // If the function name already exists, try to avoid re-registering
+            if (iFunc != _functions.end())
             {
-              auto iFunc = _functions.find(f->info->name);
-
-              // If the function name already exists, try to avoid re-registering
-              if (iFunc != _functions.end())
+              // Attempt to patch the function context to refer to to the new py function
+              if (!theCore->reregister(iFunc->second->info, std::static_pointer_cast<void>(f)))
               {
-                // Attempt to patch the function context to refer to to the new py function
-                if (!theCore->reregister(iFunc->second->info, std::static_pointer_cast<void>(f)))
-                {
-                  // If that failed, we need to do it ourselves
-                  registerFunc(f);
-                }
-                // Having handled this function, remove it from the old map
-                _functions.erase(iFunc);
-              }
-              else
+                // If that failed, we need to do it ourselves
                 registerFunc(f);
-              newMap.emplace(f->info->name, f);
+              }
+              // Having handled this function, remove it from the old map
+              _functions.erase(iFunc);
             }
-
-            // Any functions remaining in the old map must have been removed from the module
-            // so we can deregister them, but if that fails we have to keep them or they
-            // will be orphaned
-            for (auto& f : _functions)
-              if (!theCore->deregister(f.second->info->name))
-                newMap.emplace(f);
-
-            _functions = newMap;
+            else
+              registerFunc(f);
+            newMap.emplace(f->info->name, f);
           }
+
+          // Any functions remaining in the old map must have been removed from the module
+          // so we can deregister them, but if that fails we have to keep them or they
+          // will be orphaned
+          for (auto& f : _functions)
+            if (!theCore->deregister(f.second->info->name))
+              newMap.emplace(f);
+
+          _functions = newMap;
         }
-
-        wstring& modulePath() { return _modulePath; }
-
-      private:
-        map<wstring, shared_ptr<PyFuncInfo>> _functions;
-        shared_ptr<const void> _fileWatcher;
-        wstring _modulePath;
-      };
-
-      static FunctionRegistry& get() {
-        static FunctionRegistry instance;
-        return instance;
       }
-      
-      void addModule(py::module& moduleHandle, const vector<shared_ptr<PyFuncInfo>>& functions)
-      {
-        auto path = moduleHandle.attr("__file__").cast<wstring>();
-        auto[it, added] = _modules.try_emplace(path, path);
-        it->second.registerFuncs(functions);
-      }
- 
-      map<wstring, RegisteredModule>& modules() { return _modules; }
+
+      wstring& modulePath() { return _modulePath; }
 
     private:
-      FunctionRegistry() 
-      {
-        static auto handler = Event_PyBye().bind([] 
-        {
-          FunctionRegistry::get().modules().clear(); 
-          if (thePythonWorkerThread)
-            delete thePythonWorkerThread;
-        });
-      }
-      map<wstring, RegisteredModule> _modules;
+      map<wstring, shared_ptr<PyFuncInfo>> _functions;
+      shared_ptr<const void> _fileWatcher;
+      wstring _modulePath;
     };
+
+    FunctionRegistry& FunctionRegistry::get() 
+    {
+      static FunctionRegistry instance;
+      return instance;
+    }
+
+
+    std::shared_ptr<RegisteredModule> 
+      FunctionRegistry::addModule(const std::wstring& modulePath)
+    {
+      auto[it, wasAdded] = _modules.try_emplace(modulePath, make_shared<RegisteredModule>(modulePath));
+      return it->second;
+    }
+
+    std::shared_ptr<RegisteredModule> 
+      FunctionRegistry::addModule(const pybind11::module& moduleHandle)
+    {
+      return addModule(moduleHandle.attr("__file__").cast<wstring>());
+    }
+
+    FunctionRegistry::FunctionRegistry()
+    {
+      static auto handler = Event_PyBye().bind([] 
+      {
+        FunctionRegistry::get().modules().clear(); 
+        if (thePythonWorkerThread)
+          delete thePythonWorkerThread;
+      });
+    }
 
     void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action)
     {
@@ -339,7 +340,7 @@ namespace xloil
 
     void registerFunctions(const py::object& moduleHandle, const vector<shared_ptr<PyFuncInfo>>& functions)
     {
-      FunctionRegistry::get().addModule(moduleHandle.cast<py::module>(), functions);
+      FunctionRegistry::get().addModule(moduleHandle.cast<py::module>())->registerFuncs(functions);
     }
     void writeToLog(const char* message, const char* level)
     {

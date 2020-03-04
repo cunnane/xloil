@@ -15,7 +15,7 @@ namespace xloil
   inline bool checkObjectCacheReference(const ExcelObj& obj)
   {
     auto s = obj.asPascalStr();
-    return checkObjectCacheReference(s.pstr(), s.size());
+    return checkObjectCacheReference(s.pstr(), s.length());
   }
  
   ExcelObj addCacheObject(std::shared_ptr<const ExcelObj>&& obj);

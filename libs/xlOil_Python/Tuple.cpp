@@ -2,6 +2,7 @@
 #include "ExcelArray.h"
 #include "BasicTypes.h"
 #include "ArrayHelpers.h"
+#include "ArrayBuilder.h"
 #include <pybind11/pybind11.h>
 #include "Tuple.h"
 
@@ -96,11 +97,11 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public ConverterImpl<PyObject*>
+    class PyTupleFromArray : public PyFromCache<PyTupleFromArray<TValConv>>
     {
       TValConv _valConv;
     public:
-      PyObject * fromArray(const ExcelObj& obj) const
+      PyObject* fromArray(const ExcelObj& obj) const
       {
         ExcelArray arr(obj);
         auto nRows = arr.nRows();
@@ -113,7 +114,7 @@ namespace xloil
           PyTuple_SET_ITEM(outer.ptr(), i, inner.ptr());
           for (auto j = 0; j < nCols; ++j)
           {
-            auto val = _valConv(arr(i, j));
+            auto val = _valConv(arr.at(i, j));
             PyTuple_SET_ITEM(inner.ptr(), j, val);
           }
         }
@@ -123,7 +124,7 @@ namespace xloil
 
     PyObject* excelArrayToNestedTuple(const ExcelObj & obj)
     {
-      return PyTupleFromArray<PyFromExcel<PyFromAny>>().fromArray(obj);
+      return PyTupleFromArray<PyFromExcel<PyFromAny<>>>().fromArray(obj);
     }
 
     namespace
@@ -137,7 +138,7 @@ namespace xloil
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        declare<PyFromExcel<PyTupleFromArray<PyFromExcel<PyFromAny>>>>(mod, "tuple_object_from_Excel");
+        declare<PyFromExcel<PyTupleFromArray<PyFromExcel<PyFromAny<>>>>>(mod, "tuple_object_from_Excel");
       });
     }
   }

@@ -42,7 +42,7 @@ def pyTest1(x):
 # conversion
 #
 @xlo.func
-def pyTestArr2d(x: xlo.Array[float]):
+def pyTestArr2d(x: xlo.Array(float)):
 	return x
 
 #
@@ -56,13 +56,13 @@ def pyTestArr2d(x: xlo.Array[float]):
 # Note you cannot use keyword args in [], see PEP472
 #
 @xlo.func
-def pyTestArrNoTrim(x: xlo.Array[object](trim=False)):
+def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
 	return x
 
 
 @xlo.func
 @xlo.arg("multiple", typeof=float, help="value to multiply array by")
-def pyTestArr1d(x: xlo.Array[float](dims=1), multiple):
+def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 	return x * multiple
 
 class CustomObj:
@@ -139,7 +139,29 @@ def pyTestCom():
 def pyTestRange(r: xlo.AllowRange):
     r2 = r.cell(1, 1).value
     return r.cell(1, 1).address()
-    
+
+@xlo.converter()
+def arg_doubler(x):
+    if isinstance(x, xlo.ExcelArray):
+        x = x.to_numpy()
+    return 2 * x
+
 @xlo.func
-def pyTestXXXFunc(x):
-    return 2
+def pyTestCustomConv(x: arg_doubler):
+    return x
+
+
+@xlo.converter()
+def testcon(x):
+    if isinstance(x, xlo.ExcelArray):
+        return x.to_numpy(dims=1).astype(object)
+    return "#NAA"
+
+@xlo.func
+def pyTestCon1(x: testcon):
+    return x
+
+
+@xlo.func
+def pyTestDFrame(df: PDFrame2(headings=True), col_name:str):
+    return df[col_name]

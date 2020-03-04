@@ -16,9 +16,12 @@ namespace xloil
       TKeyConv _keyConv;
       TValConv _valConv;
     public:
-      PyObject * fromArray(const ExcelObj& obj) const
+      PyObject* fromArray(const ExcelObj& obj) const
       {
-        ExcelArray arr(obj, true);
+        return fromArrayObj(ExcelArray(obj, true));
+      }
+      PyObject* fromArrayObj(const ExcelArray& arr) const
+      {
         if (arr.nCols() != 2)
           XLO_THROW("Need a 2 column array to convert to dictionary");
 
@@ -27,8 +30,8 @@ namespace xloil
 
         for (; i < arr.nRows(); ++i)
         {
-          auto key = PySteal<py::object>(_keyConv(arr(i, 0)));
-          auto val = PySteal<py::object>(_valConv(arr(i, 1)));
+          auto key = PySteal<py::object>(_keyConv(arr.at(i, 0)));
+          auto val = PySteal<py::object>(_valConv(arr.at(i, 1)));
           if (!key || !val || PyDict_SetItem(dict.ptr(), key.ptr(), val.ptr()) != 0)
             XLO_THROW("Failed to add row " + std::to_string(i) + " to dict");
         }
@@ -39,7 +42,7 @@ namespace xloil
 
     PyObject* readKeywordArgs(const ExcelObj& obj)
     {
-      return PyFromExcel<PyDictFromArray<FromExcel<PyFromString>, FromExcel<PyFromAny>>>()(obj);
+      return PyFromExcel<PyDictFromArray<FromExcel<PyFromString>, FromExcel<PyFromAny<>>>>()(obj);
     }
 
     namespace
@@ -53,7 +56,7 @@ namespace xloil
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-          declare<PyFromExcel<PyDictFromArray<FromExcel<PyFromAny>, FromExcel<PyFromAny>>>>(mod, "dict_object_from_Excel");
+          declare<PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>>(mod, "dict_object_from_Excel");
       });
     }
   }

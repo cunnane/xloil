@@ -14,7 +14,8 @@ namespace xloil
 
     XLOIL_EXPORT ExcelRange(const wchar_t* address);
 
-    XLOIL_EXPORT ExcelRange(msxll::IDSHEET sheetId, int i, int j, int nRows = 1, int nCols = 1);
+    XLOIL_EXPORT ExcelRange(msxll::IDSHEET sheetId, 
+      int fromRow, int fromCol, int toRow, int toCol);
 
     ~ExcelRange()
     {
@@ -23,18 +24,19 @@ namespace xloil
 
     ExcelObj& operator()(int i, int j)
     {
-      ExcelRange(sheetId(), i, j).value();
+      ExcelRange(sheetId(), i, j, i + 1, j + 1).value();
     }
 
-    static constexpr int TO_END = -1;
+    static constexpr int TO_END = 0;
 
     // Doesn't check that a sub-range has been specified
-    ExcelRange range(int i, int j, int nRows = TO_END, int nCols = TO_END) const
+    ExcelRange range(int fromRow, int fromCol, int toRow = TO_END, int toCol = TO_END) const
     {
-      return ExcelRange(sheetId(), 
-        ref().rwFirst + i, ref().colFirst + i, 
-        nRows < 0 ? this->nRows() - i + nRows + 1 : nRows, 
-        nCols < 0 ? this->nCols() - j + nCols + 1 : nCols);
+      return ExcelRange(sheetId(),
+        ref().rwFirst + fromRow, 
+        ref().colFirst + fromCol,
+        toRow <= 0 ? ref().rwLast + toRow : ref().rwFirst + toRow,
+        toCol <= 0 ? ref().colLast + toCol : ref().colFirst + toCol);
     }
     ExcelRange cell(int i, int j)
     {

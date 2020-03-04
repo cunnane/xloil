@@ -4,7 +4,7 @@
 #include "xloil/Log.h"
 #include "xloil/Date.h"
 #include "xloil/Utils.h"
-#include "ExcelArray.h"
+#include "ArrayBuilder.h"
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -271,7 +271,7 @@ namespace
   }
   ExcelObj::ExcelObj(const PString<wchar_t>& pstr)
   {
-    val.str = const_cast<wchar_t*>(pstr.buf());
+    val.str = const_cast<wchar_t*>(pstr.rawbuf());
     xltype = xltypeStr;
   }
 
@@ -530,19 +530,48 @@ namespace
     }
   }
 
+  size_t ExcelObj::maxStringLength() const
+  {
+    switch (xtype())
+    {
+    case xltypeInt:
+    case xltypeNum:
+      return 20;
+
+    case xltypeBool:
+      return 5;
+
+    case xltypeStr:
+      return val.str[0];
+
+    case xltypeMissing:
+    case xltypeNil:
+      return 0;
+
+    case xltypeErr:
+      return 8;
+
+    case xltypeSRef:
+      return 52;
+
+    default:
+      return 4;
+    }
+  }
+
   double ExcelObj::toDouble() const
   {
-    return FromExcel<ToDouble>()(*this);
+    return ToDouble()(*this);
   }
 
   int ExcelObj::toInt() const
   {
-    return FromExcel<ToInt>()(*this);
+    return ToInt()(*this);
   }
 
   bool ExcelObj::toBool() const
   {
-    return FromExcel<ToBool>()(*this);
+    return ToBool()(*this);
   }
 
   double ExcelObj::asDouble() const
@@ -575,7 +604,7 @@ namespace
     auto s = this->asPascalStr();
     if (!s) // We are not a string
       return 0;
-    auto len = std::min(s.size(), bufSize - 1);
+    auto len = std::min(s.length(), bufSize - 1);
     wmemcpy_s(buf, len, s.pstr(), len);
     buf[len] = L'\0';
     return len;
@@ -593,7 +622,7 @@ namespace
     return excelSerialDatetoDMYHMS(d, nDay, nMonth, nYear, nHours, nMins, nSecs, uSecs);
   }
 
-  bool ExcelObj::trimmedArraySize(int& nRows, int& nCols) const
+  bool ExcelObj::trimmedArraySize(size_t& nRows, size_t& nCols) const
   {
     if ((xtype() & xltypeMulti) == 0)
     {

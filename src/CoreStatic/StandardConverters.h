@@ -2,7 +2,7 @@
 // TODO: better header file name??
 namespace xloil
 {
-  struct ToDouble : public ConverterImpl<double>
+  struct ToDouble : public FromExcelBase<double, ToDouble>
   {
     double fromInt(int x) const { return double(x); }
     double fromBool(bool x) const { return double(x); }
@@ -27,7 +27,7 @@ namespace xloil
       XLO_THROW("Could not convert error to double");
     }
   };
-  struct ToInt : public ConverterImpl<int>
+  struct ToInt : public FromExcelBase<int, ToInt>
   {
     int fromInt(int x) const { return x; }
     int fromBool(bool x) const { return int(x); }
@@ -42,7 +42,7 @@ namespace xloil
   };
 
   /// Converts to bool using Excel's standard coercions for numeric types (x != 0)
-  struct ToBool : public ConverterImpl<bool>
+  struct ToBool : public FromExcelBase<bool, ToBool>
   {
     bool fromInt(int x) const { return x != 0.0; }
     bool fromBool(bool x) const { return x; }

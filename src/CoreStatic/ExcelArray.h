@@ -1,44 +1,90 @@
 #pragma once
 #include "ExcelObj.h"
 #include <cassert>
-#include "xloil/Log.h"
+#include <xloil/Log.h>
 namespace xloil
 {
   class ExcelArray
   {
   public:
     ExcelArray(const ExcelObj& obj, bool trim = true)
-      : _base(obj)
+      : _data((ExcelObj*)obj.val.array.lparray)
+      , _colOffset(0)
+      , _baseCols(obj.val.array.columns)
     {
-      if (!obj.trimmedArraySize(_rows, _columns))
+      if (obj.type() != ExcelType::Multi)
         XLO_THROW("Expected an array");
+
+      if (trim)
+        obj.trimmedArraySize(_rows, _columns);
+      else
+      {
+        _rows = obj.val.array.rows;
+        _columns = obj.val.array.columns;
+      }
+    }
+
+    ExcelArray(const ExcelArray& arr, int fromRow, int fromCol, int toRow, int toCol)
+      : _rows((toRow < 0 ? arr._rows + toRow : toRow) - fromRow)
+      , _columns((toCol < 0 ? arr._columns + toCol : toCol) - fromCol)
+      , _colOffset(fromCol)
+      , _baseCols(arr._baseCols)
+    {
+      _data = arr._data + fromRow * _baseCols;
     }
 
     const ExcelObj& operator()(int row, int col) const
     {
-      return data()[row * baseCols() + col];
+      checkRange(row, col);
+      return at(row, col);
     }
     ExcelObj& operator()(int row, int col)
     {
-      return data()[row * baseCols() + col];
+      checkRange(row, col);
+      return at(row, col);
     }
     const ExcelObj& operator()(int row) const
     {
-      return data()[row];
+      //checkRange(row, 0);
+      return at(row);
     }
     ExcelObj& operator()(int row)
     {
-      return data()[row];
+      //checkRange(row, 0);
+      return at(row);
     }
-    int nRows() const { return _rows; }
-    int nCols() const { return _columns; }
+
+    const ExcelObj& at(int row, int col) const
+    {
+      return *(row_begin(row) + col);
+    }
+    ExcelObj& at(int row, int col)
+    {
+      return *(row_begin(row) + col);
+    }
+    const ExcelObj& at(int row) const
+    {
+      return *(row_begin(0) + row);
+    }
+    ExcelObj& at(int row)
+    {
+      return*(row_begin(0) + row);
+    }
+
+    ExcelArray subArray(int fromRow, int fromCol, int toRow, int toCol)
+    {
+      return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
+    }
+
+    size_t nRows() const { return _rows; }
+    size_t nCols() const { return _columns; }
     size_t size() const { return _rows * _columns; }
     size_t dims() const { return _rows > 1 && _columns > 1 ? 2 : 1; }
 
-    const ExcelObj* row_begin(int i) const { return data() + (i * baseCols()); }
-    ExcelObj* row_begin(int i) { return data() + (i * baseCols()); }
-    const ExcelObj* row_end(int i)   const { return data() + (i * baseCols() + nCols()); }
-    ExcelObj* row_end(int i) { return data() + (i * baseCols() + nCols()); }
+    const ExcelObj* row_begin(int i) const  { return _data + i * _baseCols + _colOffset; }
+    ExcelObj* row_begin(int i)              { return _data + i * _baseCols + _colOffset; }
+    const ExcelObj* row_end(int i) const    { return row_begin(i) + nCols(); }
+    ExcelObj* row_end(int i)                { return row_begin(i) + nCols(); }
 
     /// <summary>
     /// Determines the type of data stored in the array if it is homogenous. If it is
@@ -86,92 +132,18 @@ namespace xloil
     }
 
   private:
-    const ExcelObj& _base;
-    int _rows;
-    int _columns;
+    size_t _rows;
+    size_t _columns;
+    size_t _colOffset;
+    ExcelObj* _data;
+    size_t _baseCols;
 
-    int baseCols() const { return _base.val.array.columns; }
-    ExcelObj* data() { return (ExcelObj*)_base.val.array.lparray; }
-    const ExcelObj* data() const { return (ExcelObj*)_base.val.array.lparray; }
+    void checkRange(int row, int col) const
+    {
+      if ((size_t)row >= nRows() || (size_t)col >= nCols())
+        XLO_THROW("Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
+    }
   };
 
-  class ExcelArrayBuilder
-  {
-  public:
-    ExcelArrayBuilder(size_t nRows, size_t nCols,
-      size_t totalStrLength = 0, bool pad2DimArray = false)
-    {
-      // Add the terminators and string counts to total length
-      // Not everything has to be a string so this is an over-estimate
-      if (totalStrLength > 0)
-        totalStrLength += nCols * nRows * 2;
-
-      auto nPaddedRows = nRows;
-      auto nPaddedCols = nCols;
-      if (pad2DimArray)
-      {
-        if (nPaddedRows == 1) nPaddedRows = 2;
-        if (nPaddedCols == 1) nPaddedCols = 2;
-      }
-
-      auto arrSize = nPaddedRows * nPaddedCols;
-
-      auto* buf = new char[sizeof(ExcelObj) * arrSize + sizeof(wchar_t) * totalStrLength];
-      _arrayData = (ExcelObj*)buf;
-      _stringData = (wchar_t*)(_arrayData + arrSize);
-      _endStringData = _stringData + totalStrLength;
-      _nRows = nPaddedRows;
-      _nColumns = nPaddedCols;
-
-      // Add padding
-      if (nCols < nPaddedCols)
-        for (size_t i = 0; i < nRows; ++i)
-          emplace_at(i, nCols, CellError::NA);
-
-      if (nRows < nPaddedRows)
-        for (size_t j = 0; j < nPaddedCols; ++j)
-          emplace_at(nRows, j, CellError::NA);
-    }
-    int emplace_at(size_t i, size_t j)
-    {
-      new (at(i, j)) ExcelObj(CellError::NA);
-      return 0;
-    }
-    // TODO: this is lazy, only int, bool, double and ExcelError are supported here, others are UB
-    template <class T>
-    int emplace_at(size_t i, size_t j, T&& x)
-    {
-      new (at(i, j)) ExcelObj(std::forward<T>(x));
-      return 0;
-    }
-    int emplace_at(size_t i, size_t j, wchar_t*& buf, size_t& len)
-    {
-      buf = _stringData + 1;
-      // TODO: check overflow?
-      _stringData[0] = wchar_t(len);
-      _stringData[len] = L'\0';
-      new (at(i, j)) ExcelObj(PString<wchar_t>(_stringData));
-      _stringData += len + 2;
-
-      assert(_stringData <= _endStringData);
-      return 0;
-    }
-
-    ExcelObj* at(size_t i, size_t j)
-    {
-      assert(i < _nRows && j < _nColumns);
-      return _arrayData + (i * _nColumns + j);
-    }
-
-    ExcelObj toExcelObj()
-    {
-      return ExcelObj(_arrayData, int(_nRows), int(_nColumns));
-    }
-
-  private:
-    ExcelObj * _arrayData;
-    wchar_t* _stringData;
-    const wchar_t* _endStringData;
-    size_t _nRows, _nColumns;
-  };
+  
 }

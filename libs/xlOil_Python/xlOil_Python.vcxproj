@@ -229,12 +229,14 @@
   <ItemGroup>
     <ClCompile Include="BasicTypes.cpp" />
     <ClCompile Include="Cache.cpp" />
+    <ClCompile Include="CustomConverter.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="InjectedModule.cpp" />
     <ClCompile Include="Numpy.cpp" />
+    <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -260,6 +262,7 @@
     <ClInclude Include="BasicTypes.h" />
     <ClInclude Include="InjectedModule.h" />
     <ClInclude Include="Numpy.h" />
+    <ClInclude Include="PyExcelArray.h" />
     <ClInclude Include="PyHelpers.h" />
     <ClInclude Include="Tuple.h" />
   </ItemGroup>

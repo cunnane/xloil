@@ -16,7 +16,7 @@ namespace xloil
     bool isArrayDataType(PyTypeObject* p);
     bool isNumpyArray(PyObject* p);
 
-    PyObject* excelArrayToNumpyArray2d(const ExcelObj& obj);
+    PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims = 2, int dtype = -1);
     ExcelObj numpyArrayToExcel(const PyObject* p);
   }
 }

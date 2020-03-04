@@ -69,7 +69,8 @@ import sys
 
 try:
     import xloil_core
-    from xloil_core import CellError, FuncOpts, Range, in_wizard, log
+    from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
+    from xloil_core import CustomConverter as _CustomConverter
 except Exception:
     def in_wizard():
         """ 
@@ -147,15 +148,17 @@ except Exception:
         NA = None
         GettingData = None
 
-
+    class _CustomConverter:
+        def __init__(self, callable):
+            pass
 
 
 """
 Tag used to mark functions to register with Excel. It is added 
 by the xloil.func decorator to the target func's __dict__
 """
-_META_TAG = "_xlOilFunc_"
-
+_META_TAG = "_xloil_func_"
+_CONVERTER_TAG = "_xloil_converter_"
 
 ExcelValue = typing.Union[int, str, float, np.ndarray, dict, list]
 AllowRange = typing.Union[ExcelValue, Range]
@@ -211,14 +214,49 @@ def _function_argspec(func):
 def _get_typeconverter(type_name, from_excel=True):
     # Attempt to find converter with standardised name
     try:
-        to_from = 'from' if from_excel else 'to'
-        name = f"{type_name}_{to_from}_Excel"
+        to_from = 'To' if from_excel else 'From'
+        name = f"{to_from}_{type_name}"
         if not hasattr(xloil_core, name):
-            name = f"cached_{to_from}_Excel"
+            name = f"{to_from}_cache"
         return getattr(xloil_core, name)()
         
     except:
-        raise Exception(f"No converter for {type_name} {to_from} Excel. Expected {name}")
+        raise Exception(f"No converter {to_from.lower()} {type_name}. Expected {name}")
+
+def converter(typ=typing.Callable, range=False):
+    def decorate(obj):
+        if inspect.isclass(obj):
+            class Converter(typ):
+                def __call__(self, *args, **kwargs):
+                    instance = obj(*args, **kwargs)
+                    class Inner(typ or instance.target):
+                        _xloil_converter_ = _CustomConverter(instance)
+                        allow_range = range
+                    return Inner
+            return Converter()
+        else:
+            class Converter(typ):
+                _xloil_converter_ = _CustomConverter(obj)
+                allow_range = range
+            return Converter
+    return decorate
+
+"""
+#@converter(int)
+def dfconv(x):
+    pass
+
+
+#@converter(float)
+class DFConv:
+   target = float 
+   def __init__(self):
+       pass
+   def __call__(self):
+       pass
+"""
+
+
 
 
 class _FuncMeta:
@@ -233,6 +271,11 @@ class _FuncMeta:
         self.volatile = False
         
     def create_holder(self):
+        """
+        Creates a core object which holds function info, argument converters,
+        and a reference to the function object
+        """
+        
         info = xloil_core.FuncInfo()
         info.args = [xloil_core.FuncArg(x.name, x.help) for x in self.args]
         info.name = self.name
@@ -253,11 +296,12 @@ class _FuncMeta:
                 continue
             # Default option is the generic converter which tries to figure
             # out what to return based on the Excel type
-            converter = xloil_core.object_from_Excel()
+            converter = xloil_core.To_object()
             if x.typeof is not None:
                 # If it has this attr, we've already figured out the converter type
-                if hasattr(x.typeof, "_xloil_type_info"):
-                    converter = _get_typeconverter(x.typeof._xloil_type_info, from_excel=True)
+                if hasattr(x.typeof, _CONVERTER_TAG):
+                    converter = getattr(x.typeof, _CONVERTER_TAG)
+                    info.args[i].allow_range = getattr(x.typeof, 'allow_range', False)
                 elif x.typeof is AllowRange:
                     info.args[i].allow_range = True
                 elif x.typeof is ExcelValue:
@@ -479,32 +523,8 @@ def add_cache():
 def fetch_cache():
     pass
 
-class _xloilArray(np.ndarray):
-    """
-        Should never be invoked directly. It exists to ensure Array[...] can return a type.
-        This allows intellisense to work when it is used as an annotations and is 
-        consistent with the 'typing' module
-    """
-    def __init__(self, *args, **kwargs):
-        # TODO: following doesn't work for some reason involving numpy & C-extensions
-        #super().__init__(*args, **kwargs)
-        self._pytype = kwargs['dtype']
-        self._set_array(self._pytype)
-    
-    def __call__(self, dims=None, trim=True):
-        return self._set_array(self._pytype, dims, trim)
 
-    def __str__(self):
-        return f"Array[{self.dtype}]"
-
-    def _set_array(self, elem_type=object, dims=None, trim=True):
-        self.shape = (1,) if dims == 1 else (1,1)
-        self.dtype = elem_type
-        self._xloil_type_info = f"Array_{elem_type.__name__}_{dims or 2}d"
-        return self
-
-
-class ArrayType:
+class _ArrayType:
     """
     This object can be used in annotations or @xlo.arg decorators
     to tell xlOil to attempt to convert an argument to a numpy array.
@@ -523,15 +543,15 @@ class ArrayType:
     The following shows the available options
 
         @xlo.func
-        def array1(x: xlo.Array[int]):
+        def array1(x: xlo.Array(int)):
             pass
 
         @xlo.func
-        def array2(y: xlo.Array[float](dims=1)):
+        def array2(y: xlo.Array(float, dims=1)):
             pass
 
         @xlo.func
-        def array3(z: xlo.Array[str](trim=False)):
+        def array3(z: xlo.Array(str, trim=False)):
             pass
     
     Methods
@@ -559,16 +579,46 @@ class ArrayType:
         this paramter.
 
     """
-    def __getitem__(self, elem_type=object):
-        """
-        Specifies a data type for the array. The syntax is::
-            xlo.Array[float]
-        """
-        return _xloilArray(dtype=elem_type, shape=(1,1))
 
+    def __call__(self, element=object, dims=2, trim=True):
+        name = f"To_Array_{element.__name__}_{dims or 2}d" 
+        type_conv = getattr(xloil_core, name)(trim)
 
+        class Arr(np.ndarray):
+            _xloil_converter_ = type_conv
+
+        return Arr;
+        
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
-Array = ArrayType() 
+Array = _ArrayType() 
+
+
+try:
+    import pandas as pd
+
+    @converter(pd.DataFrame)
+    class PDFrame:
+        def __init__(self, element=None, headings=True, index=None):
+            self._element_type = element
+            self._headings = headings
+            self._index = index
+
+        def __call__(self, x):
+            if isinstance(x, xlo.ExcelArray):
+                df = None
+                if self._headings:
+                    headings = x[0,:].to_numpy(dims=1)
+                    data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
+                    df = pd.DataFrame(data, headings)
+                else:
+                    df = pd.DataFrame(x.to_numpy())
+                if self._index is not None:
+                    df.set_index(self._index, inplace=True)
+                return df
+        
+            raise Exception(f"Unsupported type: {type(x)!r}")
+finally:
+    pass
 
 
 def _import_from_path(path, module_name=None):

@@ -1,16 +1,18 @@
 #pragma once
 
 #include "ExcelObj.h"
+#include "ExcelArray.h"
 #include "Numpy.h"
 #include "xloil/Log.h"
 #include "xloil/Utils.h"
+#include <xlOil/ExcelRange.h>
 #include "Cache.h"
 #include "Date.h"
 #include "Main.h"
 #include "Tuple.h"
 #include "InjectedModule.h"
 #include "PyHelpers.h"
-#include "TypeConverters.h"
+
 #include <string>
 
 
@@ -20,27 +22,17 @@ namespace xloil
 {
   namespace Python
   {
-    using IPyFromExcel = IConvertFromExcel<PyObject*> ;
-    using IPyToExcel = IConvertToExcel<PyObject> ;
-
-    template<class TParent>
-    class PyFromCache : public ConverterImpl<PyObject*>
+    template<class TSuper=nullptr_t>
+    class PyFromCache : public CacheConverter<PyObject*, NotNull<TSuper, PyFromCache<>>>
     {
     public:
+      using base_type = CacheConverter;
       PyObject* fromString(const wchar_t* buf, size_t len) const
       {
         pybind11::object cached;
-        if (theCore->maybeCacheReference(buf, len))
-        {
-          std::shared_ptr<const ExcelObj> obj;
-          // TODO: Wouldn't it be easier to just check for cache strings in CheckedFromExcel?
-          // I know this template meta-programming is amazing but....
-          if (theCore->fetchCache(buf, len, obj))
-            return FromExcel<TParent>(static_cast<const TParent&>(*this))(*obj);
-        }
-        else if (fetchCache(buf, len, cached))
+        if (fetchCache(buf, len, cached))
           return cached.release().ptr();
-        return nullptr;
+        return base_type::fromString(buf, len);
       }
     };
 
@@ -56,7 +48,7 @@ namespace xloil
       PyObject * fromBool(bool x) const { if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE; }
     };
 
-    class PyFromString : public ConverterImpl<PyObject*>
+    class PyFromString : public CacheConverter<PyObject*, PyFromString>
     {
     public:
       PyObject * fromString(const wchar_t* buf, size_t len) const
@@ -82,15 +74,15 @@ namespace xloil
       }
     };
 
-    class PyFromAny : public PyFromCache<PyFromAny>
+    template<class TSuper = nullptr_t>
+    class PyFromAny : public PyFromCache<NotNull<TSuper, PyFromAny<>>>
     {
     public:
       PyObject* fromInt(int x) const { return PyFromInt().fromInt(x); }
       PyObject* fromBool(bool x) const { return PyFromBool().fromBool(x); }
       PyObject* fromDouble(double x) const { return PyFromDouble().fromDouble(x); }
-      PyObject* fromArray(const ExcelObj& obj) const { return excelArrayToNumpyArray2d(obj); }
+      PyObject* fromArray(const ExcelObj& obj) const { return excelArrayToNumpyArray(ExcelArray(obj)); }
       
-      PyObject* fromError(CellError err) const;
       PyObject* fromEmpty(const PyObject*) const { Py_RETURN_NONE; }
 
       PyObject* fromString(const wchar_t* buf, size_t len) const 
@@ -101,13 +93,21 @@ namespace xloil
         return PyFromString().fromString(buf, len); 
       }
 
-      PyObject* fromRef(const ExcelObj& obj) const;
+      PyObject * fromError(CellError err) const
+      {
+        auto pyObj = pybind11::cast(err);
+        return pyObj.release().ptr();
+      }
+      PyObject * fromRef(const ExcelObj & obj) const
+      {
+        return pybind11::cast(ExcelRange(obj)).release().ptr();
+      }
     };
     
     /// <summary>
     /// TODO: Not currently used but seems like a nice idea some time
     /// </summary>
-    class PyCacheObject : public ConverterImpl<PyObject*>
+    class PyCacheObject : public CacheConverter<PyObject*, PyCacheObject>
     {
       PyObject* _typeCheck = nullptr;
     public:
@@ -128,35 +128,52 @@ namespace xloil
     };
 
     template <class TImpl>
-    class CheckedFromExcel
+    class FromExcel
     {
-      FromExcel<TImpl> _impl;
-    public:
-      typedef PyObject* return_type;
+      TImpl _impl;
 
+    public:
       template <class...Args>
-      CheckedFromExcel(Args&&...args) : _impl(std::forward<Args>(args)...) 
+      FromExcel(Args&&...args) : _impl(std::forward<Args>(args)...) 
       {}
-      return_type operator()(const ExcelObj& xl, const PyObject* defaultVal = nullptr) const
+
+      PyObject* operator()(const ExcelObj& xl, const PyObject* defaultVal = nullptr) const
       {
-        PyObject* ret = _impl(xl, defaultVal);
+        auto ret = _impl(xl, defaultVal);
         if (!ret)
-        {
-          XLO_THROW(L"Failed converting "s + xl.toString() + L": "s
-            + pyErrIfOccurred());
-        }
+          XLO_THROW(L"Failed converting {0}: {1}", xl.toString(), pyErrIfOccurred());
+        
         return ret;
       }
+      PyObject* fromArray(const ExcelArray& arr) const
+      {
+        auto ret = _impl.fromArrayObj(arr);
+        if (!ret)
+          XLO_THROW(L"Failed converting to array: {0}", pyErrIfOccurred());
+        
+        return ret;
+      }
+      TImpl& impl() const { return _impl._impl; }
     };
 
     template <class TImpl>
-    class PyFromExcel : public ConvertFromExcel<CheckedFromExcel<TImpl>>
+    class PyFromExcel : public IPyFromExcel
     {
+      FromExcel<TImpl> _impl;
     public:
+
       template <class...Args>
       PyFromExcel(Args&&...args) 
-        : ConvertFromExcel(std::forward<Args>(args)...) 
+        : _impl(std::forward<Args>(args)...)
       {}
+      virtual PyObject* fromArray(const ExcelArray& arr) const override
+      {
+        return _impl.fromArray(arr);
+      }
+      virtual PyObject* operator()(const ExcelObj& xl, const PyObject* defaultVal = nullptr) const override
+      {
+        return _impl(xl, defaultVal);
+      }
     };
 
     inline ExcelObj fromPyLong(const PyObject* obj)
@@ -184,8 +201,6 @@ namespace xloil
         return retVal;
       }
     };
-
-    extern PyTypeObject* pyExcelErrorType;
 
     struct FromPyObj
     {

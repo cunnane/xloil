@@ -95,23 +95,23 @@ namespace xloil
   {
     auto s = _SheetName->asPascalStr();
     // 29 chars is the max for RaCb:RxRy references - any value in more precise guess?
-    return s.size() + 1 + 29; 
+    return s.length() + 1 + 29; 
   }
   size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
   {
     auto wsName = _SheetName->asPascalStr();
-    assert(bufLen > wsName.size());
-    wmemcpy(buf, wsName.pstr(), wsName.size());
-    buf += wsName.size();
+    assert(bufLen > wsName.length());
+    wmemcpy(buf, wsName.pstr(), wsName.length());
+    buf += wsName.length();
 
     // Separator character
     *(buf++) = L'!';
 
     // TODO: handle other caller cases?
     assert(_Address->type() == ExcelType::SRef);
-    auto addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.size() - 1);
+    auto addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
 
-    return addressLen + wsName.size() + 1;
+    return addressLen + wsName.length() + 1;
   }
 
   constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
@@ -197,18 +197,18 @@ namespace xloil
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
     auto wsName = sheetNm.asPascalStr();
-    assert(bufSize > wsName.size());
-    wmemcpy(buf, wsName.pstr(), wsName.size());
-    buf += wsName.size();
+    assert(bufSize > wsName.length());
+    wmemcpy(buf, wsName.pstr(), wsName.length());
+    buf += wsName.length();
 
     // Separator character
     *(buf++) = L'!';
       
     auto addressLen = A1Style 
-      ? xlrefToStringA1(ref, buf, bufSize - wsName.size() - 1)
-      : xlrefToStringRC(ref, buf, bufSize - wsName.size() - 1);
+      ? xlrefToStringA1(ref, buf, bufSize - wsName.length() - 1)
+      : xlrefToStringRC(ref, buf, bufSize - wsName.length() - 1);
 
-    return addressLen + wsName.size() + 1;
+    return addressLen + wsName.length() + 1;
   }
   XLOIL_EXPORT bool inFunctionWizard()
   {

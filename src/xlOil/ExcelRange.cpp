@@ -31,9 +31,9 @@ namespace xloil
   }
 
   XLOIL_EXPORT ExcelRange::ExcelRange(
-    msxll::IDSHEET sheetId, int i, int j, int nRows, int nCols)
+    msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol)
   {
-    create(sheetId, i, j, i + nRows - 1, j + nCols - 1);
+    create(sheetId, fromRow, fromCol, toRow, toCol);
   }
 
   XLOIL_EXPORT std::wstring ExcelRange::address(bool local) const

@@ -151,19 +151,19 @@ namespace xloil
     /// <param name="str">Pointer to string start</param>
     /// <param name="length">Number of chars to read</param>
     /// <returns></returns>
-    inline bool 
+    static inline bool 
       maybeCacheReference(const wchar_t* str, size_t length)
     {
       return checkObjectCacheReference(str, length);
     }
 
-    bool
+    static bool
       fetchCache(const wchar_t* cacheString, size_t length, std::shared_ptr<const ExcelObj>& obj);
 
-    ExcelObj 
+    static ExcelObj
       insertCache(std::shared_ptr<const ExcelObj>&& obj);
 
-    inline ExcelObj 
+    static inline ExcelObj
       insertCache(ExcelObj&& obj)
     {
       return insertCache(std::make_shared<const ExcelObj>(obj));

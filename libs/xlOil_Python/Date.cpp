@@ -1,4 +1,3 @@
-
 #include "xloil/Date.h"
 #include "BasicTypes.h"
 #include "InjectedModule.h"
@@ -40,9 +39,11 @@ namespace xloil
       }
     }
 
-    class PyFromDate : public ConverterImpl<PyObject*>
+    template<class TSuper=nullptr_t>
+    class PyFromDate : public PyFromCache<NotNull<TSuper, PyFromDate<>>>
     {
     public:
+      // TODO: string->date conversion, slow but useful
       PyObject* fromInt(int x) const 
       {
         int day, month, year;
@@ -54,7 +55,7 @@ namespace xloil
         return fromInt(int(x));
       }
     };
-    class PyFromDateTime : public PyFromDate
+    class PyFromDateTime : public PyFromDate<PyFromDateTime>
     {
     public:
       PyObject* fromDouble(double x) const
@@ -84,7 +85,7 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         bindFrom<PyFromExcel<PyFromDateTime>>(mod, "datetime").def(py::init<>());
-        bindFrom<PyFromExcel<PyFromDate>>(mod, "date").def(py::init<>());
+        bindFrom<PyFromExcel<PyFromDate<>>>(mod, "date").def(py::init<>());
         bindTo<XlFromDate>(mod, "date").def(py::init<>());
       });
     }

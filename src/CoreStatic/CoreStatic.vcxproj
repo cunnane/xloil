@@ -22,6 +22,7 @@
     <ClCompile Include="ExcelObj.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ArrayBuilder.h" />
     <ClInclude Include="ExcelArray.h" />
     <ClInclude Include="ExcelObj.h" />
     <ClInclude Include="StandardConverters.h" />
