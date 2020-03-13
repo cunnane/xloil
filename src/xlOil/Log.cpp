@@ -53,7 +53,7 @@ namespace xloil
   {
     auto logFile = logFilePath 
       ? *logFilePath 
-      : wstring_to_utf8(fs::path(theXllPath()).replace_extension(".log").c_str());
+      : utf16ToUtf8(fs::path(theXllPath()).replace_extension(".log").c_str());
 
     auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
     auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(logFile, false);

@@ -40,7 +40,8 @@ namespace xloil
         logFilePath = toml::find_or<string>(root, "LogFile", "");
         logLevel = toml::find_or<string>(root, "LogLevel", "warn");
         pluginSearchPattern = toml::find_or<string>(root, "PluginSearchPattern", "");
-        plugins = utf8_to_wstring_v(toml::find_or<vector<string>>(root, "Plugins", vector<string>()));
+        auto pluginsUtf8 = toml::find_or<vector<string>>(root, "Plugins", vector<string>());
+        std::transform(pluginsUtf8.begin(), pluginsUtf8.end(), std::back_inserter(plugins), utf8ToUtf16);
       }
       catch (const std::exception& e)
       {

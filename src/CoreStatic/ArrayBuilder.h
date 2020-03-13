@@ -54,22 +54,18 @@ namespace xloil
       new (at(i, j)) ExcelObj(std::forward<T>(x));
       return 0;
     }
-    int emplace_at(size_t i, size_t j, wchar_t*& buf, size_t& len)
+    PString<> string(size_t& len)
     {
-      buf = _stringData + 1;
-      if (len == 0)
+      wchar_t* ptr = nullptr;
+      if (len > 0)
       {
-        buf = Const::EmptyStr().val.str;
-        return 0;
+        assert(_stringData <= _endStringData);
+        _stringData[0] = wchar_t(len);
+        _stringData[len] = L'\0';
+        ptr = _stringData;
+        _stringData += len + 2;
       }
-
-      // TODO: check overflow?
-      _stringData[0] = wchar_t(len);
-      _stringData[len] = L'\0';
-      new (at(i, j)) ExcelObj(PString<wchar_t>(_stringData));
-      _stringData += len + 2;
-      assert(_stringData <= _endStringData);
-      return 0;
+      return PString<wchar_t>(ptr);
     }
 
     ExcelObj* at(size_t i, size_t j)

@@ -40,17 +40,17 @@ namespace xloil
   {
     auto& ref = this->val.mref.lpmref->reftbl[0];
     if (local)
-      return captureWinApiString([ref](auto buf, auto sz)
-    {
-      return xlrefToStringA1(ref, buf, sz);
-    },
+      return captureStringBuffer([ref](auto buf, auto sz)
+        {
+          return xlrefToStringA1(ref, buf, sz);
+        },
         CELL_ADDRESS_A1_MAX);
     else
-      return captureWinApiString([this, ref](auto buf, auto sz)
-    {
-      return xlrefSheetAddressA1(this->sheetId(), ref, buf, sz, true);
-    });
-  }
+      return captureStringBuffer([this, ref](auto buf, auto sz)
+      {
+        return xlrefSheetAddressA1(this->sheetId(), ref, buf, sz, true);
+      });
+    }
 
   void ExcelRange::create(
     msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol)

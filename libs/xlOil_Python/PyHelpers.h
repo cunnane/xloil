@@ -111,7 +111,7 @@ namespace xloil
     }
     inline std::wstring pyErrIfOccurred()
     {
-      return PyErr_Occurred() ? utf8_to_wstring(pybind11::detail::error_string().c_str()) : std::wstring();
+      return PyErr_Occurred() ? utf8ToUtf16(pybind11::detail::error_string().c_str()) : std::wstring();
     }
   }
 }

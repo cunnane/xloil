@@ -41,7 +41,7 @@ namespace xloil
     appendVector(v, tmp, tmp.back().cptr());
   }
   template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const nullptr_t& first)
+  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const nullptr_t& /*first*/)
   {
     // TODO: Missing type singleton?
     tmp.emplace_back(nullptr);

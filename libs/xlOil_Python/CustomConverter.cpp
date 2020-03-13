@@ -37,7 +37,7 @@ namespace xloil
       CustomConverter(py::object&& callable)
         : _callable(callable)
       {}
-      virtual return_type operator()(const ExcelObj& xl, const_return_ptr defaultVal) const
+      virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const
       {
         auto arg = PySteal<>(PyFromExcel<UserImpl>()(xl, defaultVal));
         return _callable(arg).release().ptr();

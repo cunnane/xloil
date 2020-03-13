@@ -7,6 +7,7 @@
 #include "ArrayHelpers.h"
 #include "ArrayBuilder.h"
 #include <xloil/Date.h>
+#include <xloil/Utils.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
@@ -86,42 +87,107 @@ namespace xloil
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
     };
+   
 
-    template <int>
-    struct TypeTraits {};
-    template<> struct TypeTraits<NPY_BOOL> { using from_excel = ToBool; using storage_type = bool; };
-    template<> struct TypeTraits<NPY_SHORT> { using from_excel = ToInt; using storage_type = short; };
-    template<> struct TypeTraits<NPY_USHORT> { using from_excel = ToInt; using storage_type = unsigned short; };
-    template<> struct TypeTraits<NPY_INT> { using from_excel = ToInt; using storage_type = int; };
-    template<> struct TypeTraits<NPY_UINT> { using from_excel = ToInt; using storage_type = unsigned; };
-    template<> struct TypeTraits<NPY_LONG> { using from_excel = ToInt; using storage_type = long; };
-    template<> struct TypeTraits<NPY_ULONG> { using from_excel = ToInt; using storage_type = unsigned long; };
-    template<> struct TypeTraits<NPY_FLOAT> { using from_excel = ToDoubleNPYNan; using storage_type = float; };
-    template<> struct TypeTraits<NPY_DOUBLE> { using from_excel = ToDoubleNPYNan; using storage_type = double; };
+    struct TruncateUTF16ToChar
+    {
+      using to_char = char;
+      size_t operator()(to_char* target, size_t size, const wchar_t* begin, const wchar_t* end) const
+      {
+        auto* p = target;
+        auto* pEnd = target + size;
+        for (; begin < end && p != pEnd; ++begin, ++p)
+          *p = (char)*begin;
+        return p - target;
+      }
+    };
+
+    template <class TConv>
+    struct ToFixedWidthString
+    {
+      using TChar = typename TConv::to_char;
+      TConv _conv;
+      void operator() (TChar* dest, size_t destSize, const ExcelObj& obj) const
+      {
+        size_t nWritten = 0;
+        auto destLength = destSize / sizeof(TChar);
+        if (obj.type() == ExcelType::Str)
+        {
+          auto pstr = obj.asPascalStr();
+          nWritten = _conv(dest, destLength, pstr.begin(), pstr.end());
+        }
+        else
+        {
+          auto str = obj.toString();
+          nWritten = _conv(dest, destLength, (wchar_t*)str.data(), (wchar_t*)str.data() + str.length());
+        }
+        memset((char*)(dest + nWritten), 0, (destLength - nWritten) * sizeof(TChar));
+      }
+    };
+
+
+    template<class T, class R>
+    struct NPToT
+    {
+      void operator()(R* d, size_t, const ExcelObj& x) const
+      {
+        *d = T()(x);
+      }
+    };
+
+    template <class T> struct TypeTraitsBase { };
+
+    template <int> struct TypeTraits {};
+    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<ToBool, storage>;  };
+    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<ToInt, storage>;  };
+    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<ToInt, storage>;  };
+    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<ToInt, storage>; };
+    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<ToInt, storage>; };
+    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<ToInt, storage>; };
+    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<ToInt, storage>; };
+    template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_DOUBLE> { using storage = double; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
     { 
-      using from_excel = NumpyDateFromDate;
-      using storage_type = npy_datetime; 
+      using storage = npy_datetime;
+      using from_excel = NPToT<NumpyDateFromDate, storage>;
     };
     template<> struct TypeTraits<NPY_STRING> 
     { 
-      using from_excel = PyFromExcel<PyFromString>; 
-      using to_excel = FromPyString;
-      using storage_type = PyObject*; 
+      using from_excel = ToFixedWidthString<TruncateUTF16ToChar>;
+      using storage = char;
     };
     template<> struct TypeTraits<NPY_UNICODE> 
     { 
-      using from_excel = PyFromExcel<PyFromString>;
-      using to_excel = FromPyString;
-      using storage_type = PyObject*; 
+      using from_excel = ToFixedWidthString<ConvertUTF16ToUTF32>;
+      using storage = char32_t;
     };
     template<> struct TypeTraits<NPY_OBJECT> 
     { 
-      using from_excel = PyFromExcel<PyFromAny<>>;
-      using to_excel = FromPyObj;
-      using storage_type = PyObject*; 
+      using storage = PyObject * ;
+      using from_excel = NPToT<PyFromExcel<PyFromAny<>>, storage>;
     };
 
+    template<int TNpType>
+    size_t getItemSize(const ExcelArray& arr)
+    {
+      return sizeof(TypeTraits<TNpType>::storage);
+    }
+
+    template<>
+    size_t getItemSize<NPY_STRING>(const ExcelArray& arr)
+    {
+      size_t strLength = 0;
+      for (auto i = 0; i < arr.size(); ++i)
+        strLength = std::max(strLength, arr.at(i).maxStringLength());
+      return strLength * sizeof(TypeTraits<NPY_STRING>::storage);
+    }
+
+    template<>
+    size_t getItemSize<NPY_UNICODE>(const ExcelArray& arr)
+    {
+      return getItemSize<NPY_STRING>(arr) * sizeof(TypeTraits<NPY_UNICODE>::storage);
+    }
 
     template <template <int> class TThing, class... Args>
     auto switchDataType(int dtype, Args&&... args)
@@ -146,75 +212,12 @@ namespace xloil
       }
     }
 
-    void excelObjToFixedWidthString(char* dest, size_t destSize, const ExcelObj& obj)
-    {
-      const char* from = 0;
-      memset(dest, 0, destSize);
-      if (obj.type() == ExcelType::Str)
-      {
-        auto pstr = obj.asPascalStr();
-        auto from = pstr.pstr();
-        auto to = from + pstr.length();
-        for (; from != to; ++from, dest += 4)
-          *(wchar_t*)dest = *from;
-      }
-      else
-      {
-        auto str = obj.toString();
-        auto from = str.data();
-        auto to = from + str.length();
-        for (; from != to; ++from, dest += 4)
-          *(wchar_t*)dest = *from;
-      }
-    }
-
-   /* std::wstring_convert<
-      std::codecvt_utf16<char32_t, 0x10ffff, std::little_endian>,
-      char32_t> theUtf16ToUnicode;
-
- */
     template <int TNpType>
     class PyFromArray1d : public PyFromCache<PyFromArray1d<TNpType>>
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
-      using TDataType = typename TypeTraits<TNpType>::storage_type;
-
-    public:
-      PyFromArray1d(bool trim) : _trim(trim) {}
-
-      PyObject* fromArray(const ExcelObj& obj) const
-      {
-        ExcelArray arr(obj, _trim);
-        return fromArrayObj(arr);
-      }
-      PyObject* fromArrayObj(const ExcelArray& arr) const
-      {
-        if (arr.size() == 0)
-          Py_RETURN_NONE;
-
-        if (arr.dims() != 1)
-          XLO_THROW("Expecting a 1-dim array");
-       
-        Py_intptr_t dims[1];
-        dims[0] = arr.size();
-        const int nDims = 1;
-        auto pyObj = PySteal<py::object>(PyArray_SimpleNewFromDescr(nDims, dims, PyArray_DescrFromType(TNpType)));
-        auto pyArr = (PyArrayObject*)pyObj.ptr();
-        for (auto i = 0; i < arr.size(); ++i)
-        {
-          TDataType val = _conv(arr.at(i));
-          auto ptr = (TDataType*)PyArray_GETPTR1(pyArr, i);
-          *ptr = val;
-        }
-        return pyObj.release().ptr();
-      }
-    };
-
-    template <>
-    class PyFromArray1d<NPY_UNICODE> : public PyFromCache<PyFromArray1d<NPY_UNICODE>>
-    {
-      bool _trim;
+      using data_type = typename TypeTraits<TNpType>::storage;
     public:
       PyFromArray1d(bool trim) : _trim(trim) {}
 
@@ -235,22 +238,17 @@ namespace xloil
         dims[0] = arr.size();
         const int nDims = 1;
 
-        size_t strLength = 0;
-        for (auto i = 0; i < arr.size(); ++i)
-          strLength = std::max(strLength, arr.at(i).maxStringLength());
+        const auto itemsize = getItemSize<TNpType>(arr);
+        const auto dataSize = arr.size() * itemsize;
+        auto* data = (char*) PyDataMem_NEW(dataSize);
 
-        /* NumPy Unicode is always 4-byte */
-        auto itemsize = strLength * 4;
-        auto dataSize = arr.size() * itemsize;
-        void* data = PyDataMem_NEW(dataSize);
-
-        auto d = (char*)data;
+        auto d = data;
         for (auto i = 0; i < arr.size(); ++i, d += itemsize)
-          excelObjToFixedWidthString(d, itemsize, arr.at(i));
+          _conv((data_type*)d, itemsize, arr.at(i));
         
         return PyArray_New(
           &PyArray_Type,
-           nDims, dims, NPY_UNICODE, NULL, data, itemsize, NPY_ARRAY_OWNDATA, NULL);
+           nDims, dims, TNpType, NULL, data, (int)itemsize, NPY_ARRAY_OWNDATA, NULL);
       }
     };
 
@@ -259,7 +257,7 @@ namespace xloil
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
-      using TDataType = typename TypeTraits<TNpType>::storage_type;
+      using TDataType = typename TypeTraits<TNpType>::storage;
 
     public:
       PyFromArray2d(bool trim) : _trim(trim) {}
@@ -280,118 +278,99 @@ namespace xloil
         dims[0] = arr.nRows();
         dims[1] = arr.nCols();
 
+        const auto itemsize = getItemSize<TNpType>(arr);
+        const auto dataSize = arr.size() * itemsize;
+        auto data = (char*) PyDataMem_NEW(dataSize);
 
-        auto itemsize = sizeof(TDataType);
-        auto dataSize = arr.size() * itemsize;
-        void* data = PyDataMem_NEW(dataSize);
-
-        auto d = (TDataType*)data;
-        for (auto i = 0; i < arr.nRows(); ++i)
-          for (auto j = 0; j < arr.nCols(); ++j)
-            *d++ = _conv(arr.at(i, j));
-
-        return PyArray_New(
-          &PyArray_Type,
-          nDims, dims, TNpType, NULL, data, itemsize, NPY_ARRAY_OWNDATA, NULL);
-
-        //auto pyObj = PySteal<py::object>(PyArray_SimpleNewFromDescr(nDims, dims, PyArray_DescrFromType(TNpType)));
-        //auto pyArr = (PyArrayObject*)pyObj.ptr();
-        //for (auto i = 0; i < arr.nRows(); ++i)
-        //  for (auto j = 0; j < arr.nCols(); ++j)
-        //  {
-        //    TDataType val = _conv(arr.at(i, j));
-        //    auto ptr = (TDataType*)PyArray_GETPTR2(pyArr, i, j);
-        //    *ptr = val;
-        //  }
-        //return pyObj.release().ptr();
-      }
-    };
-
-    template <>
-    class PyFromArray2d<NPY_UNICODE> : public PyFromCache<PyFromArray2d<NPY_UNICODE>>
-    {
-      bool _trim;
-    public:
-      PyFromArray2d(bool trim) : _trim(trim) {}
-
-      PyObject* fromArray(const ExcelObj& obj) const
-      {
-        ExcelArray arr(obj, _trim);
-        return fromArrayObj(arr);
-      }
-      PyObject* fromArrayObj(const ExcelArray& arr) const
-      {
-        if (arr.size() == 0)
-          Py_RETURN_NONE;
-
-        if (arr.dims() != 2)
-          XLO_THROW("Expecting a 2-dim array");
-
-        Py_intptr_t dims[2];
-        const int nDims = 2;
-        dims[0] = arr.nRows();
-        dims[1] = arr.nCols();
-
-        size_t strLength = 0;
-        for (auto i = 0; i < arr.nRows(); ++i)
-          for (auto j = 0; j < arr.nCols(); ++j)
-            strLength = std::max(strLength, arr.at(i, j).maxStringLength());
-
-        /* NumPy Unicode is always 4-byte */
-        auto itemsize = strLength * 4;
-        auto dataSize = arr.size() * itemsize;
-        void* data = PyDataMem_NEW(dataSize);
-
-        auto d = (char*)data;
-          
+        auto d = data;
         for (auto i = 0; i < arr.nRows(); ++i)
           for (auto j = 0; j < arr.nCols(); ++j, d += itemsize)
-            excelObjToFixedWidthString(d, itemsize, arr.at(i, j));
-          
+            _conv((TDataType*)d, itemsize, arr.at(i, j));
+
         return PyArray_New(
           &PyArray_Type,
-          nDims, dims, NPY_UNICODE, NULL, data, 4, NPY_ARRAY_OWNDATA, NULL);
+          nDims, dims, TNpType, NULL, data, (int)itemsize, NPY_ARRAY_OWNDATA, NULL);
       }
     };
 
-    template <int TNpType, bool IsObject = 
-      (TNpType==NPY_OBJECT || TNpType == NPY_STRING || TNpType == NPY_UNICODE)>
+    template <int TNpType, bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>
     struct FromArrayImpl
     {
-      using TDataType = typename TypeTraits<TNpType>::storage_type;
+      using TDataType = typename TypeTraits<TNpType>::storage;
 
-      static bool checkType(PyArrayObject* pArr)
+      FromArrayImpl(PyArrayObject* pArr)
       { 
-        return PyArray_ITEMSIZE(pArr) == sizeof(TDataType) && PyArray_TYPE(pArr) == TNpType;
+        PyArray_ITEMSIZE(pArr) == sizeof(TDataType) && PyArray_TYPE(pArr) == TNpType;
       }
-      static void addStringLength(void* arrayPtr, size_t& strLength)  {}
-      static void builderEmplace(ExcelArrayBuilder& b, size_t i, size_t j, void* arrayPtr)
+      static constexpr size_t stringLength = 0;
+      void builderEmplace(ExcelArrayBuilder& b, size_t i, size_t j, void* arrayPtr)
       {
         auto x = (TDataType*)arrayPtr;
         b.emplace_at(i, j, *x);
       }
     };
 
-    template<int TNpType>
+    template <int TNpType>
     struct FromArrayImpl<TNpType, true>
     {
-      using TConv = typename TypeTraits<TNpType>::to_excel;
+      using data_type = typename TypeTraits<TNpType>::storage;
+      static constexpr size_t charMultiple = TNpType == NPY_UNICODE ? 2 : 1;
+      FromArrayImpl(PyArrayObject* pArr)
+      {
+        const auto type = PyArray_TYPE(pArr);
+        if (type != NPY_UNICODE || type != NPY_STRING)
+          XLO_THROW("Incorrect array type");
+        stringLength = std::min<size_t>(USHRT_MAX, PyArray_ITEMSIZE(pArr) / sizeof(data_type) * charMultiple);
+      }
+      size_t stringLength;
 
-      static bool checkType(PyArrayObject* pArr)
+      void builderEmplace(ExcelArrayBuilder& builder, size_t i, size_t j, void* arrayPtr)
+      {
+        auto x = (char32_t*)arrayPtr;
+        PString<> pstr((char16_t)stringLength);
+        auto nChars = ConvertUTF32ToUTF16()(
+          (char16_t*)pstr.pstr(), pstr.length(), x, x + stringLength / charMultiple);
+        pstr.resize((char16_t)nChars);
+        builder.emplace_at(i, j, pstr);
+      }
+    };
+
+    template<>
+    struct FromArrayImpl<NPY_OBJECT, false>
+    {
+      size_t stringLength;
+
+      FromArrayImpl(PyArrayObject* pArr)
       {
         auto type = PyArray_TYPE(pArr);
-        return PyArray_ITEMSIZE(pArr) == sizeof(PyObject*) &&
-          (type == NPY_OBJECT || type == NPY_UNICODE);
+        if (PyArray_ITEMSIZE(pArr) != sizeof(PyObject*) || type != NPY_OBJECT)
+          XLO_THROW("Incorrect array type");
+
+        stringLength = 0;
+        auto p = *(PyObject**)pArr;
+        auto dims = PyArray_DIMS(pArr);
+        auto nDims = PyArray_NDIM(pArr);
+
+        size_t stringLength = 0;
+        switch (nDims)
+        {
+        case 1:
+          for (auto i = 0; i < dims[0]; ++i)
+            accumulateObjectStringLength(*(PyObject**)PyArray_GETPTR1(pArr, i), stringLength);
+          break;
+        case 2:
+          for (auto i = 0; i < dims[0]; ++i)
+            for (auto j = 0; j < dims[1]; ++j)
+              accumulateObjectStringLength(*(PyObject**)PyArray_GETPTR2(pArr, i, j), stringLength);
+        default:
+          XLO_THROW("FromArray: dimension must be 1 or 2");
+        }
       }
-      static void addStringLength(void* arrayPtr, size_t& strLength)
-      {
-        auto p = *(PyObject**)arrayPtr;
-        accumulateObjectStringLength(p, strLength);
-      }
+      
       static void builderEmplace(ExcelArrayBuilder& builder, size_t i, size_t j, void* arrayPtr)
       {
-        auto x = *(PyObject**)arrayPtr;
-        TConv()(x, [&builder, i, j](auto&&... args) { return builder.emplace_at(i, j, args...); });
+        auto* x = *(PyObject**)arrayPtr;
+        FromPyObj()(x, [&builder, i, j](auto&&... args) { return builder.emplace_at(i, j, args...); });
       }
     };
 
@@ -415,16 +394,11 @@ namespace xloil
         if (nDims != 1)
           XLO_THROW("Expected 1-d array");
         
-        if (!TImpl::checkType(pyArr))
-          XLO_THROW("Array data type does not match converter type");
+        TImpl converter(pyArr);
 
-        size_t stringLength = 0;
+        ExcelArrayBuilder builder(1, dims[0], converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
-          TImpl::addStringLength(PyArray_GETPTR1(pyArr, j), stringLength);
-
-        ExcelArrayBuilder builder(1, dims[0], stringLength);
-        for (auto j = 0; j < dims[0]; ++j)
-          TImpl::builderEmplace(builder, 0, j, PyArray_GETPTR1(pyArr, j));
+          converter.builderEmplace(builder, 0, j, PyArray_GETPTR1(pyArr, j));
         
         return _cache
           ? theCore->insertCache(builder.toExcelObj())
@@ -452,19 +426,12 @@ namespace xloil
         if (nDims != 2)
           XLO_THROW("Expected 2-d array");
 
-        if (!TImpl::checkType(pyArr))
-          XLO_THROW("Array data type does not match converter type");
-        
-        // TODO: can the compiler optimise this to nothing when length() returns zero always?
-        size_t stringLength = 0;
-        for (auto i = 0; i < dims[0]; ++i)
-          for (auto j = 0; j < dims[1]; ++j)
-            TImpl::addStringLength(PyArray_GETPTR2(pyArr, i, j), stringLength);
+        TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder(dims[0], dims[1], stringLength);
+        ExcelArrayBuilder builder(dims[0], dims[1], converter.stringLength);
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
-            TImpl::builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
+            converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
 
         return _cache
           ? theCore->insertCache(builder.toExcelObj())

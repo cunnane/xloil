@@ -137,10 +137,10 @@ namespace
           {
           case xltypeStr:
           {
-            wchar_t* buf;
             size_t len = pSrc->val.str[0];
-            arr.emplace_at(i, j, buf, len);
-            wmemcpy_s(buf, len, pSrc->val.str + 1, len);
+            auto pstr = arr.string(len);
+            wmemcpy_s(pstr.pstr(), len, pSrc->val.str + 1, len);
+            arr.emplace_at(i, j, pstr);
             break;
           }
           default:
@@ -243,8 +243,16 @@ namespace
 
   ExcelObj::ExcelObj(double d)
   {
-    xltype = xltypeNum;
-    val.num = d;
+    if (std::isnan(d))
+    {
+      val.err = xlerrNum;
+      xltype = xltypeErr;
+    }
+    else
+    {
+      xltype = xltypeNum;
+      val.num = d;
+    }
   }
 
   ExcelObj::ExcelObj(bool b)
@@ -269,9 +277,12 @@ namespace
     }
     xltype = int(t);
   }
-  ExcelObj::ExcelObj(const PString<wchar_t>& pstr)
+
+  ExcelObj::ExcelObj(PString<Char>&& pstr)
   {
-    val.str = const_cast<wchar_t*>(pstr.rawbuf());
+    val.str = const_cast<wchar_t*>(pstr.data());
+    if (!val.str)
+      val.str = Const::EmptyStr().val.str;
     xltype = xltypeStr;
   }
 
@@ -362,12 +373,6 @@ namespace
     return xltype & ~(xlbitXLFree | xlbitDLLFree);
   }
 
-  ExcelObj::ExcelObj(wchar_t*& outBuffer, size_t& nChars)
-  {
-    outBuffer = makeStringBuffer(nChars);
-    val.str = outBuffer - 1;
-    xltype = xltypeStr;
-  }
 
   ExcelObj::~ExcelObj()
   {
@@ -599,12 +604,12 @@ namespace
     return PString<>(val.str);
   }
 
-  size_t ExcelObj::writeString(wchar_t* buf, size_t bufSize) const
+  size_t ExcelObj::writeString(wchar_t* buf, wchar_t bufSize) const
   {
     auto s = this->asPascalStr();
     if (!s) // We are not a string
       return 0;
-    auto len = std::min(s.length(), bufSize - 1);
+    auto len = std::min<wchar_t>(s.length(), bufSize - 1);
     wmemcpy_s(buf, len, s.pstr(), len);
     buf[len] = L'\0';
     return len;
@@ -637,7 +642,7 @@ namespace
     auto p = start + nCols * nRows - 1;
 
     for (; nRows > 0; --nRows)
-      for (int c = nCols - 1; c >= 0; --c, --p)
+      for (int c = (int)nCols - 1; c >= 0; --c, --p)
         if (p->isNonEmpty())
           goto StartColSearch;
 

@@ -106,9 +106,6 @@ namespace xloil
     size_t PyExcelArray::size() const { return _base.size(); }
     size_t PyExcelArray::dims() const { return _base.dims(); }
 
-    //const ExcelObj* row_begin(int i) const { return _data + i * _baseCols + _colOffset; }
-    //const ExcelObj* row_end(int i) const { return row_begin(i) + nCols(); }
-
     ExcelType PyExcelArray::dataType() const { return _base.dataType(); }
   }
 }

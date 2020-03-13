@@ -150,7 +150,7 @@ namespace xloil
       constexpr short Ato0 = 'A' - '0';
       constexpr short Atoa = 'A' - 'a' + 10;
 
-      _itoa_s(colIndex - 26, buf, 4, 26);
+      _itoa_s((int)colIndex - 26, buf, 4, 26);
       buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
       buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
       buf[2] += buf[2] < 'A' ? Ato0 : Atoa;

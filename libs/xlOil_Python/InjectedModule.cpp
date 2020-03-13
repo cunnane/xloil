@@ -114,7 +114,7 @@ namespace xloil {
       // Bind CellError type to xloil::CellError enum
       auto eType = py::enum_<CellError>(mod, "CellError");
       for (auto e : theCellErrors)
-        eType.value(wstring_to_utf8(toWCString(e)).c_str(), e);
+        eType.value(utf16ToUtf8(toWCString(e)).c_str(), e);
 
       pyExcelErrorType = (PyTypeObject*)eType.get_type().ptr();
 
@@ -142,8 +142,8 @@ namespace xloil {
           })
         .def("clear", &ExcelRange::clear)
         .def("address", &ExcelRange::address, py::arg("local") = false)
-        .def_property_readonly("num_rows", &ExcelRange::nRows)
-        .def_property_readonly("num_cols", &ExcelRange::nCols);
+        .def_property_readonly("nrows", &ExcelRange::nRows)
+        .def_property_readonly("ncols", &ExcelRange::nCols);
 
       //ExcelRangeType = (PyTypeObject*)rType.get_type().ptr();
 

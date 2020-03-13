@@ -1,6 +1,7 @@
 #pragma once
 // TODO: avoid pulling windows and excel into every header!
 #include "XlCallSlim.h"
+#include "PString.h"
 #include <string>
 #include <array>
 
@@ -54,50 +55,6 @@ namespace xloil
 
   class ExcelArray;
 
-  template <class TChar=wchar_t>
-  class PString
-  {
-  public:
-    PString(const TChar* pascalStr = nullptr) : _data(pascalStr) {}
-
-    bool operator!() const { return !!_data; }
-    size_t length() const { return _data ? _data[0] : 0; }
-    const TChar* rawbuf() const { return _data; }
-    const TChar* pstr() const { return _data + 1; }
-    std::wstring string() const { return std::wstring(pstr(), pstr() + length()); }
-
-    static constexpr size_t npos = size_t (-1);
-
-    // Like wmemchr but backwards!
-    static const wchar_t* wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
-    {
-      for (; num; --ptr, --num)
-        if (*ptr == wc)
-          return ptr;
-      return nullptr;
-    }
-
-    size_t chr(wchar_t wc) const
-    {
-      auto p = wmemchr(pstr(), wc, length());
-      return p ? p - pstr() : npos;
-    }
-
-    size_t rchr(wchar_t wc) const
-    {
-      auto p = wmemrchr(pstr() + length(), wc, length());
-      return p ? p - pstr() : npos;
-    }
-
-    std::basic_string_view<TChar> view(size_t from, size_t count = npos)
-    {
-      return std::basic_string_view<TChar>(pstr() + from, count != npos ? count : length() - from);
-    }
-
-  private:
-    const TChar* _data;
-  };
-
   class ExcelObj;
   namespace Const
   {
@@ -137,7 +94,6 @@ namespace xloil
     /// <param name=""></param>
     ExcelObj(ExcelType);
 
-    //template <class TAlloc> ExcelObj(const char*, TAlloc = AllocNew());
     ExcelObj(const char*);
     ExcelObj(const wchar_t*);
     ExcelObj(const std::string&);
@@ -151,9 +107,9 @@ namespace xloil
     // TODO: declare these private and use friend? 
     ExcelObj(const ExcelObj* data, int nRows, int nCols);
 
-    /// Non copying ctor from pascal string buffer. Do not use
-    ExcelObj(const PString<Char>& pstr);
-
+    /// Non copying ctor from pascal string buffer.
+    ExcelObj(PString<Char>&& pstr);
+    ExcelObj(PString<Char>& pstr) : ExcelObj(std::forward<PString<Char>>(pstr)) {}
 
     /// <summary>
     /// Constructs a string of size nChars, returning a pointer to the internal buffer
@@ -162,20 +118,8 @@ namespace xloil
     /// </summary>
     /// <param name="buf"></param>
     /// <param name="nChars">requested buffer size, will be capped at Excel's limit</param>
-    ExcelObj(wchar_t*& buf, size_t& nChars);
-
-
-    /// <summary>
-    /// String constructor to guarantee copy elison via RVO, so you can write 
-    /// return ExcelObj(...)
-    /// </summary>
-    template <class TStrWrite>
-    ExcelObj(size_t nChars, TStrWrite fn, wchar_t* do_not_use_buf=nullptr)
-      : ExcelObj(do_not_use_buf, nChars)
-    {
-      fn(do_not_use_buf, nChars);
-    }
-
+    //ExcelObj(wchar_t*& buf, size_t& nChars);
+  
     ~ExcelObj();
 
     /// <summary>
@@ -244,7 +188,7 @@ namespace xloil
     /// <param name="buf"></param>
     /// <param name="bufSize">Number of characters written</param>
     /// <returns></returns>
-    size_t writeString(wchar_t* buf, size_t bufSize) const;
+    size_t writeString(wchar_t* buf, wchar_t bufSize) const;
 
     static void copy(ExcelObj& to, const ExcelObj& from);
 

@@ -161,7 +161,6 @@ namespace xloil
     {
       FromExcel<TImpl> _impl;
     public:
-
       template <class...Args>
       PyFromExcel(Args&&...args) 
         : _impl(std::forward<Args>(args)...)
@@ -194,11 +193,10 @@ namespace xloil
       template <class TCtor>
       auto operator()(const PyObject* obj, TCtor ctor) const
       {
-        size_t len = PyUnicode_GetLength((PyObject*)obj);
-        wchar_t* buf;
-        auto retVal = ctor(buf, len);
-        PyUnicode_AsWideChar((PyObject*)obj, buf, len);
-        return retVal;
+        auto len = (char16_t)std::min<size_t>(USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
+        PString<> pstr(len);
+        PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
+        return ctor(pstr);
       }
     };
 

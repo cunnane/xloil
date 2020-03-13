@@ -140,6 +140,10 @@ def pyTestRange(r: xlo.AllowRange):
     r2 = r.cell(1, 1).value
     return r.cell(1, 1).address()
 
+#
+# A fairly pathological example of a type converter function
+# and how it is applied to an excel function
+# 
 @xlo.converter()
 def arg_doubler(x):
     if isinstance(x, xlo.ExcelArray):
@@ -151,17 +155,20 @@ def pyTestCustomConv(x: arg_doubler):
     return x
 
 
-@xlo.converter()
-def testcon(x):
-    if isinstance(x, xlo.ExcelArray):
-        return x.to_numpy(dims=1).astype(object)
-    return "#NAA"
-
 @xlo.func
-def pyTestCon1(x: testcon):
-    return x
-
-
+def pyTestDFrame(df: xlo.PDFrame(headings=True)):
+    return xlo.to_cache(df)
+    
 @xlo.func
-def pyTestDFrame(df: PDFrame2(headings=True), col_name:str):
-    return df[col_name]
+def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
+    return xlo.to_cache(df)
+    
+@xlo.func
+def pyTestFrameFetch(df, index=None, col_name=None):
+    if index is not None:
+        if col_name is not None:
+            return df.loc[index, col_name]
+        else:
+            return df.loc[index].values
+    else:
+        return df[col_name]

@@ -12,11 +12,21 @@ namespace xloil
 
   PushEnvVar::PushEnvVar(const wchar_t* name, const wchar_t* value)
     : _name(name)
-    , _previous(captureWinApiString(
-      [name](auto* buf, auto len) { return GetEnvironmentVariable(name, buf, (DWORD)len); }))
+    , _previous(
+        captureStringBuffer(
+          [name](auto* buf, auto len) 
+          { 
+            return GetEnvironmentVariable(name, buf, (DWORD)len); 
+          }
+        )
+      )
   {
-    auto s = captureWinApiString(
-      [value](auto* buf, auto len) { return ExpandEnvironmentStrings(value, buf, (DWORD)len); });
+    auto s = captureStringBuffer(
+      [value](auto* buf, auto len) 
+      { 
+        return ExpandEnvironmentStrings(value, buf, (DWORD)len);
+      }
+    );
     SetEnvironmentVariable(name, s.c_str());
   }
 

@@ -12,9 +12,9 @@ namespace xloil
   class IConvertFromExcel
   {
   public:
-    using return_type = TResult;
-    using const_return_ptr = const typename std::remove_pointer<TResult>::type*;
-    virtual return_type operator()(const ExcelObj& xl, const_return_ptr defaultVal = nullptr) const = 0;
+    using result_type = TResult;
+    using const_result_ptr = const typename std::remove_pointer<TResult>::type*;
+    virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal = nullptr) const = 0;
   };
 
   /// <summary>
@@ -35,6 +35,8 @@ namespace xloil
   template <class TResult, class TImpl>
   struct FromExcelDispatcher
   {
+    using result_type = TResult;
+
     const TImpl& _impl() const { return static_cast<const TImpl&>(*this); }
 
     using const_return_ptr = const typename std::remove_pointer<TResult>::type*;

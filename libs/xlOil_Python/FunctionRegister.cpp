@@ -79,7 +79,7 @@ namespace xloil
           // TODO: could we explain what type is required?
           // We give the arg number 1-based as it's more natural
           XLO_THROW(L"Error reading '{0}' arg #{1}: {2}",
-            info->info->args[i].name, std::to_wstring(i + 1), utf8_to_wstring(e.what()));
+            info->info->args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
       if (info->hasKeywordArgs)

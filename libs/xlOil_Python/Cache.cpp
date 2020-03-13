@@ -1,4 +1,5 @@
 #include "xloil/ObjectCache.h"
+#include "BasicTypes.h"
 #include "Cache.h"
 #include "Main.h"
 namespace py = pybind11;
@@ -25,5 +26,18 @@ namespace xloil {
     bool fetchCache(const wchar_t* cacheString, size_t length, py::object& obj)
     {
       return thePythonObjCache->fetch(cacheString, length, obj);
+    }
+
+    namespace
+    {
+      py::object add_cache(py::object&& obj)
+      {
+        auto ref = addCache(std::forward<py::object>(obj));
+        return PySteal<>(PyFromString()(ref));
+      }
+      static int theBinder = addBinder([](py::module& mod)
+      {
+        mod.def("to_cache", &add_cache);
+      });
     }
 } }

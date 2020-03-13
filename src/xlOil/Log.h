@@ -61,7 +61,7 @@ namespace xloil
       : Exception(path, line, func, formatMessage(formatStr, std::forward<Args>(args)...))
     {}
     inline Exception(const char* path, const int line, const char* func, std::basic_string_view<wchar_t> msg)
-      : Exception(path, line, func, wstring_to_utf8(msg.data()))
+      : Exception(path, line, func, utf16ToUtf8(msg.data()))
     {}
 
     XLOIL_EXPORT Exception(const char* path, const int line, const char* func, std::basic_string_view<char> msg);

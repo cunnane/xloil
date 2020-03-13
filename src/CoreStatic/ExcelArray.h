@@ -33,42 +33,48 @@ namespace xloil
       _data = arr._data + fromRow * _baseCols;
     }
 
-    const ExcelObj& operator()(int row, int col) const
+    const ExcelObj& operator()(size_t row, size_t col) const
     {
       checkRange(row, col);
       return at(row, col);
     }
-    ExcelObj& operator()(int row, int col)
+    ExcelObj& operator()(size_t row, size_t col)
     {
       checkRange(row, col);
       return at(row, col);
     }
-    const ExcelObj& operator()(int row) const
+    const ExcelObj& operator()(size_t row) const
     {
       //checkRange(row, 0);
       return at(row);
     }
-    ExcelObj& operator()(int row)
+    ExcelObj& operator()(size_t row)
     {
       //checkRange(row, 0);
       return at(row);
     }
 
-    const ExcelObj& at(int row, int col) const
+    const ExcelObj& at(size_t row, size_t col) const
     {
       return *(row_begin(row) + col);
     }
-    ExcelObj& at(int row, int col)
+    ExcelObj& at(size_t row, size_t col)
     {
       return *(row_begin(row) + col);
     }
-    const ExcelObj& at(int row) const
+    const ExcelObj& at(size_t n) const
     {
-      return *(row_begin(0) + row);
+      const auto N = nCols();
+      auto i = n / N;
+      auto j = n % N;
+      return at(i, j);
     }
-    ExcelObj& at(int row)
+    ExcelObj& at(size_t n)
     {
-      return*(row_begin(0) + row);
+      const auto N = nCols();
+      auto i = n / N;
+      auto j = n % N;
+      return at(i, j);
     }
 
     ExcelArray subArray(int fromRow, int fromCol, int toRow, int toCol)
@@ -81,10 +87,10 @@ namespace xloil
     size_t size() const { return _rows * _columns; }
     size_t dims() const { return _rows > 1 && _columns > 1 ? 2 : 1; }
 
-    const ExcelObj* row_begin(int i) const  { return _data + i * _baseCols + _colOffset; }
-    ExcelObj* row_begin(int i)              { return _data + i * _baseCols + _colOffset; }
-    const ExcelObj* row_end(int i) const    { return row_begin(i) + nCols(); }
-    ExcelObj* row_end(int i)                { return row_begin(i) + nCols(); }
+    const ExcelObj* row_begin(size_t i) const  { return _data + i * _baseCols + _colOffset; }
+    ExcelObj* row_begin(size_t i)              { return _data + i * _baseCols + _colOffset; }
+    const ExcelObj* row_end(size_t i) const    { return row_begin(i) + nCols(); }
+    ExcelObj* row_end(size_t i)                { return row_begin(i) + nCols(); }
 
     /// <summary>
     /// Determines the type of data stored in the array if it is homogenous. If it is
@@ -138,9 +144,9 @@ namespace xloil
     ExcelObj* _data;
     size_t _baseCols;
 
-    void checkRange(int row, int col) const
+    void checkRange(size_t row, size_t col) const
     {
-      if ((size_t)row >= nRows() || (size_t)col >= nCols())
+      if (row >= nRows() || col >= nCols())
         XLO_THROW("Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
     }
   };

@@ -126,12 +126,46 @@ except Exception:
             """
             pass
         @property
-        def num_rows(self):
+        def nrows(self):
             """ Returns the number of rows in the range """
             pass
         @property
-        def num_cols(self):
+        def ncols(self):
             """ Returns the number of columns in the range """
+            pass
+
+    class ExcelArray:
+        """
+        A holder for a internal Excel array which can be manipulated without
+        copying the underlying data. It's not a general purpose array class 
+        but rather used to create efficiencies in type converters.
+        """
+        def __getitem__(self, tuple):
+            """ 
+            Given a 2-tuple, slices the array to return a sub ExcelArray or a 
+            single element.
+            """
+            pass
+        def to_numpy(self, dtype=None, dims=2):
+            """
+            Converts the array to a numpy array. If dtype is None, attempts to 
+            discover one, otherwise raises an exception if values cannot be 
+            converted to the specified dtype. dims can be 1 or 2
+            """
+            pass
+        @property
+        def dims(self):
+            """ 
+            Property which gives the dimension of the array: 1 or 2
+            """
+            pass
+        @property
+        def nrows(self):
+            """ Returns the number of rows in the array """
+            pass
+        @property
+        def ncols(self):
+            """ Returns the number of columns in the array """
             pass
 
     class CellError:
@@ -224,6 +258,41 @@ def _get_typeconverter(type_name, from_excel=True):
         raise Exception(f"No converter {to_from.lower()} {type_name}. Expected {name}")
 
 def converter(typ=typing.Callable, range=False):
+    """
+    Decorator which declares a function or a class to be a type converter.
+
+    A type converter function is expected to take an argument of type:
+    int, bool, float, str, ExcelArray, Range (optional)
+
+    The type converter should return a python object, which could be an 
+    ExcelArray or Range.
+
+    A type converter class may take parameters into its constructor
+    and hold state.  It should implement __call__ to behave as a type
+    converter function.
+
+    Both functions and classes are turned into a class which inherits from 
+    ``typ``.  This is to support type hints only.
+
+    If ``range`` is True, the xlOil may pass an ExcelRange or and ExcelArray
+    object depending on how the function was invoked.  The type converter should 
+    handle both cases consistently.
+
+    Examples
+    --------
+    @converter(double)
+    def arg_sum(x):
+        if isinstance(x, ExcelArray):
+            return np.sum(x.to_numpy())
+        elif isinstance(x, str):
+            raise Error('Unsupported')
+        return x
+
+    @func
+    def pyTest(x: arg_sum):
+        return x
+    """
+
     def decorate(obj):
         if inspect.isclass(obj):
             class Converter(typ):
@@ -232,6 +301,9 @@ def converter(typ=typing.Callable, range=False):
                     class Inner(typ or instance.target):
                         _xloil_converter_ = _CustomConverter(instance)
                         allow_range = range
+                    # This is a function which returns a class created
+                    # by a function which takes a class and is returned
+                    # from a function. Simple!
                     return Inner
             return Converter()
         else:
@@ -240,23 +312,6 @@ def converter(typ=typing.Callable, range=False):
                 allow_range = range
             return Converter
     return decorate
-
-"""
-#@converter(int)
-def dfconv(x):
-    pass
-
-
-#@converter(float)
-class DFConv:
-   target = float 
-   def __init__(self):
-       pass
-   def __call__(self):
-       pass
-"""
-
-
 
 
 class _FuncMeta:
@@ -332,9 +387,9 @@ def _create_excelfunc_meta(fn):
 def _async_wrapper(fn):
     import asyncio
     """
-        Synchronises an 'async def' function. xloil will invoke it
-        in a background thread. The C++ layer doesn't doesnt want 
-        to have to deal with asyncio event loops.
+    Synchronises an 'async def' function. xloil will invoke it
+    in a background thread. The C++ layer doesn't doesnt want 
+    to have to deal with asyncio event loops.
     """
     @functools.wraps(fn)
     def synchronised(*args, **kwargs):
@@ -515,12 +570,11 @@ def app():
     return _excel_application_com_obj
      
 
-## TODO: implement
-def add_cache():
-    pass
+def to_cache(obj):
+    return xloil_core.to_cache(obj)
 
 ## TODO: implement
-def fetch_cache():
+def from_cache():
     pass
 
 
@@ -533,14 +587,13 @@ class _ArrayType:
     this type, so use the syntax as show in the examples below.
 
     If you don't specify this annotation, xlOil may still pass an array
-    to your function if the user gives a range argument, e.g. A1:B2. In 
-    this case you will get a 2-dim Array[object]. If you know the data 
-    type you want, it is significantly more perfomant to specify it by
-    annotation with this type.
+    to your function if the user passes a range argument, e.g. A1:B2. In 
+    this case you will get a 2-dim Array(object). If you know the data 
+    type you want, it is more perfomant to specify it by annotation with 
+    ``Array``.
 
     Examples
     --------
-    The following shows the available options
 
         @xlo.func
         def array1(x: xlo.Array(int)):
@@ -557,14 +610,15 @@ class _ArrayType:
     Methods
     -------
 
-    **[]** : type    
-        Types in square brackets are converted to numpy dtypes, so this
-        means the only supported types are: int, float, bool, str, datetime, object.
-        Numpy has a richer variety of dtypes than this but Excel does not. For the 
-        float data type, xlOil will convert #N/As to numpy.nan but other values will 
+    **(element, dims, trim)** :    
+        Element types are converted to numpy dtypes, which means the only supported types are: 
+        int, float, bool, str, datetime, object.
+        (Numpy has a richer variety of dtypes than this but Excel does not.) 
+        
+        For the float data type, xlOil will convert #N/As to numpy.nan but other values will 
         causes errors.
 
-    **(dims=n)** : int    
+    dims : int
         Arrays can be either 1 or 2 dimensional, 2 is the default.  Note the Excel has
         the following behaviour for writing arrays into an array formula range specified
         with Ctrl-Alt-Enter:
@@ -573,7 +627,7 @@ class _ArrayType:
         fill the entire rectangle. If you use a rectangular array, and it is too small for
         the rectangular range you want to put it in, that range is padded with #N/As."
 
-    **(trim=x)** : bool    
+    trim : bool    
         By default xlOil trims arrays to the last row & column which contain a nonempty
         string or non-#N/A value. This is generally desirable, but can be disabled with 
         this paramter.
@@ -598,22 +652,70 @@ try:
 
     @converter(pd.DataFrame)
     class PDFrame:
+        """
+        Converter which takes tables with horizontal records to pandas dataframes.
+
+        Examples
+        --------
+
+            @xlo.func
+            def array1(x: xlo.PDFrame(int)):
+                pass
+
+            @xlo.func
+            def array2(y: xlo.PDFrame(float, headings=True)):
+                pass
+
+            @xlo.func
+            def array3(z: xlo.PDFrame(str, index='Index')):
+                pass
+    
+        Methods
+        -------
+
+        **PDFrame(element, headings, index)** : 
+            
+            element : type
+                Pandas performance can be improved by explicitly specifying  
+                a type. In particular, creation of a homogenously typed
+                Dataframe does not require copying the data.
+
+            headings : bool
+                Specifies that the first row should be interpreted as column
+                headings
+
+            index : various
+                Is used in a call to pandas.DataFrame.set_index()
+
+
+        """
         def __init__(self, element=None, headings=True, index=None):
+            # TODO: use element_type!
             self._element_type = element
             self._headings = headings
             self._index = index
 
         def __call__(self, x):
-            if isinstance(x, xlo.ExcelArray):
+            if isinstance(x, ExcelArray):
                 df = None
+                idx = self._index
                 if self._headings:
+                    if x.nrows < 2:
+                        raise Exception("Expected at least 2 rows")
                     headings = x[0,:].to_numpy(dims=1)
                     data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
-                    df = pd.DataFrame(data, headings)
+                    if idx is not None and idx in data:
+                        index = data.pop(idx)
+                        idx = None
+                        df = pd.DataFrame(data, index=index)
+                    else:
+                        # This will do a copy.  The copy can be avoided by monkey
+                        # patching pandas - see stackoverflow
+                        df = pd.DataFrame(data)
                 else:
                     df = pd.DataFrame(x.to_numpy())
-                if self._index is not None:
-                    df.set_index(self._index, inplace=True)
+                if idx is not None:
+                    df.set_index(idx, inplace=True)
                 return df
         
             raise Exception(f"Unsupported type: {type(x)!r}")

@@ -151,7 +151,7 @@ namespace xloil
       auto macroType = (opts & FuncInfo::COMMAND) ? 2 : 1;
 
       // TODO: this copies the excelobj
-      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8_to_wstring(entryPoint), numArgs);
+      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8ToUtf16(entryPoint), numArgs);
       auto registerId = callExcel(xlfRegister,
         moduleName, 
         entryPoint, 
@@ -426,7 +426,7 @@ namespace xloil
     catch (std::exception& e)
     {
       XLO_ERROR("Failed to register func {0}: {1}", 
-        wstring_to_utf8(info->name.c_str()), e.what());
+        utf16ToUtf8(info->name.c_str()), e.what());
       return RegisteredFuncPtr();
     }
   }
@@ -441,7 +441,7 @@ namespace xloil
     catch (std::exception& e)
     {
       XLO_ERROR("Failed to register func {0}: {1}",
-        wstring_to_utf8(info->name.c_str()), e.what());
+        utf16ToUtf8(info->name.c_str()), e.what());
       return RegisteredFuncPtr();
     }
   }
@@ -455,7 +455,7 @@ namespace xloil
     catch (std::exception& e)
     {
       XLO_ERROR("Failed to register func {0} in module {1}", 
-        wstring_to_utf8(info->name.c_str()), wstring_to_utf8(moduleName), e.what());
+        utf16ToUtf8(info->name.c_str()), utf16ToUtf8(moduleName), e.what());
       return RegisteredFuncPtr();
     }
   }

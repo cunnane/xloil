@@ -196,8 +196,8 @@ namespace xloil
       auto* pascalStr = impl::writeCacheId(TUniquifier, caller, padding);
 
       // Oh the things we do to avoid a string copy
-      size_t len = pascalStr[0];
-      wchar_t* str = pascalStr + 1;
+      auto len = pascalStr[0];
+      auto* str = pascalStr + 1;
 
       // Capture workbook name.  We should have X[wbName]wsName!cellRef
       auto lastBracket = PString<>::wmemrchr(str + len, L']', len);

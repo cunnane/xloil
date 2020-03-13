@@ -106,14 +106,14 @@ namespace xloil
           auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
           for (auto[key, val] : environment)
           {
-            wstring value = utf8_to_wstring(val.as_string().str);
+            wstring value = utf8ToUtf16(val.as_string().str);
             std::wsmatch match;
             std::regex_match(value, match, registryExpander);
             if (match.size() == 2)
               value = getRegistryValue(match[1].str());
 
             pathPusher.emplace_back(make_shared<PushEnvVar>(
-              utf8_to_wstring(key).c_str(),
+              utf8ToUtf16(key).c_str(),
               value.c_str()));
           }
         }
