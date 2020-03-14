@@ -70,7 +70,7 @@
       <PreprocessorDefinitions>WIN32;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>xlcall32.lib;asmjit.lib;corestatic.lib;cominterface.lib;Oleacc.lib;simplefilewatcher.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -78,7 +78,7 @@
       <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>xlcall32.lib;asmjit.lib;corestatic.lib;cominterface.lib;Oleacc.lib;simplefilewatcher.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -86,7 +86,7 @@
       <PreprocessorDefinitions>WIN32;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>xlcall32.lib;asmjit.lib;corestatic.lib;cominterface.lib;Oleacc.lib;simplefilewatcher.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -94,7 +94,7 @@
       <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>xlcall32.lib;asmjit.lib;corestatic.lib;cominterface.lib;Oleacc.lib;simplefilewatcher.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -144,11 +144,20 @@
     <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\COMInterface\COMInterface.vcxproj">
+      <Project>{1f999f4f-7843-43fa-bee7-b4334d6dd36b}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\external\asmjit\asmjit.vcxproj">
       <Project>{164af267-092e-441d-8bf0-2acf18e9adfd}</Project>
     </ProjectReference>
     <ProjectReference Include="..\CoreStatic\CoreStatic.vcxproj">
       <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\external\SimpleFileWatcher\SimpleFileWatcher.vcxproj">
+      <Project>{18fe65c5-aeac-4500-9571-4bb05eb81b19}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\external\spdlog\spdlog.vcxproj">
+      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

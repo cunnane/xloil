@@ -70,7 +70,7 @@ namespace
     return wideStr - 1;
   }
 
-  size_t totalStringLength(xloper12* arr, size_t nRows, size_t nCols)
+  size_t totalStringLength(const xloper12* arr, size_t nRows, size_t nCols)
   {
     size_t total = 0;
     auto endData = arr + (nRows * nCols);
@@ -125,7 +125,7 @@ namespace
       auto nCols = from.val.array.columns;
       auto size = nRows * nCols;
 
-      auto pSrc = from.val.array.lparray;
+      const auto* pSrc = from.val.array.lparray;
 
       size_t strLength = totalStringLength(pSrc, nRows, nCols);
       ExcelArrayBuilder arr(nRows, nCols, strLength, false);
@@ -601,7 +601,7 @@ namespace
   {
     if ((xtype() & xltypeStr) == 0)
       return PString<>();
-    return PString<>(val.str);
+    return PString<>::view(val.str);
   }
 
   size_t ExcelObj::writeString(wchar_t* buf, wchar_t bufSize) const

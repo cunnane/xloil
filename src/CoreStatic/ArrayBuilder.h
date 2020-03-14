@@ -36,24 +36,46 @@ namespace xloil
       // Add padding
       if (nCols < nPaddedCols)
         for (size_t i = 0; i < nRows; ++i)
-          emplace_at(i, nCols, CellError::NA);
+          setNA(i, nCols);
 
       if (nRows < nPaddedRows)
         for (size_t j = 0; j < nPaddedCols; ++j)
-          emplace_at(nRows, j, CellError::NA);
+          setNA(nRows, j);
     }
-    int emplace_at(size_t i, size_t j)
+    void setNA(size_t i, size_t j)
     {
       new (at(i, j)) ExcelObj(CellError::NA);
-      return 0;
     }
-    // TODO: this is lazy, only int, bool, double and ExcelError are supported here, others are UB
-    template <class T>
-    int emplace_at(size_t i, size_t j, T&& x)
+  
+    template<class T>
+    void emplace_at(size_t i, size_t j, T x) 
+    { 
+      new (at(i, j)) ExcelObj(x);
+    }
+    template<>
+    void emplace_at<wchar_t*>(size_t i, size_t j, wchar_t* str)
     {
-      new (at(i, j)) ExcelObj(std::forward<T>(x));
-      return 0;
+      emplace_at(i, j, const_cast<const wchar_t*>(str));
     }
+    template<>
+    void emplace_at<const wchar_t*>(size_t i, size_t j, const wchar_t* str)
+    {
+      auto len = wcslen(str);
+      auto pstr = string(len);
+      wmemcpy_s(pstr.pstr(), len, str, len);
+      new (at(i, j)) ExcelObj(std::forward<PString<>>(pstr));
+    }
+
+    void emplace_at(size_t i, size_t j, ExcelObj&& x)
+    {
+      new (at(i, j)) ExcelObj(std::forward<ExcelObj>(x));
+    }
+
+    //void emplace_at(size_t i, size_t j, PString<>&& x)
+    //{
+    //  new (at(i, j)) ExcelObj(std::forward<PString<>>(x));
+    //}
+
     PString<> string(size_t& len)
     {
       wchar_t* ptr = nullptr;
@@ -65,7 +87,7 @@ namespace xloil
         ptr = _stringData;
         _stringData += len + 2;
       }
-      return PString<wchar_t>(ptr);
+      return PString<wchar_t>::view(ptr);
     }
 
     ExcelObj* at(size_t i, size_t j)
@@ -78,6 +100,9 @@ namespace xloil
     {
       return ExcelObj(_arrayData, int(_nRows), int(_nColumns));
     }
+
+    size_t nRows() const { return _nRows; }
+    size_t nCols() const { return _nColumns; }
 
   private:
     ExcelObj * _arrayData;

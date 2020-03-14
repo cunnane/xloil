@@ -16,9 +16,12 @@ namespace xloil
       resize(size);
     }
 
-    PString(TChar* pascalStr = nullptr)
-      : _data(pascalStr)
-    {}
+    PString() : _data(nullptr) {}
+
+    static PString<> view(TChar* str)
+    {
+      return PString(str);
+    }
 
     bool operator!() const { return !!_data; }
     size_type length() const { return _data ? _data[0] : 0; }
@@ -29,6 +32,14 @@ namespace xloil
     const TChar* begin() const { return _data + 1; }
     const TChar* end() const { return _data + 1 + length(); }
 
+    PString operator=(const TChar* str)
+    {
+      auto len = wcslen(str);
+      if (len > length())
+        XLO_THROW("PString buffer too short");
+      wmemcpy_s(_data + 1, _data[0], str, len);
+      _data[0] = len;
+    }
     std::basic_string<TChar> string() const 
     { 
       return std::basic_string<TChar>(pstr(), pstr() + length()); 
@@ -62,6 +73,10 @@ namespace xloil
 
   private:
     TChar* _data;
+
+    PString(TChar* pascalStr)
+      : _data(pascalStr)
+    {}
   };
 
 }

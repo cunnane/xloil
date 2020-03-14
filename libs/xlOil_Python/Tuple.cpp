@@ -83,7 +83,7 @@ namespace xloil
 
         // Fill with N/A
         for (; j < nCols; ++j)
-          builder.emplace_at(i, j);
+          builder.setNA(i, j);
 
         Py_DECREF(item);
         ++i;

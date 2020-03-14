@@ -111,7 +111,7 @@ namespace xloil
         {
           *p = lead;
           if (trail != 0)
-            *p++ = trail;
+            *(++p) = trail;
         }
       }
       return p - target;
