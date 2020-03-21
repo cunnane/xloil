@@ -15,8 +15,10 @@ namespace xloil
     public:
       static FunctionRegistry& get();
 
-      std::shared_ptr<RegisteredModule> addModule(const pybind11::module& moduleHandle);
-      std::shared_ptr<RegisteredModule> addModule(const std::wstring& modulePath);
+      std::shared_ptr<RegisteredModule> 
+        addModule(const pybind11::module& moduleHandle, const wchar_t* workbookName = nullptr);
+      std::shared_ptr<RegisteredModule> 
+        addModule(const std::wstring& modulePath, const wchar_t* workbookName = nullptr);
 
       auto & modules() { return _modules; }
 

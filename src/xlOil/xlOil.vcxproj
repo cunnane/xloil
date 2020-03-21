@@ -108,6 +108,7 @@
     <ClInclude Include="ExcelCall.h" />
     <ClInclude Include="Interface.h" />
     <ClInclude Include="internal\FuncRegistry.h" />
+    <ClInclude Include="internal\LocalFunctions.h" />
     <ClInclude Include="internal\PEHelper.h" />
     <ClInclude Include="internal\Thunker.h" />
     <ClInclude Include="Loader.h" />
@@ -118,7 +119,7 @@
     <ClInclude Include="Register.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="StaticRegister.h" />
-    <ClInclude Include="Utils.h" />
+    <ClInclude Include="StringUtils.h" />
     <ClInclude Include="WindowsSlim.h" />
   </ItemGroup>
   <ItemGroup>
@@ -131,13 +132,14 @@
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
     <ClCompile Include="internal\FuncRegistry.cpp" />
+    <ClCompile Include="internal\LocalFunctions.cpp" />
     <ClCompile Include="internal\PEHelper.cpp" />
     <ClCompile Include="internal\Thunker.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
-    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="StringUtils.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
     <ClCompile Include="Register.cpp" />

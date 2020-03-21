@@ -4,7 +4,7 @@
 #include "ExcelArray.h"
 #include "Numpy.h"
 #include "xloil/Log.h"
-#include "xloil/Utils.h"
+#include "xloil/StringUtils.h"
 #include <xlOil/ExcelRange.h>
 #include "Cache.h"
 #include "Date.h"
@@ -98,7 +98,7 @@ namespace xloil
         auto pyObj = pybind11::cast(err);
         return pyObj.release().ptr();
       }
-      PyObject * fromRef(const ExcelObj & obj) const
+      PyObject * fromRef(const ExcelObj& obj) const
       {
         return pybind11::cast(ExcelRange(obj)).release().ptr();
       }

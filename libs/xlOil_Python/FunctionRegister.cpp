@@ -34,6 +34,7 @@ namespace xloil
         this->info = info;
         this->func = func;
         this->hasKeywordArgs = hasKeywordArgs;
+        this->isLocalFunc = false;
         argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
       }
 
@@ -52,6 +53,7 @@ namespace xloil
       bool hasKeywordArgs;
       vector<pair<shared_ptr<IPyFromExcel>, py::object>> argConverters;
       shared_ptr<IPyToExcel> returnConverter;
+      bool isLocalFunc;
 
       void setFuncOptions(int val)
       {
@@ -218,18 +220,22 @@ namespace xloil
     class RegisteredModule
     {
     public:
-      RegisteredModule(const wstring& modulePath)
+      RegisteredModule(const wstring& modulePath, const wchar_t* workbookModule)
         : _modulePath(modulePath)
       {
-        auto path = fs::path(modulePath);
+        const auto path = fs::path(modulePath);
         _fileWatcher = std::static_pointer_cast<const void>
-          (Event_DirectoryChange(path.remove_filename().wstring()).bind(handleFileChange));
+          (Event_DirectoryChange(fs::path(path).remove_filename()).bind(handleFileChange));
+        if (workbookModule)
+          _workbookModule = workbookModule;
       }
       ~RegisteredModule()
       {
         XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
         for (auto& f : _functions)
           theCore->deregister(f.second->info->name);
+        if (!_workbookModule.empty())
+          theCore->forgetLocal(_workbookModule.c_str());
       }
 
       void registerFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
@@ -239,6 +245,7 @@ namespace xloil
           // Fresh registration, just add functions
           for (auto& f : functions)
           {
+            if (f->isLocalFunc) continue;
             _functions.emplace(f->info->name, f);
             registerFunc(f);
           }
@@ -250,6 +257,7 @@ namespace xloil
 
           for (auto& f : functions)
           {
+            if (f->isLocalFunc) continue;
             auto iFunc = _functions.find(f->info->name);
 
             // If the function name already exists, try to avoid re-registering
@@ -277,15 +285,40 @@ namespace xloil
               newMap.emplace(f);
 
           _functions = newMap;
+
+          if (!_workbookModule.empty())
+            registerLocalFuncs(_workbookModule.c_str(), functions);
         }
       }
 
-      wstring& modulePath() { return _modulePath; }
+      void registerLocalFuncs(
+        const wchar_t* workbookName,
+        const vector<shared_ptr<PyFuncInfo>>& functions)
+      {
+        vector<shared_ptr<const FuncInfo>> funcInfo;
+        vector<ExcelFuncPrototype> funcs;
+        for (auto &f : functions)
+        {
+          if (f->isLocalFunc)
+          {
+            funcInfo.push_back(f->info);
+            funcs.push_back([f](const FuncInfo&, const ExcelObj** args)
+            {
+              return pythonCallback(f.get(), args);
+            });
+          }
+        }
+        theCore->registerLocal(workbookName, funcInfo, funcs);
+      }
+
+      const wstring& modulePath() const { return _modulePath; }
+      bool workbookModule() const { return !_workbookModule.empty(); }
 
     private:
       map<wstring, shared_ptr<PyFuncInfo>> _functions;
       shared_ptr<const void> _fileWatcher;
       wstring _modulePath;
+      wstring _workbookModule;
     };
 
     FunctionRegistry& FunctionRegistry::get() 
@@ -296,16 +329,18 @@ namespace xloil
 
 
     std::shared_ptr<RegisteredModule> 
-      FunctionRegistry::addModule(const std::wstring& modulePath)
+      FunctionRegistry::addModule(const std::wstring& modulePath, const wchar_t* workbookName)
     {
-      auto[it, wasAdded] = _modules.try_emplace(modulePath, make_shared<RegisteredModule>(modulePath));
+      auto it = _modules.find(modulePath);
+      if (it == _modules.end())
+       it = _modules.insert(make_pair(modulePath, make_shared<RegisteredModule>(modulePath, workbookName))).first;
       return it->second;
     }
 
     std::shared_ptr<RegisteredModule> 
-      FunctionRegistry::addModule(const pybind11::module& moduleHandle)
+      FunctionRegistry::addModule(const pybind11::module& moduleHandle, const wchar_t* workbookName)
     {
-      return addModule(moduleHandle.attr("__file__").cast<wstring>());
+      return addModule(moduleHandle.attr("__file__").cast<wstring>(), workbookName);
     }
 
     FunctionRegistry::FunctionRegistry()
@@ -338,10 +373,14 @@ namespace xloil
       }
     }
 
-    void registerFunctions(const py::object& moduleHandle, const vector<shared_ptr<PyFuncInfo>>& functions)
+    void registerFunctions(
+      const py::object& moduleHandle, 
+      const vector<shared_ptr<PyFuncInfo>>& functions)
     {
-      FunctionRegistry::get().addModule(moduleHandle.cast<py::module>())->registerFuncs(functions);
+      FunctionRegistry::get().addModule(moduleHandle.cast<py::module>())
+        ->registerFuncs(functions);
     }
+
     void writeToLog(const char* message, const char* level)
     {
       SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::from_str(level), message);
@@ -375,7 +414,8 @@ namespace xloil
           .def(py::init<const shared_ptr<FuncInfo>&, const py::function&, bool>())
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
-          .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"));
+          .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
+          .def_readwrite("local", &PyFuncInfo::isLocalFunc);
 
         py::class_<ThreadContext>(mod, "ThreadContext")
           .def("cancelled", &ThreadContext::cancelled);

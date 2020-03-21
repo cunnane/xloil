@@ -5,12 +5,12 @@
 #include "xloil/ExcelCall.h"
 #include <oleacc.h> // must include before ExcelTypeLib
 #include "ExcelTypeLib.h"
-#include <unordered_set>
+#include <set>
 #include <memory>
 
 using std::make_shared;
 using std::wstring;
-using std::unordered_set;
+using std::set;
 
 
 Excel::_ApplicationPtr getExcelObjFromWindow(HWND xlmainHandle)
@@ -36,9 +36,13 @@ Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
 {
   auto hwndCurrent = ::GetForegroundWindow();
 
+  // We switch focus away from Excel because that increases
+  // the chances of the instance adding itself to the running
+  // object table. It isn't determinimistic though so we have
+  // to give it a few tries.
   // This apparently bizarre approach is suggested here
   // https://support.microsoft.com/en-za/help/238610/getobject-or-getactiveobject-cannot-find-a-running-office-application
-  for (auto moreTries = 0; moreTries < 5; ++moreTries)
+  for (auto moreTries = 0; moreTries < 15; ++moreTries)
   {
     ::SetForegroundWindow(hwndCurrent);
     auto ptr = getExcelObjFromWindow(xlmainHandle);
@@ -96,10 +100,11 @@ namespace xloil
     }
     static void check()
     {
-      unordered_set<wstring> workbooks;
-      auto numWorkbooks = excelApp().Workbooks->Count;
+      set<wstring> workbooks;
+      auto& app = excelApp();
+      auto numWorkbooks = app.Workbooks->Count;
       for (auto i = 1; i <= numWorkbooks; ++i)
-        workbooks.emplace(excelApp().Workbooks->Item[i]->Name);
+        workbooks.emplace(app.Workbooks->Item[i]->Name);
 
       std::vector<wstring> closedWorkbooks;
       std::set_difference(_workbooks.begin(), _workbooks.end(),
@@ -111,10 +116,10 @@ namespace xloil
       _workbooks = workbooks;
     }
   private:
-    static unordered_set<wstring> _workbooks;
+    static set<wstring> _workbooks;
   };
 
-  unordered_set<wstring> WorkbookMonitor::_workbooks;
+  set<wstring> WorkbookMonitor::_workbooks;
 }
 
 class EventHandler : Excel::AppEvents
@@ -252,13 +257,13 @@ namespace xloil
         try
         {
           CoInitialize(NULL);
-          auto windowsHandle = callExcel(msxll::xlGetHwnd);
-          // This conversion is OK even in x64 because the window handle is an index
-          // into an array, not a pointer. 
+          auto windowHandle = callExcel(msxll::xlGetHwnd);
+          // This conversion to 32-bit is OK even in x64 because the 
+          // window handle is an index into an array, not a pointer. 
 #pragma warning(disable: 4312)
-          _xlApp = getExcelInstance((HWND)windowsHandle.toInt());
-      
-          Excel::_Application* p = _xlApp;
+          _excelWindowHandle = (HWND)windowHandle.toInt();
+
+          Excel::_Application* p = ExcelApp();
           _handler.reset(new EventHandler(p));
         }
         catch (_com_error& error)
@@ -273,11 +278,17 @@ namespace xloil
         CoUninitialize();
       }
 
-      Excel::_ApplicationPtr& ExcelApp() { return _xlApp; }
+      const Excel::_ApplicationPtr& ExcelApp() 
+      { 
+        if (!_xlApp)
+          _xlApp = getExcelInstance(_excelWindowHandle);
+        return _xlApp;
+      }
 
     private:
       Excel::_ApplicationPtr _xlApp;
       std::unique_ptr<EventHandler> _handler;
+      HWND _excelWindowHandle;
     };
 
 
@@ -285,16 +296,31 @@ namespace xloil
     {
       RegisterMe()
       {
-        connector = new COMConnector();
+        connector = nullptr;
         static auto handler = xloil::Event_AutoClose() += [this]() { delete connector; };
       }
       COMConnector* connector;
-    };
+      COMConnector* connect()
+      {
+        if (!connector)
+          connector = new COMConnector();
+        return connector;
+      }
+    } theInstance;
+  }
+
+  void reconnectCOM()
+  {
+    if (theInstance.connector)
+    {
+      delete theInstance.connector;
+      theInstance.connector = nullptr;
+    }
+    theInstance.connect();
   }
 
   Excel::_Application& excelApp()
   {
-    static RegisterMe c;
-    return c.connector->ExcelApp();
+    return *theInstance.connect()->ExcelApp();
   }
 }

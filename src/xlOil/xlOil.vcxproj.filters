@@ -20,13 +20,16 @@
     <ClCompile Include="internal\Thunker.cpp">
       <Filter>internal</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="AsyncHelper.cpp" />
     <ClCompile Include="internal\FuncRegistry.cpp">
       <Filter>internal</Filter>
     </ClCompile>
     <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
+    <ClCompile Include="StringUtils.cpp" />
+    <ClCompile Include="internal\LocalFunctions.cpp">
+      <Filter>internal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncHelper.h" />
@@ -43,7 +46,6 @@
     <ClInclude Include="Register.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="WindowsSlim.h" />
-    <ClInclude Include="Utils.h" />
     <ClInclude Include="Options.h" />
     <ClInclude Include="internal\PEHelper.h">
       <Filter>internal</Filter>
@@ -57,6 +59,10 @@
     </ClInclude>
     <ClInclude Include="ExcelRange.h" />
     <ClInclude Include="StaticRegister.h" />
+    <ClInclude Include="StringUtils.h" />
+    <ClInclude Include="internal\LocalFunctions.h">
+      <Filter>internal</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

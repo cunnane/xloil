@@ -51,17 +51,27 @@ namespace xloil
   using RegisteredFuncPtr = std::shared_ptr<RegisteredFunc>;
 
   RegisteredFuncPtr
-    registerFunc(const std::shared_ptr<const FuncInfo>& info, RegisterCallback callback, const std::shared_ptr<void>& context) noexcept;
+    registerFunc(
+      const std::shared_ptr<const FuncInfo>& info, 
+      RegisterCallback callback, 
+      const std::shared_ptr<void>& context) noexcept;
   
   RegisteredFuncPtr
-    registerFunc(const std::shared_ptr<const FuncInfo>& info, AsyncCallback callback, const std::shared_ptr<void>& context) noexcept;
+    registerFunc(
+      const std::shared_ptr<const FuncInfo>& info, 
+      AsyncCallback callback, 
+      const std::shared_ptr<void>& context) noexcept;
 
   RegisteredFuncPtr
-    registerFunc(const std::shared_ptr<const FuncInfo>& info, const char* functionName, const wchar_t* moduleName) noexcept;
+    registerFunc(
+      const std::shared_ptr<const FuncInfo>& info, 
+      const char* functionName, 
+      const wchar_t* moduleName) noexcept;
 
   RegisteredFuncPtr
-    registerFunc(const std::shared_ptr<const FuncInfo>& info, const ExcelFuncPrototype& f) noexcept;
-
+    registerFunc(
+      const std::shared_ptr<const FuncInfo>& info, 
+      const ExcelFuncPrototype& f) noexcept;
 
   template<class T> RegisteredFuncPtr
     registerFunc(const std::shared_ptr<const FuncInfo>& info, RegisterCallbackT<T> callback, const std::shared_ptr<T>& data) noexcept

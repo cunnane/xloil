@@ -110,12 +110,12 @@ def pyTestKwargs(argName, **kwargs):
 # can run whilst waiting for the async return unless they are also 
 # declared async and the await keyword is used.
 #
-@xlo.func
+@xlo.func(local=False)
 async def pyTestAsync(x, time:int):
     await asyncio.sleep(time)
     return x
 
-@xlo.func(thread_safe=True)
+@xlo.func(thread_safe=True, local=False)
 async def pyTestAsyncThread(x, time:int):
     await asyncio.sleep(time)
     return x
@@ -172,3 +172,10 @@ def pyTestFrameFetch(df, index=None, col_name=None):
             return df.loc[index].values
     else:
         return df[col_name]
+
+@xlo.func
+def pyTestMe(x):
+    return x
+
+
+

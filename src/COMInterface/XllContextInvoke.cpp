@@ -83,7 +83,10 @@ namespace xloil
 
     theTargetFunc = &f;
 
-    auto ret = retryComCall([]() { return excelApp().Run("xloRunFuncInXLLContext"); });
+    auto ret = retryComCall([]() 
+    { 
+      return excelApp().Run("xloRunFuncInXLLContext");
+    });
     return ret.has_value();
   }
 
@@ -99,7 +102,10 @@ namespace xloil
     theExcelCallArgs = (XLOIL_XLOPER**)args;
     theExcelCallNumArgs = nArgs;
     //XLO_TRACE("Calling into XLL context fn= {0:#x}", (size_t)&fn);
-    auto ret = retryComCall([]() { return excelApp().Run("xloRunInXLLContext"); });
+    auto ret = retryComCall([]()
+    { 
+      return excelApp().Run("xloRunInXLLContext");
+    });
     if (!ret)
       return msxll::xlretInvXlfn;
     auto variant = ret.value();

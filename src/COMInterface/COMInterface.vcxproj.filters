@@ -5,9 +5,11 @@
     <ClInclude Include="Connect.h" />
     <ClInclude Include="CallHelper.h" />
     <ClInclude Include="XllContextInvoke.h" />
+    <ClInclude Include="WorkbookScopeFunctions.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
+    <ClCompile Include="WorkbookScopeFunctions.cpp" />
   </ItemGroup>
 </Project>

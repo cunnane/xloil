@@ -9,7 +9,6 @@ namespace xloil
   class ExcelRange : protected ExcelObj
   {
   public:
-    // Steals....
     XLOIL_EXPORT ExcelRange(const ExcelObj& from);
 
     XLOIL_EXPORT ExcelRange(const wchar_t* address);

@@ -29,6 +29,7 @@ namespace xloil
     }
 
     XLO_ERROR(L"Excel COM is busy. A dialog box may be open. If this error persists, restart Excel.");
+    reconnectCOM();
     return std::nullopt;
   }
 }

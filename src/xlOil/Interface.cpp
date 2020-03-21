@@ -1,5 +1,6 @@
 #include "Interface.h"
 #include "internal/FuncRegistry.h"
+#include "internal/LocalFunctions.h"
 #include "ObjectCache.h"
 #include "Settings.h"
 #include "EntryPoint.h"
@@ -40,7 +41,7 @@ namespace xloil
     return xloil::theCoreName();
   }
 
-  Excel::_Application & Core::theExcelApp()
+  Excel::_Application& Core::theExcelApp()
   {
     return excelApp();
   }
@@ -107,6 +108,19 @@ namespace xloil
       return true;
     }
     return false;
+  }
+
+  void Core::registerLocal(
+    const wchar_t * workbookName, 
+    const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
+    const std::vector<ExcelFuncPrototype> funcs)
+  {
+    xloil::registerLocalFuncs(workbookName, funcInfo, funcs);
+  }
+  
+  void Core::forgetLocal(const wchar_t* workbookName)
+  {
+    forgetLocalFunctions(workbookName);
   }
 
   void

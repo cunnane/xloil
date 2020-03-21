@@ -1,7 +1,7 @@
 #include "Settings.h"
 #include "EntryPoint.h"
 #include "Interface.h"
-#include "Utils.h"
+#include "StringUtils.h"
 #include "Log.h"
 #include "Options.h"
 #include <toml11/toml.hpp>

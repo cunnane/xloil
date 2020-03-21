@@ -141,6 +141,13 @@ namespace xloil
     bool
       deregister(const std::wstring& name);
 
+    void registerLocal(
+      const wchar_t* workbookName,
+      const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
+      const std::vector<ExcelFuncPrototype> funcs);
+
+    void forgetLocal(const wchar_t* workbookName);
+
     void
       deregisterAll();
 

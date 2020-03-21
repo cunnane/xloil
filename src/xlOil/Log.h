@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ExportMacro.h"
-#include "Utils.h"
+#include "StringUtils.h"
 
 #ifdef _DEBUG
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE

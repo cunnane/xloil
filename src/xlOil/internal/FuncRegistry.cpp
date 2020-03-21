@@ -5,7 +5,7 @@
 #include "PEHelper.h"
 #include "ExcelObj.h"
 #include <xlOil/Log.h>
-#include <xlOil/Utils.h>
+#include <xlOil/StringUtils.h>
 #include <xlOil/EntryPoint.h>
 #include <xlOil/AsyncHelper.h>
 #include "Thunker.h"

@@ -15,6 +15,16 @@ watched for file modifications so code changes are reflected immediately in Exce
 
 Have a look at `<root>/test/PythonTest.py` for lots of examples. 
 
+Concepts: The log file
+----------------------
+
+If a function doesn't appear or behave as expected, check the log file created by default
+in the same directory as xloil.xll.
+
+A common problem is that the COM interface misbehaves either failing on start-up or failing
+because of an open dialog box in Excel.  For a start-up fail, unload and reload the addin. 
+For other errors try to close dialog boxes or panes and if that fails, restart Excel.
+
 Concepts: Excel Functions (UDFs)
 --------------------------------
 Excel supports several classes of user-defined functions:
@@ -57,6 +67,20 @@ xlOil core also implements a cache for Excel values, which is mostly useful for 
 arrays. The function ``=xloRef(A1:B2)`` returns a cache string similar to the one used
 for Python objects. These strings are automatically looked up when parsing function 
 arguments.
+
+Concepts: Local Functions
+-------------------------
+When loading functions from an python module associated to a workbook, i.e workbook.py
+xlOil defaults to registering any declared function as "local". This means it creates a
+VBA stub to invoke them so that the scope of their name is local to the workbook.
+
+Local functions have some limitations compared to global scope ones:
+- Max 28 arguments
+- No async or threadsafe
+- Slower due to the VBA redirect
+- Workbook must be saved as macro enabled (xlsm extension)
+
+You can override the local scope on a per-function basis.
 
 """
 import inspect
@@ -170,8 +194,10 @@ except Exception:
 
     class CellError:
         """
-        Enum-type class created when an Excel error condition of the 
-        form #FOO! is passed a a function argument.
+        Enum-type class which represents an Excel error condition of the 
+        form #N/A!, #NAME!, etc passed as a function argument. If your
+        function does not use a specific type-converter it can opt to handle
+        these errors.
         """
         Null = None
         Div0 = None
@@ -324,7 +350,8 @@ class _FuncMeta:
         self.macro = False
         self.thread_safe = False
         self.volatile = False
-        
+        self.local = None
+
     def create_holder(self):
         """
         Creates a core object which holds function info, argument converters,
@@ -368,6 +395,10 @@ class _FuncMeta:
             else:
                 holder.set_arg_type(i, converter)
 
+        holder.local = True if self.local is None else self.local
+
+        # TODO: if local reject most FuncOpts
+        
         holder.set_opts((FuncOpts.Async if self.is_async else 0) 
                         | (FuncOpts.Macro if self.macro else 0) 
                         | (FuncOpts.ThreadSafe if self.thread_safe else 0)
@@ -422,6 +453,7 @@ def func(fn=None,
          name=None, 
          help=None, 
          group=None, 
+         local=None,
          is_async=False, 
          macro=False, 
          thread_safe=False, 
@@ -462,12 +494,17 @@ def func(fn=None,
     group: str
         Specifes a category of functions in Excel's function wizard under which
         this function should be placed.
+    local: bool
+        For functions in a workbook-associated module, e.g. workbook.py, xlOil
+        defaults to scoping their name to the workbook itself. You can override
+        this behaviour with this parameter. It has no effect outside associated
+        modules.
     macro: bool
         If True, registers the function as Macro Type. This grants the function
         extra priveledges, such as the ability to see un-calced cells and 
         call the full range of Excel.Application functions. Functions which will
         be invoked as Excel macros, i.e. not functions appearing in a cell, should
-        be declared with this attribute
+        be declared with this attribute.
     is_async: bool
         Registers the function as asynchronous. It's better to add the use asyncio's
         'async def' syntax if it is available. Note that async functions aren't
@@ -477,7 +514,7 @@ def func(fn=None,
         Declares the function as safe for multi-threaded calculation, i.e. the
         function must not make any non-synchronised access to objects outside
         its scope. Since python (at least CPython) is single-threaded there is
-        no performance benefit from enabling this
+        no performance benefit from enabling this.
     volatile: bool
         Tells Excel to recalculate this function on every calc cycle: the same
         behaviour as the NOW() and INDIRECT() built-ins.  Due to the performance 
@@ -505,7 +542,7 @@ def func(fn=None,
         for arg, val in arguments.items():
             if arg is not 'fn' and val is not None:
                 meta.__dict__[arg] = val
-    
+
         meta.is_async = _async
 
         return fn
@@ -749,7 +786,7 @@ def scan_module(m):
     if inspect.ismodule(m):
         # imp.reload throws strange errors if the module in not on sys.path
         # e.g. https://stackoverflow.com/questions/27272574/imp-reload-nonetype-object-has-no-attribute-name
-        # So handle modules we loaded with absolute path separately
+        # So deal with modules we loaded from absolute path separately
         if m.__name__.startswith("xloil"):
             handle = _import_from_path(m.__spec__.origin, m.__name__)
         else:
@@ -759,6 +796,7 @@ def scan_module(m):
     else:
         handle = importlib.import_module(m)
 
-    to_register = [_get_meta(x[1]).create_holder() for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
+    to_register = [_get_meta(x[1]).create_holder() 
+                   for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
     if any(to_register):
         xloil_core.register_functions(handle, to_register)

@@ -172,10 +172,12 @@
     <ClInclude Include="CallHelper.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="ExcelTypeLib.h" />
+    <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
+    <ClCompile Include="WorkbookScopeFunctions.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -3,7 +3,7 @@
 #include "StandardConverters.h"
 #include "xloil/Log.h"
 #include "xloil/Date.h"
-#include "xloil/Utils.h"
+#include "xloil/StringUtils.h"
 #include "ArrayBuilder.h"
 #include <algorithm>
 #include <cstring>

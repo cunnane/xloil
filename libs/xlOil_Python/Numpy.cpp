@@ -7,7 +7,7 @@
 #include "ArrayHelpers.h"
 #include "ArrayBuilder.h"
 #include <xloil/Date.h>
-#include <xloil/Utils.h>
+#include <xloil/StringUtils.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
@@ -318,7 +318,7 @@ namespace xloil
       FromArrayImpl(PyArrayObject* pArr)
       {
         const auto type = PyArray_TYPE(pArr);
-        if (type != NPY_UNICODE || type != NPY_STRING)
+        if (type != NPY_UNICODE && type != NPY_STRING)
           XLO_THROW("Incorrect array type");
         stringLength = std::min<size_t>(USHRT_MAX, PyArray_ITEMSIZE(pArr) / sizeof(data_type) * charMultiple);
       }

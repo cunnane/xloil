@@ -151,7 +151,10 @@ namespace xloil
     /// <returns></returns>
     ExcelType type() const;
 
-
+    bool isRangeRef() const 
+    {
+      return (xltype & (msxll::xltypeRef | msxll::xltypeSRef)) != 0;
+    }
     /// <summary>
     /// Converts to a string. If strict=false then attempts
     /// to stringify the various excel types

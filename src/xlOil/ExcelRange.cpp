@@ -9,17 +9,18 @@ namespace xloil
     case ExcelType::SRef:
     {
       callExcelRaw(msxll::xlSheetId, this);
-      auto r = from.val.sref.ref;
+      const auto& r = from.val.sref.ref;
       create(val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;
     }
     case ExcelType::Ref:
-      val.mref.idSheet = from.val.mref.idSheet;
-      val.mref.lpmref = from.val.mref.lpmref;
-      xltype = from.xltype;
-      if (val.mref.lpmref->count != 1)
+    {
+      if (from.val.mref.lpmref->count != 1)
         XLO_THROW("Only contiguous refs supported");
+      const auto& r = *from.val.mref.lpmref[0].reftbl;
+      create(from.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;
+    }
     default:
       XLO_THROW("ExcelRange: expecting reference type");
     }

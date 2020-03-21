@@ -32,6 +32,13 @@ The plugin can also look for modules of the form
 Any module which contains Excel functions is
 watched for file modifications so code changes are reflected immediately in Excel.</p>
 <p>Have a look at <code>&lt;root&gt;/test/PythonTest.py</code> for lots of examples. </p>
+<h2 id="concepts-the-log-file">Concepts: The log file</h2>
+<p>If a function doesn't appear or behave as expected, check the log file created by default
+in the same directory as xloil.xll.</p>
+<p>A common problem is that the COM interface misbehaves either failing on start-up or failing
+because of an open dialog box in Excel.
+For a start-up fail, unload and reload the addin.
+For other errors try to close dialog boxes or panes and if that fails, restart Excel.</p>
 <h2 id="concepts-excel-functions-udfs">Concepts: Excel Functions (UDFs)</h2>
 <p>Excel supports several classes of user-defined functions:</p>
 <ul>
@@ -69,6 +76,16 @@ opaquely between functions. </p>
 arrays. The function <code>=xloRef(A1:B2)</code> returns a cache string similar to the one used
 for Python objects. These strings are automatically looked up when parsing function
 arguments.</p>
+<h2 id="concepts-local-functions">Concepts: Local Functions</h2>
+<p>When loading functions from an python module associated to a workbook, i.e workbook.py
+xlOil defaults to registering any declared function as "local". This means it creates a
+VBA stub to invoke them so that the scope of their name is local to the workbook.</p>
+<p>Local functions have some limitations compared to global scope ones:
+- Max 28 arguments
+- No async or threadsafe
+- Slower due to the VBA redirect
+- Workbook must be saved as macro enabled (xlsm extension)</p>
+<p>You can override the local scope on a per-function basis.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -88,6 +105,16 @@ name scope, like an Excel addin.  The plugin can also look for modules of the fo
 watched for file modifications so code changes are reflected immediately in Excel.
 
 Have a look at `&lt;root&gt;/test/PythonTest.py` for lots of examples. 
+
+Concepts: The log file
+----------------------
+
+If a function doesn&#39;t appear or behave as expected, check the log file created by default
+in the same directory as xloil.xll.
+
+A common problem is that the COM interface misbehaves either failing on start-up or failing
+because of an open dialog box in Excel.  For a start-up fail, unload and reload the addin. 
+For other errors try to close dialog boxes or panes and if that fails, restart Excel.
 
 Concepts: Excel Functions (UDFs)
 --------------------------------
@@ -132,6 +159,20 @@ arrays. The function ``=xloRef(A1:B2)`` returns a cache string similar to the on
 for Python objects. These strings are automatically looked up when parsing function 
 arguments.
 
+Concepts: Local Functions
+-------------------------
+When loading functions from an python module associated to a workbook, i.e workbook.py
+xlOil defaults to registering any declared function as &#34;local&#34;. This means it creates a
+VBA stub to invoke them so that the scope of their name is local to the workbook.
+
+Local functions have some limitations compared to global scope ones:
+- Max 28 arguments
+- No async or threadsafe
+- Slower due to the VBA redirect
+- Workbook must be saved as macro enabled (xlsm extension)
+
+You can override the local scope on a per-function basis.
+
 &#34;&#34;&#34;
 import inspect
 import functools
@@ -143,7 +184,8 @@ import sys
 
 try:
     import xloil_core
-    from xloil_core import CellError, FuncOpts, Range, in_wizard, log
+    from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
+    from xloil_core import CustomConverter as _CustomConverter
 except Exception:
     def in_wizard():
         &#34;&#34;&#34; 
@@ -199,12 +241,46 @@ except Exception:
             &#34;&#34;&#34;
             pass
         @property
-        def num_rows(self):
+        def nrows(self):
             &#34;&#34;&#34; Returns the number of rows in the range &#34;&#34;&#34;
             pass
         @property
-        def num_cols(self):
+        def ncols(self):
             &#34;&#34;&#34; Returns the number of columns in the range &#34;&#34;&#34;
+            pass
+
+    class ExcelArray:
+        &#34;&#34;&#34;
+        A holder for a internal Excel array which can be manipulated without
+        copying the underlying data. It&#39;s not a general purpose array class 
+        but rather used to create efficiencies in type converters.
+        &#34;&#34;&#34;
+        def __getitem__(self, tuple):
+            &#34;&#34;&#34; 
+            Given a 2-tuple, slices the array to return a sub ExcelArray or a 
+            single element.
+            &#34;&#34;&#34;
+            pass
+        def to_numpy(self, dtype=None, dims=2):
+            &#34;&#34;&#34;
+            Converts the array to a numpy array. If dtype is None, attempts to 
+            discover one, otherwise raises an exception if values cannot be 
+            converted to the specified dtype. dims can be 1 or 2
+            &#34;&#34;&#34;
+            pass
+        @property
+        def dims(self):
+            &#34;&#34;&#34; 
+            Property which gives the dimension of the array: 1 or 2
+            &#34;&#34;&#34;
+            pass
+        @property
+        def nrows(self):
+            &#34;&#34;&#34; Returns the number of rows in the array &#34;&#34;&#34;
+            pass
+        @property
+        def ncols(self):
+            &#34;&#34;&#34; Returns the number of columns in the array &#34;&#34;&#34;
             pass
 
     class CellError:
@@ -221,15 +297,17 @@ except Exception:
         NA = None
         GettingData = None
 
-
+    class _CustomConverter:
+        def __init__(self, callable):
+            pass
 
 
 &#34;&#34;&#34;
 Tag used to mark functions to register with Excel. It is added 
 by the xloil.func decorator to the target func&#39;s __dict__
 &#34;&#34;&#34;
-_META_TAG = &#34;_xlOilFunc_&#34;
-
+_META_TAG = &#34;_xloil_func_&#34;
+_CONVERTER_TAG = &#34;_xloil_converter_&#34;
 
 ExcelValue = typing.Union[int, str, float, np.ndarray, dict, list]
 AllowRange = typing.Union[ExcelValue, Range]
@@ -285,14 +363,70 @@ def _function_argspec(func):
 def _get_typeconverter(type_name, from_excel=True):
     # Attempt to find converter with standardised name
     try:
-        to_from = &#39;from&#39; if from_excel else &#39;to&#39;
-        name = f&#34;{type_name}_{to_from}_Excel&#34;
+        to_from = &#39;To&#39; if from_excel else &#39;From&#39;
+        name = f&#34;{to_from}_{type_name}&#34;
         if not hasattr(xloil_core, name):
-            name = f&#34;cached_{to_from}_Excel&#34;
+            name = f&#34;{to_from}_cache&#34;
         return getattr(xloil_core, name)()
         
     except:
-        raise Exception(f&#34;No converter for {type_name} {to_from} Excel. Expected {name}&#34;)
+        raise Exception(f&#34;No converter {to_from.lower()} {type_name}. Expected {name}&#34;)
+
+def converter(typ=typing.Callable, range=False):
+    &#34;&#34;&#34;
+    Decorator which declares a function or a class to be a type converter.
+
+    A type converter function is expected to take an argument of type:
+    int, bool, float, str, ExcelArray, Range (optional)
+
+    The type converter should return a python object, which could be an 
+    ExcelArray or Range.
+
+    A type converter class may take parameters into its constructor
+    and hold state.  It should implement __call__ to behave as a type
+    converter function.
+
+    Both functions and classes are turned into a class which inherits from 
+    ``typ``.  This is to support type hints only.
+
+    If ``range`` is True, the xlOil may pass an ExcelRange or and ExcelArray
+    object depending on how the function was invoked.  The type converter should 
+    handle both cases consistently.
+
+    Examples
+    --------
+    @converter(double)
+    def arg_sum(x):
+        if isinstance(x, ExcelArray):
+            return np.sum(x.to_numpy())
+        elif isinstance(x, str):
+            raise Error(&#39;Unsupported&#39;)
+        return x
+
+    @func
+    def pyTest(x: arg_sum):
+        return x
+    &#34;&#34;&#34;
+
+    def decorate(obj):
+        if inspect.isclass(obj):
+            class Converter(typ):
+                def __call__(self, *args, **kwargs):
+                    instance = obj(*args, **kwargs)
+                    class Inner(typ or instance.target):
+                        _xloil_converter_ = _CustomConverter(instance)
+                        allow_range = range
+                    # This is a function which returns a class created
+                    # by a function which takes a class and is returned
+                    # from a function. Simple!
+                    return Inner
+            return Converter()
+        else:
+            class Converter(typ):
+                _xloil_converter_ = _CustomConverter(obj)
+                allow_range = range
+            return Converter
+    return decorate
 
 
 class _FuncMeta:
@@ -305,8 +439,14 @@ class _FuncMeta:
         self.macro = False
         self.thread_safe = False
         self.volatile = False
-        
+        self.local = None
+
     def create_holder(self):
+        &#34;&#34;&#34;
+        Creates a core object which holds function info, argument converters,
+        and a reference to the function object
+        &#34;&#34;&#34;
+        
         info = xloil_core.FuncInfo()
         info.args = [xloil_core.FuncArg(x.name, x.help) for x in self.args]
         info.name = self.name
@@ -327,11 +467,12 @@ class _FuncMeta:
                 continue
             # Default option is the generic converter which tries to figure
             # out what to return based on the Excel type
-            converter = xloil_core.object_from_Excel()
+            converter = xloil_core.To_object()
             if x.typeof is not None:
                 # If it has this attr, we&#39;ve already figured out the converter type
-                if hasattr(x.typeof, &#34;_xloil_type_info&#34;):
-                    converter = _get_typeconverter(x.typeof._xloil_type_info, from_excel=True)
+                if hasattr(x.typeof, _CONVERTER_TAG):
+                    converter = getattr(x.typeof, _CONVERTER_TAG)
+                    info.args[i].allow_range = getattr(x.typeof, &#39;allow_range&#39;, False)
                 elif x.typeof is AllowRange:
                     info.args[i].allow_range = True
                 elif x.typeof is ExcelValue:
@@ -343,6 +484,10 @@ class _FuncMeta:
             else:
                 holder.set_arg_type(i, converter)
 
+        holder.local = True if self.local is None else self.local
+
+        # TODO: if local reject most FuncOpts
+        
         holder.set_opts((FuncOpts.Async if self.is_async else 0) 
                         | (FuncOpts.Macro if self.macro else 0) 
                         | (FuncOpts.ThreadSafe if self.thread_safe else 0)
@@ -362,9 +507,9 @@ def _create_excelfunc_meta(fn):
 def _async_wrapper(fn):
     import asyncio
     &#34;&#34;&#34;
-        Synchronises an &#39;async def&#39; function. xloil will invoke it
-        in a background thread. The C++ layer doesn&#39;t doesnt want 
-        to have to deal with asyncio event loops.
+    Synchronises an &#39;async def&#39; function. xloil will invoke it
+    in a background thread. The C++ layer doesn&#39;t doesnt want 
+    to have to deal with asyncio event loops.
     &#34;&#34;&#34;
     @functools.wraps(fn)
     def synchronised(*args, **kwargs):
@@ -397,6 +542,7 @@ def func(fn=None,
          name=None, 
          help=None, 
          group=None, 
+         local=None,
          is_async=False, 
          macro=False, 
          thread_safe=False, 
@@ -437,12 +583,17 @@ def func(fn=None,
     group: str
         Specifes a category of functions in Excel&#39;s function wizard under which
         this function should be placed.
+    local: bool
+        For functions in a workbook-associated module, e.g. workbook.py, xlOil
+        defaults to scoping their name to the workbook itself. You can override
+        this behaviour with this parameter. It has no effect outside associated
+        modules.
     macro: bool
         If True, registers the function as Macro Type. This grants the function
         extra priveledges, such as the ability to see un-calced cells and 
         call the full range of Excel.Application functions. Functions which will
         be invoked as Excel macros, i.e. not functions appearing in a cell, should
-        be declared with this attribute
+        be declared with this attribute.
     is_async: bool
         Registers the function as asynchronous. It&#39;s better to add the use asyncio&#39;s
         &#39;async def&#39; syntax if it is available. Note that async functions aren&#39;t
@@ -452,7 +603,7 @@ def func(fn=None,
         Declares the function as safe for multi-threaded calculation, i.e. the
         function must not make any non-synchronised access to objects outside
         its scope. Since python (at least CPython) is single-threaded there is
-        no performance benefit from enabling this
+        no performance benefit from enabling this.
     volatile: bool
         Tells Excel to recalculate this function on every calc cycle: the same
         behaviour as the NOW() and INDIRECT() built-ins.  Due to the performance 
@@ -480,7 +631,7 @@ def func(fn=None,
         for arg, val in arguments.items():
             if arg is not &#39;fn&#39; and val is not None:
                 meta.__dict__[arg] = val
-    
+
         meta.is_async = _async
 
         return fn
@@ -545,40 +696,15 @@ def app():
     return _excel_application_com_obj
      
 
-## TODO: implement
-def add_cache():
-    pass
+def to_cache(obj):
+    return xloil_core.to_cache(obj)
 
 ## TODO: implement
-def fetch_cache():
+def from_cache():
     pass
 
-class _xloilArray(np.ndarray):
-    &#34;&#34;&#34;
-        Should never be invoked directly. It exists to ensure Array[...] can return a type.
-        This allows intellisense to work when it is used as an annotations and is 
-        consistent with the &#39;typing&#39; module
-    &#34;&#34;&#34;
-    def __init__(self, *args, **kwargs):
-        # TODO: following doesn&#39;t work for some reason involving numpy &amp; C-extensions
-        #super().__init__(*args, **kwargs)
-        self._pytype = kwargs[&#39;dtype&#39;]
-        self._set_array(self._pytype)
-    
-    def __call__(self, dims=None, trim=True):
-        return self._set_array(self._pytype, dims, trim)
 
-    def __str__(self):
-        return f&#34;Array[{self.dtype}]&#34;
-
-    def _set_array(self, elem_type=object, dims=None, trim=True):
-        self.shape = (1,) if dims == 1 else (1,1)
-        self.dtype = elem_type
-        self._xloil_type_info = f&#34;Array_{elem_type.__name__}_{dims or 2}d&#34;
-        return self
-
-
-class ArrayType:
+class _ArrayType:
     &#34;&#34;&#34;
     This object can be used in annotations or @xlo.arg decorators
     to tell xlOil to attempt to convert an argument to a numpy array.
@@ -587,38 +713,38 @@ class ArrayType:
     this type, so use the syntax as show in the examples below.
 
     If you don&#39;t specify this annotation, xlOil may still pass an array
-    to your function if the user gives a range argument, e.g. A1:B2. In 
-    this case you will get a 2-dim Array[object]. If you know the data 
-    type you want, it is significantly more perfomant to specify it by
-    annotation with this type.
+    to your function if the user passes a range argument, e.g. A1:B2. In 
+    this case you will get a 2-dim Array(object). If you know the data 
+    type you want, it is more perfomant to specify it by annotation with 
+    ``Array``.
 
     Examples
     --------
-    The following shows the available options
 
         @xlo.func
-        def array1(x: xlo.Array[int]):
+        def array1(x: xlo.Array(int)):
             pass
 
         @xlo.func
-        def array2(y: xlo.Array[float](dims=1)):
+        def array2(y: xlo.Array(float, dims=1)):
             pass
 
         @xlo.func
-        def array3(z: xlo.Array[str](trim=False)):
+        def array3(z: xlo.Array(str, trim=False)):
             pass
     
     Methods
     -------
 
-    **[]** : type    
-        Types in square brackets are converted to numpy dtypes, so this
-        means the only supported types are: int, float, bool, str, datetime, object.
-        Numpy has a richer variety of dtypes than this but Excel does not. For the 
-        float data type, xlOil will convert #N/As to numpy.nan but other values will 
+    **(element, dims, trim)** :    
+        Element types are converted to numpy dtypes, which means the only supported types are: 
+        int, float, bool, str, datetime, object.
+        (Numpy has a richer variety of dtypes than this but Excel does not.) 
+        
+        For the float data type, xlOil will convert #N/As to numpy.nan but other values will 
         causes errors.
 
-    **(dims=n)** : int    
+    dims : int
         Arrays can be either 1 or 2 dimensional, 2 is the default.  Note the Excel has
         the following behaviour for writing arrays into an array formula range specified
         with Ctrl-Alt-Enter:
@@ -627,22 +753,100 @@ class ArrayType:
         fill the entire rectangle. If you use a rectangular array, and it is too small for
         the rectangular range you want to put it in, that range is padded with #N/As.&#34;
 
-    **(trim=x)** : bool    
+    trim : bool    
         By default xlOil trims arrays to the last row &amp; column which contain a nonempty
         string or non-#N/A value. This is generally desirable, but can be disabled with 
         this paramter.
 
     &#34;&#34;&#34;
-    def __getitem__(self, elem_type=object):
-        &#34;&#34;&#34;
-        Specifies a data type for the array. The syntax is::
-            xlo.Array[float]
-        &#34;&#34;&#34;
-        return _xloilArray(dtype=elem_type, shape=(1,1))
 
+    def __call__(self, element=object, dims=2, trim=True):
+        name = f&#34;To_Array_{element.__name__}_{dims or 2}d&#34; 
+        type_conv = getattr(xloil_core, name)(trim)
 
+        class Arr(np.ndarray):
+            _xloil_converter_ = type_conv
+
+        return Arr;
+        
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
-Array = ArrayType() 
+Array = _ArrayType() 
+
+
+try:
+    import pandas as pd
+
+    @converter(pd.DataFrame)
+    class PDFrame:
+        &#34;&#34;&#34;
+        Converter which takes tables with horizontal records to pandas dataframes.
+
+        Examples
+        --------
+
+            @xlo.func
+            def array1(x: xlo.PDFrame(int)):
+                pass
+
+            @xlo.func
+            def array2(y: xlo.PDFrame(float, headings=True)):
+                pass
+
+            @xlo.func
+            def array3(z: xlo.PDFrame(str, index=&#39;Index&#39;)):
+                pass
+    
+        Methods
+        -------
+
+        **PDFrame(element, headings, index)** : 
+            
+            element : type
+                Pandas performance can be improved by explicitly specifying  
+                a type. In particular, creation of a homogenously typed
+                Dataframe does not require copying the data.
+
+            headings : bool
+                Specifies that the first row should be interpreted as column
+                headings
+
+            index : various
+                Is used in a call to pandas.DataFrame.set_index()
+
+
+        &#34;&#34;&#34;
+        def __init__(self, element=None, headings=True, index=None):
+            # TODO: use element_type!
+            self._element_type = element
+            self._headings = headings
+            self._index = index
+
+        def __call__(self, x):
+            if isinstance(x, ExcelArray):
+                df = None
+                idx = self._index
+                if self._headings:
+                    if x.nrows &lt; 2:
+                        raise Exception(&#34;Expected at least 2 rows&#34;)
+                    headings = x[0,:].to_numpy(dims=1)
+                    data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
+                    if idx is not None and idx in data:
+                        index = data.pop(idx)
+                        idx = None
+                        df = pd.DataFrame(data, index=index)
+                    else:
+                        # This will do a copy.  The copy can be avoided by monkey
+                        # patching pandas - see stackoverflow
+                        df = pd.DataFrame(data)
+                else:
+                    df = pd.DataFrame(x.to_numpy())
+                if idx is not None:
+                    df.set_index(idx, inplace=True)
+                return df
+        
+            raise Exception(f&#34;Unsupported type: {type(x)!r}&#34;)
+finally:
+    pass
 
 
 def _import_from_path(path, module_name=None):
@@ -671,7 +875,7 @@ def scan_module(m):
     if inspect.ismodule(m):
         # imp.reload throws strange errors if the module in not on sys.path
         # e.g. https://stackoverflow.com/questions/27272574/imp-reload-nonetype-object-has-no-attribute-name
-        # So handle modules we loaded with absolute path separately
+        # So deal with modules we loaded from absolute path separately
         if m.__name__.startswith(&#34;xloil&#34;):
             handle = _import_from_path(m.__spec__.origin, m.__name__)
         else:
@@ -681,7 +885,8 @@ def scan_module(m):
     else:
         handle = importlib.import_module(m)
 
-    to_register = [_get_meta(x[1]).create_holder() for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
+    to_register = [_get_meta(x[1]).create_holder() 
+                   for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
     if any(to_register):
         xloil_core.register_functions(handle, to_register)</code></pre>
 </details>
@@ -693,19 +898,6 @@ def scan_module(m):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="xloil.add_cache"><code class="name flex">
-<span>def <span class="ident">add_cache</span></span>(<span>)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def add_cache():
-    pass</code></pre>
-</details>
-</dd>
 <dt id="xloil.app"><code class="name flex">
 <span>def <span class="ident">app</span></span>(<span>)</span>
 </code></dt>
@@ -792,8 +984,100 @@ if 'typing' annotations are unavailable.</p></section>
     return decorate</code></pre>
 </details>
 </dd>
-<dt id="xloil.fetch_cache"><code class="name flex">
-<span>def <span class="ident">fetch_cache</span></span>(<span>)</span>
+<dt id="xloil.converter"><code class="name flex">
+<span>def <span class="ident">converter</span></span>(<span>typ=typing.Callable, range=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Decorator which declares a function or a class to be a type converter.</p>
+<p>A type converter function is expected to take an argument of type:
+int, bool, float, str, ExcelArray, Range (optional)</p>
+<p>The type converter should return a python object, which could be an
+ExcelArray or Range.</p>
+<p>A type converter class may take parameters into its constructor
+and hold state.
+It should implement <strong>call</strong> to behave as a type
+converter function.</p>
+<p>Both functions and classes are turned into a class which inherits from
+<code>typ</code>.
+This is to support type hints only.</p>
+<p>If <code>range</code> is True, the xlOil may pass an ExcelRange or and ExcelArray
+object depending on how the function was invoked.
+The type converter should
+handle both cases consistently.</p>
+<h2 id="examples">Examples</h2>
+<p>@converter(double)
+def arg_sum(x):
+if isinstance(x, ExcelArray):
+return np.sum(x.to_numpy())
+elif isinstance(x, str):
+raise Error('Unsupported')
+return x</p>
+<p>@func
+def pyTest(x: arg_sum):
+return x</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def converter(typ=typing.Callable, range=False):
+    &#34;&#34;&#34;
+    Decorator which declares a function or a class to be a type converter.
+
+    A type converter function is expected to take an argument of type:
+    int, bool, float, str, ExcelArray, Range (optional)
+
+    The type converter should return a python object, which could be an 
+    ExcelArray or Range.
+
+    A type converter class may take parameters into its constructor
+    and hold state.  It should implement __call__ to behave as a type
+    converter function.
+
+    Both functions and classes are turned into a class which inherits from 
+    ``typ``.  This is to support type hints only.
+
+    If ``range`` is True, the xlOil may pass an ExcelRange or and ExcelArray
+    object depending on how the function was invoked.  The type converter should 
+    handle both cases consistently.
+
+    Examples
+    --------
+    @converter(double)
+    def arg_sum(x):
+        if isinstance(x, ExcelArray):
+            return np.sum(x.to_numpy())
+        elif isinstance(x, str):
+            raise Error(&#39;Unsupported&#39;)
+        return x
+
+    @func
+    def pyTest(x: arg_sum):
+        return x
+    &#34;&#34;&#34;
+
+    def decorate(obj):
+        if inspect.isclass(obj):
+            class Converter(typ):
+                def __call__(self, *args, **kwargs):
+                    instance = obj(*args, **kwargs)
+                    class Inner(typ or instance.target):
+                        _xloil_converter_ = _CustomConverter(instance)
+                        allow_range = range
+                    # This is a function which returns a class created
+                    # by a function which takes a class and is returned
+                    # from a function. Simple!
+                    return Inner
+            return Converter()
+        else:
+            class Converter(typ):
+                _xloil_converter_ = _CustomConverter(obj)
+                allow_range = range
+            return Converter
+    return decorate</code></pre>
+</details>
+</dd>
+<dt id="xloil.from_cache"><code class="name flex">
+<span>def <span class="ident">from_cache</span></span>(<span>)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -801,12 +1085,12 @@ if 'typing' annotations are unavailable.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def fetch_cache():
+<pre><code class="python">def from_cache():
     pass</code></pre>
 </details>
 </dd>
 <dt id="xloil.func"><code class="name flex">
-<span>def <span class="ident">func</span></span>(<span>fn=None, name=None, help=None, group=None, is_async=False, macro=False, thread_safe=False, volatile=False)</span>
+<span>def <span class="ident">func</span></span>(<span>fn=None, name=None, help=None, group=None, local=None, is_async=False, macro=False, thread_safe=False, volatile=False)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Decorator which tells xlOil to register the function in Excel.
@@ -841,12 +1125,17 @@ doc-string is used.</dd>
 <dt><strong><code>group</code></strong> :&ensp;<code>str</code></dt>
 <dd>Specifes a category of functions in Excel's function wizard under which
 this function should be placed.</dd>
+<dt><strong><code>local</code></strong> :&ensp;<code>bool</code></dt>
+<dd>For functions in a workbook-associated module, e.g. workbook.py, xlOil
+defaults to scoping their name to the workbook itself. You can override
+this behaviour with this parameter. It has no effect outside associated
+modules.</dd>
 <dt><strong><code>macro</code></strong> :&ensp;<code>bool</code></dt>
 <dd>If True, registers the function as Macro Type. This grants the function
 extra priveledges, such as the ability to see un-calced cells and
 call the full range of Excel.Application functions. Functions which will
 be invoked as Excel macros, i.e. not functions appearing in a cell, should
-be declared with this attribute</dd>
+be declared with this attribute.</dd>
 <dt><strong><code>is_async</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Registers the function as asynchronous. It's better to add the use asyncio's
 'async def' syntax if it is available. Note that async functions aren't
@@ -856,7 +1145,7 @@ by interacting with Excel, async functions are cancelled and restarted later.</d
 <dd>Declares the function as safe for multi-threaded calculation, i.e. the
 function must not make any non-synchronised access to objects outside
 its scope. Since python (at least CPython) is single-threaded there is
-no performance benefit from enabling this</dd>
+no performance benefit from enabling this.</dd>
 <dt><strong><code>volatile</code></strong> :&ensp;<code>bool</code></dt>
 <dd>Tells Excel to recalculate this function on every calc cycle: the same
 behaviour as the NOW() and INDIRECT() built-ins.
@@ -871,6 +1160,7 @@ hit this brings, it is rare that you will need to use this attribute.</dd>
          name=None, 
          help=None, 
          group=None, 
+         local=None,
          is_async=False, 
          macro=False, 
          thread_safe=False, 
@@ -911,12 +1201,17 @@ hit this brings, it is rare that you will need to use this attribute.</dd>
     group: str
         Specifes a category of functions in Excel&#39;s function wizard under which
         this function should be placed.
+    local: bool
+        For functions in a workbook-associated module, e.g. workbook.py, xlOil
+        defaults to scoping their name to the workbook itself. You can override
+        this behaviour with this parameter. It has no effect outside associated
+        modules.
     macro: bool
         If True, registers the function as Macro Type. This grants the function
         extra priveledges, such as the ability to see un-calced cells and 
         call the full range of Excel.Application functions. Functions which will
         be invoked as Excel macros, i.e. not functions appearing in a cell, should
-        be declared with this attribute
+        be declared with this attribute.
     is_async: bool
         Registers the function as asynchronous. It&#39;s better to add the use asyncio&#39;s
         &#39;async def&#39; syntax if it is available. Note that async functions aren&#39;t
@@ -926,7 +1221,7 @@ hit this brings, it is rare that you will need to use this attribute.</dd>
         Declares the function as safe for multi-threaded calculation, i.e. the
         function must not make any non-synchronised access to objects outside
         its scope. Since python (at least CPython) is single-threaded there is
-        no performance benefit from enabling this
+        no performance benefit from enabling this.
     volatile: bool
         Tells Excel to recalculate this function on every calc cycle: the same
         behaviour as the NOW() and INDIRECT() built-ins.  Due to the performance 
@@ -954,7 +1249,7 @@ hit this brings, it is rare that you will need to use this attribute.</dd>
         for arg, val in arguments.items():
             if arg is not &#39;fn&#39; and val is not None:
                 meta.__dict__[arg] = val
-    
+
         meta.is_async = _async
 
         return fn
@@ -1023,7 +1318,7 @@ modules specified in the config.</p></section>
     if inspect.ismodule(m):
         # imp.reload throws strange errors if the module in not on sys.path
         # e.g. https://stackoverflow.com/questions/27272574/imp-reload-nonetype-object-has-no-attribute-name
-        # So handle modules we loaded with absolute path separately
+        # So deal with modules we loaded from absolute path separately
         if m.__name__.startswith(&#34;xloil&#34;):
             handle = _import_from_path(m.__spec__.origin, m.__name__)
         else:
@@ -1033,9 +1328,23 @@ modules specified in the config.</p></section>
     else:
         handle = importlib.import_module(m)
 
-    to_register = [_get_meta(x[1]).create_holder() for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
+    to_register = [_get_meta(x[1]).create_holder() 
+                   for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
     if any(to_register):
         xloil_core.register_functions(handle, to_register)</code></pre>
+</details>
+</dd>
+<dt id="xloil.to_cache"><code class="name flex">
+<span>def <span class="ident">to_cache</span></span>(<span>obj)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_cache(obj):
+    return xloil_core.to_cache(obj)</code></pre>
 </details>
 </dd>
 </dl>
@@ -1043,124 +1352,6 @@ modules specified in the config.</p></section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="xloil.ArrayType"><code class="flex name class">
-<span>class <span class="ident">ArrayType</span></span>
-<span>(</span><span>*args, **kwargs)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>This object can be used in annotations or @xlo.arg decorators
-to tell xlOil to attempt to convert an argument to a numpy array.</p>
-<p>You don't use this type directly, <code>Array</code> is a static instance of
-this type, so use the syntax as show in the examples below.</p>
-<p>If you don't specify this annotation, xlOil may still pass an array
-to your function if the user gives a range argument, e.g. A1:B2. In
-this case you will get a 2-dim Array[object]. If you know the data
-type you want, it is significantly more perfomant to specify it by
-annotation with this type.</p>
-<h2 id="examples">Examples</h2>
-<p>The following shows the available options</p>
-<pre><code>@xlo.func
-def array1(x: xlo.Array[int]):
-    pass
-
-@xlo.func
-def array2(y: xlo.Array[float](dims=1)):
-    pass
-
-@xlo.func
-def array3(z: xlo.Array[str](trim=False)):
-    pass
-</code></pre>
-<h2 id="methods">Methods</h2>
-<p><strong>[]</strong> : type
-<br>
-Types in square brackets are converted to numpy dtypes, so this
-means the only supported types are: int, float, bool, str, datetime, object.
-Numpy has a richer variety of dtypes than this but Excel does not. For the
-float data type, xlOil will convert #N/As to numpy.nan but other values will
-causes errors.</p>
-<p><strong>(dims=n)</strong> : int
-<br>
-Arrays can be either 1 or 2 dimensional, 2 is the default.
-Note the Excel has
-the following behaviour for writing arrays into an array formula range specified
-with Ctrl-Alt-Enter:
-"If you use a horizontal array for the second argument, it is duplicated down to
-fill the entire rectangle. If you use a vertical array, it is duplicated right to
-fill the entire rectangle. If you use a rectangular array, and it is too small for
-the rectangular range you want to put it in, that range is padded with #N/As."</p>
-<p><strong>(trim=x)</strong> : bool
-<br>
-By default xlOil trims arrays to the last row &amp; column which contain a nonempty
-string or non-#N/A value. This is generally desirable, but can be disabled with
-this paramter.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class ArrayType:
-    &#34;&#34;&#34;
-    This object can be used in annotations or @xlo.arg decorators
-    to tell xlOil to attempt to convert an argument to a numpy array.
-
-    You don&#39;t use this type directly, ``Array`` is a static instance of 
-    this type, so use the syntax as show in the examples below.
-
-    If you don&#39;t specify this annotation, xlOil may still pass an array
-    to your function if the user gives a range argument, e.g. A1:B2. In 
-    this case you will get a 2-dim Array[object]. If you know the data 
-    type you want, it is significantly more perfomant to specify it by
-    annotation with this type.
-
-    Examples
-    --------
-    The following shows the available options
-
-        @xlo.func
-        def array1(x: xlo.Array[int]):
-            pass
-
-        @xlo.func
-        def array2(y: xlo.Array[float](dims=1)):
-            pass
-
-        @xlo.func
-        def array3(z: xlo.Array[str](trim=False)):
-            pass
-    
-    Methods
-    -------
-
-    **[]** : type    
-        Types in square brackets are converted to numpy dtypes, so this
-        means the only supported types are: int, float, bool, str, datetime, object.
-        Numpy has a richer variety of dtypes than this but Excel does not. For the 
-        float data type, xlOil will convert #N/As to numpy.nan but other values will 
-        causes errors.
-
-    **(dims=n)** : int    
-        Arrays can be either 1 or 2 dimensional, 2 is the default.  Note the Excel has
-        the following behaviour for writing arrays into an array formula range specified
-        with Ctrl-Alt-Enter:
-        &#34;If you use a horizontal array for the second argument, it is duplicated down to
-        fill the entire rectangle. If you use a vertical array, it is duplicated right to 
-        fill the entire rectangle. If you use a rectangular array, and it is too small for
-        the rectangular range you want to put it in, that range is padded with #N/As.&#34;
-
-    **(trim=x)** : bool    
-        By default xlOil trims arrays to the last row &amp; column which contain a nonempty
-        string or non-#N/A value. This is generally desirable, but can be disabled with 
-        this paramter.
-
-    &#34;&#34;&#34;
-    def __getitem__(self, elem_type=object):
-        &#34;&#34;&#34;
-        Specifies a data type for the array. The syntax is::
-            xlo.Array[float]
-        &#34;&#34;&#34;
-        return _xloilArray(dtype=elem_type, shape=(1,1))</code></pre>
-</details>
-</dd>
 <dt id="xloil.CellError"><code class="flex name class">
 <span>class <span class="ident">CellError</span></span>
 <span>(</span><span>*args, **kwargs)</span>
@@ -1222,6 +1413,120 @@ form #FOO! is passed a a function argument.</p></section>
 </dd>
 </dl>
 </dd>
+<dt id="xloil.ExcelArray"><code class="flex name class">
+<span>class <span class="ident">ExcelArray</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>A holder for a internal Excel array which can be manipulated without
+copying the underlying data. It's not a general purpose array class
+but rather used to create efficiencies in type converters.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ExcelArray:
+    &#34;&#34;&#34;
+    A holder for a internal Excel array which can be manipulated without
+    copying the underlying data. It&#39;s not a general purpose array class 
+    but rather used to create efficiencies in type converters.
+    &#34;&#34;&#34;
+    def __getitem__(self, tuple):
+        &#34;&#34;&#34; 
+        Given a 2-tuple, slices the array to return a sub ExcelArray or a 
+        single element.
+        &#34;&#34;&#34;
+        pass
+    def to_numpy(self, dtype=None, dims=2):
+        &#34;&#34;&#34;
+        Converts the array to a numpy array. If dtype is None, attempts to 
+        discover one, otherwise raises an exception if values cannot be 
+        converted to the specified dtype. dims can be 1 or 2
+        &#34;&#34;&#34;
+        pass
+    @property
+    def dims(self):
+        &#34;&#34;&#34; 
+        Property which gives the dimension of the array: 1 or 2
+        &#34;&#34;&#34;
+        pass
+    @property
+    def nrows(self):
+        &#34;&#34;&#34; Returns the number of rows in the array &#34;&#34;&#34;
+        pass
+    @property
+    def ncols(self):
+        &#34;&#34;&#34; Returns the number of columns in the array &#34;&#34;&#34;
+        pass</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="xloil.ExcelArray.dims"><code class="name">var <span class="ident">dims</span></code></dt>
+<dd>
+<section class="desc"><p>Property which gives the dimension of the array: 1 or 2</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def dims(self):
+    &#34;&#34;&#34; 
+    Property which gives the dimension of the array: 1 or 2
+    &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+<dt id="xloil.ExcelArray.ncols"><code class="name">var <span class="ident">ncols</span></code></dt>
+<dd>
+<section class="desc"><p>Returns the number of columns in the array</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def ncols(self):
+    &#34;&#34;&#34; Returns the number of columns in the array &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+<dt id="xloil.ExcelArray.nrows"><code class="name">var <span class="ident">nrows</span></code></dt>
+<dd>
+<section class="desc"><p>Returns the number of rows in the array</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@property
+def nrows(self):
+    &#34;&#34;&#34; Returns the number of rows in the array &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="xloil.ExcelArray.to_numpy"><code class="name flex">
+<span>def <span class="ident">to_numpy</span></span>(<span>self, dtype=None, dims=2)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Converts the array to a numpy array. If dtype is None, attempts to
+discover one, otherwise raises an exception if values cannot be
+converted to the specified dtype. dims can be 1 or 2</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_numpy(self, dtype=None, dims=2):
+    &#34;&#34;&#34;
+    Converts the array to a numpy array. If dtype is None, attempts to 
+    discover one, otherwise raises an exception if values cannot be 
+    converted to the specified dtype. dims can be 1 or 2
+    &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
 <dt id="xloil.Range"><code class="flex name class">
 <span>class <span class="ident">Range</span></span>
 <span>(</span><span>*args, **kwargs)</span>
@@ -1276,17 +1581,17 @@ an area on a worksheet.</p></section>
         &#34;&#34;&#34;
         pass
     @property
-    def num_rows(self):
+    def nrows(self):
         &#34;&#34;&#34; Returns the number of rows in the range &#34;&#34;&#34;
         pass
     @property
-    def num_cols(self):
+    def ncols(self):
         &#34;&#34;&#34; Returns the number of columns in the range &#34;&#34;&#34;
         pass</code></pre>
 </details>
 <h3>Instance variables</h3>
 <dl>
-<dt id="xloil.Range.num_cols"><code class="name">var <span class="ident">num_cols</span></code></dt>
+<dt id="xloil.Range.ncols"><code class="name">var <span class="ident">ncols</span></code></dt>
 <dd>
 <section class="desc"><p>Returns the number of columns in the range</p></section>
 <details class="source">
@@ -1294,12 +1599,12 @@ an area on a worksheet.</p></section>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
-def num_cols(self):
+def ncols(self):
     &#34;&#34;&#34; Returns the number of columns in the range &#34;&#34;&#34;
     pass</code></pre>
 </details>
 </dd>
-<dt id="xloil.Range.num_rows"><code class="name">var <span class="ident">num_rows</span></code></dt>
+<dt id="xloil.Range.nrows"><code class="name">var <span class="ident">nrows</span></code></dt>
 <dd>
 <section class="desc"><p>Returns the number of rows in the range</p></section>
 <details class="source">
@@ -1307,7 +1612,7 @@ def num_cols(self):
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">@property
-def num_rows(self):
+def nrows(self):
     &#34;&#34;&#34; Returns the number of rows in the range &#34;&#34;&#34;
     pass</code></pre>
 </details>
@@ -1437,8 +1742,10 @@ as per the usual python array conventions.</p></section>
 <div class="toc">
 <ul>
 <li><a href="#xloil-python">xlOil Python</a><ul>
+<li><a href="#concepts-the-log-file">Concepts: The log file</a></li>
 <li><a href="#concepts-excel-functions-udfs">Concepts: Excel Functions (UDFs)</a></li>
 <li><a href="#concepts-cached-objects">Concepts: Cached Objects</a></li>
+<li><a href="#concepts-local-functions">Concepts: Local Functions</a></li>
 </ul>
 </li>
 </ul>
@@ -1446,21 +1753,19 @@ as per the usual python array conventions.</p></section>
 <ul id="index">
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="two-column">
-<li><code><a title="xloil.add_cache" href="#xloil.add_cache">add_cache</a></code></li>
 <li><code><a title="xloil.app" href="#xloil.app">app</a></code></li>
 <li><code><a title="xloil.arg" href="#xloil.arg">arg</a></code></li>
-<li><code><a title="xloil.fetch_cache" href="#xloil.fetch_cache">fetch_cache</a></code></li>
+<li><code><a title="xloil.converter" href="#xloil.converter">converter</a></code></li>
+<li><code><a title="xloil.from_cache" href="#xloil.from_cache">from_cache</a></code></li>
 <li><code><a title="xloil.func" href="#xloil.func">func</a></code></li>
 <li><code><a title="xloil.in_wizard" href="#xloil.in_wizard">in_wizard</a></code></li>
 <li><code><a title="xloil.log" href="#xloil.log">log</a></code></li>
 <li><code><a title="xloil.scan_module" href="#xloil.scan_module">scan_module</a></code></li>
+<li><code><a title="xloil.to_cache" href="#xloil.to_cache">to_cache</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
-<li>
-<h4><code><a title="xloil.ArrayType" href="#xloil.ArrayType">ArrayType</a></code></h4>
-</li>
 <li>
 <h4><code><a title="xloil.CellError" href="#xloil.CellError">CellError</a></code></h4>
 <ul class="two-column">
@@ -1475,13 +1780,22 @@ as per the usual python array conventions.</p></section>
 </ul>
 </li>
 <li>
+<h4><code><a title="xloil.ExcelArray" href="#xloil.ExcelArray">ExcelArray</a></code></h4>
+<ul class="">
+<li><code><a title="xloil.ExcelArray.dims" href="#xloil.ExcelArray.dims">dims</a></code></li>
+<li><code><a title="xloil.ExcelArray.ncols" href="#xloil.ExcelArray.ncols">ncols</a></code></li>
+<li><code><a title="xloil.ExcelArray.nrows" href="#xloil.ExcelArray.nrows">nrows</a></code></li>
+<li><code><a title="xloil.ExcelArray.to_numpy" href="#xloil.ExcelArray.to_numpy">to_numpy</a></code></li>
+</ul>
+</li>
+<li>
 <h4><code><a title="xloil.Range" href="#xloil.Range">Range</a></code></h4>
 <ul class="two-column">
 <li><code><a title="xloil.Range.address" href="#xloil.Range.address">address</a></code></li>
 <li><code><a title="xloil.Range.cell" href="#xloil.Range.cell">cell</a></code></li>
 <li><code><a title="xloil.Range.clear" href="#xloil.Range.clear">clear</a></code></li>
-<li><code><a title="xloil.Range.num_cols" href="#xloil.Range.num_cols">num_cols</a></code></li>
-<li><code><a title="xloil.Range.num_rows" href="#xloil.Range.num_rows">num_rows</a></code></li>
+<li><code><a title="xloil.Range.ncols" href="#xloil.Range.ncols">ncols</a></code></li>
+<li><code><a title="xloil.Range.nrows" href="#xloil.Range.nrows">nrows</a></code></li>
 <li><code><a title="xloil.Range.range" href="#xloil.Range.range">range</a></code></li>
 <li><code><a title="xloil.Range.set" href="#xloil.Range.set">set</a></code></li>
 <li><code><a title="xloil.Range.value" href="#xloil.Range.value">value</a></code></li>
