@@ -63,6 +63,7 @@
     <ClInclude Include="internal\LocalFunctions.h">
       <Filter>internal</Filter>
     </ClInclude>
+    <ClInclude Include="FuncSpec.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

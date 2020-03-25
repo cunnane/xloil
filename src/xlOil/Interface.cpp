@@ -45,53 +45,21 @@ namespace xloil
   {
     return excelApp();
   }
-
-  int
-    Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, RegisterCallback callback, 
-      const std::shared_ptr<void>& data) noexcept
+  int Core::registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept
   {
-    auto ptr = xloil::registerFunc(info, callback, data);
+    auto ptr = xloil::registerFunc(spec);
     if (!ptr) return 0;
-    _functions.emplace(info->name, ptr);
+    _functions.emplace(spec->name(), ptr);
     return ptr->registerId();
   }
-
-  int
-    Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, AsyncCallback callback,
-      const std::shared_ptr<void>& data) noexcept
-  {
-    auto ptr = xloil::registerFunc(info, callback, data);
-    if (!ptr) return 0;
-    _functions.emplace(info->name, ptr);
-    return ptr->registerId();
-  }
-
-  int
-    Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, const char* functionName) noexcept
-  {
-    auto ptr = xloil::registerFunc(info, functionName, _pluginName.c_str());
-    if (!ptr) return 0;
-    _functions.emplace(info->name, ptr);
-    return ptr->registerId();
-  }
-
-  int Core::registerFunc(const std::shared_ptr<const FuncInfo>& info, const ExcelFuncPrototype & f) noexcept
-  {
-    auto ptr = xloil::registerFunc(info, f);
-    if (!ptr) return 0;
-    _functions.emplace(info->name, ptr);
-    return ptr->registerId();
-  }
-
   bool Core::reregister(
-    const std::shared_ptr<const FuncInfo>& info,
-    const std::shared_ptr<void>& newContext)
+    const std::shared_ptr<const FuncSpec>& spec)
   {
-    auto iFunc = _functions.find(info->name);
+    auto iFunc = _functions.find(spec->info()->name);
     if (iFunc == _functions.end())
       return false;
     auto[name, ptr] = *iFunc;
-    auto success = ptr->reregister(info, newContext);
+    auto success = ptr->reregister(spec);
     if (!success)
       ptr->deregister();
     return success;
@@ -113,7 +81,7 @@ namespace xloil
   void Core::registerLocal(
     const wchar_t * workbookName, 
     const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
-    const std::vector<ExcelFuncPrototype> funcs)
+    const std::vector<ExcelFuncObject> funcs)
   {
     xloil::registerLocalFuncs(workbookName, funcInfo, funcs);
   }

@@ -1,5 +1,6 @@
 #include "StaticRegister.h"
 #include "internal/FuncRegistry.h"
+#include "FuncSpec.h"
 
 using std::vector;
 
@@ -51,12 +52,13 @@ namespace xloil
   std::vector<RegisteredFuncPtr> processRegistryQueue(const wchar_t* moduleName)
   {
     vector<RegisteredFuncPtr> result;
-    auto& q = getFuncRegistryQueue();
-    for (auto f : q)
+    auto& queue = getFuncRegistryQueue();
+    for (auto f : queue)
     {
-      result.emplace_back(registerFunc(f.getInfo(), f.entryPoint.c_str(), moduleName));
+      auto spec = std::make_shared<const StaticSpec>(f.getInfo(), moduleName, f.entryPoint);
+      result.emplace_back(registerFunc(spec));
     }
-    q.clear();
+    queue.clear();
     return result;
   }
 }

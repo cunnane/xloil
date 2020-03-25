@@ -17,13 +17,24 @@ namespace xloil
 {
   struct Closure
   {
-    ExcelFuncPrototype func;
+    ExcelFuncObject func;
     std::shared_ptr<const FuncInfo> info;
   };
 
   // ensure this is cleaned before things close.
 
   map < wstring, map<wstring, Closure>> theRegistry;
+
+  Closure& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
+  {
+    auto wb = theRegistry.find(wbName);
+    if (wb == theRegistry.end())
+      XLO_THROW(L"Workbook '{0}' unknown for local function '{1}'", wbName, funcName);
+    auto func = wb->second.find(funcName);
+    if (func == wb->second.end())
+      XLO_THROW(L"Local function '{1}' in workbook '{0}' not found", wbName, funcName);
+    return func->second;
+  }
 
   auto workbookCloseHandler = xloil::Event_WorkbookClose().bind(
     [](const wchar_t* wbName)
@@ -36,7 +47,7 @@ namespace xloil
   void registerLocalFuncs(
     const wchar_t* workbookName,
     const std::vector<std::shared_ptr<const FuncInfo>>& registeredFuncs,
-    const std::vector<ExcelFuncPrototype> funcs)
+    const std::vector<ExcelFuncObject> funcs)
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
@@ -71,7 +82,7 @@ ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args... arg
       const ExcelObj* params[] = { args... };
     else
       const ExcelObj* params[] = { nullptr };
-    auto& closure = xloil::theRegistry[workbook.toString()][function.toString()];
+    const auto& closure = xloil::findOrThrow(workbook.toString().c_str(), function.toString().c_str());
     return closure.func(*closure.info, params);
   }
   catch (const std::exception& e)
@@ -86,7 +97,7 @@ ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args..
   try
   {
     const ExcelObj* params[] = { args... };
-    auto& closure = xloil::theRegistry[workbook.toString()][function.toString()];
+    const auto& closure = xloil::findOrThrow(workbook.toString().c_str(), function.toString().c_str());
     const auto& info = closure.info;
     const auto nArgs = info->numArgs();
     std::list<ExcelObj> rangeConversions;

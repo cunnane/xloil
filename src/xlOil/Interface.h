@@ -4,6 +4,7 @@
 #include "Events.h"
 #include "ExcelObj.h"
 #include "ExcelObjCache.h"
+#include "FuncSpec.h"
 #include <memory>
 #include <map>
 
@@ -38,84 +39,7 @@ namespace xloil
 
     static Excel::_Application& theExcelApp();
 
-    /// <summary>
-    /// See templated version <see cref="registerFunc"/>
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="callback"></param>
-    /// <param name="data"></param>
-    /// <param name="group"></param>
-    /// <returns></returns>
-    int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info, 
-        RegisterCallback callback, 
-        const std::shared_ptr<void>&  data) noexcept;
-
-    /// <summary>
-    /// Probably shouldn't use this
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="callback"></param>
-    /// <param name="data"></param>
-    /// <param name="group"></param>
-    /// <returns></returns>
-    int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info,
-        AsyncCallback callback,
-        const std::shared_ptr<void>& data) noexcept;
-
-    /// <summary>
-    /// Registers an exported function
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="functionName">The mangled (if not extern C) entry point</param>
-    /// <returns>The registration ID or zero on failure</returns>
-    int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info, 
-        const char* functionName) noexcept;
-
-    /// <summary>
-    /// Registers a function object with suitable signature as an
-    /// Excel function
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="f"></param>
-    /// <returns>The registration ID or zero on failure</returns>
-    int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info, 
-        const ExcelFuncPrototype& f) noexcept;
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="info">Pointer to info which determines how the function appears in Excel</param>
-    /// <param name="callback">Pointer to callback function with correct signature</param>
-    /// <param name="data">Pointer to context data that will be returned with the callback</param>
-    /// </param>
-    /// <returns>The registration ID produced by Excel which can be used to invoke the
-    ///  funcion The registration ID or zero on failure</returns>
-    template <class TData> inline int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info, 
-        RegisterCallbackT<TData> callback,
-        const std::shared_ptr<TData>& data) noexcept
-    {
-      return registerFunc(info, (RegisterCallback)callback, std::static_pointer_cast<void>(data));
-    }
-
-
-    template <class TData> inline int
-      registerFunc(
-        const std::shared_ptr<const FuncInfo>& info,
-        AsyncCallbackT<TData> callback,
-        const std::shared_ptr<TData>& data) noexcept
-    {
-      return registerFunc(info, (AsyncCallback)callback, std::static_pointer_cast<void>(data));
-    }
+    int registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept;
 
     /// <summary>
     /// Searches existing functions for one with a name matching that
@@ -128,10 +52,8 @@ namespace xloil
     /// <param name="info"></param>
     /// <param name="newContext"></param>
     /// <returns>false if the function was not found or patching failed</returns>
-    bool 
-      reregister(
-        const std::shared_ptr<const FuncInfo>& info,
-        const std::shared_ptr<void>& newContext);
+    bool reregister(
+      const std::shared_ptr<const FuncSpec>& spec);
 
     /// <summary>
     /// Removes the specified function from Excel
@@ -144,7 +66,7 @@ namespace xloil
     void registerLocal(
       const wchar_t* workbookName,
       const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
-      const std::vector<ExcelFuncPrototype> funcs);
+      const std::vector<ExcelFuncObject> funcs);
 
     void forgetLocal(const wchar_t* workbookName);
 

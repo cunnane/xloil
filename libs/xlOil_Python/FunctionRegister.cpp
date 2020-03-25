@@ -202,17 +202,20 @@ namespace xloil
       }
     }
 
-    void registerFunc(const shared_ptr<PyFuncInfo>& funcInfo)
+    shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
+      shared_ptr<const FuncSpec> spec;
       if (funcInfo->info->options & FuncInfo::ASYNC)
       {
         if (!thePythonWorkerThread)
           thePythonWorkerThread = new ctpl::thread_pool(1);
 
-        theCore->registerFunc(funcInfo->info, &pythonAsyncCallback, funcInfo);
+        spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
       }
       else
-        theCore->registerFunc(funcInfo->info, &pythonCallback, funcInfo);
+        spec.reset(new CallbackSpec(funcInfo->info, &pythonCallback, funcInfo));
+       
+      return spec;
     }
 
     void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action);
@@ -229,65 +232,76 @@ namespace xloil
         if (workbookModule)
           _workbookModule = workbookModule;
       }
+
       ~RegisteredModule()
       {
         XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
         for (auto& f : _functions)
-          theCore->deregister(f.second->info->name);
+          theCore->deregister(f.second->info()->name);
         if (!_workbookModule.empty())
           theCore->forgetLocal(_workbookModule.c_str());
       }
 
       void registerFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
       {
-        if (_functions.empty())
+        if (!_workbookModule.empty())
+          registerLocalFuncs(_workbookModule.c_str(), functions);
+        vector<shared_ptr<const FuncSpec>> funcSpecs;
+        for (auto& f : functions)
+        {
+          if (!f->isLocalFunc)
+            funcSpecs.push_back(createSpec(f));
+        }
+        registerFuncSpecs(_functions, funcSpecs);
+      }
+
+      static void registerFuncSpecs(
+        map<wstring, shared_ptr<const FuncSpec>>& existing,
+        const vector<shared_ptr<const FuncSpec>>& funcSpecs)
+      {
+        if (existing.empty())
         {
           // Fresh registration, just add functions
-          for (auto& f : functions)
+          for (auto& f : funcSpecs)
           {
-            if (f->isLocalFunc) continue;
-            _functions.emplace(f->info->name, f);
-            registerFunc(f);
+            existing.emplace(f->name(), f);
+            theCore->registerFunc(f);
           }
         }
         else
         {
           // Trickier case: potentially re-registering functions
-          map<wstring, shared_ptr<PyFuncInfo>> newMap;
+          std::remove_reference<decltype(existing)>::type newMap;
 
-          for (auto& f : functions)
+          for (auto& f : funcSpecs)
           {
-            if (f->isLocalFunc) continue;
-            auto iFunc = _functions.find(f->info->name);
+            auto iFunc = existing.find(f->info()->name);
 
             // If the function name already exists, try to avoid re-registering
-            if (iFunc != _functions.end())
+            if (iFunc != existing.end())
             {
               // Attempt to patch the function context to refer to to the new py function
-              if (!theCore->reregister(iFunc->second->info, std::static_pointer_cast<void>(f)))
+              if (!theCore->reregister(f))
               {
                 // If that failed, we need to do it ourselves
-                registerFunc(f);
+                theCore->registerFunc(f);
               }
               // Having handled this function, remove it from the old map
-              _functions.erase(iFunc);
+              existing.erase(iFunc);
             }
             else
-              registerFunc(f);
-            newMap.emplace(f->info->name, f);
+              theCore->registerFunc(f);
+            newMap.emplace(f->name(), f);
           }
 
           // Any functions remaining in the old map must have been removed from the module
           // so we can deregister them, but if that fails we have to keep them or they
           // will be orphaned
-          for (auto& f : _functions)
-            if (!theCore->deregister(f.second->info->name))
+          for (auto& f : existing)
+            if (!theCore->deregister(f.second->name()))
               newMap.emplace(f);
 
-          _functions = newMap;
-
-          if (!_workbookModule.empty())
-            registerLocalFuncs(_workbookModule.c_str(), functions);
+          existing = newMap;
         }
       }
 
@@ -296,7 +310,7 @@ namespace xloil
         const vector<shared_ptr<PyFuncInfo>>& functions)
       {
         vector<shared_ptr<const FuncInfo>> funcInfo;
-        vector<ExcelFuncPrototype> funcs;
+        vector<ExcelFuncObject> funcs;
         for (auto &f : functions)
         {
           if (f->isLocalFunc)
@@ -315,7 +329,7 @@ namespace xloil
       bool workbookModule() const { return !_workbookModule.empty(); }
 
     private:
-      map<wstring, shared_ptr<PyFuncInfo>> _functions;
+      map<wstring, shared_ptr<const FuncSpec>> _functions;
       shared_ptr<const void> _fileWatcher;
       wstring _modulePath;
       wstring _workbookModule;

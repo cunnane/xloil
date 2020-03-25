@@ -106,6 +106,7 @@
     <ClInclude Include="ExportMacro.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="ExcelCall.h" />
+    <ClInclude Include="FuncSpec.h" />
     <ClInclude Include="Interface.h" />
     <ClInclude Include="internal\FuncRegistry.h" />
     <ClInclude Include="internal\LocalFunctions.h" />

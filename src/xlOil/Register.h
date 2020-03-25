@@ -99,7 +99,7 @@ namespace xloil
   template<class TData> using AsyncCallbackT = void (*)(TData* data, const ExcelObj*, const ExcelObj**);
   typedef AsyncCallbackT<void> AsyncCallback;
 
-  using ExcelFuncPrototype = std::function<ExcelObj*(const FuncInfo& info, const ExcelObj**)>;
+  using ExcelFuncObject = std::function<ExcelObj*(const FuncInfo& info, const ExcelObj**)>;
 
   int
     findRegisteredFunc(const wchar_t* name, std::shared_ptr<FuncInfo>* info) noexcept;

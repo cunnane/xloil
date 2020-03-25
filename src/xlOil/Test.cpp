@@ -8,6 +8,7 @@
 #include <future>
 using std::wstring;
 using namespace msxll;
+using std::make_shared;
 
 #ifdef _DEBUG
 
@@ -44,27 +45,28 @@ namespace xloil
     static void run()
     {
       {
-        auto info = std::make_shared<FuncInfo>(); 
+        auto info = std::make_shared<FuncInfo>();
         info->name = L"SomeArgs";
         info->args.push_back(FuncArg(L"Foo", L"Help"));
-        registerFunc(info, &testCallback, info);
+        registerFunc(make_shared<CallbackSpec>(info, &testCallback, info));
       }
       {
         auto info = std::make_shared<FuncInfo>();
         info->name = L"NoArgs";
-        registerFunc(info, &testCallback, info);
+        registerFunc(make_shared<CallbackSpec>(info, &testCallback, info));
       }
       {
         auto info2 = std::make_shared<FuncInfo>();
         info2->name = L"Foo";
         info2->args.push_back(FuncArg(L"Foo", L"Help"));
-        registerFunc(info2, &testCallback, info2);
+        registerFunc(make_shared<CallbackSpec>(info2, &testCallback, info2));
       }
       {
-        auto info2 = std::make_shared<FuncInfo>(); 
+        auto info2 = std::make_shared<FuncInfo>();
         info2->name = L"CallerExample";
-        registerFunc(info2, "CallerExample", Core::theCoreName());
+        registerFunc(make_shared<StaticSpec>(info2, Core::theCoreName(), "CallerExample"));
       }
+    
     }
   };
 
