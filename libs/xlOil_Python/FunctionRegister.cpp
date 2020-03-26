@@ -259,50 +259,25 @@ namespace xloil
         map<wstring, shared_ptr<const FuncSpec>>& existing,
         const vector<shared_ptr<const FuncSpec>>& funcSpecs)
       {
-        if (existing.empty())
+        std::remove_reference<decltype(existing)>::type newFuncs;
+
+        for (auto& f : funcSpecs)
         {
-          // Fresh registration, just add functions
-          for (auto& f : funcSpecs)
+          if (theCore->registerFunc(f) != 0)
           {
-            existing.emplace(f->name(), f);
-            theCore->registerFunc(f);
+            existing.erase(f->name());
+            newFuncs.emplace(f->name(), f);
           }
         }
-        else
-        {
-          // Trickier case: potentially re-registering functions
-          std::remove_reference<decltype(existing)>::type newMap;
 
-          for (auto& f : funcSpecs)
-          {
-            auto iFunc = existing.find(f->info()->name);
+        // Any functions remaining in the old map must have been removed from the module
+        // so we can deregister them, but if that fails we have to keep them or they
+        // will be orphaned
+        for (auto& f : existing)
+          if (!theCore->deregister(f.second->name()))
+            newFuncs.emplace(f);
 
-            // If the function name already exists, try to avoid re-registering
-            if (iFunc != existing.end())
-            {
-              // Attempt to patch the function context to refer to to the new py function
-              if (!theCore->reregister(f))
-              {
-                // If that failed, we need to do it ourselves
-                theCore->registerFunc(f);
-              }
-              // Having handled this function, remove it from the old map
-              existing.erase(iFunc);
-            }
-            else
-              theCore->registerFunc(f);
-            newMap.emplace(f->name(), f);
-          }
-
-          // Any functions remaining in the old map must have been removed from the module
-          // so we can deregister them, but if that fails we have to keep them or they
-          // will be orphaned
-          for (auto& f : existing)
-            if (!theCore->deregister(f.second->name()))
-              newMap.emplace(f);
-
-          existing = newMap;
-        }
+        existing = newFuncs;
       }
 
       void registerLocalFuncs(

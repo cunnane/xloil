@@ -45,13 +45,33 @@ namespace xloil
   {
     return excelApp();
   }
+
   int Core::registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept
   {
+    auto& name = spec->name();
+    auto iFunc = _functions.find(name);
+    if (iFunc != _functions.end())
+    {
+      auto& ptr = iFunc->second;
+
+      // Attempt to patch the function context to refer to the new function
+      auto success = ptr->reregister(spec);
+      if (success)
+        return ptr->registerId();
+      
+      if (!ptr->deregister())
+        return 0;
+
+      _functions.erase(iFunc);
+    }
+
     auto ptr = xloil::registerFunc(spec);
-    if (!ptr) return 0;
-    _functions.emplace(spec->name(), ptr);
+    if (!ptr) 
+      return 0;
+    _functions.emplace(name, ptr);
     return ptr->registerId();
   }
+
   bool Core::reregister(
     const std::shared_ptr<const FuncSpec>& spec)
   {
