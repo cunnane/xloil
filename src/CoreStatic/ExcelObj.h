@@ -12,6 +12,11 @@
 
 namespace xloil
 {
+  constexpr size_t CELL_ADDRESS_A1_MAX_LEN = 3 + 7 + 1 + 3 + 7 + 1;
+  constexpr size_t CELL_ADDRESS_RC_MAX_LEN = 29;
+  constexpr size_t WORKSHEET_NAME_MAX_LEN = 31;
+  constexpr size_t XL_STR_MAX_LEN = 32767;
+
   enum class ExcelType
   {
     Num     = 0x0001,
@@ -52,7 +57,6 @@ namespace xloil
     CellError::GettingData
   };
 
-  //const char* toCString(ExcelError e);
   const wchar_t* toWCString(CellError e);
 
 

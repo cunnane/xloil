@@ -45,7 +45,7 @@ namespace xloil
         {
           return xlrefToStringA1(ref, buf, sz);
         },
-        CELL_ADDRESS_A1_MAX);
+        CELL_ADDRESS_A1_MAX_LEN);
     else
       return captureStringBuffer([this, ref](auto buf, auto sz)
       {

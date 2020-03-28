@@ -4,7 +4,9 @@
 #include "xloil/Log.h"
 #include "xloil/Date.h"
 #include "xloil/StringUtils.h"
+#include <xlOil/ExcelRange.h>
 #include "ArrayBuilder.h"
+#include "ExcelArray.h"
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -17,8 +19,6 @@
 #define MAX_XL12_COLS            16384
 #define MAX_XL11_UDF_ARGS           30
 #define MAX_XL12_UDF_ARGS          255
-#define MAX_XL4_STR_LEN           255u
-#define MAX_XL12_STR_LEN        32767ul
 
 using std::string;
 using std::wstring;
@@ -41,7 +41,7 @@ namespace
 
   wchar_t* makeStringBuffer(size_t& nChars)
   {
-    nChars = std::min<size_t>(nChars, MAX_XL12_STR_LEN-1);
+    nChars = std::min<size_t>(nChars, XL_STR_MAX_LEN);
     auto buf = new wchar_t[nChars + 2];
     buf[0] = (wchar_t)nChars;
     buf[nChars + 1] = L'\0';
@@ -472,15 +472,22 @@ namespace
     case xltypeErr:
       return toWCString(CellError(val.err));
 
-   // case xltypeRef:
     case xltypeSRef:
+    case xltypeRef:
     {
-      size_t len = 30;
-      auto buf = wstring(len, L'\0');
-      len = xlrefToStringRC(val.sref.ref, (wchar_t*)buf.data(), len);
-      buf.resize(len);
-      return buf;
+      ExcelRange range(*this);
+      return range.address();
     }
+
+    case xltypeMulti:
+    {
+      ExcelArray arr(*this);
+      wstring str;
+      for (auto i = 0; i < arr.size(); ++i)
+        str += arr(i).toString();
+      return str;
+    }
+
     default:
       return L"#???";
     }
@@ -508,7 +515,10 @@ namespace
       return 8;
 
     case xltypeSRef:
-      return 52;
+      return CELL_ADDRESS_RC_MAX_LEN + WORKSHEET_NAME_MAX_LEN;
+
+    case xltypeRef:
+      return 256 + CELL_ADDRESS_RC_MAX_LEN + WORKSHEET_NAME_MAX_LEN;
 
     default:
       return 4;

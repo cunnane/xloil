@@ -94,8 +94,8 @@ namespace xloil
   size_t CallerInfo::fullAddressLength() const
   {
     auto s = _SheetName->asPascalStr();
-    // 29 chars is the max for RaCb:RxRy references - any value in more precise guess?
-    return s.length() + 1 + 29; 
+    // Any value in more precise guess?
+    return s.length() + 1 + CELL_ADDRESS_RC_MAX_LEN;
   }
   size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
   {

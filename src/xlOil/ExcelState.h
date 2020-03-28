@@ -16,7 +16,8 @@ namespace xloil
 
   void writeColumnName(size_t colIndex, char buf[4]);
 
-  constexpr size_t CELL_ADDRESS_A1_MAX = 3 + 7 + 1 + 3 + 7 + 1;
+
+
   XLOIL_EXPORT size_t xlrefToStringA1(
     const msxll::XLREF12& ref, 
     wchar_t* buf, 
