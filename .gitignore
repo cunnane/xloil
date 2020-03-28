@@ -39,3 +39,4 @@ graveyard/
 *.vcxproj.user
 __pycache__
 /external/python/
+/external/sqlite
