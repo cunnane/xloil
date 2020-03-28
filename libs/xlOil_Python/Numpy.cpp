@@ -351,7 +351,6 @@ namespace xloil
         auto dims = PyArray_DIMS(pArr);
         auto nDims = PyArray_NDIM(pArr);
 
-        size_t stringLength = 0;
         switch (nDims)
         {
         case 1:

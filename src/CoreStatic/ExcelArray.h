@@ -4,9 +4,19 @@
 #include <xloil/Log.h>
 namespace xloil
 {
+  /// <summary>
+  /// Creates a view of an array contained in an ExcelObj.
+  /// </summary>
   class ExcelArray
   {
   public:
+    /// <summary>
+    /// Create an ExcelArray from an ExcelObj. An error is thrown if the 
+    /// object is not of array type. By default trims the provided array
+    /// to the last non-empty (not Nil, #N/A or "") row and column.
+    /// </summary>
+    /// <param name="obj">ExcelObj, must be of array type</param>
+    /// <param name="trim">If true, trim the array to the last non-empty row and columns</param>
     ExcelArray(const ExcelObj& obj, bool trim = true)
       : _data((ExcelObj*)obj.val.array.lparray)
       , _colOffset(0)
@@ -24,12 +34,23 @@ namespace xloil
       }
     }
 
-    ExcelArray(const ExcelArray& arr, int fromRow, int fromCol, int toRow, int toCol)
-      : _rows((toRow < 0 ? arr._rows + toRow : toRow) - fromRow)
-      , _columns((toCol < 0 ? arr._columns + toCol : toCol) - fromCol)
+    /// <summary>
+    /// Creates an ExcelArray which is a subarry of a given one. Note that an ExcelArray
+    /// cannot be empty.
+    /// </summary>
+    /// <param name="arr">The parent array</param>
+    /// <param name="fromRow">Starting row</param>
+    /// <param name="fromCol">Starting column</param>
+    /// <param name="toRow">Ending row, zero or negative numbers mean offset from end</param>
+    /// <param name="toCol">Ending column, zero or negative numbers mean offset from end</param>
+    ExcelArray(const ExcelArray& arr, int fromRow, int fromCol, int toRow=0, int toCol=0)
+      : _rows((toRow <= 0 ? arr._rows + toRow : toRow) - fromRow)
+      , _columns((toCol <= 0 ? arr._columns + toCol : toCol) - fromCol)
       , _colOffset(fromCol)
       , _baseCols(arr._baseCols)
     {
+      if (_rows == 0 || _columns == 0)
+        XLO_THROW("Empty ExcelArray");
       _data = arr._data + fromRow * _baseCols;
     }
 
@@ -45,12 +66,12 @@ namespace xloil
     }
     const ExcelObj& operator()(size_t row) const
     {
-      //checkRange(row, 0);
+      //TODO: checkRange(row, 0);
       return at(row);
     }
     ExcelObj& operator()(size_t row)
     {
-      //checkRange(row, 0);
+      //TODO: checkRange(row, 0);
       return at(row);
     }
 
@@ -77,7 +98,7 @@ namespace xloil
       return at(i, j);
     }
 
-    ExcelArray subArray(int fromRow, int fromCol, int toRow, int toCol)
+    ExcelArray subArray(int fromRow, int fromCol, int toRow=0, int toCol=0) const
     {
       return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
     }
@@ -150,6 +171,4 @@ namespace xloil
         XLO_THROW("Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
     }
   };
-
-  
 }

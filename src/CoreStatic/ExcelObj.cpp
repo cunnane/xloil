@@ -41,7 +41,7 @@ namespace
 
   wchar_t* makeStringBuffer(size_t& nChars)
   {
-    nChars = std::min<size_t>(nChars, MAX_XL12_STR_LEN - 2);
+    nChars = std::min<size_t>(nChars, MAX_XL12_STR_LEN-1);
     auto buf = new wchar_t[nChars + 2];
     buf[0] = (wchar_t)nChars;
     buf[nChars + 1] = L'\0';
@@ -280,7 +280,7 @@ namespace
 
   ExcelObj::ExcelObj(PString<Char>&& pstr)
   {
-    val.str = const_cast<wchar_t*>(pstr.data());
+    val.str = pstr.release();
     if (!val.str)
       val.str = Const::EmptyStr().val.str;
     xltype = xltypeStr;
@@ -298,43 +298,12 @@ namespace
       val.str = Const::EmptyStr().val.str;
     else
       val.str = pascalWStringFromC(s);
-
     xltype = xltypeStr;
-  }
-
-  ExcelObj::ExcelObj(const std::string& s)
-    :ExcelObj(s.c_str())
-  {
-  }
-
-  ExcelObj::ExcelObj(const std::wstring& s)
-    :ExcelObj(s.c_str())
-  {
-  }
-
-  ExcelObj::ExcelObj(nullptr_t)
-  {
-    xltype = xltypeMissing;
   }
 
   ExcelObj::ExcelObj(const ExcelObj & that)
   {
     overwrite(*this, that);
-  }
-
-  ExcelObj::ExcelObj(ExcelObj&& that)
-  {
-    // Steal all data
-    this->val = that.val;
-    this->xltype = that.xltype;
-    // Mark donor object as empty
-    that.xltype = xltypeNil;
-  }
-
-  ExcelObj::ExcelObj(CellError err)
-  {
-    val.err = (int)err;
-    xltype = xltypeErr;
   }
 
   ExcelObj::ExcelObj(const ExcelObj* array, int nRows, int nCols)
@@ -363,20 +332,19 @@ namespace
     return this;
   }
 
-  ExcelType ExcelObj::type() const
+  double ExcelObj::toDouble() const
   {
-    return ExcelType(xtype());
+    return ToDouble()(*this);
   }
 
-  int ExcelObj::xtype() const
+  int ExcelObj::toInt() const
   {
-    return xltype & ~(xlbitXLFree | xlbitDLLFree);
+    return ToInt()(*this);
   }
 
-
-  ExcelObj::~ExcelObj()
+  bool ExcelObj::toBool() const
   {
-    reset();
+    return ToBool()(*this);
   }
 
   void ExcelObj::reset()
@@ -471,25 +439,8 @@ namespace
       return 0; // Not sure this is a very sensible default?
     }
   }
-  bool ExcelObj::isMissing() const
-  {
-    return (xtype() & xltypeMissing) != 0;
-  }
-  bool ExcelObj::isNonEmpty() const
-  {
-    switch (xtype())
-    {
-    case xltypeErr:
-      return val.err != xlerrNA;
-    case xltypeMissing:
-    case xltypeNil:
-      return false;
-    case xltypeStr:
-      return val.str[0] != L'\0';
-    default:
-      return true;
-    }
-  }
+
+
 
   std::wstring ExcelObj::toString(bool strict) const
   {
@@ -562,57 +513,6 @@ namespace
     default:
       return 4;
     }
-  }
-
-  double ExcelObj::toDouble() const
-  {
-    return ToDouble()(*this);
-  }
-
-  int ExcelObj::toInt() const
-  {
-    return ToInt()(*this);
-  }
-
-  bool ExcelObj::toBool() const
-  {
-    return ToBool()(*this);
-  }
-
-  double ExcelObj::asDouble() const
-  {
-    assert(xtype() == xltypeNum);
-    return val.num;
-  }
-
-  int ExcelObj::asInt() const
-  {
-    assert(xtype() == xltypeInt);
-    return val.w;
-  }
-
-  bool ExcelObj::asBool() const
-  {
-    assert(xtype() == xltypeBool);
-    return val.xbool;
-  }
-
-  PString<> ExcelObj::asPascalStr() const
-  {
-    if ((xtype() & xltypeStr) == 0)
-      return PString<>();
-    return PString<>::view(val.str);
-  }
-
-  size_t ExcelObj::writeString(wchar_t* buf, wchar_t bufSize) const
-  {
-    auto s = this->asPascalStr();
-    if (!s) // We are not a string
-      return 0;
-    auto len = std::min<wchar_t>(s.length(), bufSize - 1);
-    wmemcpy_s(buf, len, s.pstr(), len);
-    buf[len] = L'\0';
-    return len;
   }
 
   bool ExcelObj::toDMY(int &nDay, int &nMonth, int &nYear, bool coerce)

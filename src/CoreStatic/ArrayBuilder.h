@@ -46,35 +46,25 @@ namespace xloil
     {
       new (at(i, j)) ExcelObj(CellError::NA);
     }
-  
+
     template<class T>
-    void emplace_at(size_t i, size_t j, T x) 
+    void emplace_at(size_t i, size_t j, T&& x) 
     { 
-      new (at(i, j)) ExcelObj(x);
+      new (at(i, j)) ExcelObj(std::forward<T>(x));
     }
-    template<>
-    void emplace_at<wchar_t*>(size_t i, size_t j, wchar_t* str)
+
+    void emplace_at(size_t i, size_t j, wchar_t* str)
     {
       emplace_at(i, j, const_cast<const wchar_t*>(str));
     }
-    template<>
-    void emplace_at<const wchar_t*>(size_t i, size_t j, const wchar_t* str)
+
+    void emplace_at(size_t i, size_t j, const wchar_t* str)
     {
       auto len = wcslen(str);
       auto pstr = string(len);
       wmemcpy_s(pstr.pstr(), len, str, len);
       new (at(i, j)) ExcelObj(std::forward<PString<>>(pstr));
     }
-
-    void emplace_at(size_t i, size_t j, ExcelObj&& x)
-    {
-      new (at(i, j)) ExcelObj(std::forward<ExcelObj>(x));
-    }
-
-    //void emplace_at(size_t i, size_t j, PString<>&& x)
-    //{
-    //  new (at(i, j)) ExcelObj(std::forward<PString<>>(x));
-    //}
 
     PString<> string(size_t& len)
     {

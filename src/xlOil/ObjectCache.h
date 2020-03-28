@@ -225,7 +225,7 @@ namespace xloil
         _itow_s(int(iPos), pStr, padding - 1, 10);
       }
 
-      auto key = PString<>::view(pascalStr);
+      auto key = PString<>::own(pascalStr);
 
       if constexpr (TReverseLookup)
       {

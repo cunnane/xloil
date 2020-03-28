@@ -4,8 +4,11 @@
 #include "PString.h"
 #include <string>
 #include <array>
+#include <cassert>
 
 #define XLOIL_XLOPER msxll::xloper12
+
+#define XLO_RETURN_ERROR(err) return ExcelObj::returnValue(err)
 
 namespace xloil
 {
@@ -88,20 +91,46 @@ namespace xloil
     explicit ExcelObj(bool);
 
     /// <summary>
-    /// Creates an empty object of the specified type. "Empty" has a sensible 
-    /// default depending on the data type. For the  error type it is #N/A.
+    /// Creates an empty object of the specified type. "Empty" in this case
+    /// means a sensible default depending on the data type.  For bool's it 
+    /// is false, for numerics zero, for string it's the empty string, 
+    /// for the error type it is #N/A.
     /// </summary>
     /// <param name=""></param>
     ExcelObj(ExcelType);
 
     ExcelObj(const char*);
     ExcelObj(const wchar_t*);
-    ExcelObj(const std::string&);
-    ExcelObj(const std::wstring&);
-    ExcelObj(nullptr_t);
+    
+    ExcelObj::ExcelObj(const std::string& s)
+      :ExcelObj(s.c_str())
+    {}
+
+    ExcelObj::ExcelObj(const std::wstring& s)
+      : ExcelObj(s.c_str())
+    {}
+
+    ExcelObj::ExcelObj(nullptr_t)
+    {
+      xltype = msxll::xltypeMissing;
+    }
+
     ExcelObj(const ExcelObj&);
-    ExcelObj(ExcelObj&&);
-    ExcelObj(CellError err);
+
+    ExcelObj::ExcelObj(ExcelObj&& that)
+    {
+      // Steal all data
+      this->val = that.val;
+      this->xltype = that.xltype;
+      // Mark donor object as empty
+      that.xltype = msxll::xltypeNil;
+    }
+
+    ExcelObj::ExcelObj(CellError err)
+    {
+      val.err = (int)err;
+      xltype = msxll::xltypeErr;
+    }
 
     /// Constructs an array from data without copying it. Do not use
     // TODO: declare these private and use friend? 
@@ -110,17 +139,11 @@ namespace xloil
     /// Non copying ctor from pascal string buffer.
     ExcelObj(PString<Char>&& pstr);
     ExcelObj(PString<Char>& pstr) : ExcelObj(std::forward<PString<Char>>(pstr)) {}
-
-    /// <summary>
-    /// Constructs a string of size nChars, returning a pointer to the internal buffer
-    /// nChars may be altererd to reflect Excel's max string length.
-    /// This constructor is inteded to avoid a string copy
-    /// </summary>
-    /// <param name="buf"></param>
-    /// <param name="nChars">requested buffer size, will be capped at Excel's limit</param>
-    //ExcelObj(wchar_t*& buf, size_t& nChars);
   
-    ~ExcelObj();
+    ExcelObj::~ExcelObj()
+    {
+      reset();
+    }
 
     /// <summary>
     /// Deletes object content and sets it to #N/A
@@ -137,19 +160,40 @@ namespace xloil
     const Base* cptr() const { return this; }
     Base* ptr() { return this; }
 
-    bool isMissing() const;
+    bool ExcelObj::isMissing() const
+    {
+      return (xtype() &  msxll::xltypeMissing) != 0;
+    }
     /// <summary>
     /// Returns true if value is not one of: type missing, type nil
     /// error #N/A or empty string.
     /// </summary>
     /// <returns></returns>
-    bool isNonEmpty() const;
+    bool ExcelObj::isNonEmpty() const
+    {
+      using namespace msxll;
+      switch (xtype())
+      {
+      case xltypeErr:
+        return val.err != xlerrNA;
+      case xltypeMissing:
+      case xltypeNil:
+        return false;
+      case xltypeStr:
+        return val.str[0] != L'\0';
+      default:
+        return true;
+      }
+    }
 
     /// <summary>
     /// Get an enum describing the data contained in the ExcelObj
     /// </summary>
     /// <returns></returns>
-    ExcelType type() const;
+    ExcelType ExcelObj::type() const
+    {
+      return ExcelType(xtype());
+    }
 
     bool isRangeRef() const 
     {
@@ -163,35 +207,41 @@ namespace xloil
     /// <returns></returns>
     std::wstring toString(bool strict = false) const;
     size_t maxStringLength() const;
-    double toDouble() const;
-    int toInt() const;
-    bool toBool() const;
+    double ExcelObj::toDouble() const;
+    int ExcelObj::toInt() const;
 
-    double asDouble() const;
-    int asInt() const;
-    bool asBool() const;
+    bool ExcelObj::toBool() const;
 
-    /*template <class T> T to() const {}
-    template <> int to<int>() const { return toInt(); }
-    template <> double to<double>() const { return toDouble(); }
-    template <> std::wstring to<std::wstring>() const { return toString(); }
-    template <> bool to<bool>() const { return toBool(); }*/
+    double ExcelObj::asDouble() const
+    {
+      assert(xtype() == msxll::xltypeNum);
+      return val.num;
+    }
+
+    int ExcelObj::asInt() const
+    {
+      assert(xtype() == msxll::xltypeInt);
+      return val.w;
+    }
+
+    bool ExcelObj::asBool() const
+    {
+      assert(xtype() == msxll::xltypeBool);
+      return val.xbool;
+    }
 
     /// <summary>
     /// Gets the start of the object's string data and the length
     /// of that string. The string may not be null-terminated.
     /// </summary>
     /// <returns>Pointer to PString data which may be a null object if not a string</returns>
-    PString<> asPascalStr() const;
+    PString<> ExcelObj::asPascalStr() const
+    {
+      if ((xtype() & msxll::xltypeStr) == 0)
+        return PString<>();
+      return PString<>::view(val.str);
+    }
 
-    /// <summary>
-    /// Writes the characters in supplied buffer to object's internal
-    /// string buffer. Returns zero if object is not of string type.
-    /// </summary>
-    /// <param name="buf"></param>
-    /// <param name="bufSize">Number of characters written</param>
-    /// <returns></returns>
-    size_t writeString(wchar_t* buf, wchar_t bufSize) const;
 
     static void copy(ExcelObj& to, const ExcelObj& from);
 
@@ -222,6 +272,11 @@ namespace xloil
     {
       return const_cast<ExcelObj*>(&Const::Error(err));
     }
+    static ExcelObj* returnValue(const std::exception& e)
+    {
+      return returnValue(e.what());
+    }
+
     template<>
     static ExcelObj* returnValue(ExcelObj&& p)
     {
@@ -245,7 +300,10 @@ namespace xloil
   private:
     /// The xloper type made safe for use in switch statements by zeroing
     /// the memory control flags blanked.
-    int xtype() const;
+    int ExcelObj::xtype() const
+    {
+      return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);
+    }
   };
 
   size_t xlrefToStringRC(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);

@@ -12,25 +12,54 @@ namespace xloil
 
     PString(size_type size)
       : _data(new TChar[size + 1])
+      , _owner(true)
     {
       resize(size);
     }
 
-    PString() : _data(nullptr) {}
+    PString() : _data(nullptr), _owner(false) 
+    {}
+
+    PString(TChar*&& str)
+      : _data(str)
+      , _owner(true)
+    {}
+
+    ~PString()
+    {
+      if (_owner)
+        delete[] _data;
+    }
 
     static PString<> view(TChar* str)
     {
-      return PString(str);
+      return PString(str, false);
+    }
+    static PString<> own(TChar* str)
+    {
+      return PString(str, true);
     }
 
     bool operator!() const { return !!_data; }
     size_type length() const { return _data ? _data[0] : 0; }
     void resize(size_type s) { _data[0] = s; }
-    const TChar* data() const { return _data; }
+    
     const TChar* pstr() const { return _data + 1; }
     TChar* pstr() { return _data + 1; }
     const TChar* begin() const { return _data + 1; }
     const TChar* end() const { return _data + 1 + length(); }
+
+    TChar* release() 
+    { 
+      if (_owner)
+      {
+        _owner = false;
+        TChar* d = nullptr;
+        std::swap(d, _data);
+        return d;
+      }
+      return _data;
+    }
 
     PString operator=(const TChar* str)
     {
@@ -73,9 +102,11 @@ namespace xloil
 
   private:
     TChar* _data;
+    bool _owner;
 
-    PString(TChar* pascalStr)
+    PString(TChar* pascalStr, bool owner)
       : _data(pascalStr)
+      , _owner(owner)
     {}
   };
 

@@ -32,9 +32,9 @@ XLO_FUNC xloRef(ExcelObj* pxOper)
       theExcelObjCache.add(
         make_shared<const ExcelObj>(*pxOper)));
   }
-  catch (...)
+  catch (const std::exception& e)
   {
-    return new ExcelObj();
+    XLO_RETURN_ERROR(e);
   }
 }
 XLO_REGISTER(xloRef)
@@ -55,11 +55,11 @@ XLO_FUNC xloVal(ExcelObj* pxOper)
     if (theExcelObjCache.fetch(pxOper->toString().c_str(), result))
       return const_cast<ExcelObj*>(result.get());
 
-    return ExcelObj::returnValue(CellError::NA);
+    return ExcelObj::returnValue(CellError::Value);
   }
-  catch (...)
+  catch (const std::exception& e)
   {
-    return new ExcelObj();
+    XLO_RETURN_ERROR(e);
   }
 }
 XLO_REGISTER(xloVal)
