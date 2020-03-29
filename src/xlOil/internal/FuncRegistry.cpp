@@ -148,7 +148,11 @@ namespace xloil
           argHelp.back() += L"  ";
       }
 
-      auto macroType = (opts & FuncInfo::COMMAND) ? 2 : 1;
+      int macroType = 1;
+      if (opts & FuncInfo::COMMAND)
+        macroType = 2;
+      else if (opts & FuncInfo::HIDDEN)
+        macroType = 0;
 
       // TODO: this copies the excelobj
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8ToUtf16(entryPoint), numArgs);

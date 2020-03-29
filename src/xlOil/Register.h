@@ -58,7 +58,8 @@ namespace xloil
       MACRO_TYPE  = 1 << 1,
       VOLATILE    = 1 << 2,
       COMMAND     = 1 << 3,
-      ASYNC       = 1 << 4
+      ASYNC       = 1 << 4,
+      HIDDEN      = 1 << 5
     };
 
     XLOIL_EXPORT virtual ~FuncInfo();

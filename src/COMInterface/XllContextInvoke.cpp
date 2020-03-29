@@ -28,7 +28,7 @@ namespace xloil
     return &result;
   }
   XLO_REGISTER(xloRunFuncInXLLContext)
-    .macro();
+    .macro().hidden();
 
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
@@ -49,7 +49,7 @@ namespace xloil
     return &result;
   }
   XLO_REGISTER(xloRunInXLLContext)
-    .macro();
+    .macro().hidden();
 
   ScopeInXllContext::ScopeInXllContext()
   {

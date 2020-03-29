@@ -122,7 +122,7 @@ XLO_ENTRY_POINT(XLOIL_XLOPER*) xloil_local_0(const ExcelObj& workbook, const Exc
 {
   return doFunc(workbook, function);
 }
-XLO_REGISTER(xloil_local_0).macro();
+XLO_REGISTER(xloil_local_0).macro().hidden();
 
 
 #define XLOIL_LOCAL(N, impl, name) \
@@ -132,7 +132,7 @@ XLO_REGISTER(xloil_local_0).macro();
   { \
     return impl(workbook, function, BOOST_PP_ENUM_PARAMS(N, &arg)); \
   } \
-  XLO_REGISTER(name##_##N).macro()
+  XLO_REGISTER(name##_##N).macro().hidden()
 
 #define RPT(z, N, data) XLOIL_LOCAL(N, doFunc, xloil_local);
 BOOST_PP_REPEAT_FROM_TO(1, 28, RPT, data)

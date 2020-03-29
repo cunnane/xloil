@@ -40,6 +40,11 @@ namespace xloil
       _info->options |= FuncInfo::COMMAND;
       return *this;
     }
+    self& hidden()
+    {
+      _info->options |= FuncInfo::HIDDEN;
+      return *this;
+    }
     self& macro()
     {
       _info->options |= FuncInfo::MACRO_TYPE;
