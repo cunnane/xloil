@@ -109,8 +109,10 @@ namespace xloil
       auto numArgs = info->args.size();
       int opts = info->options;
 
+      // Build the argument type descriptor 
       string argTypes;
 
+      // Set function option prefixes
       if (opts & FuncInfo::ASYNC)
         argTypes += ">X"; // We choose the first argument as the async handle
       else if (opts & FuncInfo::COMMAND)
@@ -122,6 +124,7 @@ namespace xloil
       for (auto& arg : info->args)
         argTypes += arg.allowRange ? 'U' : 'Q';
 
+      // Set function option suffixes
       // TODO: check for invalid combinations
       if (opts & FuncInfo::VOLATILE)
         argTypes += '!';
@@ -129,33 +132,55 @@ namespace xloil
         argTypes += '#';
       else if (opts & FuncInfo::THREAD_SAFE)
         argTypes += '$';
- 
-      vector<wstring> argHelp;
+
+      // Concatenate argument names
       wstring argNames;
       for (auto x : info->args)
-      {
         argNames.append(x.name).append(L",");
-        argHelp.emplace_back(x.help);
-      }
-      
       if (numArgs > 0)
-      { 
-        // Delete final comma
-        argNames.pop_back();
+        argNames.pop_back();  // Delete final comma
 
-        // Pad the last arg help with a couple of spaces to workaround an Excel bug
-        if (!argHelp.back().empty())
-          argHelp.back() += L"  ";
+      bool truncatedArgNames = argNames.length() > 255;
+      if (truncatedArgNames)
+      {
+        XLO_WARN(L"Excel does not support a concatenated argument name length of "
+          "more than 255 chars (including commans). Truncating for function '{0}'", info->name);
+        argNames.resize(255);
       }
 
+      // Build argument help strings. If we had to truncate the arg name string
+      // add the arg names to the argument help string
+      vector<wstring> argHelp;
+      if (truncatedArgNames)
+        for (auto x : info->args)
+          argHelp.emplace_back(fmt::format(L"({0}) {1}", x.name, x.help));
+      else
+        for (auto x : info->args)
+          argHelp.emplace_back(x.help);
+
+      // Pad the last arg help with a couple of spaces to workaround an Excel bug
+      if (numArgs > 0 && !argHelp.back().empty())
+        argHelp.back() += L"  ";
+
+      // Set the function type
       int macroType = 1;
       if (opts & FuncInfo::COMMAND)
         macroType = 2;
       else if (opts & FuncInfo::HIDDEN)
         macroType = 0;
 
+      // Function help string. Yup, more 255 char limits
+      auto truncatedHelp = info->help;
+      if (info->help.length() > 255)
+      {
+        XLO_WARN(L"Excel does not support help strings longer than 255 chars."
+          "Truncating for function '{0}'", info->name);
+        truncatedHelp.assign(info->help.c_str(), 255);
+      }
+
       // TODO: this copies the excelobj
-      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", info->name, utf8ToUtf16(entryPoint), numArgs);
+      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
+        info->name, utf8ToUtf16(entryPoint), numArgs);
       auto registerId = callExcel(xlfRegister,
         moduleName, 
         entryPoint, 
@@ -165,9 +190,10 @@ namespace xloil
         macroType, 
         info->category, 
         nullptr, nullptr, 
-        info->help, 
+        truncatedHelp.empty() ? info->help : truncatedHelp,
         unpack(argHelp));
-
+      if (registerId.type() != ExcelType::Num)
+        XLO_THROW(L"Register '{0}' failed", info->name);
       return registerId.toInt();
     }
 
