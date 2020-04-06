@@ -16,14 +16,18 @@ namespace xloil
     XLOIL_EXPORT ExcelRange(msxll::IDSHEET sheetId, 
       int fromRow, int fromCol, int toRow, int toCol);
 
+    ExcelRange(const ExcelRange& from)
+      : ExcelObj(static_cast<const ExcelObj&>(from))
+    {}
+
     ~ExcelRange()
     {
       reset();
     }
 
-    ExcelObj& operator()(int i, int j)
+    ExcelObj operator()(int i, int j) const
     {
-      ExcelRange(sheetId(), i, j, i + 1, j + 1).value();
+      return ExcelRange(sheetId(), i, j, i + 1, j + 1).value();
     }
 
     static constexpr int TO_END = 0;
@@ -42,11 +46,17 @@ namespace xloil
       return range(i, j, 1, 1);
     }
 
-    int nRows() const {
+    size_t nRows() const 
+    {
       return ref().rwLast - ref().rwFirst;
     }
-    int nCols() const {
+    size_t nCols() const 
+    {
       return ref().colLast - ref().colFirst;
+    }
+    size_t size() const
+    {
+      return nRows() * nCols();
     }
 
     ExcelObj value() const
@@ -72,12 +82,12 @@ namespace xloil
       callExcelRaw(msxll::xlSet, nullptr, this);
     }
 
-    msxll::IDSHEET sheetId() const {
+    msxll::IDSHEET sheetId() const 
+    {
       return val.mref.idSheet;
-
     }
-  private:
 
+  private:
     const msxll::XLREF12& ref() const
     {
       return val.mref.lpmref->reftbl[0];
@@ -87,7 +97,8 @@ namespace xloil
       return val.mref.lpmref->reftbl[0];
     }
   
-    msxll::IDSHEET& sheetId() {
+    msxll::IDSHEET& sheetId() 
+    {
       return val.mref.idSheet;
     }
     
