@@ -206,7 +206,7 @@ namespace
 }
 
   // TODO: https://stackoverflow.com/questions/52737760/how-to-define-string-literal-with-character-type-that-depends-on-template-parame
-  const wchar_t* toWCString(CellError e)
+  const wchar_t* enumAsWCString(CellError e)
   {
     switch (e)
     {
@@ -222,17 +222,25 @@ namespace
       return L"#ERR!";
     }
   }
-
-  enum class Alloc
+  const wchar_t* enumAsWCString(ExcelType e)
   {
-    BLOB,
-    ARRAY,
-    NONE
-  };
-
-  ExcelObj::ExcelObj()
-  {
-    xltype = xltypeNil;
+    switch (e)
+    {
+      case ExcelType::Num:     return L"Num";
+      case ExcelType::Str :    return L"Str";
+      case ExcelType::Bool:    return L"Bool";
+      case ExcelType::Ref :    return L"Ref";
+      case ExcelType::Err :    return L"Err";
+      case ExcelType::Flow:    return L"Flow";
+      case ExcelType::Multi:   return L"Multi";
+      case ExcelType::Missing: return L"Missing";
+      case ExcelType::Nil :    return L"Nil";
+      case ExcelType::SRef:    return L"SRef";
+      case ExcelType::Int :    return L"Int";
+      case ExcelType::BigData: return L"BigData";
+      default:
+        return L"Unknown";
+    }
   }
 
   ExcelObj::ExcelObj(int i)
@@ -395,10 +403,6 @@ namespace
     that.xltype = xltypeNil;
     return *this;
   }
-  bool ExcelObj::operator==(const ExcelObj& that) const
-  {
-    return compare(*this, that) == 0;
-  }
 
   namespace
   {
@@ -440,8 +444,6 @@ namespace
     }
   }
 
-
-
   std::wstring ExcelObj::toString(bool strict) const
   {
     if (strict && (xltype & xltypeStr) == 0)
@@ -457,12 +459,11 @@ namespace
 
     case xltypeInt:
       return std::to_wstring(val.w);
-      break;
 
     case xltypeStr:
     {
-      size_t len = val.str[0];
-      return wstring(val.str + 1, len);
+      const size_t len = val.str ? val.str[0] : 0;
+      return len == 0 ? wstring() : wstring(val.str + 1, len);
     }
 
     case xltypeMissing:
@@ -470,14 +471,11 @@ namespace
       return L"";
 
     case xltypeErr:
-      return toWCString(CellError(val.err));
+      return enumAsWCString(CellError(val.err));
 
     case xltypeSRef:
     case xltypeRef:
-    {
-      ExcelRange range(*this);
-      return range.address();
-    }
+      return ExcelRange(*this).value().toString();
 
     case xltypeMulti:
     {
@@ -492,7 +490,22 @@ namespace
       return L"#???";
     }
   }
-
+  std::wstring ExcelObj::toStringRepresentation() const
+  {
+    switch (xtype())
+    {
+    case xltypeSRef:
+    case xltypeRef:
+    {
+      ExcelRange range(*this);
+      return range.address();
+    }
+    case xltypeMulti:
+      return fmt::format(L"[{0} x {1}]", val.array.rows, val.array.columns);
+    default:
+      return toString();
+    }
+  }
   size_t ExcelObj::maxStringLength() const
   {
     switch (xtype())
@@ -531,7 +544,8 @@ namespace
     return excelSerialDateToDMY(d, nDay, nMonth, nYear);
   }
 
-  bool ExcelObj::toDMYHMS(int & nDay, int & nMonth, int & nYear, int & nHours, int & nMins, int & nSecs, int & uSecs, bool coerce)
+  bool ExcelObj::toDMYHMS(int & nDay, int & nMonth, int & nYear, int & nHours, 
+    int & nMins, int & nSecs, int & uSecs, bool coerce)
   {
     auto d = toDouble();
     return excelSerialDatetoDMYHMS(d, nDay, nMonth, nYear, nHours, nMins, nSecs, uSecs);
@@ -615,6 +629,5 @@ namespace
       static ExcelObj obj(PString<wchar_t>(L'\0'));
       return obj;
     }
-
   }
 }

@@ -30,7 +30,8 @@ namespace xloil
     Nil     = 0x0100,
     SRef    = 0x0400,
     Int     = 0x0800,
-    BigData = msxll::xltypeStr | msxll::xltypeInt
+    BigData = msxll::xltypeStr | msxll::xltypeInt,
+    ArrayValue = Num | Str | Bool | Err | Int | Nil
   };
 
   enum class CellError
@@ -57,8 +58,8 @@ namespace xloil
     CellError::GettingData
   };
 
-  const wchar_t* toWCString(CellError e);
-
+  const wchar_t* enumAsWCString(CellError e);
+  const wchar_t* enumAsWCString(ExcelType e);
 
   class ExcelArray;
 
@@ -80,7 +81,10 @@ namespace xloil
     // pointers being auto-cast to integral / bool types
     template <class T> ExcelObj(T t) { static_assert(false); }
 
-    ExcelObj();
+    ExcelObj()
+    {
+      xltype = msxll::xltypeNil;
+    }
 
     // Whole bunch of numeric types auto-casted to make life easier
     explicit ExcelObj(int);
@@ -157,7 +161,11 @@ namespace xloil
     ExcelObj& operator=(const ExcelObj& that);
     ExcelObj& operator=(ExcelObj&& that);
 
-    bool operator==(const ExcelObj& that) const;
+    bool operator==(const ExcelObj& that) const
+    {
+      return compare(*this, that) == 0;
+    }
+
     static int compare(const ExcelObj& left, const ExcelObj& right);
 
     const Base* ptr() const { return this; }
@@ -203,15 +211,46 @@ namespace xloil
     {
       return (xltype & (msxll::xltypeRef | msxll::xltypeSRef)) != 0;
     }
+
     /// <summary>
     /// Converts to a string. If strict=false then attempts
-    /// to stringify the various excel types
+    /// to stringify the various excel types, otherwise will
+    /// give an error for non string types.
+    /// 
+    /// The function recurses row-wise over Arrays and ranges and 
+    /// concatenates the result.
     /// </summary>
     /// <param name="strict"></param>
     /// <returns></returns>
     std::wstring toString(bool strict = false) const;
+
+    /// <summary>
+    /// Similar to toString but more suitable for output of object 
+    /// descriptions, for example in error messages.  
+    /// 
+    /// Returns the same as toString except for arrays which yield 
+    /// '[NxM]' where N and M are the number of rows and columns and 
+    /// for ranges which return the range reference in the form 'Sheet!A1'.
+    /// </summary>
+    /// <returns></returns>
+    std::wstring toStringRepresentation() const;
+
+    /// <summary>
+    /// Gives the maximum string length if toString is called on
+    /// this object without actually attempting the conversion.
+    /// </summary>
     size_t maxStringLength() const;
+
+    /// <summary>
+    /// Returns the string length if this object is a string, else zero.
+    /// </summary>
+    size_t stringLength() const
+    {
+      return xltype == msxll::xltypeStr ? val.str[0] : 0;
+    }
+
     double ExcelObj::toDouble() const;
+
     int ExcelObj::toInt() const;
 
     bool ExcelObj::toBool() const;
@@ -232,6 +271,12 @@ namespace xloil
     {
       assert(xtype() == msxll::xltypeBool);
       return val.xbool;
+    }
+
+    const ExcelObj* ExcelObj::asArray() const
+    {
+      assert(xtype() == msxll::xltypeMulti);
+      return (const ExcelObj*)val.array.lparray;
     }
 
     /// <summary>
@@ -290,7 +335,8 @@ namespace xloil
 
     // TODO: implement coercion from string
     bool toDMY(int &nDay, int &nMonth, int &nYear, bool coerce = false);
-    bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours, int& nMins, int& nSecs, int& uSecs, bool coerce = false);
+    bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours, 
+      int& nMins, int& nSecs, int& uSecs, bool coerce = false);
 
     /// <summary>
     /// Called by ExcelArray to determine the size of array data when
