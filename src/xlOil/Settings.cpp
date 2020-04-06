@@ -76,8 +76,10 @@ namespace xloil
       path = fs::path(dllPath).remove_filename() / settingsFileName;
 
     if (fs::exists(path))
+    {
+      XLO_DEBUG(L"Found settings file '{0}'", path.wstring());
       return make_shared<toml::value>(toml::parse(path.string()));
-
+    }
     return shared_ptr<toml::value>();
   }
 }

@@ -1,5 +1,7 @@
 #include "ExcelState.h"
 #include "ExcelCall.h"
+#include "EntryPoint.h"
+
 using namespace msxll;
 
 
@@ -22,7 +24,8 @@ namespace
   {
     bool is_dlg;
     short low_hwnd;
-    char *window_title_text; // set to NULL if don't care
+    const char *window_title_text; // set to NULL if don't care
+    DWORD pid;
   };
 
 #pragma warning(disable: 4311 4302)
@@ -31,51 +34,79 @@ namespace
   {
     // Check if the parent window is Excel.
     // Note: Because of the change from MDI (Excel 2010)
-    // to SDI (Excel 2013), comment out this step in Excel 2013.
-    if (LOWORD((DWORD)GetParent(hwnd)) != p_enum->low_hwnd)
-      return TRUE; // keep iterating
+    // to SDI (Excel 2013) we check the process IDs
+    if (p_enum->low_hwnd)
+    {
+      if (LOWORD((DWORD)GetParent(hwnd)) != p_enum->low_hwnd)
+        return TRUE; // Tells Windows to continue iterating.
+    }
+    else
+    {
+      DWORD pid = NULL;
+      GetWindowThreadProcessId(hwnd, &pid);
+      if (pid != p_enum->pid)
+        return TRUE;
+    }
+ 
     char class_name[CLASS_NAME_BUFFSIZE + 1];
     //  Ensure that class_name is always null terminated for safety.
     class_name[CLASS_NAME_BUFFSIZE] = 0;
     GetClassNameA(hwnd, class_name, CLASS_NAME_BUFFSIZE);
+
     //  Do a case-insensitve comparison for the Excel dialog window
     //  class name with the Excel version number truncated.
     size_t len; // The length of the window's title text
-    if (_strnicmp(class_name, "bosa_sdm_xl", 11) == 0)
+    if (_strnicmp(class_name, "bosa_sdm_xl", 11) != 0)
+      return TRUE;
+    
+    // Check if a searching for a specific title string
+    if (p_enum->window_title_text)
     {
-      // Check if a searching for a specific title string
-      if (p_enum->window_title_text)
+      // Get the window's title and see if it matches the given text.
+      char buffer[WINDOW_TEXT_BUFFSIZE + 1];
+      buffer[WINDOW_TEXT_BUFFSIZE] = 0;
+
+      // TODO: does this need adapting for other locales?
+      len = GetWindowTextA(hwnd, buffer, WINDOW_TEXT_BUFFSIZE);
+      if (len == 0) // No title
       {
-        // Get the window's title and see if it matches the given text.
-        char buffer[WINDOW_TEXT_BUFFSIZE + 1];
-        buffer[WINDOW_TEXT_BUFFSIZE] = 0;
-        len = GetWindowTextA(hwnd, buffer, WINDOW_TEXT_BUFFSIZE);
-        if (len == 0) // No title
-        {
-          if (p_enum->window_title_text[0] != 0)
-            return TRUE; // No match, so keep iterating
-        }
-        // Window has a title so do a case-insensitive comparison of the
-        // title and the search text, if provided.
-        else if (p_enum->window_title_text[0] != 0
-          && _stricmp(buffer, p_enum->window_title_text) != 0)
-          return TRUE; // Keep iterating
+        if (p_enum->window_title_text[0] != 0)
+          return TRUE; // No match, so keep iterating
       }
-      p_enum->is_dlg = true;
-      return FALSE; // Tells Windows to stop iterating.
+      // Window has a title so do a case-insensitive comparison of the
+      // title and the search text, if provided.
+      else if (p_enum->window_title_text[0] != 0
+        && _stricmp(buffer, p_enum->window_title_text) != 0)
+        return TRUE; // Keep iterating
     }
-    return TRUE; // Tells Windows to continue iterating.
+    p_enum->is_dlg = true;
+    return FALSE; // Tells Windows to stop iterating.
   }
 
   bool called_from_paste_fn_dlg()
   {
-    XLOPER xHwnd;
-    // Calls Excel4, which only returns the low part of the Excel
-    // main window handle. This is OK for the search however.
-    if (Excel4(xlGetHwnd, &xHwnd, 0))
-      return false; // Couldn't get it, so assume not
-                    // Search for bosa_sdm_xl* dialog box with no title string.
-    xldlg_enum_struct es = { FALSE, xHwnd.val.w, "" };
+    short hwnd = 0;
+    DWORD pid = 0;
+    const char* windowName;
+    if (xloil::coreExcelVersion() < 13)
+    {
+      XLOPER xHwnd;
+      // Calls Excel4, which only returns the low part of the Excel
+      // main window handle. This is OK for the search however.
+      if (Excel4(xlGetHwnd, &xHwnd, 0))
+        return false; // Couldn't get it, so assume not
+                      
+      hwnd = xHwnd.val.w;
+      windowName = "";
+    }
+    else
+    {
+      windowName = "Function Arguments";
+      pid = GetProcessId(GetCurrentProcess());
+    }
+
+    // Search for bosa_sdm_xl* dialog box with no title string.
+    xldlg_enum_struct es = { FALSE, hwnd, windowName, pid };
     EnumWindows((WNDENUMPROC)xldlg_enum_proc, (LPARAM)&es);
     return es.is_dlg;
   }

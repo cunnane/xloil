@@ -16,17 +16,17 @@ namespace xloil
 
   void writeColumnName(size_t colIndex, char buf[4]);
 
-
-
   XLOIL_EXPORT size_t xlrefToStringA1(
     const msxll::XLREF12& ref, 
     wchar_t* buf, 
     size_t bufSize);
+
   XLOIL_EXPORT size_t xlrefSheetAddressA1(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize,
     bool A1Style = true);
+
   XLOIL_EXPORT bool inFunctionWizard();
 }
