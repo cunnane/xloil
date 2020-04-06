@@ -41,6 +41,11 @@ namespace xloil
     return xloil::theCoreName();
   }
 
+  int Core::theExcelVersion()
+  {
+    return coreExcelVersion();
+  }
+
   Excel::_Application& Core::theExcelApp()
   {
     return excelApp();

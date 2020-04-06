@@ -37,6 +37,8 @@ namespace xloil
     /// <returns></returns>
     static const wchar_t* theCoreName();
 
+    static int theExcelVersion();
+
     static Excel::_Application& theExcelApp();
 
     int registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept;

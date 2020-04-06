@@ -13,13 +13,14 @@ namespace xloil
 {
   class Core;
   typedef FARPROC(*coreLoadHook)(unsigned dliNotify, DelayLoadInfo* pdli);
-  //typedef __int64 (*__stdcall coreLoadHook)(unsigned dliNotify, DelayLoadInfo* pdli);
-
+  
   void* coreModuleHandle();
 
   const wchar_t* theCorePath();
   
   const wchar_t* theCoreName();
+
+  int coreExcelVersion();
 
   /// <summary>
   /// Path to the xll loaded by Excel, not the core DLL

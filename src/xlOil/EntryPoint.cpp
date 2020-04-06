@@ -34,6 +34,7 @@ namespace
   static const wchar_t* ourDllName;
   static wchar_t ourDllPath[4 * MAX_PATH]; // TODO: may not be long enough!!!
   static const wchar_t* ourXllPath = nullptr;
+  static int ourExcelVersion;
 
   bool setDllPath(HMODULE handle)
   {
@@ -66,6 +67,17 @@ namespace xloil
   {
     return ourXllPath;
   }
+  int coreExcelVersion()
+  {
+    return ourExcelVersion;
+  }
+
+  int getExcelVersion()
+  {
+    //https://github.com/MicrosoftDocs/office-developer-client-docs/blob/master/docs/excel/calling-into-excel-from-the-dll-or-xll.md
+    auto versionStr = callExcel(msxll::xlfGetWorkspace, 2);
+    return std::stoi(versionStr.toString());
+  }
 
   XLOIL_EXPORT int coreInit(
     coreLoadHook coreLoaderHook, 
@@ -81,6 +93,8 @@ namespace xloil
       auto& settings = theCoreSettings();
 
       initialiseLogger(settings.logLevel, settings.logFilePath.empty() ? nullptr : &settings.logFilePath);
+      
+      ourExcelVersion = getExcelVersion();
       loadPlugins();
       excelApp(); // Creates the COM connection
 
