@@ -98,11 +98,9 @@ namespace xloil
         vector<shared_ptr<PushEnvVar>> pathPusher;
 
         XLO_INFO(L"Found plugin {}", pluginName);
-        const auto settingsFile = fs::path(path).replace_extension(".ini");
-        shared_ptr<toml::value> settings;
-        if (fs::exists(settingsFile))
+        auto settings = findSettingsFile(path.c_str());
+        if (settings)
         {
-          settings = make_shared<toml::value>(toml::parse(settingsFile.string()));
           auto environment = toml::find_or<toml::table>(*settings, "Environment", toml::table());
           for (auto[key, val] : environment)
           {
