@@ -22,7 +22,7 @@ namespace xloil
     using namespace std::string_literals;
 
     while (_info->args.size() < _nArgs)
-      _info->args.emplace_back(FuncArg((L"Arg_"s + std::to_wstring(_info->args.size() - 1)).c_str()));
+      _info->args.emplace_back(FuncArg(fmt::format(L"Arg_{}", _info->args.size()).c_str()));
 
     if (_allowRangeAll)
       for (auto& arg : _info->args)
@@ -56,7 +56,9 @@ namespace xloil
     for (auto f : queue)
     {
       auto spec = std::make_shared<const StaticSpec>(f.getInfo(), moduleName, f.entryPoint);
-      result.emplace_back(registerFunc(spec));
+      auto registeredFunc = registerFunc(spec);
+      if (registeredFunc)
+        result.emplace_back(registeredFunc);
     }
     queue.clear();
     return result;

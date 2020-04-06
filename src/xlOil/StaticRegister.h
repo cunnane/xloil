@@ -79,6 +79,14 @@ namespace xloil
     return sizeof...(Args);
   }
 
+#ifndef _WIN64
+  template <class R, class... Args> constexpr size_t
+    countArguments(R(__stdcall *)(Args...))
+  {
+    return sizeof...(Args);
+  }
+#endif
+
   template <class TFunc> inline FuncRegistrationMemo&
     registrationMemo(const char* name, TFunc func)
   {
