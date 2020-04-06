@@ -107,27 +107,34 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   return 1;
 }
 
-XLO_ENTRY_POINT(xloil::ExcelObj*) xlAddInManagerInfo12(xloil::ExcelObj* xAction)
+// This function can be called without the add-in loaded, so avoid using
+// any xlOil functionality
+XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
 {
-  auto[result, ret] = xloil::tryCallExcel(msxll::xlCoerce, *xAction, msxll::xltypeInt);
-
-  static xloil::ExcelObj xInfo;
-  if (ret == 0 && result.val.w == 1)
+  int action = 0;
+  switch (xAction->xltype)
   {
-    xInfo = xloil::ExcelObj(L"xlOil Addin");
+  case msxll::xltypeNum:
+    action = xAction->val.num;
+    break;
+  case msxll::xltypeInt:
+    action = xAction->val.w;
+    break;
+  }
+  
+  static msxll::xloper12 xInfo;
+  if (action == 1)
+  {
+    xInfo.xltype = msxll::xltypeStr;
+    xInfo.val.str = L"\011xlOil Addin";
   }
   else
   {
-    xInfo = xloil::ExcelObj(xloil::CellError::Value);
+    xInfo.xltype = msxll::xltypeErr;
+    xInfo.val.err = msxll::xlerrValue;
   }
-
+  
   return &xInfo;
-}
-
-XLO_ENTRY_POINT(int) xlAutoRemove(void)
-{
-  //TODO: implement
-  return 1;
 }
 
 XLO_ENTRY_POINT(int) xlAutoFree12(msxll::xloper12* pxFree)
