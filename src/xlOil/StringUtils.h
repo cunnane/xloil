@@ -161,6 +161,8 @@ namespace xloil
     return s;
   }
 
+  std::wstring getEnvVar(const wchar_t* name);
+
   /// <summary>
   /// Sets an environment variable, unsets when the object goes out of scope.
   /// </summary>
