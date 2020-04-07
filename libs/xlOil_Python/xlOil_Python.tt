@@ -2,7 +2,8 @@
 #
 ####### xlOil Python Settings
 #
-# This TOML file should be placed at xlOil_PythonXY.ini
+# This TOML file should be placed next to xlOil_PythonXY.dll or in %APPDATA$\xloil
+# and have the filename xlOil_PythonXY.ini.
 #
 
 # Currently ignored
@@ -20,8 +21,8 @@ WorkbookModule="*.py"
 	#
 	##### Registry Magic settings #######
 	#
-	# If you want to use the default python distribution and that 
-	# distro's installer put it in the windows registry, this should work
+	# If you want to use the default python distribution and that distro's
+	# installer put it in the windows registry, this default should work
 	#
 	PYTHONPATH='''<HKLM\SOFTWARE\Python\PythonCore\\<#= this.Host.ResolveParameterValue("", "", "PyVersion") #>\PythonPath\>'''
 	PYTHON_LIB='''<HKLM\SOFTWARE\Python\PythonCore\\<#= this.Host.ResolveParameterValue("", "", "PyVersion") #>\InstallPath\>'''

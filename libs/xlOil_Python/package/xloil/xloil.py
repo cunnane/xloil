@@ -1,88 +1,5 @@
 
-"""
-xlOil Python
-============
 
-The Python plugin for xlOil allows creation of Excel functions and macros backed by Python
-code.
-
-To use the plugin, you usually need an entry in the xloil.ini file to set Python paths.
-
-The plugin can load a specified list of module names, adding functions to Excel's global
-name scope, like an Excel addin.  The plugin can also look for modules of the form
-<workbook_name>.py and load these too.  Any module which contains Excel functions is 
-watched for file modifications so code changes are reflected immediately in Excel.
-
-Have a look at `<root>/test/PythonTest.py` for lots of examples. 
-
-Concepts: The log file
-----------------------
-
-If a function doesn't appear or behave as expected, check the log file created by default
-in the same directory as xloil.xll.
-
-A common problem is that the COM interface misbehaves either failing on start-up or failing
-because of an open dialog box in Excel.  For a start-up fail, unload and reload the addin. 
-For other errors try to close dialog boxes or panes and if that fails, restart Excel.
-
-Concepts: Excel Functions (UDFs)
---------------------------------
-Excel supports several classes of user-defined functions:
-
-- Macros: run at user request, have write access to workbook
-- Worksheet functions: run by Excel's calculation cycle. Several sub-types:
-  - Vanilla
-  - Thread-safe: can be run concurrently (not very useful for Python)
-  - Macro-type: can read from sheet addresses and invoke a wider variety of Excel interface functions
-  - Async: can run asynchronously during the calc cycle, but not in the background
-  - RTD: (real time data) background threads which push data onto the sheet when it becomes available
-  - Cluster: can be packaged to run on a remote Excel compute cluster
-
-xlOil supports all but RTD and Cluster functions.
-
-Excel can pass functions / macros data in one of these types:
-
-- Integer
-- Boolean
-- Floating point
-- String
-- Error, e.g. #NUM!, #VALUE!
-- Empty
-- Array of any of the above
-- Range refering to a worksheet address
-
-There is no date type. Excel's builtin date functions interpret numbers as days since 1900. 
-Excel does not support timezones.
-
-Concepts: Cached Objects
-------------------------
-If xlOil cannot convert a returned python object to Excel, it will place it in an object
-cache and return a cache reference string of the form
-``UniqueChar[WorkbookName]SheetName!CellRef,#``
-If a string of this kind if encountered when reading function arguments, xlOil tries to 
-fetch the corresponding python object. With this mechanism you can pass python objects 
-opaquely between functions. 
-
-xlOil core also implements a cache for Excel values, which is mostly useful for passing 
-arrays. The function ``=xloRef(A1:B2)`` returns a cache string similar to the one used
-for Python objects. These strings are automatically looked up when parsing function 
-arguments.
-
-Concepts: Local Functions
--------------------------
-When loading functions from an python module associated to a workbook, i.e workbook.py
-xlOil defaults to registering any declared function as "local". This means it creates a
-VBA stub to invoke them so that the scope of their name is local to the workbook.
-
-Local functions have some limitations compared to global scope ones:
-- Max 28 arguments
-- No async or threadsafe
-- Slower due to the VBA redirect
-- Workbook must be saved as macro enabled (xlsm extension)
-
-You can override the local scope on a per-function basis.
-
-"""
 import inspect
 import functools
 import importlib
@@ -95,6 +12,8 @@ try:
     import xloil_core
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
+    from xloil_core import event_CalcEnded, event_NewWorkbook
+
 except Exception:
     def in_wizard():
         """ 
@@ -109,8 +28,9 @@ except Exception:
 
     class Range:
         """
-        Similar to an Excel Range object, this class allows access to
-        an area on a worksheet.
+        Similar to an Excel Range object, this class allows access to an area on a 
+        worksheet. It uses similar syntax to Excel's object, supporting the ``cell``
+        and ``range`` functions.
         """
         def range(self, from_row, from_col, num_rows=-1, num_cols=-1, to_row=None, to_col=None):
             """ 
@@ -145,8 +65,8 @@ except Exception:
         def address(self,local=False):
             """
             Gets the range address in A1 format e.g.
-            local=False: [Book1]Sheet1!F37
-            local=True:  F37
+                local=False # [Book1]Sheet1!F37
+                local=True  # F37
             """
             pass
         @property
@@ -160,9 +80,14 @@ except Exception:
 
     class ExcelArray:
         """
-        A holder for a internal Excel array which can be manipulated without
+        A view of a internal Excel array which can be manipulated without
         copying the underlying data. It's not a general purpose array class 
         but rather used to create efficiencies in type converters.
+        
+        It can be accessed and sliced using the usual syntax:
+            x[1, 1] # The value at 1,1 as int, str, float, etc.
+            x[1, :] # The second row as another ExcelArray
+        
         """
         def __getitem__(self, tuple):
             """ 
@@ -209,9 +134,26 @@ except Exception:
         GettingData = None
 
     class _CustomConverter:
+        """
+        This is the interface class for custom type converters to allow them
+        to be called from the Core.
+        """
         def __init__(self, callable):
             pass
 
+    class _Event:
+        def __iadd__(self, event):
+            pass
+        def __isub__(self, event):
+            pass
+        def handlers(self):
+            pass
+
+    class event_NewWorkbook(_Event):
+        pass
+
+    class event_CalcEnded(_Event):
+        pass
 
 """
 Tag used to mark functions to register with Excel. It is added 
@@ -220,7 +162,18 @@ by the xloil.func decorator to the target func's __dict__
 _META_TAG = "_xloil_func_"
 _CONVERTER_TAG = "_xloil_converter_"
 
-ExcelValue = typing.Union[int, str, float, np.ndarray, dict, list]
+"""
+This annotation includes all the types which can be passed from xlOil to
+a function. There is not need to specify it to xlOil, but it could give 
+useful type-checking information to other software which reads annotation.
+"""
+
+ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellError]
+"""
+The special AllowRange annotation allows functions to receive the argument
+as an ExcelRange object if appropriate. The argument may still be passed
+as another type if it was not created from a sheet reference.
+"""
 AllowRange = typing.Union[ExcelValue, Range]
 
 class _ArgSpec:
@@ -272,7 +225,7 @@ def _function_argspec(func):
 
 
 def _get_typeconverter(type_name, from_excel=True):
-    # Attempt to find converter with standardised name
+    # Attempt to find converter with standardised name like `From_int`
     try:
         to_from = 'To' if from_excel else 'From'
         name = f"{to_from}_{type_name}"
@@ -306,17 +259,19 @@ def converter(typ=typing.Callable, range=False):
 
     Examples
     --------
-    @converter(double)
-    def arg_sum(x):
-        if isinstance(x, ExcelArray):
-            return np.sum(x.to_numpy())
-        elif isinstance(x, str):
-            raise Error('Unsupported')
-        return x
+    
+        @converter(double)
+        def arg_sum(x):
+            if isinstance(x, ExcelArray):
+                return np.sum(x.to_numpy())
+            elif isinstance(x, str):
+                raise Error('Unsupported')
+            return x
 
-    @func
-    def pyTest(x: arg_sum):
-        return x
+        @func
+        def pyTest(x: arg_sum):
+            return x
+            
     """
 
     def decorate(obj):
@@ -328,8 +283,8 @@ def converter(typ=typing.Callable, range=False):
                         _xloil_converter_ = _CustomConverter(instance)
                         allow_range = range
                     # This is a function which returns a class created
-                    # by a function which takes a class and is returned
-                    # from a function. Simple!
+                    # by a function-which-takes-a-class and is returned
+                    # from another function. Simple!
                     return Inner
             return Converter()
         else:
@@ -608,6 +563,14 @@ def app():
      
 
 def to_cache(obj):
+    """
+    Puts the object into the Python object cache and returns a cache
+    reference based on the currently calculating cell.
+    
+    xlOil automatically adds unrecognised returned objects to the cache,
+    so this function would be useful to force a recognised object,
+    such as an iterable into the cache, or to return a list of cached objects.
+    """
     return xloil_core.to_cache(obj)
 
 ## TODO: implement
