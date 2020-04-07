@@ -107,6 +107,7 @@
       <AdditionalDependencies>xloil.lib;corestatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
+      <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -124,6 +125,7 @@
       <AdditionalDependencies>xloil.lib;corestatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
+      <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -145,6 +147,7 @@
       <AdditionalDependencies>xloil.lib;corestatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
+      <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -166,6 +169,7 @@
       <AdditionalDependencies>xloil.lib;corestatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
+      <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
     </Link>
     <PostBuildEvent>
       <Command>

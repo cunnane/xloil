@@ -73,6 +73,7 @@ XLO_ENTRY_POINT(int) DllMain(
     theModuleHandle = hinstDLL;
     if (!setDllPath(hinstDLL))
       return FALSE;
+    xloil::coreInit(&coreLoaderHook, ourXllPath.c_str());
   }
   return TRUE;
 }
@@ -89,7 +90,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 {
   SetDllDirectory(ourXllDir.c_str());
   //XLO_TRACE("xlAutoOpen called in Loader");
-  xloil::coreInit(&coreLoaderHook, ourXllPath.c_str());
+  xloil::coreAutoOpen();
   xloil::Event_AutoOpen().fire();
 
   // TODO: handle failure?
@@ -103,7 +104,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 XLO_ENTRY_POINT(int) xlAutoClose(void)
 {
   //XLO_TRACE("xlAutoClose called in Loader");
-  xloil::coreExit();
+  xloil::coreAutoClose();
   return 1;
 }
 

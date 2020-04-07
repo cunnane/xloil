@@ -80,19 +80,25 @@ namespace xloil
   }
 
   XLOIL_EXPORT int coreInit(
-    coreLoadHook coreLoaderHook, 
+    coreLoadHook coreLoaderHook,
     const wchar_t* xllPath) noexcept
+  {
+    theCoreLoader = coreLoaderHook;
+    ourXllPath = xllPath;
+
+    return 1;
+  }
+
+  XLOIL_EXPORT int coreAutoOpen() noexcept
   {
     try
     {
       ScopeInXllContext xllContext;
 
-      theCoreLoader = coreLoaderHook;
-      //__HrLoadAllImportsForDll("Core.dll");
-      ourXllPath = xllPath;
       auto& settings = theCoreSettings();
 
-      initialiseLogger(settings.logLevel, settings.logFilePath.empty() ? nullptr : &settings.logFilePath);
+      initialiseLogger(settings.logLevel, settings.logFilePath.empty() 
+        ? nullptr : &settings.logFilePath);
       
       ourExcelVersion = getExcelVersion();
       loadPlugins();
@@ -106,7 +112,7 @@ namespace xloil
     }
     return 0;
   }
-  XLOIL_EXPORT int coreExit() noexcept
+  XLOIL_EXPORT int coreAutoClose() noexcept
   {
     try
     {

@@ -291,31 +291,40 @@ namespace xloil
       HWND _excelWindowHandle;
     };
 
-
     struct RegisterMe
     {
-      RegisterMe()
-      {
-        connector = nullptr;
-        static auto handler = xloil::Event_AutoClose() += [this]() { delete connector; };
-      }
-      COMConnector* connector;
+      RegisterMe() {}
+      
       COMConnector* connect()
       {
         if (!connector)
+        {
           connector = new COMConnector();
+          _handler = xloil::Event_AutoClose() += [this]() { this->disconnect(); };
+        }
         return connector;
       }
+
+      void disconnect()
+      {
+        if (connector)
+        {
+          xloil::Event_AutoClose() -= _handler;
+          delete connector;
+          connector = nullptr;
+        }
+      }
+
+      typename std::remove_reference<decltype(Event_AutoClose())>::type::handler_id _handler;
+
+    private:
+      COMConnector* connector;
     } theInstance;
   }
 
   void reconnectCOM()
   {
-    if (theInstance.connector)
-    {
-      delete theInstance.connector;
-      theInstance.connector = nullptr;
-    }
+    theInstance.disconnect();
     theInstance.connect();
   }
 
