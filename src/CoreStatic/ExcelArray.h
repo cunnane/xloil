@@ -4,6 +4,49 @@
 #include <xloil/Log.h>
 namespace xloil
 {
+  class ExcelArray;
+
+  class ExcelArrayIterator
+  {
+  public:
+    using iterator = ExcelArrayIterator;
+
+    ExcelArrayIterator(const ExcelArray& parent, const ExcelObj* where);
+    iterator& operator++();
+    iterator& operator--();
+    iterator operator++(int)
+    {
+      iterator retval = *this;
+      ++(*this);
+      return retval;
+    }
+    iterator operator--(int)
+    {
+      iterator retval = *this;
+      --(*this);
+      return retval;
+    }
+    bool operator==(iterator other) const { return _p == other._p; }
+    bool operator!=(iterator other) const { return !(*this == other); }
+    const ExcelObj& operator*() const { return *_p; }
+  private:
+    const ExcelObj* _p;
+    const ExcelObj* _pRowEnd;
+    const ExcelArray& _obj;
+  };
+}
+
+template<> struct std::iterator_traits<xloil::ExcelArrayIterator>
+{
+  using iterator_category = std::bidirectional_iterator_tag;
+  using value_type = xloil::ExcelObj;
+  using reference = const value_type&;
+  using pointer = const value_type*;
+  using difference_type = size_t;
+};
+
+namespace xloil
+{
   /// <summary>
   /// Creates a view of an array contained in an ExcelObj.
   /// </summary>
@@ -11,46 +54,42 @@ namespace xloil
   {
   public:
     /// <summary>
-    /// Create an ExcelArray from an ExcelObj. An error is thrown if the 
-    /// object is not of array type. By default trims the provided array
+    /// Create an ExcelArray from an ExcelObj. By default trims the provided array
     /// to the last non-empty (not Nil, #N/A or "") row and column.
     /// </summary>
-    /// <param name="obj">ExcelObj, must be of array type</param>
+    /// <param name="obj"></param>
     /// <param name="trim">If true, trim the array to the last non-empty row and columns</param>
-    ExcelArray(const ExcelObj& obj, bool trim = true)
-      : _data((ExcelObj*)obj.val.array.lparray)
-      , _colOffset(0)
-      , _baseCols(obj.val.array.columns)
+    ExcelArray(const ExcelObj& obj, bool trim = true);
+
+    ExcelArray::ExcelArray(const ExcelObj& obj, size_t nRows, size_t nCols)
+      : _colOffset(0)
+      , _rows(nRows)
+      , _columns(nCols)
     {
       if (obj.type() != ExcelType::Multi)
-        XLO_THROW("Expected an array");
-
-      if (trim)
-        obj.trimmedArraySize(_rows, _columns);
-      else
-      {
-        _rows = obj.val.array.rows;
-        _columns = obj.val.array.columns;
-      }
+        XLO_THROW("Expected array");
+      if (nRows > obj.val.array.rows || nCols > obj.val.array.columns)
+        XLO_THROW("Out of range");
+      _data = (const ExcelObj*)obj.val.array.lparray;
+      _baseCols = obj.val.array.columns;
     }
 
     /// <summary>
-    /// Creates an ExcelArray which is a subarry of a given one. Note that an ExcelArray
-    /// cannot be empty.
+    /// Creates an ExcelArray which is a subarry of a given one.
+    /// Negative toRow or toCol parameters are interpreted as offsets from 
+    /// the end (plus 1), hence setting fromRow=0 and toRow=-1 returns all rows. 
     /// </summary>
     /// <param name="arr">The parent array</param>
-    /// <param name="fromRow">Starting row</param>
-    /// <param name="fromCol">Starting column</param>
-    /// <param name="toRow">Ending row, zero or negative numbers mean offset from end</param>
-    /// <param name="toCol">Ending column, zero or negative numbers mean offset from end</param>
-    ExcelArray(const ExcelArray& arr, int fromRow, int fromCol, int toRow=0, int toCol=0)
-      : _rows((toRow <= 0 ? arr._rows + toRow : toRow) - fromRow)
-      , _columns((toCol <= 0 ? arr._columns + toCol : toCol) - fromCol)
+    /// <param name="fromRow">Starting row, included</param>
+    /// <param name="fromCol">Starting column, included</param>
+    /// <param name="toRow">Ending row, not included</param>
+    /// <param name="toCol">Ending column, not included</param>
+    ExcelArray(const ExcelArray& arr, int fromRow, int fromCol, int toRow=-1, int toCol=-1)
+      : _rows((toRow < 0 ? arr._rows + toRow + 1 : toRow) - fromRow)
+      , _columns((toCol < 0 ? arr._columns + toCol + 1 : toCol) - fromCol)
       , _colOffset(fromCol)
       , _baseCols(arr._baseCols)
     {
-      if (_rows == 0 || _columns == 0)
-        XLO_THROW("Empty ExcelArray");
       _data = arr._data + fromRow * _baseCols;
     }
 
@@ -59,17 +98,8 @@ namespace xloil
       checkRange(row, col);
       return at(row, col);
     }
-    ExcelObj& operator()(size_t row, size_t col)
-    {
-      checkRange(row, col);
-      return at(row, col);
-    }
+
     const ExcelObj& operator()(size_t row) const
-    {
-      //TODO: checkRange(row, 0);
-      return at(row);
-    }
-    ExcelObj& operator()(size_t row)
     {
       //TODO: checkRange(row, 0);
       return at(row);
@@ -79,10 +109,7 @@ namespace xloil
     {
       return *(row_begin(row) + col);
     }
-    ExcelObj& at(size_t row, size_t col)
-    {
-      return *(row_begin(row) + col);
-    }
+
     const ExcelObj& at(size_t n) const
     {
       const auto N = nCols();
@@ -90,15 +117,8 @@ namespace xloil
       auto j = n % N;
       return at(i, j);
     }
-    ExcelObj& at(size_t n)
-    {
-      const auto N = nCols();
-      auto i = n / N;
-      auto j = n % N;
-      return at(i, j);
-    }
 
-    ExcelArray subArray(int fromRow, int fromCol, int toRow=0, int toCol=0) const
+    ExcelArray subArray(int fromRow, int fromCol, int toRow=-1, int toCol=-1) const
     {
       return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
     }
@@ -109,9 +129,16 @@ namespace xloil
     size_t dims() const { return _rows > 1 && _columns > 1 ? 2 : 1; }
 
     const ExcelObj* row_begin(size_t i) const  { return _data + i * _baseCols + _colOffset; }
-    ExcelObj* row_begin(size_t i)              { return _data + i * _baseCols + _colOffset; }
     const ExcelObj* row_end(size_t i) const    { return row_begin(i) + nCols(); }
-    ExcelObj* row_end(size_t i)                { return row_begin(i) + nCols(); }
+
+    ExcelArrayIterator begin() const
+    {
+      return ExcelArrayIterator(*this, row_begin(0));
+    }
+    ExcelArrayIterator end() const 
+    { 
+      return ExcelArrayIterator(*this, row_end(nRows() - 1));
+    }
 
     /// <summary>
     /// Determines the type of data stored in the array if it is homogenous. If it is
@@ -162,8 +189,10 @@ namespace xloil
     size_t _rows;
     size_t _columns;
     size_t _colOffset;
-    ExcelObj* _data;
+    const ExcelObj* _data;
     size_t _baseCols;
+
+    friend class ExcelArrayIterator;
 
     void checkRange(size_t row, size_t col) const
     {
@@ -171,4 +200,31 @@ namespace xloil
         XLO_THROW("Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
     }
   };
+
+  inline ExcelArrayIterator::ExcelArrayIterator(const ExcelArray& parent, const ExcelObj* where)
+    : _obj(parent)
+    , _p(where)
+    , _pRowEnd(where + parent.nCols())
+  {}
+
+  inline ExcelArrayIterator& ExcelArrayIterator::operator++()
+  {
+    if (++_p == _pRowEnd)
+    {
+      _p += _obj._baseCols - _obj.nCols();
+      _pRowEnd += _obj._baseCols;
+    }
+    return *this;
+  }
+  inline ExcelArrayIterator& ExcelArrayIterator::operator--()
+  {
+    if (_pRowEnd - _p == _obj.nCols())
+    {
+      _pRowEnd -= _obj._baseCols;
+      _p = _pRowEnd - 1;
+    }
+    else
+      --_p;
+    return *this;
+  }
 }

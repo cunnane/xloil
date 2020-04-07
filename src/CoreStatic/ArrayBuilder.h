@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ExcelObj.h"
+#include <xlOil/Log.h>
 #include <cassert>
 
 namespace xloil
@@ -48,9 +49,23 @@ namespace xloil
     }
 
     template<class T>
-    void emplace_at(size_t i, size_t j, T&& x) 
-    { 
+    void emplace_at(size_t i, size_t j, T&& x)
+    {
       new (at(i, j)) ExcelObj(std::forward<T>(x));
+    }
+
+    void emplace_at(size_t i, size_t j, const ExcelObj& x)
+    {
+      auto type = x.type();
+      if (((int)type & (int)ExcelType::ArrayValue) == 0)
+        XLO_THROW("ExcelObj not of array value type");
+      if (type == ExcelType::Str)
+      {
+        auto pstr = x.asPascalStr();
+        emplace_at(i, j, pstr.begin(), pstr.length());
+      }
+      else
+        new (at(i, j)) ExcelObj(x);
     }
 
     void emplace_at(size_t i, size_t j, wchar_t* str)
@@ -58,15 +73,16 @@ namespace xloil
       emplace_at(i, j, const_cast<const wchar_t*>(str));
     }
 
-    void emplace_at(size_t i, size_t j, const wchar_t* str)
+    void emplace_at(size_t i, size_t j, const wchar_t* str, int len = -1)
     {
-      auto len = wcslen(str);
+      if (len < 0)
+        len = (int)wcslen(str);
       auto pstr = string(len);
       wmemcpy_s(pstr.pstr(), len, str, len);
       new (at(i, j)) ExcelObj(std::forward<PString<>>(pstr));
     }
 
-    PString<> string(size_t& len)
+    PString<> string(size_t len)
     {
       wchar_t* ptr = nullptr;
       if (len > 0)
