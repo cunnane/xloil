@@ -44,22 +44,6 @@ namespace
 namespace
 {
   static HMODULE theModuleHandle = nullptr;
-
-  FARPROC WINAPI coreLoaderHook(unsigned dliNotify, PDelayLoadInfo pdli)
-  {
-    // TODO: can we auto-set the hard-coded string here?
-    switch (dliNotify)
-    {
-    case dliNotePreLoadLibrary:
-      if (_stricmp(pdli->szDll, "xlOil_Loader") == 0)
-        return (FARPROC)theModuleHandle;
-      break;
-    default:
-      return NULL;
-    }
-
-    return NULL;
-  }
 }
 
 XLO_ENTRY_POINT(int) DllMain(
@@ -73,7 +57,9 @@ XLO_ENTRY_POINT(int) DllMain(
     theModuleHandle = hinstDLL;
     if (!setDllPath(hinstDLL))
       return FALSE;
-    xloil::coreInit(&coreLoaderHook, ourXllPath.c_str());
+    SetDllDirectory(ourXllDir.c_str());
+    xloil::coreInit(ourXllPath.c_str());
+    SetDllDirectory(NULL);
   }
   return TRUE;
 }
@@ -88,7 +74,6 @@ XLO_ENTRY_POINT(int) DllMain(
 
 XLO_ENTRY_POINT(int) xlAutoOpen(void)
 {
-  SetDllDirectory(ourXllDir.c_str());
   //XLO_TRACE("xlAutoOpen called in Loader");
   xloil::coreAutoOpen();
   xloil::Event_AutoOpen().fire();
@@ -96,8 +81,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
   // TODO: handle failure?
   xloil::tryCallExcel(msxll::xlEventRegister, "xloHandleCalculationEnded", xleventCalculationEnded);
   xloil::tryCallExcel(msxll::xlEventRegister, "xloHandleCalculationCancelled", xleventCalculationCanceled);
-
-  SetDllDirectory(NULL);
+ 
   return 1;
 }
 

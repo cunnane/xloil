@@ -26,7 +26,7 @@ namespace xloil
   /// Path to the xll loaded by Excel, not the core DLL
   /// </summary>
   const wchar_t* theXllPath();
-  XLOIL_EXPORT int coreInit(coreLoadHook coreLoaderHook, const wchar_t* xllPath) noexcept;
+  XLOIL_EXPORT int coreInit(const wchar_t* xllPath) noexcept;
   XLOIL_EXPORT int coreAutoOpen() noexcept;
   XLOIL_EXPORT int coreAutoClose() noexcept;
 }

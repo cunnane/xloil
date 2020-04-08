@@ -17,18 +17,6 @@ using std::wstring;
 
 namespace
 {
-  xloil::coreLoadHook theCoreLoader = nullptr;
-
-  FARPROC coreLoadThunk(unsigned dliNotify, PDelayLoadInfo pdli)
-  {
-    return theCoreLoader(dliNotify, pdli);
-  }
-}
-
-extern "C" const PfnDliHook __pfnDliNotifyHook2 = coreLoadThunk;
-
-namespace
-{
   static HMODULE theCoreModuleHandle = nullptr;
 
   static const wchar_t* ourDllName;
@@ -74,18 +62,15 @@ namespace xloil
 
   int getExcelVersion()
   {
-    //https://github.com/MicrosoftDocs/office-developer-client-docs/blob/master/docs/excel/calling-into-excel-from-the-dll-or-xll.md
+    // https://github.com/MicrosoftDocs/office-developer-client-docs/blob/...
+    // master/docs/excel/calling-into-excel-from-the-dll-or-xll.md
     auto versionStr = callExcel(msxll::xlfGetWorkspace, 2);
     return std::stoi(versionStr.toString());
   }
 
-  XLOIL_EXPORT int coreInit(
-    coreLoadHook coreLoaderHook,
-    const wchar_t* xllPath) noexcept
+  XLOIL_EXPORT int coreInit(const wchar_t* xllPath) noexcept
   {
-    theCoreLoader = coreLoaderHook;
     ourXllPath = xllPath;
-
     return 1;
   }
 
@@ -94,6 +79,7 @@ namespace xloil
     try
     {
       ScopeInXllContext xllContext;
+      
 
       auto& settings = theCoreSettings();
 
