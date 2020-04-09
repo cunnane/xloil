@@ -1,1 +1,1 @@
-from xloil import *
+from .xloil import *

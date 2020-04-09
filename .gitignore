@@ -38,5 +38,6 @@ packages/
 graveyard/
 *.vcxproj.user
 __pycache__
-/external/python/
+/external/python
 /external/sqlite
+/docs/source/_build

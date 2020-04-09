@@ -33,8 +33,6 @@ def pyTest1(x):
     '''Long description, too big for function wizard'''
     return x
 
-
-
 #
 # Ranges (e.g. A1:B2) passed as arguments are converted to numpy arrays
 # The default numpy dtype is object, but it's more performant to specify
@@ -60,24 +58,36 @@ def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
 	return x
 
 
+# 
+# This func uses the explicit `arg` specifier to allow it to give
+# per-argument help strings
+# 
 @xlo.func
 @xlo.arg("multiple", typeof=float, help="value to multiply array by")
 def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 	return x * multiple
 
+
+#
+# If you attempt to return a non-convertible object to Excel, xlOil
+# will store it in a cache an instead return a reference string based
+# on the currently calculating cell. 
+# 
+# To use this returned value in another function, do not specify an argument
+# type. xlOil will check if the provided argument is a reference to a cache 
+# objects and, if so, fetch it and pass it to the function.
+#
+
 class CustomObj:
     def __init__(self):
         self.greeting = 'Hello world'
-
-#
-# If you attempt to return a non-convertable object to Excel, xloil
-# will store it in a cache an instead return a reference string based
-# on the currently calculating cell. If you do not specify a function
-# argument type, xloil will check if any provided arguments are references
-# to cache objects and, if so, fetch them.
-#
+    
 @xlo.func
 def pyTestCache(cachedObj=None):
+    """
+    Returns a cache reference to a greeting object if no argument is provided.
+    If a greeting object is given, returns the greeting as text.
+    """
     if type(cachedObj) is CustomObj:
         return cachedObj.greeting
     return CustomObj()
@@ -89,7 +99,7 @@ def pyTestCache(cachedObj=None):
 #      stores dates as numbers so xlOil cannot know when a date
 #      conversion is required
 #   2) Excel dates cannot contain timezone information
-#   3) Excel dates cannot be before 1900 or after ???
+#   3) Excel dates cannot be before 1 Jan 1900 or after December 31, 9999
 #
 @xlo.func
 def pyTestDate(x: dt.datetime):
@@ -119,7 +129,15 @@ async def pyTestAsync(x, time:int):
 async def pyTestAsyncThread(x, time:int):
     await asyncio.sleep(time)
     return x
-    
+
+#
+# If an iterable object is returned, xlOil attempts to convert it to an
+# array, with each element as a column. So a 1d iterator gives a 1d array
+# and a iterator of iterator gives a 2d array.
+# 
+# If you want an iterable object to be placed in the cache use 
+# `return xlo.to_cache(obj)`
+#
 @xlo.func
 def pyTestIter(size:int, dims:int):
     if dims == 1:
@@ -129,20 +147,32 @@ def pyTestIter(size:int, dims:int):
     else:
         return [] 
 
+#
+# Declaring a function as a macro allows use of the Excel.Application object
+# accessible via `xlo.app()`
+#
 @xlo.func(macro=True)
 def pyTestCom():
     app = xlo.app()
     return app.ProductCode
 
-
+#
+# The special xlo.AllowRange annotation allows the function to receive ranges
+# as an ExcelRange object. This allows manipulation without making a copy of
+# the data in the range.
+#
 @xlo.func(macro=True)
 def pyTestRange(r: xlo.AllowRange):
     r2 = r.cell(1, 1).value
     return r.cell(1, 1).address()
 
 #
-# A fairly pathological example of a type converter function
-# and how it is applied to an excel function
+# The converter decorator tells xlOil that the following function or 
+# class is a type converter. A type converter creates a python object
+# from a given bool, float, int, str, ExcelArray or ExcelRange.
+#
+# The converter can be applied to an argument using the usual annotation
+# syntax, or using the `arg` specfier.
 # 
 @xlo.converter()
 def arg_doubler(x):
@@ -154,15 +184,28 @@ def arg_doubler(x):
 def pyTestCustomConv(x: arg_doubler):
     return x
 
-
+#
+# xlo.PDFrame converts a block to a pandas DataFrame. The block should be
+# formatted as a table with data in columns and a row of column headings
+# if the headings paramter is set
+#
 @xlo.func
 def pyTestDFrame(df: xlo.PDFrame(headings=True)):
     return xlo.to_cache(df)
-    
+
+#
+# We can tell xlo.PDFrame to set the datafram index to a specified column 
+# name. If you want the index column name to be dynamic, you'll need to
+# drop the index param and call DataFrame.set_index yourself.
+#
 @xlo.func
 def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
     return xlo.to_cache(df)
-    
+
+#
+# Here we test that we can fetch data from the frames created by the
+# previous functions
+#
 @xlo.func
 def pyTestFrameFetch(df, index=None, col_name=None):
     if index is not None:
@@ -172,10 +215,3 @@ def pyTestFrameFetch(df, index=None, col_name=None):
             return df.loc[index].values
     else:
         return df[col_name]
-
-@xlo.func
-def pyTestMe(x):
-    return x
-
-
-
