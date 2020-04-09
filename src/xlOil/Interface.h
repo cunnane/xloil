@@ -41,6 +41,9 @@ namespace xloil
 
     static Excel::_Application& theExcelApp();
 
+    static bool inFunctionWizard();
+    static void throwInFunctionWizard();
+
     int registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept;
 
     /// <summary>

@@ -28,5 +28,5 @@ namespace xloil
     size_t bufSize,
     bool A1Style = true);
 
-  XLOIL_EXPORT bool inFunctionWizard();
+  bool inFunctionWizard();
 }

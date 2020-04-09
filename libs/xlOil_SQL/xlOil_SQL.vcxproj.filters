@@ -4,8 +4,17 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="..\..\external\sqlite\sqlite3.c" />
     <ClCompile Include="XlArrayTable.cpp" />
+    <ClCompile Include="Cache.cpp" />
+    <ClCompile Include="xloSql.cpp" />
+    <ClCompile Include="xloSqlDB.cpp" />
+    <ClCompile Include="xloSqlTable.cpp" />
+    <ClCompile Include="xloSqlQuery.cpp" />
+    <ClCompile Include="Common.cpp" />
+    <ClCompile Include="xloSqlTables.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="XlArrayTable.h" />
+    <ClInclude Include="Cache.h" />
+    <ClInclude Include="Common.h" />
   </ItemGroup>
 </Project>

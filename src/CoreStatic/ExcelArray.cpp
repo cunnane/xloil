@@ -38,17 +38,4 @@ namespace xloil
       }
     }
   }
-
-  ExcelArray::ExcelArray(const ExcelObj& obj, size_t nRows, size_t nCols)
-    : _colOffset(0)
-    , _rows(nRows)
-    , _columns(nCols)
-  {
-    if (obj.type() != ExcelType::Multi)
-      XLO_THROW("Expected array");
-    if (nRows > obj.val.array.rows || nCols > obj.val.array.columns)
-      XLO_THROW("Out of range");
-    _data = (const ExcelObj*)obj.val.array.lparray;
-    _baseCols = obj.val.array.columns;
-  }
 }

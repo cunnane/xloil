@@ -1,26 +1,57 @@
+#include "XlArrayTable.h"
 #include <sqlite/sqlite3.h>
 #include <sqlite/sqlite3ext.h>
 #include "ExcelArray.h"
-#include "XlArrayTable.h"
+#include <xlOil/ExcelRange.h>
+
+using std::shared_ptr;
+using std::pair;
 
 namespace xloil
 {
   namespace SQL
   {
     /* An instance of the XlArray virtual table */
+   
     struct XlArrayTable
     {
-      XlArrayTable(ExcelArray arr_) : arr(arr_) {}
+      using InputType = XlArrayInput;
+      XlArrayTable(const InputType& input) : data(input) {};
       sqlite3_vtab base;              /* Base class.  Must be first */
-      ExcelArray arr;                /* Name of the CSV file */
+      ExcelArray data;
     };
 
-    /* A cursor for the XlArray virtual table */
-    struct XlArrayCursor {
-      sqlite3_vtab_cursor base;       /* Base class.  Must be first */
-      sqlite3_int64 iRowid;           /* The current rowid.  Negative for EOF */
+    struct XlRangeTable
+    {
+      using InputType = XlRangeInput;
+      XlRangeTable(const InputType& input) : data(input) {};
+      sqlite3_vtab base;              /* Base class.  Must be first */
+      ExcelRange data;
     };
 
+    // Not sure what this could be used for...
+    //
+    //using XlArrayOwnerInput = std::pair<ExcelArray, std::shared_ptr<const ExcelObj>>;
+    //struct XlArrayOwnerTable
+    //{
+    //  using InputType = XlArrayOwnerInput;
+    //  XlArrayOwnerTable(const InputType& input)
+    //   : data(input.first)
+    //   , storage(input.second)
+    //  {}
+    //  sqlite3_vtab base;              /* Base class.  Must be first */
+    //  ExcelArray data;
+    //  shared_ptr<const ExcelObj> storage;
+    //};
+
+
+    struct XlTableCursor 
+    {
+      sqlite3_vtab_cursor base;  /* Base class.  Must be first */
+      int iRowid;                /* The current rowid.  Negative for EOF */
+    };
+
+    template<class T>
     static int xConnect(
       sqlite3 *db,
       void *pAux,
@@ -28,16 +59,14 @@ namespace xloil
       sqlite3_vtab **ppVtab,
       char **pzErr)
     {
-      auto param1 = argv[3];
-      auto param2 = argv[4];
-      auto arr = (const ExcelArray*)atoll(param1);
-      auto schema = param2;
+      auto input = (const typename T::InputType*)atoll(argv[3]);
+      auto schema = argv[4];
 
       auto rc = sqlite3_declare_vtab(db, schema);
 
       if (rc == SQLITE_OK)
       {
-        auto* pNew = new XlArrayTable(*arr);
+        auto* pNew = new T(*input);
         *ppVtab = (sqlite3_vtab*)pNew;
       }
 
@@ -48,6 +77,7 @@ namespace xloil
     ** The xConnect and xCreate methods do the same thing, but they must be
     ** different so that the virtual table is not an eponymous virtual table.
     */
+    template<class T>
     static int xCreate(
       sqlite3 *db,
       void *pAux,
@@ -55,7 +85,7 @@ namespace xloil
       sqlite3_vtab **ppVtab,
       char **pzErr)
     {
-      return xConnect(db, pAux, argc, argv, ppVtab, pzErr);
+      return xConnect<T>(db, pAux, argc, argv, ppVtab, pzErr);
     }
 
     static int xBestIndex(
@@ -69,14 +99,15 @@ namespace xloil
     /*
     ** This is the destructor for the vtable.
     */
+    template<class T>
     static int xDisconnect(sqlite3_vtab *pVtab) {
-      auto* p = (XlArrayTable*)pVtab;
+      auto* p = (T*)pVtab;
       delete p;
       return SQLITE_OK;
     }
 
     static int xOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor) {
-      auto *pCur = new XlArrayCursor();
+      auto *pCur = new XlTableCursor();
       *ppCursor = &pCur->base;
       return SQLITE_OK;
     }
@@ -85,7 +116,7 @@ namespace xloil
     ** Destructor for a Cursor.
     */
     static int xClose(sqlite3_vtab_cursor *cur) {
-      auto *pCur = (XlArrayCursor*)cur;
+      auto *pCur = (XlTableCursor*)cur;
       delete pCur;
       return SQLITE_OK;
     }
@@ -99,7 +130,7 @@ namespace xloil
       int idxNum, const char *idxStr,
       int argc, sqlite3_value **argv)
     {
-      auto *pCur = (XlArrayCursor*)pVtabCursor;
+      auto *pCur = (XlTableCursor*)pVtabCursor;
       pCur->iRowid = 0;
       return SQLITE_OK;
     }
@@ -108,11 +139,12 @@ namespace xloil
     ** Advance a Cursor to its next row of input.
     ** Set the EOF marker if we reach the end of input.
     */
+    template<class T>
     static int xNext(sqlite3_vtab_cursor *cur)
     {
-      auto *pCur = (XlArrayCursor*)cur;
-      auto *pTab = (XlArrayTable*)cur->pVtab;
-      if (++pCur->iRowid >= pTab->arr.nRows())
+      auto *pCur = (XlTableCursor*)cur;
+      auto *pTab = (const T*)cur->pVtab;
+      if (++pCur->iRowid >= pTab->data.nRows())
         pCur->iRowid = -1;
       return SQLITE_OK;
     }
@@ -122,7 +154,7 @@ namespace xloil
     ** row of output.
     */
     static int xEof(sqlite3_vtab_cursor *cur) {
-      auto *pCur = (XlArrayCursor*)cur;
+      auto *pCur = (const XlTableCursor*)cur;
       return pCur->iRowid < 0;
     }
 
@@ -130,15 +162,15 @@ namespace xloil
     ** Return values of columns for the row at which the cursor
     ** is currently pointing.
     */
+    template<class T>
     static int xColumn(
       sqlite3_vtab_cursor *cur,   /* The cursor */
       sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
       int i)                      /* Which column to return */
     {
-      auto *pCur = (XlArrayCursor*)cur;
-      auto *pTab = (XlArrayTable*)cur->pVtab;
-      auto& arr = pTab->arr;
-      auto& val = arr(pCur->iRowid, i);
+      auto *pCur = (XlTableCursor*)cur;
+      auto *pTab = (const T*)cur->pVtab;
+      auto& val = pTab->data(pCur->iRowid, i);
 
       switch (val.type())
       {
@@ -154,7 +186,8 @@ namespace xloil
       case ExcelType::Str:
       {
         auto pstr = val.asPascalStr();
-        sqlite3_result_text16(ctx, pstr.pstr(), pstr.length() * sizeof(wchar_t), SQLITE_STATIC);
+        sqlite3_result_text16(ctx, pstr.pstr(), 
+          pstr.length() * sizeof(wchar_t), SQLITE_STATIC);
         break;
       }
       case ExcelType::Err:
@@ -173,24 +206,25 @@ namespace xloil
     */
     static int xRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid)
     {
-      auto *pCur = (XlArrayCursor*)cur;
+      auto *pCur = (XlTableCursor*)cur;
       *pRowid = pCur->iRowid;
       return SQLITE_OK;
     }
 
-    extern sqlite3_module XlArrayModule = {
+    template<class T>
+    sqlite3_module XlModule = {
       0,                  /* iVersion */
-      xCreate,            /* xCreate */
-      xConnect,           /* xConnect */
+      xCreate<T>,         /* xCreate */
+      xConnect<T>,        /* xConnect */
       xBestIndex,         /* xBestIndex */
-      xDisconnect,        /* xDisconnect */
-      xDisconnect,        /* xDestroy */
+      xDisconnect<T>,     /* xDisconnect */
+      xDisconnect<T>,     /* xDestroy */
       xOpen,              /* xOpen - open a cursor */
       xClose,             /* xClose - close a cursor */
       xFilter,            /* xFilter - configure scan constraints */
-      xNext,              /* xNext - advance a cursor */
+      xNext<T>,           /* xNext - advance a cursor */
       xEof,               /* xEof - check for end of scan */
-      xColumn,            /* xColumn - read data */
+      xColumn<T>,         /* xColumn - read data */
       xRowid,             /* xRowid - read data */
       0,                  /* xUpdate */
       0,                  /* xBegin */
@@ -200,5 +234,9 @@ namespace xloil
       0,                  /* xFindMethod */
       0,                  /* xRename */
     };
+
+
+    extern sqlite3_module XlArrayModule = XlModule<XlArrayTable>;
+    extern sqlite3_module XlRangeModule = XlModule<XlRangeTable>; 
   }
 }

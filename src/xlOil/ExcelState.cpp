@@ -241,7 +241,8 @@ namespace xloil
 
     return addressLen + wsName.length() + 1;
   }
-  XLOIL_EXPORT bool inFunctionWizard()
+
+  bool inFunctionWizard()
   {
     return called_from_paste_fn_dlg();
   }

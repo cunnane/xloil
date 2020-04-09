@@ -64,6 +64,7 @@
       <Filter>internal</Filter>
     </ClInclude>
     <ClInclude Include="FuncSpec.h" />
+    <ClInclude Include="Preprocessor.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

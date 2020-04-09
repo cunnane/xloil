@@ -51,6 +51,17 @@ namespace xloil
     return excelApp();
   }
 
+  bool Core::inFunctionWizard()
+  {
+    return xloil::inFunctionWizard();
+  }
+
+  void Core::throwInFunctionWizard()
+  {
+    if (xloil::inFunctionWizard())
+      XLO_THROW("#WIZARD!");
+  }
+
   int Core::registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept
   {
     auto& name = spec->name();
