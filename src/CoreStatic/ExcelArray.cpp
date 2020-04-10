@@ -5,7 +5,6 @@
 namespace xloil
 {
   ExcelArray::ExcelArray(const ExcelObj& obj, bool trim)
-    : _colOffset(0)
   {
     switch (obj.type())
     {

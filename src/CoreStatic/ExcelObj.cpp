@@ -481,7 +481,7 @@ namespace
     {
       ExcelArray arr(*this);
       wstring str;
-      for (auto i = 0; i < arr.size(); ++i)
+      for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
         str += arr(i).toString();
       return str;
     }
@@ -551,7 +551,7 @@ namespace
     return excelSerialDatetoDMYHMS(d, nDay, nMonth, nYear, nHours, nMins, nSecs, uSecs);
   }
 
-  bool ExcelObj::trimmedArraySize(size_t& nRows, size_t& nCols) const
+  bool ExcelObj::trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const
   {
     if ((xtype() & xltypeMulti) == 0)
     {

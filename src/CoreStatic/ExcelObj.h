@@ -345,7 +345,7 @@ namespace xloil
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
     /// <returns>false if object is not an array, else true</returns>
-    bool trimmedArraySize(size_t& nRows, size_t& nCols) const;
+    bool trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const;
 
   private:
     /// The xloper type made safe for use in switch statements by zeroing

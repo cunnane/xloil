@@ -9,6 +9,9 @@ namespace xloil
   class ExcelArrayBuilder
   {
   public:
+    using row_t = uint32_t;
+    using col_t = uint16_t;
+
     ExcelArrayBuilder(size_t nRows, size_t nCols,
       size_t totalStrLength = 0, bool pad2DimArray = false)
     {
@@ -17,8 +20,8 @@ namespace xloil
       if (totalStrLength > 0)
         totalStrLength += nCols * nRows * 2;
 
-      auto nPaddedRows = nRows;
-      auto nPaddedCols = nCols;
+      auto nPaddedRows = (row_t)nRows;
+      auto nPaddedCols = (col_t)nCols;
       if (pad2DimArray)
       {
         if (nPaddedRows == 1) nPaddedRows = 2;
@@ -36,11 +39,11 @@ namespace xloil
 
       // Add padding
       if (nCols < nPaddedCols)
-        for (size_t i = 0; i < nRows; ++i)
+        for (row_t i = 0; i < nRows; ++i)
           setNA(i, nCols);
 
       if (nRows < nPaddedRows)
-        for (size_t j = 0; j < nPaddedCols; ++j)
+        for (col_t j = 0; j < nPaddedCols; ++j)
           setNA(nRows, j);
     }
     void setNA(size_t i, size_t j)
@@ -107,13 +110,14 @@ namespace xloil
       return ExcelObj(_arrayData, int(_nRows), int(_nColumns));
     }
 
-    size_t nRows() const { return _nRows; }
-    size_t nCols() const { return _nColumns; }
+    row_t nRows() const { return _nRows; }
+    col_t nCols() const { return _nColumns; }
 
   private:
-    ExcelObj * _arrayData;
+    ExcelObj* _arrayData;
     wchar_t* _stringData;
     const wchar_t* _endStringData;
-    size_t _nRows, _nColumns;
+    row_t _nRows;
+    col_t _nColumns;
   };
 }
