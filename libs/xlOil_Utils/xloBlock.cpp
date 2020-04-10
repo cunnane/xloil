@@ -37,26 +37,31 @@ namespace xloil
       if (parse.empty())
         XLO_THROW("No layout");
 
-      vector<tuple<int, size_t, size_t>> spec;
+      using row_t = ExcelArray::row_t;
+      using col_t = ExcelArray::col_t;
 
       auto* p = parse.data();
 
-      size_t totalRows = 0, totalCols = 0;
-      size_t colsForCurrent = 0, rowsForCurrent = 0;
+      row_t totalRows = 0, rowsForCurrent = 0;
+      col_t totalCols = 0, colsForCurrent = 0;
       size_t totalStrLength = 0;
+
+      vector<tuple<row_t, col_t, short>> spec;
+
       while (true)
       {
         wchar_t* nextP;
-        auto argNum = wcstol(p, &nextP, 10);
+        auto argNum = (short)wcstol(p, &nextP, 10); 
         if (argNum > nArgs)
           XLO_THROW("Arg {i} out of range", argNum);
         p = nextP;
 
         if (argNum == 0)
-          spec.emplace_back(PADDING, 0, 0);
+          spec.emplace_back(0, 0, PADDING);
         else
         {
-          size_t nRows = 1, nCols = 1;
+          row_t nRows = 1;
+          col_t nCols = 1;
           auto* obj = args[argNum - 1];
           switch (obj->type())
           {
@@ -74,7 +79,7 @@ namespace xloil
           default:
             break;
           }
-          spec.emplace_back(argNum, nRows, nCols);
+          spec.emplace_back(nRows, nCols, argNum);
           rowsForCurrent = std::max(rowsForCurrent, nRows);
           colsForCurrent += nCols;
         }
@@ -82,7 +87,7 @@ namespace xloil
 
         if (!separator || *separator == L';')
         {
-          spec.emplace_back(NEW_ROW, rowsForCurrent, 0);
+          spec.emplace_back(rowsForCurrent, 0, NEW_ROW);
           totalCols = std::max(totalCols, colsForCurrent);
           totalRows += rowsForCurrent;
           colsForCurrent = 0;
@@ -99,10 +104,11 @@ namespace xloil
         return ExcelObj::returnValue(CellError::NA);
 
       // TODO: avoid looping the spec twice!
-      size_t row = 0, col = 0;
+      row_t row = 0;
+      col_t col = 0;
       for (auto i = 0; i < spec.size(); ++i)
       {
-        auto[iArg, nRows, nCols] = spec[i];
+        auto[nRows, nCols, iArg] = spec[i];
         switch (iArg)
         {
         case NEW_ROW:
@@ -111,9 +117,14 @@ namespace xloil
         case PADDING:
         {
           auto j = i;
-          while (std::get<0>(spec[++j]) != NEW_ROW)
-            col += std::get<2>(spec[j]);
-          spec[i] = std::make_tuple(PADDING, 0, totalCols - col);
+          // Walk through the specs until we find the next new row, adding
+          // the required columns as we go
+          while (std::get<2>(spec[++j]) != NEW_ROW)
+            col += std::get<1>(spec[j]);
+
+          // The padding shoud be the number of columns required for this row
+          // less the number we found in the above loop
+          spec[i] = std::make_tuple(0, totalCols - col, PADDING);
           i = j;
           col = 0;
           break;
@@ -126,12 +137,12 @@ namespace xloil
       ExcelArrayBuilder builder(totalRows, totalCols, totalStrLength);
 
       // TODO: optional fill specifier?
-      for (auto i = 0; i < totalRows; ++i)
-        for (auto j = 0; j < totalCols; ++j)
+      for (row_t i = 0; i < totalRows; ++i)
+        for (col_t j = 0; j < totalCols; ++j)
           builder.setNA(i, j);
 
       row = 0; col = 0;
-      for (auto[iArg, nRows, nCols] : spec)
+      for (auto[nRows, nCols, iArg] : spec)
       {
         switch (iArg)
         {
@@ -151,8 +162,8 @@ namespace xloil
           {
             ExcelArray arr(*obj, nRows, nCols);
 
-            for (auto i = 0; i < nRows; ++i)
-              for (auto j = 0; j < nCols; ++j)
+            for (row_t i = 0; i < nRows; ++i)
+              for (col_t j = 0; j < nCols; ++j)
                 builder.emplace_at(row + i, col + j, arr(i, j));
 
             col += nCols;
