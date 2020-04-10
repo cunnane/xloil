@@ -65,7 +65,7 @@ namespace xloil
       size_t i = 0, j = 0;
       while (item = PyIter_Next(iter))
       {
-        size_t j = 0;
+        j = 0;
         if (PyIterable_Check(item))
         {
           auto* innerIter = PyCheck(PyObject_GetIter(item));
@@ -108,11 +108,11 @@ namespace xloil
         auto nCols = arr.nCols();
 
         auto outer = py::tuple(nRows);
-        for (auto i = 0; i < nRows; ++i)
+        for (decltype(nRows) i = 0; i < nRows; ++i)
         {
           auto inner = py::tuple(nCols);
           PyTuple_SET_ITEM(outer.ptr(), i, inner.ptr());
-          for (auto j = 0; j < nCols; ++j)
+          for (decltype(nCols) j = 0; j < nCols; ++j)
           {
             auto val = _valConv(arr.at(i, j));
             PyTuple_SET_ITEM(inner.ptr(), j, val);

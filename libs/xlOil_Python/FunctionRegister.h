@@ -8,7 +8,6 @@ namespace xloil
   namespace Python
   {
     class RegisteredModule;
-    struct PyFuncInfo;
 
     class FunctionRegistry
     {

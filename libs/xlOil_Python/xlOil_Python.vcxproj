@@ -232,6 +232,8 @@
     <ClCompile Include="CustomConverter.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
+    <ClCompile Include="ExcelRange.cpp" />
+    <ClCompile Include="File.cpp" />
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="InjectedModule.cpp" />
@@ -240,21 +242,9 @@
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="xloil.py">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <!--<ItemGroup>
-    <ProjectReference Include="..\CoreStatic\CoreStatic.vcxproj">
-      <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\xlOil\xlOil.vcxproj">
-      <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
-    </ProjectReference>
-  </ItemGroup>-->
-  <ItemGroup>
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="Cache.h" />
+    <ClInclude Include="File.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="Date.h" />
     <ClInclude Include="Dictionary.h" />
@@ -273,6 +263,16 @@
       <Command>echo "$(DevEnvDir)TextTransform.exe" -a !!PyVersion!$(PyMajorVer).$(PyMinorVer) -out %(Outputs) %(FullPath)
 "$(DevEnvDir)TextTransform.exe" -a !!PyVersion!$(PyMajorVer).$(PyMinorVer) -out %(Outputs) %(FullPath)</Command>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="package\README.md" />
+    <None Include="package\setup.py" />
+    <CopyFileToFolders Include="package\xloil\xloil.py">
+      <ExcludedFromBuild>false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <None Include="package\xloil\command_line.py" />
+    <None Include="package\xloil\__init__.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

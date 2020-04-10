@@ -26,7 +26,7 @@ namespace xloil
           XLO_THROW("Need a 2 column array to convert to dictionary");
 
         auto dict = py::dict();
-        auto i = 0;
+        ExcelArray::row_t i = 0;
 
         for (; i < arr.nRows(); ++i)
         {

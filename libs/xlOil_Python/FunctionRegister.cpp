@@ -3,6 +3,7 @@
 #include "Main.h"
 #include "BasicTypes.h"
 #include "Dictionary.h"
+#include "File.h"
 #include <xloil/ExcelCall.h>
 #include <xloil/AsyncHelper.h>
 #include <xloil/ExcelState.h>
@@ -322,7 +323,10 @@ namespace xloil
     {
       auto it = _modules.find(modulePath);
       if (it == _modules.end())
-       it = _modules.insert(make_pair(modulePath, make_shared<RegisteredModule>(modulePath, workbookName))).first;
+      {
+        auto module = make_shared<RegisteredModule>(modulePath, workbookName);
+        it = _modules.insert(make_pair(modulePath, module)).first;
+      }
       return it->second;
     }
 
@@ -369,11 +373,6 @@ namespace xloil
       FunctionRegistry::get().addModule(moduleHandle.cast<py::module>())
         ->registerFuncs(functions);
     }
-
-    void writeToLog(const char* message, const char* level)
-    {
-      SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::from_str(level), message);
-    }
     
     namespace
     {
@@ -408,11 +407,8 @@ namespace xloil
 
         py::class_<ThreadContext>(mod, "ThreadContext")
           .def("cancelled", &ThreadContext::cancelled);
-       
 
-        mod.def("in_wizard", &xloil::inFunctionWizard);
         mod.def("register_functions", &registerFunctions);
-        mod.def("log", &writeToLog, py::arg("msg"), py::arg("level")="info");
       });
     }
   }

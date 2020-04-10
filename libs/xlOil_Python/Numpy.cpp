@@ -19,6 +19,10 @@ namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;
 
+// Useful references:
+//
+// https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html
+//
 namespace xloil 
 {
   namespace Python
@@ -66,6 +70,14 @@ namespace xloil
           return NPY_NAN;
         }
         return ToDouble::fromError(err);
+      }
+    };
+
+    struct ToFloatNPYNan
+    {
+      float operator()(const ExcelObj& x) const
+      {
+        return static_cast<float>(ToDoubleNPYNan()(x));
       }
     };
 
@@ -125,13 +137,12 @@ namespace xloil
       }
     };
 
-
-    template<class T, class R>
+    template<class TExcelObjConverter, class TResultValue>
     struct NPToT
     {
-      void operator()(R* d, size_t, const ExcelObj& x) const
+      void operator()(TResultValue* d, size_t, const ExcelObj& x) const
       {
-        *d = T()(x);
+        *d = TExcelObjConverter()(x);
       }
     };
 
@@ -145,7 +156,7 @@ namespace xloil
     template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<ToInt, storage>; };
     template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<ToInt, storage>; };
     template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<ToInt, storage>; };
-    template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToFloatNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DOUBLE> { using storage = double; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
     { 
@@ -178,7 +189,7 @@ namespace xloil
     size_t getItemSize<NPY_STRING>(const ExcelArray& arr)
     {
       size_t strLength = 0;
-      for (auto i = 0; i < arr.size(); ++i)
+      for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
         strLength = std::max(strLength, arr.at(i).maxStringLength());
       return strLength * sizeof(TypeTraits<NPY_STRING>::storage);
     }
@@ -283,8 +294,8 @@ namespace xloil
         auto data = (char*) PyDataMem_NEW(dataSize);
 
         auto d = data;
-        for (auto i = 0; i < arr.nRows(); ++i)
-          for (auto j = 0; j < arr.nCols(); ++j, d += itemsize)
+        for (auto i = 0; i < dims[0]; ++i)
+          for (auto j = 0; j < dims[1]; ++j, d += itemsize)
             _conv((TDataType*)d, itemsize, arr.at(i, j));
 
         return PyArray_New(
@@ -303,7 +314,10 @@ namespace xloil
         PyArray_ITEMSIZE(pArr) == sizeof(TDataType) && PyArray_TYPE(pArr) == TNpType;
       }
       static constexpr size_t stringLength = 0;
-      void builderEmplace(ExcelArrayBuilder& b, size_t i, size_t j, void* arrayPtr)
+      void builderEmplace(
+        ExcelArrayBuilder& b, 
+        size_t i, size_t j,
+        void* arrayPtr)
       {
         auto x = (TDataType*)arrayPtr;
         b.emplace_at(i, j, *x);
@@ -324,7 +338,10 @@ namespace xloil
       }
       size_t stringLength;
 
-      void builderEmplace(ExcelArrayBuilder& builder, size_t i, size_t j, void* arrayPtr)
+      void builderEmplace(
+        ExcelArrayBuilder& builder, 
+        size_t i, size_t j,
+        void* arrayPtr)
       {
         auto x = (char32_t*)arrayPtr;
         PString<> pstr((char16_t)stringLength);
@@ -366,7 +383,10 @@ namespace xloil
         }
       }
       
-      static void builderEmplace(ExcelArrayBuilder& builder, size_t i, size_t j, void* arrayPtr)
+      static void builderEmplace(
+        ExcelArrayBuilder& builder, 
+        size_t i, size_t j,
+        void* arrayPtr)
       {
         auto* x = *(PyObject**)arrayPtr;
         FromPyObj()(x, [&builder, i, j](auto&&... args) { return builder.emplace_at(i, j, args...); });

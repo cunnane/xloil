@@ -163,8 +163,8 @@ def pyTestCom():
 #
 @xlo.func(macro=True)
 def pyTestRange(r: xlo.AllowRange):
-    r2 = r.cell(1, 1).value
-    return r.cell(1, 1).address()
+    r2 = r.cells(1, 1).value
+    return r.cells(2, 2).address()
 
 #
 # The converter decorator tells xlOil that the following function or 

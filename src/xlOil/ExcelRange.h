@@ -9,6 +9,9 @@ namespace xloil
   class ExcelRange : protected ExcelObj
   {
   public:
+    using row_t = uint32_t;
+    using col_t = uint16_t;
+
     XLOIL_EXPORT ExcelRange(const ExcelObj& from);
 
     XLOIL_EXPORT ExcelRange(const wchar_t* address);
@@ -30,27 +33,47 @@ namespace xloil
       return ExcelRange(sheetId(), i, j, i + 1, j + 1).value();
     }
 
-    static constexpr int TO_END = 0;
+    static constexpr int TO_END = -1;
 
-    // Doesn't check that a sub-range has been specified
+    /// <summary>
+    /// Gives a subrange relative to the current range. Unlike Excel's VBA Range function
+    /// we used zero-based indexing and do not include the right-hand endpoint.
+    /// Similar to Excel's function, we do not insist the sub-range is a subset, so
+    /// fromRow can be negative or toRow can be past the end of the referenced range.
+    /// </summary>
+    /// <param name="fromRow"></param>
+    /// <param name="fromCol"></param>
+    /// <param name="toRow"></param>
+    /// <param name="toCol"></param>
+    /// <returns></returns>
     ExcelRange range(int fromRow, int fromCol, int toRow = TO_END, int toCol = TO_END) const
     {
+      // Excel's ranges are _inclusive_ at the right hand end. This 
+      // is unusual in programming languages, so we hide it by 
+      // adjusting toRow / toCol here
       return ExcelRange(sheetId(),
         ref().rwFirst + fromRow, 
         ref().colFirst + fromCol,
-        toRow <= 0 ? ref().rwLast + toRow : ref().rwFirst + toRow,
-        toCol <= 0 ? ref().colLast + toCol : ref().colFirst + toCol);
+        toRow < 0 ? ref().rwLast + toRow + 1 : ref().rwFirst + toRow - 1,
+        toCol < 0 ? ref().colLast + toCol + 1 : ref().colFirst + toCol - 1);
     }
-    ExcelRange cell(int i, int j)
+    /// <summary>
+    /// Returns a 1x1 subrange containing the specified cell. Uses zero-based
+    /// indexing unlike Excel's VBA Range.Cells function.
+    /// </summary>
+    /// <param name="i"></param>
+    /// <param name="j"></param>
+    /// <returns></returns>
+    ExcelRange cells(int i, int j) const
     {
-      return range(i, j, 1, 1);
+      return range(i, j, i + 1, j + 1);
     }
 
-    size_t nRows() const 
+    row_t nRows() const
     {
       return ref().rwLast - ref().rwFirst;
     }
-    size_t nCols() const 
+    col_t nCols() const 
     {
       return ref().colLast - ref().colFirst;
     }
