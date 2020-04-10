@@ -144,7 +144,7 @@ namespace xloil
     {
       auto *pCur = (XlTableCursor*)cur;
       auto *pTab = (const T*)cur->pVtab;
-      if (++pCur->iRowid >= pTab->data.nRows())
+      if (++pCur->iRowid >= (int)pTab->data.nRows())
         pCur->iRowid = -1;
       return SQLITE_OK;
     }

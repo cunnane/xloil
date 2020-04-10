@@ -14,8 +14,9 @@ namespace xloil
   namespace SQL
   {
     XLO_FUNC xloSqlQuery(
-      const ExcelObj& query,
-      const ExcelObj& database)
+      const ExcelObj& database,
+      const ExcelObj& query
+      )
     {
       try
       {
@@ -38,7 +39,7 @@ namespace xloil
     }
     XLO_REGISTER(xloSqlQuery).threadsafe()
       .help(L"Runs the specified query on a database, returning the results as an array")
-      .arg(L"Query")
-      .arg(L"Database", L"A cache reference to a database object created wth xloSqlDB");
+      .arg(L"Database", L"A cache reference to a database object created wth xloSqlDB")
+      .arg(L"Query");
   }
 }

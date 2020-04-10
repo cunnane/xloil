@@ -104,7 +104,7 @@ namespace xloil
       return stmtPtr;
     }
 
-    void sqlExec(sqlite3* db, const wstring& sql)
+    int sqlExec(sqlite3* db, const wstring& sql)
     {
       const wchar_t* pSql = sql.c_str();
       const wchar_t* pSqlEnd = pSql + sql.length();
@@ -116,9 +116,9 @@ namespace xloil
 
         const wchar_t* pLeftover;
         sqlite3_stmt *stmt;
-        sqlThrow(db,
-          sqlite3_prepare16_v2(db, pSql,
-          (int)(pSqlEnd - pSql) * sizeof(wchar_t), &stmt, (const void **)&pLeftover));
+        
+        rc = sqlite3_prepare16_v2(db, pSql,
+          (int)(pSqlEnd - pSql) * sizeof(wchar_t), &stmt, (const void **)&pLeftover);
 
         if (!stmt)
         {
@@ -127,10 +127,12 @@ namespace xloil
           continue;
         }
         while (sqlite3_step(stmt) == SQLITE_ROW);
-        sqlite3_finalize(stmt);
+        rc = sqlite3_finalize(stmt);
         pSql = pLeftover;
         while (isspace(pSql[0])) pSql++;
       }
+
+      return rc;
     }
 
     ExcelObj sqlQueryToArray(const std::shared_ptr<sqlite3_stmt>& prepared)

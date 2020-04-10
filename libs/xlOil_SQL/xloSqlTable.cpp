@@ -43,6 +43,10 @@ namespace xloil
         auto db = dbObj->getDB();
         ScopedLock lock(db.get());
 
+        // Attempt to drop table if it already exists, e.g. function called 
+        // again, but ignore return code
+        sqlExec(db.get(), fmt::format(L"DROP TABLE {0}", tableName));
+
         createVTable(
           db.get(),
           ExcelArray(data),
@@ -53,13 +57,16 @@ namespace xloil
           ? query.toString()
           : fmt::format(L"SELECT * FROM {0}", tableName);
 
+        // We do this little rename so the table can have the 
+        // expected name in the query even though it is just
+        // the temporary vtable.
         auto tempName = wstring(L"xloil_temp");
         auto sql = fmt::format(
           L"CREATE TABLE {0} AS {1};"
           "DROP TABLE {2};"
           "ALTER TABLE {0} RENAME TO {2};",
           tempName, select, tableName);
-        sqlExec(db.get(), sql);
+        sqlThrow(db.get(), sqlExec(db.get(), sql));
         
         return const_cast<ExcelObj*>(&database);
       }
@@ -69,13 +76,14 @@ namespace xloil
       }
     }
     XLO_REGISTER(xloSqlTable).threadsafe()
-      .help(L"Creates a table in a database optionally via a query (otherwise uses SELECT *). "
+      .help(L"Creates a table in a database, optionally via a query. "
             "Returns a reference to the database: it is recommended to chain xloSqlTable calls "
-            "to clarify execution order")
-      .arg(L"Database")
-      .arg(L"Data")
-      .arg(L"Name")
-      .arg(L"Headings")
-      .arg(L"Query", L"[opt] A select statement used to extract a subset of the data");
+            "to force execution order before calling xloSqlQuery")
+      .arg(L"Database", L"A reference to a database created by xloSqlDB or another call to xloSqlTable")
+      .arg(L"Data", L"An array of data to read into the table. First row must be headings, unless "
+                     "headings parameter is specified")
+      .arg(L"Name", L"The table name in the database, this must be unique")
+      .arg(L"Headings", L"[opt] headings (field names) for the data")
+      .arg(L"Query", L"[opt] A select statement used to extract a subset of the data, otherwise SELECT * is used");
   }
 }

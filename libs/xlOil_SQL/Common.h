@@ -32,7 +32,7 @@ namespace xloil
     std::shared_ptr<sqlite3_stmt> 
       sqlPrepare(sqlite3* db, const std::wstring& sql);
 
-    void 
+    int 
       sqlExec(sqlite3* db, const std::wstring& sql);
 
     ExcelObj
