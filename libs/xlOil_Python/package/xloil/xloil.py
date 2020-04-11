@@ -8,13 +8,19 @@ import numpy as np
 import os
 import sys
 
-try:
+
+#
+# If the xloil_core module can be found, we are being called from an xlOil
+# embedded interpreter, so we go ahead and import the module.  Otherwise we
+# define skeletons of the imported types to support type-checking, auto- 
+# completion and documentation.
+#
+if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
-    from xloil_core import event_CalcEnded, event_NewWorkbook
-
-except Exception:
+ 
+else:
     def in_wizard():
         """ 
         Returns true if the function is being invoked from the function 
