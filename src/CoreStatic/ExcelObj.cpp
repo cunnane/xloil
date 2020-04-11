@@ -1,9 +1,9 @@
 #include "ExcelObj.h"
 #include "xloil/ExcelCall.h"
 #include "StandardConverters.h"
-#include "xloil/Log.h"
-#include "xloil/Date.h"
-#include "xloil/StringUtils.h"
+#include <xloil/Throw.h>
+#include <xloil/Date.h>
+#include <xloil/StringUtils.h>
 #include <xlOil/ExcelRange.h>
 #include "ArrayBuilder.h"
 #include "ExcelArray.h"
@@ -11,7 +11,6 @@
 #include <cstring>
 #include <vector>
 #include <string>
-#include <codecvt>
 
 #define MAX_XL11_ROWS            65536
 #define MAX_XL11_COLS              256
@@ -137,10 +136,8 @@ namespace
           {
           case xltypeStr:
           {
-            size_t len = pSrc->val.str[0];
-            auto pstr = arr.string(len);
-            wmemcpy_s(pstr.pstr(), len, pSrc->val.str + 1, len);
-            arr.emplace_at(i, j, pstr);
+            wchar_t len = pSrc->val.str[0];
+            arr.emplace_at(i, j, pSrc->val.str + 1, len);
             break;
           }
           default:

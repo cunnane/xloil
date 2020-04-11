@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ExcelObj.h"
-#include <xlOil/Log.h>
+#include <xlOil/Throw.h>
 #include <cassert>
 
 namespace xloil
@@ -82,10 +82,14 @@ namespace xloil
         len = (int)wcslen(str);
       auto pstr = string(len);
       wmemcpy_s(pstr.pstr(), len, str, len);
-      new (at(i, j)) ExcelObj(std::forward<PString<>>(pstr));
+      auto xlObj = new (at(i, j)) ExcelObj();
+      // We overwrite the object's string store directly, knowing its
+      // d'tor will never be called as it is part of an array.
+      xlObj->val.str = pstr.data();
+      xlObj->xltype = msxll::xltypeStr;
     }
 
-    PString<> string(size_t len)
+    PStringView<> string(size_t len)
     {
       wchar_t* ptr = nullptr;
       if (len > 0)
@@ -96,7 +100,7 @@ namespace xloil
         ptr = _stringData;
         _stringData += len + 2;
       }
-      return PString<wchar_t>::view(ptr);
+      return PStringView<>(ptr);
     }
 
     ExcelObj* at(size_t i, size_t j)

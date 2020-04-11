@@ -200,7 +200,7 @@ namespace xloil
       auto* str = pascalStr + 1;
 
       // Capture workbook name.  We should have X[wbName]wsName!cellRef
-      auto lastBracket = PString<>::wmemrchr(str + len, L']', len);
+      auto lastBracket = PStringView<>::wmemrchr(str + len, L']', len);
       auto wbName = std::wstring_view(str + 2, lastBracket - str - 2);
 
       // Capture sheet ref.  
@@ -225,7 +225,7 @@ namespace xloil
         _itow_s(int(iPos), pStr, padding - 1, 10);
       }
 
-      auto key = PString<>::own(pascalStr);
+      auto key = PString(pascalStr);
 
       if constexpr (TReverseLookup)
       {

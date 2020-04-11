@@ -20,9 +20,11 @@ namespace xloil
       {
         auto pstr = builder.string(strLen);
         pstr = value.asPascalStr();
+        // Rather than copy the string for each array entry, we just pass
+        // the same pointer each time.
         for (auto i = 0; i < nRowsVal; ++i)
           for (auto j = 0; j < nColsVal; ++j)
-            builder.emplace_at(i, j, pstr);
+            builder.emplace_at(i, j, PString<>(pstr.data()));
       }
       else
       {

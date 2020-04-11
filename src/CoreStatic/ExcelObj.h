@@ -280,15 +280,15 @@ namespace xloil
     }
 
     /// <summary>
-    /// Gets the start of the object's string data and the length
-    /// of that string. The string may not be null-terminated.
+    /// Returns a PStringView object of the object's string data.
+    /// If the object is not of string type, the resulting view 
+    /// will be empty.
     /// </summary>
-    /// <returns>Pointer to PString data which may be a null object if not a string</returns>
-    PString<> ExcelObj::asPascalStr() const
+    PStringView<> ExcelObj::asPascalStr() const
     {
       if ((xtype() & msxll::xltypeStr) == 0)
-        return PString<>();
-      return PString<>::view(val.str);
+        return PStringView<>();
+      return PStringView<>(val.str);
     }
 
 
