@@ -8,6 +8,7 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/EntryPoint.h>
 #include <xlOil/AsyncHelper.h>
+#include <xlOil/Preprocessor.h>
 #include "Thunker.h"
 #include <unordered_set>
 #include <codecvt>

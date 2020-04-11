@@ -122,6 +122,7 @@
     <ClInclude Include="Settings.h" />
     <ClInclude Include="StaticRegister.h" />
     <ClInclude Include="StringUtils.h" />
+    <ClInclude Include="Throw.h" />
     <ClInclude Include="WindowsSlim.h" />
   </ItemGroup>
   <ItemGroup>

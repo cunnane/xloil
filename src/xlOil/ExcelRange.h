@@ -75,7 +75,7 @@ namespace xloil
     }
     col_t nCols() const 
     {
-      return ref().colLast - ref().colFirst;
+      return (col_t)(ref().colLast - ref().colFirst);
     }
     size_t size() const
     {

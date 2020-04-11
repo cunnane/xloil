@@ -65,6 +65,7 @@
     </ClInclude>
     <ClInclude Include="FuncSpec.h" />
     <ClInclude Include="Preprocessor.h" />
+    <ClInclude Include="Throw.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">

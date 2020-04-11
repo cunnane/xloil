@@ -4,6 +4,7 @@
 #include "ObjectCache.h"
 #include "Settings.h"
 #include "EntryPoint.h"
+#include "Log.h"
 #include <ComInterface/Connect.h>
 #include <toml11/toml.hpp>
 
@@ -145,5 +146,9 @@ namespace xloil
     Core::insertCache(std::shared_ptr<const ExcelObj>&& obj)
   {
     return xloil::addCacheObject(std::forward<std::shared_ptr<const ExcelObj>>(obj));
+  }
+  std::shared_ptr<spdlog::logger> Core::getLogger()
+  {
+    return loggerRegistry().default_logger();
   }
 }

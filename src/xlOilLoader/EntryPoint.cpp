@@ -100,7 +100,7 @@ XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
   switch (xAction->xltype)
   {
   case msxll::xltypeNum:
-    action = xAction->val.num;
+    action = (int)xAction->val.num;
     break;
   case msxll::xltypeInt:
     action = xAction->val.w;

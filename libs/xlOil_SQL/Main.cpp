@@ -1,7 +1,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xloil/Interface.h>
 #include "Cache.h"
-
+#include <xlOil/Log.h>
 
 namespace xloil
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include "ExcelObj.h"
+#include <xlOil/Throw.h>
 #include <cassert>
-#include <xlOil/Log.h>
 
 namespace xloil
 {
@@ -208,10 +208,6 @@ namespace xloil
         XLO_THROW("Array access {0} out of range {1}", n, size());
     }
   };
-
-  constexpr size_t sizeOfT = sizeof(ExcelArray); // 16 was 40!
-  constexpr size_t sizeOfT2 = sizeof(ExcelObj); // 32!
-  constexpr size_t sizeOfT3 = sizeof(ExcelArrayIterator); // 24!
 
   inline ExcelArrayIterator::ExcelArrayIterator(const ExcelArray& parent, const ExcelObj* where)
     : _obj(parent)

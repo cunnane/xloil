@@ -14,4 +14,6 @@
   const ExcelObj* arrayName[N]; \
   BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(N, 1), XLO_ARG_ARRAY_I, (arrayName, prefix))
 
-#define XLO_WSTR(x) L ## #x
+#define XLO_STR_IMPL(s) #s
+#define XLO_WSTR(s) L ## #s
+#define XLO_STR(s) XLO_STR_IMPL(s)

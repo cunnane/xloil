@@ -6,6 +6,7 @@
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include "ExcelObj.h"
+#include <xlOil/Log.h>
 #include <map>
 using std::wstring;
 using std::map;

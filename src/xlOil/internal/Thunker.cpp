@@ -1,7 +1,10 @@
 #include "Thunker.h"
 #include <xlOil/Register.h>
+#include <xlOil/Throw.h>
+#include <xlOil/Log.h>
 #include <asmjit/src/asmjit/asmjit.h>
 #include <string>
+#include <algorithm>
 using std::string;
 
 class xloper12;

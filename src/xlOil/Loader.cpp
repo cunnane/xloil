@@ -5,6 +5,7 @@
 #include "Register.h"
 #include "Settings.h"
 #include "internal/FuncRegistry.h"
+#include "Preprocessor.h"
 #include <toml11/toml.hpp>
 #include <vector>
 #include <string>

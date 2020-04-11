@@ -1,6 +1,7 @@
 #include "StaticRegister.h"
 #include "internal/FuncRegistry.h"
 #include "FuncSpec.h"
+#include "Throw.h"
 
 using std::vector;
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "ExcelObj.h"
-#include <xlOil/Log.h>
+#include <xlOil/Throw.h>
+
 namespace xloil { class ExcelRange; }
 namespace xloil
 {

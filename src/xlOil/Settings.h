@@ -23,7 +23,9 @@ namespace xloil
     std::string pluginSearchPattern;
   };
 
-  Settings& theCoreSettings();
-  //const toml::value* fetchPluginSettings(const wchar_t* pluginName);
-  std::shared_ptr<toml::value> findSettingsFile(const wchar_t* dllPath);
+  Settings& 
+    theCoreSettings();
+
+  std::shared_ptr<toml::value> 
+    findSettingsFile(const wchar_t* dllPath);
 }

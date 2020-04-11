@@ -24,26 +24,25 @@ namespace xloil
 
 using namespace xloil;
 
-XLO_FUNC xloRef(ExcelObj* pxOper)
+XLO_FUNC xloRef(const ExcelObj& pxOper)
 {
   try
   {
     return ExcelObj::returnValue(
       theExcelObjCache.add(
-        make_shared<const ExcelObj>(*pxOper)));
+        make_shared<const ExcelObj>(pxOper)));
   }
   catch (const std::exception& e)
   {
     XLO_RETURN_ERROR(e);
   }
 }
-XLO_REGISTER(xloRef)
-.help(L"Adds the specified cell or array to the object cache and returns a string reference")
-.arg(L"CellOrArray", L"Data to be stored")
-.threadsafe();
+XLO_REGISTER(xloRef).threadsafe()
+  .help(L"Adds the specified cell or array to the object cache and returns a string reference")
+  .arg(L"CellOrArray", L"Data to be stored");
 
 
-XLO_FUNC xloVal(ExcelObj* pxOper)
+XLO_FUNC xloVal(const ExcelObj& pxOper)
 {
   try
   {
@@ -52,7 +51,7 @@ XLO_FUNC xloVal(ExcelObj* pxOper)
 
     // We return a pointer to the stored object directly without setting
     // the flag which tells Excel to free it.
-    if (theExcelObjCache.fetch(pxOper->toString().c_str(), result))
+    if (theExcelObjCache.fetch(pxOper.toString().c_str(), result))
       return const_cast<ExcelObj*>(result.get());
 
     return ExcelObj::returnValue(CellError::Value);
@@ -62,8 +61,8 @@ XLO_FUNC xloVal(ExcelObj* pxOper)
     XLO_RETURN_ERROR(e);
   }
 }
-XLO_REGISTER(xloVal)
-.help(L"Given a string reference, returns a stored array or cell value. "
-  "The cache is not saved so will need to be recreated by a full recalc (Ctrl-Alt-F9) on workbook open")
-.arg(L"CacheRef", L"Cache reference string")
-.threadsafe();
+XLO_REGISTER(xloVal).threadsafe()
+  .help(L"Given a string reference, returns a stored array or cell value. "
+    "The cache is not saved so will need to be recreated by a full recalc (Ctrl-Alt-F9) on workbook open")
+  .arg(L"CacheRef", L"Cache reference string");
+

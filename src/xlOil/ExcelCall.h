@@ -1,9 +1,9 @@
 #pragma once
 #include "ExcelObj.h"
-#include "Log.h"
+#include "Throw.h"
 #include <vector>
 #include <memory>
-
+#include <list>
 
 namespace xloil
 {

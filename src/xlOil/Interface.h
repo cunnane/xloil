@@ -15,6 +15,7 @@ namespace toml {
 }
 namespace Excel { struct _Application; }
 namespace xloil { class RegisteredFunc; }
+namespace spdlog { class logger; }
 
 namespace xloil
 {
@@ -103,10 +104,7 @@ namespace xloil
       return insertCache(std::make_shared<const ExcelObj>(obj));
     }
 
-    std::shared_ptr<spdlog::logger> getLogger()
-    {
-      return loggerRegistry().default_logger();
-    }
+    std::shared_ptr<spdlog::logger> getLogger();
 
     const toml::value* settings() const { return _settings.get(); }
     const std::wstring& pluginName() const { return _pluginName; }

@@ -1,7 +1,7 @@
 #pragma once
 #include "Options.h"
 #include "ExportMacro.h"
-#include "Log.h"
+#include <functional>
 #include <vector>
 #include <memory>
 #include <list>
@@ -104,7 +104,4 @@ namespace xloil
 
   int
     findRegisteredFunc(const wchar_t* name, std::shared_ptr<FuncInfo>* info) noexcept;
-
-  // TODO: registerAsync
-  // TODO: registerMacro
 }

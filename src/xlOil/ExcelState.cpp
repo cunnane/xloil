@@ -1,9 +1,10 @@
 #include "ExcelState.h"
 #include "ExcelCall.h"
 #include "EntryPoint.h"
+#include "WindowsSlim.h"
+
 
 using namespace msxll;
-
 
 namespace
 {
@@ -30,7 +31,7 @@ namespace
 
 #pragma warning(disable: 4311 4302)
   // The callback function called by Windows for every top-level window.
-  BOOL CALLBACK xldlg_enum_proc(HWND hwnd, xldlg_enum_struct *p_enum)
+  bool CALLBACK xldlg_enum_proc(HWND hwnd, xldlg_enum_struct *p_enum)
   {
     // Check if the parent window is Excel.
     // Note: Because of the change from MDI (Excel 2010)
