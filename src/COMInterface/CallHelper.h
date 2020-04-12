@@ -10,7 +10,7 @@ namespace xloil
   template <class TFunc>
   auto retryComCall(TFunc fn, size_t nTries = 5) -> std::optional<typename std::invoke_result<TFunc>::type>
   {
-    for (auto tries = 0; tries < nTries; ++tries)
+    for (size_t tries = 0; tries < nTries; ++tries)
     {
       try
       {

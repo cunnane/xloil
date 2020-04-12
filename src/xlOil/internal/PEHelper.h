@@ -10,7 +10,7 @@ namespace xloil
     DWORD* func_table;
     WORD* ord_table;
     DWORD * name_table;
-    int numberOfNames;
+    size_t numberOfNames;
     BYTE* imageBase;
 
   public:

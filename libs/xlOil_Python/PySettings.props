@@ -4,7 +4,7 @@
   <PropertyGroup>
     <IncludePath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(ProjectRoot)external\python\numpy\include;$(ProjectRoot)external\pybind11\include;$(IncludePath)</IncludePath>
     <TargetName>$(ProjectName)$(PyMajorVer)$(PyMinorVer)</TargetName>
-    <LibraryPath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\$(Platform);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

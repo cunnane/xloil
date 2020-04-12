@@ -23,7 +23,14 @@ namespace xloil
     {
       RegisterMe()
       {
-        static auto handler = xloil::Event_CalcCancelled() += []() { lastCancelTime = GetTickCount64(); };
+        static auto handler = xloil::Event_CalcCancelled() += []() 
+        { 
+#ifdef _WIN64
+          lastCancelTime = GetTickCount64(); 
+#else
+          lastCancelTime = GetTickCount();
+#endif
+        };
       }
     } theInstance;
   }

@@ -17,7 +17,7 @@ namespace xloil
     std::shared_ptr<const FuncInfo> _info;
   };
 
-  class XLOIL_EXPORT StaticSpec : public FuncSpec
+  class StaticSpec : public FuncSpec
   {
   public:
     StaticSpec(
@@ -29,7 +29,7 @@ namespace xloil
       , _entryPoint(entryPoint)
     {}
 
-    virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
 
     std::wstring _dllName;
     std::string _entryPoint;
@@ -38,7 +38,7 @@ namespace xloil
   template<class> struct callback_traits;
 
   template <class TCallback>
-  class XLOIL_EXPORT GenericCallbackSpec : public FuncSpec
+  class GenericCallbackSpec : public FuncSpec
   {
   public:
     template <class TData>
@@ -61,7 +61,7 @@ namespace xloil
       , _context(context)
     {}
 
-    virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
 
   //TODO: private:
     std::shared_ptr<void> _context;
@@ -74,7 +74,7 @@ namespace xloil
   template<> struct callback_traits<RegisterCallback> { template<class T> using type = RegisterCallbackT<T>; };
   template<> struct callback_traits<AsyncCallback> { template<class T> using type = AsyncCallbackT<T>; };
 
-  class XLOIL_EXPORT FuncObjSpec : public FuncSpec
+  class FuncObjSpec : public FuncSpec
   {
   public:
     FuncObjSpec(
@@ -84,7 +84,7 @@ namespace xloil
       , _function(function)
     {}
 
-    virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
 
     ExcelFuncObject _function;
   };

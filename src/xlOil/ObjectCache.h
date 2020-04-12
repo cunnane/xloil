@@ -171,7 +171,7 @@ namespace xloil
       auto workbook = match[1].str();
       auto sheetRef = match[2].str();
       auto position = match[3].str();
-      size_t iResult = position.empty() ? 0 : _wtoi64(position.c_str());
+      size_t iResult = position.empty() ? 0 : _wtoi(position.c_str());
 
       {
         std::scoped_lock lock(_cacheLock);

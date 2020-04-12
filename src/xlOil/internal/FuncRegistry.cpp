@@ -105,7 +105,10 @@ namespace xloil
       return stubName;
     }
 
-    static int registerWithExcel(shared_ptr<const FuncInfo> info, const char* entryPoint, const ExcelObj& moduleName)
+    static int registerWithExcel(
+      shared_ptr<const FuncInfo> info, 
+      const char* entryPoint, 
+      const ExcelObj& moduleName)
     {
       auto numArgs = info->args.size();
       int opts = info->options;
@@ -179,9 +182,16 @@ namespace xloil
         truncatedHelp.assign(info->help.c_str(), 255);
       }
 
+#ifndef _WIN64
+      // With x64/Win32 function names are decorated. It no longer seemed
+      // like a good idea with x64.
+      auto decoratedEntryPoint = fmt::format("_{0}@{1}", sizeof(ExcelObj*) * numArgs);
+      entryPoint = decoratedEntryPoint.c_str();
+#endif
       // TODO: this copies the excelobj
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
         info->name, utf8ToUtf16(entryPoint), numArgs);
+
       auto registerId = callExcel(xlfRegister,
         moduleName, 
         entryPoint, 

@@ -72,7 +72,7 @@ namespace xloil
     {
       if (obj.type() != ExcelType::Multi)
         XLO_THROW("Expected array");
-      if (nRows > obj.val.array.rows || nCols > obj.val.array.columns)
+      if (nRows > (size_t)obj.val.array.rows || nCols > (size_t)obj.val.array.columns)
         XLO_THROW("Out of range");
       _data = (const ExcelObj*)obj.val.array.lparray;
       _baseCols = (col_t)obj.val.array.columns;

@@ -36,7 +36,7 @@ size_t xloil::DllExportTable::findOffset(const char * funcName)
   /*auto found = std::lower_bound(name_table, name_table + numberOfNames, funcName,
     [this](DWORD a, const char* b) { return strcmp() < 0; }
   );*/
-  for (auto i = 0; i < numberOfNames; ++i)
+  for (size_t i = 0; i < numberOfNames; ++i)
   {
     if (strcmp((char*)imageBase + name_table[i], funcName) == 0)
       return i;

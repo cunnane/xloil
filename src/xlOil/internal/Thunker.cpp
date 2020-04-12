@@ -104,18 +104,26 @@ namespace xloil
     x86::Mem argsPtr;
     createArrayOfArgsOnStack(cc, argsPtr, 0, numArgs);
     
-    // No need for setArg as we have loaded everything for an x64 call.
-    // We do this explictly as asmjit's register allocator is sub-optimal
-    // (less badly than for the async case)
+    // For an x64 call, there are only two arguments and we explictly place 
+    // them in rcx and rdx as per the calling convention.
+    //
+    // We do this manually as asmjit's register allocator is sub-optimal
+    // and will generate additional movs and spills.
+    //
 #ifdef _WIN64
     cc.mov(x86::rcx, imm(data));
     cc.lea(x86::rdx, argsPtr);
 #endif
 
-    // Setup the signature to call the target callback
+    // Setup the signature to call the target callback, this is not a stdcall
+    // that was only for the call from Excel to xlOil
     FuncCallNode* call(
-      cc.call(imm((void*)callback), FuncSignatureT<ExcelObj*, const void*, const ExcelObj**>(CallConv::kIdHost)));
+      cc.call(imm((void*)callback), 
+        FuncSignatureT<ExcelObj*, const void*, const ExcelObj**>(CallConv::kIdHost)));
 
+    // For x86 we rely on asmjit to handle the calling convention and
+    // register allocation.
+    //
 #ifndef _WIN64 
     x86::Gp arg1 = cc.newUIntPtr("arg1");
     x86::Gp arg2 = cc.newUIntPtr("arg2");
@@ -125,6 +133,8 @@ namespace xloil
     call->setArg(1, arg2);
 #endif
 
+    // Allocate a register for the return value, in fact 
+    // this is a no-op as we just return the callback value
     x86::Gp ret = cc.newUIntPtr("ret");
 
     // TODO: any chance of setting xl-free bit here?
@@ -150,11 +160,13 @@ namespace xloil
     cc.setArg(0, handle); // Will be rcx on x64
     createArrayOfArgsOnStack(cc, argsPtr, 1, numArgs + 1);
 
-
-#ifdef _WIN64
-    // No need for setArg as we have loaded everything for an x64 call.
+    // For an x64 call, there are only three arguments and we explictly  
+    // place them in rcx, rdx and r8 as per the calling convention.
+    //
     // We do this explictly as asmjit's register allocator seems to get
-    // confused and spill and generally sub-optimally allocate registers
+    // confused and spill and mov things all over.
+    //
+#ifdef _WIN64
     cc.mov(x86::rdx, handle);
     cc.mov(x86::rcx, imm(data));
     cc.lea(x86::r8, argsPtr);
@@ -166,6 +178,9 @@ namespace xloil
       cc.call(imm((void*)callback),
         FuncSignatureT<void, const void*, const ExcelObj*, const ExcelObj**>(CallConv::kIdHost)));
 
+    // For x86 we rely on asmjit to handle the calling convention and
+    // register allocation.
+    //
 #ifndef _WIN64
     call->setArg(0, handle);
     call->setArg(1, imm(data));
@@ -174,7 +189,7 @@ namespace xloil
     call->setArg(2, args);
 #endif
 
-    // No return from async
+    // No return from async, this is a no-op.
     cc.ret();
   }
 
@@ -205,14 +220,15 @@ namespace xloil
 
     // Begin code
 
-    // Declare thunk function signature. Need stdcall for Excel functions
-    // Assuming all arguments are xloper12* for now
+    // Declare thunk function signature: need stdcall for Excel functions.
+    // We assume all arguments are xloper12*.
     auto ptrType = Type::IdOfT<xloper12*>::kTypeId;
     FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
-    for (auto i = 0; i < numArgs; i++)
+    for (size_t i = 0; i < numArgs; i++)
       signature.addArg(ptrType);
 
-    // Normal callbacks should return, async ones will not
+    // Normal callbacks should return, async ones will not, so set return
+    // type appropriately.
     if (!std::is_same<TCallback, AsyncCallback>::value)
       signature.setRet(ptrType);
     else

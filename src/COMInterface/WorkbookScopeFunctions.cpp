@@ -9,42 +9,6 @@ using std::vector;
 using std::shared_ptr;
 using std::wstring;
 
-//template<class TIter, class TChar>
-//auto join(const TIter& iterable, TChar delim)
-//{
-//  auto len = 0;
-//  auto i = std::begin(iterable);
-//  for (; i != std::end(iterable); ++i)
-//    len += i->size() + 1;
-//
-//  std::basic_string<TChar> result;
-//  result.reserve(len);
-//  i = std::begin(iterable);
-//  result += (*i++);
-//  for (i != std::end(iterable); ++i)
-//  {
-//    result += delim;
-//    result += (*i);
-//  }
-//  return result;
-//}
-  //auto separateSheetName(const ExcelObj& sheetNm)
-  //{
-  //  auto str = sheetNm.asPascalStr();
-  //  auto lastBracket = str.rchr(L']');
-  //  auto wbName = str.view(1, lastBracket - 1);
-  //  auto wsName = str.view(lastBracket + 1);
-  //  return make_pair(wbName, wsName);
-  //}
-  //void rangeHelp(const ExcelRange& r)
-  //{
-  //  auto& app = excelApp();
-  //  auto sheetNm = callExcel(msxll::xlSheetNm, (const ExcelObj&)r);
-  //  auto[wbName, wsName] = separateSheetName(sheetNm);
-  //  //auto ws = app.Workbooks->GetItem(_variant_t(wbName.string()))->Worksheets->GetItem(wsName);
-  //  //app.Range(ws->Cells(), ws->Cells());
-  //}
-
 namespace xloil
 {
   void writeLocalFunctionsToVBA(
@@ -75,12 +39,12 @@ namespace xloil
       }
       auto mod = vbMod->CodeModule;
       auto line = 1;
-      for (auto i = 0; i < registeredFuncs.size(); ++i)
+      for (size_t i = 0; i < registeredFuncs.size(); ++i)
       {
         // We declare all args as optional variant and let the called 
         // function handle things.
         wstring args, optionalArgs;
-        for (auto j = 0; j < registeredFuncs[i]->numArgs(); ++j)
+        for (size_t j = 0; j < registeredFuncs[i]->numArgs(); ++j)
         {
           args += L", x" + std::to_wstring(j);
           optionalArgs += L"Optional x" + std::to_wstring(j) + L",";

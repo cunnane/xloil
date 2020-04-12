@@ -108,6 +108,8 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -126,6 +128,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>xlOil.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -148,6 +151,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>xlOil.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -170,6 +174,8 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -183,6 +189,9 @@
     <CopyFileToFolders Include="..\xloil.ini">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="xlOil.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
