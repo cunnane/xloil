@@ -72,7 +72,7 @@ namespace xloil
   }
 }
 
-using xloil::ExcelObj;
+using namespace xloil;
 
 template<class... Args>
 ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args... args)
@@ -104,7 +104,7 @@ ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args..
     std::list<ExcelObj> rangeConversions;
     for (size_t i = 0; i < nArgs; ++i)
     {
-      if (params[i]->isRangeRef() && !info->args[i].allowRange)
+      if (params[i]->isType(ExcelType::RangeRef) && !info->args[i].allowRange)
       {
         rangeConversions.emplace_back();
         callExcelRaw(msxll::xlCoerce, &rangeConversions.back(), params[i]);

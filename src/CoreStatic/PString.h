@@ -83,7 +83,8 @@ namespace xloil
         len = (int)wcslen(str);
       if (len > length())
         return false;
-      wmemcpy_s(_data + 1, _data[0], str, len);
+      if (len > 0)
+        wmemcpy_s(_data + 1, _data[0], str, len);
       _data[0] = len;
       return true;
     }

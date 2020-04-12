@@ -48,7 +48,13 @@ namespace xloil
     }
     void setNA(size_t i, size_t j)
     {
-      new (at(i, j)) ExcelObj(CellError::NA);
+      emplace_copy(i, j, Const::Error(CellError::NA));
+    }
+
+    void emplace_copy(size_t i, size_t j, const ExcelObj& x)
+    {
+      assert(x.type() != ExcelType::Str);
+      memcpy_s(at(i, j), sizeof(ExcelObj), &x, sizeof(ExcelObj));
     }
 
     template<class T>
@@ -59,10 +65,9 @@ namespace xloil
 
     void emplace_at(size_t i, size_t j, const ExcelObj& x)
     {
-      auto type = x.type();
-      if (((int)type & (int)ExcelType::ArrayValue) == 0)
+      if (!x.isType(ExcelType::ArrayValue))
         XLO_THROW("ExcelObj not of array value type");
-      if (type == ExcelType::Str)
+      if (x.isType(ExcelType::Str))
       {
         auto pstr = x.asPascalStr();
         emplace_at(i, j, pstr.begin(), pstr.length());

@@ -21,7 +21,9 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="xloBlock.cpp" />
+    <ClCompile Include="xloConcat.cpp" />
     <ClCompile Include="xloFill.cpp" />
+    <ClCompile Include="xloFillNA.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

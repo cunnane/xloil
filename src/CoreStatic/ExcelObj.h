@@ -8,7 +8,6 @@
 
 #define XLOIL_XLOPER msxll::xloper12
 
-#define XLO_RETURN_ERROR(err) return ExcelObj::returnValue(err)
 
 namespace xloil
 {
@@ -31,7 +30,8 @@ namespace xloil
     SRef    = 0x0400,
     Int     = 0x0800,
     BigData = msxll::xltypeStr | msxll::xltypeInt,
-    ArrayValue = Num | Str | Bool | Err | Int | Nil
+    ArrayValue = Num | Str | Bool | Err | Int | Nil,
+    RangeRef = SRef | Ref
   };
 
   enum class CellError
@@ -198,6 +198,11 @@ namespace xloil
       }
     }
 
+    bool isNA() const
+    {
+      return xtype() == msxll::xltypeErr && val.err == msxll::xlerrNA;
+    }
+
     /// <summary>
     /// Get an enum describing the data contained in the ExcelObj
     /// </summary>
@@ -207,22 +212,26 @@ namespace xloil
       return ExcelType(xtype());
     }
 
-    bool isRangeRef() const 
+    /// <summary>
+    /// Returns true if the object type is of the specified type. This also
+    /// works for compound types like ArrayValue and RangeRef that can't 
+    /// be checked by equality with type().
+    /// </summary>
+    bool isType(ExcelType type) const
     {
-      return (xltype & (msxll::xltypeRef | msxll::xltypeSRef)) != 0;
+      return (xltype & (int)type) != 0;
     }
 
     /// <summary>
-    /// Converts to a string. If strict=false then attempts
-    /// to stringify the various excel types, otherwise will
-    /// give an error for non string types.
+    /// Converts to a string. Attempts to stringify the various excel types.
     /// 
     /// The function recurses row-wise over Arrays and ranges and 
-    /// concatenates the result.
+    /// concatenates the result. An optional separator may be given to
+    /// insert between array/range entries.
     /// </summary>
-    /// <param name="strict"></param>
+    /// <param name="separator">optional separator to use for arrays</param>
     /// <returns></returns>
-    std::wstring toString(bool strict = false) const;
+    std::wstring toString(const wchar_t* separator = nullptr) const;
 
     /// <summary>
     /// Similar to toString but more suitable for output of object 
@@ -291,7 +300,6 @@ namespace xloil
       return PStringView<>(val.str);
     }
 
-
     static void copy(ExcelObj& to, const ExcelObj& from);
 
     /// <summary>
@@ -301,7 +309,11 @@ namespace xloil
     /// directly.
     /// </summary>
     /// <returns></returns>
-    ExcelObj& fromExcel();
+    ExcelObj & fromExcel()
+    {
+      xltype |= msxll::xlbitXLFree;
+      return *this;
+    }
 
     /// <summary>
     /// Returns a pointer to the current object suitable for returning to Excel
@@ -310,7 +322,11 @@ namespace xloil
     /// final object which is passed back to Excel.
     /// </summary>
     /// <returns></returns>
-    ExcelObj* toExcel();
+    ExcelObj * toExcel()
+    {
+      xltype |= msxll::xlbitDLLFree;
+      return this;
+    }
 
     template<class... Args>
     static ExcelObj* returnValue(Args&&... args)

@@ -81,7 +81,8 @@ namespace
 
   void overwrite(ExcelObj& to, const ExcelObj& from)
   {
-    // TODO: can't we memcpy the simple types here?
+    // TODO: can we memcpy the simple types here is it faster or slower?
+    //       memcpy_s(&to, sizeof(ExcelObj), &from, sizeof(ExcelObj));
     switch (from.xltype & ~(xlbitXLFree | xlbitDLLFree))
     {
     case xltypeNum:
@@ -112,9 +113,13 @@ namespace
     case xltypeStr:
     {
       size_t len = from.val.str[0];
+#if _DEBUG
       to.val.str = new wchar_t[len + 2];
-      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
       to.val.str[len + 1] = L'\0';  // Allows debugger to read string
+#else
+      to.val.str = new wchar_t[len + 1];
+#endif
+      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
       to.xltype = xltypeStr;
       break;
     }
@@ -172,14 +177,12 @@ namespace
 
       break;
     }
-
     case xltypeSRef:
     {
       to.val.sref = from.val.sref;
       to.xltype = xltypeSRef;
       break;
     }
-
     case xltypeRef:
     {
       auto* fromMRef = from.val.mref.lpmref;
@@ -325,18 +328,6 @@ namespace
     overwrite(to, from);
   }
 
-  ExcelObj & ExcelObj::fromExcel()
-  {
-    xltype |= xlbitXLFree;
-    return *this;
-  }
-
-  ExcelObj * ExcelObj::toExcel()
-  {
-    xltype |= xlbitDLLFree;
-    return this;
-  }
-
   double ExcelObj::toDouble() const
   {
     return ToDouble()(*this);
@@ -441,11 +432,8 @@ namespace
     }
   }
 
-  std::wstring ExcelObj::toString(bool strict) const
+  std::wstring ExcelObj::toString(const wchar_t* separator) const
   {
-    if (strict && (xltype & xltypeStr) == 0)
-      XLO_THROW("Not a string");
-
     switch (xtype())
     {
     case xltypeNum:
@@ -472,14 +460,24 @@ namespace
 
     case xltypeSRef:
     case xltypeRef:
-      return ExcelRange(*this).value().toString();
+      return ExcelRange(*this).value().toString(separator);
 
     case xltypeMulti:
     {
       ExcelArray arr(*this);
       wstring str;
-      for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
-        str += arr(i).toString();
+      str.reserve(arr.size() * 8); // 8 is an arb choice
+      if (separator)
+      {
+        wstring sep(separator);
+        for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
+          str += arr(i).toString() + sep;
+        if (!str.empty())
+          str.erase(str.size() - sep.length());
+      }
+      else
+        for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
+          str += arr(i).toString();
       return str;
     }
 
