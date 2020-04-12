@@ -13,29 +13,22 @@ namespace xloil
 {
   namespace SQL
   {
-    XLO_FUNC xloSqlTables(
+    XLO_FUNC_START( xloSqlTables(
       const ExcelObj& database)
+    )
     {
-      try
-      {
-        if (Core::inFunctionWizard())
-          XLO_THROW("In wizard");
+      Core::throwInFunctionWizard();
 
-        std::shared_ptr<const CacheObj> dbObj;
-        if (!cacheFetch(database.toString(), dbObj) || !dbObj)
-          XLO_THROW("No database provided");
+      std::shared_ptr<const CacheObj> dbObj;
+      if (!cacheFetch(database.toString(), dbObj) || !dbObj)
+        XLO_THROW("No database provided");
         
-        auto stmt = sqlPrepare(dbObj->getDB().get(), 
-          L"SELECT name FROM sqlite_master"
-          "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
+      auto stmt = sqlPrepare(dbObj->getDB().get(), 
+        L"SELECT name FROM sqlite_master"
+        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
 
-        return ExcelObj::returnValue(sqlQueryToArray(stmt));
-      }
-      catch (const std::exception& e)
-      {
-        XLO_RETURN_ERROR(e);
-      }
+      return ExcelObj::returnValue(sqlQueryToArray(stmt));
     }
-    XLO_REGISTER(xloSqlTables).threadsafe();
+    XLO_FUNC_END(xloSqlTables).threadsafe();
   }
 }

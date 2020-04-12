@@ -90,7 +90,7 @@ namespace xloil
     {
     }
   }
-  XLO_REGISTER(xloAsyncTest)
+  XLO_REGISTER_FUNC(xloAsyncTest)
     .help(L"nope")
     .arg(L"foo", L"does foo")
     .async();

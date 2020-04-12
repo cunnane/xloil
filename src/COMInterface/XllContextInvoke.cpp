@@ -27,7 +27,7 @@ namespace xloil
     }
     return &result;
   }
-  XLO_REGISTER(xloRunFuncInXLLContext)
+  XLO_REGISTER_FUNC(xloRunFuncInXLLContext)
     .macro().hidden();
 
   static int theExcelCallFunc = 0;
@@ -48,7 +48,7 @@ namespace xloil
     }
     return &result;
   }
-  XLO_REGISTER(xloRunInXLLContext)
+  XLO_REGISTER_FUNC(xloRunInXLLContext)
     .macro().hidden();
 
   ScopeInXllContext::ScopeInXllContext()

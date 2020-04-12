@@ -53,7 +53,7 @@ namespace xloil
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
     vector<wstring> coreRedirects(registeredFuncs.size());
-    for (auto i = 0; i < registeredFuncs.size(); ++i)
+    for (size_t i = 0; i < registeredFuncs.size(); ++i)
     {
       auto& info = registeredFuncs[i];
       if (info->numArgs() > 28)
@@ -102,7 +102,7 @@ ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args..
     const auto& info = closure.info;
     const auto nArgs = info->numArgs();
     std::list<ExcelObj> rangeConversions;
-    for (auto i = 0; i < nArgs; ++i)
+    for (size_t i = 0; i < nArgs; ++i)
     {
       if (params[i]->isRangeRef() && !info->args[i].allowRange)
       {
@@ -123,8 +123,7 @@ XLO_ENTRY_POINT(XLOIL_XLOPER*) xloil_local_0(const ExcelObj& workbook, const Exc
 {
   return doFunc(workbook, function);
 }
-XLO_REGISTER(xloil_local_0).macro().hidden();
-
+XLO_REGISTER_FUNC(xloil_local_0).macro().hidden();
 
 #define XLOIL_LOCAL(N, impl, name) \
   XLO_ENTRY_POINT(ExcelObj*) name##_##N( \
@@ -133,7 +132,7 @@ XLO_REGISTER(xloil_local_0).macro().hidden();
   { \
     return impl(workbook, function, BOOST_PP_ENUM_PARAMS(N, &arg)); \
   } \
-  XLO_REGISTER(name##_##N).macro().hidden()
+  XLO_REGISTER_FUNC(name##_##N).macro().hidden()
 
 #define RPT(z, N, data) XLOIL_LOCAL(N, doFunc, xloil_local);
 BOOST_PP_REPEAT_FROM_TO(1, 28, RPT, data)

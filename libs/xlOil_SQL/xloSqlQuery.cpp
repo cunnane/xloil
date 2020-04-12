@@ -13,31 +13,25 @@ namespace xloil
 {
   namespace SQL
   {
-    XLO_FUNC xloSqlQuery(
+    XLO_FUNC_START( xloSqlQuery(
       const ExcelObj& database,
       const ExcelObj& query
       )
+    )
     {
-      try
-      {
-        if (Core::inFunctionWizard())
-          XLO_THROW("In wizard");
+      if (Core::inFunctionWizard())
+        XLO_THROW("In wizard");
 
-        shared_ptr<const CacheObj> dbObj;
-        if (!cacheFetch(database.toString(), dbObj))
-          XLO_THROW("No database provided");
+      shared_ptr<const CacheObj> dbObj;
+      if (!cacheFetch(database.toString(), dbObj))
+        XLO_THROW("No database provided");
 
-        auto sql = query.toString();
-        auto stmt = sqlPrepare(dbObj->getDB().get(), sql);
+      auto sql = query.toString();
+      auto stmt = sqlPrepare(dbObj->getDB().get(), sql);
 
-        return ExcelObj::returnValue(sqlQueryToArray(stmt));
-      }
-      catch (const std::exception& e)
-      {
-        XLO_RETURN_ERROR(e);
-      }
+      return ExcelObj::returnValue(sqlQueryToArray(stmt));
     }
-    XLO_REGISTER(xloSqlQuery).threadsafe()
+    XLO_FUNC_END(xloSqlQuery).threadsafe()
       .help(L"Runs the specified query on a database, returning the results as an array")
       .arg(L"Database", L"A cache reference to a database object created wth xloSqlDB")
       .arg(L"Query");

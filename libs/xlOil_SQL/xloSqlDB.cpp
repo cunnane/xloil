@@ -27,23 +27,16 @@ namespace xloil
       std::shared_ptr<sqlite3> _db;
     };
 
-    XLO_FUNC xloSqlDB()
+    XLO_FUNC_START(xloSqlDB())
     {
-      try
-      {
-        if (Core::inFunctionWizard())
-          XLO_THROW("In wizard");
+      if (Core::inFunctionWizard())
+        XLO_THROW("In wizard");
 
-        return ExcelObj::returnValue(
-          cacheAdd(
-            make_shared<DataBaseRef>(
-              newDatabase())));
-      }
-      catch (const std::exception& e)
-      {
-        XLO_RETURN_ERROR(e);
-      }
+      return ExcelObj::returnValue(
+        cacheAdd(
+          make_shared<DataBaseRef>(
+            newDatabase())));
     }
-    XLO_REGISTER(xloSqlDB).threadsafe();
+    XLO_FUNC_END(xloSqlDB).threadsafe();
   }
 }

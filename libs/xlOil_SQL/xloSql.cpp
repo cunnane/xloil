@@ -45,50 +45,44 @@ namespace xloil
 #define XLOSQL_ARG_NAME Table
 #define XLOSQL_NARGS 10
 
-    XLO_FUNC xloSql(
-      const ExcelObj& query,
-      const ExcelObj& meta,
-      XLO_DECLARE_ARGS(XLOSQL_NARGS, XLOSQL_ARG_NAME)
-    )
-    {
-      try
-      {
-        auto db = newDatabase();
-
-        if (meta.isNonEmpty())
-        {
-          ExcelArray metaData(meta);
-#define MY_CREATE_VTAB_META(z, N, prefix) \
-          processMeta(metaData, db.get(), N - 1, prefix##N, XLO_WSTR(prefix##N));
-          BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, XLOSQL_NARGS), MY_CREATE_VTAB_META, XLOSQL_ARG_NAME);
-#undef MY_CREATE_VTAB_META
-        }
-        else
-        {
-#define MY_CREATE_VTAB(z, N, prefix) \
-          if (prefix##N.isNonEmpty()) \
-            createVTable(db.get(), ExcelArray(prefix##N), XLO_WSTR(prefix##N));
-
-          BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, XLOSQL_NARGS), MY_CREATE_VTAB, XLOSQL_ARG_NAME);
-#undef MY_CREATE_VTAB
-        }
-
-        auto sql = query.toString();
-
-        auto stmt = sqlPrepare(db.get(), sql);
-
-        return ExcelObj::returnValue(sqlQueryToArray(stmt));
-      }
-      catch (const std::exception& e)
-      {
-        XLO_RETURN_ERROR(e);
-      }
-    }
 
     constexpr wchar_t* TABLE_ARG_HELP = L"An array of data with rows as records";
 #define WRITE_ARG_HELP(z, N, prefix) .arg(XLO_WSTR(prefix##N), TABLE_ARG_HELP)
 
-    XLO_REGISTER(xloSql).threadsafe()
+    XLO_FUNC_START(
+      xloSql(
+        const ExcelObj& query,
+        const ExcelObj& meta,
+        XLO_DECLARE_ARGS(XLOSQL_NARGS, XLOSQL_ARG_NAME)
+      )
+    )
+    {
+      auto db = newDatabase();
+
+      if (meta.isNonEmpty())
+      {
+        ExcelArray metaData(meta);
+        ProcessArgs([db, metaData](auto iArg, auto argVal, auto argName)
+        {
+          processMeta(metaData, db.get(), iArg, argVal, argName);
+        }, XLO_ARGS_LIST(XLOSQL_NARGS, XLOSQL_ARG_NAME));
+      }
+      else
+      {
+        ProcessArgs([db](auto argVal, auto argName)
+        {
+          if (argVal.isNonEmpty())
+            createVTable(db.get(), ExcelArray(argVal), argName);
+        }, XLO_ARGS_LIST(XLOSQL_NARGS, XLOSQL_ARG_NAME));
+      }
+
+      auto sql = query.toString();
+
+      auto stmt = sqlPrepare(db.get(), sql);
+
+      return ExcelObj::returnValue(sqlQueryToArray(stmt));
+    }
+    XLO_FUNC_END(xloSql).threadsafe()
       .help(L"Excecutes the SQL query on the provided tables. "
         "The tables will be named Table1, Table2, unless overrided "
         "by the Meta.  In the Meta, the first column should contain "

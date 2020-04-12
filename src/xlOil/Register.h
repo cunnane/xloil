@@ -6,8 +6,30 @@
 #include <memory>
 #include <list>
 
-#define XLO_FUNC XLO_ENTRY_POINT(XLOIL_XLOPER*)
-#define XLO_REGISTER(func) extern auto _xlo_register_##func = xloil::registrationMemo(#func, func)
+
+
+// Separate declaration needed to work around this quite serious MSVC compiler bug:
+// https://stackoverflow.com/questions/45590594/generic-lambda-in-extern-c-function
+
+/// Marks the start of an function regsistered in Excel
+#define XLO_FUNC_START(func) \
+  XLO_ENTRY_POINT(XLOIL_XLOPER*) func; \
+  XLOIL_XLOPER* __stdcall func \
+  { \
+    try 
+
+#define XLO_FUNC_END(func) \
+    catch (const std::exception& err) \
+    { \
+      XLO_RETURN_ERROR(err); \
+    } \
+  } \
+  XLO_REGISTER_FUNC(func)
+
+#define XLO_RETURN_ERROR(err) return ExcelObj::returnValue(err)
+
+#define XLO_REGISTER_FUNC(func) extern auto _xlo_register_##func = xloil::registrationMemo(#func, func)
+
 
 namespace xloil { class ExcelObj; }
 
