@@ -51,12 +51,13 @@ namespace xloil
     /// Copy the contents of another Pascal string into this one. Throws
     /// if the existing buffer is too short.
     /// </summary>
-    PStringImpl operator=(const PStringImpl& that)
+    PStringImpl& operator=(const PStringImpl& that)
     {
       if (this == &that)
         return *this;
       if(!write(that.pstr(), that.length()))
-        XLO_THROW("PString buffer too short: {0} required, {1} available", (int)that.length(), (int)length());
+        XLO_THROW("PString buffer too short: {0} required, {1} available", 
+          (int)that.length(), (int)length());
       return *this;
     }
 
@@ -64,10 +65,11 @@ namespace xloil
     /// Writes the given null-terminated string into the buffer, raising an error
     /// if the buffer is too short.
     /// </summary>
-    PStringImpl operator=(const TChar* str)
+    PStringImpl& operator=(const TChar* str)
     {
       if(!write(str))
-        XLO_THROW("PString buffer too short: {0} required, {1} available", wcslen(str), (int)length());
+        XLO_THROW("PString buffer too short: {0} required, {1} available", 
+          wcslen(str), (int)length());
       return *this;
     }
 
@@ -234,5 +236,15 @@ namespace xloil
     PStringView(TChar* data = nullptr)
       : PStringImpl(data)
     {}
+    PStringImpl& operator=(const PStringView& that)
+    {
+      if (!_data)
+      {
+        _data = that._data;
+        return *this;
+      }
+      else
+        return *(PStringImpl*)(this) = that;
+    }
   };
 }

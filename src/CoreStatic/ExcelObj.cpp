@@ -78,131 +78,7 @@ namespace
         total += arr->val.str[0];
     return total;
   }
-
-  void overwrite(ExcelObj& to, const ExcelObj& from)
-  {
-    // TODO: can we memcpy the simple types here is it faster or slower?
-    //       memcpy_s(&to, sizeof(ExcelObj), &from, sizeof(ExcelObj));
-    switch (from.xltype & ~(xlbitXLFree | xlbitDLLFree))
-    {
-    case xltypeNum:
-      to.val.num = from.val.num;
-      to.xltype = xltypeNum;
-      break;
-
-    case xltypeBool:
-      to.val.xbool = from.val.xbool;
-      to.xltype = xltypeBool;
-      break;
-
-    case xltypeErr:
-      to.xltype = xltypeErr;
-      to.val.err = from.val.err;
-      break;
-
-    case xltypeMissing:
-    case xltypeNil:
-      to.xltype = from.xltype;
-      break;
-
-    case xltypeInt:
-      to.xltype = xltypeInt;
-      to.val.w = from.val.w;
-      break;
-
-    case xltypeStr:
-    {
-      size_t len = from.val.str[0];
-#if _DEBUG
-      to.val.str = new wchar_t[len + 2];
-      to.val.str[len + 1] = L'\0';  // Allows debugger to read string
-#else
-      to.val.str = new wchar_t[len + 1];
-#endif
-      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
-      to.xltype = xltypeStr;
-      break;
-    }
-    case xltypeMulti:
-    {
-      auto nRows = from.val.array.rows;
-      auto nCols = from.val.array.columns;
-      auto size = nRows * nCols;
-
-      const auto* pSrc = from.val.array.lparray;
-
-      size_t strLength = totalStringLength(pSrc, nRows, nCols);
-      ExcelArrayBuilder arr(nRows, nCols, strLength, false);
-
-      for (auto i = 0; i < nRows; ++i)
-        for (auto j = 0; j < nCols; ++j)
-        {
-          switch (pSrc->xltype)
-          {
-          case xltypeStr:
-          {
-            wchar_t len = pSrc->val.str[0];
-            arr.emplace_at(i, j, pSrc->val.str + 1, len);
-            break;
-          }
-          default:
-            arr.emplace_at(i, j, *(ExcelObj*)pSrc);
-          }
-          ++pSrc;
-        }
-
-      to.val.array.lparray = (XLOIL_XLOPER*)arr.at(0, 0);
-      to.val.array.rows = nRows;
-      to.val.array.columns = nCols;
-      to.xltype = xltypeMulti;
-      break;
-    }
-
-    case xltypeBigData:
-    {
-      auto cbData = from.val.bigdata.cbData;
-
-      // Either it's a block of data to copy or a handle from Excel
-      if (cbData > 0 && from.val.bigdata.h.lpbData)
-      {
-        auto pbyte = new char[cbData];
-        memcpy_s(pbyte, cbData, from.val.bigdata.h.lpbData, cbData);
-        to.val.bigdata.h.lpbData = (BYTE*)pbyte;
-      }
-      else
-        to.val.bigdata.h.hdata = from.val.bigdata.h.hdata;
-
-      to.val.bigdata.cbData = cbData;
-      to.xltype = xltypeBigData;
-
-      break;
-    }
-    case xltypeSRef:
-    {
-      to.val.sref = from.val.sref;
-      to.xltype = xltypeSRef;
-      break;
-    }
-    case xltypeRef:
-    {
-      auto* fromMRef = from.val.mref.lpmref;
-      auto count = fromMRef ? fromMRef->count : 0;
-      if (count > 0)
-      {
-        auto size = sizeof(XLMREF12) + sizeof(XLREF12)*(count - 1);
-        auto* newMRef = new char[size];
-        memcpy_s(newMRef, size, (char*)fromMRef, size);
-        to.val.mref.lpmref = (LPXLMREF12)newMRef;
-      }
-      to.val.mref.idSheet = from.val.mref.idSheet;
-      to.xltype = xltypeRef;
-
-      break;
-    }
-    default:
-      XLO_THROW("Unhandled xltype during copy");
-    }
-  }
+  
 }
 
   // TODO: https://stackoverflow.com/questions/52737760/how-to-define-string-literal-with-character-type-that-depends-on-template-parame
@@ -309,23 +185,12 @@ namespace
     xltype = xltypeStr;
   }
 
-  ExcelObj::ExcelObj(const ExcelObj & that)
-  {
-    overwrite(*this, that);
-  }
-
   ExcelObj::ExcelObj(const ExcelObj* array, int nRows, int nCols)
   {
     val.array.rows = nRows;
     val.array.columns = nCols;
     val.array.lparray = (XLOIL_XLOPER*)array;
     xltype = xltypeMulti;
-  }
-
-  void ExcelObj::copy(ExcelObj& to, const ExcelObj& from)
-  {
-    to.reset();
-    overwrite(to, from);
   }
 
   double ExcelObj::toDouble() const
@@ -345,36 +210,36 @@ namespace
 
   void ExcelObj::reset()
   {
-      if ((xltype & xlbitXLFree) != 0)
+    if ((xltype & xlbitXLFree) != 0)
+    {
+      callExcelRaw(xlFree, this, this); // arg is not really const
+    }
+    else
+    {
+      switch (xtype())
       {
-        callExcelRaw(xlFree, this, this); // arg is not really const
+      case xltypeStr:
+        if (val.str != nullptr && val.str != Const::EmptyStr().val.str)
+          delete[] val.str;
+        break;
+
+      case xltypeMulti:
+        // Arrays are allocated as an array of char which contains all their strings
+        // So we don't need to loop and free them individually
+        delete[](char*)(val.array.lparray);
+        break;
+
+      case xltypeBigData: break;
+        //TODO: Not implemented yet, we don't create our own bigdata
+
+      case xltypeRef:
+        delete[](char*)val.mref.lpmref;
+        break;
       }
-      else
-      {
-        switch (xtype())
-        {
-        case xltypeStr:
-          if (val.str != nullptr && val.str != Const::EmptyStr().val.str)
-            delete[] val.str;
-          break;
+    }
 
-        case xltypeMulti:
-          // Arrays are allocated as an array of char which contains all their strings
-          // So we don't need to loop and free them individually
-          delete[](char*)(val.array.lparray);
-          break;
-
-        case xltypeBigData: break;
-          //TODO: Not implemented yet, we don't create our own bigdata
-
-        case xltypeRef:
-          delete[](char*)val.mref.lpmref;
-          break;
-        }
-      }
-
-      xltype = xltypeErr;
-      val.err = xlerrNA;
+    xltype = xltypeErr;
+    val.err = xlerrNA;
   }
   ExcelObj & ExcelObj::operator=(const ExcelObj & that)
   {
@@ -383,6 +248,7 @@ namespace
     copy(*this, that);
     return *this;
   }
+
   ExcelObj & ExcelObj::operator=(ExcelObj&& that)
   {
     reset();
@@ -399,36 +265,101 @@ namespace
       return l < r ? -1 : (l == r ? 0 : 1);
     }
   }
-  int ExcelObj::compare(const ExcelObj & left, const ExcelObj & right)
+  int ExcelObj::compare(
+    const ExcelObj& left, 
+    const ExcelObj& right, 
+    bool compareAsStrings,
+    bool caseSensitive)
   {
-    auto lType = left.xtype();
-    auto rType = right.xtype();
-    // Not sure how best to handle the different type case. Attempt to coerce?
-    if (lType != rType)
-      return INT_MIN;
-
-    switch (lType)
-    {
-    case xltypeNum:
-      return cmp(left.val.num, right.val.num);
-    case xltypeBool:
-      return cmp(left.val.xbool, right.val.xbool);
-    case xltypeInt:
-      return cmp(left.val.w, right.val.w);
-    case xltypeErr:
-      return cmp(left.val.err, right.val.err);
-    case xltypeStr:
-    {
-      auto lLen = left.val.str[0];
-      auto rLen = right.val.str[0];
-      auto c = memcmp(left.val.str + 1, right.val.str + 1, std::min(lLen, rLen));
-      return c != 0 ? c : cmp(lLen, rLen);
-    }
-    case xltypeMissing:
-    case xltypeNil:
+    if (&left == &right)
       return 0;
-    default:
-      return 0; // Not sure this is a very sensible default?
+
+    const auto lType = left.xtype();
+    const auto rType = right.xtype();
+    if (lType == rType)
+    {
+      switch (lType)
+      {
+      case xltypeNum:
+        return cmp(left.val.num, right.val.num);
+      case xltypeBool:
+        return cmp(left.val.xbool, right.val.xbool);
+      case xltypeInt:
+        return cmp(left.val.w, right.val.w);
+      case xltypeErr:
+        return cmp(left.val.err, right.val.err);
+      case xltypeStr:
+      {
+        auto lLen = left.val.str[0];
+        auto rLen = right.val.str[0];
+        auto len = std::min(lLen, rLen);
+        auto c = caseSensitive
+          ? _wcsncoll(left.val.str + 1, right.val.str + 1, len)
+          : _wcsnicoll(left.val.str + 1, right.val.str + 1, len);
+        return c != 0 ? c : cmp(lLen, rLen);
+      }
+      case xltypeMissing:
+      case xltypeNil:
+        return 0;
+      case xltypeMulti:
+      {
+        auto ret = cmp(left.val.array.columns * left.val.array.rows,
+          right.val.array.columns * right.val.array.rows);
+        return (ret != 0)
+          ? ret
+          : cmp(left.val.array.lparray, right.val.array.lparray);
+      }
+      case xltypeRef:
+      case xltypeSRef:
+        // Case doesn't matter as we control the string representation for ranges
+        return wcscmp(left.toStringRepresentation().c_str(), right.toStringRepresentation().c_str());
+
+      default: // BigData or Flow types - not sure why you would be comparing these?!
+        return 0;
+      }
+    }
+    else
+    {
+      if (((lType | rType) & ~(xltypeNum | xltypeBool | xltypeInt)) == 0)
+        return cmp(left.toDouble(), right.toDouble());
+      
+      // Errors come last
+      if (lType == xltypeErr || rType == xltypeErr)
+        return lType == xltypeErr ? -1 : 1;
+
+      if (compareAsStrings)
+      {
+        if (lType == xltypeStr || rType == xltypeStr)
+        {
+          wstring str;
+          wchar_t* pstr;
+          bool theLeftOne = lType == xltypeStr;
+          if (theLeftOne)
+          {
+            pstr = left.val.str;
+            str = right.toStringRepresentation();
+          }
+          else
+          {
+            pstr = right.val.str;
+            str = left.toStringRepresentation();
+          }
+         
+          const auto len = std::min(pstr[0], (wchar_t)str.length());
+          const auto inverter = theLeftOne ? -1 : 1;
+          return inverter * (caseSensitive
+            ? _wcsncoll(str.c_str(), pstr + 1, len)
+            : _wcsnicoll(str.c_str(), pstr + 1, len));
+        }
+
+        const auto lStr = left.toStringRepresentation();
+        const auto rStr = right.toStringRepresentation();
+        return caseSensitive
+          ? wcscoll(lStr.c_str(), rStr.c_str())
+          : _wcsicoll(lStr.c_str(), rStr.c_str());
+      }
+      else
+        return lType < rType;
     }
   }
 
@@ -573,6 +504,109 @@ namespace
 
   SearchDone:
     return true;
+  }
+
+  void ExcelObj::overwriteComplex(ExcelObj& to, const ExcelObj& from)
+  {
+    switch (from.xltype & ~(xlbitXLFree | xlbitDLLFree))
+    {
+    case xltypeNum:
+    case xltypeBool:
+    case xltypeErr:
+    case xltypeMissing:
+    case xltypeNil:
+    case xltypeInt:
+    case xltypeSRef:
+      (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+      break;
+
+    case xltypeStr:
+    {
+      size_t len = from.val.str[0];
+#if _DEBUG
+      to.val.str = new wchar_t[len + 2];
+      to.val.str[len + 1] = L'\0';  // Allows debugger to read string
+#else
+      to.val.str = new wchar_t[len + 1];
+#endif
+      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
+      to.xltype = xltypeStr;
+      break;
+    }
+    case xltypeMulti:
+    {
+      auto nRows = from.val.array.rows;
+      auto nCols = from.val.array.columns;
+      auto size = nRows * nCols;
+
+      const auto* pSrc = from.val.array.lparray;
+
+      size_t strLength = totalStringLength(pSrc, nRows, nCols);
+      ExcelArrayBuilder arr(nRows, nCols, strLength, false);
+
+      for (auto i = 0; i < nRows; ++i)
+        for (auto j = 0; j < nCols; ++j)
+        {
+          switch (pSrc->xltype)
+          {
+          case xltypeStr:
+          {
+            wchar_t len = pSrc->val.str[0];
+            arr.emplace_at(i, j, pSrc->val.str + 1, len);
+            break;
+          }
+          default:
+            arr.emplace_at(i, j, *(ExcelObj*)pSrc);
+          }
+          ++pSrc;
+        }
+
+      to.val.array.lparray = (XLOIL_XLOPER*)arr.at(0, 0);
+      to.val.array.rows = nRows;
+      to.val.array.columns = nCols;
+      to.xltype = xltypeMulti;
+      break;
+    }
+
+    case xltypeBigData:
+    {
+      auto cbData = from.val.bigdata.cbData;
+
+      // Either it's a block of data to copy or a handle from Excel
+      if (cbData > 0 && from.val.bigdata.h.lpbData)
+      {
+        auto pbyte = new char[cbData];
+        memcpy_s(pbyte, cbData, from.val.bigdata.h.lpbData, cbData);
+        to.val.bigdata.h.lpbData = (BYTE*)pbyte;
+      }
+      else
+        to.val.bigdata.h.hdata = from.val.bigdata.h.hdata;
+
+      to.val.bigdata.cbData = cbData;
+      to.xltype = xltypeBigData;
+
+      break;
+    }
+
+    case xltypeRef:
+    {
+      auto* fromMRef = from.val.mref.lpmref;
+      auto count = fromMRef ? fromMRef->count : 0;
+      if (count > 0)
+      {
+        auto size = sizeof(XLMREF12) + sizeof(XLREF12)*(count - 1);
+        auto* newMRef = new char[size];
+        memcpy_s(newMRef, size, (char*)fromMRef, size);
+        to.val.mref.lpmref = (LPXLMREF12)newMRef;
+      }
+      to.val.mref.idSheet = from.val.mref.idSheet;
+      to.xltype = xltypeRef;
+
+      break;
+    }
+    default:
+      XLO_THROW("Unhandled xltype during copy");
+    }
   }
 
   // Uses RxCy format as it's easier for the programmer!

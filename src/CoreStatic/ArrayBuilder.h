@@ -53,8 +53,8 @@ namespace xloil
 
     void emplace_copy(size_t i, size_t j, const ExcelObj& x)
     {
-      assert(x.type() != ExcelType::Str);
-      memcpy_s(at(i, j), sizeof(ExcelObj), &x, sizeof(ExcelObj));
+      assert(x.type() != ExcelType::Str && x.isType(ExcelType::ArrayValue));
+      ExcelObj::overwrite(*at(i, j), x);
     }
 
     template<class T>

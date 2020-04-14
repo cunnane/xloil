@@ -1,5 +1,4 @@
 #pragma once
-// TODO: avoid pulling windows and excel into every header!
 #include "XlCallSlim.h"
 #include "PString.h"
 #include <string>
@@ -30,8 +29,15 @@ namespace xloil
     SRef    = 0x0400,
     Int     = 0x0800,
     BigData = msxll::xltypeStr | msxll::xltypeInt,
+
+    // Types that can be elements of an array
     ArrayValue = Num | Str | Bool | Err | Int | Nil,
-    RangeRef = SRef | Ref
+
+    // Types which refer to ranges
+    RangeRef = SRef | Ref,
+
+    // Types which do not have external memory allocation
+    Simple = Num | Bool | SRef | Missing | Nil | Int | Err
   };
 
   enum class CellError
@@ -110,22 +116,25 @@ namespace xloil
     ExcelObj(const char*);
     ExcelObj(const wchar_t*);
     
-    ExcelObj::ExcelObj(const std::string& s)
+    ExcelObj(const std::string& s)
       :ExcelObj(s.c_str())
     {}
 
-    ExcelObj::ExcelObj(const std::wstring& s)
+    ExcelObj(const std::wstring& s)
       : ExcelObj(s.c_str())
     {}
 
-    ExcelObj::ExcelObj(nullptr_t)
+    ExcelObj(nullptr_t)
     {
       xltype = msxll::xltypeMissing;
     }
 
-    ExcelObj(const ExcelObj&);
+    ExcelObj(const ExcelObj & that)
+    {
+      overwrite(*this, that);
+    }
 
-    ExcelObj::ExcelObj(ExcelObj&& that)
+    ExcelObj(ExcelObj&& that)
     {
       // Steal all data
       this->val = that.val;
@@ -166,7 +175,11 @@ namespace xloil
       return compare(*this, that) == 0;
     }
 
-    static int compare(const ExcelObj& left, const ExcelObj& right);
+    static int compare(
+      const ExcelObj& left, 
+      const ExcelObj& right, 
+      bool compareAsStrings = false,
+      bool caseSensitive = false);
 
     const Base* ptr() const { return this; }
     const Base* cptr() const { return this; }
@@ -295,12 +308,14 @@ namespace xloil
     /// </summary>
     PStringView<> ExcelObj::asPascalStr() const
     {
-      if ((xtype() & msxll::xltypeStr) == 0)
-        return PStringView<>();
-      return PStringView<>(val.str);
+      return PStringView<>((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
     }
 
-    static void copy(ExcelObj& to, const ExcelObj& from);
+    static void copy(ExcelObj& to, const ExcelObj& from)
+    {
+      to.reset();
+      overwrite(to, from);
+    }
 
     /// <summary>
     /// Call this on function result objects received from Excel to 
@@ -362,6 +377,13 @@ namespace xloil
     /// <param name="nCols"></param>
     /// <returns>false if object is not an array, else true</returns>
     bool trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const;
+    static void overwrite(ExcelObj& to, const ExcelObj& from)
+    {
+      if (from.isType(ExcelType::Simple))
+        (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+      else
+        overwriteComplex(to, from);
+    }
 
   private:
     /// The xloper type made safe for use in switch statements by zeroing
@@ -370,6 +392,8 @@ namespace xloil
     {
       return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);
     }
+
+    static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
   };
 
   size_t xlrefToStringRC(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);
