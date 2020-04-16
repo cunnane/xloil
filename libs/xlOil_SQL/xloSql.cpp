@@ -4,7 +4,7 @@
 #include "ExcelArray.h"
 #include "ExcelObj.h"
 #include "Common.h"
-#include <boost/preprocessor/repeat_from_to.hpp>
+
 #include <xlOil/Preprocessor.h>
 
 using std::shared_ptr;
@@ -45,9 +45,7 @@ namespace xloil
 #define XLOSQL_ARG_NAME Table
 #define XLOSQL_NARGS 10
 
-
     constexpr wchar_t* TABLE_ARG_HELP = L"An array of data with rows as records";
-#define WRITE_ARG_HELP(z, N, prefix) .arg(XLO_WSTR(prefix##N), TABLE_ARG_HELP)
 
     XLO_FUNC_START(
       xloSql(
@@ -62,14 +60,14 @@ namespace xloil
       if (meta.isNonEmpty())
       {
         ExcelArray metaData(meta);
-        ProcessArgs([db, metaData](auto iArg, auto argVal, auto argName)
+        ProcessArgs([db, metaData](auto iArg, auto& argVal, auto& argName)
         {
           processMeta(metaData, db.get(), iArg, argVal, argName);
         }, XLO_ARGS_LIST(XLOSQL_NARGS, XLOSQL_ARG_NAME));
       }
       else
       {
-        ProcessArgs([db](auto argVal, auto argName)
+        ProcessArgs([db](auto& argVal, auto& argName)
         {
           if (argVal.isNonEmpty())
             createVTable(db.get(), ExcelArray(argVal), argName);
@@ -90,6 +88,6 @@ namespace xloil
         "as column headings for the table.")
       .arg(L"Query", L"The SQL query to perform")
       .arg(L"Meta", L"[opt] an array giving table names and column names")
-      BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, XLOSQL_NARGS), WRITE_ARG_HELP, XLOSQL_ARG_NAME);
+      XLO_WRITE_ARG_HELP(XLOSQL_NARGS, XLOSQL_ARG_NAME, TABLE_ARG_HELP);
   }
 }

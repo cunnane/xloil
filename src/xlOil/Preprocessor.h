@@ -2,21 +2,24 @@
 #include <boost/preprocessor/repeat_from_to.hpp>
 #include <boost/preprocessor/arithmetic.hpp>
 #include <boost/preprocessor/repetition/enum_shifted_params.hpp>
-#include <boost/preprocessor/tuple.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
+#include <boost/preprocessor/cat.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 namespace xloil { class ExcelObj; }
 
 
+#define XLO_L() L
 /// <summary>
 /// Stringifies the given argument to a wide string literal
 /// </summary>
-#define XLO_WSTR(s) L ## #s
-#define XLO_STR_IMPL(s) #s
+/// 
+#define XLO_WSTR(s) BOOST_PP_CAT(L,BOOST_PP_CAT(BOOST_PP_EMPTY(),BOOST_PP_STRINGIZE(s)))
 
 /// <summary>
 ///  Stringifies the given argument to a narrow string literal
 /// </summary>
-#define XLO_STR(s) XLO_STR_IMPL(s)
+#define XLO_STR(s) BOOST_PP_STRINGIZE(s)
 
 /// <summary>
 /// Use in a function declaration to declare <code>const ExcelObj&</code> arguments 
@@ -34,7 +37,14 @@ namespace xloil { class ExcelObj; }
 /// Returns a list of argument values and their names for use with <see cref="xloil::ProcessArgs"/>.
 /// </summary>
 #define XLO_ARGS_LIST(N, prefix) BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_ARGS_LIST_IMPL, prefix)
-#define XLO_ARGS_LIST_IMPL(z, N, prefix) BOOST_PP_COMMA_IF(BOOST_PP_SUB(N, 1)) prefix##N, XLO_WSTR(prefix##N) 
+#define XLO_ARGS_LIST_IMPL(z, N, prefix) BOOST_PP_COMMA_IF(BOOST_PP_SUB(N, 1)) prefix##N, XLO_WSTR(BOOST_PP_CAT(prefix,N))
+
+/// <summary>
+/// Writes repeated arg descriptors in the form `.arg(prefixN, help)`
+/// </summary>
+#define XLO_WRITE_ARG_HELP(N, prefix, help) \
+  BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_WRITE_ARG_HELP_I, (prefix, help))
+#define XLO_WRITE_ARG_HELP_I(z, N, data) .arg(XLO_WSTR(BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, data),N)), BOOST_PP_TUPLE_ELEM(1, data))
 
 
 namespace xloil
@@ -57,7 +67,7 @@ namespace xloil
   ///  
   /// </summary>
   template<int N = 0, class TFunc, class... Args>
-  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args...args)
+  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args&&...args)
     -> decltype(func(N, argVal, argName))
   {
     func(N, argVal, argName);
@@ -71,7 +81,7 @@ namespace xloil
   }
 
   template<class TFunc, class... Args>
-  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args...args)
+  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args&&... args)
     -> decltype(func(argVal, argName))
   {
     func(argVal, argName);
@@ -86,7 +96,7 @@ namespace xloil
   }
 
   template<class TFunc, class... Args>
-  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args...args)
+  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args&&... args)
     -> decltype(func(argVal))
   {
     func(argVal);

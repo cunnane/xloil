@@ -75,7 +75,7 @@ namespace xloil
 using namespace xloil;
 
 template<class... Args>
-ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args... args)
+ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args&&... args)
 {
   try
   {
@@ -93,7 +93,7 @@ ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args... arg
 }
 
 template<class... Args>
-ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args... args)
+ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args&&... args)
 {
   try
   {

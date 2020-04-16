@@ -25,7 +25,7 @@ namespace xloil
      
     if (separator.isMissing())
     {
-      ProcessArgs([&result](auto argVal)
+      ProcessArgs([&result](auto& argVal)
       {
         if (argVal.isNonEmpty())
           result += argVal.toString();
@@ -34,7 +34,7 @@ namespace xloil
     else
     {
       auto sep = separator.toString();
-      ProcessArgs([&result, &sep](auto argVal)
+      ProcessArgs([&result, &sep](auto& argVal)
       {
         if (argVal.isNonEmpty())
           result += argVal.toString(sep.c_str()) + sep;
