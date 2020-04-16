@@ -12,7 +12,10 @@ namespace xloil
   public:
     using iterator = ExcelArrayIterator;
 
-    ExcelArrayIterator(const ExcelArray& parent, const ExcelObj* where);
+    ExcelArrayIterator(
+      const ExcelObj* position,
+      const uint16_t nCols,
+      const uint16_t baseNumCols);
     iterator& operator++();
     iterator& operator--();
     iterator operator++(int)
@@ -33,7 +36,8 @@ namespace xloil
   private:
     const ExcelObj* _p;
     const ExcelObj* _pRowEnd;
-    const ExcelArray& _obj;
+    uint16_t _nCols;
+    uint16_t _baseNumCols;
   };
 }
 
@@ -136,11 +140,11 @@ namespace xloil
 
     ExcelArrayIterator begin() const
     {
-      return ExcelArrayIterator(*this, row_begin(0));
+      return ExcelArrayIterator(row_begin(0), _columns, _baseCols);
     }
     ExcelArrayIterator end() const 
     { 
-      return ExcelArrayIterator(*this, row_end(nRows() - 1));
+      return ExcelArrayIterator(row_end(nRows() - 1), _columns, _baseCols);
     }
 
     /// <summary>
@@ -209,26 +213,34 @@ namespace xloil
     }
   };
 
-  inline ExcelArrayIterator::ExcelArrayIterator(const ExcelArray& parent, const ExcelObj* where)
-    : _obj(parent)
-    , _p(where)
-    , _pRowEnd(where + parent.nCols())
-  {}
+  inline ExcelArrayIterator::ExcelArrayIterator(
+    const ExcelObj* position,
+    const uint16_t nCols,
+    const uint16_t baseNumCols)
+    : _p(position)
+    , _pRowEnd(nCols == baseNumCols ? nullptr : position + nCols)
+    , _nCols(nCols)
+    , _baseNumCols(baseNumCols)
+  {
+    // Note the optimisation: if nCols == baseNumCols, the array
+    // data is contiguous so we don't need to reset the pointer
+    // at the end of a row
+  }
 
   inline ExcelArrayIterator& ExcelArrayIterator::operator++()
   {
     if (++_p == _pRowEnd)
     {
-      _p += _obj._baseCols - _obj.nCols();
-      _pRowEnd += _obj._baseCols;
+      _p += _baseNumCols - _nCols;
+      _pRowEnd += _baseNumCols;
     }
     return *this;
   }
   inline ExcelArrayIterator& ExcelArrayIterator::operator--()
   {
-    if (_pRowEnd - _p == _obj.nCols())
+    if (_pRowEnd - _p == _nCols)
     {
-      _pRowEnd -= _obj._baseCols;
+      _pRowEnd -= _baseNumCols;
       _p = _pRowEnd - 1;
     }
     else

@@ -11,8 +11,8 @@ using std::vector;
 
 namespace xloil
 {
-#define XLOSORT_NARGS 4
-#define XLOSORT_ARG_NAME rowOrHeading
+#define XLOSORT_NARGS 8
+#define XLOSORT_ARG_NAME colOrHeading
   namespace
   {
     enum SortDirection
@@ -22,7 +22,7 @@ namespace xloil
       StopSearch    = 1 << 2
     };
 
-    using MyArray = array<size_t, XLOSORT_NARGS + 1>;
+    using MyArray = array<ExcelArray::col_t, XLOSORT_NARGS + 1>;
 
     // TOOD: template<int N>
     struct LessThan
@@ -39,9 +39,9 @@ namespace xloil
         {
           bool cased = _directions[i] & CaseSensitive;
           auto cmp = ExcelObj::compare(
-            _data(left, _columns[i]), 
-            _data(right, _columns[i]), 
-            true, cased);
+            _data.at(left, _columns[i]), 
+            _data.at(right, _columns[i]), 
+            cased);
           if (cmp != 0)
             return (_directions[i] & Descending) == 0 ? cmp < 0 : cmp > 0;
           ++i;
@@ -70,10 +70,7 @@ namespace xloil
     xloSort(
       ExcelObj* array,
       const ExcelObj* order,
-      const ExcelObj* rowOrHeading1,
-      const ExcelObj* rowOrHeading2,
-      const ExcelObj* rowOrHeading3,
-      const ExcelObj* rowOrHeading4
+      XLO_DECLARE_ARGS(XLOSORT_NARGS, XLOSORT_ARG_NAME)
     )
   )
   {
@@ -81,7 +78,7 @@ namespace xloil
     const auto nRows = arr.nRows();
     const auto nCols = arr.nCols();
 
-    const ExcelObj* args[] = { BOOST_PP_ENUM_SHIFTED_PARAMS(BOOST_PP_ADD(XLOSORT_NARGS,1), XLOSORT_ARG_NAME) };
+    const ExcelObj* args[] = { XLO_ARG_PTRS(XLOSORT_NARGS, XLOSORT_ARG_NAME) };
 
     // could use raw pascal str, but unnecessary optimisation
     auto orderStr = order->toString(); 
@@ -91,62 +88,68 @@ namespace xloil
       return array;
 
     MyArray directions, columns;
+
+    // Default sort order is left to right on columns
+    std::iota(columns.begin(), columns.end(), 0);
+
     auto c = orderStr.begin();
     bool hasHeadings = false;
-    auto i = 0;
-    for (; i < directions.size() - 1; ++i, ++c)
+    auto nOrders = 0;
+    for (; nOrders < directions.size() - 1; ++nOrders, ++c)
     {
       while (c != orderStr.end() && iswspace(*c)) ++c;
       if (c == orderStr.end())
         break;
 
-      directions[i] = 0;
+      auto& direction = directions[nOrders];
+      direction = 0;
       switch (*c)
       {
       case L'A':
-        directions[i] |= CaseSensitive;
+        direction |= CaseSensitive;
       case L'a':
         break;
       case L'D':
-        directions[i] |= CaseSensitive;
+        direction |= CaseSensitive;
       case L'd':
-        directions[i] |= Descending;
+        direction |= Descending;
         break;
       default:
         XLO_THROW("Direction must be one of {A, a, D, d}");
       }
 
+      const auto* arg = args[nOrders];
+      auto& column = columns[nOrders];
 
-
-      switch (args[i]->type())
+      switch (arg->type())
       {
       case ExcelType::Int:
       case ExcelType::Num:
-        columns[i] = args[i]->toInt() - 1; // 1-based column indexing to match Excel's INDEX function etc.
-        if (columns[i] >= nCols)
+        column = arg->toInt() - 1; // 1-based column indexing to match Excel's INDEX function etc.
+        if (column >= nCols)
           XLO_THROW("Column number in descriptor {0} is beyond number of array columns: {1} > {2}", 
-            i, columns[i] + 1, nCols);
+            nOrders, column + 1, nCols);
         break;
       case ExcelType::Str:
         hasHeadings = true;
-        columns[i] = nCols;
+        column = nCols;
         for (auto j = 0; j < nCols; ++j)
-          if (*args[i] == arr(0, j))
+          if (*arg == arr(0, j))
           {
-            columns[i] = j; 
+            column = j;
             break;
           }
-        if (columns[i] == nCols)
-          XLO_THROW(L"Could not find heading {0} in first row of array", args[i]->toString());
+        if (column == nCols)
+          XLO_THROW(L"Could not find heading {0} in first row of array", arg->toString());
+        break;
+      case ExcelType::Missing:
+        // No need to specify descriptor: can rely on default ordering
         break;
       default:
-        // No need to specify descriptor for a single column
-        if (nCols == 1)
-          break;
-        XLO_THROW("Column descriptor {0} must be a column number or heading", i);
+        XLO_THROW("Column descriptor {0} must be a column number or heading", nOrders);
       }
     }
-    directions[i] = StopSearch;
+    directions[nOrders] = StopSearch;
 
     using row_t = ExcelArray::row_t;
 
@@ -156,40 +159,41 @@ namespace xloil
     std::sort(indices.begin() + (hasHeadings ? 1 : 0), indices.end(),
       LessThan(arr, directions, columns));
 
-    vector<row_t> cycle;
+    // For an inplace sort, we note the indices array contains
+    // the inverse of the permutation we need to apply to the rows
+    // so we just step through each cycle, applying transpositions.
+    // We mark moved rows with npos
+
     const auto npos = row_t(-1);
 
-    auto index = 0;
+    row_t start = 0;
     while (true)
     {
-      while (index < indices.size() && indices[index] == npos) ++index;
-      if (index == indices.size())
+      while (start < indices.size() && indices[start] == npos) ++start;
+      if (start == indices.size())
         break;
 
-      auto k = index;
-      do
+      row_t k = start;
+      while (true)
       {
-        cycle.push_back(k);
-        const auto r = k;
-        k = indices[k];
-        indices[r] = npos;
-      } while (k != index);
-
-      for (size_t i = 0; i < cycle.size() - 1; ++i)
-      {
+        const auto r = indices[k];
+        indices[k] = npos;
+        if (r == start)
+          break;
         swapmem(
-          (size_t*)arr.row_begin(cycle[i]),
-          (size_t*)arr.row_begin(cycle[i + 1]),
+          (size_t*)arr.row_begin(k),
+          (size_t*)arr.row_begin(r),
           nCols * sizeof(ExcelObj));
+        k = r;
       }
-      cycle.clear();
     }
-
     return array;
   }
   XLO_FUNC_END(xloSort).threadsafe()
-    .help(L"")
+    .help(L"Sorts an array by one or more columns. If column headings are specified the first row is "
+      "not moved. The `Order` should contain one character for each column specified for sorting")
     .arg(L"Array", L"")
-    .arg(L"Order", L"")
-    .arg(L"rowOrHeading1", L"[opt]");
+    .arg(L"Order", L"a = ascending, A = ascending case-sensitive, d = descending, D = descending "
+      "case-sensitive, whitespace ignored")
+    XLO_WRITE_ARG_HELP(XLOSORT_NARGS, XLOSORT_ARG_NAME, L"Column number (1-based) or column heading");
 }

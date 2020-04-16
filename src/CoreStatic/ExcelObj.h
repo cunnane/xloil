@@ -174,16 +174,22 @@ namespace xloil
     {
       return compare(*this, that) == 0;
     }
+    bool operator<(const ExcelObj& that) const
+    {
+      return compare(*this, that) == -1;
+    }
+    bool operator<=(const ExcelObj& that) const
+    {
+      return compare(*this, that) != 1;
+    }
 
     static int compare(
-      const ExcelObj& left, 
-      const ExcelObj& right, 
-      bool compareAsStrings = false,
+      const ExcelObj& left,
+      const ExcelObj& right,
       bool caseSensitive = false);
-
-    const Base* ptr() const { return this; }
-    const Base* cptr() const { return this; }
-    Base* ptr() { return this; }
+    
+    const Base* xloper() const { return this; }
+    const Base* xloper() { return this; }
 
     bool ExcelObj::isMissing() const
     {

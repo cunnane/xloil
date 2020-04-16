@@ -38,14 +38,14 @@ namespace xloil
   void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const TFirst& first)
   {
     tmp.emplace_back(first);
-    appendVector(v, tmp, tmp.back().cptr());
+    appendVector(v, tmp, tmp.back().xloper());
   }
   template<class TTarget, class TTemp>
   void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const nullptr_t& /*first*/)
   {
     // TODO: Missing type singleton?
     tmp.emplace_back(nullptr);
-    appendVector(v, tmp, tmp.back().cptr());
+    appendVector(v, tmp, tmp.back().xloper());
   }
   template<class TTarget, class TTemp>
   void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const ExcelObj& first)
@@ -83,7 +83,7 @@ namespace xloil
   class ArgHolder
   {
   private:
-    std::vector<std::shared_ptr<ExcelObj>> _temporary;
+    std::vector<std::shared_ptr<const ExcelObj>> _temporary;
     std::vector<const ExcelObj*> _argVec;
 
   public:
@@ -102,17 +102,17 @@ namespace xloil
 
     template<class T> void add(const T& first)
     {
-      auto p = std::make_shared<ExcelObj>(first);
+      auto p = std::make_shared<const ExcelObj>(first);
       _temporary.push_back(p);
-      add(p.cptr());
+      add(p->xloper());
     }
 
     // TODO: do we need this separatly?
     template<> void add(const nullptr_t&)
     {
-      auto p = std::make_shared<ExcelObj>(nullptr);
+      auto p = std::make_shared<const ExcelObj>(nullptr);
       _temporary.push_back(p);
-      add(p->cptr());
+      add(p->xloper());
     }
     template<> void add(const ExcelObj& first)
     {
@@ -124,7 +124,7 @@ namespace xloil
     }
 
     template<class T, class...Args>
-    void add(const T& first, const Args&... theRest)
+    void add(const T& first, const Args&&... theRest)
     {
       add(first);
       add(theRest...);

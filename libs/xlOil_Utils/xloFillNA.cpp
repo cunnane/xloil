@@ -51,9 +51,9 @@ namespace xloil
 
       // Now replace all N/As with the specified value. Note the builder
       // and our newArray both point to the same underlying data
-      for (auto i = 0; i < nRows; ++i)
-        for (auto j = 0; j < nCols; ++j)
-          if (arr(i, j).isNA())
+      for (auto i = 0u; i < nRows; ++i)
+        for (auto j = 0u; j < nCols; ++j)
+          if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
             builder.emplace_at(i, j, PString<>(arrayStr.data()));
 
       return ExcelObj::returnValue(newArray);
@@ -62,9 +62,9 @@ namespace xloil
     {
       // For non strings, we simply replace N/As with the specified value.
       // ExcelArray is a view, so we const_cast to change the underlying data
-      for (auto i = 0; i < nRows; ++i)
-        for (auto j = 0; j < nCols; ++j)
-          if (arr(i, j).isNA())
+      for (auto i = 0u; i < nRows; ++i)
+        for (auto j = 0u; j < nCols; ++j)
+          if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
             const_cast<ExcelObj&>(arr(i, j)) = *value;
 
       return array;

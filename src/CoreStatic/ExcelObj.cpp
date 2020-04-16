@@ -257,7 +257,6 @@ namespace
     that.xltype = xltypeNil;
     return *this;
   }
-
   namespace
   {
     template<class T> int cmp(T l, T r)
@@ -268,7 +267,6 @@ namespace
   int ExcelObj::compare(
     const ExcelObj& left, 
     const ExcelObj& right, 
-    bool compareAsStrings,
     bool caseSensitive)
   {
     if (&left == &right)
@@ -288,6 +286,10 @@ namespace
         return cmp(left.val.w, right.val.w);
       case xltypeErr:
         return cmp(left.val.err, right.val.err);
+      case xltypeMissing:
+      case xltypeNil:
+        return 0;
+
       case xltypeStr:
       {
         auto lLen = left.val.str[0];
@@ -298,9 +300,6 @@ namespace
           : _wcsnicoll(left.val.str + 1, right.val.str + 1, len);
         return c != 0 ? c : cmp(lLen, rLen);
       }
-      case xltypeMissing:
-      case xltypeNil:
-        return 0;
       case xltypeMulti:
       {
         auto ret = cmp(left.val.array.columns * left.val.array.rows,
@@ -320,46 +319,18 @@ namespace
     }
     else
     {
-      if (((lType | rType) & ~(xltypeNum | xltypeBool | xltypeInt)) == 0)
+      // If both types are num/int/bool we can compare as doubles
+      constexpr int typeNumeric = xltypeNum | xltypeBool | xltypeInt;
+
+      if (((lType | rType) & ~typeNumeric) == 0)
         return cmp(left.toDouble(), right.toDouble());
-      
+
       // Errors come last
-      if (lType == xltypeErr || rType == xltypeErr)
-        return lType == xltypeErr ? -1 : 1;
+      if (((lType | rType) & xltypeErr) != 0)
+        return rType == xltypeErr ? -1 : 1;
 
-      if (compareAsStrings)
-      {
-        if (lType == xltypeStr || rType == xltypeStr)
-        {
-          wstring str;
-          wchar_t* pstr;
-          bool theLeftOne = lType == xltypeStr;
-          if (theLeftOne)
-          {
-            pstr = left.val.str;
-            str = right.toStringRepresentation();
-          }
-          else
-          {
-            pstr = right.val.str;
-            str = left.toStringRepresentation();
-          }
-         
-          const auto len = std::min(pstr[0], (wchar_t)str.length());
-          const auto inverter = theLeftOne ? -1 : 1;
-          return inverter * (caseSensitive
-            ? _wcsncoll(str.c_str(), pstr + 1, len)
-            : _wcsnicoll(str.c_str(), pstr + 1, len));
-        }
-
-        const auto lStr = left.toStringRepresentation();
-        const auto rStr = right.toStringRepresentation();
-        return caseSensitive
-          ? wcscoll(lStr.c_str(), rStr.c_str())
-          : _wcsicoll(lStr.c_str(), rStr.c_str());
-      }
-      else
-        return lType < rType;
+      // We want all numerics to come before string, so mask them to zero
+      return (lType & ~typeNumeric) < (rType & ~typeNumeric) ? -1 : 1;
     }
   }
 
