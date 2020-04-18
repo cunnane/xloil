@@ -42,6 +42,17 @@ namespace xloil
 
 namespace xloil
 {
+  // With x64/Win32 function names are decorated. It no longer seemed
+  // like a good idea with x64.
+  std::string decorateCFunction(const char* name, const size_t numPtrArgs)
+  {
+#ifdef _WIN64
+    return string(name);
+#else
+    return fmt::format("_{0}@{1}", sizeof(void*) * numPtrArgs);
+#endif // _WIN64
+  }
+
   class FunctionRegistry
   {
   public:
@@ -60,7 +71,6 @@ namespace xloil
     static char* theCodePtr;
 
     ExcelObj theCoreDllName;
-    ExcelObj theXllName;
 
     template <class TCallback>
     auto callBuildThunk(
@@ -79,7 +89,6 @@ namespace xloil
       theCodePtr += codeBytesWritten;
       return std::make_pair(thunk, codeBytesWritten);
     }
-
 
     /// <summary>
     /// Locates a suitable entry point in our DLL and hooks the specifed thunk to it
@@ -185,7 +194,7 @@ namespace xloil
 #ifndef _WIN64
       // With x64/Win32 function names are decorated. It no longer seemed
       // like a good idea with x64.
-      auto decoratedEntryPoint = fmt::format("_{0}@{1}", sizeof(ExcelObj*) * numArgs);
+      auto decoratedEntryPoint = decorateCFunction(entryPoint, numArgs);
       entryPoint = decoratedEntryPoint.c_str();
 #endif
       // TODO: this copies the excelobj
@@ -256,7 +265,6 @@ namespace xloil
     FunctionRegistry()
     {
       theCoreDllName = ExcelObj(theCoreName());
-      theXllName = ExcelObj(fs::path(theXllPath()).filename().wstring());
       theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
       theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));
       _freeThunksAvailable = false;
@@ -302,8 +310,11 @@ namespace xloil
     // doesn't matter which entry point we bind to as long as the function pointer
     // won't be registered as an Excel func.
     // https://stackoverflow.com/questions/15343282/how-to-remove-an-excel-udf-programmatically
+
+    // TODO: mangle name for 32 bits!!
+    auto arbitraryFunction = decorateCFunction("SetExcel12EntryPt", 1);
     auto[tempRegId, retVal] = tryCallExcel(
-      xlfRegister, FunctionRegistry::get().theXllName, "xlAutoOpen", "I", name, nullptr, 2);
+      xlfRegister, FunctionRegistry::get().theCoreDllName, arbitraryFunction.c_str(), "I", name, nullptr, 2);
     tryCallExcel(xlfSetName, name); // SetName with no arg un-sets the name
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;
