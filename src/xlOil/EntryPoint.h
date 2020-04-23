@@ -1,6 +1,8 @@
 #pragma once
 #include "ExportMacro.h"
 
+#define XLOIL_STUB_NAME xloil_stub
+
 namespace xloil
 {
   /// <summary>
@@ -23,27 +25,17 @@ namespace xloil
   /// </summary>
   int coreExcelVersion();
 
-  /// <summary>
-  /// Path to the xll loaded by Excel, not the core DLL
-  /// </summary>
-  const wchar_t* theXllPath();
-
-  /// <summary>
-  /// Called by the XLL loader's DllMain, passing the path
-  /// to the loader.
-  /// </summary>
-  XLOIL_EXPORT int 
-    coreInit(const wchar_t* xllPath) noexcept;
 
   /// <summary>
   /// Called by the XLL loader's xlAutoOpen
   /// </summary>
   XLOIL_EXPORT int 
-    coreAutoOpen() noexcept;
+    coreAutoOpen(const wchar_t* xllPath) noexcept;
 
   /// <summary>
   /// Called by the XLL loader's xlAutoClose
   /// </summary>
   XLOIL_EXPORT int 
-    coreAutoClose() noexcept;
+    coreAutoClose(const wchar_t* xllPath) noexcept;
+
 }

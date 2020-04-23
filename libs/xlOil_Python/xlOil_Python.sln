@@ -7,34 +7,42 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python", "xlOil_Pytho
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{417B27AC-5D45-41F8-A3EB-AE63E4A39277}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python37", "xlOil_Python37.vcxproj", "{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python36", "xlOil_Python36.vcxproj", "{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
-		DebugPy37|Win32 = DebugPy37|Win32
-		DebugPy37|x64 = DebugPy37|x64
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
-		ReleasePy37|Win32 = ReleasePy37|Win32
-		ReleasePy37|x64 = ReleasePy37|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|Win32.ActiveCfg = Debug|Win32
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|Win32.Build.0 = Debug|Win32
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x64.ActiveCfg = Debug|x64
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Debug|x64.Build.0 = Debug|x64
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|Win32.ActiveCfg = DebugPy37|Win32
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|Win32.Build.0 = DebugPy37|Win32
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|x64.ActiveCfg = DebugPy37|x64
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.DebugPy37|x64.Build.0 = DebugPy37|x64
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|Win32.ActiveCfg = Release|Win32
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|Win32.Build.0 = Release|Win32
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x64.ActiveCfg = Release|x64
 		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.Release|x64.Build.0 = Release|x64
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|Win32.ActiveCfg = ReleasePy37|Win32
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|Win32.Build.0 = ReleasePy37|Win32
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x64.ActiveCfg = ReleasePy37|x64
-		{CE2AD1AD-E034-4C06-943F-8251C05AD37A}.ReleasePy37|x64.Build.0 = ReleasePy37|x64
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|Win32.Build.0 = Debug|Win32
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|x64.ActiveCfg = Debug|x64
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|x64.Build.0 = Debug|x64
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Release|Win32.ActiveCfg = Release|Win32
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Release|Win32.Build.0 = Release|Win32
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Release|x64.ActiveCfg = Release|x64
+		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Release|x64.Build.0 = Release|x64
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|Win32.Build.0 = Debug|Win32
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|x64.ActiveCfg = Debug|x64
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|x64.Build.0 = Debug|x64
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|Win32.ActiveCfg = Release|Win32
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|Win32.Build.0 = Release|Win32
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|x64.ActiveCfg = Release|x64
+		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

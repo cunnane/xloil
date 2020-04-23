@@ -12,8 +12,6 @@
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
-    <ClCompile Include="Register.cpp" />
-    <ClCompile Include="Test.cpp" />
     <ClCompile Include="internal\PEHelper.cpp">
       <Filter>internal</Filter>
     </ClCompile>
@@ -29,6 +27,9 @@
     <ClCompile Include="StringUtils.cpp" />
     <ClCompile Include="internal\LocalFunctions.cpp">
       <Filter>internal</Filter>
+    </ClCompile>
+    <ClCompile Include="Loaders\AddinLoader.cpp">
+      <Filter>Loaders</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -46,7 +47,6 @@
     <ClInclude Include="Register.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="WindowsSlim.h" />
-    <ClInclude Include="Options.h" />
     <ClInclude Include="internal\PEHelper.h">
       <Filter>internal</Filter>
     </ClInclude>
@@ -66,10 +66,16 @@
     <ClInclude Include="FuncSpec.h" />
     <ClInclude Include="Preprocessor.h" />
     <ClInclude Include="Throw.h" />
+    <ClInclude Include="Loaders\AddinLoader.h">
+      <Filter>Loaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="internal">
       <UniqueIdentifier>{b91aa7a8-a3bf-42e0-8c6c-caaa6932c881}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Loaders">
+      <UniqueIdentifier>{d269fbda-6fa4-4a7f-a1c5-bd84599de0da}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

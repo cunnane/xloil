@@ -37,7 +37,7 @@ namespace xloil
   class Event<R(Args...), TCollector>
   {
   public:
-    using handler = std::function < R(Args...)>;
+    using handler = std::function<R(Args...)>;
     using handler_id = const handler*;
 
     Event() {}
@@ -65,6 +65,11 @@ namespace xloil
       return false;
     }
 
+    bool operator-=(const handler& id)
+    {
+      return (*this) -= &id;
+    }
+
     auto bind(handler&& h)
     {
       return std::shared_ptr<const handler>(
@@ -89,12 +94,6 @@ namespace xloil
     mutable std::mutex _lock;
     TCollector _collector;
   };
-
-  /// <summary>
-  /// Event triggered when the xlOil addin is loaded by Excel
-  /// </summary>
-  XLOIL_EXPORT Event<void(void), VoidCollector>& 
-    Event_AutoOpen();
 
   /// <summary>
   /// Event triggered when the xlOil addin is unloaded by Excel.
@@ -146,6 +145,6 @@ namespace xloil
     Modified = 4
   };
 
-  XLOIL_EXPORT Event<void(const wchar_t*, const wchar_t*, FileAction), VoidCollector>& 
+  XLOIL_EXPORT Event<void(const wchar_t* directory, const wchar_t* filename, FileAction), VoidCollector>& 
     Event_DirectoryChange(const std::wstring& path);
 }

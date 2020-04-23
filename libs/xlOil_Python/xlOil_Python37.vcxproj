@@ -20,11 +20,11 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{CE2AD1AD-E034-4C06-943F-8251C05AD37A}</ProjectGuid>
+    <ProjectGuid>{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Python</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>xlOil_Python</ProjectName>
+    <ProjectName>xlOil_Python37</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -49,21 +49,29 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="PySettings37.props" />
+    <Import Project="PySettings.props" />
     <Import Project="..\..\src\Debug.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="PySettings37.props" />
+    <Import Project="PySettings.props" />
     <Import Project="..\..\src\Release.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\src\x64.props" />
+    <Import Project="PySettings37.props" />
+    <Import Project="PySettings.props" />
+    <Import Project="..\..\src\Release.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\src\x64.props" />
+    <Import Project="PySettings37.props" />
+    <Import Project="PySettings.props" />
     <Import Project="..\..\src\Debug.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\src\x64.props" />
-    <Import Project="..\..\src\Release.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -82,6 +90,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -94,6 +103,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -110,6 +120,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -127,20 +138,38 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="StubLoader.cpp" />
+    <ClCompile Include="BasicTypes.cpp" />
+    <ClCompile Include="Cache.cpp" />
+    <ClCompile Include="CustomConverter.cpp" />
+    <ClCompile Include="Date.cpp" />
+    <ClCompile Include="Dictionary.cpp" />
+    <ClCompile Include="ExcelRange.cpp" />
+    <ClCompile Include="File.cpp" />
+    <ClCompile Include="FunctionRegister.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="InjectedModule.cpp" />
+    <ClCompile Include="Numpy.cpp" />
+    <ClCompile Include="PyExcelArray.cpp" />
+    <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="package\README.md" />
-    <None Include="package\setup.py" />
-    <CopyFileToFolders Include="package\xloil\xloil.py">
-      <ExcludedFromBuild>false</ExcludedFromBuild>
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-    <None Include="package\xloil\command_line.py" />
-    <None Include="package\xloil\__init__.py" />
+    <ClInclude Include="ArrayHelpers.h" />
+    <ClInclude Include="Cache.h" />
+    <ClInclude Include="File.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="Date.h" />
+    <ClInclude Include="Dictionary.h" />
+    <ClInclude Include="FunctionRegister.h" />
+    <ClInclude Include="BasicTypes.h" />
+    <ClInclude Include="InjectedModule.h" />
+    <ClInclude Include="Numpy.h" />
+    <ClInclude Include="PyExcelArray.h" />
+    <ClInclude Include="PyHelpers.h" />
+    <ClInclude Include="Tuple.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

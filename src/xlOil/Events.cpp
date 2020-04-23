@@ -15,7 +15,6 @@ using std::wstring;
 
 namespace xloil
 {
-  XLOIL_EXPORT Event<void(void), VoidCollector>& Event_AutoOpen() { static Event<void(void), VoidCollector> e; return e; }
   Event<void(void), VoidCollector>& Event_AutoClose() { static Event<void(void), VoidCollector> e; return e; }
   XLOIL_EXPORT Event<void(void), VoidCollector>& Event_CalcEnded() { static Event<void(void), VoidCollector> e; return e; }
   XLOIL_EXPORT Event<void(void), VoidCollector>& Event_CalcCancelled() { static Event<void(void), VoidCollector> e; return e; }

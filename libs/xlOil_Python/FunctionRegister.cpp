@@ -69,7 +69,7 @@ namespace xloil
       auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
 
       // TODO: is it worth having a enum switch to convert primitive types rather than a v-call
-      for (auto i = 0; i < nArgs; ++i)
+      for (auto i = 0u; i < nArgs; ++i)
       {
         try
         {
@@ -143,7 +143,7 @@ namespace xloil
 
     struct ThreadContext
     {
-      ThreadContext() 
+      ThreadContext()
         : _startTime(GetTickCount64())
       {}
       bool cancelled()
@@ -151,10 +151,16 @@ namespace xloil
         return _startTime < lastCalcCancelledTicks() || yieldAndCheckIfEscPressed();
       }
     private:
-      size_t _startTime;
+      decltype(GetTickCount64()) _startTime;
     };
 
     static ctpl::thread_pool* thePythonWorkerThread = nullptr;
+
+    static auto WorkerThreadDeleter = Event_PyBye().bind([]
+    {
+      if (thePythonWorkerThread)
+        delete thePythonWorkerThread;
+    });
 
     void pythonAsyncCallback(PyFuncInfo* info, const ExcelObj* asyncHandle, const ExcelObj** xlArgs)
     {
@@ -221,11 +227,13 @@ namespace xloil
 
     void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action);
 
-    class RegisteredModule
+    class RegisteredModule : public FileSource
     {
     public:
-      RegisteredModule(const wstring& modulePath, const wchar_t* workbookModule)
-        : _modulePath(modulePath)
+      RegisteredModule(
+        const wstring& modulePath, 
+        const wchar_t* workbookModule)
+        : FileSource(modulePath.c_str())
       {
         const auto path = fs::path(modulePath);
         _fileWatcher = std::static_pointer_cast<const void>
@@ -234,62 +242,17 @@ namespace xloil
           _workbookModule = workbookModule;
       }
 
-      ~RegisteredModule()
+      void registerPyFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
       {
-        XLO_DEBUG(L"Deregistering functions in module '{0}'", _modulePath);
-        for (auto& f : _functions)
-          theCore->deregister(f.second->info()->name);
-        if (!_workbookModule.empty())
-          theCore->forgetLocal(_workbookModule.c_str());
-      }
+        vector<shared_ptr<const FuncSpec>> nonLocal;
+        vector<shared_ptr<const FuncInfo>> funcInfo;
+        vector<ExcelFuncObject> funcs;
 
-      void registerFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
-      {
-        if (!_workbookModule.empty())
-          registerLocalFuncs(_workbookModule.c_str(), functions);
-        vector<shared_ptr<const FuncSpec>> funcSpecs;
         for (auto& f : functions)
         {
           if (!f->isLocalFunc)
-            funcSpecs.push_back(createSpec(f));
-        }
-        registerFuncSpecs(_functions, funcSpecs);
-      }
-
-      static void registerFuncSpecs(
-        map<wstring, shared_ptr<const FuncSpec>>& existing,
-        const vector<shared_ptr<const FuncSpec>>& funcSpecs)
-      {
-        std::remove_reference<decltype(existing)>::type newFuncs;
-
-        for (auto& f : funcSpecs)
-        {
-          if (theCore->registerFunc(f) != 0)
-          {
-            existing.erase(f->name());
-            newFuncs.emplace(f->name(), f);
-          }
-        }
-
-        // Any functions remaining in the old map must have been removed from the module
-        // so we can deregister them, but if that fails we have to keep them or they
-        // will be orphaned
-        for (auto& f : existing)
-          if (!theCore->deregister(f.second->name()))
-            newFuncs.emplace(f);
-
-        existing = newFuncs;
-      }
-
-      void registerLocalFuncs(
-        const wchar_t* workbookName,
-        const vector<shared_ptr<PyFuncInfo>>& functions)
-      {
-        vector<shared_ptr<const FuncInfo>> funcInfo;
-        vector<ExcelFuncObject> funcs;
-        for (auto &f : functions)
-        {
-          if (f->isLocalFunc)
+            nonLocal.push_back(createSpec(f));
+          else
           {
             funcInfo.push_back(f->info);
             funcs.push_back([f](const FuncInfo&, const ExcelObj** args)
@@ -298,70 +261,62 @@ namespace xloil
             });
           }
         }
-        theCore->registerLocal(workbookName, funcInfo, funcs);
+        registerFuncs(nonLocal);
+
+        if (!funcInfo.empty())
+        {
+          if (_workbookModule.empty())
+            XLO_THROW("Local functions found without workbook specification");
+          registerLocal(_workbookModule.c_str(), funcInfo, funcs);
+        }
       }
 
-      const wstring& modulePath() const { return _modulePath; }
-      bool workbookModule() const { return !_workbookModule.empty(); }
-
     private:
-      map<wstring, shared_ptr<const FuncSpec>> _functions;
       shared_ptr<const void> _fileWatcher;
-      wstring _modulePath;
       wstring _workbookModule;
     };
 
-    FunctionRegistry& FunctionRegistry::get() 
+    std::shared_ptr<RegisteredModule>
+      FunctionRegistry::addModule(
+        AddinContext* context, 
+        const std::wstring& modulePath, 
+        const wchar_t* workbookName)
     {
-      static FunctionRegistry instance;
-      return instance;
+      auto[fileCtx, inserted] = context->tryAdd<RegisteredModule>(
+        modulePath.c_str(), modulePath, workbookName);
+
+      return fileCtx;
+    }
+
+    std::shared_ptr<RegisteredModule>
+      FunctionRegistry::addModule(
+        AddinContext* context, 
+        const pybind11::module& moduleHandle, 
+        const wchar_t* workbookName)
+    {
+      return addModule(context, moduleHandle.attr("__file__").cast<wstring>(), workbookName);
     }
 
 
-    std::shared_ptr<RegisteredModule> 
-      FunctionRegistry::addModule(const std::wstring& modulePath, const wchar_t* workbookName)
-    {
-      auto it = _modules.find(modulePath);
-      if (it == _modules.end())
-      {
-        auto module = make_shared<RegisteredModule>(modulePath, workbookName);
-        it = _modules.insert(make_pair(modulePath, module)).first;
-      }
-      return it->second;
-    }
-
-    std::shared_ptr<RegisteredModule> 
-      FunctionRegistry::addModule(const pybind11::module& moduleHandle, const wchar_t* workbookName)
-    {
-      return addModule(moduleHandle.attr("__file__").cast<wstring>(), workbookName);
-    }
-
-    FunctionRegistry::FunctionRegistry()
-    {
-      static auto handler = Event_PyBye().bind([] 
-      {
-        FunctionRegistry::get().modules().clear(); 
-        if (thePythonWorkerThread)
-          delete thePythonWorkerThread;
-      });
-    }
 
     void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action)
     {
       auto filePath = (fs::path(dirName) / fileName).wstring();
-      auto& registry = FunctionRegistry::get().modules();
-      auto found = registry.find(filePath);
-      if (found == registry.end())
+      auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
+      if (!foundSource)
         return;
       switch (action)
       {
       case FileAction::Modified:
         XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
+        // TODO: little bit flaky here
+        theCurrentContext = foundAddin.get();
         scanModule(py::wstr(filePath));
+        theCurrentContext = theCoreContext;
         break;
       case FileAction::Delete:
         XLO_INFO(L"Module '{0}' deleted, removing functions.", filePath);
-        registry.erase(filePath);
+        FileSource::deleteFileContext(foundSource);
         break;
       }
     }
@@ -370,8 +325,9 @@ namespace xloil
       const py::object& moduleHandle, 
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
-      FunctionRegistry::get().addModule(moduleHandle.cast<py::module>())
-        ->registerFuncs(functions);
+      auto mod = FunctionRegistry::addModule(
+        theCurrentContext, moduleHandle.cast<py::module>());
+      mod->registerPyFuncs(functions);
     }
     
     namespace

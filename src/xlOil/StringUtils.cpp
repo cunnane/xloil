@@ -6,6 +6,26 @@ using std::wstring;
 
 namespace xloil
 {
+
+  std::wstring getEnvVar(const wchar_t * name)
+  {
+    return captureStringBuffer(
+      [name](auto* buf, auto len)
+    {
+      return GetEnvironmentVariable(name, buf, (DWORD)len);
+    });
+  }
+
+  std::wstring expandEnvVars(const wchar_t* str)
+  {
+    return captureStringBuffer(
+      [str](auto* buf, auto len)
+    {
+      return ExpandEnvironmentStrings(str, buf, (DWORD)len);
+    }
+    );
+  }
+
   PushEnvVar::PushEnvVar(const wstring& name, const wstring& value)
     : PushEnvVar(name.c_str(), value.c_str())
   {}
@@ -14,12 +34,7 @@ namespace xloil
     : _name(name)
     , _previous(getEnvVar(name))
   {
-    auto s = captureStringBuffer(
-      [value](auto* buf, auto len) 
-      { 
-        return ExpandEnvironmentStrings(value, buf, (DWORD)len);
-      }
-    );
+    auto s = expandEnvVars(value);
     SetEnvironmentVariable(name, s.c_str());
   }
 
@@ -36,13 +51,5 @@ namespace xloil
     SetEnvironmentVariable(_name.c_str(), _previous.c_str());
     _name.clear();
     _previous.clear();
-  }
-  std::wstring getEnvVar(const wchar_t * name)
-  {
-    return captureStringBuffer(
-      [name](auto* buf, auto len)
-      {
-        return GetEnvironmentVariable(name, buf, (DWORD)len);
-      });
   }
 }

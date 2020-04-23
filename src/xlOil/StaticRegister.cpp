@@ -4,6 +4,7 @@
 #include "Throw.h"
 
 using std::vector;
+using std::make_shared;
 
 namespace xloil
 {
@@ -13,9 +14,7 @@ namespace xloil
     , _info(new FuncInfo())
     , _allowRangeAll(false)
   {
-    // TODO: why aren't we using the function in Utils?
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
-    _info->name = conv.from_bytes(entryPoint_);
+    _info->name = utf8ToUtf16(entryPoint_);
   }
 
   std::shared_ptr<const FuncInfo> FuncRegistrationMemo::getInfo()
@@ -50,17 +49,14 @@ namespace xloil
     return getFuncRegistryQueue().back();
   }
 
-  std::vector<RegisteredFuncPtr> processRegistryQueue(const wchar_t* moduleName)
+  std::vector<std::shared_ptr<const FuncSpec>>
+    processRegistryQueue(const wchar_t* moduleName)
   {
-    vector<RegisteredFuncPtr> result;
+    std::vector<std::shared_ptr<const FuncSpec>> result;
     auto& queue = getFuncRegistryQueue();
     for (auto f : queue)
-    {
-      auto spec = std::make_shared<const StaticSpec>(f.getInfo(), moduleName, f.entryPoint);
-      auto registeredFunc = registerFunc(spec);
-      if (registeredFunc)
-        result.emplace_back(registeredFunc);
-    }
+      result.emplace_back(make_shared<const StaticSpec>(f.getInfo(), moduleName, f.entryPoint));
+    
     queue.clear();
     return result;
   }

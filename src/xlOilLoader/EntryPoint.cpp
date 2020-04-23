@@ -1,4 +1,3 @@
-#include "xloil/Options.h"
 #include "xloil/WindowsSlim.h"
 #include "XlCallSlim.h"
 #include "xloil/WindowsSlim.h"
@@ -7,7 +6,6 @@
 #include "xloil/Log.h"
 #include "xloil/Events.h"
 #include "xloil/ExcelCall.h"
-#include <delayimp.h>
 #include <filesystem>
 namespace fs = std::filesystem;
 
@@ -39,6 +37,25 @@ namespace
       return false;
     }
   }
+
+  int getExcelVersion()
+  {
+    using namespace msxll;
+
+    // https://github.com/MicrosoftDocs/office-developer-client-docs/blob/...
+    // master/docs/excel/calling-into-excel-from-the-dll-or-xll.md
+    XLOPER arg, result;
+    arg.xltype = xltypeInt;
+    arg.val.w = 2;
+
+    auto ret = Excel4(xlfGetWorkspace, &result, 1, &arg);
+    if (ret != xlretSuccess || result.xltype != xltypeStr)
+      return 0;
+    auto pStr = result.val.str;
+    auto versionStr = std::string(pStr + 1, pStr + 1 + pStr[0]);
+    return std::stoi(versionStr);
+  }
+
 }
 
 namespace
@@ -57,9 +74,6 @@ XLO_ENTRY_POINT(int) DllMain(
     theModuleHandle = hinstDLL;
     if (!setDllPath(hinstDLL))
       return FALSE;
-    SetDllDirectory(ourXllDir.c_str());
-    xloil::coreInit(ourXllPath.c_str());
-    SetDllDirectory(NULL);
   }
   return TRUE;
 }
@@ -74,11 +88,16 @@ XLO_ENTRY_POINT(int) DllMain(
 
 XLO_ENTRY_POINT(int) xlAutoOpen(void)
 {
-  //XLO_TRACE("xlAutoOpen called in Loader");
-  xloil::coreAutoOpen();
-  xloil::Event_AutoOpen().fire();
+  // TODO: Much work to do here to work out where the core is
+  // 1) Look in same dir as XLL
+  // 2) Look in %APPDATA%/xloil settings file for Core.Environment
+  // 3) Look in XllName.ini settings file for Core.Environment
+  // 3) Look in Excel addins in registry for xlOil.xll
+  SetDllDirectory(ourXllDir.c_str());
+  xloil::coreAutoOpen(ourXllPath.c_str());
+  SetDllDirectory(NULL);
 
-  // TODO: handle failure?
+  // TODO: write out depenency on xloil functions
   xloil::tryCallExcel(msxll::xlEventRegister, "xloHandleCalculationEnded", xleventCalculationEnded);
   xloil::tryCallExcel(msxll::xlEventRegister, "xloHandleCalculationCancelled", xleventCalculationCanceled);
  
@@ -88,7 +107,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 XLO_ENTRY_POINT(int) xlAutoClose(void)
 {
   //XLO_TRACE("xlAutoClose called in Loader");
-  xloil::coreAutoClose();
+  xloil::coreAutoClose(ourXllPath.c_str());
   return 1;
 }
 

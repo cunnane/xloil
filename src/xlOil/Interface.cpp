@@ -1,37 +1,22 @@
 #include "Interface.h"
-#include "internal/FuncRegistry.h"
+#include <xlOil/internal/FuncRegistry.h>
 #include "internal/LocalFunctions.h"
 #include "ObjectCache.h"
 #include "Settings.h"
 #include "EntryPoint.h"
 #include "Log.h"
+#include <xlOil/Loaders/AddinLoader.h>
 #include <ComInterface/Connect.h>
 #include <toml11/toml.hpp>
 
 using std::make_pair;
 using std::wstring;
+using std::make_shared;
+using std::shared_ptr;
 
 namespace xloil
 {
-  Core::Core(const wchar_t* pluginName, std::shared_ptr<const toml::value> settings)
-    : _pluginName(pluginName)
-    , _settings(settings)
-  {
-    if (_settings)
-    {
-      _functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
-    }
-    // This collects all statically declared Excel functions, i.e. raw C functions
-    // It assumes that this ctor and hence processRegistryQueue is run after each
-    // plugin has been loaded, so that all functions on the queue belong to the 
-    // current plugin
-    for (auto& f : processRegistryQueue(pluginName))
-      _functions.emplace(f->info()->name, f);
-  }
-  Core::~Core()
-  {
-    deregisterAll();
-  }
+
 
   const wchar_t* Core::theCorePath()
   {
@@ -63,7 +48,69 @@ namespace xloil
       XLO_THROW("#WIZARD!");
   }
 
-  int Core::registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept
+  AddinContext::AddinContext(
+    const wchar_t* pathName, std::shared_ptr<const toml::value> settings)
+    : _settings(settings)
+    , _pathName(pathName)
+  {
+  }
+
+  AddinContext::~AddinContext()
+  {
+  }
+
+  FileSource::FileSource(const wchar_t* sourceName, bool watchSource)
+    : _source(sourceName)
+  {
+    //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
+    // TODO: watch source
+    //Event_DirectoryChange()
+  }
+
+  FileSource::~FileSource()
+  {
+    XLO_DEBUG(L"Deregistering functions in source '{0}'", _source);
+    forgetLocalFunctions(_workbookName.c_str());
+    for (auto& f : _functions)
+      xloil::deregisterFunc(f.second);
+    _functions.clear();
+  }
+
+  bool FileSource::registerFuncs(
+    std::vector<std::shared_ptr<const FuncSpec> >& funcSpecs)
+  {
+    decltype(_functions) newFuncs;
+
+    for (auto& f : funcSpecs)
+    {
+      // If registration succeeds, just add the function to the new map
+      auto ptr = registerFunc(f);
+      if (ptr)
+      {
+        _functions.erase(f->name());
+        newFuncs.emplace(f->name(), ptr);
+        f.reset();
+      }
+    }
+
+    funcSpecs.erase(
+      std::remove_if(funcSpecs.begin(), funcSpecs.end(), [](auto& f) { return !f; }),
+      funcSpecs.end());
+
+    // Any functions remaining in the old map must have been removed from the module
+    // so we can deregister them, but if that fails we have to keep them or they
+    // will be orphaned
+    for (auto& f : _functions)
+      if (!xloil::deregisterFunc(f.second))
+        newFuncs.emplace(f);
+
+    _functions = newFuncs;
+
+    return funcSpecs.empty();
+  }
+
+  RegisteredFuncPtr FileSource::registerFunc(
+    const std::shared_ptr<const FuncSpec>& spec)
   {
     auto& name = spec->name();
     auto iFunc = _functions.find(name);
@@ -74,40 +121,25 @@ namespace xloil
       // Attempt to patch the function context to refer to the new function
       auto success = ptr->reregister(spec);
       if (success)
-        return ptr->registerId();
+        return ptr;
       
       if (!ptr->deregister())
-        return 0;
+        return RegisteredFuncPtr();
 
       _functions.erase(iFunc);
     }
 
     auto ptr = xloil::registerFunc(spec);
     if (!ptr) 
-      return 0;
+      return RegisteredFuncPtr();
     _functions.emplace(name, ptr);
-    return ptr->registerId();
+    return ptr;
   }
 
-  bool Core::reregister(
-    const std::shared_ptr<const FuncSpec>& spec)
-  {
-    auto iFunc = _functions.find(spec->info()->name);
-    if (iFunc == _functions.end())
-      return false;
-    auto[name, ptr] = *iFunc;
-    auto success = ptr->reregister(spec);
-    if (!success)
-      ptr->deregister();
-    return success;
-  }
-
-  bool Core::deregister(const std::wstring& name)
+  bool FileSource::deregister(const std::wstring& name)
   {
     auto iFunc = _functions.find(name);
-    if (iFunc == _functions.end())
-      return false;
-    if (xloil::deregisterFunc(iFunc->second))
+    if (iFunc != _functions.end() && xloil::deregisterFunc(iFunc->second))
     {
       _functions.erase(iFunc);
       return true;
@@ -115,29 +147,21 @@ namespace xloil
     return false;
   }
 
-  void Core::registerLocal(
+  void FileSource::registerLocal(
     const wchar_t * workbookName, 
     const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
     const std::vector<ExcelFuncObject> funcs)
   {
+    if (!_workbookName.empty() && _workbookName != workbookName)
+      XLO_THROW("Cannot link more than one workbook with the same source");
     xloil::registerLocalFuncs(workbookName, funcInfo, funcs);
+    _workbookName = workbookName;
   }
   
-  void Core::forgetLocal(const wchar_t* workbookName)
-  {
-    forgetLocalFunctions(workbookName);
-  }
-
-  void
-    Core::deregisterAll()
-  {
-    for (auto& f : _functions)
-      xloil::deregisterFunc(f.second);
-    _functions.clear();
-  }
- 
-  bool
-    Core::fetchCache(const wchar_t* cacheString, size_t length, std::shared_ptr<const ExcelObj>& obj)
+  bool Core::fetchCache(
+    const wchar_t* cacheString, 
+    size_t length, 
+    std::shared_ptr<const ExcelObj>& obj)
   {
     return xloil::fetchCacheObject(cacheString, length, obj);
   }
@@ -147,8 +171,26 @@ namespace xloil
   {
     return xloil::addCacheObject(std::forward<std::shared_ptr<const ExcelObj>>(obj));
   }
-  std::shared_ptr<spdlog::logger> Core::getLogger()
+
+  std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
+    FileSource::findFileContext(const wchar_t* source)
+  {
+    return xloil::findFileSource(source);
+  }
+
+  void
+    FileSource::deleteFileContext(const std::shared_ptr<FileSource>& source)
+  {
+    xloil::deleteFileSource(source);
+  }
+
+  std::shared_ptr<spdlog::logger> AddinContext::getLogger() const
   {
     return loggerRegistry().default_logger();
+  }
+
+  void AddinContext::removeFileSource(ContextMap::const_iterator which)
+  {
+    _files.erase(which);
   }
 }

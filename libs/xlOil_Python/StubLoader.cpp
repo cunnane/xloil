@@ -1,0 +1,60 @@
+#include "xloil/Interface.h"
+#include "xloil/StringUtils.h"
+#include <xloil/Throw.h>
+#include <xlOil/WindowsSlim.h>
+#include <cstdlib>
+#include <toml11/toml.hpp>
+#include <boost/preprocessor/stringize.hpp>
+
+using std::vector;
+using std::wstring;
+using std::string;
+
+namespace xloil
+{
+  namespace Python
+  {
+    static HMODULE thePythonLib = nullptr;
+    static PluginInitFunc theInitFunc = nullptr;
+
+    XLO_PLUGIN_INIT(AddinContext* context, const PluginContext& plugin)
+    {
+      try
+      {
+        if (plugin.action == PluginContext::Load)
+        {
+          if (!plugin.settings)
+            XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
+
+          // This setting is required, toml with throw if it is not found
+          auto pyVer = toml::find<string>(*plugin.settings,
+            "Environment", "xlOilPythonVersion");
+
+          // Convert X.Y version to XY and form the dll name
+          auto dllName = fmt::format("xloil_Python{0}.dll", 
+            pyVer.replace(pyVer.find('.'), 1, ""));
+
+          // Load the library - the xlOil loader should already have set the DLL
+          // load directory and we expect to find the versioned python plugins
+          // in the directory this DLL is in.
+          thePythonLib = LoadLibrary(dllName.c_str());
+          if (!thePythonLib)
+            return -1;
+
+          theInitFunc = (PluginInitFunc)GetProcAddress(thePythonLib,
+            BOOST_PP_STRINGIZE(XLO_PLUGIN_INIT_FUNC));
+          if (!theInitFunc)
+            return -1;
+        }
+
+        // Forward the request to the real python plugins 
+        theInitFunc(context, plugin);
+        return 0;
+      }
+      catch (...)
+      {
+        return -1;
+      }
+    }
+  }
+}

@@ -15,17 +15,16 @@ namespace toml {
 
 namespace xloil
 {
-  struct Settings
+  constexpr char* XLOIL_SETTINGS_FILE_EXT = "ini";
+
+  namespace Settings
   {
-    std::string logFilePath;
-    std::string logLevel;
-    std::vector<std::wstring> plugins;
-    std::string pluginSearchPattern;
+    std::string logFilePath(const toml::value* root);
+    std::string logLevel(const toml::value* root);
+    std::vector<std::wstring> plugins(const toml::value* root);
+    std::string pluginSearchPattern(const toml::value* root);
   };
 
-  Settings& 
-    theCoreSettings();
-
-  std::shared_ptr<toml::value> 
+  std::shared_ptr<const toml::value>
     findSettingsFile(const wchar_t* dllPath);
 }

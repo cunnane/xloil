@@ -1,4 +1,3 @@
-#include "Options.h"
 #include "Events.h"
 #include "Loader.h"
 #include "WindowsSlim.h"
@@ -9,11 +8,17 @@
 #include "ExportMacro.h"
 #include "Log.h"
 #include "Settings.h"
+#include <xlOil/Loaders/AddinLoader.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>
-#include <delayimp.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 using std::wstring;
+using std::string;
+using std::vector;
+using std::shared_ptr;
 
 namespace
 {
@@ -21,9 +26,8 @@ namespace
 
   static const wchar_t* ourDllName;
   static wchar_t ourDllPath[4 * MAX_PATH]; // TODO: may not be long enough!!!
-  static const wchar_t* ourXllPath = nullptr;
   static int ourExcelVersion;
-
+  
   bool setDllPath(HMODULE handle)
   {
     auto size = GetModuleFileName(handle, ourDllPath, sizeof(ourDllPath));
@@ -51,10 +55,6 @@ namespace xloil
   {
     return ourDllName;
   }
-  const wchar_t* theXllPath()
-  {
-    return ourXllPath;
-  }
   int coreExcelVersion()
   {
     return ourExcelVersion;
@@ -68,26 +68,16 @@ namespace xloil
     return std::stoi(versionStr.toString());
   }
 
-  XLOIL_EXPORT int coreInit(const wchar_t* xllPath) noexcept
-  {
-    ourXllPath = xllPath;
-    return 1;
-  }
-
-  XLOIL_EXPORT int coreAutoOpen() noexcept
+  XLOIL_EXPORT int coreAutoOpen(const wchar_t* xllPath) noexcept
   {
     try
     {
       ScopeInXllContext xllContext;
       
-
-      auto& settings = theCoreSettings();
-
-      initialiseLogger(settings.logLevel, settings.logFilePath.empty() 
-        ? nullptr : &settings.logFilePath);
-      
       ourExcelVersion = getExcelVersion();
-      loadPlugins();
+
+      openXll(xllPath);
+
       excelApp(); // Creates the COM connection
 
       return 1;
@@ -98,13 +88,14 @@ namespace xloil
     }
     return 0;
   }
-  XLOIL_EXPORT int coreAutoClose() noexcept
+  XLOIL_EXPORT int coreAutoClose(const wchar_t* xllPath) noexcept
   {
     try
     {
       ScopeInXllContext xllContext;
-      unloadPlugins();
-      Event_AutoClose().fire();
+      
+      closeXll(xllPath);
+
       return 1;
     }
     catch (const std::exception& e)

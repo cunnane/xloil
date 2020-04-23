@@ -5,12 +5,10 @@ namespace xloil
 {
   namespace Utils
   {
-    Core* theCore = nullptr;
-
-    XLO_PLUGIN_INIT(Core& core)
+    XLO_PLUGIN_INIT(AddinContext* ctx, const PluginContext& plugin)
     {
-      theCore = &core;
-      spdlog::set_default_logger(core.getLogger());
+      if (plugin.action == PluginContext::Load)
+        spdlog::set_default_logger(ctx->getLogger());
       return 0;
     }
   }

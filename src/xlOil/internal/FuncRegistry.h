@@ -1,6 +1,7 @@
 #pragma once
 #include <xlOil/Register.h>
 #include <xlOil/FuncSpec.h>
+#include <xlOil/Interface.h>
 #include <memory>
 
 namespace xloil
@@ -43,8 +44,15 @@ namespace xloil
       const std::shared_ptr<const FuncSpec>& info) noexcept;
 
   /// Remove a registered function. Zeros the passed pointer
-  bool deregisterFunc(const std::shared_ptr<RegisteredFunc>& ptr);
+  bool deregisterFunc(const RegisteredFuncPtr& ptr);
 
-  // TODO: the body of this is actually in Register.cpp
-  std::vector<RegisteredFuncPtr> processRegistryQueue(const wchar_t* moduleName);
+  /// <summary>
+  /// File source which collects and registers any declared
+  /// static functions
+  /// </summary>
+  class StaticFunctionSource : public FileSource
+  {
+  public:
+    StaticFunctionSource(const wchar_t* pluginPath);
+  };
 }

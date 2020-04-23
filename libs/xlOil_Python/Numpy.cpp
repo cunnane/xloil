@@ -254,7 +254,7 @@ namespace xloil
         auto* data = (char*) PyDataMem_NEW(dataSize);
 
         auto d = data;
-        for (auto i = 0; i < arr.size(); ++i, d += itemsize)
+        for (ExcelArray::size_type i = 0; i < arr.size(); ++i, d += itemsize)
           _conv((data_type*)d, itemsize, arr.at(i));
         
         return PyArray_New(
@@ -420,7 +420,7 @@ namespace xloil
           converter.builderEmplace(builder, 0, j, PyArray_GETPTR1(pyArr, j));
         
         return _cache
-          ? theCore->insertCache(builder.toExcelObj())
+          ? Core::insertCache(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };
@@ -453,7 +453,7 @@ namespace xloil
             converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
 
         return _cache
-          ? theCore->insertCache(builder.toExcelObj())
+          ? Core::insertCache(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };

@@ -67,6 +67,18 @@
     <Import Project="..\x64.props" />
     <Import Project="..\Release.props" />
   </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -115,10 +127,10 @@
     <ClInclude Include="internal\PEHelper.h" />
     <ClInclude Include="internal\Thunker.h" />
     <ClInclude Include="Loader.h" />
+    <ClInclude Include="Loaders\AddinLoader.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ExcelObjCache.h" />
     <ClInclude Include="ObjectCache.h" />
-    <ClInclude Include="Options.h" />
     <ClInclude Include="Preprocessor.h" />
     <ClInclude Include="Register.h" />
     <ClInclude Include="Settings.h" />
@@ -141,14 +153,13 @@
     <ClCompile Include="internal\PEHelper.cpp" />
     <ClCompile Include="internal\Thunker.cpp" />
     <ClCompile Include="Loader.cpp" />
+    <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
     <ClCompile Include="StringUtils.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
-    <ClCompile Include="Register.cpp" />
-    <ClCompile Include="Test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\COMInterface\COMInterface.vcxproj">

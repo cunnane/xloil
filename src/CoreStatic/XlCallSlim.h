@@ -1,6 +1,6 @@
 #pragma once
 
-/* EDITED TO REMOVE DEPENDENCY ON WINDOWS.H */
+/* EDITED TO REMOVE DEPENDENCY ON WINDOWS.H AND ADD NAMESPACE */
 
 /*
 **  Microsoft Excel Developer's Toolkit

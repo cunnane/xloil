@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="StubLoader.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="package">
+      <UniqueIdentifier>{e1e10b85-4193-4e87-9d4f-0a040eca3d1a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="package\setup.py">
+      <Filter>package</Filter>
+    </None>
+    <None Include="package\README.md">
+      <Filter>package</Filter>
+    </None>
+    <None Include="package\xloil\__init__.py">
+      <Filter>package</Filter>
+    </None>
+    <None Include="package\xloil\command_line.py">
+      <Filter>package</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="package\xloil\xloil.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+</Project>

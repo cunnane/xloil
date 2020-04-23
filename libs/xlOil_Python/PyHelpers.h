@@ -38,7 +38,7 @@ namespace pybind11
     // 'explicit' is explicitly omitted from the following constructors to allow implicit 
     // conversion to py::str from C++ string-like objects
     wstr(const wchar_t *c = L"")
-      : object(PyUnicode_FromWideChar(c, 0), stolen_t{})
+      : object(PyUnicode_FromWideChar(c, -1), stolen_t{})
     {
       if (!m_ptr) pybind11_fail("Could not allocate string object!");
     }

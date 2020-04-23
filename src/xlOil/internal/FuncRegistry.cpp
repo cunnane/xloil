@@ -4,6 +4,7 @@
 #include <xlOil/Events.h>
 #include "PEHelper.h"
 #include "ExcelObj.h"
+#include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/EntryPoint.h>
@@ -511,6 +512,18 @@ namespace xloil
   {
     return FunctionRegistry::get().remove(ptr);
   }
+  
+  StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
+    : FileSource(pluginPath)
+  {
+    // This collects all statically declared Excel functions, i.e. raw C functions
+    // It assumes that this ctor and hence processRegistryQueue is run after each
+    // plugin has been loaded, so that all functions on the queue belong to the 
+    // current plugin
+    auto specs = processRegistryQueue(pluginPath);
+    if (!registerFuncs(specs))
+      XLO_ERROR(L"When loading {0}, failed to register: {0}", pluginPath, specs[0]->name());
+  }
 
   namespace
   {
@@ -518,6 +531,7 @@ namespace xloil
     {
       RegisterMe()
       {
+        // TODO: all funcs *should* be removed by this point - check this
         static auto handler = xloil::Event_AutoClose() += []() { FunctionRegistry::get().clear(); };
       }
     } theInstance;

@@ -1,9 +1,7 @@
 #include "Settings.h"
 #include "EntryPoint.h"
-#include "Interface.h"
 #include "StringUtils.h"
 #include "Log.h"
-#include "Options.h"
 #include <toml11/toml.hpp>
 #include <filesystem>
 
@@ -19,51 +17,43 @@ using std::make_shared;
 
 namespace xloil
 {
-
-  class SettingsReader : public Settings
+  namespace Settings
   {
-  public:
-    static SettingsReader& get()
+    vector<wstring> plugins(const toml::value* root)
     {
-      static SettingsReader instance;
-      return instance;
-    }
-    
-    const auto& pluginSettings() const { return _pluginSettings; }
-
-  private:
-    SettingsReader()
-    {
-      try
+      vector<wstring> plugins;
+      if (root)
       {
-        auto corePath = fs::path(theXllPath()).replace_extension(XLOIL_SETTINGS_FILE_EXT);
-
-        auto root = findSettingsFile(theXllPath());
-        if (!root)
-          root = make_shared<toml::value>();
-
-        logFilePath = toml::find_or<string>(*root, "LogFile", "");
-        logLevel = toml::find_or<string>(*root, "LogLevel", "warn");
-        pluginSearchPattern = toml::find_or<string>(*root, "PluginSearchPattern", "");
         auto pluginsUtf8 = toml::find_or<vector<string>>(*root, "Plugins", vector<string>());
-        std::transform(pluginsUtf8.begin(), pluginsUtf8.end(), std::back_inserter(plugins), utf8ToUtf16);
+        std::transform(pluginsUtf8.begin(), pluginsUtf8.end(),
+          std::back_inserter(plugins), utf8ToUtf16);
       }
-      catch (const std::exception& e)
-      {
-        // TODO: obviously the logger won't be properly setup...ideas?
-        XLO_ERROR("Error processing settings file: {}", e.what());
-      }
+      return plugins;
     }
 
-    std::unordered_map<string, toml::value> _pluginSettings;
-  };
-
-  Settings& theCoreSettings()
-  {
-    return SettingsReader::get();
+    namespace
+    {
+      std::string findStr(const toml::value* root, const char* tag, const char* default)
+      {
+        return root
+          ? toml::find_or<string>(*root, tag, default)
+          : default;
+      }
+    }
+    std::string pluginSearchPattern(const toml::value* root)
+    {
+      return findStr(root, "PluginSearchPattern", "");
+    }
+    std::string logFilePath(const toml::value* root)
+    {
+      return findStr(root, "LogFile", "");
+    }
+    std::string logLevel(const toml::value* root)
+    {
+      return findStr(root, "LogLevel", "warn");
+    }
   }
-
-  std::shared_ptr<toml::value> findSettingsFile(const wchar_t* dllPath)
+  std::shared_ptr<const toml::value> findSettingsFile(const wchar_t* dllPath)
   {
     fs::path path;
  
@@ -80,6 +70,6 @@ namespace xloil
       XLO_DEBUG(L"Found settings file '{0}'", path.wstring());
       return make_shared<toml::value>(toml::parse(path.string()));
     }
-    return shared_ptr<toml::value>();
+    return shared_ptr<const toml::value>();
   }
 }

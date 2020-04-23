@@ -2,8 +2,6 @@
 #include <string>
 #include <codecvt>
 
-
-
 namespace xloil
 {
   inline std::string utf16ToUtf8(const std::wstring_view& str)
@@ -155,15 +153,29 @@ namespace xloil
     while ((len = bufWriter(s.data(), s.capacity())) > s.capacity())
       s.reserve(len == size_t(-1) ? s.size() * 2 : len);
     
-    s._Eos(len);
+    // However, some windows functions, e.g. ExpandEnvironmentStrings 
+    // include the null-terminator in the returned buffer length whereas
+    // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
+    // Wonderful.
+    s._Eos(s.data()[len - 1] == '\0' ? len - 1 : len);
     s.shrink_to_fit();
     return s;
   }
 
-  std::wstring getEnvVar(const wchar_t* name);
+  /// <summary>
+  /// Returns the value of specified environment variable
+  /// or an empty string if it does not exist
+  /// </summary>
+  std::wstring getEnvVar(const wchar_t * name);
 
   /// <summary>
-  /// Sets an environment variable, unsets when the object goes out of scope.
+  /// Expands environment variables in the specified string.
+  /// Equivalent to the Windows API ExpandEnvironmentStrings
+  /// </summary>
+  std::wstring expandEnvVars(const wchar_t* str);
+
+  /// <summary>
+  /// Sets an environment variable and unsets when the object goes out of scope.
   /// </summary>
   class PushEnvVar
   {
@@ -177,4 +189,5 @@ namespace xloil
     ~PushEnvVar();
     void pop();
   };
+
 }

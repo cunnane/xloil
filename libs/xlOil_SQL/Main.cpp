@@ -7,13 +7,13 @@ namespace xloil
 {
   namespace SQL
   {
-    Core* theCore = nullptr;
-
-    XLO_PLUGIN_INIT(xloil::Core& core)
+    XLO_PLUGIN_INIT(AddinContext* context, const PluginContext& plugin)
     {
-      theCore = &core;
-      spdlog::set_default_logger(core.getLogger());
-      createCache();
+      if (plugin.action == PluginContext::Load)
+      {
+        spdlog::set_default_logger(context->getLogger());
+        createCache();
+      }
       return 0;
     }
   }

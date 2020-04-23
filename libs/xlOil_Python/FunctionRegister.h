@@ -3,27 +3,26 @@
 #include <map>
 #include <string>
 
+namespace xloil { class AddinContext; }
 namespace xloil 
 {
   namespace Python
   {
     class RegisteredModule;
 
-    class FunctionRegistry
+    namespace FunctionRegistry
     {
-    public:
-      static FunctionRegistry& get();
+      std::shared_ptr<RegisteredModule>
+        addModule(
+          AddinContext* context, 
+          const pybind11::module& moduleHandle, 
+          const wchar_t* workbookName = nullptr);
 
-      std::shared_ptr<RegisteredModule> 
-        addModule(const pybind11::module& moduleHandle, const wchar_t* workbookName = nullptr);
-      std::shared_ptr<RegisteredModule> 
-        addModule(const std::wstring& modulePath, const wchar_t* workbookName = nullptr);
-
-      auto & modules() { return _modules; }
-
-    private:
-      FunctionRegistry();
-      std::map<std::wstring, std::shared_ptr<RegisteredModule>> _modules;
+      std::shared_ptr<RegisteredModule>
+        addModule(
+          AddinContext* context, 
+          const std::wstring& modulePath, 
+          const wchar_t* workbookName = nullptr);
     };
   }
 }
