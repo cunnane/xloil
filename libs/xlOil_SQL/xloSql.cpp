@@ -1,8 +1,8 @@
 #include <sqlite/sqlite3ext.h>
 #include <xlOil/StaticRegister.h>
 #include <xloil/Interface.h>
-#include "ExcelArray.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelArray.h>
+#include <xlOil/ExcelObj.h>
 #include "Common.h"
 
 #include <xlOil/Preprocessor.h>

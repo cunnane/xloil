@@ -79,19 +79,19 @@ namespace xloil
     TResult fromInt(int x) const { return error(); }
     TResult fromBool(bool x) const { return error(); }
     TResult fromDouble(double x) const { return error(); }
-    TResult fromArray(const ExcelObj& obj) const { return error(); }
-    TResult fromArrayObj(const ExcelArray& arr) const { return error(); }
-    TResult fromString(const wchar_t* buf, size_t len) const { return error(); }
-    TResult fromError(CellError err) const { return error(); }
-    TResult fromEmpty(const TResult* defaultVal) const { return error(); }
+    TResult fromArray(const ExcelObj&) const { return error(); }
+    TResult fromArrayObj(const ExcelArray&) const { return error(); }
+    TResult fromString(const wchar_t* /*buf*/, size_t /*len*/) const { return error(); }
+    TResult fromError(CellError) const { return error(); }
+    TResult fromEmpty(const TResult* /*defaultVal*/) const { return error(); }
     TResult fromMissing(const TResult* defaultVal) const 
     { 
       if (defaultVal)
         return *defaultVal;
       XLO_THROW("Missing argument");
     }
-    TResult fromRef(const ExcelObj& obj) const { return error(); }
-    TResult fromRef(const ExcelRange& rng) const { return error(); }
+    TResult fromRef(const ExcelObj&) const { return error(); }
+    TResult fromRef(const ExcelRange&) const { return error(); }
 
     TResult error() const { XLO_THROW("Cannot convert"); }
   };
@@ -106,15 +106,15 @@ namespace xloil
     : public FromExcelDispatcher<TResult*, NotNull<TSuper, FromExcelBase<TResult*, nullptr_t>>>
   {
   public:
-    TResult* fromInt(int x) const { return nullptr; }
-    TResult* fromBool(bool x) const { return nullptr; }
-    TResult* fromDouble(double x) const { return nullptr; }
+    TResult* fromInt(int) const { return nullptr; }
+    TResult* fromBool(bool) const { return nullptr; }
+    TResult* fromDouble(double) const { return nullptr; }
     // Need to give this a different name or it seems to break C++ overload 
     // resolution. Unless the rules change for some reason in templates.
-    TResult* fromArrayObj(const ExcelArray& arr) const { return nullptr; }
-    TResult* fromArray(const ExcelObj& obj) const { return nullptr; }
-    TResult* fromString(const wchar_t* buf, size_t len) const { return nullptr; }
-    TResult* fromError(CellError err) const { return nullptr; }
+    TResult* fromArrayObj(const ExcelArray&) const { return nullptr; }
+    TResult* fromArray(const ExcelObj&) const { return nullptr; }
+    TResult* fromString(const wchar_t* /*buf*/, size_t /*len*/) const { return nullptr; }
+    TResult* fromError(CellError) const { return nullptr; }
     TResult* fromEmpty(const TResult* defaultVal) const { return const_cast<TResult*>(defaultVal); }
     TResult* fromMissing(const TResult* defaultVal) const 
     { 
@@ -132,10 +132,10 @@ namespace xloil
   {
     auto fromString(const wchar_t* buf, size_t len) const
     {
-      if (Core::maybeCacheReference(buf, len))
+      if (maybeObjectCacheReference(buf, len))
       {
         std::shared_ptr<const ExcelObj> obj;
-        if (Core::fetchCache(buf, len, obj))
+        if (xloil::fetchCacheObject(buf, len, obj))
           return _impl()(*obj);
       }
       return FromExcelBase::fromString(buf, len);

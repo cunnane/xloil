@@ -1,8 +1,8 @@
 #include "Interface.h"
-#include <xlOil/internal/FuncRegistry.h>
-#include "internal/LocalFunctions.h"
+#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil/Register/LocalFunctions.h>
 #include "ObjectCache.h"
-#include "Settings.h"
+#include <xlOil/Loaders/Settings.h>
 #include "EntryPoint.h"
 #include "Log.h"
 #include <xlOil/Loaders/AddinLoader.h>
@@ -156,20 +156,6 @@ namespace xloil
       XLO_THROW("Cannot link more than one workbook with the same source");
     xloil::registerLocalFuncs(workbookName, funcInfo, funcs);
     _workbookName = workbookName;
-  }
-  
-  bool Core::fetchCache(
-    const wchar_t* cacheString, 
-    size_t length, 
-    std::shared_ptr<const ExcelObj>& obj)
-  {
-    return xloil::fetchCacheObject(cacheString, length, obj);
-  }
-
-  ExcelObj
-    Core::insertCache(std::shared_ptr<const ExcelObj>&& obj)
-  {
-    return xloil::addCacheObject(std::forward<std::shared_ptr<const ExcelObj>>(obj));
   }
 
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>

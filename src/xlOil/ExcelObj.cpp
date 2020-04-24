@@ -1,9 +1,9 @@
 #include "ExcelObj.h"
-#include "xloil/ExcelCall.h"
-#include "StandardConverters.h"
+#include <xloil/ExcelCall.h>
+#include "NumericTypeConverters.h"
 #include <xloil/Throw.h>
 #include <xloil/Date.h>
-#include <xloil/StringUtils.h>
+#include <xloilHelpers/StringUtils.h>
 #include <xlOil/ExcelRange.h>
 #include "ArrayBuilder.h"
 #include "ExcelArray.h"
@@ -458,7 +458,7 @@ namespace
 
     auto start = (ExcelObj*)val.array.lparray;
     nRows = val.array.rows;
-    nCols = val.array.columns;
+    nCols = (uint16_t)val.array.columns;
 
     auto p = start + nCols * nRows - 1;
 
@@ -508,7 +508,6 @@ namespace
     {
       auto nRows = from.val.array.rows;
       auto nCols = from.val.array.columns;
-      auto size = nRows * nCols;
 
       const auto* pSrc = from.val.array.lparray;
 
@@ -578,16 +577,6 @@ namespace
     default:
       XLO_THROW("Unhandled xltype during copy");
     }
-  }
-
-  // Uses RxCy format as it's easier for the programmer!
-  size_t xlrefToStringRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
-  {
-    // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
-    if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
-      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
-    else
-      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d", ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
   }
 
   namespace Const

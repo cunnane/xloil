@@ -5,7 +5,7 @@
 #include "Dictionary.h"
 #include "File.h"
 #include <xloil/ExcelCall.h>
-#include <xloil/AsyncHelper.h>
+#include <xloil/Register/AsyncHelper.h>
 #include <xloil/ExcelState.h>
 #include <pybind11/stl.h>
 #include <CTPL/ctpl_stl.h>

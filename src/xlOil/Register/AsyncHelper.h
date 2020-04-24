@@ -1,7 +1,7 @@
 #pragma once
-#include "ExcelObj.h"
-#include "Register.h"
-#include "ExcelCall.h"
+#include <xlOil/ExcelObj.h>
+#include <xlOil/Register.h>
+#include <xlOil/ExcelCall.h>
 #include <functional>
 
 namespace xloil

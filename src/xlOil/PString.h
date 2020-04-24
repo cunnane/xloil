@@ -87,7 +87,7 @@ namespace xloil
         return false;
       if (len > 0)
         wmemcpy_s(_data + 1, _data[0], str, len);
-      _data[0] = len;
+      _data[0] = (TChar)len;
       return true;
     }
 

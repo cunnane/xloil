@@ -1,5 +1,5 @@
 #pragma once
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 
 namespace xloil
 {

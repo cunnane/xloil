@@ -1,5 +1,5 @@
-#include <spdlog/include/spdlog/fmt/bundled/format.h>
-#include "StringUtils.h"
+#include <spdlog/fmt/bundled/format.h>
+#include <xlOilHelpers/StringUtils.h>
 #include "ExportMacro.h"
 
 #pragma once

@@ -17,13 +17,13 @@ namespace xloil
       case ExcelType::Multi:
       {
         _data = (const ExcelObj*)obj.val.array.lparray;
-        _baseCols = obj.val.array.columns;
+        _baseCols = (col_t)obj.val.array.columns;
         if (trim)
           obj.trimmedArraySize(_rows, _columns);
         else
         {
           _rows = obj.val.array.rows;
-          _columns = obj.val.array.columns;
+          _columns = (col_t)obj.val.array.columns;
         }
         break;
       }

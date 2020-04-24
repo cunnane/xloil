@@ -1,81 +1,99 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Date.cpp" />
     <ClCompile Include="ExcelState.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
-    <ClCompile Include="Loader.cpp" />
     <ClCompile Include="Log.cpp" />
-    <ClCompile Include="Settings.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
-    <ClCompile Include="internal\PEHelper.cpp">
-      <Filter>internal</Filter>
-    </ClCompile>
-    <ClCompile Include="internal\Thunker.cpp">
-      <Filter>internal</Filter>
-    </ClCompile>
-    <ClCompile Include="AsyncHelper.cpp" />
-    <ClCompile Include="internal\FuncRegistry.cpp">
-      <Filter>internal</Filter>
-    </ClCompile>
     <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
-    <ClCompile Include="StringUtils.cpp" />
-    <ClCompile Include="internal\LocalFunctions.cpp">
-      <Filter>internal</Filter>
-    </ClCompile>
     <ClCompile Include="Loaders\AddinLoader.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
+    <ClCompile Include="Loaders\PluginLoader.cpp">
+      <Filter>Loaders</Filter>
+    </ClCompile>
+    <ClCompile Include="Register\AsyncHelper.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
+    <ClCompile Include="Register\FuncRegistry.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
+    <ClCompile Include="Register\LocalFunctions.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
+    <ClCompile Include="Register\PEHelper.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
+    <ClCompile Include="Register\Thunker.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
+    <ClCompile Include="ExcelArray.cpp" />
+    <ClCompile Include="ExcelObj.cpp" />
+    <ClCompile Include="Loaders\Settings.cpp">
+      <Filter>Loaders</Filter>
+    </ClCompile>
+    <ClCompile Include="Date.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AsyncHelper.h" />
-    <ClInclude Include="Date.h" />
     <ClInclude Include="EntryPoint.h" />
     <ClInclude Include="ExportMacro.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="ExcelCall.h" />
     <ClInclude Include="Interface.h" />
-    <ClInclude Include="Loader.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ExcelObjCache.h" />
     <ClInclude Include="ObjectCache.h" />
     <ClInclude Include="Register.h" />
-    <ClInclude Include="Settings.h" />
-    <ClInclude Include="WindowsSlim.h" />
-    <ClInclude Include="internal\PEHelper.h">
-      <Filter>internal</Filter>
-    </ClInclude>
-    <ClInclude Include="internal\Thunker.h">
-      <Filter>internal</Filter>
-    </ClInclude>
     <ClInclude Include="ExcelState.h" />
-    <ClInclude Include="internal\FuncRegistry.h">
-      <Filter>internal</Filter>
-    </ClInclude>
     <ClInclude Include="ExcelRange.h" />
     <ClInclude Include="StaticRegister.h" />
-    <ClInclude Include="StringUtils.h" />
-    <ClInclude Include="internal\LocalFunctions.h">
-      <Filter>internal</Filter>
-    </ClInclude>
     <ClInclude Include="FuncSpec.h" />
     <ClInclude Include="Preprocessor.h" />
     <ClInclude Include="Throw.h" />
     <ClInclude Include="Loaders\AddinLoader.h">
       <Filter>Loaders</Filter>
     </ClInclude>
+    <ClInclude Include="Loaders\PluginLoader.h">
+      <Filter>Loaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Register\AsyncHelper.h">
+      <Filter>Register</Filter>
+    </ClInclude>
+    <ClInclude Include="Register\FuncRegistry.h">
+      <Filter>Register</Filter>
+    </ClInclude>
+    <ClInclude Include="Register\LocalFunctions.h">
+      <Filter>Register</Filter>
+    </ClInclude>
+    <ClInclude Include="Register\PEHelper.h">
+      <Filter>Register</Filter>
+    </ClInclude>
+    <ClInclude Include="Register\Thunker.h">
+      <Filter>Register</Filter>
+    </ClInclude>
+    <ClInclude Include="ArrayBuilder.h" />
+    <ClInclude Include="ExcelArray.h" />
+    <ClInclude Include="ExcelObj.h" />
+    <ClInclude Include="PString.h" />
+    <ClInclude Include="TypeConverters.h" />
+    <ClInclude Include="Loaders\Settings.h">
+      <Filter>Loaders</Filter>
+    </ClInclude>
+    <ClInclude Include="XlCallSlim.h" />
+    <ClInclude Include="NumericTypeConverters.h" />
+    <ClInclude Include="Date.h" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="internal">
-      <UniqueIdentifier>{b91aa7a8-a3bf-42e0-8c6c-caaa6932c881}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Loaders">
       <UniqueIdentifier>{d269fbda-6fa4-4a7f-a1c5-bd84599de0da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Register">
+      <UniqueIdentifier>{ebcfa09e-f6e7-475e-8ac0-3049401bab0e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -1,7 +1,7 @@
 #include "XllContextInvoke.h"
 #include "ExcelTypeLib.h"
 #include "Connect.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 #include "CallHelper.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>

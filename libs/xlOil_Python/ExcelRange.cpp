@@ -91,7 +91,7 @@ namespace xloil
           fromCol = c.cast<size_t>();
           // Check for single element access
           if (fromRow == toRow + 1)
-            return rangeGetValue(range.cells(fromRow, fromCol));
+            return rangeGetValue(range.cells((int)fromRow, (int)fromCol));
           toCol = fromCol + 1;
         }
 

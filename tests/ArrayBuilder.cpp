@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "CppUnitTest.h"
-#include "ArrayBuilder.h"
-#include "ExcelArray.h"
-#include "ExcelObj.h"
+#include <xlOil/ArrayBuilder.h>
+#include <xlOil/ExcelArray.h>
+#include <xlOil/ExcelObj.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

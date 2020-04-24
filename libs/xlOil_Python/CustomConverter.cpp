@@ -1,5 +1,5 @@
 #include "PyHelpers.h"
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include "InjectedModule.h"
 #include "PyExcelArray.h"

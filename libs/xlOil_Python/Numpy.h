@@ -6,7 +6,7 @@
  */
 
 #include "PyHelpers.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 
 namespace xloil
 {

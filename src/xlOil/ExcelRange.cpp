@@ -1,4 +1,7 @@
 #include "ExcelRange.h"
+#include <xlOil/ExcelCall.h>
+#include <xlOil/ExcelState.h>
+#include <xloilHelpers/StringUtils.h>
 
 namespace xloil
 {
@@ -68,5 +71,26 @@ namespace xloil
       XLO_THROW("Empty range: fromRow={0}, toRow={1}, ", fromRow, toRow);
     if (fromCol > toCol)
       XLO_THROW("Empty range: fromCol={0}, toCol={1}", fromCol, toCol);
+  }
+
+  ExcelObj ExcelRange::value() const
+  {
+    ExcelObj result;
+    callExcelRaw(msxll::xlCoerce, &result, this);
+    return result;
+  }
+
+  ExcelRange& ExcelRange::operator=(const ExcelObj& value)
+  {
+    const ExcelObj* args[2];
+    args[0] = this;
+    args[1] = &value;
+    callExcelRaw(msxll::xlSet, nullptr, 2, args);
+    return *this;
+  }
+
+  void ExcelRange::clear()
+  {
+    callExcelRaw(msxll::xlSet, nullptr, this);
   }
 }

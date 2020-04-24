@@ -11,7 +11,7 @@ namespace xloil
   const int MillisPerDay = MillisPerHour * 24;
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
-  XLOIL_EXPORT bool excelSerialDateToDMY(int nSerialDate, int &nDay, int &nMonth, int &nYear)
+  bool excelSerialDateToDMY(int nSerialDate, int &nDay, int &nMonth, int &nYear)
   {
     // TODO: range check???
 
@@ -48,7 +48,7 @@ namespace xloil
 
   constexpr auto millisecsPerDay = double(duration_cast<milliseconds>(hours(24)).count());
 
-  XLOIL_EXPORT bool excelSerialDatetoDMYHMS(
+  bool excelSerialDatetoDMYHMS(
     double serial, int &nDay, int &nMonth, int &nYear, int& nHours, int& nMins, int& nSecs, int& uSecs)
   {
     double intpart;
@@ -74,7 +74,7 @@ namespace xloil
   }
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
-  XLOIL_EXPORT int excelSerialDateFromDMY(int nDay, int nMonth, int nYear)
+  int excelSerialDateFromDMY(int nDay, int nMonth, int nYear)
   {
     // Excel/Lotus 123 have a bug with 29-02-1900. 1900 is not a
     // leap year, but Excel/Lotus 123 think it is...
@@ -98,7 +98,7 @@ namespace xloil
     return (int)nSerialDate;
   }
 
-  XLOIL_EXPORT double excelSerialDateFromDMYHMS(int nDay, int nMonth, int nYear, int nHours, int nMins, int nSecs, int uSecs)
+  double excelSerialDateFromDMYHMS(int nDay, int nMonth, int nYear, int nHours, int nMins, int nSecs, int uSecs)
   {
     double serial = excelSerialDateFromDMY(nDay, nMonth, nYear);
     auto ms = duration_cast<milliseconds>(hours(nHours) + minutes(nMins) + seconds(nSecs)).count() + uSecs;

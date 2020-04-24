@@ -1,13 +1,13 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "Numpy.h"
 #include "BasicTypes.h"
-#include "TypeConverters.h"
-#include "StandardConverters.h"
-#include "ExcelArray.h"
+#include <xlOil/TypeConverters.h>
+#include <xlOil/NumericTypeConverters.h>
+#include <xlOil/ExcelArray.h>
 #include "ArrayHelpers.h"
-#include "ArrayBuilder.h"
+#include <xlOil/ArrayBuilder.h>
 #include <xloil/Date.h>
-#include <xloil/StringUtils.h>
+#include <xloilHelpers/StringUtils.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
@@ -420,7 +420,7 @@ namespace xloil
           converter.builderEmplace(builder, 0, j, PyArray_GETPTR1(pyArr, j));
         
         return _cache
-          ? Core::insertCache(builder.toExcelObj())
+          ? addCacheObject(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };
@@ -453,7 +453,7 @@ namespace xloil
             converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
 
         return _cache
-          ? Core::insertCache(builder.toExcelObj())
+          ? xloil::addCacheObject(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };

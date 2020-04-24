@@ -1,8 +1,8 @@
 #include "InjectedModule.h"
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include "ArrayHelpers.h"
-#include "ArrayBuilder.h"
+#include <xlOil/ArrayBuilder.h>
 #include <pybind11/pybind11.h>
 #include "Tuple.h"
 

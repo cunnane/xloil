@@ -1,6 +1,5 @@
-#include "xloil/WindowsSlim.h"
-#include "XlCallSlim.h"
-#include "xloil/WindowsSlim.h"
+#include <xloilHelpers/WindowsSlim.h>
+#include <xlOil/XlCallSlim.h>
 #include "xloil/EntryPoint.h"
 #include "xloil/ExportMacro.h"
 #include "xloil/Log.h"

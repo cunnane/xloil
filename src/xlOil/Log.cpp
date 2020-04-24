@@ -1,6 +1,6 @@
 #include "Log.h"
-#include "StringUtils.h"
-#include "WindowsSlim.h"
+#include <xlOilHelpers/StringUtils.h>
+#include <xlOilHelpers/WindowsSlim.h>
 #include "Events.h"
 #include "Interface.h"
 #include "EntryPoint.h"

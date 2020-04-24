@@ -1,6 +1,6 @@
 #include "AsyncHelper.h"
-#include "Events.h"
-#include "WindowsSlim.h"
+#include <xlOil/Events.h>
+#include <xlOilHelpers/WindowsSlim.h>
 
 namespace xloil
 {

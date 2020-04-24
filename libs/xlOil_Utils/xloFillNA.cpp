@@ -1,6 +1,6 @@
-#include "ExcelObj.h"
-#include "ArrayBuilder.h"
-#include "ExcelArray.h"
+#include <xloil/ExcelObj.h>
+#include <xloil/ArrayBuilder.h>
+#include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
 
 namespace xloil

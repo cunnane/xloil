@@ -2,7 +2,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xloil/Interface.h>
 #include <xloil/ExcelState.h>
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 #include "Common.h"
 #include "Cache.h"
 

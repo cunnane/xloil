@@ -1,12 +1,12 @@
 #pragma once
-#include "XlCallSlim.h"
+#include <xlOil/XlCallSlim.h>
+#include "ExportMacro.h"
 #include "PString.h"
 #include <string>
 #include <array>
 #include <cassert>
 
 #define XLOIL_XLOPER msxll::xloper12
-
 
 namespace xloil
 {
@@ -64,20 +64,20 @@ namespace xloil
     CellError::GettingData
   };
 
-  const wchar_t* enumAsWCString(CellError e);
-  const wchar_t* enumAsWCString(ExcelType e);
+  XLOIL_EXPORT const wchar_t* enumAsWCString(CellError e);
+  XLOIL_EXPORT const wchar_t* enumAsWCString(ExcelType e);
 
   class ExcelArray;
 
   class ExcelObj;
   namespace Const
   {
-    const ExcelObj& Missing();
-    const ExcelObj& Error(CellError e);
-    const ExcelObj& EmptyStr();
+    XLOIL_EXPORT const ExcelObj& Missing();
+    XLOIL_EXPORT const ExcelObj& Error(CellError e);
+    XLOIL_EXPORT const ExcelObj& EmptyStr();
   }
 
-  class ExcelObj : public XLOIL_XLOPER
+  class XLOIL_EXPORT ExcelObj : public XLOIL_XLOPER
   {
   public:
     typedef wchar_t Char;
@@ -401,6 +401,4 @@ namespace xloil
 
     static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
   };
-
-  size_t xlrefToStringRC(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);
 }

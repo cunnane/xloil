@@ -3,7 +3,7 @@
 #define SQLITE_OMIT_AUTHORIZATION
 #define SQLITE_OMIT_WAL
 
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 #include <sqlite/sqlite3.h>
 #include <sqlite/sqlite3ext.h>
 #include <memory>

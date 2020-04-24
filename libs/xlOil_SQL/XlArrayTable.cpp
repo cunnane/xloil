@@ -1,7 +1,7 @@
 #include "XlArrayTable.h"
 #include <sqlite/sqlite3.h>
 #include <sqlite/sqlite3ext.h>
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelRange.h>
 
 using std::shared_ptr;

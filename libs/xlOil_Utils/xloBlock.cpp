@@ -1,6 +1,6 @@
-#include "ExcelObj.h"
-#include "ArrayBuilder.h"
-#include "ExcelArray.h"
+#include <xloil/ExcelObj.h>
+#include <xloil/ArrayBuilder.h>
+#include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
 #include <boost/preprocessor/repeat_from_to.hpp>
 #include <xlOil/Preprocessor.h>

@@ -1,8 +1,8 @@
 #include <xlOil/Interface.h>
-#include <xlOil/internal/FuncRegistry.h>
-#include <xlOil/Settings.h>
+#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil/Loaders/Settings.h>
 #include <xlOil/EntryPoint.h>
-#include <xlOil/Loader.h>
+#include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
 #include <filesystem>

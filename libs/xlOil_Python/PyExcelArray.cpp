@@ -107,7 +107,7 @@ namespace xloil
       if (step != 1)
         XLO_THROW("Slice step size must be 1");
 
-      return py::cast<PyExcelArray>(subArray(fromRow, fromCol, toRow, toCol));
+      return py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
     }
     size_t PyExcelArray::nRows() const { return _base.nRows(); }
     size_t PyExcelArray::nCols() const { return _base.nCols(); }

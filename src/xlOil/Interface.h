@@ -13,7 +13,7 @@ namespace toml {
   using value = basic_value<discard_comments, std::unordered_map, std::vector>;
 }
 namespace Excel { struct _Application; }
-namespace xloil { class RegisteredFunc; }
+namespace xloil { class RegisteredFunc; class AddinContext; }
 namespace spdlog { class logger; }
 
 namespace xloil
@@ -51,34 +51,6 @@ namespace xloil
     /// Quite an expensive check.
     /// </summary>
     XLOIL_EXPORT void throwInFunctionWizard();
-
-    /// <summary>
-    /// Returns true if the provided string contains the magic chars
-    /// for the ExcelObj cache. Expects a counted string.
-    /// </summary>
-    /// <param name="str">Pointer to string start</param>
-    /// <param name="length">Number of chars to read</param>
-    /// <returns></returns>
-    inline bool
-      maybeCacheReference(const wchar_t* str, size_t length)
-    {
-      return checkObjectCacheReference(str, length);
-    }
-
-    XLOIL_EXPORT bool
-      fetchCache(
-        const wchar_t* cacheString, 
-        size_t length, 
-        std::shared_ptr<const ExcelObj>& obj);
-
-    XLOIL_EXPORT ExcelObj
-      insertCache(std::shared_ptr<const ExcelObj>&& obj);
-
-    inline ExcelObj
-      insertCache(ExcelObj&& obj)
-    {
-      return insertCache(std::make_shared<const ExcelObj>(std::forward<ExcelObj>(obj)));
-    }
   }
 
   /// <summary>
@@ -186,7 +158,7 @@ namespace xloil
       tryAdd(
         const wchar_t* sourcePath, Args&&... args)
     {
-      auto found = FileSource::findFileContext(sourcePath);
+      auto found = FileSource::findFileContext(sourcePath).first;
       if (found)
       {
         _files[sourcePath] = found;

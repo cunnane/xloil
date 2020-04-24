@@ -1,7 +1,7 @@
 #include "ExcelState.h"
 #include "ExcelCall.h"
 #include "EntryPoint.h"
-#include "WindowsSlim.h"
+#include <xlOilHelpers/WindowsSlim.h>
 
 
 using namespace msxll;
@@ -242,6 +242,20 @@ namespace xloil
 
     return addressLen + wsName.length() + 1;
   }
+
+
+  // Uses RxCy format as it's easier for the programmer 
+  // (see how much code is required above for A1 style!)
+  size_t xlrefToStringRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
+  {
+    // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
+    if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
+      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
+    else
+      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d", 
+        ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
+  }
+
 
   bool inFunctionWizard()
   {

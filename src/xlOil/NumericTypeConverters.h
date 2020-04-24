@@ -1,5 +1,6 @@
 #include "TypeConverters.h"
-// TODO: better header file name??
+#include <xlOilHelpers/StringUtils.h>
+
 namespace xloil
 {
   struct ToDouble : public FromExcelBase<double, ToDouble>

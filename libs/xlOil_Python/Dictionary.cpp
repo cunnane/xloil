@@ -1,5 +1,5 @@
 #include "InjectedModule.h"
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include <pybind11/pybind11.h>
 

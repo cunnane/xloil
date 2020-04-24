@@ -11,7 +11,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>spdlog.lib;xloil.lib;corestatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>spdlog.lib;xloil.lib;xloilHelpers.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>

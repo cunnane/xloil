@@ -68,7 +68,7 @@ namespace xloil
     /// </summary>
     /// <param name="obj"></param>
     /// <param name="trim">If true, trim the array to the last non-empty row and columns</param>
-    ExcelArray(const ExcelObj& obj, bool trim = true);
+    XLOIL_EXPORT ExcelArray(const ExcelObj& obj, bool trim = true);
 
     ExcelArray::ExcelArray(const ExcelObj& obj, size_t nRows, size_t nCols)
       : _rows((row_t)nRows)

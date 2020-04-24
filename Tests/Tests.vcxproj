@@ -199,9 +199,6 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\CoreStatic\CoreStatic.vcxproj">
-      <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\src\external\spdlog\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>

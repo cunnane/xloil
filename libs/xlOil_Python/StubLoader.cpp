@@ -1,7 +1,7 @@
-#include "xloil/Interface.h"
-#include "xloil/StringUtils.h"
+#include <xloil/Interface.h>
+#include <xloilHelpers/StringUtils.h>
 #include <xloil/Throw.h>
-#include <xlOil/WindowsSlim.h>
+#include <xloilHelpers/WindowsSlim.h>
 #include <cstdlib>
 #include <toml11/toml.hpp>
 #include <boost/preprocessor/stringize.hpp>

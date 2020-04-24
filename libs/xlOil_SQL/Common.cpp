@@ -1,7 +1,7 @@
 #include "Common.h"
 #include <xloil/Interface.h>
 #include "XlArrayTable.h"
-#include "ExcelArray.h"
+#include <xlOil/ExcelArray.h>
 
 using std::shared_ptr;
 using std::string;

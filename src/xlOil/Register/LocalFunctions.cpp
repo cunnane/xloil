@@ -2,11 +2,12 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Events.h>
 #include <xlOil/ExcelRange.h>
+#include <xlOil/ExcelObj.h>
+#include <xlOil/ExcelCall.h>
+#include <xlOil/Log.h>
 #include <COMInterface/WorkbookScopeFunctions.h>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
-#include "ExcelObj.h"
-#include <xlOil/Log.h>
 #include <map>
 using std::wstring;
 using std::map;

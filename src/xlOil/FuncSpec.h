@@ -2,6 +2,7 @@
 
 #include "Register.h"
 #include "ExportMacro.h"
+
 namespace xloil
 {
   class RegisteredFunc;

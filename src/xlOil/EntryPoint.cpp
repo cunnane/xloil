@@ -1,13 +1,13 @@
 #include "Events.h"
-#include "Loader.h"
-#include "WindowsSlim.h"
 #include "ExcelObj.h"
 #include "Interface.h"
 #include "ExcelCall.h"
 #include "EntryPoint.h"
 #include "ExportMacro.h"
 #include "Log.h"
-#include "Settings.h"
+#include <xlOil/Loaders/PluginLoader.h>
+#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/Loaders/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>

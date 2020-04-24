@@ -1,24 +1,39 @@
 #pragma once
-#include "ExcelObj.h"
-#include "ExcelCall.h"
-#include "ExcelState.h"
-#include "ExportMacro.h"
+#include <xlOil/ExcelObj.h>
+#include <xlOil/ExportMacro.h>
 
 namespace xloil
 {
+  /// <summary>
+  /// An ExcelRange holds an Excel sheet reference and provides
+  /// functionality to access it. ExcelRange can only be used by
+  /// macro-enabled functions.
+  /// </summary>
   class ExcelRange : protected ExcelObj
   {
   public:
     using row_t = uint32_t;
     using col_t = uint16_t;
 
+    /// <summary>
+    /// Constructs an ExcelRange from an ExcelObj. Will throw if
+    /// the object is not of type Ref or SRef.
+    /// </summary>
     XLOIL_EXPORT ExcelRange(const ExcelObj& from);
 
+    /// <summary>
+    /// Constructs an ExcelRange from a sheet address. If the 
+    /// address does not contain a sheet name, the current
+    /// Active sheet is used.
+    /// </summary>
     XLOIL_EXPORT ExcelRange(const wchar_t* address);
 
     XLOIL_EXPORT ExcelRange(msxll::IDSHEET sheetId, 
       int fromRow, int fromCol, int toRow, int toCol);
 
+    /// <summary>
+    /// Copy constructor
+    /// </summary>
     ExcelRange(const ExcelRange& from)
       : ExcelObj(static_cast<const ExcelObj&>(from))
     {}
@@ -82,28 +97,25 @@ namespace xloil
       return nRows() * nCols();
     }
 
-    ExcelObj value() const
-    {
-      ExcelObj result;
-      callExcelRaw(msxll::xlCoerce, &result, this);
-      return result;
-    }
-
+    /// <summary>
+    /// Returns the address of the range in the form
+    /// 'SheetNm!A1:Z5'
+    /// </summary>
     XLOIL_EXPORT std::wstring address(bool local = false) const;
- 
-    ExcelRange& operator=(const ExcelObj& value)
-    {
-      const ExcelObj* args[2];
-      args[0] = this;
-      args[1] = &value;
-      callExcelRaw(msxll::xlSet, nullptr, 2, args);
-      return *this;
-    }
 
-    void clear()
-    {
-      callExcelRaw(msxll::xlSet, nullptr, this);
-    }
+    /// <summary>
+    /// Converts the referenced range to an ExcelObj. 
+    /// References to single cells return an ExcelObj of the
+    /// appropriate type. Multicell refernces return an array.
+    /// </summary>
+    XLOIL_EXPORT ExcelObj value() const;
+
+    XLOIL_EXPORT ExcelRange& operator=(const ExcelObj& value);
+
+    /// <summary>
+    /// Clears / empties all cells referred to by this ExcelRange.
+    /// </summary>
+    XLOIL_EXPORT void clear();
 
     msxll::IDSHEET sheetId() const 
     {

@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 
 namespace xloil
 {

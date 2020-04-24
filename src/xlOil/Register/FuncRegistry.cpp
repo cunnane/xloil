@@ -3,12 +3,12 @@
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Events.h>
 #include "PEHelper.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
-#include <xlOil/StringUtils.h>
+#include <xlOilHelpers/StringUtils.h>
 #include <xlOil/EntryPoint.h>
-#include <xlOil/AsyncHelper.h>
+#include <xlOil/Register/AsyncHelper.h>
 #include <xlOil/Preprocessor.h>
 #include "Thunker.h"
 #include <unordered_set>

@@ -1,10 +1,10 @@
-#include "Loader.h"
-#include "WindowsSlim.h"
-#include "Interface.h"
-#include "Log.h"
+#include "PluginLoader.h"
+#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/Interface.h>
+#include <xlOil/Log.h>
 #include "Settings.h"
-#include "EntryPoint.h"
-#include "internal/FuncRegistry.h"
+#include <xlOil/EntryPoint.h>
+#include <xlOil/Register/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <toml11/toml.hpp>
 #include <vector>
