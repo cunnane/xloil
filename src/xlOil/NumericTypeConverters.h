@@ -1,5 +1,6 @@
 #include "TypeConverters.h"
 #include <xlOilHelpers/StringUtils.h>
+#include <xlOil/Throw.h>
 
 namespace xloil
 {
@@ -11,20 +12,9 @@ namespace xloil
     double fromEmpty(const double* defaultVal) const { return defaultVal ? *defaultVal : 0.0; }
     double fromError(CellError err) const
     {
-      switch (err)
-      {
-      case CellError::Null:
-      case CellError::Div0:
-      case CellError::Num:
-      case CellError::NA:
+      using namespace msxll;
+      if (0 != ((int)err & (xlerrNull | xlerrDiv0 | xlerrNum | xlerrNA)))
         return std::numeric_limits<double>::quiet_NaN();
-      case CellError::Value:
-      case CellError::Ref:
-      case CellError::Name:
-      case CellError::GettingData:
-      default:
-        break;
-      }
       XLO_THROW("Could not convert error to double");
     }
   };
@@ -45,7 +35,7 @@ namespace xloil
   /// Converts to bool using Excel's standard coercions for numeric types (x != 0)
   struct ToBool : public FromExcelBase<bool, ToBool>
   {
-    bool fromInt(int x) const { return x != 0.0; }
+    bool fromInt(int x) const { return x != 0; }
     bool fromBool(bool x) const { return x; }
     bool fromDouble(double x) const { return x != 0.0; }
     bool fromEmpty(const bool* defaultVal) const { return defaultVal ? *defaultVal : false; }

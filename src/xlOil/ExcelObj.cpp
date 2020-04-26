@@ -193,19 +193,19 @@ namespace
     xltype = xltypeMulti;
   }
 
-  double ExcelObj::toDouble() const
+  double ExcelObj::toDouble(const std::optional<double> default) const
   {
-    return ToDouble()(*this);
+    return ToDouble()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
-  int ExcelObj::toInt() const
+  int ExcelObj::toInt(const std::optional<int> default) const
   {
-    return ToInt()(*this);
+    return ToInt()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
-  bool ExcelObj::toBool() const
+  bool ExcelObj::toBool(const std::optional<bool> default) const
   {
-    return ToBool()(*this);
+    return ToBool()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   void ExcelObj::reset()
@@ -339,7 +339,7 @@ namespace
     switch (xtype())
     {
     case xltypeNum:
-      return std::to_wstring(val.num);
+      return formatWStr(L"%G", val.num);
 
     case xltypeBool:
       return wstring(val.xbool ? L"TRUE" : L"FALSE");

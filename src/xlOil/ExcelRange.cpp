@@ -2,6 +2,7 @@
 #include <xlOil/ExcelCall.h>
 #include <xlOil/ExcelState.h>
 #include <xloilHelpers/StringUtils.h>
+#include <xloilHelpers/Environment.h>
 
 namespace xloil
 {

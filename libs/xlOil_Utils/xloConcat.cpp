@@ -47,8 +47,5 @@ namespace xloil
   XLO_FUNC_END(xloConcat).threadsafe()
     .help(L"Concatenates strings. Non strings are converted to string, arrays are concatenated by row")
     .arg(L"Separator", L"[opt] separator between strings")
-    .arg(L"Strings1")
-    .arg(L"Strings2")
-    .arg(L"Strings3")
-    .arg(L"Strings4");
+    XLO_WRITE_ARG_HELP(XLOCONCAT_NARGS, XLOCONCAT_ARG_NAME, L"Value or array of values to concatenate");
 }

@@ -132,10 +132,10 @@ namespace xloil
   {
     auto fromString(const wchar_t* buf, size_t len) const
     {
-      if (maybeObjectCacheReference(buf, len))
+      if (objectCacheCheckReference(buf, len))
       {
         std::shared_ptr<const ExcelObj> obj;
-        if (xloil::fetchCacheObject(buf, len, obj))
+        if (xloil::objectCacheFetch(buf, len, obj))
           return _impl()(*obj);
       }
       return FromExcelBase::fromString(buf, len);

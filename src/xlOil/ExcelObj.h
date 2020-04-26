@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <cassert>
+#include <optional>
 
 #define XLOIL_XLOPER msxll::xloper12
 
@@ -17,17 +18,17 @@ namespace xloil
 
   enum class ExcelType
   {
-    Num     = 0x0001,
-    Str     = 0x0002,
-    Bool    = 0x0004,
-    Ref     = 0x0008,
-    Err     = 0x0010,
-    Flow    = 0x0020,
-    Multi   = 0x0040,
+    Num = 0x0001,
+    Str = 0x0002,
+    Bool = 0x0004,
+    Ref = 0x0008,
+    Err = 0x0010,
+    Flow = 0x0020,
+    Multi = 0x0040,
     Missing = 0x0080,
-    Nil     = 0x0100,
-    SRef    = 0x0400,
-    Int     = 0x0800,
+    Nil = 0x0100,
+    SRef = 0x0400,
+    Int = 0x0800,
     BigData = msxll::xltypeStr | msxll::xltypeInt,
 
     // Types that can be elements of an array
@@ -42,13 +43,13 @@ namespace xloil
 
   enum class CellError
   {
-    Null  = msxll::xlerrNull,
-    Div0  = msxll::xlerrDiv0,
+    Null = msxll::xlerrNull,
+    Div0 = msxll::xlerrDiv0,
     Value = msxll::xlerrValue,
-    Ref   = msxll::xlerrRef,
-    Name  = msxll::xlerrName,
-    Num   = msxll::xlerrNum,
-    NA    = msxll::xlerrNA,
+    Ref = msxll::xlerrRef,
+    Name = msxll::xlerrName,
+    Num = msxll::xlerrNum,
+    NA = msxll::xlerrNA,
     GettingData = msxll::xlerrGettingData
   };
 
@@ -115,7 +116,7 @@ namespace xloil
 
     ExcelObj(const char*);
     ExcelObj(const wchar_t*);
-    
+
     ExcelObj(const std::string& s)
       :ExcelObj(s.c_str())
     {}
@@ -156,7 +157,7 @@ namespace xloil
     /// Non copying ctor from pascal string buffer.
     ExcelObj(PString<Char>&& pstr);
     ExcelObj(PString<Char>& pstr) : ExcelObj(std::forward<PString<Char>>(pstr)) {}
-  
+
     ExcelObj::~ExcelObj()
     {
       reset();
@@ -187,7 +188,7 @@ namespace xloil
       const ExcelObj& left,
       const ExcelObj& right,
       bool caseSensitive = false);
-    
+
     const Base* xloper() const { return this; }
     const Base* xloper() { return this; }
 
@@ -277,30 +278,73 @@ namespace xloil
       return xltype == msxll::xltypeStr ? val.str[0] : 0;
     }
 
-    double ExcelObj::toDouble() const;
+    /// <summary>
+    /// Returns a double from the object value type with some conversions:
+    /// 
+    /// int -> double
+    /// bool -> 0 or 1
+    /// missing/empty -> provided default
+    /// 
+    /// Other types will throw an exception.
+    /// </summary>
+    double toDouble(const std::optional<double> default = std::optional<double>()) const;
 
-    int ExcelObj::toInt() const;
+    /// <summary>
+    /// Returns a int from the object value type with some conversions:
+    /// 
+    /// double -> int (if it can be stored as an int)
+    /// bool -> 0 or 1
+    /// missing/empty -> provided default
+    /// 
+    /// Other types will throw an exception.
+    /// </summary>
+    int toInt(const std::optional<int> default = std::optional<int>()) const;
 
-    bool ExcelObj::toBool() const;
+    /// <summary>
+    /// Returns a bool from the object value type with some conversions:
+    /// 
+    /// double/int -> false if exactly zero, true otherwise
+    /// missing/empty -> provided default
+    /// 
+    /// Other types will throw an exception.
+    /// </summary>
+    bool toBool(const std::optional<bool> default = std::optional<bool>()) const;
 
+    /// <summary>
+    /// Returns the value in the ExcelObj assuming it is a double.
+    /// If it isn't, will return nonsense (UB)
+    /// </summary>
     double ExcelObj::asDouble() const
     {
       assert(xtype() == msxll::xltypeNum);
       return val.num;
     }
 
+    /// <summary>
+    /// Returns the value in the ExcelObj assuming it is an int.
+    /// If it isn't, will return nonsense (UB)
+    /// </summary>
     int ExcelObj::asInt() const
     {
       assert(xtype() == msxll::xltypeInt);
       return val.w;
     }
 
+    /// <summary>
+    /// Returns the value in the ExcelObj assuming it is a bool.
+    /// If it isn't, will return nonsense (UB)
+    /// </summary>
     bool ExcelObj::asBool() const
     {
       assert(xtype() == msxll::xltypeBool);
       return val.xbool;
     }
 
+    /// <summary>
+    /// Returns the value in the ExcelObj assuming it is an array
+    /// If it isn't, will return nonsense (UB)
+    /// </summary>
+    /// 
     const ExcelObj* ExcelObj::asArray() const
     {
       assert(xtype() == msxll::xltypeMulti);
@@ -372,7 +416,7 @@ namespace xloil
 
     // TODO: implement coercion from string
     bool toDMY(int &nDay, int &nMonth, int &nYear, bool coerce = false);
-    bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours, 
+    bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours,
       int& nMins, int& nSecs, int& uSecs, bool coerce = false);
 
     /// <summary>
