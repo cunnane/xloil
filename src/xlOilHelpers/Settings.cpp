@@ -1,7 +1,6 @@
 #include "Settings.h"
-#include "EntryPoint.h"
-#include "StringUtils.h"
-#include "Log.h"
+#include <xloilHelpers/StringUtils.h>
+#include <xloilHelpers/Environment.h>
 #include <toml11/toml.hpp>
 #include <filesystem>
 
@@ -40,13 +39,13 @@ namespace xloil
           : default;
       }
     }
-    std::string pluginSearchPattern(const toml::value* root)
+    std::wstring pluginSearchPattern(const toml::value* root)
     {
-      return findStr(root, "PluginSearchPattern", "");
+      return utf8ToUtf16(findStr(root, "PluginSearchPattern", ""));
     }
-    std::string logFilePath(const toml::value* root)
+    std::wstring logFilePath(const toml::value* root)
     {
-      return findStr(root, "LogFile", "");
+      return utf8ToUtf16(findStr(root, "LogFile", ""));
     }
     std::string logLevel(const toml::value* root)
     {
@@ -57,19 +56,18 @@ namespace xloil
   {
     fs::path path;
  
-    // First look in the user's appdata
     auto settingsFileName = fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
-    path = fs::path(getEnvVar(L"%APPDATA%")) / L"xlOil" / settingsFileName;
+
+    // First check the same directory as the dll itself
+    path = fs::path(dllPath).remove_filename() / settingsFileName;
       
-    // Then check the same directory as the dll itself
+    // Then look in the user's appdata
     if (!fs::exists(path))
-      path = fs::path(dllPath).remove_filename() / settingsFileName;
+      path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
 
     if (fs::exists(path))
-    {
-      XLO_DEBUG(L"Found settings file '{0}'", path.wstring());
       return make_shared<toml::value>(toml::parse(path.string()));
-    }
+    
     return shared_ptr<const toml::value>();
   }
 }

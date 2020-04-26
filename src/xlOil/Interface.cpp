@@ -2,7 +2,7 @@
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOil/Register/LocalFunctions.h>
 #include "ObjectCache.h"
-#include <xlOil/Loaders/Settings.h>
+#include <xlOilHelpers/Settings.h>
 #include "EntryPoint.h"
 #include "Log.h"
 #include <xlOil/Loaders/AddinLoader.h>

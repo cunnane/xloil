@@ -1,8 +1,8 @@
 #pragma once
-#include "ExcelObj.h"
+#include <xlOil/ExcelObj.h>
 #include <xlOil/Throw.h>
 
-namespace xloil { class ExcelRange; }
+namespace xloil { class ExcelRange; class ExcelObj; class ExcelArray; }
 namespace xloil
 {
   /// <summary>

@@ -49,24 +49,28 @@ namespace xloil
     return wstring(msgBuf.get(), size);
   }
 
-  void initialiseLogger(const std::string& logLevel, const std::string* logFilePath)
+  void loggerInitialise(const char* logLevel)
   {
-    auto logFile = logFilePath 
-      ? *logFilePath 
-      : utf16ToUtf8(fs::path(theCorePath()).replace_extension(".log").c_str());
-
     auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
-    auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(logFile, false);
-    auto logger = make_shared<spdlog::logger>("logger", spdlog::sinks_init_list{ dbgWrite, fileWrite });
+    
+    auto logger = make_shared<spdlog::logger>("logger", 
+      spdlog::sinks_init_list{ dbgWrite });
 
     spdlog::initialize_logger(logger);
     // Flush on warnings or above
     logger->flush_on(spdlog::level::warn);
     spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::from_str(logLevel));
-
+    
     // Flush log after each Excel calc cycle
     static auto handler = xloil::Event_CalcEnded() += [logger]() { logger->flush(); };
+  }
+
+  void loggerAddFile(const wchar_t* logFilePath)
+  {
+    auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
+      utf16ToUtf8(logFilePath), false);
+    spdlog::default_logger()->sinks().push_back(fileWrite);
   }
 
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry()

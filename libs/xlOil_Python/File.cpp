@@ -25,7 +25,9 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        XLO_ERROR("Error reading module {0}: {1}", (string)py::str(mod), e.what());
+        auto pyPath = (string)py::str(PyBorrow<py::list>(PySys_GetObject("path")));
+        XLO_ERROR("Error reading module {0}: {1}\nsys.path={2}", 
+          (string)py::str(mod), e.what(), pyPath);
       }
     }
   }

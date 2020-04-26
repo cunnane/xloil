@@ -250,6 +250,8 @@ namespace xloil
 
         for (auto& f : functions)
         {
+          if (_workbookModule.empty())
+            f->isLocalFunc = false;
           if (!f->isLocalFunc)
             nonLocal.push_back(createSpec(f));
           else

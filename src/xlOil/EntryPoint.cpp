@@ -7,7 +7,7 @@
 #include "Log.h"
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOilHelpers/WindowsSlim.h>
-#include <xlOil/Loaders/Settings.h>
+#include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>

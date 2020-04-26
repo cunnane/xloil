@@ -34,9 +34,6 @@
     </ClCompile>
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelObj.cpp" />
-    <ClCompile Include="Loaders\Settings.cpp">
-      <Filter>Loaders</Filter>
-    </ClCompile>
     <ClCompile Include="Date.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -81,9 +78,6 @@
     <ClInclude Include="ExcelObj.h" />
     <ClInclude Include="PString.h" />
     <ClInclude Include="TypeConverters.h" />
-    <ClInclude Include="Loaders\Settings.h">
-      <Filter>Loaders</Filter>
-    </ClInclude>
     <ClInclude Include="XlCallSlim.h" />
     <ClInclude Include="NumericTypeConverters.h" />
     <ClInclude Include="Date.h" />

@@ -31,8 +31,9 @@
 
 namespace xloil
 {
-  void initialiseLogger(const std::string& logLevel, const std::string* logFilePath);
+  void loggerInitialise(const char* logLevel);
 
+  void loggerAddFile(const wchar_t* logFilePath);
 
   /// <summary>
   /// Gets the logger registry for the core dll so plugins can output to the same

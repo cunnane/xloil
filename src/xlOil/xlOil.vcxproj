@@ -126,7 +126,6 @@
     <ClInclude Include="Interface.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
-    <ClInclude Include="Loaders\Settings.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ExcelObjCache.h" />
     <ClInclude Include="ObjectCache.h" />
@@ -156,7 +155,6 @@
     <ClCompile Include="Interface.cpp" />
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
-    <ClCompile Include="Loaders\Settings.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Register\AsyncHelper.cpp" />
     <ClCompile Include="Register\FuncRegistry.cpp" />

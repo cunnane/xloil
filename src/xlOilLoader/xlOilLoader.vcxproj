@@ -101,10 +101,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>xloil.lib;corestatic.lib;spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xloil.lib;xloilHelpers.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
@@ -121,10 +122,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>xloil.lib;corestatic.lib;spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xloil.lib;xloilHelpers.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
@@ -142,12 +144,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>xloil.lib;corestatic.lib;spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xloil.lib;xloilHelpers.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
@@ -165,12 +168,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>xloil.lib;corestatic.lib;spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xloil.lib;xloilHelpers.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>

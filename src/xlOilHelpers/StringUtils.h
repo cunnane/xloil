@@ -138,56 +138,13 @@ namespace xloil
     return true;
   }
 
-  /// <summary>
-  /// Helper function to capture C++ strings from Windows Api functions which have signatures like
-  ///    int_charsWritten GetTheString(wchar* buffer, int bufferSize);
-  /// </summary>
-  template<class F>
-  std::wstring captureStringBuffer(F bufWriter, size_t initialSize = 1024)
+  template<class...Args>
+  inline std::wstring
+    formatWStr(const wchar_t* fmt, Args&&...args)
   {
-    std::wstring s;
-    s.reserve(initialSize);
-    size_t len;
-    // We assume, hopefully correctly, that the bufWriter function on
-    // failure returns either -1 or the required buffer length.
-    while ((len = bufWriter(s.data(), s.capacity())) > s.capacity())
-      s.reserve(len == size_t(-1) ? s.size() * 2 : len);
-    
-    // However, some windows functions, e.g. ExpandEnvironmentStrings 
-    // include the null-terminator in the returned buffer length whereas
-    // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
-    // Wonderful.
-    s._Eos(s.data()[len - 1] == '\0' ? len - 1 : len);
-    s.shrink_to_fit();
-    return s;
+    const auto size = (size_t)_scwprintf(fmt, args...);
+    std::wstring result(size + 1, '\0');
+    swprintf_s(&result[0], size + 1, fmt, args...);
+    return result;
   }
-
-  /// <summary>
-  /// Returns the value of specified environment variable
-  /// or an empty string if it does not exist
-  /// </summary>
-  std::wstring getEnvVar(const wchar_t * name);
-
-  /// <summary>
-  /// Expands environment variables in the specified string.
-  /// Equivalent to the Windows API ExpandEnvironmentStrings
-  /// </summary>
-  std::wstring expandEnvVars(const wchar_t* str);
-
-  /// <summary>
-  /// Sets an environment variable and unsets when the object goes out of scope.
-  /// </summary>
-  class PushEnvVar
-  {
-  private:
-    std::wstring _previous;
-    std::wstring _name;
-
-  public:
-    PushEnvVar(const std::wstring& name, const std::wstring& value);
-    PushEnvVar(const wchar_t* name, const wchar_t* value);
-    ~PushEnvVar();
-    void pop();
-  };
-
 }

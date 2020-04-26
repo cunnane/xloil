@@ -143,7 +143,9 @@ namespace xloil
   public:
     using ContextMap = std::map<std::wstring, std::shared_ptr<FileSource>>;
 
-    AddinContext(const wchar_t* pathName, std::shared_ptr<const toml::value> settings);
+    AddinContext(
+      const wchar_t* pathName, 
+      std::shared_ptr<const toml::value> settings);
     ~AddinContext();
 
     /// <summary>

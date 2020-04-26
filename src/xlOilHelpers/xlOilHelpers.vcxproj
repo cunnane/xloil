@@ -19,9 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Environment.cpp" />
+    <ClCompile Include="Settings.cpp" />
     <ClCompile Include="StringUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Environment.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="WindowsSlim.h" />
   </ItemGroup>

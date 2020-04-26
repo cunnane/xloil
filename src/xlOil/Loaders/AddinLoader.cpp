@@ -1,20 +1,18 @@
 #include <xlOil/Interface.h>
 #include <xlOil/Register/FuncRegistry.h>
-#include <xlOil/Loaders/Settings.h>
+#include <xlOilHelpers/Settings.h>
 #include <xlOil/EntryPoint.h>
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
+#include <toml11/toml.hpp>
 #include <filesystem>
 
 namespace fs = std::filesystem;
-
-
 using std::make_pair;
 using std::wstring;
 using std::make_shared;
 using std::shared_ptr;
-
 
 namespace xloil
 {
@@ -26,9 +24,9 @@ namespace xloil
       createAddinContext(
         const wchar_t* pathName, std::shared_ptr<const toml::value> settings)
     {
-      auto ctx = shared_ptr<AddinContext>(new AddinContext(pathName, settings));
-      theAddinContexts.emplace(make_pair(wstring(pathName), ctx));
-      return ctx.get();
+      auto [ctx, isNew] = theAddinContexts.try_emplace(
+        wstring(pathName), make_shared<AddinContext>(pathName, settings));
+      return isNew ? ctx->second.get() : nullptr;
     }
   }
 
@@ -68,21 +66,45 @@ namespace xloil
     if (theAddinContexts.empty())
     {
       auto settings = findSettingsFile(theCorePath());
-      auto logFile = Settings::logFilePath(settings.get());
-      initialiseLogger(Settings::logLevel(settings.get()), logFile.empty()
-        ? nullptr : &logFile);
+      if (settings)
+        XLO_DEBUG("Found core settings file '{0}'", 
+          settings->location().file_name());
+
       ourCoreContext = createAddinContext(theCorePath(), settings);
+
+      auto logFile = Settings::logFilePath(settings.get());
+      loggerInitialise(Settings::logLevel(settings.get()).c_str());
+      loggerAddFile(logFile.empty()
+        ? fs::path(theCorePath()).replace_extension("log").c_str()
+        : logFile.c_str());
+      
       ourCoreContext->tryAdd<StaticFunctionSource>(theCoreName(), theCoreName());
 
       loadPlugins(ourCoreContext, Settings::plugins(settings.get()));
     }
 
-    if (_wcsicmp(fs::path(xllPath).filename().c_str(), L"xlOil.xll") != 0)
-    {
-      auto settings = findSettingsFile(xllPath);
-      auto ctx = createAddinContext(xllPath, settings);
-      loadPlugins(ctx, Settings::plugins(settings.get()));
-    }
+    if (_wcsicmp(fs::path(xllPath).replace_extension("dll").c_str(),
+      theCorePath()) == 0)
+      return;
+
+    auto settings = findSettingsFile(xllPath);
+    if (settings)
+      XLO_DEBUG("Found settings file '{0}'", 
+        settings->location().file_name());
+
+    
+    if (theAddinContexts.find(xllPath) != theAddinContexts.end())
+      theAddinContexts.erase(xllPath);
+    
+    auto ctx = createAddinContext(xllPath, settings);
+    assert(ctx);
+
+    auto logFile = Settings::logFilePath(settings.get());
+    loggerAddFile(logFile.empty()
+      ? fs::path(xllPath).replace_extension("log").c_str()
+      : logFile.c_str());
+
+    loadPlugins(ctx, Settings::plugins(settings.get()));
   }
 
   void closeXll(const wchar_t* xllPath)
