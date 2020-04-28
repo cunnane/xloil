@@ -331,7 +331,7 @@ namespace xloil
         void* arrayPtr)
       {
         auto x = (TDataType*)arrayPtr;
-        b.emplace_at(i, j, *x);
+        b(i, j) = *x;
       }
     };
 
@@ -339,15 +339,23 @@ namespace xloil
     struct FromArrayImpl<TNpType, true>
     {
       using data_type = typename TypeTraits<TNpType>::storage;
-      static constexpr size_t charMultiple = TNpType == NPY_UNICODE ? 2 : 1;
+
+      // The number of char16 we require to hold any character in the array
+      static constexpr uint16_t charMultiple =
+        std::max<uint16_t>(1, sizeof(data_type) / sizeof(char16_t));
+      
+      // Contains the number of characters per numpy array element multiplied 
+      // by the number of char16 we will need
+      const uint16_t stringLength;
+
       FromArrayImpl(PyArrayObject* pArr)
+        : stringLength(std::min<uint16_t>(USHRT_MAX,
+            (uint16_t)PyArray_ITEMSIZE(pArr) / sizeof(data_type) * charMultiple))
       {
         const auto type = PyArray_TYPE(pArr);
         if (type != NPY_UNICODE && type != NPY_STRING)
           XLO_THROW("Incorrect array type");
-        stringLength = std::min<size_t>(USHRT_MAX, PyArray_ITEMSIZE(pArr) / sizeof(data_type) * charMultiple);
       }
-      size_t stringLength;
 
       void builderEmplace(
         ExcelArrayBuilder& builder, 
@@ -355,11 +363,14 @@ namespace xloil
         void* arrayPtr)
       {
         auto x = (char32_t*)arrayPtr;
-        PString<> pstr((char16_t)stringLength);
+        auto pstr = builder.string(stringLength);
         auto nChars = ConvertUTF32ToUTF16()(
           (char16_t*)pstr.pstr(), pstr.length(), x, x + stringLength / charMultiple);
+
+        // Because not every UTF-32 char takes two UTF-16 chars, we resize
+        // to the actual number used
         pstr.resize((char16_t)nChars);
-        builder.emplace_at(i, j, pstr);
+        builder(i, j) = std::move(pstr);
       }
     };
 
@@ -400,7 +411,10 @@ namespace xloil
         void* arrayPtr)
       {
         auto* x = *(PyObject**)arrayPtr;
-        FromPyObj()(x, [&builder, i, j](auto&&... args) { return builder.emplace_at(i, j, args...); });
+        FromPyObj()(x, [&builder, i, j](auto&& arg)
+        { 
+          return builder(i, j) = std::forward<decltype(arg)>(arg); 
+        });
       }
     };
 
@@ -426,7 +440,7 @@ namespace xloil
         
         TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder(dims[0], 1, converter.stringLength);
+        ExcelArrayBuilder builder((uint32_t)dims[0], 1, converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
           converter.builderEmplace(builder, j, 0, PyArray_GETPTR1(pyArr, j));
         
@@ -458,7 +472,8 @@ namespace xloil
 
         TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder(dims[0], dims[1], converter.stringLength);
+        ExcelArrayBuilder builder((uint32_t)dims[0], (uint16_t)dims[1], 
+          converter.stringLength);
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
             converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));

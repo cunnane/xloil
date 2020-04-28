@@ -196,7 +196,7 @@ namespace xloil
         auto len = (char16_t)std::min<size_t>(USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
         PString<> pstr(len);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
-        return ctor(pstr);
+        return ctor(std::move(pstr));
       }
     };
 
@@ -251,7 +251,10 @@ namespace xloil
       }
       auto operator()(const PyObject* obj) const
       {
-        return operator()(obj, [](auto&&... args) { return ExcelObj(std::forward<decltype(args)>(args)...); });
+        return operator()(obj, [](auto&&... args) 
+        { 
+          return ExcelObj(std::forward<decltype(args)>(args)...); 
+        });
       }
     };
   }

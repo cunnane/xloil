@@ -48,11 +48,10 @@ namespace xloil
 
     // Reset pstr
     pstr = string.asPascalStr().data();
-    ExcelArrayBuilder builder(found.size(), 1, length);
+    ExcelArrayBuilder builder((uint32_t)found.size(), 1, length);
     for (auto i = 0; i < found.size(); ++i)
     {
-      auto str = PString(pstr + found[i]);
-      builder.emplace_at(i, 0, str);
+      builder(i) = PString(pstr + found[i]);
     }
 
     return ExcelObj::returnValue(builder.toExcelObj());

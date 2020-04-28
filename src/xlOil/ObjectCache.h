@@ -200,7 +200,7 @@ namespace xloil
       auto* str = pascalStr + 1;
 
       // Capture workbook name.  We should have X[wbName]wsName!cellRef
-      auto lastBracket = PStringView<>::wmemrchr(str + len, L']', len);
+      auto lastBracket = wmemrchr(str + len, L']', len);
       auto wbName = std::wstring_view(str + 2, lastBracket - str - 2);
 
       // Capture sheet ref.  
@@ -235,7 +235,7 @@ namespace xloil
         _reverseLookup.insert(std::make_pair(obj, key.string()));
       }
 
-      return ExcelObj(key);
+      return ExcelObj(std::move(key));
     }
 
   private:

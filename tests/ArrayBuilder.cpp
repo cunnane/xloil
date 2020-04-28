@@ -21,12 +21,12 @@ namespace Tests
       
       wchar_t* row0[] = { L"Hello", L"World" };
       double row1[] = { 10.0, 7.2 };
-      builder.emplace_at(0, 0, row0[0]);
-      builder.emplace_at(0, 1, (const wchar_t*)row0[1]);
-      builder.emplace_at(1, 0, 10);
-      builder.emplace_at(1, 1, 7.2);
-      builder.emplace_at(2, 0, CellError::NA);
-      builder.setNA(2, 1);
+      builder(0, 0) = row0[0];
+      builder(0, 1) = (const wchar_t*)row0[1];
+      builder(1, 0) = 10;
+      builder(1, 1) = 7.2;
+      builder(2, 0) = CellError::NA;
+      builder(2, 1) = CellError::NA;
 
       auto arrayObj = builder.toExcelObj();
 

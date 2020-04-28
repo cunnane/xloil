@@ -24,7 +24,8 @@ namespace xloil
         XLO_THROW("nestedIterableToExcel: could not create iterator");
 
       size_t stringLength = 0;
-      size_t nRows = 0, nCols = 1;
+      uint32_t nRows = 0;
+      uint16_t nCols = 1;
       PyObject *item, *innerItem;
 
       // First loop to establish array size and length of strings
@@ -33,7 +34,7 @@ namespace xloil
         ++nRows;
         if (PyIterable_Check(item))
         {
-          size_t j = 0;
+          decltype(nCols) j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while (innerItem = PyIter_Next(innerIter))
           {
@@ -71,7 +72,7 @@ namespace xloil
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while (innerItem = PyIter_Next(innerIter))
           {
-            builder.emplace_at(i, j++, FromPyObj()(innerItem));
+            builder(i, j++) = FromPyObj()(innerItem);
             Py_DECREF(innerItem);
           }
           if (PyErr_Occurred())
@@ -79,11 +80,11 @@ namespace xloil
           Py_DECREF(innerIter);
         }
         else
-          builder.emplace_at(i, j++, FromPyObj()(item));
+          builder(i, j++) = FromPyObj()(item);
 
         // Fill with N/A
         for (; j < nCols; ++j)
-          builder.setNA(i, j);
+          builder(i, j) = CellError::NA;
 
         Py_DECREF(item);
         ++i;

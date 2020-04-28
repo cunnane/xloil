@@ -84,26 +84,46 @@ namespace xloil
     typedef wchar_t Char;
     typedef XLOIL_XLOPER Base;
 
-    // If you got here, consider casting. Its main purpose is to avoid
-    // pointers being auto-cast to integral / bool types
-    template <class T> ExcelObj(T t) { static_assert(false); }
-
     ExcelObj()
     {
       xltype = msxll::xltypeNil;
     }
 
-    // Whole bunch of numeric types auto-casted to make life easier
-    explicit ExcelObj(int);
-    explicit ExcelObj(unsigned int x) : ExcelObj((int)x) {}
-    explicit ExcelObj(long x) : ExcelObj((int)x) {}
-    explicit ExcelObj(long long x) : ExcelObj((int)x) {}
-    explicit ExcelObj(unsigned long x) : ExcelObj((int)x) {}
-    explicit ExcelObj(unsigned short x) : ExcelObj((int)x) {}
-    explicit ExcelObj(short x) : ExcelObj((int)x) {}
-    explicit ExcelObj(double);
-    explicit ExcelObj(float x) : ExcelObj((double)x) {}
-    explicit ExcelObj(bool);
+    /// <summary>
+    /// Constructor for integral types
+    /// </summary>
+    template <class T,
+      std::enable_if_t<std::is_integral<T>::value, int> = 0>
+    explicit ExcelObj(T x)
+    {
+      xltype = msxll::xltypeInt;
+      val.w = (int)x;
+    }
+
+    /// <summary>
+    /// Constructor for floating point types
+    /// </summary>
+    template <class T,
+      std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+    explicit ExcelObj(T d)
+    {
+      if (std::isnan(d))
+      {
+        val.err = msxll::xlerrNum;
+        xltype = msxll::xltypeErr;
+      }
+      else
+      {
+        xltype = msxll::xltypeNum;
+        val.num = (double)d;
+      }
+    }
+
+    explicit ExcelObj(bool b)
+    {
+      xltype = msxll::xltypeBool;
+      val.xbool = b ? 1 : 0;
+    }
 
     /// <summary>
     /// Creates an empty object of the specified type. "Empty" in this case
@@ -114,49 +134,76 @@ namespace xloil
     /// <param name=""></param>
     ExcelObj(ExcelType);
 
-    ExcelObj(const char*);
-    ExcelObj(const wchar_t*);
+    /// <summary>
+    /// Construct from char string
+    /// </summary>
+    explicit ExcelObj(const char*);
 
-    ExcelObj(const std::string& s)
-      :ExcelObj(s.c_str())
-    {}
+    /// <summary>
+    /// Construct from wide-char string
+    /// </summary>
+    explicit ExcelObj(const wchar_t*);
 
-    ExcelObj(const std::wstring& s)
+    template <class T>
+    explicit ExcelObj(const std::basic_string<T>& s)
       : ExcelObj(s.c_str())
     {}
+
+    /// Move ctor from owned Pascal string buffer.
+    explicit ExcelObj(PString<Char>&& pstr)
+    {
+      val.str = pstr.release();
+      if (!val.str)
+        val.str = Const::EmptyStr().val.str;
+      xltype = msxll::xltypeStr;
+    }
 
     ExcelObj(nullptr_t)
     {
       xltype = msxll::xltypeMissing;
     }
 
-    ExcelObj(const ExcelObj & that)
-    {
-      overwrite(*this, that);
-    }
-
-    ExcelObj(ExcelObj&& that)
-    {
-      // Steal all data
-      this->val = that.val;
-      this->xltype = that.xltype;
-      // Mark donor object as empty
-      that.xltype = msxll::xltypeNil;
-    }
-
-    ExcelObj::ExcelObj(CellError err)
+    ExcelObj(CellError err)
     {
       val.err = (int)err;
       xltype = msxll::xltypeErr;
     }
 
-    /// Constructs an array from data without copying it. Do not use
-    // TODO: declare these private and use friend? 
-    ExcelObj(const ExcelObj* data, int nRows, int nCols);
+    /// <summary>
+    /// Constructs an array from data. Takes ownership of data, which
+    /// must be correctly arranged in memory. Use with caution!
+    /// </summary>
+    ExcelObj(const ExcelObj* data, int nRows, int nCols)
+    {
+      val.array.rows = nRows;
+      val.array.columns = nCols;
+      val.array.lparray = (Base*)data;
+      xltype = msxll::xltypeMulti;
+    }
 
-    /// Non copying ctor from pascal string buffer.
-    ExcelObj(PString<Char>&& pstr);
-    ExcelObj(PString<Char>& pstr) : ExcelObj(std::forward<PString<Char>>(pstr)) {}
+    /// <summary>
+    /// Catch constructor: purpose is to avoid pointers
+    /// being auto-cast to integral / bool types
+    /// </summary>
+    template <class T> explicit ExcelObj(T* t) { static_assert(false); }
+
+    /// <summary>
+    /// Copy constructor
+    /// </summary>
+    ExcelObj(const ExcelObj& that)
+    {
+      overwrite(*this, that);
+    }
+
+    /// <summary>
+    /// Move constructor
+    /// </summary>
+    ExcelObj(ExcelObj&& donor)
+    {
+      (Base&)*this = donor;
+      // Mark donor object as empty
+      donor.xltype = msxll::xltypeNil;
+    }
 
     ExcelObj::~ExcelObj()
     {
@@ -164,12 +211,38 @@ namespace xloil
     }
 
     /// <summary>
+    /// Assignment from ExcelObj
+    /// </summary>
+    ExcelObj& operator=(const ExcelObj& that)
+    {
+      if (this == &that)
+        return *this;
+      copy(*this, that);
+      return *this;
+    }
+
+    /// <summary>
+    /// Move assignment
+    /// </summary>
+    template <class TDonor>
+    ExcelObj& operator=(TDonor&& that)
+    {
+      *this = ExcelObj(that);
+    }
+
+    ExcelObj& operator=(ExcelObj&& donor)
+    {
+      reset();
+      (Base&)*this = donor;
+      // Mark donor object as empty
+      donor.xltype = msxll::xltypeNil;
+      return *this;
+    }
+
+    /// <summary>
     /// Deletes object content and sets it to #N/A
     /// </summary>
     void reset();
-
-    ExcelObj& operator=(const ExcelObj& that);
-    ExcelObj& operator=(ExcelObj&& that);
 
     bool operator==(const ExcelObj& that) const
     {
@@ -220,7 +293,7 @@ namespace xloil
 
     bool isNA() const
     {
-      return xtype() == msxll::xltypeErr && val.err == msxll::xlerrNA;
+      return isType(ExcelType::Err) && val.err == msxll::xlerrNA;
     }
 
     /// <summary>
@@ -361,12 +434,6 @@ namespace xloil
       return PStringView<>((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
     }
 
-    static void copy(ExcelObj& to, const ExcelObj& from)
-    {
-      to.reset();
-      overwrite(to, from);
-    }
-
     /// <summary>
     /// Call this on function result objects received from Excel to 
     /// declare that Excel must free them. This is automatically done
@@ -430,6 +497,13 @@ namespace xloil
     /// <param name="nCols"></param>
     /// <returns>false if object is not an array, else true</returns>
     bool trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const;
+
+    static void copy(ExcelObj& to, const ExcelObj& from)
+    {
+      to.reset();
+      overwrite(to, from);
+    }
+
     static void overwrite(ExcelObj& to, const ExcelObj& from)
     {
       if (from.isType(ExcelType::Simple))

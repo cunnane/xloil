@@ -4,13 +4,26 @@
 
 namespace xloil
 {
+  /// <summary>
+  /// Searches backward for the specified char returning a pointer
+  /// to its last occurence or null if not found. Essentialy it is
+  /// wmemchr backwards.
+  /// </summary>
+  inline const wchar_t* 
+    wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
+  {
+    for (; num; --ptr, --num)
+      if (*ptr == wc)
+        return ptr;
+    return nullptr;
+  }
+
   template <class TChar = wchar_t>
   class PStringImpl
   {
   public:
     using size_type = TChar;
     static constexpr size_type npos = size_type(-1);
-
 
     /// <summary>
     /// Returns true if the string is empty
@@ -73,6 +86,11 @@ namespace xloil
       return *this;
     }
 
+    operator std::wstring_view() const
+    {
+      return view();
+    }
+
     /// <summary>
     /// Writes len chars from given string into the buffer, returning true
     /// if successful and false if the internal buffer is too short.
@@ -101,19 +119,6 @@ namespace xloil
     }
 
     /// <summary>
-    /// Searches backward for the specified char returning a pointer
-    /// to its last occurence or null if not found. Essentialy it is
-    /// wmemchr backwards.
-    /// </summary>
-    static const TChar* wmemrchr(const TChar* ptr, TChar wc, size_type num)
-    {
-      for (; num; --ptr, --num)
-        if (*ptr == wc)
-          return ptr;
-      return nullptr;
-    }
-
-    /// <summary>
     /// Searches forward for the specified char returning its the offset
     /// of its first occurence or npos if not found.
     /// </summary>
@@ -137,11 +142,12 @@ namespace xloil
     /// Returns a STL string_view of the string data or, optionally,
     /// a substring of it.
     /// </summary>
-    std::basic_string_view<TChar> view(size_type from = 0, size_type count = npos)
+    std::basic_string_view<TChar> view(size_type from = 0, size_type count = npos) const
     {
-      return std::basic_string_view<TChar>(pstr() + from, count != npos ? count : length() - from);
+      return std::basic_string_view<TChar>(
+        pstr() + from, count != npos ? count : length() - from);
     }
-
+    
   protected:
     TChar* _data;
 
@@ -170,7 +176,7 @@ namespace xloil
     /// <summary>
     /// Create a PString of the specified length
     /// </summary>
-    PString(size_type length)
+    explicit PString(size_type length)
       : PStringImpl(new TChar[length + 1])
     {
       resize(length);
@@ -179,7 +185,7 @@ namespace xloil
     /// <summary>
     /// Take ownership of a Pascal string buffer, constructed externally 
     /// </summary>
-    PString(TChar* data)
+    explicit PString(TChar* data)
       : PStringImpl(data)
     {}
 
@@ -204,7 +210,7 @@ namespace xloil
     /// the length forces a string copy.
     /// </summary>
     void resize(size_type sz)
-    { 
+    {
       if (sz <= length())
         _data[0] = sz;
       else
@@ -233,7 +239,7 @@ namespace xloil
     /// Constructs a view of an existing Pascal string given its
     /// full data buffer (including the length count).
     /// </summary>
-    PStringView(TChar* data = nullptr)
+    explicit PStringView(TChar* data = nullptr)
       : PStringImpl(data)
     {}
     PStringImpl& operator=(const PStringView& that)
@@ -245,6 +251,18 @@ namespace xloil
       }
       else
         return *(PStringImpl*)(this) = that;
+    }
+
+    /// <summary>
+    /// Resize the string buffer to the specified length. Increasing
+    /// the length throws an error
+    /// </summary>
+    void resize(size_type sz)
+    {
+      if (sz <= length())
+        _data[0] = sz;
+      else
+        XLO_THROW("Cannot increase size of PStringView");
     }
   };
 }

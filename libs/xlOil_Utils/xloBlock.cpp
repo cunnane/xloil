@@ -138,7 +138,7 @@ namespace xloil
     // TODO: is it possible to fill just the holes or is that too complicated?
     for (row_t i = 0; i < totalRows; ++i)
       for (col_t j = 0; j < totalCols; ++j)
-        builder.setNA(i, j);
+        builder(i, j) = CellError::NA;
 
     row = 0; col = 0;
     for (auto[nRows, nCols, iArg] : spec)
@@ -163,13 +163,13 @@ namespace xloil
 
           for (row_t i = 0; i < nRows; ++i)
             for (col_t j = 0; j < nCols; ++j)
-              builder.emplace_at(row + i, col + j, arr(i, j));
+              builder(row + i, col + j) = arr(i, j);
 
           col += nCols;
           break;
         }
         default:
-          builder.emplace_at(row, col, *obj);
+          builder(row, col) = *obj;
           ++col;
         }
       }

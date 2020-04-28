@@ -84,7 +84,7 @@ namespace xloil
     auto orderStr = order->toString(); 
 
     // Anything to do?
-    if (orderStr.empty() || nRows < 2 || nCols == 0)
+    if (nRows < 2 || nCols == 0)
       return array;
 
     MyArray directions, columns;
@@ -95,6 +95,11 @@ namespace xloil
     auto c = orderStr.begin();
     bool hasHeadings = false;
     auto nOrders = 0;
+
+    // If no orders provided, sort ascending (the default)
+    if (c == orderStr.end())
+      nOrders = 1;
+
     for (; nOrders < directions.size() - 1; ++nOrders, ++c)
     {
       while (c != orderStr.end() && iswspace(*c)) ++c;

@@ -120,31 +120,7 @@ namespace
     }
   }
 
-  ExcelObj::ExcelObj(int i)
-  {
-    xltype = xltypeInt;
-    val.w = i;
-  }
 
-  ExcelObj::ExcelObj(double d)
-  {
-    if (std::isnan(d))
-    {
-      val.err = xlerrNum;
-      xltype = xltypeErr;
-    }
-    else
-    {
-      xltype = xltypeNum;
-      val.num = d;
-    }
-  }
-
-  ExcelObj::ExcelObj(bool b)
-  {
-    xltype = xltypeBool;
-    val.xbool = b ? 1 : 0;
-  }
   ExcelObj::ExcelObj(ExcelType t)
   {
     switch (t)
@@ -163,14 +139,6 @@ namespace
     xltype = int(t);
   }
 
-  ExcelObj::ExcelObj(PString<Char>&& pstr)
-  {
-    val.str = pstr.release();
-    if (!val.str)
-      val.str = Const::EmptyStr().val.str;
-    xltype = xltypeStr;
-  }
-
   ExcelObj::ExcelObj(const char* s)
   {
     val.str = pascalWStringFromC(s);
@@ -184,14 +152,6 @@ namespace
     else
       val.str = pascalWStringFromC(s);
     xltype = xltypeStr;
-  }
-
-  ExcelObj::ExcelObj(const ExcelObj* array, int nRows, int nCols)
-  {
-    val.array.rows = nRows;
-    val.array.columns = nCols;
-    val.array.lparray = (XLOIL_XLOPER*)array;
-    xltype = xltypeMulti;
   }
 
   double ExcelObj::toDouble(const std::optional<double> default) const
@@ -213,7 +173,7 @@ namespace
   {
     if ((xltype & xlbitXLFree) != 0)
     {
-      callExcelRaw(xlFree, this, this); // arg is not really const
+      callExcelRaw(xlFree, this, this); // arg is not really const here!
     }
     else
     {
@@ -238,26 +198,9 @@ namespace
         break;
       }
     }
-
-    xltype = xltypeErr;
-    val.err = xlerrNA;
-  }
-  ExcelObj & ExcelObj::operator=(const ExcelObj & that)
-  {
-    if (this == &that)
-      return *this;
-    copy(*this, that);
-    return *this;
+    xltype = xltypeNil;
   }
 
-  ExcelObj & ExcelObj::operator=(ExcelObj&& that)
-  {
-    reset();
-    this->val = that.val;
-    this->xltype = that.xltype;
-    that.xltype = xltypeNil;
-    return *this;
-  }
   namespace
   {
     template<class T> int cmp(T l, T r)
@@ -549,10 +492,10 @@ namespace
       const auto nRows = from.val.array.rows;
       const auto nCols = from.val.array.columns;
 
-      const auto* pSrc = from.val.array.lparray;
+      const auto* pSrc = (const ExcelObj*)from.val.array.lparray;
 
       size_t strLength = totalStringLength(pSrc, nRows, nCols);
-      ExcelArrayBuilder arr(nRows, nCols, strLength, false);
+      ExcelArrayBuilder arr(nRows, (ExcelArray::col_t)nCols, strLength, false);
 
       for (auto i = 0; i < nRows; ++i)
         for (auto j = 0; j < nCols; ++j)
@@ -562,19 +505,17 @@ namespace
           case xltypeStr:
           {
             const auto len = pSrc->val.str[0];
-            arr.emplace_at(i, j, pSrc->val.str + 1, len);
+            arr(i, j) = pSrc->asPascalStr();
             break;
           }
           default:
-            arr.emplace_at(i, j, *(ExcelObj*)pSrc);
+            arr(i, j) = *pSrc;
           }
           ++pSrc;
         }
 
-      to.val.array.lparray = (XLOIL_XLOPER*)arr.at(0, 0);
-      to.val.array.rows = nRows;
-      to.val.array.columns = nCols;
-      to.xltype = xltypeMulti;
+      // Overwrite "to"
+      new (&to) ExcelObj(arr.toExcelObj());
       break;
     }
 
