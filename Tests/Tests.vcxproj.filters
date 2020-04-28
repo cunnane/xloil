@@ -5,6 +5,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="ArrayBuilder.cpp" />
     <ClCompile Include="Environment.cpp" />
+    <ClCompile Include="Date.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

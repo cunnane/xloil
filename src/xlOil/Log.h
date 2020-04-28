@@ -31,9 +31,9 @@
 
 namespace xloil
 {
-  void loggerInitialise(const char* logLevel);
+  void loggerInitialise(spdlog::level::level_enum level);
 
-  void loggerAddFile(const wchar_t* logFilePath);
+  void loggerAddFile(const wchar_t* logFilePath, const char* logLevel);
 
   /// <summary>
   /// Gets the logger registry for the core dll so plugins can output to the same

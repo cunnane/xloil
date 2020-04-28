@@ -1,7 +1,15 @@
 #include "Date.h"
 #include <cmath>
 #include <chrono>
+#include <streambuf>
+#include <istream>
+#include <iomanip>
+#include <unordered_set>
+
 using namespace std::chrono;
+using std::unordered_set;
+using std::string;
+using std::wstring;
 
 namespace xloil
 {
@@ -104,5 +112,90 @@ namespace xloil
     auto ms = duration_cast<milliseconds>(hours(nHours) + minutes(nMins) + seconds(nSecs)).count() + uSecs;
     serial += ms / millisecsPerDay;
     return serial;
+  }
+
+
+  // Thanks to:
+  // https://stackoverflow.com/questions/13059091/creating-an-input-stream-from-constant-memory/13059195#13059195
+  struct wmembuf : std::wstreambuf 
+  {
+    wmembuf(wchar_t const* base, size_t size) 
+    {
+      str(base, size);
+    }
+    void str(wchar_t const* base, size_t size)
+    {
+      wchar_t* p = const_cast<wchar_t*>(base);
+      this->setg(p, p, p + size);
+    }
+  };
+  struct wimemstream : virtual wmembuf, std::wistream
+  {
+    using std::wistream::imbue;
+    wimemstream(wchar_t const* base, size_t size)
+      : wmembuf(base, size)
+      , std::wistream(static_cast<std::wstreambuf*>(this))
+    {}
+    void str(wchar_t const* base, size_t size)
+    {
+      wmembuf::str(base, size);
+    }
+  };
+
+  
+
+  /*std::array<bool, 256> camelHerder()
+  {
+    std::array<bool, 256> result;
+    for (auto c : "JFMASONDjfmasond")
+      result[c] = true;
+    return result;
+  }
+
+  static std::array<bool, 256> theFirstMonthLetters = camelHerder();
+
+  void camel(wchar_t* str, size_t len)
+  {
+    const auto pEnd = str + len;
+    while (!theFirstMonthLetters[(unsigned char)*str]) 
+      if (++str == pEnd)
+        return;
+    *str = towupper(*str);
+    while (++str < pEnd && iswalpha(*str))
+      *str = towlower(*str);
+  }*/
+
+  unordered_set<wstring> theDateFormats;
+
+  bool stringToDateTime(
+    const std::wstring_view& str,
+    std::tm& result, 
+    const wchar_t* format)
+  {
+    wimemstream stream(str.data(), str.length());
+    memset(&result, 0, sizeof(std::tm));
+
+    if (format)
+    {
+      stream >> std::get_time(&result, format);
+      return !stream.fail();
+    }
+    else
+    {
+      for (auto& form : theDateFormats)
+      {
+        stream >> std::get_time(&result, form.c_str());
+        if (!stream.fail())
+          return true;
+        stream.clear();
+        stream.str(str.data(), str.length());
+      }
+      return false;
+    }
+  }
+
+  void dateTimeAddFormat(const wchar_t* f)
+  {
+    theDateFormats.insert(f);
   }
 }

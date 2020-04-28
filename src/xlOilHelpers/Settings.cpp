@@ -18,26 +18,31 @@ namespace xloil
 {
   namespace Settings
   {
-    vector<wstring> plugins(const toml::value* root)
-    {
-      vector<wstring> plugins;
-      if (root)
-      {
-        auto pluginsUtf8 = toml::find_or<vector<string>>(*root, "Plugins", vector<string>());
-        std::transform(pluginsUtf8.begin(), pluginsUtf8.end(),
-          std::back_inserter(plugins), utf8ToUtf16);
-      }
-      return plugins;
-    }
+   
 
     namespace
     {
-      std::string findStr(const toml::value* root, const char* tag, const char* default)
+      auto findStr(const toml::value* root, const char* tag, const char* default)
       {
         return root
           ? toml::find_or<string>(*root, tag, default)
           : default;
       }
+      auto findVecStr(const toml::value* root, const char* tag)
+      {
+        vector<wstring> result;
+        if (root)
+        {
+          auto utf8 = toml::find_or<vector<string>>(*root, tag, vector<string>());
+          std::transform(utf8.begin(), utf8.end(), 
+            std::back_inserter(result), utf8ToUtf16);
+        }
+        return result;
+      }
+    }
+    vector<wstring> plugins(const toml::value* root)
+    {
+      return findVecStr(root, "Plugins");
     }
     std::wstring pluginSearchPattern(const toml::value* root)
     {
@@ -50,6 +55,10 @@ namespace xloil
     std::string logLevel(const toml::value* root)
     {
       return findStr(root, "LogLevel", "warn");
+    }
+    std::vector<std::wstring> dateFormats(const toml::value* root)
+    {
+      return findVecStr(root, "DateFormats");
     }
   }
   std::shared_ptr<const toml::value> findSettingsFile(const wchar_t* dllPath)

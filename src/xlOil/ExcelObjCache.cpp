@@ -12,11 +12,11 @@ namespace xloil
   static ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false> theExcelObjCache
     = ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false>();
   
-  ExcelObj addCacheObject(shared_ptr<const ExcelObj>&& obj)
+  ExcelObj objectCacheAdd(shared_ptr<const ExcelObj>&& obj)
   {
     return theExcelObjCache.add(std::forward<shared_ptr<const ExcelObj>>(obj));
   }
-  bool fetchCacheObject(const wchar_t* cacheString, size_t length, shared_ptr<const ExcelObj>& obj)
+  bool objectCacheFetch(const wchar_t* cacheString, size_t length, shared_ptr<const ExcelObj>& obj)
   {
     return theExcelObjCache.fetch(cacheString, length, obj);
   }

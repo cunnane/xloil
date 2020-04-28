@@ -49,27 +49,29 @@ namespace xloil
     return wstring(msgBuf.get(), size);
   }
 
-  void loggerInitialise(const char* logLevel)
+  void loggerInitialise(spdlog::level::level_enum level)
   {
     auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
-    
+    dbgWrite->set_level(level);
+
     auto logger = make_shared<spdlog::logger>("logger", 
       spdlog::sinks_init_list{ dbgWrite });
 
     spdlog::initialize_logger(logger);
+
     // Flush on warnings or above
     logger->flush_on(spdlog::level::warn);
     spdlog::set_default_logger(logger);
-    spdlog::set_level(spdlog::level::from_str(logLevel));
-    
+
     // Flush log after each Excel calc cycle
     static auto handler = xloil::Event_CalcEnded() += [logger]() { logger->flush(); };
   }
 
-  void loggerAddFile(const wchar_t* logFilePath)
+  void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
   {
     auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
       utf16ToUtf8(logFilePath), false);
+    fileWrite->set_level(spdlog::level::from_str(logLevel));
     spdlog::default_logger()->sinks().push_back(fileWrite);
   }
 

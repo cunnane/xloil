@@ -47,6 +47,7 @@ namespace
     return buf + 1;
   }
 
+  // TODO: surely should use utf8 conversion here?
   wchar_t* pascalWStringFromC(const char* s)
   {
     assert(s);
@@ -435,19 +436,58 @@ namespace
     }
   }
 
-  bool ExcelObj::toDMY(int &nDay, int &nMonth, int &nYear, bool coerce)
+  bool ExcelObj::toDMY(
+    int &nDay, int &nMonth, int &nYear)
   {
-    auto d = toInt();
+    if ((xltype & (xltypeNum | xltypeInt)) == 0)
+      return false;
+    const auto d = toInt();
     return excelSerialDateToDMY(d, nDay, nMonth, nYear);
   }
 
-  bool ExcelObj::toDMYHMS(int & nDay, int & nMonth, int & nYear, int & nHours, 
-    int & nMins, int & nSecs, int & uSecs, bool coerce)
+  bool ExcelObj::toDMYHMS(
+    int & nDay, int & nMonth, int & nYear, 
+    int & nHours, int & nMins, int & nSecs, int & uSecs)
   {
-    auto d = toDouble();
+    if ((xltype & (xltypeNum | xltypeInt)) == 0)
+      return false;
+    const auto d = toDouble();
     return excelSerialDatetoDMYHMS(d, nDay, nMonth, nYear, nHours, nMins, nSecs, uSecs);
   }
 
+  bool ExcelObj::toDateTime(std::tm& result, 
+    const bool coerce, const wchar_t* format) const
+  {
+    switch (xtype())
+    {
+    case xltypeNum:
+    {
+      int uSecs;
+      result.tm_isdst = false;
+      return excelSerialDatetoDMYHMS(val.num, 
+        result.tm_yday, result.tm_mon, result.tm_year,
+        result.tm_hour, result.tm_min, result.tm_sec, uSecs);
+    }
+    case xltypeInt:
+    {
+      result.tm_isdst = false;
+      result.tm_hour = 0;
+      result.tm_min = 0;
+      return excelSerialDateToDMY(val.w,
+        result.tm_yday, result.tm_mon, result.tm_year);
+    }
+    case xltypeStr:
+    {
+      if (!coerce)
+        return false;
+      return stringToDateTime(
+        asPascalStr().view(),
+        result, format);
+    }
+    default:
+      return false;
+    }
+  }
   bool ExcelObj::trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const
   {
     if ((xtype() & xltypeMulti) == 0)
@@ -456,7 +496,7 @@ namespace
       return false;
     }
 
-    auto start = (ExcelObj*)val.array.lparray;
+    const auto start = (ExcelObj*)val.array.lparray;
     nRows = val.array.rows;
     nCols = (uint16_t)val.array.columns;
 
@@ -493,7 +533,7 @@ namespace
 
     case xltypeStr:
     {
-      size_t len = from.val.str[0];
+      const auto len = from.val.str[0];
 #if _DEBUG
       to.val.str = new wchar_t[len + 2];
       to.val.str[len + 1] = L'\0';  // Allows debugger to read string
@@ -506,8 +546,8 @@ namespace
     }
     case xltypeMulti:
     {
-      auto nRows = from.val.array.rows;
-      auto nCols = from.val.array.columns;
+      const auto nRows = from.val.array.rows;
+      const auto nCols = from.val.array.columns;
 
       const auto* pSrc = from.val.array.lparray;
 
@@ -521,7 +561,7 @@ namespace
           {
           case xltypeStr:
           {
-            wchar_t len = pSrc->val.str[0];
+            const auto len = pSrc->val.str[0];
             arr.emplace_at(i, j, pSrc->val.str + 1, len);
             break;
           }

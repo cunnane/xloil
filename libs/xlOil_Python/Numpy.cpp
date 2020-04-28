@@ -98,6 +98,17 @@ namespace xloil
         npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
+      npy_datetime fromString(const wchar_t* buf, size_t len) const
+      {
+        std::tm tm;
+        if (stringToDateTime(std::wstring_view(buf, len), tm))
+        {
+          npy_datetimestruct dt = { tm.tm_year + 1900, tm.tm_mon + 1, 
+            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0 };
+          return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
+        }
+        return FromExcelBase::fromString(buf, len);
+      }
     };
    
 
@@ -415,12 +426,12 @@ namespace xloil
         
         TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder(1, dims[0], converter.stringLength);
+        ExcelArrayBuilder builder(dims[0], 1, converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
-          converter.builderEmplace(builder, 0, j, PyArray_GETPTR1(pyArr, j));
+          converter.builderEmplace(builder, j, 0, PyArray_GETPTR1(pyArr, j));
         
         return _cache
-          ? addCacheObject(builder.toExcelObj())
+          ? objectCacheAdd(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };
@@ -453,7 +464,7 @@ namespace xloil
             converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
 
         return _cache
-          ? xloil::addCacheObject(builder.toExcelObj())
+          ? xloil::objectCacheAdd(builder.toExcelObj())
           : builder.toExcelObj();
       }
     };

@@ -20,6 +20,7 @@ namespace xloil
     std::string logLevel(const toml::value* root);
     std::vector<std::wstring> plugins(const toml::value* root);
     std::wstring pluginSearchPattern(const toml::value* root);
+    std::vector<std::wstring> dateFormats(const toml::value* root);
   };
 
   std::shared_ptr<const toml::value>

@@ -414,10 +414,13 @@ namespace xloil
       return (new ExcelObj(std::forward<ExcelObj>(p)))->toExcel();
     }
 
-    // TODO: implement coercion from string
-    bool toDMY(int &nDay, int &nMonth, int &nYear, bool coerce = false);
+    bool toDMY(int &nDay, int &nMonth, int &nYear);
     bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours,
-      int& nMins, int& nSecs, int& uSecs, bool coerce = false);
+      int& nMins, int& nSecs, int& uSecs);
+    bool toDateTime(
+      std::tm&, 
+      const bool coerce = false, 
+      const wchar_t* format = nullptr) const;
 
     /// <summary>
     /// Called by ExcelArray to determine the size of array data when
