@@ -32,108 +32,64 @@ namespace xloil
 
   XLOIL_EXPORT const wchar_t* xlRetCodeToString(int xlret);
 
-  // TODO: This is all bit of early morning canine food. Sort out.
-
-  template<class TTarget, class TTemp, class TFirst>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const TFirst& first)
+  namespace detail
   {
-    tmp.emplace_back(first);
-    appendVector(v, tmp, tmp.back().xloper());
-  }
-  template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const nullptr_t& /*first*/)
-  {
-    // TODO: Missing type singleton?
-    tmp.emplace_back(nullptr);
-    appendVector(v, tmp, tmp.back().xloper());
-  }
-  template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const ExcelObj& first)
-  {
-    v.push_back(&first);
-  }
-  template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const ExcelObj* first)
-  {
-    v.push_back(first);
-  }
-
-  template<class TTarget, class TTemp>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& /*tmp*/, const XLOIL_XLOPER* first)
-  {
-    v.push_back((const ExcelObj*) first);
-  }
-
-  template<class TTarget, class TTemp, class TIter>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const Splatter<TIter>& first)
-  {
-    for (const auto& x : first())
-      appendVector(v, tmp, x);
-  }
-
-  template<class TTarget, class TTemp, class T, class...Args>
-  void appendVector(std::vector<TTarget>& v, std::list<TTemp>& tmp, const T& first, Args&&... theRest)
-  {
-    appendVector(v, tmp, first);
-    appendVector(v, tmp, theRest...);
-  }
-
-
-  // TODO: use this rather
-  class ArgHolder
-  {
-  private:
-    std::vector<std::shared_ptr<const ExcelObj>> _temporary;
-    std::vector<const ExcelObj*> _argVec;
-
-  public:
-
-    template<class... Args> ArgHolder(const Args&&... args)
+    class CallArgHolder
     {
-      _temporary.reserve(sizeof...(args));
-      _argVec.reserve(sizeof...(args));
-      add(args...);
-    }
+    private:
+      std::list<ExcelObj> _temporary;
+      std::vector<const ExcelObj*> _argVec;
 
-    const ExcelObj** ptrToArgs()
-    {
-      return (&_argVec[0]);
-    }
+    public:
+      template<class... Args> CallArgHolder(Args&&... args)
+      {
+        _argVec.reserve(sizeof...(args));
+        add(std::forward<Args>(args)...);
+      }
 
-    template<class T> void add(const T& first)
-    {
-      auto p = std::make_shared<const ExcelObj>(first);
-      _temporary.push_back(p);
-      add(p->xloper());
-    }
+      const ExcelObj** ptrToArgs()
+      {
+        return (&_argVec[0]);
+      }
 
-    // TODO: do we need this separatly?
-    template<> void add(const nullptr_t&)
-    {
-      auto p = std::make_shared<const ExcelObj>(nullptr);
-      _temporary.push_back(p);
-      add(p->xloper());
-    }
-    template<> void add(const ExcelObj& first)
-    {
-      _argVec.push_back(&first);
-    }
-    void add(const XLOIL_XLOPER* first)
-    {
-      _argVec.push_back((const ExcelObj*)first);
-    }
+      size_t nArgs() const { return _argVec.size(); }
+ 
+      template<class T> void add(const T& arg)
+      {
+        _temporary.emplace_back(arg);
+        _argVec.push_back(&_temporary.back());
+      }
+      void add(const ExcelObj& arg)
+      {
+        _argVec.push_back(&arg);
+      }
+      void add(const XLOIL_XLOPER* arg)
+      {
+        if (arg)
+          _argVec.push_back((const ExcelObj*)arg);
+        else
+          add<nullptr_t>(nullptr);
+      }
 
-    template<class T, class...Args>
-    void add(const T& first, const Args&&... theRest)
-    {
-      add(first);
-      add(theRest...);
-    }
-  };
+      template <class TIter>
+      void add(Splatter<TIter>&& splatter)
+      {
+        for (const auto& x : splatter())
+          add(x);
+      }
+      template<class T> void add(T&& arg)
+      {
+        _temporary.emplace_back(arg);
+        _argVec.push_back(&_temporary.back());
+      }
 
-  inline const ExcelObj** toArgPtr(std::vector<const ExcelObj*>& args)
-  {
-    return (&args[0]);
+      template<class T, class...Args>
+      void add(const T& first, Args&&... theRest)
+      {
+        add(first);
+        add(std::forward<Args>(theRest)...);
+      }
+    };
   }
 
   template<typename... Args>
@@ -153,18 +109,18 @@ namespace xloil
   }
 
   template<typename... Args>
-  inline std::pair<ExcelObj, int> tryCallExcel(int func, Args&&... args) noexcept
+  inline std::pair<ExcelObj, int> 
+    tryCallExcel(int func, Args&&... args) noexcept
   {
     auto result = std::make_pair(ExcelObj(), 0);
-    std::list<ExcelObj> tmpVec; // TODO: memory pool like in frmwrk is better?
-    std::vector<const ExcelObj*> argVec;
-    appendVector(argVec, tmpVec, std::forward<Args>(args)...);
-    result.second = callExcelRaw(func, &result.first, int(argVec.size()), toArgPtr(argVec));
+    detail::CallArgHolder holder(std::forward<Args>(args)...);
+    result.second = callExcelRaw(func, &result.first, holder.nArgs(), holder.ptrToArgs());
     result.first.fromExcel();
     return std::forward<std::pair<ExcelObj, int>>(result);
   }
 
-  inline std::pair<ExcelObj, int> tryCallExcel(int func)
+  inline std::pair<ExcelObj, int> 
+    tryCallExcel(int func)
   {
     auto result = std::make_pair(ExcelObj(), 0);
     result.second = callExcelRaw(func, &result.first, 0, 0);
@@ -172,7 +128,8 @@ namespace xloil
     return result;
   }
 
-  inline std::pair<ExcelObj, int> tryCallExcel(int func, const ExcelObj& arg)
+  inline std::pair<ExcelObj, int> 
+    tryCallExcel(int func, const ExcelObj& arg)
   {
     auto result = std::make_pair(ExcelObj(), 0);
     auto p = &arg;
