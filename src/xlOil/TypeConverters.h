@@ -44,27 +44,38 @@ namespace xloil
 
     TResult operator()(const ExcelObj& xl, const_return_ptr defaultVal = nullptr) const
     {
-      switch (xl.type())
+      try
       {
-      case ExcelType::Int: return _impl().fromInt(xl.val.w);
-      case ExcelType::Bool: return _impl().fromBool(xl.val.xbool != 0);
-      case ExcelType::Num: return _impl().fromDouble(xl.val.num);
-      case ExcelType::Str: return _impl().fromString(xl.val.str + 1, xl.val.str[0]);
-      case ExcelType::Multi: return _impl().fromArray(xl);
-      case ExcelType::Missing: return _impl().fromMissing(defaultVal);
-      case ExcelType::Err: return _impl().fromError(CellError(xl.val.err));
-      case ExcelType::Nil: return _impl().fromEmpty(defaultVal);
-      case ExcelType::SRef:
-      case ExcelType::Ref:
-        return _impl().fromRef(xl);
-      default:
-        XLO_THROW("Unexpected XL type");
+        switch (xl.type())
+        {
+        case ExcelType::Int: return _impl().fromInt(xl.val.w);
+        case ExcelType::Bool: return _impl().fromBool(xl.val.xbool != 0);
+        case ExcelType::Num: return _impl().fromDouble(xl.val.num);
+        case ExcelType::Str: return _impl().fromString(xl.val.str + 1, xl.val.str[0]);
+        case ExcelType::Multi: return _impl().fromArray(xl);
+        case ExcelType::Missing: return _impl().fromMissing(defaultVal);
+        case ExcelType::Err: return _impl().fromError(CellError(xl.val.err));
+        case ExcelType::Nil: return _impl().fromEmpty(defaultVal);
+        case ExcelType::SRef:
+        case ExcelType::Ref:
+          return _impl().fromRef(xl);
+        default:
+          XLO_THROW("Unexpected XL type");
+        }
+      }
+      catch (const std::exception& e)
+      {
+        XLO_THROW(L"Failed reading {0}: {1}", 
+          xl.toStringRepresentation(), 
+          utf8ToUtf16(e.what()));
       }
     }
   };
 
   template<class Super, class This>
-  using NotNull = typename std::conditional<std::is_same<Super, nullptr_t>::value, This, Super>::type;
+  using NullCoerce = typename std::conditional<std::is_same<Super, nullptr_t>::value, 
+      This, 
+      Super>::type;
 
   /// <summary>
   /// Does the actual work of conversion from Excel to a language 
@@ -72,8 +83,9 @@ namespace xloil
   /// ExcelObj data types as make sense for the conversion being performed.
   /// </summary>
   template <class TResult, class TSuper=nullptr_t>
-  class FromExcelBase 
-    : public FromExcelDispatcher<TResult, NotNull<TSuper, FromExcelBase<TResult, nullptr_t>>>
+  class FromExcelBase : public FromExcelDispatcher<
+    TResult, 
+    NullCoerce<TSuper, FromExcelBase<TResult, nullptr_t>>>
   {
   public:
     TResult fromInt(int x) const { return error(); }
@@ -93,7 +105,7 @@ namespace xloil
     TResult fromRef(const ExcelObj&) const { return error(); }
     TResult fromRef(const ExcelRange&) const { return error(); }
 
-    TResult error() const { XLO_THROW("Cannot convert"); }
+    TResult error() const { XLO_THROW("Cannot convert to required type"); }
   };
 
   /// <summary>
@@ -103,7 +115,7 @@ namespace xloil
   /// </summary>
   template <class TResult, class TSuper>
   class FromExcelBase<TResult*, TSuper>
-    : public FromExcelDispatcher<TResult*, NotNull<TSuper, FromExcelBase<TResult*, nullptr_t>>>
+    : public FromExcelDispatcher<TResult*, NullCoerce<TSuper, FromExcelBase<TResult*, nullptr_t>>>
   {
   public:
     TResult* fromInt(int) const { return nullptr; }
@@ -128,7 +140,7 @@ namespace xloil
 
 
   template <class TResult, class TSuper=nullptr_t>
-  struct CacheConverter : public FromExcelBase<TResult, NotNull<TSuper, CacheConverter<TResult, nullptr_t>>>
+  struct CacheConverter : public FromExcelBase<TResult, NullCoerce<TSuper, CacheConverter<TResult, nullptr_t>>>
   {
     auto fromString(const wchar_t* buf, size_t len) const
     {

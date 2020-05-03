@@ -121,7 +121,8 @@ namespace xloil
     , _SheetName(new ExcelObj())
   {
     callExcelRaw(xlfCaller, const_cast<ExcelObj*>(_Address.get()));
-    callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
+    if (_Address->isType(ExcelType::RangeRef))
+      callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
   }
   size_t CallerInfo::fullAddressLength() const
   {
@@ -131,19 +132,34 @@ namespace xloil
   }
   size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
   {
-    auto wsName = _SheetName->asPascalStr();
-    assert(bufLen > wsName.length());
-    wmemcpy(buf, wsName.pstr(), wsName.length());
-    buf += wsName.length();
+    const auto wsName = _SheetName->asPascalStr();
+    const auto wsLength = wsName.length();
 
-    // Separator character
-    *(buf++) = L'!';
+    if (wsLength > 0)
+    {
+      assert(bufLen > wsLength);
+      wmemcpy(buf, wsName.pstr(), wsLength);
+      buf += wsLength;
+      // Separator character
+      *(buf++) = L'!';
+    }
 
     // TODO: handle other caller cases?
-    assert(_Address->type() == ExcelType::SRef);
-    auto addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
-
-    return addressLen + wsName.length() + 1;
+    size_t addressLen;
+    switch (_Address->type())
+    {
+    case ExcelType::SRef:
+      addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
+      break;
+    case ExcelType::Ref:
+      addressLen = xlrefToStringRC(_Address->val.mref.lpmref->reftbl[0], buf, bufLen - wsName.length() - 1);
+      break;
+    default:
+      wmemcpy(buf, L"UNKNOWN", 7);
+      addressLen = 7;
+      break;
+    }
+    return addressLen + wsLength + 1;
   }
 
   constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
@@ -243,7 +259,6 @@ namespace xloil
     return addressLen + wsName.length() + 1;
   }
 
-
   // Uses RxCy format as it's easier for the programmer 
   // (see how much code is required above for A1 style!)
   size_t xlrefToStringRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
@@ -255,7 +270,6 @@ namespace xloil
       return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d", 
         ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
   }
-
 
   bool inFunctionWizard()
   {

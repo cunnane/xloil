@@ -40,7 +40,7 @@ namespace xloil
     }
 
     template<class TSuper=nullptr_t>
-    class PyFromDate : public PyFromCache<NotNull<TSuper, PyFromDate<>>>
+    class PyFromDate : public PyFromCache<NullCoerce<TSuper, PyFromDate<>>>
     {
     public:
       // TODO: string->date conversion, slow but useful

@@ -6,7 +6,7 @@ namespace xloil
 {
   namespace SQL 
   {
-    constexpr wchar_t theSqlCacheUniquifier = L'\x6B13';
+    constexpr wchar_t theSqlCacheUniquifier = L'\x8449';
     typedef ObjectCache<shared_ptr<const CacheObj>, theSqlCacheUniquifier> CacheType;
     static std::unique_ptr<CacheType> theObjCache;
 

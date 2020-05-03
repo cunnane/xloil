@@ -23,7 +23,7 @@ namespace xloil
   namespace Python
   {
     template<class TSuper=nullptr_t>
-    class PyFromCache : public CacheConverter<PyObject*, NotNull<TSuper, PyFromCache<>>>
+    class PyFromCache : public CacheConverter<PyObject*, NullCoerce<TSuper, PyFromCache<>>>
     {
     public:
       using base_type = CacheConverter;
@@ -75,7 +75,7 @@ namespace xloil
     };
 
     template<class TSuper = nullptr_t>
-    class PyFromAny : public PyFromCache<NotNull<TSuper, PyFromAny<>>>
+    class PyFromAny : public PyFromCache<NullCoerce<TSuper, PyFromAny<>>>
     {
     public:
       PyObject* fromInt(int x) const { return PyFromInt().fromInt(x); }

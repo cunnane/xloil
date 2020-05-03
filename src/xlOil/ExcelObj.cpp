@@ -331,20 +331,27 @@ namespace
       return L"#???";
     }
   }
-  std::wstring ExcelObj::toStringRepresentation() const
+  std::wstring ExcelObj::toStringRepresentation() const noexcept
   {
-    switch (xtype())
+    try
     {
-    case xltypeSRef:
-    case xltypeRef:
-    {
-      ExcelRange range(*this);
-      return range.address();
+      switch (xtype())
+      {
+      case xltypeSRef:
+      case xltypeRef:
+      {
+        ExcelRange range(*this);
+        return range.address();
+      }
+      case xltypeMulti:
+        return fmt::format(L"[{0} x {1}]", val.array.rows, val.array.columns);
+      default:
+        return toString();
+      }
     }
-    case xltypeMulti:
-      return fmt::format(L"[{0} x {1}]", val.array.rows, val.array.columns);
-    default:
-      return toString();
+    catch (...)
+    {
+      return L"<ERROR>";
     }
   }
   size_t ExcelObj::maxStringLength() const
@@ -542,6 +549,7 @@ namespace
     case xltypeRef:
     {
       auto* fromMRef = from.val.mref.lpmref;
+      // mref can be null after a call to xlSheetId
       auto count = fromMRef ? fromMRef->count : 0;
       if (count > 0)
       {
@@ -550,6 +558,8 @@ namespace
         memcpy_s(newMRef, size, (char*)fromMRef, size);
         to.val.mref.lpmref = (LPXLMREF12)newMRef;
       }
+      else
+        to.val.mref.lpmref = nullptr;
       to.val.mref.idSheet = from.val.mref.idSheet;
       to.xltype = xltypeRef;
 

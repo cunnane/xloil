@@ -26,15 +26,18 @@ namespace xloil
     }
   }
 
-  XLOIL_EXPORT int callExcelRaw(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
+  XLOIL_EXPORT int callExcelRaw(
+    int func, ExcelObj* result, size_t nArgs, const ExcelObj** args)
   {
-    auto ret = Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
-    // Likely cause of xlretInvXlfn is running outside XLL context
+    auto ret = Excel12v(func, result, (int)nArgs, (XLOIL_XLOPER**)args);
+    // The likely cause of xlretInvXlfn is running outside XLL context
+    // so try to run in XLL context
     if (ret == xlretInvXlfn)
     {
-      ret = runInXllContext(func, result, nArgs, args);
+      ret = runInXllContext(func, result, (int)nArgs, args);
     }
-    result->fromExcel();
+    if (result)
+      result->fromExcel();
     return ret;
   }
 }

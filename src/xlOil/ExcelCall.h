@@ -7,33 +7,15 @@
 
 namespace xloil
 {
-  template <class TIterable> struct Splatter
-  {
-    Splatter(const TIterable& iter) : _obj(iter) {}
-    const TIterable& operator()() const { return _obj; }
-    const TIterable& _obj;
-  };
-
-  // Another option to this would be to detect iterable with sfinae but
-  // then is splatting the iterable more natural than converting it to 
-  // an array?
-  template <class TIterable>
-  auto unpack(const TIterable& iterable)
-  {
-    return Splatter<TIterable>(iterable);
-  }
-
-  XLOIL_EXPORT int callExcelRaw(int func, ExcelObj* result, int nArgs = 0, const ExcelObj** args = nullptr);
-  inline int callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg)
-  {
-    auto p = arg;
-    return callExcelRaw(func, result, 1, &p);
-  }
-
-  XLOIL_EXPORT const wchar_t* xlRetCodeToString(int xlret);
-
   namespace detail
   {
+    template <class TIterable> struct Splatter
+    {
+      Splatter(const TIterable& iter) : _obj(iter) {}
+      const TIterable& operator()() const { return _obj; }
+      const TIterable& _obj;
+    };
+
     class CallArgHolder
     {
     private:
@@ -72,7 +54,7 @@ namespace xloil
       }
 
       template <class TIter>
-      void add(Splatter<TIter>&& splatter)
+      void add(detail::Splatter<TIter>&& splatter)
       {
         for (const auto& x : splatter())
           add(x);
@@ -92,6 +74,57 @@ namespace xloil
     };
   }
 
+  /// <summary>
+  /// Mimics pythons argument splat/unpack object for calls to
+  /// <see cref="callExcel"/> by unpacking an iterable into function
+  /// arguments.
+  /// 
+  /// <example>
+  /// vector<double> vals;
+  /// callExcel(xlfSum, unpack(vals));
+  /// </example>
+  /// </summary>
+  template <class TIterable>
+  auto unpack(const TIterable& iterable)
+  {
+    return detail::Splatter<TIterable>(iterable);
+  }
+
+  /// <summary>
+  /// A wrapper around the Excel12 call. Better to avoid using directly
+  /// unless for performance reasons.
+  /// </summary>
+  XLOIL_EXPORT int callExcelRaw(
+    int func, ExcelObj* result,
+    size_t nArgs = 0,
+    const ExcelObj** args = nullptr);
+
+  /// <summary>
+  /// Convenience wrapper for <see cref="callExcelRaw"/> for 
+  /// a single argument
+  /// </summary>
+  inline int
+    callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg)
+  {
+    auto p = arg;
+    return callExcelRaw(func, result, 1, &p);
+  }
+
+  /// <summary>
+  /// Returns a reable error from the return code produced by
+  /// <see cref="tryCallExcel"/>.
+  /// </summary>
+  XLOIL_EXPORT const wchar_t*
+    xlRetCodeToString(int xlret);
+
+  /// <summary>
+  /// Calls the specified Excel function number with the given arguments.
+  /// Non-ExcelObj arguments are converted to ExcelObj types - this is 
+  /// generally only possible for arithmetic and string types.
+  /// 
+  /// Throws an exeception if the call fails, otherwise returns the 
+  /// result as an ExcelObj.
+  /// </summary>
   template<typename... Args>
   inline ExcelObj callExcel(int func, Args&&... args)
   {
@@ -105,9 +138,14 @@ namespace xloil
     default:
       XLO_THROW(L"Call to Excel failed: {0}", xlRetCodeToString(ret));
     }
-    return std::forward<ExcelObj>(result);
+    return result;
   }
 
+  /// <summary>
+  /// Similar to <see cref="callExcel"/> but does not throw on failure.
+  /// Rather returns a tuple (ExcelObj, int) where the second argument 
+  /// is the return code <see cref="msxll::xlretSuccess"/>.
+  /// </summary>
   template<typename... Args>
   inline std::pair<ExcelObj, int> 
     tryCallExcel(int func, Args&&... args) noexcept
@@ -116,9 +154,12 @@ namespace xloil
     detail::CallArgHolder holder(std::forward<Args>(args)...);
     result.second = callExcelRaw(func, &result.first, holder.nArgs(), holder.ptrToArgs());
     result.first.fromExcel();
-    return std::forward<std::pair<ExcelObj, int>>(result);
+    return result;
   }
 
+  /// <summary>
+  /// As for <see cref="tryCallExcel"/> but with no arguments.
+  /// </summary>
   inline std::pair<ExcelObj, int> 
     tryCallExcel(int func)
   {
@@ -128,6 +169,10 @@ namespace xloil
     return result;
   }
 
+  /// <summary>
+  /// As for <see cref="tryCallExcel"/> but with a single ExcelObj argument.
+  /// The separate implemenation gives some performance improvements.
+  /// </summary>
   inline std::pair<ExcelObj, int> 
     tryCallExcel(int func, const ExcelObj& arg)
   {
@@ -138,6 +183,10 @@ namespace xloil
     return result;
   }
 
+  /// <summary>
+  /// If this error is thrown, Excel SDK documentation says you must
+  /// immediately exit.
+  /// </summary>
   class ExcelAbort : public std::runtime_error
   {
   public:

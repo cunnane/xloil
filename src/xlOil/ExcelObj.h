@@ -328,14 +328,15 @@ namespace xloil
 
     /// <summary>
     /// Similar to toString but more suitable for output of object 
-    /// descriptions, for example in error messages.  
+    /// descriptions, for example in error messages. For this reason
+    /// it doesn't throw but rather returns '<ERROR>' on failure.
     /// 
     /// Returns the same as toString except for arrays which yield 
     /// '[NxM]' where N and M are the number of rows and columns and 
     /// for ranges which return the range reference in the form 'Sheet!A1'.
     /// </summary>
     /// <returns></returns>
-    std::wstring toStringRepresentation() const;
+    std::wstring toStringRepresentation() const noexcept;
 
     /// <summary>
     /// Gives the maximum string length if toString is called on
