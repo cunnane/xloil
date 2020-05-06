@@ -187,7 +187,7 @@ namespace xloil
       auto truncatedHelp = info->help;
       if (info->help.length() > 255)
       {
-        XLO_WARN(L"Excel does not support help strings longer than 255 chars."
+        XLO_WARN(L"Excel does not support help strings longer than 255 chars. "
           "Truncating for function '{0}'", info->name);
         truncatedHelp.assign(info->help.c_str(), 255);
       }
@@ -401,14 +401,13 @@ namespace xloil
             return false;
           }
         }
-  
-        // Rewrite spec
-        _spec = make_shared<GenericCallbackSpec<TCallback>>(newInfo, spec()._callback, newContext);
-
-        // If the FuncInfo is identical, no need to re-register, but seems pointing to the
-        // new object seems the least astonishment approach, hence rewriting the spec
+        // If the FuncInfo is identical, no need to re-register, note this
+        // discards the new funcinfo.
         if (infoMatches)
           return true;
+
+        // Rewrite spec
+        _spec = make_shared<GenericCallbackSpec<TCallback>>(newInfo, spec()._callback, newContext);
 
         // Otherwise re-use the possibly patched thunk
         XLO_DEBUG(L"Reregistering function '{0}'", newInfo->name);
