@@ -36,22 +36,24 @@ namespace xloil
         return r.cells(row - 1, col - 1);
       }
 
-      auto createRange(const wchar_t* address,
-        std::optional<int> fromR, std::optional<int> fromC,
-        int* nRows = 0, int* nCols = 0,
-        int* toR = 0, int* toC = 0)
-      {
-
-      }
-
       auto rangeGetValue(const ExcelRange& range)
       {
         return PySteal<>(PyFromExcel<PyFromAny<>>()(range.value()));
       }
-      void rangeSetValue(ExcelRange& r, const py::object& value)
+      void rangeSetValue(ExcelRange& r, const py::object& pyval)
       {
-        r = FromPyObj()(value.ptr());
+        const auto val = FromPyObj()(pyval.ptr());
+        // Release gil when setting values in as this may trigger calcs 
+        // which call back into other python functions.
+        py::gil_scoped_release lose_gil;
+        r = val;
       };
+
+      void rangeClear(ExcelRange& r)
+      {
+        py::gil_scoped_release lose_gil;
+        r.clear();
+      }
 
       py::object getItem(const ExcelRange& range, pybind11::tuple loc)
       {
@@ -122,7 +124,7 @@ namespace xloil
             rangeSetValue,
             py::return_value_policy::automatic)
           .def("set", rangeSetValue)
-          .def("clear", &ExcelRange::clear)
+          .def("clear", rangeClear)
           .def("address", &ExcelRange::address, 
             py::arg("local") = false)
           .def_property_readonly("nrows", &ExcelRange::nRows)
