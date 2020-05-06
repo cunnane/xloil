@@ -201,11 +201,13 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        XLO_ERROR(e.what());
+        XLO_WARN(e.what());
+        asyncReturn(*asyncHandle, ExcelObj(e.what()));
       }
       catch (...)
       {
-        XLO_ERROR("Async unknow error");
+        XLO_WARN("Async unknown error");
+        asyncReturn(*asyncHandle, ExcelObj(CellError::Value));
       }
     }
 

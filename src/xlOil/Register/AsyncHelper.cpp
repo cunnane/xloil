@@ -6,7 +6,20 @@ namespace xloil
 {
   static size_t lastCancelTime = 0;
 
-  XLOIL_EXPORT  bool yieldAndCheckIfEscPressed()
+  XLOIL_EXPORT void asyncReturn(
+    const ExcelObj& asyncHandle, const ExcelObj& value)
+  {
+    const ExcelObj* callBackArgs[2];
+    callBackArgs[0] = &asyncHandle;
+    callBackArgs[1] = &value;
+    // Need to use a raw call as the return value from xlAsyncReturn seems 
+    // to be garbage - just a zeroed block of memory
+    ExcelObj result;
+    callExcelRaw(msxll::xlAsyncReturn, &result, 2, callBackArgs);
+   
+  }
+
+  XLOIL_EXPORT bool yieldAndCheckIfEscPressed()
   {
     auto[res, ret] = tryCallExcel(msxll::xlAbort);
     return (ret == 0 && res.asBool());
@@ -23,7 +36,7 @@ namespace xloil
     {
       RegisterMe()
       {
-        static auto handler = xloil::Event_CalcCancelled() += []() 
+        static auto handler = xloil::Event_CalcCancelled() += []()
         { 
 #ifdef _WIN64
           lastCancelTime = GetTickCount64(); 

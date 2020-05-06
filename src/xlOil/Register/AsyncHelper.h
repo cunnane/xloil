@@ -6,6 +6,12 @@
 
 namespace xloil
 {
+  XLOIL_EXPORT void asyncReturn(const ExcelObj& asyncHandle, const ExcelObj& value);
+
+  XLOIL_EXPORT bool yieldAndCheckIfEscPressed();
+
+  XLOIL_EXPORT size_t lastCalcCancelledTicks();
+
   class AsyncHolder
   {
   public:
@@ -18,22 +24,13 @@ namespace xloil
     }
     void operator()(int /*threadId*/) const
     {
-      const ExcelObj* callBackArgs[2];
-      callBackArgs[0] = &_asyncHandle;
-      callBackArgs[1] = _call();
-      // Need to use a raw call as the return value from xlAsyncReturn seems 
-      // to be garbage - just a zeroed block of memory
-      ExcelObj result;
-      callExcelRaw(msxll::xlAsyncReturn, &result, 2, callBackArgs);
-      if (callBackArgs[1]->xltype & msxll::xlbitDLLFree)
-        delete callBackArgs[1];
+      const ExcelObj* result = _call();
+      asyncReturn(_asyncHandle, *result);
+      if (result->xltype & msxll::xlbitDLLFree)
+        delete result;
     }
   private:
     std::function<ExcelObj*()> _call;
     ExcelObj _asyncHandle;
   };
-
-  XLOIL_EXPORT bool yieldAndCheckIfEscPressed();
-
-  XLOIL_EXPORT size_t lastCalcCancelledTicks();
 }
