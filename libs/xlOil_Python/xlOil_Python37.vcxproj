@@ -153,6 +153,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="InjectedModule.cpp" />
     <ClCompile Include="Numpy.cpp" />
+    <ClCompile Include="PyEvents.cpp" />
     <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
@@ -167,6 +168,7 @@
     <ClInclude Include="BasicTypes.h" />
     <ClInclude Include="InjectedModule.h" />
     <ClInclude Include="Numpy.h" />
+    <ClInclude Include="PyEvents.h" />
     <ClInclude Include="PyExcelArray.h" />
     <ClInclude Include="PyHelpers.h" />
     <ClInclude Include="Tuple.h" />

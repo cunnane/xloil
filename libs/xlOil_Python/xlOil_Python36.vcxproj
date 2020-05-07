@@ -147,6 +147,7 @@
     <ClCompile Include="CustomConverter.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
+    <ClCompile Include="PyEvents.cpp" />
     <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="File.cpp" />
     <ClCompile Include="FunctionRegister.cpp" />

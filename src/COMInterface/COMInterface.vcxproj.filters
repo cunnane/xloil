@@ -6,10 +6,16 @@
     <ClInclude Include="CallHelper.h" />
     <ClInclude Include="XllContextInvoke.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
+    <ClInclude Include="COMRange.h" />
+    <ClInclude Include="ComVariant.h" />
+    <ClInclude Include="ComEventSink.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
     <ClCompile Include="WorkbookScopeFunctions.cpp" />
+    <ClCompile Include="COMRange.cpp" />
+    <ClCompile Include="ComVariant.cpp" />
+    <ClCompile Include="ComEventSink.cpp" />
   </ItemGroup>
 </Project>

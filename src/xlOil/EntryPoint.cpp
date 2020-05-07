@@ -72,7 +72,7 @@ namespace xloil
   {
     try
     {
-      ScopeInXllContext xllContext;
+      InXllContext xllContext;
       
       ourExcelVersion = getExcelVersion();
 
@@ -92,7 +92,7 @@ namespace xloil
   {
     try
     {
-      ScopeInXllContext xllContext;
+      InXllContext xllContext;
       
       closeXll(xllPath);
 
@@ -103,6 +103,29 @@ namespace xloil
       XLO_ERROR("Finalisation error: {0}", e.what());
     }
     return 0;
+  }
+
+  XLOIL_EXPORT void onCalculationEnded() noexcept
+  {
+    try
+    {
+      InXllContext xllContext;
+      xloil::Event::AfterCalculate().fire();
+    }
+    catch (...)
+    {
+    }
+  }
+  XLOIL_EXPORT void onCalculationCancelled() noexcept
+  {
+    try
+    {
+      InXllContext xllContext;
+      xloil::Event::CalcCancelled().fire();
+    }
+    catch (...)
+    {
+    }
   }
 }
 

@@ -1,6 +1,5 @@
 #include "Log.h"
 #include <xlOilHelpers/StringUtils.h>
-#include <xlOilHelpers/WindowsSlim.h>
 #include "Events.h"
 #include "Interface.h"
 #include "EntryPoint.h"
@@ -64,7 +63,7 @@ namespace xloil
     spdlog::set_default_logger(logger);
 
     // Flush log after each Excel calc cycle
-    static auto handler = xloil::Event_CalcEnded() += [logger]() { logger->flush(); };
+    static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
   }
 
   void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)

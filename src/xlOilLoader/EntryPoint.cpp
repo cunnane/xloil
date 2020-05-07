@@ -1,16 +1,13 @@
 #include <xloilHelpers/WindowsSlim.h>
-//#include <xloilHelpers/StringUtils.h>
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
 #include "xloil/EntryPoint.h"
 #include "xloil/ExportMacro.h"
 #include "xloil/Log.h"
-#include "xloil/Events.h"
 #include "xloil/ExcelCall.h"
 #include <toml11/toml.hpp>
 #include <filesystem>
-//#define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #include <delayimp.h>
 
 namespace fs = std::filesystem;
@@ -206,9 +203,9 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     SetDllDirectory(NULL);
 
     xloil::tryCallExcel(msxll::xlEventRegister,
-      "xloHandleCalculationEnded", xleventCalculationEnded);
+      "xloHandleCalculationEnded", msxll::xleventCalculationEnded);
     xloil::tryCallExcel(msxll::xlEventRegister,
-      "xloHandleCalculationCancelled", xleventCalculationCanceled);
+      "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
   }
   catch (const std::exception& e)
   {
@@ -277,24 +274,12 @@ XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
 
 XLO_ENTRY_POINT(int) xloHandleCalculationEnded()
 {
-  try
-  {
-    xloil::Event_CalcEnded().fire();
-  }
-  catch (...)
-  {
-  }
+  onCalculationEnded();
   return 1;
 }
 
 XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
 {
-  try
-  {
-    xloil::Event_CalcCancelled().fire();
-  }
-  catch (...)
-  {
-  }
+  onCalculationCancelled();
   return 1;
 }

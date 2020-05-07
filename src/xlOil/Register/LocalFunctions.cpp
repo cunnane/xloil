@@ -38,7 +38,7 @@ namespace xloil
     return func->second;
   }
 
-  auto workbookCloseHandler = xloil::Event_WorkbookClose().bind(
+  auto workbookCloseHandler = Event::WorkbookAfterClose().bind(
     [](const wchar_t* wbName)
     {
       auto found = theRegistry.find(wbName);

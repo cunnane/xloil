@@ -1,10 +1,11 @@
-
 #include "Connect.h"
+#include "ComEventSink.h"
+#include <xloil/Events.h>
+#include <xloil/ExcelCall.h>
 
-#include "xloil/Events.h"
-#include "xloil/ExcelCall.h"
 #include <oleacc.h> // must include before ExcelTypeLib
 #include "ExcelTypeLib.h"
+
 #include <set>
 #include <memory>
 
@@ -60,191 +61,6 @@ Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
   XLO_THROW("Failed to get Excel COM object");
 }
 
-template<class TSource>
-void connect(TSource* source, IDispatch* sink, IConnectionPoint*& connPoint, DWORD& eventCookie)
-{
-  IConnectionPointContainer *pConnPntCont;
-  IUnknown* pIUnknown = NULL;
-
-  sink->QueryInterface(IID_IUnknown, (void**)(&pIUnknown));
-  source->QueryInterface(IID_IConnectionPointContainer, (void**)&pConnPntCont);
-
-  if (pConnPntCont)
-  {
-    pConnPntCont->FindConnectionPoint(__uuidof(Excel::AppEvents), &connPoint);
-    pConnPntCont->Release();
-    pConnPntCont = NULL;
-  }
-
-  if (connPoint)
-    connPoint->Advise(pIUnknown, &eventCookie);
-
-  pIUnknown->Release();
-}
-
-namespace xloil
-{
-  class WorkbookMonitor
-  {
-  public:
-    static void checkOnOpenWorkbook(struct Excel::_Workbook* Wb)
-    {
-      auto numWorkbooks = excelApp().Workbooks->Count;
-
-      // If workbook collection has grown by one, nothing was closed
-      // and we just add the workbook name
-      if (numWorkbooks == _workbooks.size() + 1)
-        _workbooks.emplace(Wb->Name);
-      else
-        check();
-    }
-    static void check()
-    {
-      set<wstring> workbooks;
-      auto& app = excelApp();
-      auto numWorkbooks = app.Workbooks->Count;
-      for (auto i = 1; i <= numWorkbooks; ++i)
-        workbooks.emplace(app.Workbooks->Item[i]->Name);
-
-      std::vector<wstring> closedWorkbooks;
-      std::set_difference(_workbooks.begin(), _workbooks.end(),
-        workbooks.begin(), workbooks.end(), std::back_inserter(closedWorkbooks));
-
-      for (auto& wb : closedWorkbooks)
-        Event_WorkbookClose().fire(wb.c_str());
-
-      _workbooks = workbooks;
-    }
-  private:
-    static set<wstring> _workbooks;
-  };
-
-  set<wstring> WorkbookMonitor::_workbooks;
-}
-
-class EventHandler : Excel::AppEvents
-{
-public:
-  template <class T> 
-  EventHandler(T* source)
-    : _cRef(1)
-  {
-    connect(source, this, _pIConnectionPoint, _dwEventCookie);
-  }
-
-  ~EventHandler()
-  {
-    close();
-  }
-
-  void close()
-  {
-    if (_pIConnectionPoint)
-    {
-      _pIConnectionPoint->Unadvise(_dwEventCookie);
-      _dwEventCookie = 0;
-      _pIConnectionPoint->Release();
-      _pIConnectionPoint = NULL;
-    }
-  }
-
-  HRESULT NewWorkbook(struct Excel::_Workbook* Wb)
-  {
-    xloil::Event_NewWorkbook().fire(Wb->Name);
-    xloil::WorkbookMonitor::checkOnOpenWorkbook(Wb);
-    return 0;
-  }
-  HRESULT WorkbookOpen(struct Excel::_Workbook* Wb)
-  {
-    xloil::Event_WorkbookOpen().fire(Wb->Path, Wb->Name);
-    xloil::WorkbookMonitor::checkOnOpenWorkbook(Wb);
-    return 0;
-  }
-  HRESULT SheetActivate(IDispatch * Sh)
-  {
-    return 0;
-  }
-
-  STDMETHOD_(ULONG, AddRef)()
-  {
-    InterlockedIncrement(&_cRef);
-    return _cRef;
-  }
-
-  STDMETHOD_(ULONG, Release)()
-  {
-    InterlockedDecrement(&_cRef);
-    if (_cRef == 0)
-    {
-      delete this;
-      return 0;
-    }
-    return _cRef;
-  }
-
-  STDMETHOD(QueryInterface)(REFIID riid, void ** ppvObject)
-  {
-    if (riid == IID_IUnknown)
-    {
-      *ppvObject = (IUnknown*)this;
-      AddRef();
-      return S_OK;
-    }
-    else if ((riid == IID_IDispatch) || (riid == __uuidof(Excel::AppEvents)))
-    {
-      *ppvObject = (IDispatch*)this;
-      AddRef();
-      return S_OK;
-    }
-
-    return E_NOINTERFACE;
-  }
-
-  STDMETHOD(GetTypeInfoCount)(UINT* pctinfo)
-  {
-    return E_NOTIMPL;
-  }
-
-  STDMETHOD(GetTypeInfo)(UINT itinfo, LCID lcid, ITypeInfo** pptinfo)
-  {
-    return E_NOTIMPL;
-  }
-
-  STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* rgszNames, UINT cNames,
-    LCID lcid, DISPID* rgdispid)
-  {
-    return E_NOTIMPL;
-  }
-
-  STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
-    LCID lcid, WORD wFlags, DISPPARAMS* pdispparams, VARIANT* pvarResult,
-    EXCEPINFO* pexcepinfo, UINT* puArgErr)
-  {
-    if ((riid != IID_NULL))
-      return E_INVALIDARG;
-
-    // Note for adding handlers: the rgvarg array is backwards
-    switch (dispidMember) 
-    {
-    case 0x0000061d:
-      NewWorkbook((Excel::_Workbook*)pdispparams->rgvarg[0].pdispVal);
-      break;
-    case 0x0000061f:
-      WorkbookOpen((Excel::_Workbook*)pdispparams->rgvarg[0].pdispVal);
-      break;
-    case 0x00000619:
-      //SheetActivate((IDispatch*)pdispparams->rgvarg[0].pdispVal);
-      break;
-    }
-
-    return S_OK;
-  }
-private:
-  IConnectionPoint* _pIConnectionPoint;
-  DWORD	_dwEventCookie;
-  LONG _cRef;
-};
-
 namespace xloil
 {
   namespace
@@ -264,7 +80,7 @@ namespace xloil
           _excelWindowHandle = (HWND)windowHandle.toInt();
 
           Excel::_Application* p = ExcelApp();
-          _handler.reset(new EventHandler(p));
+          _handler = COM::createEventSink(p);
         }
         catch (_com_error& error)
         {
@@ -287,22 +103,17 @@ namespace xloil
 
     private:
       Excel::_ApplicationPtr _xlApp;
-      std::unique_ptr<EventHandler> _handler;
+      std::shared_ptr<Excel::AppEvents> _handler;
       HWND _excelWindowHandle;
     };
 
-    struct RegisterMe
+  /*  template <class TObj>
+    struct SessionScope
     {
-      RegisterMe() {}
-      
-      COMConnector* connect()
+      SessionScope(TObj* obj)
       {
-        if (!connector)
-        {
-          connector = new COMConnector();
-          _handler = xloil::Event_AutoClose() += [this]() { this->disconnect(); };
-        }
-        return connector;
+        connector = obj;
+        _handler = xloil::Event_AutoClose() += [this]() { this->disconnect(); };
       }
 
       void disconnect()
@@ -315,7 +126,38 @@ namespace xloil
         }
       }
 
+      TObj* get() const { return connector; }
+
+    private:
+      TObj* connector;
       typename std::remove_reference<decltype(Event_AutoClose())>::type::handler_id _handler;
+    };*/
+
+    struct RegisterMe
+    {
+      RegisterMe() {}
+      
+      COMConnector* connect()
+      {
+        if (!connector)
+        {
+          connector = new COMConnector();
+          _handler = Event::AutoClose() += [this]() { this->disconnect(); };
+        }
+        return connector;
+      }
+
+      void disconnect()
+      {
+        if (connector)
+        {
+          Event::AutoClose() -= _handler;
+          delete connector;
+          connector = nullptr;
+        }
+      }
+
+      typename std::remove_reference<decltype(Event::AutoClose())>::type::handler_id _handler;
 
     private:
       COMConnector* connector;

@@ -68,6 +68,9 @@ def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 	return x * multiple
 
 
+#------------------
+# The Object Cache
+#------------------
 #
 # If you attempt to return a non-convertible object to Excel, xlOil
 # will store it in a cache an instead return a reference string based
@@ -92,12 +95,14 @@ def pyTestCache(cachedObj=None):
         return cachedObj.greeting
     return CustomObj()
    
-
+#------------------
+# Dates
+#------------------
 #
 # xlOil can convert Excel values to dates but:
 #   1) You must specify the argument type as date or datetime. Excel
 #      stores dates as numbers so xlOil cannot know when a date
-#      conversion is required
+#      conversion is required (because it uses the XLL interface)
 #   2) Excel dates cannot contain timezone information
 #   3) Excel dates cannot be before 1 Jan 1900 or after December 31, 9999
 #
@@ -113,12 +118,18 @@ def pyTestDate(x: dt.datetime):
 def pyTestKwargs(argName, **kwargs):
     return kwargs[argName]
 
+#------------------
+# Async functions
+#------------------
 #
 # Using asyncio's async keyword declares an async function in Excel.
 # This means control is passed back to Excel before the function 
 # returns.  Python is single-threaded so no other python-based functions
-# can run whilst waiting for the async return unless they are also 
-# declared async and the await keyword is used.
+# can run whilst waiting for the async return. However, the await keyword 
+# can pass control between running async functions.
+#
+# Note that any interaction with Excel will cancel all async functions:
+# they are only asynchronous with each other, not with the user interface.
 #
 @xlo.func(local=False)
 async def pyTestAsync(x, time:int):
@@ -166,8 +177,11 @@ def pyTestRange(r: xlo.AllowRange):
     r2 = r.cells(1, 1).value
     return r.cells(2, 2).address()
 
+#--------------------------------
+# Custom argument type converters
+#---------------------------------
 #
-# The converter decorator tells xlOil that the following function or 
+# The `converter` decorator tells xlOil that the following function or 
 # class is a type converter. A type converter creates a python object
 # from a given bool, float, int, str, ExcelArray or ExcelRange.
 #
@@ -184,10 +198,13 @@ def arg_doubler(x):
 def pyTestCustomConv(x: arg_doubler):
     return x
 
+#-------------------
+# Pandas Dataframes
+#-------------------
 #
 # xlo.PDFrame converts a block to a pandas DataFrame. The block should be
 # formatted as a table with data in columns and a row of column headings
-# if the headings paramter is set
+# if the headings parameter is set
 #
 @xlo.func
 def pyTestDFrame(df: xlo.PDFrame(headings=True)):
@@ -203,7 +220,7 @@ def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
     return xlo.to_cache(df)
 
 #
-# Here we test that we can fetch data from the frames created by the
+# This function tests that we can fetch data from the frames created by the
 # previous functions
 #
 @xlo.func
@@ -215,3 +232,45 @@ def pyTestFrameFetch(df, index=None, col_name=None):
             return df.loc[index].values
     else:
         return df[col_name]
+
+#-----------------
+# Event handling 
+#-----------------
+#
+# We setup some simple event handlers and demonstrate some more
+# use of of the app() object and using Range. 
+#
+# Currently event handlers are global, so for workbook local modules
+# such as this one, we check compare the the workbook name to the global
+# `_xl_this_workbook` which is set by xlOil when the module is imported
+#
+@xlo.func
+def getLinkedWbName():
+    return _xl_this_workbook
+    
+def event_writeTimeToA1():
+    if xlo.app().ActiveWorkbook.Name != _xl_this_workbook:
+        return
+        
+    sheet_name = xlo.app().ActiveSheet.Name
+    time = str(dt.datetime.now())
+    range = xlo.Range("A1")
+    range.value = f"Calc on {sheet_name} finished at: {time}"
+
+#
+# This handler is for the WorkbookBeforePrint event. If the `cancel` parameter
+# is set to True, the print is cancelled. Since python does not support changing
+# bool function arguments directly (i.e. reference parameters), we must use the
+# syntax `cancel.value = True`
+#
+def event_stopPrinting(wbName, cancel):
+    if wbName != _xl_this_workbook:
+        return
+    xlo.Range("B1").value = "Cancelled print for: " + wbName
+    cancel.value = True
+
+#
+# Link the above handlers to the events. To unlink them, use `-=`.
+#
+xlo.event.AfterCalculate += event_writeTimeToA1
+xlo.event.WorkbookBeforePrint += event_stopPrinting

@@ -1,5 +1,5 @@
 #pragma once
-namespace pybind11 { class object; }
+namespace pybind11 { class object; class module; }
 namespace xloil
 {
   namespace Python
@@ -10,6 +10,8 @@ namespace xloil
     /// xlOil functions and classes to register. It can be called
     /// repeatedly on the same module.
     /// </summary>
-    void scanModule(pybind11::object& mod);
+    void scanModule(
+      const pybind11::object& mod, 
+      const wchar_t* workbookName = nullptr);
   }
 }

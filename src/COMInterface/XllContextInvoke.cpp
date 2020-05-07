@@ -9,7 +9,6 @@
 
 namespace xloil
 {
-
   static const std::function<void()>* theTargetFunc = nullptr;
 
   // TODO: make these commmands so they are hidden?
@@ -19,7 +18,7 @@ namespace xloil
     static ExcelObj result;
     try
     {
-      ScopeInXllContext context;
+      InXllContext context;
       (*theTargetFunc)();
     }
     catch (...)
@@ -40,7 +39,7 @@ namespace xloil
     static ExcelObj result(0);
     try
     {
-      ScopeInXllContext context;
+      InXllContext context;
       result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
@@ -51,24 +50,39 @@ namespace xloil
   XLO_REGISTER_FUNC(xloRunInXLLContext)
     .macro().hidden();
 
-  ScopeInXllContext::ScopeInXllContext()
+  InXllContext::InXllContext()
   {
     ++_count;
   }
-  ScopeInXllContext::~ScopeInXllContext()
+  InXllContext::~InXllContext()
   {
     --_count;
   }
-  bool ScopeInXllContext::check()
+  bool InXllContext::check()
   {
-    return _count > 0;
+    return _count > 0 || InComContext::_count == 0;
   }
 
-  int ScopeInXllContext::_count = 0;
+  int InXllContext::_count = 0;
+
+  InComContext::InComContext()
+  {
+    ++_count;
+  }
+  InComContext::~InComContext()
+  {
+    --_count;
+  }
+  bool InComContext::check()
+  {
+    return !InXllContext::check();
+  }
+
+  int InComContext::_count = 0;
 
   bool runInXllContext(const std::function<void()>& f)
   {
-    if (ScopeInXllContext::check())
+    if (InXllContext::check())
     {
       f();
       return true;
@@ -92,7 +106,7 @@ namespace xloil
 
   int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
   {
-    if (ScopeInXllContext::check())
+    if (InXllContext::check())
     {
       Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
       return true;

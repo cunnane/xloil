@@ -6,18 +6,31 @@ namespace xloil { class ExcelObj; }
 
 namespace xloil
 {
+  
+
   /// <summary>
   /// Having this class in scope declares that you are on the main thread 
   /// and are in an XLL function called by Excel.
   /// </summary>
-  class ScopeInXllContext
+  class InXllContext
   {
   public:
-    ScopeInXllContext();
-    ~ScopeInXllContext();
+    InXllContext();
+    ~InXllContext();
     static bool check();
   private:
     static int _count;
+  };
+
+  class InComContext
+  {
+  public:
+    InComContext();
+    ~InComContext();
+    static bool check();
+  private:
+    static int _count;
+    friend InXllContext;
   };
 
   /// <summary>
@@ -32,5 +45,6 @@ namespace xloil
   /// are on the main thread and are in an XLL function called by Excel.
   /// This function runs Excel12v on the supplied arguments in that context.
   /// </summary>
-  int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args);
+  int runInXllContext(
+    int func, ExcelObj* result, int nArgs, const ExcelObj** args);
 }

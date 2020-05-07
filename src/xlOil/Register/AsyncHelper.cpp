@@ -36,7 +36,7 @@ namespace xloil
     {
       RegisterMe()
       {
-        static auto handler = xloil::Event_CalcCancelled() += []()
+        static auto handler = xloil::Event::CalcCancelled() += []()
         { 
 #ifdef _WIN64
           lastCancelTime = GetTickCount64(); 

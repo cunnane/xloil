@@ -1,5 +1,3 @@
-
-
 import inspect
 import functools
 import importlib
@@ -7,7 +5,6 @@ import typing
 import numpy as np
 import os
 import sys
-
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
@@ -19,7 +16,8 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
- 
+    from xloil_core import event
+
 else:
     def in_wizard():
         """ 
@@ -148,18 +146,69 @@ else:
             pass
 
     class _Event:
-        def __iadd__(self, event):
+        def __iadd__(self, handler):
+            """
+            Registers an event handler function, for example:
+             
+                event.NewWorkbook += lambda wb_name: print(wb_name)
+                
+            """
             pass
-        def __isub__(self, event):
+        def __isub__(self, handler):
+            """
+            Removes a previously registered event handler function
+            """
             pass
         def handlers(self):
+            """
+            Returns a list of registered handlers for this event
+            """
             pass
 
-    class event_NewWorkbook(_Event):
-        pass
+    # Strictly speaking, xloil_core.event is a module but this
+    # should give the right doc strings
+    class event:
+        """
+        Events that correspond to matching COM/VBA events, described here:
+        https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events
 
-    class event_CalcEnded(_Event):
-        pass
+        Notes:
+            * The `CalcCancelled` and `WorkbookAfterClose` event are not part of the 
+              Application object, see their individual documentation.
+            * Where an event has reference parameter, for example the `cancel` bool in
+              `WorkbookBeforeSave`, you need to set the value using `cancel.value=True`.
+              This is because python does not support reference parameters for primitive types. 
+        """
+        AfterCalculate= _Event()
+        """
+        Called when the user interrupts calculation by interacting with Excel.
+        """
+        CalcCancelled= _Event()
+        NewWorkbook= _Event()
+        SheetSelectionChange= _Event()
+        SheetBeforeDoubleClick= _Event()
+        SheetBeforeRightClick= _Event()
+        SheetActivate= _Event()
+        SheetDeactivate= _Event()
+        SheetCalculate= _Event()
+        SheetChange= _Event()
+        WorkbookOpen= _Event()
+        WorkbookActivate= _Event()
+        WorkbookDeactivate= _Event()
+        """
+        WorkbookAfterClose is a special event: Excel's event *WorkbookBeforeClose*, is restricted
+        by being cancellable by the user: it is not possible to know if the workbook actually
+        closed.  When xlOil calls `WorkbookAfterClose`, the workbook is certainly closed, but
+        it may be some time since that closure happened.
+
+        The event is not called for each workbook when xlOil exits.
+        """
+        WorkbookAfterClose= _Event()
+        WorkbookBeforeSave= _Event()
+        WorkbookBeforePrint= _Event()
+        WorkbookNewSheet= _Event()
+        WorkbookAddinInstall= _Event()
+        WorkbookAddinUninstall= _Event()
 
 """
 Tag used to mark functions to register with Excel. It is added 
@@ -729,19 +778,7 @@ finally:
     pass
 
 
-def _import_from_path(path, module_name=None):
-    import importlib.util
-    if module_name is None:
-        module_name = "xloil." + os.path.splitext(os.path.basename(path))[0]
-    # This recipe is copied from the importlib documentation
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def scan_module(m):
+def scan_module(module, workbook_name=None):
     """
         Parses a specified module looking for functions with with the xloil.func 
         decorator and register them. Does not search inside second level imports.
@@ -749,23 +786,30 @@ def scan_module(m):
         The argument can be a module object, module name or path string. The module 
         is first imported if it has not already been loaded.
  
-        Called by the xlOil C layer to import  modules specified in the config.
+        Called by the xlOil C layer to import modules specified in the config.
     """
 
-    if inspect.ismodule(m):
-        # imp.reload throws strange errors if the module in not on sys.path
-        # e.g. https://stackoverflow.com/questions/27272574/imp-reload-nonetype-object-has-no-attribute-name
-        # So deal with modules we loaded from absolute path separately
-        if m.__name__.startswith("xloil"):
-            handle = _import_from_path(m.__spec__.origin, m.__name__)
-        else:
-            handle = importlib.reload(m) 
-    elif len(os.path.dirname(m)) > 0:
-        handle = _import_from_path(m)
+    if inspect.ismodule(module):
+        handle = importlib.reload(module) 
+    elif len(os.path.dirname(module)) > 0:
+        # Not completely sure of the wisdom of adding to sys.path here...
+        mod_directory = os.path.dirname(module)
+        if not mod_directory in sys.path:
+            sys.path.append(mod_directory)
+        mod_filename = os.path.splitext(os.path.basename(module))[0]
+        handle = importlib.import_module(mod_filename)
     else:
-        handle = importlib.import_module(m)
+        handle = importlib.import_module(module)
 
+    # Allows 'local' modules to know which workbook they link to
+    handle._xl_this_workbook = workbook_name
+    
+    # Look for functions with an xloil decorator (_META_TAG) and create
+    # a function holder object for each of them
     to_register = [_get_meta(x[1]).create_holder() 
                    for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
+
     if any(to_register):
         xloil_core.register_functions(handle, to_register)
+
+    return handle

@@ -531,7 +531,7 @@ namespace xloil
       RegisterMe()
       {
         // TODO: all funcs *should* be removed by this point - check this
-        static auto handler = xloil::Event_AutoClose() += []() { FunctionRegistry::get().clear(); };
+        static auto handler = Event::AutoClose() += []() { FunctionRegistry::get().clear(); };
       }
     } theInstance;
   }

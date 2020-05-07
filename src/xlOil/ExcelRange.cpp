@@ -3,6 +3,8 @@
 #include <xlOil/ExcelState.h>
 #include <xloilHelpers/StringUtils.h>
 #include <xloilHelpers/Environment.h>
+#include <Cominterface/XllContextInvoke.h>
+#include <Cominterface/COMRange.h>
 
 namespace xloil
 {
@@ -12,7 +14,7 @@ namespace xloil
     {
     case ExcelType::SRef:
     {
-      callExcelRaw(msxll::xlSheetId, this);
+      callExcelRaw(msxll::xlSheetId, this); // TODO: may not work as expected in macro funcs
       const auto& r = from.val.sref.ref;
       create(val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;
@@ -29,11 +31,19 @@ namespace xloil
       XLO_THROW("ExcelRange: expecting reference type");
     }
   }
+  
+  inline ExcelRange rangeFromAddress(const wchar_t* address)
+  {
+    // xlfIndirect will/may core Excel if called outside XLL context!
+    if (InXllContext::check())
+      return callExcel(msxll::xlfIndirect, address);
+    else
+      return COM::rangeFromAddress(address);
+  }
 
   XLOIL_EXPORT ExcelRange::ExcelRange(const wchar_t* address)
-    : ExcelRange(callExcel(msxll::xlfIndirect, address))
-  {
-  }
+    : ExcelRange(rangeFromAddress(address))
+  {}
 
   XLOIL_EXPORT ExcelRange::ExcelRange(
     msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol)
@@ -76,6 +86,7 @@ namespace xloil
 
   ExcelObj ExcelRange::value() const
   {
+    // TODO: does this work outside xll context?
     ExcelObj result;
     callExcelRaw(msxll::xlCoerce, &result, this);
     return result;
@@ -83,15 +94,23 @@ namespace xloil
 
   ExcelRange& ExcelRange::operator=(const ExcelObj& value)
   {
-    const ExcelObj* args[2];
-    args[0] = this;
-    args[1] = &value;
-    callExcelRaw(msxll::xlSet, nullptr, 2, args);
+    if (InXllContext::check())
+    {
+      const ExcelObj* args[2];
+      args[0] = this;
+      args[1] = &value;
+      callExcelRaw(msxll::xlSet, nullptr, 2, args);
+    }
+    else
+      COM::rangeSetValue(*this, value);
     return *this;
   }
 
   void ExcelRange::clear()
   {
-    callExcelRaw(msxll::xlSet, nullptr, this);
+    if (InXllContext::check())
+      callExcelRaw(msxll::xlSet, nullptr, this);
+    else
+      COM::rangeSetValue(*this, ExcelObj());
   }
 }

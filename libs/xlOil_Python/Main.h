@@ -22,6 +22,6 @@ namespace xloil
     /// An event triggered when the Python plugin is about to close
     /// but before the Python interpreter is stopped.
     /// </summary>
-    Event<void(void), VoidCollector>& Event_PyBye();
+    Event::Event<void(void)>& Event_PyBye();
   }
 }

@@ -183,18 +183,18 @@ namespace xloil
           // is called at some random time after losing the GIL and it crashes.
           auto argsP = args.release().ptr();
           auto kwargsP = kwargs.release().ptr();
-         
+
           auto functor = AsyncHolder(
             [info, argsP, kwargsP]() mutable
+          {
+            py::gil_scoped_acquire gilAcquired;
             {
-              py::gil_scoped_acquire gilAcquired;
-              {
-                auto ret = invokePyFunction(info, argsP, kwargsP);
-                Py_XDECREF(argsP);
-                Py_XDECREF(kwargsP);
-                return ret;
-              }
-            },
+              auto ret = invokePyFunction(info, argsP, kwargsP);
+              Py_XDECREF(argsP);
+              Py_XDECREF(kwargsP);
+              return ret;
+            }
+          },
             asyncHandle);
           thePythonWorkerThread->push(functor);
         }
@@ -223,36 +223,42 @@ namespace xloil
       }
       else
         spec.reset(new CallbackSpec(funcInfo->info, &pythonCallback, funcInfo));
-       
+
       return spec;
     }
 
-    void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action);
+    void handleFileChange(
+      const wchar_t* dirName,
+      const wchar_t* fileName,
+      const Event::FileAction action);
 
     class RegisteredModule : public FileSource
     {
     public:
       RegisteredModule(
-        const wstring& modulePath, 
-        const wchar_t* workbookModule)
+        const wstring& modulePath,
+        const wchar_t* workbookName)
         : FileSource(modulePath.c_str())
       {
         const auto path = fs::path(modulePath);
         _fileWatcher = std::static_pointer_cast<const void>
-          (Event_DirectoryChange(fs::path(path).remove_filename()).bind(handleFileChange));
-        if (workbookModule)
-          _workbookModule = workbookModule;
+          (Event::DirectoryChange(fs::path(path).remove_filename()).bind(handleFileChange));
+        if (workbookName)
+          _workbookName = workbookName;
       }
 
-      void registerPyFuncs(const vector<shared_ptr<PyFuncInfo>>& functions)
+      void registerPyFuncs(
+        const py::module& pyModule,
+        const vector<shared_ptr<PyFuncInfo>>& functions)
       {
+        _module = pyModule;
         vector<shared_ptr<const FuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
         vector<ExcelFuncObject> funcs;
 
         for (auto& f : functions)
         {
-          if (_workbookModule.empty())
+          if (_workbookName.empty())
             f->isLocalFunc = false;
           if (!f->isLocalFunc)
             nonLocal.push_back(createSpec(f));
@@ -265,45 +271,47 @@ namespace xloil
             });
           }
         }
+
         registerFuncs(nonLocal);
+        for (auto& f : nonLocal)
+          XLO_ERROR(L"Registration failed for: {0}", f->name());
 
         if (!funcInfo.empty())
         {
-          if (_workbookModule.empty())
+          if (_workbookName.empty())
             XLO_THROW("Local functions found without workbook specification");
-          registerLocal(_workbookModule.c_str(), funcInfo, funcs);
+          registerLocal(_workbookName.c_str(), funcInfo, funcs);
         }
+      }
+
+      const py::module& pyModule() const { return _module; }
+
+      const wchar_t* workbookName() const
+      {
+        return _workbookName.empty() ? nullptr : _workbookName.c_str();
       }
 
     private:
       shared_ptr<const void> _fileWatcher;
-      wstring _workbookModule;
+      wstring _workbookName;
+      py::module _module;
     };
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
-        AddinContext* context, 
-        const std::wstring& modulePath, 
+        AddinContext* context,
+        const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
       auto[fileCtx, inserted] = context->tryAdd<RegisteredModule>(
         modulePath.c_str(), modulePath, workbookName);
-
       return fileCtx;
     }
 
-    std::shared_ptr<RegisteredModule>
-      FunctionRegistry::addModule(
-        AddinContext* context, 
-        const pybind11::module& moduleHandle, 
-        const wchar_t* workbookName)
-    {
-      return addModule(context, moduleHandle.attr("__file__").cast<wstring>(), workbookName);
-    }
-
-
-
-    void handleFileChange(const wchar_t* dirName, const wchar_t* fileName, const FileAction action)
+    void handleFileChange(
+      const wchar_t* dirName,
+      const wchar_t* fileName,
+      const Event::FileAction action)
     {
       auto filePath = (fs::path(dirName) / fileName).wstring();
       auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
@@ -311,29 +319,39 @@ namespace xloil
         return;
       switch (action)
       {
-      case FileAction::Modified:
+      case Event::FileAction::Modified:
+      {
         XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
-        // TODO: little bit flaky here
+        // TODO: can we be sure about this context setting?
         theCurrentContext = foundAddin.get();
-        scanModule(py::wstr(filePath));
+        // Our file source must be of type RegisteredModule so the cast is safe
+        auto& pySource = static_cast<RegisteredModule&>(*foundSource);
+        // Rescan the module, passing in the module handle if it exists
+        scanModule(
+          !pySource.pyModule().is_none() ? pySource.pyModule() : py::wstr(filePath),
+          pySource.workbookName());
+        // Set the addin context back. Not exeception safe clearly.
         theCurrentContext = theCoreContext;
         break;
-      case FileAction::Delete:
+      }
+      case Event::FileAction::Delete:
+      {
         XLO_INFO(L"Module '{0}' deleted, removing functions.", filePath);
         FileSource::deleteFileContext(foundSource);
         break;
       }
+      }
     }
 
     void registerFunctions(
-      const py::object& moduleHandle, 
+      const py::object& moduleHandle,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, moduleHandle.cast<py::module>());
-      mod->registerPyFuncs(functions);
+        theCurrentContext, moduleHandle.attr("__file__").cast<wstring>());
+      mod->registerPyFuncs(moduleHandle, functions);
     }
-    
+
     namespace
     {
       static int theBinder = addBinder([](py::module& mod)

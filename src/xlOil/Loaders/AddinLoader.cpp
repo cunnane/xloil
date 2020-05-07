@@ -129,7 +129,7 @@ namespace xloil
     {
       theAddinContexts.erase(theCorePath());
       // TODO: remove this legacy event?
-      Event_AutoClose().fire();
+      Event::AutoClose().fire();
       unloadPlugins();
       assert(theAddinContexts.empty());
     }

@@ -143,10 +143,10 @@ namespace xloil
       using namespace std::placeholders;
 
       _calcEndHandler = std::static_pointer_cast<const void>(
-        xloil::Event_CalcEnded().bind(std::bind(std::mem_fn(&self::expireObjects), this)));
+        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::expireObjects), this)));
       
       _workbookCloseHandler = std::static_pointer_cast<const void>(
-        xloil::Event_WorkbookClose().bind(std::bind(std::mem_fn(&self::onWorkbookClose), this, _1)));
+        xloil::Event::WorkbookAfterClose().bind(std::bind(std::mem_fn(&self::onWorkbookClose), this, _1)));
     }
 
     bool fetch(const wchar_t* str, size_t length, TObj& obj)

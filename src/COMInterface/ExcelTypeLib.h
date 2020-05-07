@@ -1,5 +1,6 @@
 #pragma once
 
+#include <oleacc.h> // must include this before type imports
 
 // MSO.dll
 #import "libid:2DF8D04C-5BFA-101B-BDE5-00AA0044DE52" \

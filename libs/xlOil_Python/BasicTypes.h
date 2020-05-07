@@ -208,7 +208,7 @@ namespace xloil
         auto p = (PyObject*)obj; // Python API isn't const-aware
         if (p == Py_None)
         {
-          // Return #N/A here as xltypeNil is turned to zero
+          // Return #N/A here as xltypeNil is turned to zero by Excel
           return ctor(CellError::NA);
         }
         else if (PyLong_Check(p))
