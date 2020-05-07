@@ -438,7 +438,7 @@ namespace
       return false;
     }
   }
-  bool ExcelObj::trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const
+  bool ExcelObj::trimmedArraySize(row_t& nRows, col_t& nCols) const
   {
     if ((xtype() & xltypeMulti) == 0)
     {
@@ -448,7 +448,7 @@ namespace
 
     const auto start = (ExcelObj*)val.array.lparray;
     nRows = val.array.rows;
-    nCols = (uint16_t)val.array.columns;
+    nCols = val.array.columns;
 
     auto p = start + nCols * nRows - 1;
 

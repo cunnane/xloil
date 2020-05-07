@@ -112,8 +112,8 @@ namespace xloil
   class ExcelArrayBuilder
   {
   public:
-    using row_t = uint32_t;
-    using col_t = uint16_t;
+    using row_t = ExcelObj::row_t;
+    using col_t = ExcelObj::col_t;
 
     ExcelArrayBuilder(row_t nRows, col_t nCols,
       size_t totalStrLength = 0, bool padTo2DimArray = false)

@@ -12,8 +12,8 @@ namespace xloil
   class ExcelRange : protected ExcelObj
   {
   public:
-    using row_t = uint32_t;
-    using col_t = uint16_t;
+    using row_t = ExcelObj::row_t;
+    using col_t = ExcelObj::col_t;
 
     /// <summary>
     /// Constructs an ExcelRange from an ExcelObj. Will throw if

@@ -83,6 +83,8 @@ namespace xloil
   public:
     typedef wchar_t Char;
     typedef XLOIL_XLOPER Base;
+    using row_t = uint32_t;
+    using col_t = uint32_t;
 
     ExcelObj()
     {
@@ -497,7 +499,7 @@ namespace xloil
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
     /// <returns>false if object is not an array, else true</returns>
-    bool trimmedArraySize(uint32_t& nRows, uint16_t& nCols) const;
+    bool trimmedArraySize(row_t& nRows, col_t& nCols) const;
 
     static void copy(ExcelObj& to, const ExcelObj& from)
     {

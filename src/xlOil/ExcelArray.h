@@ -14,8 +14,8 @@ namespace xloil
 
     ExcelArrayIterator(
       const ExcelObj* position,
-      const uint16_t nCols,
-      const uint16_t baseNumCols);
+      const uint32_t nCols,
+      const uint32_t baseNumCols);
     iterator& operator++();
     iterator& operator--();
     iterator operator++(int)
@@ -36,10 +36,12 @@ namespace xloil
   private:
     const ExcelObj* _p;
     const ExcelObj* _pRowEnd;
-    uint16_t _nCols;
-    uint16_t _baseNumCols;
+    uint32_t _nCols;
+    uint32_t _baseNumCols;
   };
+  constexpr auto sz = sizeof(ExcelArrayIterator);
 }
+
 
 template<> struct std::iterator_traits<xloil::ExcelArrayIterator>
 {
@@ -59,8 +61,8 @@ namespace xloil
   {
   public:
     using size_type = uint32_t;
-    using row_t = uint32_t;
-    using col_t = uint16_t;
+    using row_t = ExcelObj::row_t;
+    using col_t = ExcelObj::col_t;
 
     /// <summary>
     /// Create an ExcelArray from an ExcelObj. By default trims the provided array
@@ -197,9 +199,9 @@ namespace xloil
 
   private:
     const ExcelObj* _data;
-    uint32_t _rows;
-    uint16_t _columns;
-    uint16_t _baseCols;
+    row_t _rows;
+    col_t _columns;
+    col_t _baseCols;
 
     friend class ExcelArrayIterator;
 
@@ -218,8 +220,8 @@ namespace xloil
 
   inline ExcelArrayIterator::ExcelArrayIterator(
     const ExcelObj* position,
-    const uint16_t nCols,
-    const uint16_t baseNumCols)
+    const uint32_t nCols,
+    const uint32_t baseNumCols)
     : _p(position)
     , _pRowEnd(nCols == baseNumCols ? nullptr : position + nCols)
     , _nCols(nCols)

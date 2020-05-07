@@ -472,7 +472,7 @@ namespace xloil
 
         TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder((uint32_t)dims[0], (uint16_t)dims[1], 
+        ExcelArrayBuilder builder((uint32_t)dims[0], (uint32_t)dims[1],
           converter.stringLength);
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
