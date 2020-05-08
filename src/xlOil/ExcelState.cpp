@@ -2,7 +2,7 @@
 #include "ExcelCall.h"
 #include "EntryPoint.h"
 #include <xlOilHelpers/WindowsSlim.h>
-
+#include <xlOilHelpers/Environment.h>
 
 using namespace msxll;
 
@@ -149,10 +149,10 @@ namespace xloil
     switch (_Address->type())
     {
     case ExcelType::SRef:
-      addressLen = xlrefToStringRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
+      addressLen = xlrefToLocalRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
       break;
     case ExcelType::Ref:
-      addressLen = xlrefToStringRC(_Address->val.mref.lpmref->reftbl[0], buf, bufLen - wsName.length() - 1);
+      addressLen = xlrefToLocalRC(_Address->val.mref.lpmref->reftbl[0], buf, bufLen - wsName.length() - 1);
       break;
     default:
       wmemcpy(buf, L"UNKNOWN", 7);
@@ -213,7 +213,8 @@ namespace xloil
     mbstowcs_s(&dummy, buf, 4, colBuf, 4);
   }
 
-  XLOIL_EXPORT size_t xlrefToStringA1(const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
+  XLOIL_EXPORT size_t xlrefToLocalA1(
+    const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
     // Add one everywhere here as rwFirst is zero-based but A1 format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
@@ -227,12 +228,12 @@ namespace xloil
       wchar_t wcolFirst[4], wcolLast[4];
       writeColumnNameW(ref.colFirst, wcolFirst);
       writeColumnNameW(ref.colLast, wcolLast);
-      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d", 
+      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d",
         wcolFirst, ref.rwFirst + 1, wcolLast, ref.rwLast + 1);
     }
   }
 
-  XLOIL_EXPORT size_t xlrefSheetAddressA1(
+  XLOIL_EXPORT size_t xlrefSheetAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -251,17 +252,41 @@ namespace xloil
 
     // Separator character
     *(buf++) = L'!';
-      
-    auto addressLen = A1Style 
-      ? xlrefToStringA1(ref, buf, bufSize - wsName.length() - 1)
-      : xlrefToStringRC(ref, buf, bufSize - wsName.length() - 1);
+
+    auto addressLen = A1Style
+      ? xlrefToLocalA1(ref, buf, bufSize - wsName.length() - 1)
+      : xlrefToLocalRC(ref, buf, bufSize - wsName.length() - 1);
 
     return addressLen + wsName.length() + 1;
   }
 
+  XLOIL_EXPORT std::wstring xlrefSheetAddress(
+    const msxll::IDSHEET& sheet,
+    const msxll::XLREF12& ref,
+    bool A1Style)
+  {
+    return captureStringBuffer([&](auto buf, auto sz)
+    {
+      return xlrefSheetAddress(sheet, ref, buf, sz, A1Style);
+    });
+  }
+
+  XLOIL_EXPORT std::wstring xlrefLocalAddress(
+    const msxll::XLREF12& ref,
+    bool A1Style)
+  {
+    return captureStringBuffer([&](auto buf, auto sz)
+      {
+        return A1Style
+          ? xlrefToLocalA1(ref, buf, sz)
+          : xlrefToLocalRC(ref, buf, sz);
+      },
+      CELL_ADDRESS_A1_MAX_LEN);
+  }
+
   // Uses RxCy format as it's easier for the programmer 
   // (see how much code is required above for A1 style!)
-  size_t xlrefToStringRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
+  size_t xlrefToLocalRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
     // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)

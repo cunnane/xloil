@@ -8,7 +8,7 @@
 #include <future>
 #include <string>
 
-namespace xloil { class ExcelRange; }
+namespace xloil { class Range; }
 
 namespace xloil
 {
@@ -141,13 +141,13 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       NewWorkbook();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
       SheetSelectionChange();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
       SheetBeforeDoubleClick();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
       SheetBeforeRightClick();
 
     XLOIL_EXPORT EventNameParam&
@@ -159,7 +159,7 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       SheetCalculate();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
       SheetChange();
 
     /// <summary>
@@ -180,12 +180,16 @@ namespace xloil
     /// </summary>
     XLOIL_EXPORT EventNameParam&
       WorkbookAfterClose();
+
     XLOIL_EXPORT EventNameParam&
       WorkbookActivate();
+
     XLOIL_EXPORT EventNameParam&
       WorkbookDeactivate();
+
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool saveAsUI, bool& cancel)>&
       WorkbookBeforeSave();
+
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool& cancel)>&
       WorkbookBeforePrint();
 
@@ -194,6 +198,7 @@ namespace xloil
 
     XLOIL_EXPORT EventNameParam&
       WorkbookAddinInstall();
+
     XLOIL_EXPORT EventNameParam&
       WorkbookAddinUninstall();
 

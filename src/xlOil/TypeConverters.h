@@ -2,7 +2,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/Throw.h>
 
-namespace xloil { class ExcelRange; class ExcelObj; class ExcelArray; }
+namespace xloil { class ExcelRef; class ExcelObj; class ExcelArray; }
 namespace xloil
 {
   /// <summary>
@@ -103,7 +103,7 @@ namespace xloil
       XLO_THROW("Missing argument");
     }
     TResult fromRef(const ExcelObj&) const { return error(); }
-    TResult fromRef(const ExcelRange&) const { return error(); }
+    TResult fromRef(const ExcelRef&) const { return error(); }
 
     TResult error() const { XLO_THROW("Cannot convert to required type"); }
   };
@@ -135,7 +135,7 @@ namespace xloil
       XLO_THROW("Missing argument");
     }
     TResult* fromRef(const ExcelObj& obj) const { return nullptr; }
-    TResult* fromRefObj(const ExcelRange& rng) const { return nullptr; }
+    TResult* fromRefObj(const ExcelRef& rng) const { return nullptr; }
   };
 
 

@@ -100,7 +100,7 @@ namespace xloil
       }
       PyObject * fromRef(const ExcelObj& obj) const
       {
-        return pybind11::cast(ExcelRange(obj)).release().ptr();
+        return pybind11::cast(newXllRange(obj)).release().ptr();
       }
     };
     

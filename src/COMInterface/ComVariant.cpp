@@ -2,6 +2,7 @@
 #include <xlOil/TypeConverters.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelRange.h>
+#include <xloil/ExcelRef.h>
 #include "ExcelTypeLib.h"
 
 namespace xloil
@@ -80,9 +81,9 @@ namespace xloil
       }
       result_t fromRef(const ExcelObj& obj) const
       {
-        return fromRef(ExcelRange(obj));
+        return fromRef(ExcelRef(obj));
       }
-      result_t fromRef(const ExcelRange& r) const
+      result_t fromRef(const ExcelRef& r) const
       {
         return (*this)(r.value());
       }

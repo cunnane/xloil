@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CppUnitTest.h"
-#include <xloil/StringUtils.h>
+#include <xlOilHelpers/StringUtils.h>
 #include <locale>
 #include <codecvt>
 

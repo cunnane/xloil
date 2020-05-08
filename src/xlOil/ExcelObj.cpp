@@ -4,7 +4,7 @@
 #include <xloil/Throw.h>
 #include <xloil/Date.h>
 #include <xloilHelpers/StringUtils.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/ExcelRef.h>
 #include "ArrayBuilder.h"
 #include "ExcelArray.h"
 #include <algorithm>
@@ -306,7 +306,7 @@ namespace
 
     case xltypeSRef:
     case xltypeRef:
-      return ExcelRange(*this).value().toString(separator);
+      return ExcelRef(*this).value().toString(separator);
 
     case xltypeMulti:
     {
@@ -340,7 +340,7 @@ namespace
       case xltypeSRef:
       case xltypeRef:
       {
-        ExcelRange range(*this);
+        ExcelRef range(*this);
         return range.address();
       }
       case xltypeMulti:

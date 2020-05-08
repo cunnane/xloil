@@ -2,7 +2,7 @@
 #include <sqlite/sqlite3.h>
 #include <sqlite/sqlite3ext.h>
 #include <xlOil/ExcelArray.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/ExcelRef.h>
 
 using std::shared_ptr;
 using std::pair;
@@ -26,7 +26,7 @@ namespace xloil
       using InputType = XlRangeInput;
       XlRangeTable(const InputType& input) : data(input) {};
       sqlite3_vtab base;              /* Base class.  Must be first */
-      ExcelRange data;
+      ExcelRef data;
     };
 
     // Not sure what this could be used for...

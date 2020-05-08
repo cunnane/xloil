@@ -15,7 +15,7 @@ namespace xloil
     {
       // Works like the Range.Range function in VBA which is 1-based and
       // includes the right hand end-point
-      inline auto subRange(const ExcelRange& r,
+      inline auto subRange(const Range& r,
         int fromR, int fromC,
         int* toR = 0, int* toC = 0, 
         size_t* nRows = 0, size_t* nCols = 0)
@@ -31,16 +31,19 @@ namespace xloil
       }
 
       // Works like the Range.Cell function in VBA which is 1-based
-      inline auto rangeCell(const ExcelRange& r, int row, int col)
+      inline auto rangeCell(const Range& r, int row, int col)
       {
-        return r.cells(row - 1, col - 1);
+        return r.cell(row - 1, col - 1);
       }
-
-      auto rangeGetValue(const ExcelRange& range)
+      auto convertExcelObj(ExcelObj&& val)
       {
-        return PySteal<>(PyFromExcel<PyFromAny<>>()(range.value()));
+        return PySteal<>(PyFromExcel<PyFromAny<>>()(val));
       }
-      void rangeSetValue(ExcelRange& r, const py::object& pyval)
+      auto rangeGetValue(const Range& r)
+      {
+        return convertExcelObj(r.value());
+      }
+      void rangeSetValue(Range& r, const py::object& pyval)
       {
         const auto val = FromPyObj()(pyval.ptr());
         // Release gil when setting values in as this may trigger calcs 
@@ -49,13 +52,13 @@ namespace xloil
         r = val;
       };
 
-      void rangeClear(ExcelRange& r)
+      void rangeClear(Range& r)
       {
         py::gil_scoped_release lose_gil;
         r.clear();
       }
 
-      py::object getItem(const ExcelRange& range, pybind11::tuple loc)
+      py::object getItem(const Range& range, pybind11::tuple loc)
       {
         if (loc.size() != 2)
           XLO_THROW("Expecting tuple of size 2");
@@ -93,21 +96,21 @@ namespace xloil
           fromCol = c.cast<size_t>();
           // Check for single element access
           if (fromRow == toRow + 1)
-            return rangeGetValue(range.cells((int)fromRow, (int)fromCol));
+            return convertExcelObj(range.value((int)fromRow, (int)fromCol));
           toCol = fromCol + 1;
         }
 
         if (step != 1)
           XLO_THROW("Slices step size must be 1");
         
-        return py::cast<ExcelRange>(range.range(fromRow, fromCol, toRow, toCol));
+        return py::cast(range.range(fromRow, fromCol, toRow, toCol));
       }
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         // Bind Range class from xloil::ExcelRange
-        auto rType = py::class_<ExcelRange>(mod, "Range")
-          .def(py::init<const wchar_t*>(), 
+        auto rType = py::class_<Range>(mod, "Range")
+          .def(py::init([](const wchar_t* x) { return newRange(x); }),
             py::arg("address"))
           .def("range", subRange,
             py::arg("from_row"), 
@@ -125,12 +128,12 @@ namespace xloil
             py::return_value_policy::automatic)
           .def("set", rangeSetValue)
           .def("clear", rangeClear)
-          .def("address", &ExcelRange::address, 
+          .def("address", [](const Range& r, bool local) { return r.address(local); },
             py::arg("local") = false)
-          .def_property_readonly("nrows", &ExcelRange::nRows)
-          .def_property_readonly("ncols", &ExcelRange::nCols)
+          .def_property_readonly("nrows", [](const Range& r) { return r.nRows(); })
+          .def_property_readonly("ncols", [](const Range& r) { return r.nCols(); })
           .def_property_readonly("shape", 
-            [](const ExcelRange& r)
+            [](const Range& r)
             {
               return std::make_pair(r.nRows(), r.nCols());
             });

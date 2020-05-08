@@ -17,60 +17,73 @@ namespace xloil
   {
     namespace
     {
+      /// <summary>
+      /// This struct is designed to hold a reference to an arithemtic type so
+      /// it can be modified in Python, otherwise arithmetic types are immutable.
+      /// </summary>
       template <class T>
       struct ArithmeticRef
       {
         T& value;
       };
 
+      /// <summary>
+      /// Some template magic which I don't fully understand to replace a 
+      /// non-const ref to an arithmetic type with ArithmeticRef.
+      /// </summary>
       template<class T, bool = std::is_arithmetic<std::remove_reference_t<T>>::value>
       struct ReplaceAritmeticRef
       {
-        T operator()(T x) const { return x; }
+        auto operator()(T x) const { return x; }
       };
-
+      template<class T>
+      struct ReplaceAritmeticRef<const T&, false>
+      {
+        const T& operator()(const T& x) const { return x; }
+      };
       template<class T>
       struct ReplaceAritmeticRef<T&, true>
       {
-        auto operator()(T& x) const {
+        ArithmeticRef<T> operator()(T& x) const {
           return ArithmeticRef<T> { x };
         }
       };
-
-      template<class T>
-      auto magic(T x)
-      {
-        return ReplaceAritmeticRef<T>()(x);
-      }
     }
 
-    template<class TEvent, class F> class PyEvent2 {};
+    template<class TEvent, class F> class PyEvent {};
 
+    // Specialisation to allow capture of the arguments to the event handler
     template<class TEvent, class R, class... Args>
-    class PyEvent2<TEvent, std::function<R(Args...)>>
+    class PyEvent<TEvent, std::function<R(Args...)>>
     {
     public:
-      PyEvent2(TEvent& event) 
+      PyEvent(TEvent& event) 
         : _event(event) 
       {
+        // This is called by weakref when the ref count goes to zero
         _refRemover = py::cpp_function([this](py::weakref& ref) { this->remove(ref); });
       }
 
-      ~PyEvent2()
+      ~PyEvent()
       {
         if (!_handlers.empty())
           _event -= _coreEventHandler;
       }
-      PyEvent2& add(const py::object& obj)
+      PyEvent& add(const py::object& obj)
       {
         if (_handlers.empty())
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
+
+        // We use a weakref to avoid dangling pointers to event handlers
+        // the callback calls this->remove(ptr)
         _handlers.push_back(py::weakref(obj, _refRemover));
         return *this;
       }
-      PyEvent2& remove(const py::object& obj)
+
+      PyEvent& remove(const py::object& obj)
       {
-        _handlers.remove(obj); // is py::object equality going to work?
+        _handlers.remove(obj);
+        // Unhook ourselves from the core for efficiency if there are no handlers
         if (_handlers.empty())
           _event -= _coreEventHandler;
         return *this;
@@ -93,8 +106,9 @@ namespace xloil
           for (auto& h : _handlers)
           {
             auto* handler = PyWeakref_GET_OBJECT(h.ptr());
+            // See above for the purpose of ReplaceAritmeticRef
             if (handler != Py_None)
-              py::cast<py::function>(handler)(magic<Args>(args)...);
+              py::cast<py::function>(handler)(ReplaceAritmeticRef<Args>()(args)...);
           }
         }
         catch (const std::exception& e)
@@ -102,18 +116,6 @@ namespace xloil
           XLO_ERROR("During Event: {0}", e.what());
         }
       }
-
-    /*  void unloadModule(const py::module& mod)
-      {
-        for (auto i = _handlers.begin(); i != _handlers.end();)
-        {
-          if (mod == i->attr("__module__"))
-            _handlers.erase(i++);
-          else ++i;
-        }
-        if (_handlers.empty())
-          _event -= _coreEventHandler;
-      }*/
 
     private:
       TEvent& _event;
@@ -127,17 +129,17 @@ namespace xloil
       template<class TEvent>
       auto makeEvent(TEvent& event)
       {
-        return std::make_shared<PyEvent2<TEvent, typename TEvent::handler>>(event);
+        return new PyEvent<TEvent, typename TEvent::handler>(event);
       }
 
       template<class T>
-      void bindEvent(py::module& mod, const shared_ptr<T>& event, const char* name)
+      void bindEvent(py::module& mod, T* event, const char* name)
       {
         const auto& instances = py::detail::get_internals().registered_types_cpp;
         const auto found = instances.find(std::type_index(typeid(T)));
         if (found == instances.end())
         {
-          py::class_<T, shared_ptr<T>>(mod, (string(name) + "_Type").c_str())
+          py::class_<T>(mod, (string(name) + "_Type").c_str())
             .def("__iadd__", &T::add)
             .def("__isub__", &T::remove)
             .def("handlers", &T::handlers);
@@ -145,6 +147,12 @@ namespace xloil
         mod.add_object(name, py::cast(event));
       }
 
+      /// <summary>
+      /// AritmeticRef is designed to hold a reference to an arithemtic type so
+      /// it can be modified in Python, otherwise arithmetic types are immutable.
+      /// Python doesn't allow override of the '=' operator so we have to just
+      /// expose the 'value property'
+      /// </summary>
       template<class T>
       void bindArithmeticRef(py::module& mod)
       {
@@ -162,8 +170,9 @@ namespace xloil
         bindArithmeticRef<bool>(eventMod);
 
 #define XLO_PY_EVENT(NAME) \
-        auto NAME = makeEvent(xloil::Event::NAME()); \
-        bindEvent(eventMod, NAME, #NAME);
+        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), #NAME);
+
+        // Same order as in xloil/Event.h
         XLO_PY_EVENT(AfterCalculate);
         XLO_PY_EVENT(CalcCancelled);
         XLO_PY_EVENT(NewWorkbook);

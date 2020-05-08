@@ -93,6 +93,7 @@ namespace xloil
       }
     }
 
+    // Remove all the null FuncSpec ptrs
     funcSpecs.erase(
       std::remove_if(funcSpecs.begin(), funcSpecs.end(), [](auto& f) { return !f; }),
       funcSpecs.end());

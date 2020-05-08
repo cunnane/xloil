@@ -2,6 +2,7 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/XlCallSlim.h>
 #include <memory>
+#include <string>
 
 namespace xloil { class ExcelObj; }
 namespace xloil
@@ -23,22 +24,12 @@ namespace xloil
   void writeColumnName(size_t colIndex, char buf[4]);
 
   /// <summary>
-  /// Writes a simple Excel ref (not including sheet name)
-  /// to 'A1' or 'A1:Z9' format in the provided string
-  /// buffer. Returns the number of characters written
-  /// </summary>
-  XLOIL_EXPORT size_t xlrefToStringA1(
-    const msxll::XLREF12& ref, 
-    wchar_t* buf, 
-    size_t bufSize);
-
-  /// <summary>
   /// Writes a simple Excel ref including sheet name in
   /// either A1 or RxCy to  the provided string buffer. 
   /// That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
   /// Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT size_t xlrefSheetAddressA1(
+  XLOIL_EXPORT size_t xlrefSheetAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -46,12 +37,45 @@ namespace xloil
     bool A1Style = true);
 
   /// <summary>
+  /// Version of `xlrefSheetAddress` which returns a string rather
+  /// than writing to a buffer
+  /// </summary>
+  XLOIL_EXPORT std::wstring xlrefSheetAddress(
+    const msxll::IDSHEET& sheet,
+    const msxll::XLREF12& ref,
+    bool A1Style = true);
+
+  /// <summary>
+  /// Similar to `xlrefSheetAddress`, but without the sheet name
+  /// </summary>
+  XLOIL_EXPORT std::wstring xlrefLocalAddress(
+    const msxll::XLREF12& ref,
+    bool A1Style = true);
+
+  /// <summary>
   /// Writes a simple Excel ref (not including sheet name)
   /// to 'RxCy' or 'RaCy:RxCy' format in the provided string
   /// buffer. Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT size_t xlrefToStringRC(
-    const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize);
+  XLOIL_EXPORT size_t xlrefToLocalRC(
+    const msxll::XLREF12& ref, 
+    wchar_t* buf,
+    size_t bufSize);
 
+  /// <summary>
+  /// Writes a simple Excel ref (not including sheet name)
+  /// to 'A1' or 'A1:Z9' format in the provided string
+  /// buffer. Returns the number of characters written.
+  /// </summary>
+  XLOIL_EXPORT size_t xlrefToLocalA1(
+    const msxll::XLREF12& ref,
+    wchar_t* buf,
+    size_t bufSize);
+
+  /// <summary>
+  /// Returns true if the user is currently in the function wizard.
+  /// Quite an expensive check as Excel does not provide a built-in 
+  /// way to check this.
+  /// </summary>
   bool inFunctionWizard();
 }

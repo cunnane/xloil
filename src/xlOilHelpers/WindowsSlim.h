@@ -32,7 +32,7 @@
 #define NOMB  //MB_ * and MessageBox()
 #define NOMEMMGR  //GMEM_ * , LMEM_*, GHND, LHND, associated routines
 #define NOMETAFILE  //typedef METAFILEPICT
-#define NOMSG  //typedef MSG and associated routines
+//#define NOMSG  //typedef MSG and associated routines
 #define NOOPENFILE  //OpenFile(), OemToAnsi, AnsiToOem, and OF_*
 #define NOSCROLL  //SB_ * and scrolling routines
 #define NOSERVICE  //All Service Controller routines, SERVICE_ equates, etc.

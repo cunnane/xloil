@@ -1,52 +1,20 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
-#include <xlOil/ExportMacro.h>
 
 namespace xloil
 {
   /// <summary>
-  /// An ExcelRange holds an Excel sheet reference and provides
-  /// functionality to access it. ExcelRange can only be used by
-  /// macro-enabled functions.
+  /// A Range holds refers to part of an Excel sheet. It can use either the
+  /// XLL or COM interfaces to interact with Excel. Range can only be used by
+  /// macro-enabled functions or event call-backs.
+  /// 
+  /// Currently only single area ranges are supported
   /// </summary>
-  class ExcelRange : protected ExcelObj
+  class Range
   {
   public:
     using row_t = ExcelObj::row_t;
     using col_t = ExcelObj::col_t;
-
-    /// <summary>
-    /// Constructs an ExcelRange from an ExcelObj. Will throw if
-    /// the object is not of type Ref or SRef.
-    /// </summary>
-    XLOIL_EXPORT ExcelRange(const ExcelObj& from);
-
-    /// <summary>
-    /// Constructs an ExcelRange from a sheet address. If the 
-    /// address does not contain a sheet name, the current
-    /// Active sheet is used.
-    /// </summary>
-    XLOIL_EXPORT ExcelRange(const wchar_t* address);
-
-    XLOIL_EXPORT ExcelRange(msxll::IDSHEET sheetId, 
-      int fromRow, int fromCol, int toRow, int toCol);
-
-    /// <summary>
-    /// Copy constructor
-    /// </summary>
-    ExcelRange(const ExcelRange& from)
-      : ExcelObj(static_cast<const ExcelObj&>(from))
-    {}
-
-    ~ExcelRange()
-    {
-      reset();
-    }
-
-    ExcelObj operator()(int i, int j) const
-    {
-      return ExcelRange(sheetId(), i, j, i + 1, j + 1).value();
-    }
 
     static constexpr int TO_END = -1;
 
@@ -61,17 +29,10 @@ namespace xloil
     /// <param name="toRow"></param>
     /// <param name="toCol"></param>
     /// <returns></returns>
-    ExcelRange range(int fromRow, int fromCol, int toRow = TO_END, int toCol = TO_END) const
-    {
-      // Excel's ranges are _inclusive_ at the right hand end. This 
-      // is unusual in programming languages, so we hide it by 
-      // adjusting toRow / toCol here
-      return ExcelRange(sheetId(),
-        ref().rwFirst + fromRow, 
-        ref().colFirst + fromCol,
-        toRow < 0 ? ref().rwLast + toRow + 1 : ref().rwFirst + toRow - 1,
-        toCol < 0 ? ref().colLast + toCol + 1 : ref().colFirst + toCol - 1);
-    }
+    virtual Range* range(
+      int fromRow, int fromCol,
+      int toRow = TO_END, int toCol = TO_END) const = 0;
+
     /// <summary>
     /// Returns a 1x1 subrange containing the specified cell. Uses zero-based
     /// indexing unlike Excel's VBA Range.Cells function.
@@ -79,19 +40,21 @@ namespace xloil
     /// <param name="i"></param>
     /// <param name="j"></param>
     /// <returns></returns>
-    ExcelRange cells(int i, int j) const
+    Range* cell(int i, int j) const
     {
       return range(i, j, i + 1, j + 1);
     }
 
-    row_t nRows() const
-    {
-      return ref().rwLast - ref().rwFirst;
-    }
-    col_t nCols() const 
-    {
-      return (col_t)(ref().colLast - ref().colFirst);
-    }
+    /// <summary>
+    /// Returns the number of rows in the range
+    /// </summary>
+    virtual row_t nRows() const = 0;
+
+    /// <summary>
+    /// Returns the number of columns in the range
+    /// </summary>
+    virtual col_t nCols() const = 0;
+
     size_t size() const
     {
       return nRows() * nCols();
@@ -101,52 +64,53 @@ namespace xloil
     /// Returns the address of the range in the form
     /// 'SheetNm!A1:Z5'
     /// </summary>
-    XLOIL_EXPORT std::wstring address(bool local = false) const;
+    virtual std::wstring address(bool local = false) const = 0;
 
     /// <summary>
-    /// Converts the referenced range to an ExcelObj. 
-    /// References to single cells return an ExcelObj of the
-    /// appropriate type. Multicell refernces return an array.
+    /// Converts the referenced range to an ExcelObj. References
+    /// to single cells return an ExcelObj of the appropriate type.
+    /// Multicell references return an array.
     /// </summary>
-    XLOIL_EXPORT ExcelObj value() const;
+    virtual ExcelObj value() const = 0;
+    
+    /// <summary>
+    /// Convenience wrapper for cell(i,j)->value()
+    /// </summary>
+    virtual ExcelObj value(row_t i, col_t j) const = 0;
 
-    XLOIL_EXPORT ExcelRange& operator=(const ExcelObj& value);
+    /// <summary>
+    /// Convience wrapper for value(i, j). Note writing to the returned value 
+    /// does not set values in the range. 
+    /// </summary>
+    ExcelObj operator()(int i, int j) const
+    {
+      return value(i, j);
+    }
+
+    /// <summary>
+    /// Sets the cell values in the range to the provided value. 
+    /// If `value` is a single value, every cell will be set to 
+    /// that value.
+    /// </summary>
+    virtual void set(const ExcelObj& value) = 0;
+
+    Range& operator=(const ExcelObj& value)
+    {
+      set(value);
+      return *this;
+    }
 
     /// <summary>
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
-    XLOIL_EXPORT void clear();
-
-    msxll::IDSHEET sheetId() const 
-    {
-      return val.mref.idSheet;
-    }
-
-  private:
-    const msxll::XLREF12& ref() const
-    {
-      return val.mref.lpmref->reftbl[0];
-    }
-    msxll::XLREF12& ref()
-    {
-      return val.mref.lpmref->reftbl[0];
-    }
-  
-    msxll::IDSHEET& sheetId() 
-    {
-      return val.mref.idSheet;
-    }
-    
-    void create(
-      msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol);
-
-    void reset()
-    {
-      if (xltype & msxll::xlbitDLLFree)
-      {
-        delete[] val.mref.lpmref;
-        xltype = msxll::xltypeNil;
-      }
-    }
+    virtual void clear() = 0;
   };
+
+  XLOIL_EXPORT Range* newXllRange(const ExcelObj& xlRef);
+
+  /// <summary>
+  /// Creates an appropriate range type depending on whether the XLL
+  /// interface is available.
+  /// </summary>
+  XLOIL_EXPORT Range* newRange(const wchar_t* address);
 }
