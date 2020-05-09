@@ -1,0 +1,58 @@
+Asmjit
+------
+
+Branch: master (25 Oct 2019)
+Source: https://github.com/asmjit/asmjit/commit/ac77dfcd75f043e2fe317133a971040e5b999916
+
+Boost
+-----
+
+Branch: 1.67
+Source: https://sourceforge.net/projects/boost/files/boost/
+
+CTPL
+----
+
+Branch: 0.02
+Source: https://github.com/vit-vit/CTPL/releases
+
+Excel2013SDK
+------------
+
+Branch: release
+Source: microsoft
+
+pybind11
+--------
+
+Branch: 2.4.3
+Source: https://github.com/pybind/pybind11/releases
+
+Python (CPython)
+----------------
+
+Branch: 3.6, 3.7
+
+simplefilewatcher
+-----------------
+
+Branch: 25 Dec 2017
+Source: https://github.com/jameswynn/simplefilewatcher
+
+spdlog
+------
+
+Branch: 1.4.2
+Source: https://github.com/gabime/spdlog/releases
+
+sqlite3
+-------
+
+Branch: 3.31.1
+Source: https://www.sqlite.org/download.html
+
+tomlplusplus
+------------
+
+Branch: 1.2.5
+Source: https://github.com/marzer/tomlplusplus/releases
