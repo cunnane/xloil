@@ -4,10 +4,7 @@
 #include <unordered_map>
 
 namespace toml {
-  template<typename, template<typename...> class, template<typename...> class> 
-    class basic_value;
-  struct discard_comments;
-  using value = basic_value<discard_comments, std::unordered_map, std::vector>;
+  class table;
 }
 
 namespace xloil
@@ -16,13 +13,13 @@ namespace xloil
 
   namespace Settings
   {
-    std::wstring logFilePath(const toml::value* root);
-    std::string logLevel(const toml::value* root);
-    std::vector<std::wstring> plugins(const toml::value* root);
-    std::wstring pluginSearchPattern(const toml::value* root);
-    std::vector<std::wstring> dateFormats(const toml::value* root);
+    std::wstring logFilePath(const toml::table* root);
+    std::string logLevel(const toml::table* root);
+    std::vector<std::wstring> plugins(const toml::table* root);
+    std::wstring pluginSearchPattern(const toml::table* root);
+    std::vector<std::wstring> dateFormats(const toml::table* root);
   };
 
-  std::shared_ptr<const toml::value>
+  std::shared_ptr<const toml::table>
     findSettingsFile(const wchar_t* dllPath);
 }

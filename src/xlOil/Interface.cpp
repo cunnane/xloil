@@ -7,7 +7,6 @@
 #include "Log.h"
 #include <xlOil/Loaders/AddinLoader.h>
 #include <ComInterface/Connect.h>
-#include <toml11/toml.hpp>
 
 using std::make_pair;
 using std::wstring;
@@ -49,7 +48,7 @@ namespace xloil
   }
 
   AddinContext::AddinContext(
-    const wchar_t* pathName, std::shared_ptr<const toml::value> settings)
+    const wchar_t* pathName, std::shared_ptr<const toml::table> settings)
     : _settings(settings)
     , _pathName(pathName)
   {

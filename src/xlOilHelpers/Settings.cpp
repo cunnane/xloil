@@ -1,8 +1,9 @@
 #include "Settings.h"
 #include <xloilHelpers/StringUtils.h>
 #include <xloilHelpers/Environment.h>
-#include <toml11/toml.hpp>
+#include <tomlplusplus/toml.hpp>
 #include <filesystem>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -18,50 +19,49 @@ namespace xloil
 {
   namespace Settings
   {
-   
-
     namespace
     {
-      auto findStr(const toml::value* root, const char* tag, const char* default)
+      auto findStr(const toml::table* root, const char* tag, const char* default)
       {
         return root
-          ? toml::find_or<string>(*root, tag, default)
+          ? (*root)[tag].value_or<string>(default)
           : default;
       }
-      auto findVecStr(const toml::value* root, const char* tag)
+      auto findVecStr(const toml::table* root, const char* tag)
       {
         vector<wstring> result;
         if (root)
         {
-          auto utf8 = toml::find_or<vector<string>>(*root, tag, vector<string>());
-          std::transform(utf8.begin(), utf8.end(), 
-            std::back_inserter(result), utf8ToUtf16);
+          auto utf8 = (*root)[tag].as_array();
+          if (utf8)
+            for (auto& x : *utf8)
+              result.push_back(utf8ToUtf16(x.value_or("")));
         }
         return result;
       }
     }
-    vector<wstring> plugins(const toml::value* root)
+    vector<wstring> plugins(const toml::table* root)
     {
       return findVecStr(root, "Plugins");
     }
-    std::wstring pluginSearchPattern(const toml::value* root)
+    std::wstring pluginSearchPattern(const toml::table* root)
     {
       return utf8ToUtf16(findStr(root, "PluginSearchPattern", ""));
     }
-    std::wstring logFilePath(const toml::value* root)
+    std::wstring logFilePath(const toml::table* root)
     {
       return utf8ToUtf16(findStr(root, "LogFile", ""));
     }
-    std::string logLevel(const toml::value* root)
+    std::string logLevel(const toml::table* root)
     {
       return findStr(root, "LogLevel", "warn");
     }
-    std::vector<std::wstring> dateFormats(const toml::value* root)
+    std::vector<std::wstring> dateFormats(const toml::table* root)
     {
       return findVecStr(root, "DateFormats");
     }
   }
-  std::shared_ptr<const toml::value> findSettingsFile(const wchar_t* dllPath)
+  std::shared_ptr<const toml::table> findSettingsFile(const wchar_t* dllPath)
   {
     fs::path path;
  
@@ -75,8 +75,8 @@ namespace xloil
       path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
 
     if (fs::exists(path))
-      return make_shared<toml::value>(toml::parse(path.string()));
+      return make_shared<toml::table>(toml::parse_file(path.string()));
     
-    return shared_ptr<const toml::value>();
+    return shared_ptr<const toml::table>();
   }
 }

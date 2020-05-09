@@ -7,7 +7,7 @@
 #include <xlOil/EntryPoint.h>
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
-#include <toml11/toml.hpp>
+#include <tomlplusplus/toml.hpp>
 #include <vector>
 #include <string>
 #include <filesystem>
@@ -90,10 +90,9 @@ namespace xloil
 
         XLO_INFO(L"Found plugin {}", pluginName);
         
-        toml::value pluginSettings;
+        toml::node_view<const toml::node> pluginSettings;
         if (context->settings())
-          pluginSettings = toml::find_or<toml::table>(
-            *context->settings(), utf16ToUtf8(pluginName), toml::table());
+          pluginSettings = (*context->settings())[utf16ToUtf8(pluginName)];
 
         // If the plugin has already be loaded, we just notify it of 
         // a new XLL by calling attach and passing any XLL specific settings
@@ -103,26 +102,28 @@ namespace xloil
           // First load the plugin using any settings that have been specified in the
           // core config file, otherwise the ones in the add-ins ini file. This avoids
           // race conditions with differnt add-in load orders.
-          toml::value loadSettings = theCoreContext()->settings()
-            ? toml::find_or<toml::table>(
-              *theCoreContext()->settings(), utf16ToUtf8(pluginName), toml::table())
+          auto loadSettings = theCoreContext()->settings()
+            ? (*theCoreContext()->settings())[utf16ToUtf8(pluginName)]
             : pluginSettings;
 
-          auto environment = toml::find_or<toml::table>(
-            loadSettings, "Environment", toml::table());
+          auto environment = loadSettings["Environment"].as_array();
 
           // Settings in the enviroment block looks like key=val
           // We interpret this as an environment variable to set
-          for (auto[key, val] : environment)
-          {
-            auto value = expandWindowsRegistryStrings(
-              expandEnvironmentStrings(
-                utf8ToUtf16(val.as_string().str)));
+          if (environment)
+            for (auto& innerTable : *environment)
+            {
+              for (auto[key, val] : *innerTable.as_table())
+              {
+                auto value = expandWindowsRegistryStrings(
+                  expandEnvironmentStrings(
+                    utf8ToUtf16(val.value_or(""))));
 
-            environmentVariables.emplace_back(make_shared<PushEnvVar>(
-              utf8ToUtf16(key).c_str(),
-              value.c_str()));
-          }
+                environmentVariables.emplace_back(std::make_shared<PushEnvVar>(
+                  utf8ToUtf16(key).c_str(),
+                  value.c_str()));
+              }
+            }
 
           // Load the plugin
           const auto lib = LoadLibrary(path.c_str());
@@ -141,7 +142,7 @@ namespace xloil
           {
             PluginContext::Load,
             pluginName.c_str(),
-            &loadSettings
+            loadSettings.as_table()
           };
           if (initFunc(theCoreContext(), pluginLoadContext) < 0)
           {
@@ -165,7 +166,7 @@ namespace xloil
         { 
           PluginContext::Attach, 
           pluginName.c_str(), 
-          &pluginSettings 
+          pluginSettings.as_table()
         };
         if (pluginData->second.Init(context, pluginAttach) < 0)
           XLO_ERROR(L"Failed to attach addin {0} to plugin {1}", 

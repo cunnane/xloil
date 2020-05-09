@@ -7,11 +7,7 @@
 #include <memory>
 #include <map>
 
-namespace toml {
-  template<typename, template<typename...> class, template<typename...> class> class basic_value;
-  struct discard_comments;
-  using value = basic_value<discard_comments, std::unordered_map, std::vector>;
-}
+namespace toml { class table; }
 namespace Excel { struct _Application; }
 namespace xloil { class RegisteredFunc; class AddinContext; }
 namespace spdlog { class logger; }
@@ -145,7 +141,7 @@ namespace xloil
 
     AddinContext(
       const wchar_t* pathName, 
-      std::shared_ptr<const toml::value> settings);
+      std::shared_ptr<const toml::table> settings);
     ~AddinContext();
 
     /// <summary>
@@ -187,7 +183,7 @@ namespace xloil
     /// <summary>
     /// Gets the root of the addin's ini file
     /// </summary>
-    const toml::value* settings() const { return _settings.get(); }
+    const toml::table* settings() const { return _settings.get(); }
 
     /// <summary>
     /// Returns a map of all FileSource associated with this XLL addin
@@ -206,7 +202,7 @@ namespace xloil
     AddinContext& operator=(const AddinContext&) = delete;
 
     std::wstring _pathName;
-    std::shared_ptr<const toml::value> _settings;
+    std::shared_ptr<const toml::table> _settings;
     ContextMap _files;
   };
 
@@ -228,9 +224,8 @@ namespace xloil
     };
     Action action;
     const wchar_t* pluginName;
-    const toml::value* settings;
+    const toml::table* settings;
   };
-
 
   typedef int(*PluginInitFunc)(AddinContext*, const PluginContext&);
 }

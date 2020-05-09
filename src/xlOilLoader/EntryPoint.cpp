@@ -6,9 +6,10 @@
 #include "xloil/ExportMacro.h"
 #include "xloil/Log.h"
 #include "xloil/ExcelCall.h"
-#include <toml11/toml.hpp>
+#include <tomlplusplus/toml.hpp>
 #include <filesystem>
 #include <delayimp.h>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -19,10 +20,12 @@ using std::vector;
 using std::shared_ptr;
 using namespace std::string_literals;
 
+
 namespace
 {
   static wstring ourXllPath;
   static wstring ourXllDir;
+  static bool theXllHasClosed = false;
 
   bool setDllPath(HMODULE handle)
   {
@@ -173,39 +176,43 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
   
     vector<shared_ptr<PushEnvVar>> environmentVariables;
 
-    // TODO: pulling in TOML here adds about 450kb to size of xloil.xll
+    auto settings = findSettingsFile(L"xlOil.dll");
 
     // Check if the settings file contains an Environment block
-    auto settings = findSettingsFile(L"xlOil.dll");
     if (settings)
     {
-      auto environment = toml::find_or<toml::table>(
-        *settings, "Environment", toml::table());
+      auto environment = (*settings)["Environment"].as_array();
 
       // Settings in the enviroment block looks like key=val
       // We interpret this as an environment variable to set
-      for (auto[key, val] : environment)
-      {
-        auto value = expandWindowsRegistryStrings(
-          expandEnvironmentStrings(
-            utf8ToUtf16(val.as_string().str)));
+      if (environment)
+        for (auto& innerTable : *environment)
+        {
+          for (auto[key, val] : *innerTable.as_table())
+          {
+            auto value = expandWindowsRegistryStrings(
+              expandEnvironmentStrings(
+                utf8ToUtf16(val.value_or(""))));
 
-        environmentVariables.emplace_back(std::make_shared<PushEnvVar>(
-          utf8ToUtf16(key).c_str(),
-          value.c_str()));
-      }
+            environmentVariables.emplace_back(std::make_shared<PushEnvVar>(
+              utf8ToUtf16(key).c_str(),
+              value.c_str()));
+          }
+        }
     }
- 
     auto dllPath = wheresWally(xloil_dll);
     if (!dllPath.empty())
       SetDllDirectory(dllPath.c_str());
-    xloil::coreAutoOpen(ourXllPath.c_str());
+    int ret = xloil::coreAutoOpen(ourXllPath.c_str());
     SetDllDirectory(NULL);
 
-    xloil::tryCallExcel(msxll::xlEventRegister,
-      "xloHandleCalculationEnded", msxll::xleventCalculationEnded);
-    xloil::tryCallExcel(msxll::xlEventRegister,
-      "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    if (ret > 0)
+    {
+      xloil::tryCallExcel(msxll::xlEventRegister,
+        "xloHandleCalculationEnded", msxll::xleventCalculationEnded);
+      xloil::tryCallExcel(msxll::xlEventRegister,
+        "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    }
   }
   catch (const std::exception& e)
   {
@@ -222,13 +229,13 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   try
   {
     xloil::coreAutoClose(ourXllPath.c_str());
+    theXllHasClosed = true;
   }
   catch (...)
   {
   }
   return 1;
 }
-
 
 XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
 {
@@ -274,12 +281,18 @@ XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
 
 XLO_ENTRY_POINT(int) xloHandleCalculationEnded()
 {
-  onCalculationEnded();
+  // An excel "undocumented feature" is to call this event handler
+  // after calling xlAutoClose, which is clearly not ideal.
+  // This seems to happen when Excel is closing and asks the user 
+  // to save the workbook.
+  if (!theXllHasClosed)
+    onCalculationEnded();
   return 1;
 }
 
 XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
 {
-  onCalculationCancelled();
+  if (!theXllHasClosed)
+    onCalculationCancelled();
   return 1;
 }

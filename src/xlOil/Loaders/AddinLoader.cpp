@@ -6,7 +6,7 @@
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
-#include <toml11/toml.hpp>
+#include <tomlplusplus/toml.hpp>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -23,7 +23,7 @@ namespace xloil
 
     AddinContext*
       createAddinContext(
-        const wchar_t* pathName, std::shared_ptr<const toml::value> settings)
+        const wchar_t* pathName, std::shared_ptr<const toml::table> settings)
     {
       auto [ctx, isNew] = theAddinContexts.try_emplace(
         wstring(pathName), make_shared<AddinContext>(pathName, settings));
@@ -68,7 +68,7 @@ namespace xloil
       return settings;
 
     XLO_DEBUG("Found core settings file '{0}'",
-      settings->location().file_name());
+      *settings->source().path);
 
     // Log file settings
     auto logFile = Settings::logFilePath(settings.get());

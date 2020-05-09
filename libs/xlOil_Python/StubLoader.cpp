@@ -3,7 +3,7 @@
 #include <xloil/Throw.h>
 #include <xloilHelpers/WindowsSlim.h>
 #include <cstdlib>
-#include <toml11/toml.hpp>
+#include <tomlplusplus/toml.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
 using std::vector;
@@ -26,9 +26,18 @@ namespace xloil
           if (!plugin.settings)
             XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
 
-          // This setting is required, toml with throw if it is not found
-          auto pyVer = toml::find<string>(*plugin.settings,
-            "Environment", "xlOilPythonVersion");
+          auto pyEnv = (*plugin.settings)["Environment"].as_array();
+          string pyVer;
+          if (pyEnv)
+            for (auto& table : *pyEnv)
+              if (table.as_table()->contains("xlOilPythonVersion"))
+              {
+                pyVer = table.as_table()->get("xlOilPythonVersion")->value_or("");
+                break;
+              }
+
+          if (pyVer.empty())
+            XLO_THROW("No xlOilPythonVersion specified in Python Environment block");
 
           // Convert X.Y version to XY and form the dll name
           auto dllName = fmt::format("xloil_Python{0}.dll", 
