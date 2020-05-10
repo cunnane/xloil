@@ -16,7 +16,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
-    from xloil_core import event
+    from xloil_core import event, cache
 
 else:
     def in_wizard():
@@ -167,7 +167,7 @@ else:
 
     # Strictly speaking, xloil_core.event is a module but this
     # should give the right doc strings
-    class event:
+    class Event:
         """
         Events that correspond to matching COM/VBA events, described here:
         https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events
@@ -209,6 +209,40 @@ else:
         WorkbookNewSheet= _Event()
         WorkbookAddinInstall= _Event()
         WorkbookAddinUninstall= _Event()
+
+    event = Event()
+
+    class Cache:
+
+        def add(self, obj):
+            """
+            Adds an object to the cache and returns a reference string
+            based on the currently calculating cell.
+    
+            xlOil automatically adds unconvertible returned objects to the cache,
+            so this function is useful to force a recognised object, such as an 
+            iterable into the cache, or to return a list of cached objects.
+            """
+            pass
+
+        def get(self, ref:str):
+            """
+            Fetches an object from the cache given a reference string.
+            Returns None if not found
+            """
+            pass
+
+        def contains(self, ref:str):
+            """
+            Returns True if the given reference string links to a valid object
+            """
+            pass
+
+        __contains__ = contains
+        __getitem__ = get
+        __call__ = add
+
+    cache = Cache()
 
 """
 Tag used to mark functions to register with Excel. It is added 
@@ -616,22 +650,6 @@ def app():
         _excel_application_com_obj = comtypes.client._manage(obj, clsid, None)
     return _excel_application_com_obj
      
-
-def to_cache(obj):
-    """
-    Puts the object into the Python object cache and returns a cache
-    reference based on the currently calculating cell.
-    
-    xlOil automatically adds unrecognised returned objects to the cache,
-    so this function would be useful to force a recognised object,
-    such as an iterable into the cache, or to return a list of cached objects.
-    """
-    return xloil_core.to_cache(obj)
-
-## TODO: implement
-def from_cache():
-    pass
-
 
 class _ArrayType:
     """

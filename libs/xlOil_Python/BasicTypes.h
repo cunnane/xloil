@@ -30,7 +30,7 @@ namespace xloil
       PyObject* fromString(const PStringView<>& pstr) const
       {
         pybind11::object cached;
-        if (fetchCache(pstr.view(), cached))
+        if (pyCacheGet(pstr.view(), cached))
           return cached.release().ptr();
         return base_type::fromString(pstr);
       }
@@ -116,7 +116,7 @@ namespace xloil
       PyObject* fromString(const PStringView<>& pstr) const
       {
         pybind11::object cached;
-        if (fetchCache(pstr.view(), cached))
+        if (pyCacheGet(pstr.view(), cached))
         {
           // Type checking seems nice, but it's unpythonic to raise an error here
           if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
@@ -246,7 +246,7 @@ namespace xloil
         }
         else
         {
-          return ctor(addCache(PyBorrow<pybind11::object>(p)));
+          return ctor(pyCacheAdd(PyBorrow<>(p)));
         }
       }
       auto operator()(const PyObject* obj) const

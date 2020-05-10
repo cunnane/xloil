@@ -208,7 +208,7 @@ def pyTestCustomConv(x: arg_doubler):
 #
 @xlo.func
 def pyTestDFrame(df: xlo.PDFrame(headings=True)):
-    return xlo.to_cache(df)
+    return xlo.cache.add(df)
 
 #
 # We can tell xlo.PDFrame to set the datafram index to a specified column 
@@ -217,7 +217,7 @@ def pyTestDFrame(df: xlo.PDFrame(headings=True)):
 #
 @xlo.func
 def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
-    return xlo.to_cache(df)
+    return xlo.cache(df)
 
 #
 # This function tests that we can fetch data from the frames created by the

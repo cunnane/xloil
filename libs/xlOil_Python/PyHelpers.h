@@ -103,7 +103,7 @@ namespace xloil
         throw pybind11::error_already_set();
       return pybind11::reinterpret_steal<TType>(obj);
     }
-    template<class TType> inline TType PyBorrow(PyObject* obj)
+    template<class TType = pybind11::object> inline TType PyBorrow(PyObject* obj)
     {
       if (!obj)
         throw pybind11::error_already_set();

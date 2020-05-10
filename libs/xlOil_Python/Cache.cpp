@@ -1,43 +1,84 @@
-#include "xloil/ObjectCache.h"
+#include <xloil/ObjectCache.h>
+#include <xlOil/ExcelObjCache.h>
 #include "BasicTypes.h"
 #include "Cache.h"
 #include "Main.h"
 namespace py = pybind11;
+using std::wstring;
 
 namespace xloil {
   namespace Python {
     constexpr wchar_t thePyCacheUniquifier = L'\x6B23';
-    static std::unique_ptr<ObjectCache<py::object, thePyCacheUniquifier>> thePythonObjCache;
 
-    void createCache()
+    namespace
     {
-      thePythonObjCache.reset(new ObjectCache<py::object, thePyCacheUniquifier>());
-      static auto handler = Event_PyBye().bind([]() 
+      struct PyCache;
+      static PyCache* thePythonObjCache = nullptr;
+
+      // Only a single instance of this class is created
+      struct PyCache
       {
-        py::gil_scoped_acquire gil;
-        thePythonObjCache.reset(); 
-      });
-    }
+        PyCache()
+        {
+          thePythonObjCache = this;
+        }
 
-    ExcelObj addCache(py::object&& obj)
-    {
-      return thePythonObjCache->add(std::forward<py::object>(obj));
+        // Just to prevent any potential errors!
+        PyCache(const PyCache& that) = delete;
+
+        ~PyCache()
+        {
+          XLO_TRACE("Python object cache destroyed");
+        }
+
+        py::object add(const py::object& obj)
+        {
+          return PySteal(PyFromString()(_cache.add(py::object(obj))));
+        }
+        py::object get(const std::wstring_view& str)
+        {
+          py::object obj;
+          if (objectCacheCheckReference(str))
+          {
+            std::shared_ptr<const ExcelObj> xlObj;
+            if (xloil::objectCacheFetch(str, xlObj))
+              return PySteal(PyFromAny<>()(*xlObj));
+          }
+          else
+            _cache.fetch(str, obj);
+          return obj;
+        }
+        bool contains(const std::wstring_view& str)
+        {
+          py::object obj;
+          return _cache.fetch(str, obj);
+        }
+
+        ObjectCache<py::object, thePyCacheUniquifier> _cache;
+      };
     }
-    bool fetchCache(const std::wstring_view& str, py::object& obj)
+    ExcelObj pyCacheAdd(py::object&& obj)
     {
-      return thePythonObjCache->fetch(str, obj);
+      return thePythonObjCache->_cache.add(std::forward<py::object>(obj));
+    }
+    bool pyCacheGet(const std::wstring_view& str, py::object& obj)
+    {
+      //return false;
+      return thePythonObjCache->_cache.fetch(str, obj);
     }
 
     namespace
     {
-      py::object add_cache(py::object&& obj)
-      {
-        auto ref = addCache(std::forward<py::object>(obj));
-        return PySteal<>(PyFromString()(ref));
-      }
       static int theBinder = addBinder([](py::module& mod)
       {
-        mod.def("to_cache", &add_cache);
+        py::class_<PyCache>(mod, "ObjectCache")
+          .def("add", &PyCache::add)
+          .def("get", &PyCache::get)
+          .def("contains", &PyCache::contains)
+          .def("__contains__", &PyCache::contains)
+          .def("__getitem__", &PyCache::get)
+          .def("__call__", &PyCache::add);
+        mod.add_object("cache", py::cast(new PyCache()));
       });
     }
 } }
