@@ -47,7 +47,7 @@ namespace
       return false;
     }
   }
- 
+
   std::fstream theLogFile;
 
   /// <summary>
@@ -173,7 +173,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     // 1) Look in same dir as XLL
     // 2) Look in Excel addins in registry for xlOil.xll
     // 3) Look in %APPDATA%/xloil settings file for Environment
-  
+
     vector<shared_ptr<PushEnvVar>> environmentVariables;
 
     auto settings = findSettingsFile(L"xlOil.dll");
@@ -252,7 +252,7 @@ XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
     action = xAction->val.w;
     break;
   }
-  
+
   static msxll::xloper12 xInfo;
   if (action == 1)
   {
@@ -264,7 +264,7 @@ XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
     xInfo.xltype = msxll::xltypeErr;
     xInfo.val.err = msxll::xlerrValue;
   }
-  
+
   return &xInfo;
 }
 

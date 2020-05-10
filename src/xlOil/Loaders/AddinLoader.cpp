@@ -85,11 +85,13 @@ namespace xloil
     return settings;
   }
 
-  void openXll(const wchar_t* xllPath)
+  bool openXll(const wchar_t* xllPath)
   {
+    bool firstLoad = false;
     // On First load, register the core functions
     if (theAddinContexts.empty())
     {
+      firstLoad = true;
 #if _DEBUG
       loggerInitialise(spdlog::level::debug);
 #else
@@ -104,9 +106,10 @@ namespace xloil
       loadPlugins(ourCoreContext, Settings::plugins(settings.get()));
     }
 
+    // An explicit load of xloil.xll returns here
     if (_wcsicmp(fs::path(xllPath).replace_extension("dll").c_str(),
       theCorePath()) == 0)
-      return;
+      return firstLoad;
 
     auto settings = processAddinSettings(xllPath);
     
@@ -118,6 +121,8 @@ namespace xloil
     assert(ctx);
 
     loadPlugins(ctx, Settings::plugins(settings.get()));
+
+    return firstLoad;
   }
 
   void closeXll(const wchar_t* xllPath)

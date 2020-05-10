@@ -76,17 +76,17 @@ namespace xloil
       
       ourExcelVersion = getExcelVersion();
 
-      openXll(xllPath);
+      bool firstLoad = openXll(xllPath);
 
       excelApp(); // Creates the COM connection
 
-      return 1;
+      return firstLoad ? 1 : 0;
     }
     catch (const std::exception& e)
     {
       XLO_ERROR("Initialisation error: {0}", e.what());
     }
-    return 0;
+    return -1;
   }
   XLOIL_EXPORT int coreAutoClose(const wchar_t* xllPath) noexcept
   {
