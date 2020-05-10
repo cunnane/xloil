@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "CppUnitTest.h"
 #include <xlOil/Date.h>
-#include <iomanip>
-#include <sstream>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 

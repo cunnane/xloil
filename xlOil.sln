@@ -41,14 +41,29 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "libs", "libs", "{70522729-EFAA-4F6D-8C6D-752676BF6752}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python", "libs\xlOil_Python\xlOil_Python.vcxproj", "{CE2AD1AD-E034-4C06-943F-8251C05AD37A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python36", "libs\xlOil_Python\xlOil_Python36.vcxproj", "{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python37", "libs\xlOil_Python\xlOil_Python37.vcxproj", "{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_SQL", "libs\xlOil_SQL\xlOil_SQL.vcxproj", "{C1EDF1FF-7061-4A34-82A2-FF77ACB9C8F4}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Utils", "libs\xlOil_Utils\xlOil_Utils.vcxproj", "{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

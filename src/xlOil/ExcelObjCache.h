@@ -11,15 +11,15 @@ namespace xloil
   /// </summary>
   /// <param name="str">Pointer to string start</param>
   /// <param name="length">Number of chars to read</param>
-  inline bool objectCacheCheckReference(const wchar_t* str, size_t length)
+  inline bool objectCacheCheckReference(const std::wstring_view& str)
   {
-    if (length < 7 || str[0] != theObjectCacheUnquifier || str[1] != L'[')
+    if (str.length() < 7 || str[0] != theObjectCacheUnquifier || str[1] != L'[')
       return false;
     return true;
   }
   inline bool objectCacheCheckReference(const PStringView<>& pstr)
   {
-    return objectCacheCheckReference(pstr.pstr(), pstr.length());
+    return objectCacheCheckReference(pstr.view());
   }
   inline bool objectCacheCheckReference(const ExcelObj& obj)
   {

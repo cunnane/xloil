@@ -37,10 +37,9 @@ namespace xloil
   struct FromExcelDispatcher
   {
     using result_type = TResult;
+    using const_return_ptr = const typename std::remove_pointer<TResult>::type*;
 
     const TImpl& _impl() const { return static_cast<const TImpl&>(*this); }
-
-    using const_return_ptr = const typename std::remove_pointer<TResult>::type*;
 
     TResult operator()(const ExcelObj& xl, const_return_ptr defaultVal = nullptr) const
     {

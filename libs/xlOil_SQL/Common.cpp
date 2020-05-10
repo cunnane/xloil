@@ -42,7 +42,7 @@ namespace xloil
       if (headings && headings->size() != arr.nCols())
         XLO_THROW("Provided {0} headings, but data has {1} columns", headings->size(), arr.nCols());
 
-      for (auto j = 0; j < nCols; ++j)
+      for (auto j = 0u; j < nCols; ++j)
       {
         sql += headings
           ? headings->at(j)

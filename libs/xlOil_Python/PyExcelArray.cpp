@@ -3,7 +3,6 @@
 #include "PyExcelArray.h"
 #include "BasicTypes.h"
 
-using std::shared_ptr;
 using std::vector;
 namespace py = pybind11;
 

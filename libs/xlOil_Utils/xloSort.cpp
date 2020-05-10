@@ -138,7 +138,7 @@ namespace xloil
       case ExcelType::Str:
         hasHeadings = true;
         column = nCols;
-        for (auto j = 0; j < nCols; ++j)
+        for (auto j = 0u; j < nCols; ++j)
           if (*arg == arr(0, j))
           {
             column = j;
