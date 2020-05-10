@@ -23,9 +23,9 @@ namespace xloil
         return py::cast(PyExcelArray(arr)).release().ptr();
       }
       // Override cache ref lookup?
-      PyObject* fromString(const wchar_t* buf, size_t len) const
+      PyObject* fromString(const PStringView<>& pstr) const
       {
-        return PyFromString().fromString(buf, len);
+        return PyFromString().fromString(pstr);
       }
     };
 

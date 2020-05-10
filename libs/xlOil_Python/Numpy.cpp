@@ -98,16 +98,16 @@ namespace xloil
         npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
-      npy_datetime fromString(const wchar_t* buf, size_t len) const
+      npy_datetime fromString(const PStringView<>& str) const
       {
         std::tm tm;
-        if (stringToDateTime(std::wstring_view(buf, len), tm))
+        if (stringToDateTime(str.view(), tm))
         {
           npy_datetimestruct dt = { tm.tm_year + 1900, tm.tm_mon + 1, 
             tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0 };
           return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
         }
-        return FromExcelBase::fromString(buf, len);
+        return FromExcelBase::fromString(str);
       }
     };
    

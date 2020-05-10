@@ -27,12 +27,12 @@ namespace xloil
     {
     public:
       using base_type = CacheConverter;
-      PyObject* fromString(const wchar_t* buf, size_t len) const
+      PyObject* fromString(const PStringView<>& pstr) const
       {
         pybind11::object cached;
-        if (fetchCache(buf, len, cached))
+        if (fetchCache(pstr.view(), cached))
           return cached.release().ptr();
-        return base_type::fromString(buf, len);
+        return base_type::fromString(pstr);
       }
     };
 
@@ -51,9 +51,9 @@ namespace xloil
     class PyFromString : public CacheConverter<PyObject*, PyFromString>
     {
     public:
-      PyObject * fromString(const wchar_t* buf, size_t len) const
+      PyObject * fromString(const PStringView<>& pstr) const
       {
-        return PyUnicode_FromWideChar(const_cast<wchar_t*>(buf), len);
+        return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
       }
       PyObject* fromEmpty(const PyObject*) const { return PyUnicode_New(0, 127); }
       PyObject* fromInt(int x) const { return PyUnicode_FromFormat("%i", x); }
@@ -85,12 +85,12 @@ namespace xloil
       
       PyObject* fromEmpty(const PyObject*) const { Py_RETURN_NONE; }
 
-      PyObject* fromString(const wchar_t* buf, size_t len) const 
+      PyObject* fromString(const PStringView<>& pstr) const 
       { 
-        auto result = PyFromCache<PyFromAny>::fromString(buf, len);
+        auto result = PyFromCache<PyFromAny>::fromString(pstr);
         if (result)
           return result;
-        return PyFromString().fromString(buf, len); 
+        return PyFromString().fromString(pstr);
       }
 
       PyObject * fromError(CellError err) const
@@ -113,14 +113,14 @@ namespace xloil
     public:
      // PyCacheObject(PyObject* typeCheck) : _typeCheck(typeCheck) {}
 
-      PyObject* fromString(const wchar_t* buf, size_t len) const
+      PyObject* fromString(const PStringView<>& pstr) const
       {
         pybind11::object cached;
-        if (fetchCache(buf, len, cached))
+        if (fetchCache(pstr.view(), cached))
         {
           // Type checking seems nice, but it's unpythonic to raise an error here
           if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
-            XLO_WARN(L"Found `{0}` in cache but type was expected", std::wstring(buf, buf + len));
+            XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
           return cached.release().ptr();
         }
         return nullptr;

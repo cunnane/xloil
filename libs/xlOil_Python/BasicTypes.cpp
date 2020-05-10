@@ -4,7 +4,6 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-using std::shared_ptr;
 
 namespace xloil 
 {

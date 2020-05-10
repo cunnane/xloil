@@ -23,9 +23,9 @@ namespace xloil {
     {
       return thePythonObjCache->add(std::forward<py::object>(obj));
     }
-    bool fetchCache(const wchar_t* cacheString, size_t length, py::object& obj)
+    bool fetchCache(const std::wstring_view& str, py::object& obj)
     {
-      return thePythonObjCache->fetch(cacheString, length, obj);
+      return thePythonObjCache->fetch(str, obj);
     }
 
     namespace

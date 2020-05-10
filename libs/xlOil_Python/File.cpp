@@ -2,7 +2,6 @@
 #include "PyHelpers.h"
 #include <xloil/Log.h>
 
-using std::shared_ptr;
 using std::vector;
 using std::string;
 namespace py = pybind11;
@@ -23,8 +22,7 @@ namespace xloil
         : py::none();
 
       // Any need for this?
-      //if (PyModule_Check(mod.ptr()))
-      //  Event_PyReload().fire(mod);
+      //if (PyModule_Check(mod.ptr())) Event_PyReload().fire(mod);
 
       const auto modName = (string)py::str(mod);
       try

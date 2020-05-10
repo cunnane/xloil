@@ -8,6 +8,6 @@ namespace xloil {
 
     ExcelObj addCache(pybind11::object&& obj);
 
-    bool fetchCache(const wchar_t* cacheString, size_t length, pybind11::object& obj);
+    bool fetchCache(const std::wstring_view& cacheStr, pybind11::object& obj);
   }
 }

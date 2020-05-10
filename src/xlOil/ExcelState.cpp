@@ -115,7 +115,6 @@ namespace
 
 namespace xloil
 {
-
   CallerInfo::CallerInfo()
     : _Address(new ExcelObj())
     , _SheetName(new ExcelObj())
@@ -124,13 +123,13 @@ namespace xloil
     if (_Address->isType(ExcelType::RangeRef))
       callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
   }
-  size_t CallerInfo::fullAddressLength() const
+  uint16_t CallerInfo::fullAddressLength() const
   {
     auto s = _SheetName->asPascalStr();
     // Any value in more precise guess?
     return s.length() + 1 + CELL_ADDRESS_RC_MAX_LEN;
   }
-  size_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
+  uint16_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
   {
     const auto wsName = _SheetName->asPascalStr();
     const auto wsLength = wsName.length();
@@ -145,7 +144,7 @@ namespace xloil
     }
 
     // TODO: handle other caller cases?
-    size_t addressLen;
+    uint16_t addressLen;
     switch (_Address->type())
     {
     case ExcelType::SRef:
@@ -213,27 +212,29 @@ namespace xloil
     mbstowcs_s(&dummy, buf, 4, colBuf, 4);
   }
 
-  XLOIL_EXPORT size_t xlrefToLocalA1(
+  XLOIL_EXPORT uint16_t xlrefToLocalA1(
     const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
+    int ret;
     // Add one everywhere here as rwFirst is zero-based but A1 format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
     {
       wchar_t wcol[4];
       writeColumnNameW(ref.colFirst, wcol);
-      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d", wcol, ref.rwFirst + 1);
+      ret = _snwprintf_s(buf, bufSize, bufSize, L"%s%d", wcol, ref.rwFirst + 1);
     }
     else
     {
       wchar_t wcolFirst[4], wcolLast[4];
       writeColumnNameW(ref.colFirst, wcolFirst);
       writeColumnNameW(ref.colLast, wcolLast);
-      return _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d",
+      ret = _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d",
         wcolFirst, ref.rwFirst + 1, wcolLast, ref.rwLast + 1);
     }
+    return ret < 0 ? 0 : (uint16_t)ret;
   }
 
-  XLOIL_EXPORT size_t xlrefSheetAddress(
+  XLOIL_EXPORT uint16_t xlrefSheetAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -286,14 +287,16 @@ namespace xloil
 
   // Uses RxCy format as it's easier for the programmer 
   // (see how much code is required above for A1 style!)
-  size_t xlrefToLocalRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
+  uint16_t xlrefToLocalRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
+    int ret;
     // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
-      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
+      ret =  _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
     else
-      return _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d", 
+      ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d",
         ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
+    return ret < 0 ? 0 : (uint16_t)ret;
   }
 
   bool inFunctionWizard()

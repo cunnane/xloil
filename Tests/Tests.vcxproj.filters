@@ -6,6 +6,7 @@
     <ClCompile Include="ArrayBuilder.cpp" />
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="PString.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

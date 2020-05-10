@@ -21,9 +21,9 @@ namespace xloil
         return Const::Error(CellError::Value);
       return theObjCache->add(std::forward<shared_ptr<const CacheObj>>(obj));
     }
-    bool cacheFetch(const std::wstring& cacheString, shared_ptr<const CacheObj>& obj)
+    bool cacheFetch(const std::wstring_view& cacheString, shared_ptr<const CacheObj>& obj)
     {
-      return theObjCache->fetch(cacheString.c_str(), cacheString.length(), obj);
+      return theObjCache->fetch(cacheString, obj);
     }
 
     // TODO: another possible cache object?

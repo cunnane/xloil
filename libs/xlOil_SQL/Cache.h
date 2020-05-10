@@ -23,9 +23,6 @@ namespace xloil
       cacheAdd(std::shared_ptr<const CacheObj>&& obj);
 
     bool
-      cacheFetch(const std::wstring& cacheString, std::shared_ptr<const CacheObj>& obj);
-
-
-
+      cacheFetch(const std::wstring_view& cacheString, std::shared_ptr<const CacheObj>& obj);
   }
 }

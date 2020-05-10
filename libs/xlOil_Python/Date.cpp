@@ -54,12 +54,12 @@ namespace xloil
       {
         return fromInt(int(x));
       }
-      PyObject* fromString(const wchar_t* buf, size_t len) const
+      PyObject* fromString(const PStringView<>& pstr) const
       {
         std::tm tm;
-        if (stringToDateTime(std::wstring_view(buf, len), tm))
+        if (stringToDateTime(pstr.view(), tm))
           return PyDate_FromDate(tm.tm_year, tm.tm_mon, tm.tm_yday);
-        return PyFromCache::fromString(buf, len);
+        return PyFromCache::fromString(pstr);
       }
     };
     class PyFromDateTime : public PyFromDate<PyFromDateTime>
@@ -71,14 +71,14 @@ namespace xloil
         excelSerialDatetoDMYHMS(x, day, month, year, hours, mins, secs, usecs);
         return PyDateTime_FromDateAndTime(year, month, day, hours, mins, secs, usecs);
       }
-      PyObject* fromString(const wchar_t* buf, size_t len) const
+      PyObject* fromString(const PStringView<>& pstr) const
       {
         std::tm tm;
-        if (stringToDateTime(std::wstring_view(buf, len), tm))
+        if (stringToDateTime(pstr.view(), tm))
           return PyDateTime_FromDateAndTime(
             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
             tm.tm_hour, tm.tm_min, tm.tm_sec, 0);
-        return PyFromCache::fromString(buf, len);
+        return PyFromCache::fromString(pstr);
       }
     };
     class XlFromDate : public IConvertToExcel<PyObject>

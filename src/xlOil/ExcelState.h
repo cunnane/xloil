@@ -13,8 +13,8 @@ namespace xloil
     std::shared_ptr<const ExcelObj> _Address, _SheetName;
   public:
     CallerInfo();
-    size_t fullAddressLength() const;
-    size_t writeFullAddress(wchar_t* buf, size_t bufLen) const;
+    uint16_t fullAddressLength() const;
+    uint16_t writeFullAddress(wchar_t* buf, size_t bufLen) const;
   };
 
   /// <summary>
@@ -29,7 +29,7 @@ namespace xloil
   /// That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
   /// Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT size_t xlrefSheetAddress(
+  XLOIL_EXPORT uint16_t xlrefSheetAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -57,7 +57,7 @@ namespace xloil
   /// to 'RxCy' or 'RaCy:RxCy' format in the provided string
   /// buffer. Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT size_t xlrefToLocalRC(
+  XLOIL_EXPORT uint16_t xlrefToLocalRC(
     const msxll::XLREF12& ref, 
     wchar_t* buf,
     size_t bufSize);
@@ -67,7 +67,7 @@ namespace xloil
   /// to 'A1' or 'A1:Z9' format in the provided string
   /// buffer. Returns the number of characters written.
   /// </summary>
-  XLOIL_EXPORT size_t xlrefToLocalA1(
+  XLOIL_EXPORT uint16_t xlrefToLocalA1(
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize);

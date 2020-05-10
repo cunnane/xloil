@@ -58,11 +58,11 @@ namespace xloil
         }
         return result;
       }
-      result_t fromString(const wchar_t* buf, size_t len) const
+      result_t fromString(const PStringView<>& pstr) const
       {
         _variant_t result;
         V_VT(&result) = VT_BSTR;
-        V_BSTR(&result) = SysAllocStringLen(buf, (UINT)len);
+        V_BSTR(&result) = SysAllocStringLen(pstr.pstr(), (UINT)pstr.length());
         return result;
       }
       result_t fromError(CellError x) const

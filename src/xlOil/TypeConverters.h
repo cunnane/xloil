@@ -51,7 +51,7 @@ namespace xloil
         case ExcelType::Int: return _impl().fromInt(xl.val.w);
         case ExcelType::Bool: return _impl().fromBool(xl.val.xbool != 0);
         case ExcelType::Num: return _impl().fromDouble(xl.val.num);
-        case ExcelType::Str: return _impl().fromString(xl.val.str + 1, xl.val.str[0]);
+        case ExcelType::Str: return _impl().fromString(xl.asPascalStr());
         case ExcelType::Multi: return _impl().fromArray(xl);
         case ExcelType::Missing: return _impl().fromMissing(defaultVal);
         case ExcelType::Err: return _impl().fromError(CellError(xl.val.err));
@@ -93,7 +93,7 @@ namespace xloil
     TResult fromDouble(double x) const { return error(); }
     TResult fromArray(const ExcelObj&) const { return error(); }
     TResult fromArrayObj(const ExcelArray&) const { return error(); }
-    TResult fromString(const wchar_t* /*buf*/, size_t /*len*/) const { return error(); }
+    TResult fromString(const PStringView<>& str) const { return error(); }
     TResult fromError(CellError) const { return error(); }
     TResult fromEmpty(const TResult* /*defaultVal*/) const { return error(); }
     TResult fromMissing(const TResult* defaultVal) const 
@@ -125,7 +125,7 @@ namespace xloil
     // resolution. Unless the rules change for some reason in templates.
     TResult* fromArrayObj(const ExcelArray&) const { return nullptr; }
     TResult* fromArray(const ExcelObj&) const { return nullptr; }
-    TResult* fromString(const wchar_t* /*buf*/, size_t /*len*/) const { return nullptr; }
+    TResult* fromString(const PStringView<>&) const { return nullptr; }
     TResult* fromError(CellError) const { return nullptr; }
     TResult* fromEmpty(const TResult* defaultVal) const { return const_cast<TResult*>(defaultVal); }
     TResult* fromMissing(const TResult* defaultVal) const 
@@ -142,15 +142,15 @@ namespace xloil
   template <class TResult, class TSuper=nullptr_t>
   struct CacheConverter : public FromExcelBase<TResult, NullCoerce<TSuper, CacheConverter<TResult, nullptr_t>>>
   {
-    auto fromString(const wchar_t* buf, size_t len) const
+    auto fromString(const PStringView<>& str) const
     {
-      if (objectCacheCheckReference(buf, len))
+      if (objectCacheCheckReference(str))
       {
         std::shared_ptr<const ExcelObj> obj;
-        if (xloil::objectCacheFetch(buf, len, obj))
+        if (xloil::objectCacheFetch(str.view(), obj))
           return _impl()(*obj);
       }
-      return FromExcelBase::fromString(buf, len);
+      return FromExcelBase::fromString(str);
     }
   };
 }

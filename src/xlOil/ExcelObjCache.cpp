@@ -16,9 +16,9 @@ namespace xloil
   {
     return theExcelObjCache.add(std::forward<shared_ptr<const ExcelObj>>(obj));
   }
-  bool objectCacheFetch(const wchar_t* cacheString, size_t length, shared_ptr<const ExcelObj>& obj)
+  bool objectCacheFetch(const std::wstring_view& cacheString, shared_ptr<const ExcelObj>& obj)
   {
-    return theExcelObjCache.fetch(cacheString, length, obj);
+    return theExcelObjCache.fetch(cacheString, obj);
   }
 }
 
@@ -46,7 +46,7 @@ XLO_FUNC_START(
 
   // We return a pointer to the stored object directly without setting
   // the flag which tells Excel to free it.
-  if (theExcelObjCache.fetch(pxOper.toString().c_str(), result))
+  if (theExcelObjCache.fetch(pxOper.asPascalStr().view(), result))
     return const_cast<ExcelObj*>(result.get());
 
   return ExcelObj::returnValue(CellError::Value);

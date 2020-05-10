@@ -177,9 +177,10 @@ namespace xloil
     /// Create a PString of the specified length
     /// </summary>
     explicit PString(size_type length)
-      : PStringImpl(new TChar[length + 1])
+      : PStringImpl(length == 0 ? nullptr : new TChar[length + 1])
     {
-      resize(length);
+      if (length > 0)
+        _data[0] = length;
     }
 
     /// <summary>
@@ -189,10 +190,38 @@ namespace xloil
       : PStringImpl(data)
     {}
 
+    explicit PString(const std::basic_string<TChar>& str)
+      : PString((TChar)str.length())
+    {
+      const auto nBytes = length() * sizeof(TChar);
+      memcpy_s(_data + 1, nBytes, str.data(), nBytes);
+    }
+
+    PString(const PStringImpl& that)
+      : PString(that.length())
+    {
+      wmemcpy_s(_data + 1, _data[0], that.pstr(), that.length());
+    }
+
+    PString(PString&& that)
+      : PStringImpl(nullptr)
+    {
+      std::swap(_data, that._data);
+    }
+
     ~PString()
     {
       delete[] _data;
     }
+
+    PString& operator=(PString&& that)
+    {
+      delete[] _data;
+      _data = nullptr;
+      std::swap(_data, that._data);
+      return *this;
+    }
+    using PStringImpl::operator=;
 
     /// <summary>
     /// Returns a pointer to the buffer containing the string and
@@ -216,9 +245,8 @@ namespace xloil
       else
       {
         PString copy(sz);
-        copy = *this;
-        copy._data[0] = sz;
-        std::swap(copy._data, _data);
+        wmemcpy_s(copy._data + 1, sz, _data, length());
+        *this = std::move(copy);
       }
     }
   };
@@ -242,6 +270,11 @@ namespace xloil
     explicit PStringView(TChar* data = nullptr)
       : PStringImpl(data)
     {}
+
+    PStringView(PString<TChar>& str)
+      : PStringImpl(str.data())
+    {}
+
     PStringImpl& operator=(const PStringView& that)
     {
       if (!_data)
@@ -263,6 +296,49 @@ namespace xloil
         _data[0] = sz;
       else
         XLO_THROW("Cannot increase size of PStringView");
+    }
+
+    PStringView strtok(const TChar* delims)
+    {
+      // If a previous PString is passed in, we will have tokenised the string
+      // into [n]token[m]remaining, so the end() iterator should point to [m].
+      // Otherwise we start with our own _data buffer.
+      auto* p = _data;
+      if (!p)
+        return PStringView();
+
+      // First character is length
+      const auto stringLen = *p++;
+      const auto pEnd = p + stringLen;
+
+      // p points to the first char in the string, step until we are not
+      // pointing at a delimiter. If we hit the end of the string, there
+      // are no more tokens, so return a null PString.
+      while (wcschr(delims, *p))
+        if (++p == pEnd)
+          return PStringView();
+
+      // p now points the first non-delimiter, the start of our token
+      auto* token = p;
+
+      // Find the next delimiter
+      while (p < pEnd && !wcschr(delims, *p)) ++p;
+      const auto tokenLen = (TChar)(p - token);
+
+      // We know token[-1] must point to a delimiter or a length count,
+      // so it is safe to overwrite with the token length
+      token[-1] = tokenLen;
+
+      // If there still more string, overwrite p (which points to a delimiter)
+      // with the remaining length for subsequent calls to strtok.
+      if (p < pEnd)
+      {
+        *p = (TChar)(pEnd - p - 1);
+        _data = p;
+      }
+      else
+        _data = nullptr;
+      return PStringView(token - 1);
     }
   };
 }

@@ -5,7 +5,6 @@
 #include "ExcelState.h"
 #include "EntryPoint.h"
 #include "Interface.h"
-#include <regex>
 #include <unordered_map>
 #include <string_view>
 #include <mutex>
@@ -14,25 +13,22 @@ namespace xloil
 {
   namespace impl
   {
-    inline wchar_t* writeCacheId(wchar_t uniquifier, const CallerInfo& caller, int padding)
+    inline PString<> writeCacheId(
+      wchar_t uniquifier, const CallerInfo& caller, uint16_t padding)
     {
-      size_t totalLen = caller.fullAddressLength() + 1 + padding;
-      wchar_t* pascalStr = new wchar_t[totalLen + 1];
-      auto* buf = pascalStr + 1;
+      PString<> pascalStr(caller.fullAddressLength() + padding + 1);
+      auto* buf = pascalStr.pstr();
 
+      wchar_t nWritten = 0;
       // Cache uniquifier character
       *(buf++) = uniquifier;
-      --totalLen;
+      ++nWritten;
 
       // Full cell address: eg. [wbName]wsName!RxCy
-      auto addressLen = caller.writeFullAddress(buf, totalLen);
-      buf += addressLen;
-
-      // Pad with nulls
-      wmemset(buf, L'\0', padding);
+      nWritten += (wchar_t)caller.writeFullAddress(buf, pascalStr.length() - 1);
 
       // Fix up length
-      pascalStr[0] = wchar_t(addressLen + 1 + padding);
+      pascalStr.resize(nWritten + padding);
 
       return pascalStr;
     }
@@ -87,7 +83,6 @@ namespace xloil
     Lookup<WorkbookCache> _cache;
     mutable std::mutex _cacheLock;
 
-    const std::wregex _cacheRefMatcher;
     size_t _calcId;
 
     typename std::conditional<TReverseLookup, 
@@ -137,8 +132,7 @@ namespace xloil
 
   public:
     ObjectCache()
-      : _cacheRefMatcher(LR"(\[([^\]]+)\]([^,]+),?(\d*).*)", std::regex_constants::optimize)
-      , _calcId(1)
+      : _calcId(1)
     {
       using namespace std::placeholders;
 
@@ -149,29 +143,31 @@ namespace xloil
         xloil::Event::WorkbookAfterClose().bind(std::bind(std::mem_fn(&self::onWorkbookClose), this, _1)));
     }
 
-    bool fetch(const wchar_t* str, size_t length, TObj& obj)
+    bool fetch(const std::wstring_view& cacheString, TObj& obj)
     {
-      std::wstring nastyTemp(str, str + length);
-      return fetch(nastyTemp.c_str(), obj);
-    }
-
-    bool fetch(const wchar_t* cacheString, TObj& obj)
-    {
-      // TODO: write function without using regex, surely it would be quicker?
-      // And we can remove nastytemp!
-
       if (cacheString[0] != TUniquifier || cacheString[1] != L'[')
         return false;
 
-      std::wcmatch match;
-      std::regex_match(cacheString + 1, match, _cacheRefMatcher);
-      if (match.size() != 4)
-        return false;
+      constexpr auto npos = std::wstring_view::npos;
 
-      auto workbook = match[1].str();
-      auto sheetRef = match[2].str();
-      auto position = match[3].str();
-      size_t iResult = position.empty() ? 0 : _wtoi(position.c_str());
+      const auto firstBracket = 1;
+      const auto lastBracket = cacheString.find_last_of(']');
+      if (lastBracket == npos)
+        return false;
+      const auto comma = cacheString.find_first_of(',', lastBracket);
+
+      auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
+      auto sheetRef = cacheString.substr(lastBracket + 1,
+        comma == npos ? npos : comma - lastBracket - 1);
+
+      int iResult = 0;
+      if (comma != npos)
+      {
+        // Oh dear, there's no std::from_chars for wchar_t
+        wchar_t tmp[4];
+        wcsncpy_s(tmp, 4, cacheString.data() + comma + 1, cacheString.length() - comma - 1);
+        iResult = _wtoi(tmp);
+      }
 
       {
         std::scoped_lock lock(_cacheLock);
@@ -191,21 +187,19 @@ namespace xloil
     ExcelObj add(TObj&& obj)
     {
       CallerInfo caller;
-      constexpr int padding = 4;
+      constexpr unsigned char padding = 5;
 
-      auto* pascalStr = impl::writeCacheId(TUniquifier, caller, padding);
+      auto key = impl::writeCacheId(TUniquifier, caller, padding);
 
-      // Oh the things we do to avoid a string copy
-      auto len = pascalStr[0];
-      auto* str = pascalStr + 1;
+      // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
+      // Search backwards because wbName may contain ']'
+      auto lastBracket = key.rchr(L']');
+      auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
 
-      // Capture workbook name.  We should have X[wbName]wsName!cellRef
-      auto lastBracket = wmemrchr(str + len, L']', len);
-      auto wbName = std::wstring_view(str + 2, lastBracket - str - 2);
-
-      // Capture sheet ref.  
+      // Capture sheet ref, i.e. wsName!cellRef
       // Can use wcslen here because of the null padding
-      auto wsRef = std::wstring_view(lastBracket + 1, len - (lastBracket - str) - 1 - padding);
+      auto wsRef = std::wstring_view(key.pstr() + lastBracket + 1,
+        key.length() - padding - lastBracket - 1);
 
       std::vector<TObj> staleObjects;
       size_t iPos = 0;
@@ -216,16 +210,18 @@ namespace xloil
         iPos = addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
       }
 
+      unsigned char nPaddingUsed = 0;
       // Add cell object count in form ",XXX"
       if (iPos > 0)
       {
-        auto pStr = pascalStr + 1 + len - padding;
-        *(pStr++) = L',';
+        auto buf = const_cast<wchar_t*>(key.end()) - padding;
+        *(buf++) = L',';
         // TODO: this will fail if iPos > 999
-        _itow_s(int(iPos), pStr, padding - 1, 10);
+        _itow_s(int(iPos), buf, padding - 1, 10);
+        nPaddingUsed = 1 + (decltype(nPaddingUsed))wcsnlen(buf, padding - 1);
       }
-
-      auto key = PString(pascalStr);
+        
+      key.resize(key.length() - padding + nPaddingUsed);
 
       if constexpr (TReverseLookup)
       {

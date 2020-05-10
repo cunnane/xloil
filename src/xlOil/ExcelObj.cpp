@@ -606,7 +606,7 @@ namespace
     }
     const ExcelObj& EmptyStr()
     {
-      static ExcelObj obj(PString<wchar_t>(L'\0'));
+      static ExcelObj obj(PString<wchar_t>(L"\0"));
       return obj;
     }
   }
