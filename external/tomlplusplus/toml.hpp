@@ -302,7 +302,7 @@
 #else
 	#define TOML_CONSTEVAL		constexpr
 #endif
-#if !TOML_DOXYGEN && !defined(__INTELLISENSE__)
+#if !TOML_DOXYGEN && !defined(__INTELLISENSE__) & !defined(_MSC_VER)
 	#if !defined(TOML_LIKELY) && __has_cpp_attribute(likely)
 		#define TOML_LIKELY(...)	(__VA_ARGS__) [[likely]]
 	#endif
