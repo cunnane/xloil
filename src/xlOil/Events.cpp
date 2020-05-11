@@ -6,6 +6,7 @@
 #include <array>
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 #include <string>
+#include <boost/preprocessor/seq/for_each.hpp>
 
 using std::vector;
 using std::shared_ptr;
@@ -25,32 +26,15 @@ namespace xloil
       static EventXll e("AutoClose"); return e;
     }
 
-#define XLO_DEF_EVENT(name) \
+
+#define XLO_DEF_EVENT(r, _, name) \
     XLOIL_EXPORT decltype(name()) name() \
     { \
       static std::remove_reference_t<decltype(name())> e(#name); \
       return e; \
-    }
+    };
 
-    XLO_DEF_EVENT(AfterCalculate);
-    XLO_DEF_EVENT(CalcCancelled);
-    XLO_DEF_EVENT(WorkbookOpen);
-    XLO_DEF_EVENT(NewWorkbook);
-    XLO_DEF_EVENT(SheetSelectionChange);
-    XLO_DEF_EVENT(SheetBeforeDoubleClick);
-    XLO_DEF_EVENT(SheetBeforeRightClick);
-    XLO_DEF_EVENT(SheetActivate);
-    XLO_DEF_EVENT(SheetDeactivate);
-    XLO_DEF_EVENT(SheetCalculate);
-    XLO_DEF_EVENT(SheetChange);
-    XLO_DEF_EVENT(WorkbookAfterClose);
-    XLO_DEF_EVENT(WorkbookActivate);
-    XLO_DEF_EVENT(WorkbookDeactivate);
-    XLO_DEF_EVENT(WorkbookBeforeSave);
-    XLO_DEF_EVENT(WorkbookBeforePrint);
-    XLO_DEF_EVENT(WorkbookNewSheet);
-    XLO_DEF_EVENT(WorkbookAddinInstall);
-    XLO_DEF_EVENT(WorkbookAddinUninstall);
+    BOOST_PP_SEQ_FOR_EACH(XLO_DEF_EVENT, _, XLOIL_STATIC_EVENTS)
 
     using DirectoryWatchEvent = Event<void(const wchar_t*, const wchar_t*, FileAction)>;
 

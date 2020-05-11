@@ -185,9 +185,9 @@ namespace xloil
         Workbook* Wb,
         VARIANT_BOOL* Cancel)
       {
-        //bool cancel = *Cancel;
-        //Event::WorkbookBeforeClose().fire(Wb->Name, cancel);
-        //*Cancel = cancel ? -1 : 0;
+        bool cancel = *Cancel;
+        Event::WorkbookBeforeClose().fire(Wb->Name, cancel);
+        *Cancel = cancel ? -1 : 0;
       }
       void WorkbookBeforeSave(
         Workbook* Wb,
@@ -219,6 +219,10 @@ namespace xloil
       void WorkbookAddinUninstall(Workbook* Wb)
       {
         Event::WorkbookAddinUninstall().fire(Wb->Name);
+      }
+      void AfterCalculate()
+      {
+        Event::AfterCalculate().fire();
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
@@ -289,6 +293,8 @@ namespace xloil
         case 0x00000627:
           WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
           break;
+        case 0x00000a34:
+          AfterCalculate();
         }
 
         return S_OK;

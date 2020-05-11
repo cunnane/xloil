@@ -5,5 +5,4 @@ EXPORTS
 	xlAutoClose
 	xlAddInManagerInfo12
 	xlAutoFree12
-	xlxloHandleCalculationCancelled
-	xloHandleCalculationEnded
+	xloHandleCalculationCancelled

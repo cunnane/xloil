@@ -5,6 +5,7 @@
 #include "PyHelpers.h"
 #include "InjectedModule.h"
 #include <list>
+#include <boost/preprocessor/seq/for_each.hpp>
 
 namespace py = pybind11;
 using std::unordered_map;
@@ -169,30 +170,12 @@ namespace xloil
         auto eventMod = mod.def_submodule("event");
         bindArithmeticRef<bool>(eventMod);
 
-#define XLO_PY_EVENT(NAME) \
+#define XLO_PY_EVENT(r, _, NAME) \
         bindEvent(eventMod, makeEvent(xloil::Event::NAME()), #NAME);
 
-        // Same order as in xloil/Event.h
-        XLO_PY_EVENT(AfterCalculate);
-        XLO_PY_EVENT(CalcCancelled);
-        XLO_PY_EVENT(NewWorkbook);
-        XLO_PY_EVENT(SheetSelectionChange);
-        XLO_PY_EVENT(SheetBeforeDoubleClick);
-        XLO_PY_EVENT(SheetBeforeRightClick);
-        XLO_PY_EVENT(SheetActivate);
-        XLO_PY_EVENT(SheetDeactivate);
-        XLO_PY_EVENT(SheetCalculate);
-        XLO_PY_EVENT(SheetChange);
-        XLO_PY_EVENT(WorkbookOpen);
-        XLO_PY_EVENT(WorkbookActivate);
-        XLO_PY_EVENT(WorkbookDeactivate);
-        XLO_PY_EVENT(WorkbookAfterClose);
-        XLO_PY_EVENT(WorkbookBeforeSave);
-        XLO_PY_EVENT(WorkbookBeforePrint);
-        XLO_PY_EVENT(WorkbookNewSheet);
-        XLO_PY_EVENT(WorkbookAddinInstall);
-        XLO_PY_EVENT(WorkbookAddinUninstall);
+        BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
+
       });
     }
   }

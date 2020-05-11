@@ -187,13 +187,16 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       WorkbookDeactivate();
 
+    XLOIL_EXPORT Event<void(const wchar_t* wbName, bool& cancel)>&
+      WorkbookBeforeClose();
+
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool saveAsUI, bool& cancel)>&
       WorkbookBeforeSave();
 
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool& cancel)>&
       WorkbookBeforePrint();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wbName, const wchar_t*)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wbName, const wchar_t* wsName)>&
       WorkbookNewSheet();
 
     XLOIL_EXPORT EventNameParam&
@@ -215,5 +218,28 @@ namespace xloil
     XLOIL_EXPORT Event<
       void(const wchar_t* directory, const wchar_t* filename, FileAction)> &
         DirectoryChange(const std::wstring& path);
+
+
+#define XLOIL_STATIC_EVENTS \
+    (AfterCalculate)\
+    (CalcCancelled)\
+    (WorkbookOpen)\
+    (NewWorkbook)\
+    (SheetSelectionChange)\
+    (SheetBeforeDoubleClick)\
+    (SheetBeforeRightClick)\
+    (SheetActivate)\
+    (SheetDeactivate)\
+    (SheetCalculate)\
+    (SheetChange)\
+    (WorkbookAfterClose)\
+    (WorkbookActivate)\
+    (WorkbookDeactivate)\
+    (WorkbookBeforeClose)\
+    (WorkbookBeforeSave)\
+    (WorkbookBeforePrint)\
+    (WorkbookNewSheet)\
+    (WorkbookAddinInstall)\
+    (WorkbookAddinUninstall)
   }
 }

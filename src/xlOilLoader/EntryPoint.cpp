@@ -208,8 +208,8 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 
     if (ret > 0)
     {
-      xloil::tryCallExcel(msxll::xlEventRegister,
-        "xloHandleCalculationEnded", msxll::xleventCalculationEnded);
+      // xleventCalculationEnded not hooked as the XLL event is not triggered
+      // by programmatic recalc, but the COM event (more usefully) is
       xloil::tryCallExcel(msxll::xlEventRegister,
         "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
     }
@@ -279,19 +279,12 @@ XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
   }
 }
 
-XLO_ENTRY_POINT(int) xloHandleCalculationEnded()
+XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
 {
-  // An excel "undocumented feature" is to call this event handler
+  // An excel "undocumented feature" is to call XLL event handlers
   // after calling xlAutoClose, which is clearly not ideal.
   // This seems to happen when Excel is closing and asks the user 
   // to save the workbook.
-  if (!theXllHasClosed)
-    onCalculationEnded();
-  return 1;
-}
-
-XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
-{
   if (!theXllHasClosed)
     onCalculationCancelled();
   return 1;
