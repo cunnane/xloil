@@ -35,6 +35,7 @@
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelObj.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="ExcelRef.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EntryPoint.h" />
@@ -81,6 +82,7 @@
     <ClInclude Include="XlCallSlim.h" />
     <ClInclude Include="NumericTypeConverters.h" />
     <ClInclude Include="Date.h" />
+    <ClInclude Include="ExcelRef.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">
