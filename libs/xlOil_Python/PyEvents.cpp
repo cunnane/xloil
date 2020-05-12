@@ -6,6 +6,7 @@
 #include "InjectedModule.h"
 #include <list>
 #include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 namespace py = pybind11;
 using std::unordered_map;
@@ -171,11 +172,10 @@ namespace xloil
         bindArithmeticRef<bool>(eventMod);
 
 #define XLO_PY_EVENT(r, _, NAME) \
-        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), #NAME);
+        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), BOOST_PP_STRINGIZE(NAME));
 
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
-
       });
     }
   }
