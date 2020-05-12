@@ -70,15 +70,17 @@ namespace xloil
     XLO_DEBUG("Found core settings file '{0}'",
       *settings->source().path);
 
+    auto addinRoot = (*settings)["Addin"];
+
     // Log file settings
-    auto logFile = Settings::logFilePath(settings.get());
-    auto logLevel = Settings::logLevel(settings.get());
+    auto logFile = Settings::logFilePath(addinRoot);
+    auto logLevel = Settings::logLevel(addinRoot);
     if (logFile.empty())
       logFile = fs::path(xllPath).replace_extension("log");
     loggerAddFile(logFile.c_str(), logLevel.c_str());
 
     // Add any requested date formats
-    auto dateFormats = Settings::dateFormats(settings.get());
+    auto dateFormats = Settings::dateFormats(addinRoot);
     for (auto& form : dateFormats)
       dateTimeAddFormat(form.c_str());
 
@@ -103,7 +105,7 @@ namespace xloil
       ourCoreContext = createAddinContext(theCorePath(), settings);
       ourCoreContext->tryAdd<StaticFunctionSource>(theCoreName(), theCoreName());
 
-      loadPlugins(ourCoreContext, Settings::plugins(settings.get()));
+      loadPlugins(ourCoreContext, Settings::plugins((*settings)["Addin"]));
     }
 
     // An explicit load of xloil.xll returns here
@@ -120,7 +122,7 @@ namespace xloil
     auto ctx = createAddinContext(xllPath, settings);
     assert(ctx);
 
-    loadPlugins(ctx, Settings::plugins(settings.get()));
+    loadPlugins(ctx, Settings::plugins((*settings)["Addin"]));
 
     return firstLoad;
   }

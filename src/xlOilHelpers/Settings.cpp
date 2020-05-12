@@ -21,44 +21,58 @@ namespace xloil
   {
     namespace
     {
-      auto findStr(const toml::table* root, const char* tag, const char* default)
+      auto findStr(const toml::view_node& root, const char* tag, const char* default)
       {
-        return root
-          ? (*root)[tag].value_or<string>(default)
-          : default;
+        return root[tag].value_or<string>(default);
       }
-      auto findVecStr(const toml::table* root, const char* tag)
+      auto findVecStr(const toml::view_node& root, const char* tag)
       {
         vector<wstring> result;
-        if (root)
-        {
-          auto utf8 = (*root)[tag].as_array();
-          if (utf8)
-            for (auto& x : *utf8)
-              result.push_back(utf8ToUtf16(x.value_or("")));
-        }
+        auto utf8 = root[tag].as_array();
+        if (utf8)
+          for (auto& x : *utf8)
+            result.push_back(utf8ToUtf16(x.value_or("")));
         return result;
       }
     }
-    vector<wstring> plugins(const toml::table* root)
+    vector<wstring> plugins(const toml::view_node& root)
     {
       return findVecStr(root, "Plugins");
     }
-    std::wstring pluginSearchPattern(const toml::table* root)
+    std::wstring pluginSearchPattern(const toml::view_node& root)
     {
       return utf8ToUtf16(findStr(root, "PluginSearchPattern", ""));
     }
-    std::wstring logFilePath(const toml::table* root)
+    std::wstring logFilePath(const toml::view_node& root)
     {
       return utf8ToUtf16(findStr(root, "LogFile", ""));
     }
-    std::string logLevel(const toml::table* root)
+    std::string logLevel(const toml::view_node& root)
     {
       return findStr(root, "LogLevel", "warn");
     }
-    std::vector<std::wstring> dateFormats(const toml::table* root)
+    std::vector<std::wstring> dateFormats(const toml::view_node& root)
     {
       return findVecStr(root, "DateFormats");
+    }
+    std::vector<std::pair<std::wstring, std::wstring>> 
+      environmentVariables(const toml::view_node& root)
+    {
+      vector<pair<wstring, wstring>> result;
+      auto environment = root["Environment"].as_array();
+      if (environment)
+        for (auto& innerTable : *environment)
+        {
+          // Settings in the enviroment block looks like key=val
+          // We interpret this as an environment variable to set
+          for (auto[key, val] : *innerTable.as_table())
+          {
+            result.emplace_back(make_pair(
+              utf8ToUtf16(key),
+              utf8ToUtf16(val.value_or(""))));
+          }
+        }
+      return result;
     }
   }
   std::shared_ptr<const toml::table> findSettingsFile(const wchar_t* dllPath)

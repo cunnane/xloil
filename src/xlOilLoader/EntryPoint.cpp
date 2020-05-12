@@ -181,25 +181,19 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     // Check if the settings file contains an Environment block
     if (settings)
     {
-      auto environment = (*settings)["Environment"].as_array();
+      auto environment = Settings::environmentVariables(
+        (*settings)["Addin"]);
+      
+      for (auto&[key, val] : environment)
+      {
+        auto value = expandWindowsRegistryStrings(
+          expandEnvironmentStrings(val));
 
-      // Settings in the enviroment block looks like key=val
-      // We interpret this as an environment variable to set
-      if (environment)
-        for (auto& innerTable : *environment)
-        {
-          for (auto[key, val] : *innerTable.as_table())
-          {
-            auto value = expandWindowsRegistryStrings(
-              expandEnvironmentStrings(
-                utf8ToUtf16(val.value_or(""))));
-
-            environmentVariables.emplace_back(std::make_shared<PushEnvVar>(
-              utf8ToUtf16(key).c_str(),
-              value.c_str()));
-          }
-        }
+        environmentVariables.emplace_back(
+          std::make_shared<PushEnvVar>(key.c_str(), value.c_str()));
+      }
     }
+
     auto dllPath = wheresWally(xloil_dll);
     if (!dllPath.empty())
       SetDllDirectory(dllPath.c_str());

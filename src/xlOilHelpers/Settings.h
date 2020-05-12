@@ -4,7 +4,10 @@
 #include <unordered_map>
 
 namespace toml {
-  class table;
+  class node; class table;
+  template <typename T> class node_view;
+
+  using view_node = toml::node_view<const toml::node>;
 }
 
 namespace xloil
@@ -13,11 +16,13 @@ namespace xloil
 
   namespace Settings
   {
-    std::wstring logFilePath(const toml::table* root);
-    std::string logLevel(const toml::table* root);
-    std::vector<std::wstring> plugins(const toml::table* root);
-    std::wstring pluginSearchPattern(const toml::table* root);
-    std::vector<std::wstring> dateFormats(const toml::table* root);
+    std::wstring logFilePath(const toml::view_node& root);
+    std::string logLevel(const toml::view_node& root);
+    std::vector<std::wstring> plugins(const toml::view_node& root);
+    std::wstring pluginSearchPattern(const toml::view_node& root);
+    std::vector<std::wstring> dateFormats(const toml::view_node& root);
+    std::vector<std::pair<std::wstring, std::wstring>>
+      environmentVariables(const toml::view_node& root);
   };
 
   std::shared_ptr<const toml::table>

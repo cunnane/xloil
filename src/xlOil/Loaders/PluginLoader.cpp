@@ -55,7 +55,8 @@ namespace xloil
     {
       WIN32_FIND_DATA fileData;
 
-      auto searchPath = xllDir / Settings::pluginSearchPattern(context->settings());
+      auto searchPath = xllDir / Settings::pluginSearchPattern(
+        (*context->settings())["Addin"]);
       auto fileHandle = FindFirstFile(searchPath.c_str(), &fileData);
       if (fileHandle != INVALID_HANDLE_VALUE &&
         fileHandle != (void*)ERROR_FILE_NOT_FOUND)
@@ -106,25 +107,16 @@ namespace xloil
             ? (*theCoreContext()->settings())[utf16ToUtf8(pluginName)]
             : pluginSettings;
 
-          auto environment = loadSettings["Environment"].as_array();
+          auto environment = Settings::environmentVariables(loadSettings);
 
-          // Settings in the enviroment block looks like key=val
-          // We interpret this as an environment variable to set
-          if (environment)
-            for (auto& innerTable : *environment)
-            {
-              for (auto[key, val] : *innerTable.as_table())
-              {
-                auto value = expandWindowsRegistryStrings(
-                  expandEnvironmentStrings(
-                    utf8ToUtf16(val.value_or(""))));
+          for (auto&[key, val] : environment)
+          {
+            auto value = expandWindowsRegistryStrings(
+              expandEnvironmentStrings(val));
 
-                environmentVariables.emplace_back(std::make_shared<PushEnvVar>(
-                  utf8ToUtf16(key).c_str(),
-                  value.c_str()));
-              }
-            }
-
+            environmentVariables.emplace_back(
+              std::make_shared<PushEnvVar>(key.c_str(), value.c_str()));
+          }
           // Load the plugin
           const auto lib = LoadLibrary(path.c_str());
           if (!lib)
