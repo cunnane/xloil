@@ -222,7 +222,9 @@ namespace xloil
       }
       void AfterCalculate()
       {
+        excelApp().EnableEvents = false;
         Event::AfterCalculate().fire();
+        excelApp().EnableEvents = true;
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
