@@ -1,7 +1,4 @@
 ﻿
-$ADDIN_NAME = "xlOil.xll"
-$OurAppData = Join-Path $env:APPDATA "xlOil"
-
 function Remove-From-Resiliancy {
     param ([string]$FileName, [string]$OfficeVersion)
 
@@ -25,6 +22,15 @@ function Remove-From-Resiliancy {
     }
 }
 
+#####################################################################################################
+#
+# Script Start
+#
+
+$ADDIN_NAME = "xlOil.xll"
+$OurAppData = Join-Path $env:APPDATA "xlOil"
+
+
 $Excel = New-Object -Com Excel.Application
 $ExcelVersion = $Excel.Version
 
@@ -36,16 +42,23 @@ Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
 # is unlikely to fix, not whilst the important task of tweaking the UI
 # appearance with every Office version takes priority.
 
-$Excel.Visible = $true
-$Worbook = $Excel.Workbooks.Add()
-$Worbook.Sheets(1).Cells(1,1).Value = "Instaling xlOil addin"
-$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
-$Addin = $Excel.AddIns.Add($AddinPath)
-$Addin.Installed = $true
-$Worbook.Close($false)
-$Excel.quit()
+#$Excel.Visible = $true
+#$Worbook = $Excel.Workbooks.Add()
+#$Worbook.Sheets(1).Cells(1,1).Value = "Instaling xlOil addin"
+#$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
+#$Addin = $Excel.AddIns.Add($AddinPath)
+#$Addin.Installed = $true
+#$Worbook.Close($false)
+#$Excel.quit()
 
-Copy-Item -path $PSScriptRoot -include "*.ini"  -Destination $OurAppData
+# Copy the ini file to APPDATA
+$IniFile = (Join-Path $OurAppData "xlOil.ini")
+Copy-Item -path (Join-Path $PSScriptRoot "xlOil.ini") -Destination $IniFile
+
+# Set the PATH environment so we can found xloil.dll if required
+(Get-Content -Encoding UTF8 -Path $IniFile) `
+    -replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
+  Out-File -Encoding UTF8 $IniFile 
 
 Write-Host $AddinPath, "installed"
 Write-Host "Settings files placed in ",$OurAppData

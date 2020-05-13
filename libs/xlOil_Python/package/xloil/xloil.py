@@ -169,8 +169,10 @@ else:
     # should give the right doc strings
     class Event:
         """
-        Events that correspond to matching COM/VBA events, described here:
-        https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events
+        Contains hooks for events driven by user interaction with Excel. The
+        events correspond to COM/VBA events and are described in detail at
+        `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+
 
         Notes:
             * The `CalcCancelled` and `WorkbookAfterClose` event are not part of the 
@@ -178,7 +180,19 @@ else:
             * Where an event has reference parameter, for example the `cancel` bool in
               `WorkbookBeforeSave`, you need to set the value using `cancel.value=True`.
               This is because python does not support reference parameters for primitive types. 
+
+        Examples
+        --------
+
+        ::
+
+            def greet(workbook, worksheet):
+                xlo.Range(f"[{workbook}]{worksheet}!A1") = "Hello!"
+
+            xlo.event.WorkbookNewSheet += greet
+
         """
+
         AfterCalculate= _Event()
         """
         Called when the user interrupts calculation by interacting with Excel.
@@ -196,10 +210,10 @@ else:
         WorkbookActivate= _Event()
         WorkbookDeactivate= _Event()
         """
-        WorkbookAfterClose is a special event: Excel's event *WorkbookBeforeClose*, is restricted
-        by being cancellable by the user: it is not possible to know if the workbook actually
-        closed.  When xlOil calls `WorkbookAfterClose`, the workbook is certainly closed, but
-        it may be some time since that closure happened.
+        Excel's event *WorkbookBeforeClose*, is  cancellable by the user so it is not 
+        possible to know if the workbook actually closed.  When xlOil calls 
+        `WorkbookAfterClose`, the workbook is certainly closed, but it may be some time
+        since that closure happened.
 
         The event is not called for each workbook when xlOil exits.
         """
@@ -213,6 +227,23 @@ else:
     event = Event()
 
     class Cache:
+        """
+        Provides a link to the Python object cache
+
+        Examples
+        --------
+
+        ::
+            
+            @xlo.func
+            def myfunc(x):
+                return xlo.cache(MyObject(x)) # <- equivalent to .add(...)
+
+            @xlo.func
+            def myfunc2(array: xlo.Array(str), i):
+                return xlo.cache[array[i]] # <- equivalent to .get(...)
+
+        """
 
         def add(self, obj):
             """

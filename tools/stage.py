@@ -10,10 +10,8 @@ import shutil as sh
 def merge_dict(x, y):
     return {**x, **y}
 
-
-
-soln_dir = Path(os.path.realpath(__file__)).parent.parent
-print("Soln: ", str(soln_dir))
+tools_dir = Path(os.path.realpath(__file__)).parent
+soln_dir = tools_dir.parent
 doc_dir = soln_dir / "docs"
 build_dir = soln_dir / "build"
 staging_dir = build_dir / "staging"
@@ -21,26 +19,39 @@ plugin_dir = soln_dir / "libs"
 
 architectures = ["x64"]
 
+python_versions = ["3.6", "3.7"]
+python_package_dir = staging_dir / "pypackage"
+
 build_files = {
     'Core' : ["xlOil.xll", "xlOil.dll", "xloil.ini"],
-    'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python36.ini", "xlOil_Python37.ini"],
+    'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python.dll"],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
 }
 
-lib_files = {
-    'tools' : {arch : ['Install_xlOil.ps1', 'Remove_xlOil.ps1'] for arch in architectures},
-    'libs/xlOil_Python' : merge_dict(
-    {
-        'pypackage' : ['package', soln_dir / "LICENSE"]
+lib_files = [
+    { 
+        'from': 'tools',
+        'files': ['xlOil_Install.ps1', 'xlOil_Remove.ps1', 'xlOil_NewAddin.ps1'],
+        'to': architectures
+    },
+    { 
+        'from': 'src',
+        'files': ['NewAddin.ini'],
+        'to': architectures
     },
     {
-        arch : ['package/xloil/xloil.py'] for arch in architectures
-    })
-}
+        'from': 'libs/xlOil_Python',
+        'files': ['package', soln_dir / "LICENSE"],
+        'to': 'pypackage'
+    },
+    {
+        'from': 'libs/xlOil_Python',
+        'files': ['package/xloil/xloil.py'],
+        'to': 'architectures'
+    }
+]
 
-python_versions = ["3.6", "3.7"]
-python_package_dir = staging_dir / "pypackage"
 
 
 def copy_tree(src, dst):
@@ -52,24 +63,48 @@ def copy_file(src, dst):
 def latest_file(dir):
     list_of_files = glob(f'{dir}/*')
     return max(list_of_files, key=os.path.getctime)
-    
+
+
+print("Soln dir: ", str(soln_dir))
+
+# Build the library
+subprocess.run(f"BuildRelease.cmd", cwd=tools_dir)
+
+# Build the docs
+subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
+
+#
+# Start of file copying
+#
+
 for files in build_files.values():
     for file in files:
         for arch in architectures:
             copy_file(build_dir / arch / "Release" / file, staging_dir / arch)
 
-for plugin, targets in lib_files.items():
-    print(plugin)
-    for target_dir, sources in targets.items():
-        for f in sources:
-            print(f)
-            target_path = staging_dir / target_dir
+
+for job in lib_files:
+    source = soln_dir / job['from']
+    print(source)
+    targets = job['to']
+    if not isinstance(job['to'], list):
+        targets = [targets]
+    for target in targets:
+        for f in job['files']:
+            print(" ", f)
+            target_path = staging_dir / target
             if os.path.isabs(f):
                 copy_file(f, target_path)
-            elif os.path.isdir(soln_dir / plugin / f):
-                copy_tree(soln_dir / plugin / f, target_path)
+            elif os.path.isdir(source / f):
+                copy_tree(source / f, target_path)
             else:
-                copy_file(soln_dir / plugin / f, target_path)
+                copy_file(source/ f, target_path)
+
+copy_tree(doc_dir / "build" / "html", staging_dir / "docs")
+
+#
+# Build python wheels
+#
 
 sh.rmtree(python_package_dir / "dist")
 for arch in architectures:
@@ -85,6 +120,4 @@ for arch in architectures:
 # twine upload dist/*
 #twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
-#import mkdocs
 
-#sh.copy(doc_dir, staging_dir)

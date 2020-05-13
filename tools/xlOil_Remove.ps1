@@ -45,5 +45,5 @@ $Excel.quit()
 
 Remove-Addin $AddinPath $ExcelVersion
 
-Write-Host $AddinPath, "removed"
+Write-Host (Join-Path $AddinPath $ADDIN_NAME), "removed"
 Write-Host "Left settings files in ",$OurAppData 

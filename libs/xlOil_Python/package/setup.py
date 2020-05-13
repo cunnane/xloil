@@ -24,8 +24,14 @@ bin_dir = Path('..') / args.arch
 
 target_py_ver = args.pyver
 
-data_files = [str(bin_dir / f) for f in 
-    ['xlOil.xll', 'xlOil.ini', 'xlOil.dll', 'Install_xlOil.ps1', 'Remove_xlOil.ps1']]
+data_files = [str(bin_dir / f) for f in [
+    'xlOil.xll', 
+    'xlOil.ini', 
+    'xlOil.dll',
+    'xlOil_Python.dll', 
+    'xlOil_Install.ps1', 
+    'xlOil_NewAddin.ps1',
+    'xlOil_Remove.ps1']]
 
 verXY = target_py_ver.replace('.','')
 data_files += [str(bin_dir / f'xlOil_Python{verXY}.dll'), str(bin_dir / f'xlOil_Python{verXY}.ini')]
