@@ -30,7 +30,7 @@ copyright = '2020, Steven Cunnane'
 author = 'Steven Cunnane'
 
 # The full version, including alpha/beta/rc tags
-release = Path(soln_dir / "version.txt").read_text()
+release = Path(soln_dir / "Version.txt").read_text()
 
 # -- General configuration ---------------------------------------------------
 
