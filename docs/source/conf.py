@@ -37,7 +37,7 @@ sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.autosectionlabel"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -75,7 +75,10 @@ autosummary_generate = True
 import zipfile
 from zipfile import ZipFile
 
-zipObj = ZipFile('../build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
+try: os.makedirs('_build')
+except FileExistsError: pass
+
+zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
  
 zipObj.write(soln_dir / "tests" / "python" / "PythonTest.xlsm", "PythonTest.xlsm")
 zipObj.write(soln_dir / "tests" / "python" / "PythonTest.py", "PythonTest.py")

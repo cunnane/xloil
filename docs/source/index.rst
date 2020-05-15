@@ -6,6 +6,7 @@ xlOil documentation
 	:maxdepth: 4
 	:caption: Contents:
 
+	Introduction
 	Core
 	xlOil_Cpp
 	xlOil_Python

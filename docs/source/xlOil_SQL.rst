@@ -8,6 +8,8 @@ arrays (or ranges) as if they were tables in a database. Multiple tables can be 
 .. contents::
     :local:
 
+.. _sql-getting-started:
+
 Getting Started
 ---------------
 

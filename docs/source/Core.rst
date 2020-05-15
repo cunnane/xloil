@@ -1,22 +1,11 @@
 ===========
-xlOil
+xlOil Core
 ===========
 
-xlOil is a framework for building Excel language bindings. That is, a way to 
-write functions in a language of your choice and have them appear in Excel.
+We tell you how to get started using xlOil and give an summary of the core
+features which are not language specific.
 
-xlOil is designed to have very low overheads when calling your own worksheet 
-functions.
-
-xlOil supports different languages via plugins. The languages currently 
-supported are:
-
-- C++
-- Python
-- SQL
-
-You can use xlOil as an end-user of these plugins or you can use it to write
-you own language bindings and contribute.
+.. _core-getting-started:
 
 Getting Started
 ---------------
@@ -34,16 +23,16 @@ Excel session, or just drop `xloil.xll` into any running Excel session
 to load xlOil temporarily.
 
 xlOil should now load when you open Excel, try following 
-:any:`xlOil_SQL/Getting Started`
+:any:`sql-getting-started`
 
-To configure the plugins being loaded, see :any:`Edit the settings files`.
+To configure the plugins being loaded, see :any:`core-edit-settings-files`.
 
 Troubleshooting
 ~~~~~~~~~~~~~~~
 
 If the addin fails to load or something else goes wrong, look for errors in 
 `xloil.log` created in the same directory as `xloil.xll`. You may need to 
-:any:`Edit the settings files`
+:any:`core-edit-settings-files`
 
 .. _core-example-sheets:
 
@@ -51,7 +40,9 @@ Example sheets
 --------------
 
 To check your setup and see some of the capabilities of xlOil, try:
-:download:`Tests and Examples </../build/xlOilExamples.zip>`.
+:download:`Tests and Examples </_build/xlOilExamples.zip>`.
+
+.. _core-edit-settings-files:
 
 Edit the settings files
 -----------------------
@@ -159,7 +150,9 @@ Create a file ``mypyfuncs.py``:
     def greet(who):
         return "Hello " + who
 
-Now you can load ``myfuncs.xll`` in Excel and call the `greet` function.
+Now you can load ``myfuncs.xll`` in Excel and call the `greet` function. Note there 
+is no need to register ``myfuncs.xll`` in Excel's addin manager, you can just drop
+the file onto your Excel window.
 
 
 Excel Functions (UDFs)

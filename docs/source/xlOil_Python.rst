@@ -15,13 +15,13 @@ Introduction
 The Python plugin for xlOil allows creation of Excel functions and macros backed by Python
 code.
 
-xlOil-Python can load a specified list of module names, adding functions to Excel's global
-name scope, like an Excel XLA addin.  The plugin can also look for modules of the form
-<workbook_name>.py and load these too, like creating a VBA code module for a workbook.
-Any pythoon module which contains Excel functions is watched for file modifications so 
+xlOil_Python loads specified python modules, looking for functions to add to Excel's global
+name scope, like an Excel addin.  The plugin can also look for modules of the form
+<workbook_name>.py and load these too, this is like creating a VBA code module for a workbook.
+Any python module which contains Excel functions is watched for file modifications so 
 code changes are reflected immediately in Excel.
 
-xlOil-Python is tightly integrated with numpy, allowing creation of fast Excel array 
+xlOil_Python is tightly integrated with numpy, allowing creation of fast Excel array 
 functions.
 
 For examples, have a look at :doc:`xlOil_Python_Example` and :ref:`core-example-sheets`.
