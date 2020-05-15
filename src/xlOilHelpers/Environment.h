@@ -2,10 +2,8 @@
 
 #include <string>
 
-
 namespace xloil
 {
-
   /// <summary>
   /// Helper function to capture C++ strings from Windows Api functions which have signatures like
   ///    int_charsWritten GetTheString(wchar* buffer, int bufferSize);

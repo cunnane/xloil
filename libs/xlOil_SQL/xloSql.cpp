@@ -18,7 +18,7 @@ namespace xloil
     void processMeta(
       const ExcelArray& metaData, 
       sqlite3* db,
-      size_t i, 
+      ExcelObj::row_t i, 
       const ExcelObj& arg, 
       const wchar_t* defaultName)
     {

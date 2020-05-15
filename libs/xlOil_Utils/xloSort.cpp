@@ -32,9 +32,9 @@ namespace xloil
         , _directions(directions)
         , _columns(columns)
       {}
-      bool operator()(const size_t left, const size_t right)
+      bool operator()(const ExcelObj::row_t left, const ExcelObj::row_t right)
       {
-        size_t i = 0;
+        ExcelObj::row_t i = 0;
         while (_directions[i] != StopSearch)
         {
           bool cased = _directions[i] & CaseSensitive;

@@ -16,11 +16,13 @@ namespace xloil
     return converter.from_bytes(str.data());
   }
 
-
-  // http://unicode.org/faq/utf_bom.html
-  constexpr char32_t LEAD_OFFSET = (char32_t)(0xD800 - (0x10000 >> 10));
-  constexpr char32_t SURROGATE_OFFSET = (char32_t)(0x10000 - (0xD800 << 10) - 0xDC00);
-  constexpr char32_t HI_SURROGATE_START = 0xD800;
+  namespace detail
+  {
+    // http://unicode.org/faq/utf_bom.html
+    constexpr char32_t LEAD_OFFSET = (char32_t)(0xD800 - (0x10000 >> 10));
+    constexpr char32_t SURROGATE_OFFSET = (char32_t)(0x10000 - (0xD800 << 10) - 0xDC00);
+    constexpr char32_t HI_SURROGATE_START = 0xD800;
+  }
 
   struct ConvertUTF16ToUTF32
   {
@@ -42,17 +44,17 @@ namespace xloil
         // any characters
         if (p == pEnd)
         {
-          if (*begin >= HI_SURROGATE_START) 
+          if (*begin >= detail::HI_SURROGATE_START)
             ++begin;
         }
         else
         {
-          if (*begin < HI_SURROGATE_START)
+          if (*begin < detail::HI_SURROGATE_START)
             *p = *begin;
           else
           {
             auto lead = *begin++;
-            *p = (lead << 10) + *begin + SURROGATE_OFFSET;
+            *p = (lead << 10) + *begin + detail::SURROGATE_OFFSET;
           }
         }
       }
@@ -80,7 +82,7 @@ namespace xloil
         l = 0;
         return;
       }
-      h = (char16_t)(LEAD_OFFSET + (codepoint >> 10));
+      h = (char16_t)(detail::LEAD_OFFSET + (codepoint >> 10));
       l = (char16_t)(0xDC00 + (codepoint & 0x3FF));
 
     }

@@ -172,6 +172,8 @@ namespace xloil
     cc.lea(x86::r8, argsPtr);
 #endif
 
+#pragma warning(disable: 4189) // "Local variable is initialized but not referenced"
+
     // Setup the signature to call the target callback. Note the void return type
     // as the function will return it's value by invoking xlAsyncReturn.
     FuncCallNode* call(
