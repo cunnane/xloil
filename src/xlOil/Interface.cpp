@@ -1,10 +1,10 @@
-#include "Interface.h"
+#include <xlOil/Interface.h>
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOil/Register/LocalFunctions.h>
-#include "ObjectCache.h"
+#include <xlOil/ObjectCache.h>
 #include <xlOilHelpers/Settings.h>
-#include "EntryPoint.h"
-#include "Log.h"
+#include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/Log.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <ComInterface/Connect.h>
 

@@ -1,4 +1,4 @@
-#include "ExcelRef.h"
+#include <xloil/ExcelRef.h>
 
 
 namespace xloil

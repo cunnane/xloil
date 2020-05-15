@@ -1,8 +1,8 @@
-#include "Log.h"
+#include <xlOil/Log.h>
 #include <xlOilHelpers/StringUtils.h>
-#include "Events.h"
-#include "Interface.h"
-#include "EntryPoint.h"
+#include <xlOil/Events.h>
+#include <xlOil/Interface.h>
+#include <xlOil/Loaders/EntryPoint.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <filesystem>
@@ -48,30 +48,33 @@ namespace xloil
     return wstring(msgBuf.get(), size);
   }
 
-  void loggerInitialise(spdlog::level::level_enum level)
+  namespace detail
   {
-    auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
-    dbgWrite->set_level(level);
+    void loggerInitialise(spdlog::level::level_enum level)
+    {
+      auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
+      dbgWrite->set_level(level);
 
-    auto logger = make_shared<spdlog::logger>("logger", 
-      spdlog::sinks_init_list{ dbgWrite });
+      auto logger = make_shared<spdlog::logger>("logger",
+        spdlog::sinks_init_list{ dbgWrite });
 
-    spdlog::initialize_logger(logger);
+      spdlog::initialize_logger(logger);
 
-    // Flush on warnings or above
-    logger->flush_on(spdlog::level::warn);
-    spdlog::set_default_logger(logger);
+      // Flush on warnings or above
+      logger->flush_on(spdlog::level::warn);
+      spdlog::set_default_logger(logger);
 
-    // Flush log after each Excel calc cycle
-    static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
-  }
+      // Flush log after each Excel calc cycle
+      static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
+    }
 
-  void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
-  {
-    auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
-      utf16ToUtf8(logFilePath), false);
-    fileWrite->set_level(spdlog::level::from_str(logLevel));
-    spdlog::default_logger()->sinks().push_back(fileWrite);
+    void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
+    {
+      auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
+        utf16ToUtf8(logFilePath), false);
+      fileWrite->set_level(spdlog::level::from_str(logLevel));
+      spdlog::default_logger()->sinks().push_back(fileWrite);
+    }
   }
 
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry()

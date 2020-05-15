@@ -7,17 +7,42 @@ namespace xloil
 {
   class RegisteredFunc;
 
+  /// <summary>
+  /// A base class which encapsulates the specification of a registered 
+  /// function. That is, its <see cref="FuncInfo"/> and its call location.
+  /// </summary>
   class FuncSpec : public std::enable_shared_from_this<FuncSpec>
   {
   public:
     FuncSpec(const std::shared_ptr<const FuncInfo>& info) : _info(info) {}
+
+    /// <summary>
+    /// Registers this function with the registry
+    /// </summary>
+    /// <returns>
+    /// A <see cref="RegisteredFunc"/> which can be used to deregister 
+    /// this function.
+    /// </returns>
     virtual std::shared_ptr<RegisteredFunc> registerFunc() const = 0;
+
+    /// <summary>
+    /// Gets the <see cref="FuncInfo"/> associated with this FuncSpec
+    /// </summary>
+    /// <returns></returns>
     const std::shared_ptr<const FuncInfo>& info() const { return _info; }
+
+    /// <summary>
+    /// Returns the name of the function, equivalent to info()->name
+    /// </summary>
+    /// <returns></returns>
     const std::wstring& name() const { return _info->name; }
+
   private:
     std::shared_ptr<const FuncInfo> _info;
   };
 
+  // This class is used for statically registered functions and should
+  // not be constructed directly.
   class StaticSpec : public FuncSpec
   {
   public:
@@ -35,8 +60,11 @@ namespace xloil
     std::wstring _dllName;
     std::string _entryPoint;
   };
- 
-  template<class> struct callback_traits;
+
+  namespace detail
+  {
+    template<class> struct callback_traits;
+  }
 
   template <class TCallback>
   class GenericCallbackSpec : public FuncSpec
@@ -45,7 +73,7 @@ namespace xloil
     template <class TData>
     GenericCallbackSpec(
       const std::shared_ptr<const FuncInfo>& info,
-      typename callback_traits<TCallback>::template type<TData> callback,
+      typename detail::callback_traits<TCallback>::template type<TData> callback,
       std::shared_ptr<TData> context)
       : GenericCallbackSpec(
         info, 
@@ -72,13 +100,26 @@ namespace xloil
   using CallbackSpec = GenericCallbackSpec<RegisterCallback>;
   using AsyncCallbackSpec = GenericCallbackSpec<AsyncCallback>;
 
-  template<> struct callback_traits<RegisterCallback> { template<class T> using type = RegisterCallbackT<T>; };
-  template<> struct callback_traits<AsyncCallback> { template<class T> using type = AsyncCallbackT<T>; };
+  namespace detail
+  {
+    template<> struct callback_traits<RegisterCallback> 
+    { 
+      template<class T> using type = RegisterCallbackT<T>; 
+    };
+    template<> struct callback_traits<AsyncCallback> 
+    { 
+      template<class T> using type = AsyncCallbackT<T>; 
+    };
+  }
 
-  class FuncObjSpec : public FuncSpec
+  /// <summary>
+  /// Constructs a FuncSpec from an std::function object which 
+  /// takes <see cref="ExcelObj"/> arguments
+  /// </summary>
+  class ObjectToFuncSpec : public FuncSpec
   {
   public:
-    FuncObjSpec(
+    ObjectToFuncSpec(
       const std::shared_ptr<const FuncInfo>& info,
       const ExcelFuncObject& function)
       : FuncSpec(info)

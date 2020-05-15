@@ -1,12 +1,13 @@
 #pragma once
 
-#include "ExportMacro.h"
+#include <xloil/ExportMacro.h>
 #include <xlOilHelpers/StringUtils.h>
+#include <xloil/Interface.h>
 
 #ifdef _DEBUG
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #else
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
 #endif 
 
 #define SPDLOG_WCHAR_TO_UTF8_SUPPORT
@@ -22,9 +23,12 @@
 
 namespace xloil
 {
-  void loggerInitialise(spdlog::level::level_enum level);
+  namespace detail
+  {
+    void loggerInitialise(spdlog::level::level_enum level);
 
-  void loggerAddFile(const wchar_t* logFilePath, const char* logLevel);
+    void loggerAddFile(const wchar_t* logFilePath, const char* logLevel);
+  }
 
   /// <summary>
   /// Gets the logger registry for the core dll so plugins can output to the same

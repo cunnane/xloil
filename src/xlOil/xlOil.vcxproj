@@ -112,37 +112,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ArrayBuilder.h" />
-    <ClInclude Include="Date.h" />
-    <ClInclude Include="EntryPoint.h" />
-    <ClInclude Include="ExcelRef.h" />
-    <ClInclude Include="ExcelArray.h" />
-    <ClInclude Include="ExcelObj.h" />
-    <ClInclude Include="ExcelRange.h" />
-    <ClInclude Include="ExcelState.h" />
-    <ClInclude Include="ExportMacro.h" />
-    <ClInclude Include="Events.h" />
-    <ClInclude Include="ExcelCall.h" />
-    <ClInclude Include="FuncSpec.h" />
-    <ClInclude Include="Interface.h" />
+    <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
+    <ClInclude Include="..\..\include\xloil\Date.h" />
+    <ClInclude Include="..\..\include\xloil\Events.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelArray.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelCall.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelObj.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelObjCache.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelRange.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelRef.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelState.h" />
+    <ClInclude Include="..\..\include\xloil\ExportMacro.h" />
+    <ClInclude Include="..\..\include\xloil\FuncSpec.h" />
+    <ClInclude Include="..\..\include\xloil\Interface.h" />
+    <ClInclude Include="..\..\include\xloil\Log.h" />
+    <ClInclude Include="..\..\include\xloil\NumericTypeConverters.h" />
+    <ClInclude Include="..\..\include\xloil\ObjectCache.h" />
+    <ClInclude Include="..\..\include\xloil\Preprocessor.h" />
+    <ClInclude Include="..\..\include\xloil\PString.h" />
+    <ClInclude Include="..\..\include\xloil\Register.h" />
+    <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
+    <ClInclude Include="..\..\include\xloil\Throw.h" />
+    <ClInclude Include="..\..\include\xloil\TriggeredPtr.h" />
+    <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
+    <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
+    <ClInclude Include="..\..\include\xloil\xlOil.h" />
+    <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
-    <ClInclude Include="Log.h" />
-    <ClInclude Include="ExcelObjCache.h" />
-    <ClInclude Include="ObjectCache.h" />
-    <ClInclude Include="Preprocessor.h" />
-    <ClInclude Include="PString.h" />
-    <ClInclude Include="Register.h" />
     <ClInclude Include="Register\AsyncHelper.h" />
     <ClInclude Include="Register\FuncRegistry.h" />
     <ClInclude Include="Register\LocalFunctions.h" />
     <ClInclude Include="Register\PEHelper.h" />
     <ClInclude Include="Register\Thunker.h" />
-    <ClInclude Include="NumericTypeConverters.h" />
-    <ClInclude Include="StaticRegister.h" />
-    <ClInclude Include="Throw.h" />
-    <ClInclude Include="TypeConverters.h" />
-    <ClInclude Include="XlCallSlim.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Date.cpp" />
@@ -151,10 +153,10 @@
     <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="ExcelRef.cpp" />
     <ClCompile Include="ExcelState.cpp" />
-    <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
+    <ClCompile Include="Loaders\EntryPoint.cpp" />
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />

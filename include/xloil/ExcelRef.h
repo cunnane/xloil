@@ -7,7 +7,8 @@
 namespace xloil
 {
   /// <summary>
-  /// Wraps an Xll ref or sref (local reference) type
+  /// Wraps a reference to a range on an Excel sheet, i.e. an XLL 
+  /// ref or sref (local reference) type ExcelObj.
   /// </summary>
   class ExcelRef
   {

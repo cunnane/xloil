@@ -109,12 +109,32 @@ namespace xloil
     };
   }
 
+  /// <summary>
+  /// Constructs and allocates ExcelObj arrays. 
+  /// 
+  /// Usage:
+  /// <code>
+  ///    ExcelArrayBuilder builder(3, 1);
+  ///    for (auto i = 0; i < 3; ++i)
+  ///      builder(i, 0) = i;
+  ///    return builder.toExcelObj();
+  /// </code>
+  /// </summary>
   class ExcelArrayBuilder
   {
   public:
     using row_t = ExcelObj::row_t;
     using col_t = ExcelObj::col_t;
 
+    /// <summary>
+    /// Creates an ArrayBuilder of specified size (it cannot be resized later).
+    /// It does not default-initialise any ExcelObj in the array, so this must
+    /// be done by the user of the class.
+    /// </summary>
+    /// <param name="nRows"></param>
+    /// <param name="nCols"></param>
+    /// <param name="totalStrLength">Total length of all strings to be added to the array</param>
+    /// <param name="padTo2DimArray">Adds #N/A to ensure the array is at least 2x2</param>
     ExcelArrayBuilder(row_t nRows, col_t nCols,
       size_t totalStrLength = 0, bool padTo2DimArray = false)
       : _stringAlloc(0, 0)

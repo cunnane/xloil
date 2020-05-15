@@ -1,4 +1,4 @@
-#include "ExcelRange.h"
+#include <xloil/ExcelRange.h>
 #include <xlOil/ExcelRef.h>
 #include <Cominterface/ComRange.h>
 #include <Cominterface/XllContextInvoke.h>

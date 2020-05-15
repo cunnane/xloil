@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="ExcelState.cpp" />
-    <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
@@ -36,23 +35,11 @@
     <ClCompile Include="ExcelObj.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="ExcelRef.cpp" />
+    <ClCompile Include="Loaders\EntryPoint.cpp">
+      <Filter>Loaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="EntryPoint.h" />
-    <ClInclude Include="ExportMacro.h" />
-    <ClInclude Include="Events.h" />
-    <ClInclude Include="ExcelCall.h" />
-    <ClInclude Include="Interface.h" />
-    <ClInclude Include="Log.h" />
-    <ClInclude Include="ExcelObjCache.h" />
-    <ClInclude Include="ObjectCache.h" />
-    <ClInclude Include="Register.h" />
-    <ClInclude Include="ExcelState.h" />
-    <ClInclude Include="ExcelRange.h" />
-    <ClInclude Include="StaticRegister.h" />
-    <ClInclude Include="FuncSpec.h" />
-    <ClInclude Include="Preprocessor.h" />
-    <ClInclude Include="Throw.h" />
     <ClInclude Include="Loaders\AddinLoader.h">
       <Filter>Loaders</Filter>
     </ClInclude>
@@ -74,15 +61,84 @@
     <ClInclude Include="Register\Thunker.h">
       <Filter>Register</Filter>
     </ClInclude>
-    <ClInclude Include="ArrayBuilder.h" />
-    <ClInclude Include="ExcelArray.h" />
-    <ClInclude Include="ExcelObj.h" />
-    <ClInclude Include="PString.h" />
-    <ClInclude Include="TypeConverters.h" />
-    <ClInclude Include="XlCallSlim.h" />
-    <ClInclude Include="NumericTypeConverters.h" />
-    <ClInclude Include="Date.h" />
-    <ClInclude Include="ExcelRef.h" />
+    <ClInclude Include="Loaders\EntryPoint.h">
+      <Filter>Loaders</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ArrayBuilder.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Date.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Events.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelArray.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelCall.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelObj.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelObjCache.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelRange.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelRef.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelState.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExportMacro.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\FuncSpec.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Interface.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Log.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\NumericTypeConverters.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ObjectCache.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Preprocessor.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\PString.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Register.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\StaticRegister.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Throw.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\TriggeredPtr.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\TypeConverters.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\XlCallSlim.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\xlOil.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">
@@ -90,6 +146,9 @@
     </Filter>
     <Filter Include="Register">
       <UniqueIdentifier>{ebcfa09e-f6e7-475e-8ac0-3049401bab0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include">
+      <UniqueIdentifier>{28b63a3a-8cbf-47cb-adb4-a08c46149d07}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

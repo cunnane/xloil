@@ -1,8 +1,8 @@
-#include "StaticRegister.h"
+#include <xlOil/StaticRegister.h>
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOilHelpers/StringUtils.h>
-#include "FuncSpec.h"
-#include "Throw.h"
+#include <xlOil/FuncSpec.h>
+#include <xlOil/Throw.h>
 
 using std::vector;
 using std::make_shared;

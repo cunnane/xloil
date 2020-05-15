@@ -7,7 +7,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
 #include <xlOilHelpers/StringUtils.h>
-#include <xlOil/EntryPoint.h>
+#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Register/AsyncHelper.h>
 #include <xlOil/Preprocessor.h>
 #include "Thunker.h"
@@ -449,11 +449,11 @@ namespace xloil
 
   namespace
   {
-    ExcelObj* launchFunctionObj(FuncObjSpec* data, const ExcelObj** args)
+    ExcelObj* launchFunctionObj(ObjectToFuncSpec* data, const ExcelObj** args)
     {
       return data->_function(*data->info(), args);
     }
-    void launchFunctionObjAsync(FuncObjSpec* data, const ExcelObj* asyncHandle, const ExcelObj** args)
+    void launchFunctionObjAsync(ObjectToFuncSpec* data, const ExcelObj* asyncHandle, const ExcelObj** args)
     {
       try
       {
@@ -484,9 +484,9 @@ namespace xloil
     }
   }
 
-  std::shared_ptr<RegisteredFunc> FuncObjSpec::registerFunc() const
+  std::shared_ptr<RegisteredFunc> ObjectToFuncSpec::registerFunc() const
   {
-    auto copyThis = make_shared<FuncObjSpec>(*this);
+    auto copyThis = make_shared<ObjectToFuncSpec>(*this);
     if ((info()->options & FuncInfo::ASYNC) != 0)
       return AsyncCallbackSpec(info(), &launchFunctionObjAsync, copyThis).registerFunc();
     else

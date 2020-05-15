@@ -1,5 +1,5 @@
 #pragma once
-#include "ExportMacro.h"
+#include <xloil/ExportMacro.h>
 
 #define XLOIL_STUB_NAME xloil_stub
 

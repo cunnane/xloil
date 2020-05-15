@@ -1,6 +1,6 @@
-#include "ExcelState.h"
-#include "ExcelCall.h"
-#include "EntryPoint.h"
+#include <xloil/ExcelState.h>
+#include <xloil/ExcelCall.h>
+#include <xloil/Loaders/EntryPoint.h>
 #include <xlOilHelpers/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
 
@@ -12,7 +12,9 @@ namespace
   // Gross code to detect if being called by function wiz. Verbatim from:
   // https://docs.microsoft.com/en-us/office/client-developer/excel/how-to-call-xll-functions-from-the-function-wizard-or-replace-dialog-boxes?redirectedfrom=MSDN#Y241
 
-  // Another possible way of detecting this is that MSO.dll will not be on the call stack if called from a worksheet directly.
+  // Another possible way of detecting this is that MSO.dll will not be on
+  // the call stack if called from a worksheet directly, although reading the 
+  // call stack is not for free...
 
 #define CLASS_NAME_BUFFSIZE  50
 #define WINDOW_TEXT_BUFFSIZE  50
@@ -127,7 +129,7 @@ namespace xloil
   {
     auto s = _SheetName->asPascalStr();
     // Any value in more precise guess?
-    return s.length() + 1 + CELL_ADDRESS_RC_MAX_LEN;
+    return s.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
   }
   uint16_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
   {
@@ -282,7 +284,7 @@ namespace xloil
           ? xlrefToLocalA1(ref, buf, sz)
           : xlrefToLocalRC(ref, buf, sz);
       },
-      CELL_ADDRESS_A1_MAX_LEN);
+      XL_CELL_ADDRESS_A1_MAX_LEN);
   }
 
   // Uses RxCy format as it's easier for the programmer 

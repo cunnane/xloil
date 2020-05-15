@@ -1,5 +1,5 @@
-#include "ExcelArray.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelArray.h>
+#include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelRange.h>
 
 namespace xloil

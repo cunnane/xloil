@@ -1,5 +1,5 @@
-#include "ExcelCall.h"
-#include "ExcelObj.h"
+#include <xlOil/ExcelCall.h>
+#include <xlOil/ExcelObj.h>
 #include <ComInterface/XllContextInvoke.h>
 #include <cassert>
 using namespace msxll;

@@ -41,6 +41,9 @@ namespace xloil
   {
     template<class, class = detail::VoidCollector> class Event {};
 
+    /// <summary>
+    /// An observer-pattern based Event handler
+    /// </summary>
     template<class R, class TCollector, class... Args>
     class Event<R(Args...), TCollector>
     {
@@ -48,8 +51,15 @@ namespace xloil
       using handler = std::function<R(Args...)>;
       using handler_id = const handler*;
 
-      Event(const char* name = 0) : _name(name ? name : "?") {}
+      Event(const char* name = 0) 
+        : _name(name ? name : "?") 
+      {}
 
+      /// <summary>
+      /// Registers an event handler
+      /// </summary>
+      /// <param name="h"></param>
+      /// <returns>An ID which can be used to unregister the handler</returns>
       handler_id operator+=(handler&& h)
       {
         std::lock_guard<std::mutex> lock(_lock);
@@ -58,6 +68,11 @@ namespace xloil
         return &val;
       }
 
+      /// <summary>
+      /// Removes an event handler give its registration ID.
+      /// </summary>
+      /// <param name="id"></param>
+      /// <returns></returns>
       bool operator-=(handler_id id)
       {
         std::lock_guard<std::mutex> lock(_lock);
@@ -73,11 +88,20 @@ namespace xloil
         return false;
       }
 
+      /// <summary>
+      /// Removes an event handler given a reference to the handler
+      /// </summary>
       bool operator-=(const handler& id)
       {
         return (*this) -= &id;
       }
 
+      /// <summary>
+      /// Registers an event handler and returns a shared_ptr whose destructor
+      /// unregisters the event handler
+      /// </summary>
+      /// <param name="h"></param>
+      /// <returns></returns>
       auto bind(handler&& h)
       {
         return std::shared_ptr<const handler>(
@@ -221,25 +245,25 @@ namespace xloil
 
 
 #define XLOIL_STATIC_EVENTS \
-    (AfterCalculate)\
-    (CalcCancelled)\
-    (WorkbookOpen)\
-    (NewWorkbook)\
-    (SheetSelectionChange)\
-    (SheetBeforeDoubleClick)\
-    (SheetBeforeRightClick)\
-    (SheetActivate)\
-    (SheetDeactivate)\
-    (SheetCalculate)\
-    (SheetChange)\
-    (WorkbookAfterClose)\
-    (WorkbookActivate)\
-    (WorkbookDeactivate)\
-    (WorkbookBeforeClose)\
-    (WorkbookBeforeSave)\
-    (WorkbookBeforePrint)\
-    (WorkbookNewSheet)\
-    (WorkbookAddinInstall)\
-    (WorkbookAddinUninstall)
+(AfterCalculate)\
+(CalcCancelled)\
+(WorkbookOpen)\
+(NewWorkbook)\
+(SheetSelectionChange)\
+(SheetBeforeDoubleClick)\
+(SheetBeforeRightClick)\
+(SheetActivate)\
+(SheetDeactivate)\
+(SheetCalculate)\
+(SheetChange)\
+(WorkbookAfterClose)\
+(WorkbookActivate)\
+(WorkbookDeactivate)\
+(WorkbookBeforeClose)\
+(WorkbookBeforeSave)\
+(WorkbookBeforePrint)\
+(WorkbookNewSheet)\
+(WorkbookAddinInstall)\
+(WorkbookAddinUninstall)
   }
 }

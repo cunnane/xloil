@@ -46,15 +46,36 @@ namespace xloil
   struct FuncInfo
   {
     /// <summary>
-    /// 
+    /// Options which affect how the function is declared in Excel
     /// </summary>
     enum FuncOpts
     {
+      /// <summary>
+      /// The function is re-entrant and may be called ány of Excel's
+      /// worker threads simultaneously
+      /// </summary>
       THREAD_SAFE = 1 << 0,
+      /// <summary>
+      /// Gives the function special priviledges to read and write data 
+      /// to the sheet
+      /// </summary>
       MACRO_TYPE  = 1 << 1,
+      /// <summary>
+      /// Marks the function for recalculation on every calc cycle
+      /// </summary>
       VOLATILE    = 1 << 2,
+      /// <summary>
+      /// Declares that the function is a command and has no return type
+      /// </summary>
       COMMAND     = 1 << 3,
+      /// <summary>
+      /// Marks the function as asynchronous. Async functions do not return 
+      /// directly but through a special handle which is passed as an argument
+      /// </summary>
       ASYNC       = 1 << 4,
+      /// <summary>
+      /// Stops the function appearing in the function wizard or autocomplete
+      /// </summary>
       HIDDEN      = 1 << 5
     };
 
@@ -87,6 +108,10 @@ namespace xloil
 
     // TODO: make me an Enum, apparently that's OK in modern c++
     int options;
+
+    /// <summary>
+    /// Returns the number of function arguments 
+    /// </summary>
     size_t numArgs() const { return args.size(); }
   };
 

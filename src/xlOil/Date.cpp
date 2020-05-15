@@ -1,4 +1,4 @@
-#include "Date.h"
+#include <xlOil/Date.h>
 #include <cmath>
 #include <chrono>
 #include <streambuf>
@@ -13,10 +13,14 @@ using std::wstring;
 
 namespace xloil
 {
-  const int MillisPerSecond = 1000;
-  const int MillisPerMinute = MillisPerSecond * 60;
-  const int MillisPerHour = MillisPerMinute * 60;
-  const int MillisPerDay = MillisPerHour * 24;
+  namespace
+  {
+    constexpr int MillisPerSecond = 1000;
+    constexpr int MillisPerMinute = MillisPerSecond * 60;
+    constexpr int MillisPerHour = MillisPerMinute * 60;
+    constexpr int MillisPerDay = MillisPerHour * 24;
+    constexpr auto millisecsPerDay = double(duration_cast<milliseconds>(hours(24)).count());
+  }
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
   bool excelSerialDateToDMY(int nSerialDate, int &nDay, int &nMonth, int &nYear)
@@ -54,7 +58,7 @@ namespace xloil
     return false;
   }
 
-  constexpr auto millisecsPerDay = double(duration_cast<milliseconds>(hours(24)).count());
+ 
 
   bool excelSerialDatetoDMYHMS(
     double serial, int &nDay, int &nMonth, int &nYear, int& nHours, int& nMins, int& nSecs, int& uSecs)

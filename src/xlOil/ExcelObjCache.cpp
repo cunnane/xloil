@@ -1,6 +1,6 @@
-#include "ExcelObjCache.h"
-#include "ObjectCache.h"
-#include "ExcelObj.h"
+#include <xloil/ExcelObjCache.h>
+#include <xloil/ObjectCache.h>
+#include <xloil/ExcelObj.h>
 #include <xloil/StaticRegister.h>
 
 using std::make_shared;
@@ -9,8 +9,7 @@ using std::shared_ptr;
 namespace xloil
 {
   // TODO: why a shared-ptr?
-  static ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false> theExcelObjCache
-    = ObjectCache<shared_ptr<const ExcelObj>, theObjectCacheUnquifier, false>();
+  static ObjectCache<shared_ptr<const ExcelObj>, detail::theObjectCacheUnquifier, false> theExcelObjCache;
   
   ExcelObj objectCacheAdd(shared_ptr<const ExcelObj>&& obj)
   {
@@ -42,8 +41,6 @@ XLO_FUNC_START(
 )
 {
   shared_ptr<const ExcelObj> result;
-  // TODO: can we do the regex match without this string copy?
-
   // We return a pointer to the stored object directly without setting
   // the flag which tells Excel to free it.
   if (theExcelObjCache.fetch(pxOper.asPascalStr().view(), result))

@@ -10,7 +10,6 @@
 namespace toml { class table; }
 namespace Excel { struct _Application; }
 namespace xloil { class RegisteredFunc; class AddinContext; }
-namespace spdlog { class logger; }
 
 namespace xloil
 {
@@ -28,6 +27,9 @@ namespace xloil
     /// <returns></returns>
     XLOIL_EXPORT const wchar_t* theCoreName();
 
+    /// <summary>
+    /// Returns the Excel major version
+    /// </summary>
     XLOIL_EXPORT int theExcelVersion();
 
     /// <summary>
@@ -169,17 +171,8 @@ namespace xloil
         return std::make_pair(newSource, true);
       }
     }
-
-    /// <summary>
-    /// Gets the default logger for this add-in. Currently this is 
-    /// shared accross all addins - there is only one log file - but
-    /// this will change eventually.
-    /// </summary>
-    XLOIL_EXPORT std::shared_ptr<spdlog::logger> 
+    XLOIL_EXPORT std::shared_ptr<spdlog::logger>
       getLogger() const;
-
-    // TODO: XLOIL_EXPORT void log_error(const std::wstring& msg);
-
     /// <summary>
     /// Gets the root of the addin's ini file
     /// </summary>
@@ -206,20 +199,40 @@ namespace xloil
     ContextMap _files;
   };
 
-
+/// <summary>
+/// This macro declares the plugin entry point. Its arguments must match
+/// <see cref="PluginInitFunc"/>.
+/// </summary>
 #define XLO_PLUGIN_INIT(...) extern "C" __declspec(dllexport) int \
   XLO_PLUGIN_INIT_FUNC##(__VA_ARGS__) noexcept
 
 #define XLO_PLUGIN_INIT_FUNC xloil_init
 
-  // TODO: Think of a better name?
+  /// <summary>
+  /// Contains information the plugin can use to initialise or 
+  /// link with another addin
+  /// </summary>
   struct PluginContext
   {
     enum Action
     {
+      /// <summary>
+      /// The Load action is specified the first time a plugin is initialised
+      /// </summary>
       Load,
+      /// <summary>
+      /// The Attach action is used when an XLL addin has requested use of the 
+      /// plugin. The addin may have a settings file which the plugin should process
+      /// </summary>
       Attach,
+      /// <summary>
+      /// Detach is called when an XLL using the plugin is unloading
+      /// </summary>
       Detach,
+      /// <summary>
+      /// When Unload is called, the plugin should clean up all internal
+      /// data in anticipation of a call to FreeLibrary.
+      /// </summary>
       Unload
     };
     Action action;
@@ -227,5 +240,8 @@ namespace xloil
     const toml::table* settings;
   };
 
+  /// <summary>
+  /// A plugin must declare an extern C function with this signature
+  /// </summary>
   typedef int(*PluginInitFunc)(AddinContext*, const PluginContext&);
 }

@@ -4,7 +4,7 @@
 #include <xlOil/Interface.h>
 #include <xlOil/Log.h>
 #include <xlOilHelpers/Settings.h>
-#include <xlOil/EntryPoint.h>
+#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <tomlplusplus/toml.hpp>

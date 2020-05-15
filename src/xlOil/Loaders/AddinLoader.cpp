@@ -2,7 +2,7 @@
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Date.h>
-#include <xlOil/EntryPoint.h>
+#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
@@ -77,7 +77,7 @@ namespace xloil
     auto logLevel = Settings::logLevel(addinRoot);
     if (logFile.empty())
       logFile = fs::path(xllPath).replace_extension("log");
-    loggerAddFile(logFile.c_str(), logLevel.c_str());
+    detail::loggerAddFile(logFile.c_str(), logLevel.c_str());
 
     // Add any requested date formats
     auto dateFormats = Settings::dateFormats(addinRoot);
@@ -95,9 +95,9 @@ namespace xloil
     {
       firstLoad = true;
 #if _DEBUG
-      loggerInitialise(spdlog::level::debug);
+      detail::loggerInitialise(spdlog::level::debug);
 #else
-      loggerInitialise(spdlog::level::warn);
+      detail::loggerInitialise(spdlog::level::warn);
 #endif
 
       auto settings = processAddinSettings(theCorePath());

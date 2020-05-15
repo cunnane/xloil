@@ -92,7 +92,7 @@ namespace xloil
     TResult fromDouble(double x) const { return error(); }
     TResult fromArray(const ExcelObj&) const { return error(); }
     TResult fromArrayObj(const ExcelArray&) const { return error(); }
-    TResult fromString(const PStringView<>& str) const { return error(); }
+    TResult fromString(const PStringView<>&) const { return error(); }
     TResult fromError(CellError) const { return error(); }
     TResult fromEmpty(const TResult* /*defaultVal*/) const { return error(); }
     TResult fromMissing(const TResult* defaultVal) const 

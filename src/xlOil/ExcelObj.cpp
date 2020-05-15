@@ -1,12 +1,12 @@
-#include "ExcelObj.h"
+#include <xloil/ExcelObj.h>
 #include <xloil/ExcelCall.h>
-#include "NumericTypeConverters.h"
+#include <xloil/NumericTypeConverters.h>
 #include <xloil/Throw.h>
 #include <xloil/Date.h>
 #include <xloilHelpers/StringUtils.h>
 #include <xlOil/ExcelRef.h>
-#include "ArrayBuilder.h"
-#include "ExcelArray.h"
+#include <xloil/ArrayBuilder.h>
+#include <xloil/ExcelArray.h>
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -40,7 +40,7 @@ namespace
 
   wchar_t* makeStringBuffer(size_t& nChars)
   {
-    nChars = std::min<size_t>(nChars, XL_STR_MAX_LEN);
+    nChars = std::min<size_t>(nChars, XL_STRING_MAX_LEN);
     auto buf = new wchar_t[nChars + 2];
     buf[0] = (wchar_t)nChars;
     buf[nChars + 1] = L'\0';
@@ -211,7 +211,7 @@ namespace
   int ExcelObj::compare(
     const ExcelObj& left, 
     const ExcelObj& right, 
-    bool caseSensitive)
+    bool caseSensitive) noexcept
   {
     if (&left == &right)
       return 0;
@@ -354,7 +354,7 @@ namespace
       return L"<ERROR>";
     }
   }
-  size_t ExcelObj::maxStringLength() const
+  size_t ExcelObj::maxStringLength() const noexcept
   {
     switch (xtype())
     {
@@ -376,18 +376,26 @@ namespace
       return 8;
 
     case xltypeSRef:
-      return CELL_ADDRESS_RC_MAX_LEN + WORKSHEET_NAME_MAX_LEN;
+      return XL_CELL_ADDRESS_RC_MAX_LEN + XL_SHEET_NAME_MAX_LEN;
 
     case xltypeRef:
-      return 256 + CELL_ADDRESS_RC_MAX_LEN + WORKSHEET_NAME_MAX_LEN;
+      return 256 + XL_CELL_ADDRESS_RC_MAX_LEN + XL_SHEET_NAME_MAX_LEN;
 
+    case xltypeMulti:
+    {
+      size_t n = 0;
+      auto p = val.array.lparray;
+      const auto pEnd = p + (val.array.rows * val.array.columns);
+      while (p < pEnd) n += ((const ExcelObj*)p++)->maxStringLength();
+      return n;
+    }
     default:
       return 4;
     }
   }
 
   bool ExcelObj::toDMY(
-    int &nDay, int &nMonth, int &nYear)
+    int &nDay, int &nMonth, int &nYear) const noexcept
   {
     if ((xltype & (xltypeNum | xltypeInt)) == 0)
       return false;
@@ -397,7 +405,7 @@ namespace
 
   bool ExcelObj::toDMYHMS(
     int & nDay, int & nMonth, int & nYear, 
-    int & nHours, int & nMins, int & nSecs, int & uSecs)
+    int & nHours, int & nMins, int & nSecs, int & uSecs) const noexcept
   {
     if ((xltype & (xltypeNum | xltypeInt)) == 0)
       return false;

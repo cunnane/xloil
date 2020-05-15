@@ -1,10 +1,10 @@
-#include "Events.h"
-#include "ExcelObj.h"
-#include "Interface.h"
-#include "ExcelCall.h"
-#include "EntryPoint.h"
-#include "ExportMacro.h"
-#include "Log.h"
+#include <xlOil/Events.h>
+#include <xlOil/ExcelObj.h>
+#include <xlOil/Interface.h>
+#include <xlOil/ExcelCall.h>
+#include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/ExportMacro.h>
+#include <xlOil/Log.h>
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOilHelpers/WindowsSlim.h>
 #include <xlOilHelpers/Settings.h>

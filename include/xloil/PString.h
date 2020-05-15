@@ -165,7 +165,7 @@ namespace xloil
   /// these Pascal strings by behaving somewhat like std::string, however it 
   /// is not recommended to use this type for generic string manipuation.
   ///  
-  /// PString owns its data buffer, <seealso cref="PStringView"/> does not.
+  /// PString owns its data buffer, <see cref="PStringView"/> does not.
   /// </summary>
   template <class TChar = wchar_t>
   class PString : public PStringImpl<TChar>
@@ -190,6 +190,10 @@ namespace xloil
       : PStringImpl(data)
     {}
 
+    /// <summary>
+    /// Construct from an STL string
+    /// </summary>
+    /// <param name="str"></param>
     explicit PString(const std::basic_string<TChar>& str)
       : PString((TChar)str.length())
     {
@@ -197,12 +201,20 @@ namespace xloil
       memcpy_s(_data + 1, nBytes, str.data(), nBytes);
     }
 
+    /// <summary>
+    /// Construct from another PString or PStringView
+    /// </summary>
+    /// <param name="that"></param>
     PString(const PStringImpl& that)
       : PString(that.length())
     {
       wmemcpy_s(_data + 1, _data[0], that.pstr(), that.length());
     }
 
+    /// <summary>
+    /// Move constructor
+    /// </summary>
+    /// <param name="that"></param>
     PString(PString&& that)
       : PStringImpl(nullptr)
     {
@@ -225,7 +237,7 @@ namespace xloil
 
     /// <summary>
     /// Returns a pointer to the buffer containing the string and
-    /// releases ownership.
+    /// relinquishes ownership.
     /// </summary>
     TChar* release()
     {
@@ -253,7 +265,7 @@ namespace xloil
 
   /// <summary>
   /// A view i.e. non-owning, a Pascal string, see the discussion in 
-  /// <seealso cref="PString"/> for background on Pascal strings
+  /// <see cref="PString"/> for background on Pascal strings
   /// 
   /// This class cannot view  a sub-string of a Pascal string, but 
   /// calling the <see cref="PStringView::view"/> method returns
@@ -271,6 +283,10 @@ namespace xloil
       : PStringImpl(data)
     {}
 
+    /// <summary>
+    /// Construct from a PString
+    /// </summary>
+    /// <param name="str"></param>
     PStringView(PString<TChar>& str)
       : PStringImpl(str.data())
     {}
@@ -298,6 +314,12 @@ namespace xloil
         XLO_THROW("Cannot increase size of PStringView");
     }
 
+    /// <summary>
+    /// Like strtok but for PString. Just like strtok the source string is modified.
+    /// Returns an empty PStringView when there are no more tokens.
+    /// </summary>
+    /// <param name="delims"></param>
+    /// <returns></returns>
     PStringView strtok(const TChar* delims)
     {
       // If a previous PString is passed in, we will have tokenised the string

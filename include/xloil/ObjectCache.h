@@ -3,7 +3,6 @@
 #include "ExcelObj.h"
 #include "Events.h"
 #include "ExcelState.h"
-#include "EntryPoint.h"
 #include "Interface.h"
 #include <unordered_map>
 #include <string_view>
@@ -11,7 +10,7 @@
 
 namespace xloil
 {
-  namespace impl
+  namespace detail
   {
     inline PString<> writeCacheId(
       wchar_t uniquifier, const CallerInfo& caller, uint16_t padding)
@@ -34,6 +33,29 @@ namespace xloil
     }
   }
 
+  /// <summary>
+  /// Creates a dictionary of <param name="TObj"/> indexed by cell address.
+  /// The cell address used is determined from the currently executing cell
+  /// when the "add" method is called.
+  /// 
+  /// This class is used to allow data which we cannot or do not want to write
+  /// to an Excel sheet to be passed between Excel user functions.
+  /// 
+  /// The cache add a single character uniquifier TUniquifier to returned 
+  /// reference strings. This allows very fast rejection of invalid references
+  /// during lookup. The uniquifier should be choosen to be unlikely to occur 
+  /// at the start of a string before a '['.
+  /// 
+  /// Example
+  /// -------
+  /// <code>
+  /// static ObjectCache<PyObject*>, L'&', false> theCache
+  ///     = ObjectCache<PyObject*>, L'&', false > ();
+  /// 
+  /// ExcelObj refStr = theCache.add(new PyObject());
+  /// PyObject* obj = theCache.fetch(refStr);
+  /// </code>
+  /// </summary>
   template<class TObj, wchar_t TUniquifier, bool TReverseLookup = false>
   class ObjectCache
   {
@@ -189,7 +211,7 @@ namespace xloil
       CallerInfo caller;
       constexpr unsigned char padding = 5;
 
-      auto key = impl::writeCacheId(TUniquifier, caller, padding);
+      auto key = detail::writeCacheId(TUniquifier, caller, padding);
 
       // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
       // Search backwards because wbName may contain ']'

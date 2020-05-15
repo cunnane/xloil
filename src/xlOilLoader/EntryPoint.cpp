@@ -2,10 +2,10 @@
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
-#include "xloil/EntryPoint.h"
-#include "xloil/ExportMacro.h"
-#include "xloil/Log.h"
-#include "xloil/ExcelCall.h"
+#include <xloil/Loaders/EntryPoint.h>
+#include <xloil/ExportMacro.h>
+#include <xloil/Log.h>
+#include <xloil/ExcelCall.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 #include <delayimp.h>
