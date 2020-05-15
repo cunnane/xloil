@@ -14,6 +14,14 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import os
+import sys
+from pathlib import Path
+
+soln_dir = Path(os.path.realpath(__file__)).parent.parent.parent
+print("xlOil solution directory: ", str(soln_dir))
+sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
+
 
 # -- Project information -----------------------------------------------------
 
@@ -22,15 +30,7 @@ copyright = '2020, Steven Cunnane'
 author = 'Steven Cunnane'
 
 # The full version, including alpha/beta/rc tags
-release = '0.3'
-
-import os
-import sys
-from pathlib import Path
-
-soln_dir = Path(os.path.realpath(__file__)).parent.parent.parent
-print("xlOil solution directory: ", str(soln_dir))
-sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
+release = Path(soln_dir / "version.txt").read_text()
 
 # -- General configuration ---------------------------------------------------
 
@@ -92,5 +92,9 @@ zipObj.close()
 # These build to ../build/doxygen
 
 import subprocess
-subprocess.call('doxygen xloil.doxyfile', shell=True, cwd=soln_dir / "docs")
+try: os.makedirs('_build/html')
+except FileExistsError: pass
+try: os.makedirs('_build/xml')
+except FileExistsError: pass
+subprocess.call('doxygen xloil.doxyfile', shell=True)
 

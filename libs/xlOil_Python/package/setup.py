@@ -19,8 +19,9 @@ if 'arch' not in args:
 
 if 'pyver' not in args:
     raise Exception("No python version specified")
-
-bin_dir = Path('..') / args.arch
+ 
+staging_dir = Path('..')
+bin_dir = staging_dir / args.arch
 
 target_py_ver = args.pyver
 
@@ -47,7 +48,7 @@ class BinaryDistribution(Distribution):
 
 setup(
     name="xlOil",
-    version="0.2",
+    version=Path(staging_dir / "Version.txt").read_text(),
     author="Steven",
     author_email="cunnane@gmail.com",
     description="Excel interface layer and things",

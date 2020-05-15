@@ -31,6 +31,11 @@ build_files = {
 }
 
 lib_files = [
+     { 
+        'from': '.',
+        'files': ['Version.txt'],
+        'to': '.'
+    },
     { 
         'from': 'tools',
         'files': ['xlOil_Install.ps1', 'xlOil_Remove.ps1', 'xlOil_NewAddin.ps1'],
@@ -103,7 +108,7 @@ for job in lib_files:
             else:
                 copy_file(source/ f, target_path)
 
-copy_tree(doc_dir / "build" / "html", staging_dir / "docs")
+copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
 
 #
 # Build python wheels
