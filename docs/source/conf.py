@@ -29,9 +29,9 @@ import sys
 from pathlib import Path
 
 soln_dir = Path(os.path.realpath(__file__)).parent.parent.parent
-print("Soln: ", str(soln_dir))
+print("xlOil solution directory: ", str(soln_dir))
 sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
-print(sys.path)
+
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -60,5 +60,34 @@ html_theme = 'bizstyle'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# A list of paths that contain extra files not directly related to the documentation, 
+# such as robots.txt or .htaccess. Relative paths are taken as relative to the 
+# configuration directory. They are copied to the output directory.
+#html_extra_path = ['../build/doxygen']
+
+
 autodoc_default_flags = ['members']
+
 autosummary_generate = True
+
+# -- Generate examples file ---------------------------------------------------
+
+import zipfile
+from zipfile import ZipFile
+
+zipObj = ZipFile('../build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
+ 
+zipObj.write(soln_dir / "tests" / "python" / "PythonTest.xlsm", "PythonTest.xlsm")
+zipObj.write(soln_dir / "tests" / "python" / "PythonTest.py", "PythonTest.py")
+zipObj.write(soln_dir / "tests" / "sql" / "TestSQL.xlsx", "TestSQL.xlsx")
+zipObj.write(soln_dir / "tests" / "utils" / "xlOil_Utils.xlsx", "xlOil_Utils.xlsx")
+ 
+zipObj.close()
+
+# -- Build Doxygen Docs -----------------------------------------------------------
+
+# These build to ../build/doxygen
+
+import subprocess
+subprocess.call('doxygen xloil.doxyfile', shell=True, cwd=soln_dir / "docs")
+

@@ -30,7 +30,12 @@ def pySumNums(x: float, y: float, a: int = 2, b: int = 3) -> float:
 #
 @xlo.func(name='pyRoundTrip', group='Useless', help='returns its argument')
 def pyTest1(x):
-    '''Long description, too big for function wizard'''
+    '''
+    Long description, too big for function wizard, which is actually limited
+    to 255 chars, presumably due to an oversight when increasing the string
+    length limit to 32k in the XLL interface in Excel 2010. Strange it hasn't
+    been fixed yet....
+    '''
     return x
 
 #
