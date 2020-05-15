@@ -16,6 +16,7 @@ doc_dir = soln_dir / "docs"
 build_dir = soln_dir / "build"
 staging_dir = build_dir / "staging"
 plugin_dir = soln_dir / "libs"
+include_dir = soln_dir / "include"
 
 architectures = ["x64"]
 
@@ -48,10 +49,9 @@ lib_files = [
     {
         'from': 'libs/xlOil_Python',
         'files': ['package/xloil/xloil.py'],
-        'to': 'architectures'
+        'to': architectures
     }
 ]
-
 
 
 def copy_tree(src, dst):
@@ -69,6 +69,9 @@ print("Soln dir: ", str(soln_dir))
 
 # Build the library
 subprocess.run(f"BuildRelease.cmd", cwd=tools_dir)
+
+# Write the combined include file
+subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir} {include_dir}", cwd=tools_dir)
 
 # Build the docs
 subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
@@ -105,8 +108,11 @@ copy_tree(doc_dir / "build" / "html", staging_dir / "docs")
 #
 # Build python wheels
 #
+try:
+    sh.rmtree(python_package_dir / "dist")
+except:
+    pass
 
-sh.rmtree(python_package_dir / "dist")
 for arch in architectures:
     for pyver in python_versions:
         subprocess.run(f"python setup.py bdist_wheel --arch {arch} --pyver {pyver}", cwd=f"{python_package_dir}")# --python-tag py2 --plat-name x86")

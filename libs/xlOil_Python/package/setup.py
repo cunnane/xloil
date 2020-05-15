@@ -34,7 +34,7 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_Remove.ps1']]
 
 verXY = target_py_ver.replace('.','')
-data_files += [str(bin_dir / f'xlOil_Python{verXY}.dll'), str(bin_dir / f'xlOil_Python{verXY}.ini')]
+data_files += [str(bin_dir / f'xlOil_Python{verXY}.dll')]
 
 
 with open("README.md", "r") as fh:
