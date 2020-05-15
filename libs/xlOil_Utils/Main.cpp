@@ -7,8 +7,7 @@ namespace xloil
   {
     XLO_PLUGIN_INIT(AddinContext* ctx, const PluginContext& plugin)
     {
-      if (plugin.action == PluginContext::Load)
-        spdlog::set_default_logger(ctx->getLogger());
+      linkLogger(ctx, plugin);
       return 0;
     }
   }

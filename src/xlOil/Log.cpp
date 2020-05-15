@@ -22,7 +22,7 @@ namespace xloil
     , _file(path)
     , _function(func)
   {
-    XLO_ERROR("{0} (in {2}:{3} during {1})", msg.data(), func, fs::path(path).filename().string(), line);
+    XLO_INFO("{0} (in {2}:{3} during {1})", msg.data(), func, fs::path(path).filename().string(), line);
   }
 
   XLOIL_EXPORT Exception::~Exception() noexcept

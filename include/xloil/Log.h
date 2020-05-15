@@ -35,4 +35,10 @@ namespace xloil
   /// log file
   /// </summary>
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry();
+
+  inline void linkLogger(AddinContext*, const PluginContext& plugin)
+  {
+    if (plugin.action == PluginContext::Load)
+      spdlog::set_default_logger(loggerRegistry().default_logger());
+  }
 }

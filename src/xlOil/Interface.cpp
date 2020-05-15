@@ -170,11 +170,6 @@ namespace xloil
     xloil::deleteFileSource(source);
   }
 
-  std::shared_ptr<spdlog::logger> AddinContext::getLogger() const
-  {
-    return loggerRegistry().default_logger();
-  }
-
   void AddinContext::removeFileSource(ContextMap::const_iterator which)
   {
     _files.erase(which);

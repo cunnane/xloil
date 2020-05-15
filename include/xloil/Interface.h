@@ -171,8 +171,7 @@ namespace xloil
         return std::make_pair(newSource, true);
       }
     }
-    XLOIL_EXPORT std::shared_ptr<spdlog::logger>
-      getLogger() const;
+
     /// <summary>
     /// Gets the root of the addin's ini file
     /// </summary>
