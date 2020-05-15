@@ -7,6 +7,7 @@
 #include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
 #include <string>
 #include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 using std::vector;
 using std::shared_ptr;
@@ -30,7 +31,7 @@ namespace xloil
 #define XLO_DEF_EVENT(r, _, name) \
     XLOIL_EXPORT decltype(name()) name() \
     { \
-      static std::remove_reference_t<decltype(name())> e(#name); \
+      static std::remove_reference_t<decltype(name())> e(BOOST_PP_STRINGIZE(name)); \
       return e; \
     };
 
