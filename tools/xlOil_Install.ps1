@@ -28,34 +28,53 @@ function Remove-From-Resiliancy {
 #
 
 $ADDIN_NAME = "xlOil.xll"
+$INIFILE_NAME = "xlOil.ini"
 $OurAppData = Join-Path $env:APPDATA "xlOil"
 
-
-$Excel = New-Object -Com Excel.Application
-$ExcelVersion = $Excel.Version
 
 # Just in case we got put in Excel's naughty corner for misbehaving addins
 Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
 
+#
+# Start Excel
+#
+$Excel = New-Object -Com Excel.Application
+$ExcelVersion = $Excel.Version
+
+#
 # You can't add an add-in unless there's an open and visible workbook.
 # It's a long-standing Excel bug which, like so many others, Microsoft
 # is unlikely to fix, not whilst the important task of tweaking the UI
 # appearance with every Office version takes priority.
+#
+$Excel.Visible = $true
+$Workbook = $Excel.Workbooks.Add()
+$Workbook.Sheets(1).Cells(1,1).Value = "Instaling xlOil addin"
+$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
+$Addin = $Excel.AddIns.Add($AddinPath)
+$Addin.Installed = $true
+$Workbook.Close($false)
 
-#$Excel.Visible = $true
-#$Worbook = $Excel.Workbooks.Add()
-#$Worbook.Sheets(1).Cells(1,1).Value = "Instaling xlOil addin"
-#$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
-#$Addin = $Excel.AddIns.Add($AddinPath)
-#$Addin.Installed = $true
-#$Worbook.Close($false)
-#$Excel.quit()
+#
+# We need to null all the COM refs we used or Excel won't actually quit
+# even after this script has ended. It's a well-known problem see for example
+# https://stackoverflow.com/questions/42113082/excel-application-object-quit-leaves-excel-exe-running
+#
+$Workbook = $null
+$Addin = $null
+$Excel.Quit()
+$Excel = $null
 
+#
 # Copy the ini file to APPDATA
-$IniFile = (Join-Path $OurAppData "xlOil.ini")
-Copy-Item -path (Join-Path $PSScriptRoot "xlOil.ini") -Destination $IniFile
+#
+mkdir -Force $OurAppData | Out-Null
+$IniFile = (Join-Path $OurAppData $INIFILE_NAME)
+Copy-Item -path (Join-Path $PSScriptRoot $INIFILE_NAME) -Destination $IniFile
 
-# Set the PATH environment so we can found xloil.dll if required
+#
+# Set the PATH environment in the ini so we can found xloil.dll if required
+#
 (Get-Content -Encoding UTF8 -Path $IniFile) `
     -replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
   Out-File -Encoding UTF8 $IniFile 

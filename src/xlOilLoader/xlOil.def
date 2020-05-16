@@ -3,6 +3,5 @@ LIBRARY xlOil.xll
 EXPORTS
 	xlAutoOpen
 	xlAutoClose
-	xlAddInManagerInfo12
 	xlAutoFree12
 	xloHandleCalculationCancelled

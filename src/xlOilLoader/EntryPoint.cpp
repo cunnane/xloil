@@ -20,12 +20,16 @@ using std::vector;
 using std::shared_ptr;
 using namespace std::string_literals;
 
-
 namespace
 {
   static wstring ourXllPath;
-  static wstring ourXllDir;
-  static bool theXllHasClosed = false;
+  // This bool is required due to apparent bugs in the XLL interface:
+  // Excel may call XLL event handlers after calling xlAutoClose,
+  // and it may call xlAutoClose without ever having called xlAutoOpen
+  // This former to happen when Excel is closing and asks the user 
+  // to save the workbook, the latter when removing an addin using COM
+  // automation
+  static bool theXllIsOpen = false;
 
   bool setDllPath(HMODULE handle)
   {
@@ -39,7 +43,6 @@ namespace
         return false;
       }
       ourXllPath = wstring(path, path + size);
-      ourXllDir = fs::path(ourXllPath).remove_filename().wstring();
       return true;
     }
     catch (...)
@@ -121,7 +124,6 @@ XLO_ENTRY_POINT(int) DllMain(
 }
 
 
-
 // Name of core dll. Not sure if there's an automatic way to get this
 constexpr wchar_t* const xloil_dll = L"XLOIL.DLL";
 
@@ -176,7 +178,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 
     vector<shared_ptr<PushEnvVar>> environmentVariables;
 
-    auto settings = findSettingsFile(L"xlOil.dll");
+    auto settings = findSettingsFile(xloil_dll);
 
     // Check if the settings file contains an Environment block
     if (settings)
@@ -196,12 +198,17 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 
     auto dllPath = wheresWally(xloil_dll);
     if (!dllPath.empty())
+    {
+      OutputDebugStringW((wstring(L"xlOil Loader: SetDllDirectory = ") + dllPath.wstring()).c_str());
       SetDllDirectory(dllPath.c_str());
+    }
     int ret = xloil::coreAutoOpen(ourXllPath.c_str());
     SetDllDirectory(NULL);
 
     if (ret > 0)
     {
+      theXllIsOpen = true;
+
       // xleventCalculationEnded not hooked as the XLL event is not triggered
       // by programmatic recalc, but the COM event (more usefully) is
       xloil::tryCallExcel(msxll::xlEventRegister,
@@ -222,8 +229,9 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
 {
   try
   {
-    xloil::coreAutoClose(ourXllPath.c_str());
-    theXllHasClosed = true;
+    if (theXllIsOpen)
+      xloil::coreAutoClose(ourXllPath.c_str());
+    theXllIsOpen = true;
   }
   catch (...)
   {
@@ -231,6 +239,8 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   return 1;
 }
 
+// Temporarily removed as it's not adding value at the moment
+/*
 XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
 {
   // This function can be called without the add-in loaded, so we avoid using
@@ -261,6 +271,7 @@ XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
 
   return &xInfo;
 }
+*/
 
 XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
 {
@@ -275,11 +286,7 @@ XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
 
 XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
 {
-  // An excel "undocumented feature" is to call XLL event handlers
-  // after calling xlAutoClose, which is clearly not ideal.
-  // This seems to happen when Excel is closing and asks the user 
-  // to save the workbook.
-  if (!theXllHasClosed)
+  if (theXllIsOpen)
     onCalculationCancelled();
   return 1;
 }
