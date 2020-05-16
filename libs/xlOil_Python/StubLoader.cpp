@@ -1,6 +1,7 @@
 #include <xloil/Interface.h>
 #include <xloilHelpers/StringUtils.h>
 #include <xloil/Throw.h>
+#include <xloil/Log.h>
 #include <xloilHelpers/WindowsSlim.h>
 #include <cstdlib>
 #include <tomlplusplus/toml.hpp>
@@ -23,6 +24,7 @@ namespace xloil
       {
         if (plugin.action == PluginContext::Load)
         {
+          linkLogger(context, plugin);
           if (!plugin.settings)
             XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
 
@@ -60,8 +62,9 @@ namespace xloil
         theInitFunc(context, plugin);
         return 0;
       }
-      catch (...)
+      catch (const std::exception& e)
       {
+        XLO_ERROR(e.what());
         return -1;
       }
     }
