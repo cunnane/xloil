@@ -1,75 +1,60 @@
-# xlOil
 
-xlOil is a framework for building Excel language bindings. That is, a way to write functions in a language of your choice and have them appear in Excel.
+xlOil
+=====
 
-xlOil is designed to have very low overheads when calling your own worksheet functions.
+xlOil is a framework for building Excel language bindings. That is, a way to 
+write functions in a language of your choice and have them appear in Excel
+as worksheet functions and macros.
 
-xlOil supports different languages via plugins. The languages currently supported are:
+xlOil is designed to have very low overheads when calling your own worksheet 
+functions.
+
+xlOil supports different languages via plugins. The languages currently 
+supported are:
 
 - C++
 - Python
 - SQL
 
-You can use xlOil as an end-user of these plugins or you can use it to write you own language bindings and contribute.
+In addition there is *xlOil_Utils* which contains some handy tools which Microsoft
+never quite go around to adding.
 
-## Getting started (user)
+You can use xlOil as an end-user of these plugins or you can use it to write
+you own language bindings and contribute.
 
-- Requirements:
-  - Excel 2010 (64-bit) or newer
-  - For xlOil_Python: Python 3.6 or 3.7 with numpy
-- Extract files from the latest release zip to a single directory
-  - You need the `xloil.xll`, `xlOil_Core.dll` and `xloil.ini` files
-  - For the Python plugin, you need `xlOil_PythonXY.dll`, `xloil.py` and `xlOil_PythonXY.ini` where XY is the Python version you want to use
-- (Optional) Edit the ini files
-  - Choose which plugins to load in `xloil.ini`
-  - For the Python plugin, you may need to set the correct Python paths
-- Drop `xloil.xll` into an Excel session
-- Read the docs for the plugins you want to use
-- Enjoy!
-- If the addin fails to load or something else goes wrong, look for errors in `xloil.log` in the same directory as `xloil.xll`
+The latest documentation is here: https://xloil.readthedocs.io. 
 
-To install the add-in so it starts with Excel, place all the files in your XLSTART folder.  You can rename `xloil.xll` and `xloil.ini` if desired - just ensure they have the same base-name.
+You can build the documentation from a clone of the source with:
 
-### Editing the ini file
+    cd docs
+    make html
 
-Note the ini files are actually parsed as TOML. The main setting is the plugins to load:
 
-    Plugins=["xloil_Python37.dll", "xlOil_SQL.dll"]
+xlOil features
+--------------
 
-xlOil first searches the directory containing xloil.xll, then the usual DLL search path for these plugins. Addtionally you can search plugins in the same directory as xloil.xll matching a pattern by setting:
-
-    PluginSearchPattern="xloil_*.dll"
-
-xlOil won't load the same plugin twice if these two methods overlap! 
-
-Each plugin may have it's own ini file named identically to the plugin dll and place in the same directory. 
-
-#### Setting Environment Variables
-
-Plugin ini files may contain a special section called `[Environment]`.  All name=value pairs in this block are set in the order specifed as environment variables *before* the plug-in is loaded. Environment strings in %...% are expanded.  Writing name="<HKLM\RegKey\Value>" will fetch the requested key from the registry.
-
-## Getting started (xlOil developer)
-
-- You need Visual Studio 2017 or newer
-- All xlOil_Core dependencies are already in the `external` folder.  Some of them are compressed, so unpack these.
-- For xlOil_Python you need to set the correct paths in `PySettings.props`, `PySettings36.props` and `PySettings37.props` to point to your python distribution.
-- For debugging, set xlOil_Loader as the target project, with command=`<Path-to-Excel.exe>` args=`$(OutDir)\xloil.xll`
-
-## Why use xlOil?
-
-This section is for people thinking about writing language bindings. If you want to write worksheet functions in a nice language, look at the plugin documentation for that language.
-
-Interfacing with Excel is tricky for a general language. You have a choice of poisons:
-
-- C-API - is C and hence unsafe, the API is also old, has some quirks and is missing many features
-- COM - more fully-featured but slower and missing some features of C-API. Has some unexpected behaviour and may fail to respond. Requires COM binding support in your language or a great deal of pain will be endured
-- .Net API - actually sits on top of COM, good but limited to .Net languages
-
-xlOil tries to give you the first two blended in a more friendly fashion and adds:
-
-- Solution to the "how to register a worksheet function without a static DLL entry point" problem
-- Object caching
-- A framework for converting excel variant types to another language and back
-- A convenient way of creating worksheet-scope functions
-- A loader stub
-- Goodwill to all men
+* Python
+  - Very concise syntax to declare an Excel function
+  - Optional type checking of function parameters
+  - Supports keyword arguments
+  - Choice of globally availble functions or code modules associated and limited to a single        workbook
+  - Tight integration with numpy - very low overheads for array functions
+  - Understands python tuples, lists, dictionarys and pandas dataframes
+  - Async functions
+  - Macro type functions which write to the sheet
+  - Access to the Excel Application object
+  - Hook Excel events
+  - Pass any python object back to Excel and then back into any python function
+  - Simple and quick add-in deployment
+* C++
+  - Safe and convenient wrappers around most things in the C-API
+  - Concise syntax to declare Excel functions: registration is automatic
+  - Deal with Excel variants, Ranges, Arrays and strings in a natural C++ fashion
+  - Object cache allows returning opaque objects to Excel and passing them back to other functions
+* SQL
+  - Create tables from Excel ranges and arrays
+  - Query and join them with the full sqlite3 SQL syntax
+* Utils: very fast functions to:
+  - Sort on multiple columns
+  - Split and join strings
+  - Make arrays from blocks

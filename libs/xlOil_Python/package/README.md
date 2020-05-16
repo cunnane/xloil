@@ -10,5 +10,5 @@ xlOil supports different languages via plugins. The languages currently supporte
 - Python
 - SQL
 
-See the documentation at https://readthedocs.org/projects/xloil/
+See the documentation at https://xloil.readthedocs.io
 

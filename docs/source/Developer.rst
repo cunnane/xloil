@@ -14,3 +14,30 @@ Getting started as developer
   command=`<Path-to-Excel.exe>` args=`$(OutDir)\xloil.xll`
 
 
+Release Instructions
+--------------------
+
+::
+
+    cd tools
+    python stage.py
+
+(Optional) test python wheels with 
+
+::
+
+    cd build\staging\pypackage
+    pip install dist/xlOil-0.3-cp37-cp37m-win_amd64.whl
+    pip uninstall dist/xlOil-0.3-cp37-cp37m-win_amd64.whl
+
+Use twine to upload to PyPI:
+
+::
+
+    cd build\staging\pypackage
+
+    # (Optional test)
+    twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+    # The real thing
+    twine upload dist/*
