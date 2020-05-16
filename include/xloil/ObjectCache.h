@@ -34,7 +34,7 @@ namespace xloil
   }
 
   /// <summary>
-  /// Creates a dictionary of <param name="TObj"/> indexed by cell address.
+  /// Creates a dictionary of TObj indexed by cell address.
   /// The cell address used is determined from the currently executing cell
   /// when the "add" method is called.
   /// 

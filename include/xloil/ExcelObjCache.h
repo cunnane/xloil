@@ -12,8 +12,7 @@ namespace xloil
   /// Returns true if the provided string contains the magic chars
   /// for the ExcelObj cache. Expects a counted string.
   /// </summary>
-  /// <param name="str">Pointer to string start</param>
-  /// <param name="length">Number of chars to read</param>
+  /// <param name="str">The string to check</param>
   inline bool objectCacheCheckReference(const std::wstring_view& str)
   {
     if (str.length() < 7 || str[0] != detail::theObjectCacheUnquifier || str[1] != L'[')

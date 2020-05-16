@@ -34,10 +34,11 @@ release = Path(soln_dir / "Version.txt").read_text()
 
 # -- General configuration ---------------------------------------------------
 
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.autosectionlabel"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "numpydoc"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -65,7 +66,6 @@ html_static_path = ['_static']
 # configuration directory. They are copied to the output directory.
 #html_extra_path = ['../build/doxygen']
 
-
 autodoc_default_flags = ['members']
 
 autosummary_generate = True
@@ -92,9 +92,10 @@ zipObj.close()
 # These build to ../build/doxygen
 
 import subprocess
-try: os.makedirs('_build/html')
+try: 
+    os.makedirs('_build/html')
+    os.makedirs('_build/xml')
 except FileExistsError: pass
-try: os.makedirs('_build/xml')
-except FileExistsError: pass
-subprocess.call('doxygen xloil.doxyfile', shell=True)
+
+subprocess.call('doxygen xloil.doxyfile', shell=True, env=dict(os.environ, XLO_SOLN_DIR=str(soln_dir)))
 

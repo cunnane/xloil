@@ -60,6 +60,13 @@ else:
             """
             pass
         def set(self, val):
+            """
+            Sets the data in the range to the provided value. If a single value is passed
+            all cells will be set to the value. If a 2d-array is provided, the array will be
+            pasted at the top-left of the range with the remainging cells being set to #N/A.
+            If a 1d array is provided it will be pasted at the top left and repeated down or
+            right depending on orientation.
+            """
             pass
         def clear(self):
             """
@@ -380,6 +387,8 @@ def converter(typ=typing.Callable, range=False):
     Examples
     --------
     
+    ::
+
         @converter(double)
         def arg_sum(x):
             if isinstance(x, ExcelArray):
@@ -761,6 +770,8 @@ try:
 
         Examples
         --------
+
+        ::
 
             @xlo.func
             def array1(x: xlo.PDFrame(int)):

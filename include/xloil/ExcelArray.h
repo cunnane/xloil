@@ -66,7 +66,7 @@ namespace xloil
 
     /// <summary>
     /// Create an ExcelArray from an ExcelObj. By default trims the provided array
-    /// to the last non-empty (not Nil, #N/A or "") row and column. 
+    /// to the last non-empty (not Nil, \#N/A or "") row and column. 
     /// 
     /// Single values are converted to a 1x1 array. Throws if object type cannot 
     /// be converted to an array.

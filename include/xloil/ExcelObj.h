@@ -161,7 +161,7 @@ namespace xloil
     /// Creates an empty object of the specified type. "Empty" in this case
     /// means a sensible default depending on the data type.  For bool's it 
     /// is false, for numerics zero, for string it's the empty string, 
-    /// for the error type it is #N/A.
+    /// for the error type it is \#N/A.
     /// </summary>
     /// <param name=""></param>
     ExcelObj(ExcelType);
@@ -275,7 +275,7 @@ namespace xloil
     }
 
     /// <summary>
-    /// Deletes object content and sets it to #N/A
+    /// Deletes object content and sets it to \#N/A
     /// </summary>
     void reset();
 
@@ -326,7 +326,7 @@ namespace xloil
 
     /// <summary>
     /// Returns true if value is *not* one of: Missing, Nil
-    /// error #N/A or an empty string.
+    /// error \#N/A or an empty string.
     /// </summary>
     /// <returns></returns>
     bool ExcelObj::isNonEmpty() const
@@ -347,7 +347,7 @@ namespace xloil
     }
     
     /// <summary>
-    /// Returns true if this ExcelObj is a #N/A error
+    /// Returns true if this ExcelObj is a \#N/A error
     /// </summary>
     /// <returns></returns>
     bool isNA() const
@@ -388,7 +388,7 @@ namespace xloil
     /// <summary>
     /// Similar to toString but more suitable for output of object 
     /// descriptions, for example in error messages. For this reason
-    /// it doesn't throw but rather returns '<ERROR>' on failure.
+    /// it doesn't throw but rather returns ``\<ERROR\>`` on failure.
     /// 
     /// Returns the same as toString except for arrays which yield 
     /// '[NxM]' where N and M are the number of rows and columns and 
@@ -594,7 +594,7 @@ namespace xloil
 
     /// <summary>
     /// Called by ExcelArray to determine the size of array data when
-    /// blanks and #N/A is ignored.
+    /// blanks and \#N/A is ignored.
     /// </summary>
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
