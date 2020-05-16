@@ -70,6 +70,12 @@ autodoc_default_flags = ['members']
 
 autosummary_generate = True
 
+#
+# Required for readthedocs build as the master_doc seems to default to 'contents' there
+# Locally build is fine without this
+#
+master_doc = 'index'
+
 # -- Generate examples file ---------------------------------------------------
 
 import zipfile
