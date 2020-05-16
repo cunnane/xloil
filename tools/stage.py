@@ -113,10 +113,8 @@ copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
 #
 # Build python wheels
 #
-try:
-    sh.rmtree(python_package_dir / "dist")
-except:
-    pass
+try: sh.rmtree(python_package_dir / "dist")
+except: pass
 
 for arch in architectures:
     for pyver in python_versions:
@@ -126,9 +124,4 @@ for arch in architectures:
         correct_name = wheel.name.replace("cp37", f'cp{verXY}')
         print("Renaming:", wheel, correct_name)
         os.rename(wheel, python_package_dir / "dist" / correct_name)
-
-# pip wheel -w dist
-# twine upload dist/*
-#twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
 

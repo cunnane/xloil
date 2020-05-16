@@ -24,8 +24,9 @@ $Excel.Visible = $true
 # You can't add an add-in unless there's an open and visible workbook.
 # There's no logical reason for this, it's a bug.
 #
-$Worbook = $Excel.Workbooks.Add()
-$Worbook.Sheets(1).Cells(1,1).Value2 = "Removing xlOil addin"
+$Workbook = $Excel.Workbooks.Add()
+$Worksheet = $Workbook.Sheets(1)
+$Worksheet.Cells(1,1).Value2 = "Removing xlOil addin"
 
 
 #
@@ -40,13 +41,14 @@ For ($i = 1; $i -le $Excel.AddIns.Count; $i++) {
         $AddinPath = $Addin.Path
     }
 }
-$Worbook.Close($false)
+$Workbook.Close($false)
 
 #
 # We need to null all the COM refs we used or Excel won't actually quit
 # even after this script has ended. It's a well-known problem see for example
 # https://stackoverflow.com/questions/42113082/excel-application-object-quit-leaves-excel-exe-running
 #
+$Worksheet = $null
 $Workbook = $null
 $Addin = $null
 $Excel.Quit()
@@ -61,3 +63,8 @@ Remove-Addin $AddinPath $ExcelVersion
 
 Write-Host (Join-Path $AddinPath $ADDIN_NAME), "removed"
 Write-Host "Left settings files in ",$OurAppData 
+
+#
+# Helps ensure Excel really closes when the script exits
+# 
+[system.gc]::Collect()

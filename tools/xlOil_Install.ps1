@@ -31,15 +31,14 @@ $ADDIN_NAME = "xlOil.xll"
 $INIFILE_NAME = "xlOil.ini"
 $OurAppData = Join-Path $env:APPDATA "xlOil"
 
-
-# Just in case we got put in Excel's naughty corner for misbehaving addins
-Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
-
 #
 # Start Excel
 #
 $Excel = New-Object -Com Excel.Application
 $ExcelVersion = $Excel.Version
+
+# Just in case we got put in Excel's naughty corner for misbehaving addins
+Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
 
 #
 # You can't add an add-in unless there's an open and visible workbook.
@@ -49,7 +48,8 @@ $ExcelVersion = $Excel.Version
 #
 $Excel.Visible = $true
 $Workbook = $Excel.Workbooks.Add()
-$Workbook.Sheets(1).Cells(1,1).Value = "Instaling xlOil addin"
+$Worksheet = $Workbook.Sheets(1)
+$Worksheet.Cells(1,1).Value = "Instaling xlOil addin"
 $AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
 $Addin = $Excel.AddIns.Add($AddinPath)
 $Addin.Installed = $true
@@ -61,6 +61,7 @@ $Workbook.Close($false)
 # https://stackoverflow.com/questions/42113082/excel-application-object-quit-leaves-excel-exe-running
 #
 $Workbook = $null
+$Worksheet = $null
 $Addin = $null
 $Excel.Quit()
 $Excel = $null
@@ -68,16 +69,32 @@ $Excel = $null
 #
 # Copy the ini file to APPDATA
 #
-mkdir -Force $OurAppData | Out-Null
 $IniFile = (Join-Path $OurAppData $INIFILE_NAME)
-Copy-Item -path (Join-Path $PSScriptRoot $INIFILE_NAME) -Destination $IniFile
 
-#
-# Set the PATH environment in the ini so we can found xloil.dll if required
-#
-(Get-Content -Encoding UTF8 -Path $IniFile) `
-    -replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
-  Out-File -Encoding UTF8 $IniFile 
+if (!(Test-Path -Path $IniFile -PathType leaf)) {
+
+	mkdir -Force $OurAppData | Out-Null
+	Copy-Item -path (Join-Path $PSScriptRoot $INIFILE_NAME) -Destination $IniFile
+
+	#
+	# Set the PATH environment in the ini so we can found xloil.dll if required
+	#
+	(Get-Content -Encoding UTF8 -Path $IniFile) `
+		-replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
+	  Out-File -Encoding UTF8 $IniFile 
+
+	Write-Host "Settings files placed in ",$OurAppData
+
+} else {
+
+	Write-Host "Found existing settings file at `n",$IniFile , "`nCheck [Environment] block points to `n", $AddinPath
+
+}
+
 
 Write-Host $AddinPath, "installed"
-Write-Host "Settings files placed in ",$OurAppData
+
+#
+# Helps ensure Excel really closes when the script exits
+# 
+[system.gc]::Collect()
