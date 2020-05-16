@@ -6,7 +6,7 @@ _powershellMessage = "Failed to execute script. You may need to change powershel
                      "by typing 'powershell -Command Set-ExecutionPolicy -Scope CurrentUser RemoteSigned'"
 
 def _runPowerShell(script):
-    result = subprocess.run(f"powershell {script}")
+    result = subprocess.run(f"powershell {script}", shell=True)
     if result.returncode != 0:
         raise Exception(_powershellMessage)
 

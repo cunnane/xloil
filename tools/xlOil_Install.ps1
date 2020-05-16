@@ -91,10 +91,4 @@ if (!(Test-Path -Path $IniFile -PathType leaf)) {
 
 }
 
-
 Write-Host $AddinPath, "installed"
-
-#
-# Helps ensure Excel really closes when the script exits
-# 
-[system.gc]::Collect()

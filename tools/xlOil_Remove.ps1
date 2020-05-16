@@ -63,8 +63,3 @@ Remove-Addin $AddinPath $ExcelVersion
 
 Write-Host (Join-Path $AddinPath $ADDIN_NAME), "removed"
 Write-Host "Left settings files in ",$OurAppData 
-
-#
-# Helps ensure Excel really closes when the script exits
-# 
-[system.gc]::Collect()
