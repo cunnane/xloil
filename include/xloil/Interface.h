@@ -2,7 +2,6 @@
 #include "ExportMacro.h"
 #include "Register.h"
 #include "ExcelObj.h"
-#include "ExcelObjCache.h"
 #include "FuncSpec.h"
 #include <memory>
 #include <map>

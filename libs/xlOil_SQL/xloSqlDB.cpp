@@ -1,7 +1,7 @@
 
 #include <xlOil/StaticRegister.h>
 #include <xloil/Interface.h>
-#include <xloil/ExcelState.h>
+#include <xloil/Caller.h>
 #include <xlOil/ExcelArray.h>
 #include "Common.h"
 #include "Cache.h"
@@ -32,7 +32,7 @@ namespace xloil
       if (Core::inFunctionWizard())
         XLO_THROW("In wizard");
 
-      return ExcelObj::returnValue(
+      return returnValue(
         cacheAdd(
           make_shared<DataBaseRef>(
             newDatabase())));

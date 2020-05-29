@@ -1,9 +1,7 @@
 #pragma once
-#include "ExcelCall.h"
 #include "ExcelObj.h"
 #include "Events.h"
-#include "ExcelState.h"
-#include "Interface.h"
+#include "Caller.h"
 #include <unordered_map>
 #include <string_view>
 #include <mutex>
@@ -15,7 +13,7 @@ namespace xloil
     inline PString<> writeCacheId(
       wchar_t uniquifier, const CallerInfo& caller, uint16_t padding)
     {
-      PString<> pascalStr(caller.fullAddressLength() + padding + 1);
+      PString<> pascalStr(caller.addressRCLength() + padding + 1);
       auto* buf = pascalStr.pstr();
 
       wchar_t nWritten = 0;
@@ -24,7 +22,7 @@ namespace xloil
       ++nWritten;
 
       // Full cell address: eg. [wbName]wsName!RxCy
-      nWritten += (wchar_t)caller.writeFullAddress(buf, pascalStr.length() - 1);
+      nWritten += (wchar_t)caller.writeAddress(buf, pascalStr.length() - 1, false);
 
       // Fix up length
       pascalStr.resize(nWritten + padding);
@@ -109,10 +107,10 @@ namespace xloil
 
     typename std::conditional<TReverseLookup, 
       std::unordered_map<TObj, std::wstring>, 
-      int>::type  _reverseLookup;
+      char>::type  _reverseLookup;
     typename std::conditional<TReverseLookup,
       std::mutex, 
-      int>::type _reverseLookupLock;
+      char>::type _reverseLookupLock;
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;

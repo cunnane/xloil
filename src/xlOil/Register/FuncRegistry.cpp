@@ -7,6 +7,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
 #include <xlOilHelpers/StringUtils.h>
+#include <xlOil/State.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Register/AsyncHelper.h>
 #include <xlOil/Preprocessor.h>
@@ -108,7 +109,7 @@ namespace xloil
 
 #ifdef _DEBUG
       // Check the thunk is hooked to Windows' satisfaction
-      void* procNew = GetProcAddress((HMODULE)coreModuleHandle(), stubName);
+      void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(), stubName);
       XLO_ASSERT(procNew == thunk);
 #endif
 
@@ -265,9 +266,11 @@ namespace xloil
   private:
     FunctionRegistry()
     {
-      theCoreDllName = ExcelObj(theCoreName());
-      theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
+      theCoreDllName = ExcelObj(State::coreName());
+      theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
       theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));
+      if (theFirstStub < 0)
+        XLO_THROW("Could not find xlOil stub");
       _freeThunksAvailable = false;
     }
 
@@ -511,7 +514,7 @@ namespace xloil
   {
     return FunctionRegistry::get().remove(ptr);
   }
-  
+
   StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
     : FileSource(pluginPath)
   {

@@ -170,11 +170,13 @@ namespace xloil
     /// Construct from char string
     /// </summary>
     explicit ExcelObj(const char*);
+    explicit ExcelObj(char* str) : ExcelObj(const_cast<const char*>(str)) {}
 
     /// <summary>
     /// Construct from wide-char string
     /// </summary>
     explicit ExcelObj(const wchar_t*);
+    explicit ExcelObj(wchar_t* str) : ExcelObj(const_cast<const wchar_t*>(str)) {}
 
     /// <summary>
     /// Construct from STL string
@@ -292,6 +294,10 @@ namespace xloil
       return compare(*this, that) != 1;
     }
 
+    bool operator==(const CellError that) const
+    {
+      return this->xtype() == msxll::xltypeErr && val.err == (int)that;
+    }
     /// <summary>
     /// Returns -1 if left < right, 0 if left == right, else 1.
     /// 
@@ -509,47 +515,6 @@ namespace xloil
     }
 
     /// <summary>
-    /// Returns a pointer to the current object suitable for returning to Excel
-    /// as the result of a function. Modifies a flag to tell Excel that xlOil 
-    /// will need a callback to free the memory. This method or 
-    /// <see cref="ExcelObj::returnValue"/> must be used for final object passed 
-    /// back to Excel. It should not be used anywhere else.
-    /// </summary>
-    /// <returns></returns>
-    ExcelObj * toExcel()
-    {
-      xltype |= msxll::xlbitDLLFree;
-      return this;
-    }
-
-    /// <summary>
-    /// Constructs an ExcelObj from the given arguments, setting a flag to tell 
-    /// Excel that xlOil will need a callback to free the memory. **This method must
-    /// be used for final object passed back to Excel. It must not be used anywhere
-    /// else**.
-    /// </summary>
-    template<class... Args>
-    static ExcelObj* returnValue(Args&&... args)
-    {
-      return (new ExcelObj(std::forward<Args>(args)...))->toExcel();
-    }
-    static ExcelObj* returnValue(CellError err)
-    {
-      return const_cast<ExcelObj*>(&Const::Error(err));
-    }
-    static ExcelObj* returnValue(const std::exception& e)
-    {
-      return returnValue(e.what());
-    }
-
-    template<>
-    static ExcelObj* returnValue(ExcelObj&& p)
-    {
-      // same as the args, but want to make this one explicit
-      return (new ExcelObj(std::forward<ExcelObj>(p)))->toExcel();
-    }
-
-    /// <summary>
     /// Attempts to convert the ExcelObj to a Date. This will only
     /// succeed for numeric types.
     /// </summary>
@@ -627,6 +592,12 @@ namespace xloil
         overwriteComplex(to, from);
     }
 
+    ExcelObj * toExcel()
+    {
+      xltype |= msxll::xlbitDLLFree;
+      return this;
+    }
+
   private:
     /// The xloper type made safe for use in switch statements by zeroing
     /// the memory control flags blanked.
@@ -634,7 +605,7 @@ namespace xloil
     {
       return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);
     }
-
+    
     static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
   };
 }

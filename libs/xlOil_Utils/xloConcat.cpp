@@ -41,7 +41,7 @@ namespace xloil
       if (!result.empty())
         result.erase(result.size() - sep.size());
     }
-    return ExcelObj::returnValue(result);
+    return returnValue(result);
   }
   XLO_FUNC_END(xloConcat).threadsafe()
     .help(L"Concatenates strings. Non strings are converted to string, arrays are concatenated by row")

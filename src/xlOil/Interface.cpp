@@ -6,6 +6,7 @@
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
 #include <xlOil/Loaders/AddinLoader.h>
+#include <xloil/State.h>
 #include <ComInterface/Connect.h>
 
 using std::make_pair;
@@ -15,20 +16,18 @@ using std::shared_ptr;
 
 namespace xloil
 {
-
-
   const wchar_t* Core::theCorePath()
   {
-    return xloil::theCorePath();
+    return State::corePath();
   }
   const wchar_t* Core::theCoreName()
   {
-    return xloil::theCoreName();
+    return State::coreName();
   }
 
   int Core::theExcelVersion()
   {
-    return coreExcelVersion();
+    return State::excelVersion();
   }
 
   Excel::_Application& Core::theExcelApp()

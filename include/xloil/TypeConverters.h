@@ -1,5 +1,6 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
+#include <xloil/ExcelObjCache.h>
 #include <xlOil/Throw.h>
 
 namespace xloil { class ExcelRef; class ExcelObj; class ExcelArray; }

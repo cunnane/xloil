@@ -26,7 +26,7 @@ namespace xloil
       for (auto j = 0u; j < nCols; ++j)
         builder(i, j) = arr(i, j);
 
-    return ExcelObj::returnValue(builder.toExcelObj());
+    return returnValue(builder.toExcelObj());
   }
   XLO_FUNC_END(xloPad).threadsafe()
     .help(L"Returns at array with at least two rows and two columns, padded with #N/A")

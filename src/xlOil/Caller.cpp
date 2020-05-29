@@ -1,5 +1,6 @@
-#include <xloil/ExcelState.h>
+#include <xloil/Caller.h>
 #include <xloil/ExcelCall.h>
+#include <xloil/State.h>
 #include <xloil/Loaders/EntryPoint.h>
 #include <xlOilHelpers/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
@@ -91,7 +92,7 @@ namespace
     short hwnd = 0;
     DWORD pid = 0;
     const char* windowName;
-    if (xloil::coreExcelVersion() < 13)
+    if (xloil::State::excelVersion() < 13)
     {
       XLOPER xHwnd;
       // Calls Excel4, which only returns the low part of the Excel
@@ -125,42 +126,66 @@ namespace xloil
     if (_Address->isType(ExcelType::RangeRef))
       callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
   }
-  uint16_t CallerInfo::fullAddressLength() const
+
+  uint16_t CallerInfo::addressRCLength() const
   {
     auto s = _SheetName->asPascalStr();
     // Any value in more precise guess?
     return s.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
   }
-  uint16_t CallerInfo::writeFullAddress(wchar_t* buf, size_t bufLen) const
+
+  uint16_t CallerInfo::writeAddress(
+    wchar_t* buf, 
+    size_t bufLen,
+    bool A1Style) const
   {
     const auto wsName = _SheetName->asPascalStr();
     const auto wsLength = wsName.length();
 
     if (wsLength > 0)
     {
-      assert(bufLen > wsLength);
+      if (bufLen <= wsLength + 1)
+        return 0;
       wmemcpy(buf, wsName.pstr(), wsLength);
       buf += wsLength;
       // Separator character
       *(buf++) = L'!';
+
+      bufLen -= wsName.length() + 1;
     }
 
     // TODO: handle other caller cases?
-    uint16_t addressLen;
+    uint16_t addressLen = 0;
+    const msxll::XLREF12* sheetRef = nullptr;
     switch (_Address->type())
     {
     case ExcelType::SRef:
-      addressLen = xlrefToLocalRC(_Address->val.sref.ref, buf, bufLen - wsName.length() - 1);
+      sheetRef = &_Address->val.sref.ref;
       break;
     case ExcelType::Ref:
-      addressLen = xlrefToLocalRC(_Address->val.mref.lpmref->reftbl[0], buf, bufLen - wsName.length() - 1);
+      sheetRef = &_Address->val.mref.lpmref->reftbl[0];
       break;
     default:
-      wmemcpy(buf, L"UNKNOWN", 7);
-      addressLen = 7;
+      wmemcpy(buf, L"MysteryCaller", 13);
+      addressLen = 13;
       break;
     }
+
+    if (sheetRef)
+      addressLen = A1Style
+        ? xlrefToLocalA1(*sheetRef, buf, bufLen)
+        : xlrefToLocalRC(*sheetRef, buf, bufLen);
+
     return addressLen + wsLength + 1;
+  }
+
+  std::wstring CallerInfo::writeAddress(bool A1Style) const
+  {
+    std::wstring result;
+    result.resize(addressRCLength());
+    const auto nChars = writeAddress(result.data(), result.size(), A1Style);
+    result.resize(nChars);
+    return result;
   }
 
   constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;

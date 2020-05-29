@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="ExcelState.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
@@ -38,6 +37,8 @@
     <ClCompile Include="Loaders\EntryPoint.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
+    <ClCompile Include="Caller.cpp" />
+    <ClCompile Include="State.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -91,9 +92,6 @@
     <ClInclude Include="..\..\include\xloil\ExcelRef.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ExcelState.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\ExportMacro.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -127,9 +125,6 @@
     <ClInclude Include="..\..\include\xloil\Throw.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\TriggeredPtr.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\TypeConverters.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -137,6 +132,15 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\xlOil.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\RtdServer.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Caller.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="State.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

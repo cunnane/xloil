@@ -29,7 +29,7 @@ namespace xloil
       auto sql = query.toString();
       auto stmt = sqlPrepare(dbObj->getDB().get(), sql);
 
-      return ExcelObj::returnValue(sqlQueryToArray(stmt));
+      return returnValue(sqlQueryToArray(stmt));
     }
     XLO_FUNC_END(xloSqlQuery).threadsafe()
       .help(L"Runs the specified query on a database, returning the results as an array")

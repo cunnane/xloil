@@ -35,7 +35,7 @@ namespace xloil
           builder(i, j).emplace_not_string(*value);
     }
 
-    return ExcelObj::returnValue(builder.toExcelObj());
+    return returnValue(builder.toExcelObj());
   }
   XLO_FUNC_END(xloFill).threadsafe()
     .help(L"Creates an array of the specified size filled with the given value")

@@ -56,7 +56,7 @@ namespace xloil
           if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
             builder(i, j) = PString<>(arrayStr.data());
 
-      return ExcelObj::returnValue(std::move(newArray));
+      return returnValue(std::move(newArray));
     }   
     else
     {

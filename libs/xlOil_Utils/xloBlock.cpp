@@ -100,7 +100,7 @@ namespace xloil
     }
 
     if (totalCols == 0 || totalRows == 0)
-      return ExcelObj::returnValue(CellError::NA);
+      return returnValue(CellError::NA);
 
     // TODO: avoid looping the spec twice!
     row_t row = 0;
@@ -176,7 +176,7 @@ namespace xloil
       }
     }
 
-    return ExcelObj::returnValue(builder.toExcelObj());
+    return returnValue(builder.toExcelObj());
   }
   XLO_FUNC_END(xloBlock).threadsafe()
     .help(L"Creates a block matrix given a layout specification."

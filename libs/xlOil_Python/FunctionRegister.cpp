@@ -4,9 +4,10 @@
 #include "BasicTypes.h"
 #include "Dictionary.h"
 #include "File.h"
+#include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Register/AsyncHelper.h>
-#include <xloil/ExcelState.h>
+#include <xloil/Caller.h>
 #include <pybind11/stl.h>
 #include <CTPL/ctpl_stl.h>
 #include <map>
@@ -115,7 +116,7 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        return ExcelObj::returnValue(e.what());
+        return returnValue(e);
       }
     }
 
@@ -133,11 +134,11 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        return ExcelObj::returnValue(e.what());
+        return returnValue(e.what());
       }
       catch (...)
       {
-        return ExcelObj::returnValue("#ERROR");
+        return returnValue(CellError::Null);
       }
     }
 

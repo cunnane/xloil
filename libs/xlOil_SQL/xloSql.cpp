@@ -78,7 +78,7 @@ namespace xloil
 
       auto stmt = sqlPrepare(db.get(), sql);
 
-      return ExcelObj::returnValue(sqlQueryToArray(stmt));
+      return returnValue(sqlQueryToArray(stmt));
     }
     XLO_FUNC_END(xloSql).threadsafe()
       .help(L"Excecutes the SQL query on the provided tables. "
