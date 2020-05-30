@@ -40,7 +40,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleFileWatcher", "src\ex
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "src\external\spdlog\spdlog.vcxproj", "{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tests", "tests\Tests.vcxproj", "{81DC823F-ADFC-4639-B960-E25A6FD6B7B9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "tests\Tests.vcxproj", "{81DC823F-ADFC-4639-B960-E25A6FD6B7B9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1F999F4F-7843-43FA-BEE7-B4334D6DD36B} = {1F999F4F-7843-43FA-BEE7-B4334D6DD36B}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOilHelpers", "src\xlOilHelpers\xlOilHelpers.vcxproj", "{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}"
 EndProject
@@ -70,6 +73,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Utils", "libs\xlOil_U
 	ProjectSection(ProjectDependencies) = postProject
 		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAddin", "tests\TestAddin\TestAddin.vcxproj", "{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -211,6 +216,16 @@ Global
 		{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}.Release|x64.Build.0 = Release|x64
 		{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}.Release|x86.ActiveCfg = Release|Win32
 		{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}.Release|x86.Build.0 = Release|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Debug|x64.ActiveCfg = Debug|x64
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Debug|x64.Build.0 = Debug|x64
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Debug|x86.ActiveCfg = Debug|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Debug|x86.Build.0 = Debug|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Release|Any CPU.ActiveCfg = Release|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Release|x64.ActiveCfg = Release|x64
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Release|x64.Build.0 = Release|x64
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Release|x86.ActiveCfg = Release|Win32
+		{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

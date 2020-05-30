@@ -139,6 +139,7 @@
     <ClInclude Include="Register\Thunker.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="RtdServer.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="ExcelArray.cpp" />

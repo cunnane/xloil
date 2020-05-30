@@ -39,6 +39,7 @@
     </ClCompile>
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="State.cpp" />
+    <ClCompile Include="RtdServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">

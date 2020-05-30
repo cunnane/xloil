@@ -9,6 +9,7 @@
     <ClInclude Include="COMRange.h" />
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="ComEventSink.h" />
+    <ClInclude Include="MessageQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
@@ -17,5 +18,7 @@
     <ClCompile Include="COMRange.cpp" />
     <ClCompile Include="ComVariant.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
+    <ClCompile Include="RtdServer.cpp" />
+    <ClCompile Include="MessageQueue.cpp" />
   </ItemGroup>
 </Project>
