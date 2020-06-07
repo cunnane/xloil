@@ -452,11 +452,24 @@ namespace xloil
 
   namespace
   {
-    ExcelObj* launchFunctionObj(ObjectToFuncSpec* data, const ExcelObj** args)
+    ExcelObj* launchFunctionObj(
+      ObjectToFuncSpec* data, 
+      const ExcelObj** args) noexcept
     {
-      return data->_function(*data->info(), args);
+      try
+      {
+        return data->_function(*data->info(), args);
+      }
+      catch (const std::exception& e)
+      {
+        XLO_ERROR(e.what());
+      }
     }
-    void launchFunctionObjAsync(ObjectToFuncSpec* data, const ExcelObj* asyncHandle, const ExcelObj** args)
+
+    void launchFunctionObjAsync(
+      ObjectToFuncSpec* data, 
+      const ExcelObj* asyncHandle, 
+      const ExcelObj** args) noexcept
     {
       try
       {

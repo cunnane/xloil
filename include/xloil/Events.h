@@ -33,7 +33,16 @@ namespace xloil
       void operator()(const THandlers& handlers, Args&&... args) const
       {
         for (auto& h : handlers)
-          h(args...);
+        {
+          try
+          {
+            h(args...);
+          }
+          catch (const std::exception& e)
+          {
+            XLO_ERROR("Error during event: {}", e.what());
+          }
+        }
       }
     };
   }

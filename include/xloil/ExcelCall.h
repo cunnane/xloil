@@ -134,7 +134,7 @@ namespace xloil
     case msxll::xlretSuccess:
       break;
     case msxll::xlretAbort:
-      throw new ExcelAbort();
+      throw ExcelAbort();
     default:
       XLO_THROW(L"Call to Excel failed: {0}", xlRetCodeToString(ret));
     }
