@@ -7,6 +7,8 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Events.h>
 #include <xloil/Log.h>
+#include <xloil/ExcelObjCache.h>
+#include <xlOilHelpers/StringUtils.h>
 
 #include <atlbase.h>
 #include <atlcom.h>
@@ -39,11 +41,11 @@ namespace xloil
     {} theAtlModule;
 
     class RtdServerImpl;
-
     class RtdProducer : public IRtdNotify
     {
       std::atomic<bool> _cancelled;
       RtdServerImpl* _server;
+      shared_ptr<IRtdProducer>  _task;
       std::future<void> _taskFuture;
       shared_ptr<const ExcelObj> _value;
       wstring _topic;
@@ -52,23 +54,26 @@ namespace xloil
 
     public:
       RtdProducer(
-        const RtdTask& task, 
+        const shared_ptr<IRtdProducer>& task,
         const wchar_t* topic,
         RtdServerImpl* server,
         bool persistent)
-        : _value()//CellError::GettingData)
+        : _value()
+        , _task(task)
         , _topic(topic)
         , _server(server)
         , _cancelled(false)
         , _persistent(persistent)
       {
-        _taskFuture = task(*this);
+        // TODO start on connect rather?
+        _taskFuture = (*task)(*this);
       }
 
       ~RtdProducer()
       {
         cancel();
-        _taskFuture.wait();
+        if (_taskFuture.valid())
+          _taskFuture.wait();
       }
 
       /// <summary>
@@ -87,6 +92,7 @@ namespace xloil
       void cancel()
       {
         _cancelled = true;
+        _task.reset();
       }
       bool complete() const
       {
@@ -103,13 +109,15 @@ namespace xloil
           try
           {
             _taskFuture.get();
+            // Free memory used by future
+            _taskFuture = std::future<void>();
           } 
           catch (const std::future_error& e)
           {
             _value.reset(new ExcelObj(e.what()));
           }
         }
-        scoped_lock(_lock);
+        scoped_lock lock(_lock);
         return _value;
       }
 
@@ -119,7 +127,7 @@ namespace xloil
       }
 
       // IRtdNotify interface
-      void publish(ExcelObj&& value) override;
+      bool publish(ExcelObj&& value) noexcept override;
       bool isCancelled() const override
       {
         return _cancelled;
@@ -191,6 +199,8 @@ namespace xloil
         _activeTopicIds[topicId] = topic.bstrVal;
         _subscribers[topic.bstrVal].insert(topicId);
 
+        XLO_TRACE(L"RTD: connect {} to topicId {}", topic.bstrVal, topicId);
+
         return S_OK;
       }
 
@@ -228,6 +238,8 @@ namespace xloil
       {
         std::scoped_lock lock(_lockProducers, _lockSubscribers);
 
+        XLO_TRACE("RTD: disconnect topicId {}", topicId);
+
         // Reap any producers which have safely cancelled and completed
         // TODO: could do this in separate thread
         for (auto& p = _cancelledProducers.begin(); 
@@ -240,7 +252,7 @@ namespace xloil
 
         const auto& topic = _activeTopicIds[topicId];
         if (topic.empty())
-          XLO_THROW("Bad");
+          XLO_THROW("Could not find topic for id {0}", topicId);
 
         auto& subscribers = _subscribers[topic];
         subscribers.erase(topicId);
@@ -295,28 +307,29 @@ namespace xloil
       std::mutex _lockProducers;
       std::mutex _lockSubscribers;
 
+      void callUpdateNotify()
+      {
+        std::scoped_lock lock(_lockSubscribers);
+        if (_updateCallback)
+          _updateCallback->UpdateNotify();
+      }
+
     public:
       void update(const wchar_t* topic)
       {
         std::scoped_lock lock(_lockSubscribers);
-        const bool nothingReady = _readyTopicIds.empty();
+
+        const bool nothingWasReady = _readyTopicIds.empty();
 
         const auto& subscribers = _subscribers[topic];
         _readyTopicIds.insert(subscribers.begin(), subscribers.end());
 
         // We only need to notify Excel about new data once. Excel will
         // only callback RefreshData approximately every 2 seconds
-        if (nothingReady && _updateCallback)
+        if (nothingWasReady && _updateCallback)
         {
           queueWindowMessage([this]() { this->callUpdateNotify(); });
         }
-      }
-
-      void callUpdateNotify()
-      {
-        std::scoped_lock lock(_lockSubscribers);
-        if (_updateCallback)
-          _updateCallback->UpdateNotify();
       }
 
       void addProducer(const shared_ptr<RtdProducer>& job)
@@ -342,16 +355,41 @@ namespace xloil
           return nullptr;
         return iJob->second.get();
       }
+
+      bool dropProducer(const wchar_t* topic)
+      {
+        std::scoped_lock lock(_lockProducers);
+        auto iProd = _theProducers.find(topic);
+        if (iProd == _theProducers.end())
+          return false;
+
+        iProd->second->cancel();
+        _cancelledProducers.push_back(iProd->second);
+        return true;
+      }
+      //void availableTopics() const
+      //{
+      //  _theProducers.b
+      //}
     };
 
-    void RtdProducer::publish(ExcelObj&& value)
+    bool RtdProducer::publish(ExcelObj&& value) noexcept
     {
       if (!_cancelled)
       {
-        scoped_lock(_lock);
-        _value.reset(new ExcelObj(std::forward<ExcelObj>(value)));
-        _server->update(_topic.c_str());
+        try
+        {
+          scoped_lock(_lock);
+          _value.reset(new ExcelObj(std::forward<ExcelObj>(value)));
+          _server->update(_topic.c_str());
+          return true;
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR(L"RTD error publishing {}:", _topic, utf8ToUtf16(e.what()));
+        }
       }
+      return false;
     }
 
     class FactoryRtdServer : public IClassFactory
@@ -532,7 +570,7 @@ namespace xloil
       }
 
       void start(
-        const RtdTask& task, 
+        const shared_ptr<IRtdProducer>& task,
         const wchar_t* topic,
         bool persistent) override
       {
@@ -553,10 +591,21 @@ namespace xloil
           job->publish(std::forward<ExcelObj>(value));
         return job;
       }
-      shared_ptr<const ExcelObj> peek(const wchar_t* topic) override
+      std::pair<shared_ptr<const ExcelObj>, bool> 
+        peek(const wchar_t* topic) override
       {
         auto job = _server->findProducer(topic);
-        return job ? job->value() : nullptr;
+        return std::make_pair(
+          job ? job->value() : shared_ptr<const ExcelObj>(), 
+          job ? !job->complete() : false);
+      }
+      bool drop(const wchar_t* topic) override
+      {
+        return _server->dropProducer(topic);
+      }
+      const wchar_t* progId() const noexcept override
+      {
+        return _progId.c_str();
       }
 
       // We don't use the value from the Rtd call, but it indicates to
@@ -568,56 +617,11 @@ namespace xloil
         callExcel(msxll::xlfRtd, _progId, L"", topic);
       }
     };
-  }
 
-  std::shared_ptr<IRtdManager> newRtdManager(
-    const wchar_t* progId, const wchar_t* clsid)
-  {
-    return make_shared<COM::RtdManager>(progId, clsid);
-  }
-     
-  RtdConnection::RtdConnection(IRtdManager& mgr, wstring&& topic)
-    : _topic(topic)
-    , _mgr(mgr)
-  {
-    _value = _mgr.subscribe(_topic.c_str()).get();
-  }
-  bool RtdConnection::hasValue() const
-  {
-    return !!_value;
-  }
-  const ExcelObj& RtdConnection::value()
-  {
-    return _value ? *_value : Const::Error(CellError::Null);
-  }
-  const ExcelObj& RtdConnection::start(const RtdTask& task)
-  {
-    _mgr.start(task, _topic.c_str());
-    _value = _mgr.peek(_topic.c_str()).get();
-    return _value ? *_value : Const::Error(CellError::GettingData);
-  }
-
-  IRtdManager* getCoreRtdServer()
-  {
-    // TODO: I guess we should create a mutux here, although calling
-    // RTD functions from a multithreaded function is not likely to 
-    // end well. Can we check for that in a non-expensive way?
-    static shared_ptr<IRtdManager> ptr = newRtdManager();
-    static auto deleter = Event::AutoClose() += [&]() { ptr.reset(); };
-    return ptr.get();
-  }
-
-  XLOIL_EXPORT RtdConnection rtdConnect(
-    IRtdManager* mgr, 
-    const wchar_t* topic)
-  {
-    if (!mgr)
-      mgr = getCoreRtdServer();
-    if (!topic)
+    std::shared_ptr<IRtdManager> newRtdManager(
+      const wchar_t* progId, const wchar_t* clsid)
     {
-      auto caller = CallerInfo().writeAddress(false);
-      return RtdConnection(*mgr, std::move(caller));
+      return make_shared<COM::RtdManager>(progId, clsid);
     }
-    return RtdConnection(*mgr, wstring(topic));
   }
 }

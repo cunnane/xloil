@@ -12,7 +12,7 @@
 #include <xlOil/State.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>
-#include <COMInterface/ThreadMessage.h>
+#include <COMInterface/MessageQueue.h>
 
 using std::wstring;
 using std::string;

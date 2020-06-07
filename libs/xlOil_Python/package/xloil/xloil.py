@@ -431,6 +431,7 @@ class _FuncMeta:
         self.name = func.__name__
         self.help = func.__doc__
         self.is_async = False
+        self.rtd = False
         self.macro = False
         self.thread_safe = False
         self.volatile = False
@@ -479,12 +480,13 @@ class _FuncMeta:
             else:
                 holder.set_arg_type(i, converter)
 
-        holder.local = True if self.local is None else self.local
+        holder.local = True if (self.local is None and not self.is_async) else self.local
+        holder.rtd_async = self.rtd and self.is_async
 
-        # TODO: if local reject most FuncOpts
+        # TODO: if we are a local func we should reject most FuncOpts
         
-        holder.set_opts((FuncOpts.Async if self.is_async else 0) 
-                        | (FuncOpts.Macro if self.macro else 0) 
+        holder.set_opts((FuncOpts.Async if (self.is_async and not self.rtd) else 0) 
+                        | (FuncOpts.Macro if self.macro or self.rtd else 0) 
                         | (FuncOpts.ThreadSafe if self.thread_safe else 0)
                         | (FuncOpts.Volatile if self.volatile else 0))
 
@@ -510,6 +512,8 @@ def _async_wrapper(fn):
     def synchronised(*args, **kwargs):
 
         # Get current event loop or create one for this thread
+        # TODO: because we keep recreating the python threadstate in the C layer
+        # all the thread locals get wiped out, so this always creates a loop
         loop = None
         try:
             loop = asyncio.get_event_loop()
@@ -519,7 +523,7 @@ def _async_wrapper(fn):
         
         # Thread context passed from the C++ layer. Remove this 
         # from args intented for the inner function call.
-        cxt = kwargs.pop("xloil_thread_context")
+        cxt = kwargs.pop(xloil_core.ASYNC_CONTEXT_TAG)
 
         task = asyncio.ensure_future(fn(*args, **kwargs), loop=loop)
 
@@ -539,6 +543,7 @@ def func(fn=None,
          group=None, 
          local=None,
          is_async=False, 
+         rtd=False,
          macro=False, 
          thread_safe=False, 
          volatile=False):
@@ -610,9 +615,9 @@ def func(fn=None,
     def decorate(fn):
 
         _async = is_async
-        # If asyncio is not supported e.g. python 2, this will fail
+        # If asyncio is not supported e.g. in python 2, this will fail
         # But it doesn't matter since the async wrapper is intended to 
-        # removes the async property
+        # hide the async property 
         try:
             if inspect.iscoroutinefunction(fn):
                 fn = _async_wrapper(fn)
@@ -632,6 +637,7 @@ def func(fn=None,
         return fn
 
     return decorate if fn is None else decorate(fn)
+
 
 def arg(name, typeof=None, help=None, range=None):
     """ 

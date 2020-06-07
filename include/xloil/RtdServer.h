@@ -18,7 +18,7 @@ namespace xloil
     /// update in Excel.
     /// </summary>
     /// <param name=""></param>
-    virtual void publish(ExcelObj&&) = 0;
+    virtual bool publish(ExcelObj&& value) noexcept = 0;
 
     /// <summary>
     /// If this returns true, the enclosing future should exit.
@@ -33,16 +33,67 @@ namespace xloil
   /// statement.  It may run indefinitely, but should poll for cancellation
   /// via <see cref="IRtdNotify::isCancelled"/>
   /// </summary>
-  using RtdTask = std::function<std::future<void>(IRtdNotify&)>;
+  struct IRtdProducer
+  {
+    virtual std::future<void> operator()(IRtdNotify&) = 0;
+  };
+  /// <summary>
+  /// Represents a job to be run asynchronously via the RTD server.
+  /// This is to support worksheet functions which run background jobs.
+  /// The worksheet function which initiates the job will be called by 
+  /// Excel again to collect the result. Since the function is stateless 
+  /// it cannot tell if it should start a new task or collect a result.
+  /// Hence the task object must support the '==' operator so xlOil can 
+  /// compare the task to be started to any that have pending results for
+  /// the calling cell.  This comparison carries some overhead, so the 
+  /// RTD async mechanism should only be used when these overhead is small
+  /// relative to the function execution time.
+  /// </summary>
+  struct IRtdAsyncTask : public IRtdProducer
+  {
+    virtual bool operator==(const IRtdAsyncTask& that) const = 0;
+  };
+
+  struct RtdTask : public IRtdProducer
+  {
+    std::function<std::future<void>(IRtdNotify&)> _func;
+    RtdTask(const decltype(_func)& func) : _func(func) {}
+    std::future<void> operator()(IRtdNotify& n) override 
+    { 
+      return _func(n); 
+    }
+  };
+
+  template <class T>
+  struct RtdAsyncTask : public IRtdAsyncTask
+  {
+    template<class...Args>
+    RtdAsyncTask(Args... captures)
+      : _func(std::forward<Args>(captures)...)
+    {}
+    std::future<void> operator()(IRtdNotify& notify)
+    {
+      return _func(notify);
+    }
+    bool operator==(const IRtdAsyncTask& that) const
+    {
+      return _func == ((const RtdAsyncTask<T>&)that)._func;
+    }
+    T _func;
+  };
 
   /// <summary>
   /// An IRtdManager is a wrapper around an internal RTD Server. An RTD Server 
   /// is a producer/consumer queue which can trigger recalculations in 
-  /// cells marked as RTD consumers.  An RTD producer can be started anywhere
-  /// including in another cell, or even the same cell as the consumer. The 
-  /// latter allows execution of functions asynchronously without the drawback
-  /// of Excel's asynchronous UDF support, which is that async functions are 
-  /// cancelled if the user interacts with the sheet.
+  /// cells marked as RTD consumers.  Note Excel will recalculate the entire
+  /// cell containing a consumer, it cannot distinguish between multiple 
+  /// functions in a single cell.  
+  /// 
+  /// An RTD producer can be started anywhere including in another cell, or 
+  /// even the same cell as the consumer. The latter allows execution of 
+  /// functions asynchronously without the drawback of Excel's asynchronous 
+  /// UDF support, which is that async functions are cancelled if the user 
+  /// interacts with the sheet.
   /// 
   /// RTD producers and consumers find each other using a topic string. The
   /// producer and consumer can be registered in either order.
@@ -63,7 +114,7 @@ namespace xloil
     /// and consumer started in the same cell
     /// </param>
     virtual void start(
-      const RtdTask& task,
+      const std::shared_ptr<IRtdProducer>& task,
       const wchar_t* topic,
       bool persistent = false) = 0;
 
@@ -78,8 +129,9 @@ namespace xloil
     /// <returns>The ExcelObj currently being published by the producer
     /// or null if no producer exists.
     /// </returns>
-    virtual std::shared_ptr<const ExcelObj> subscribe(
-      const wchar_t* topic) = 0;
+    virtual std::shared_ptr<const ExcelObj> 
+      subscribe(
+        const wchar_t* topic) = 0;
 
     /// <summary>
     /// Looks up a value for a specified producer if it exists without 
@@ -87,8 +139,9 @@ namespace xloil
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
-    virtual std::shared_ptr<const ExcelObj> peek(
-      const wchar_t* topic) = 0;
+    virtual std::pair<std::shared_ptr<const ExcelObj>, bool> 
+      peek(
+        const wchar_t* topic) = 0;
 
     /// <summary>
     /// Force publication of the specified value by the producer of the 
@@ -98,10 +151,20 @@ namespace xloil
     /// <param name="topic"></param>
     /// <param name="value"></param>
     /// <returns>True if the producer was found and the value was set</returns>
-    virtual bool publish(
-      const wchar_t* topic,
-      ExcelObj&& value) = 0;
+    virtual bool 
+      publish(
+        const wchar_t* topic,
+        ExcelObj&& value) = 0;
+
+    virtual bool 
+      drop(const wchar_t* topic) = 0;
+
+    virtual const wchar_t* progId() const noexcept = 0;
   };
+
+
+  XLOIL_EXPORT std::shared_ptr<ExcelObj> rtdAsync(
+    const std::shared_ptr<IRtdAsyncTask>& task);
 
 
   /// <summary>
@@ -114,47 +177,6 @@ namespace xloil
       const wchar_t* progId = nullptr,
       const wchar_t* clsid = nullptr);
 
-
-  /// <summary>
-  /// RtdConnection is a convenience wrapper around <see cref="IRtdManager"/>.
-  /// It is created by <see cref="rtdConnect"/>.
-  /// </summary>
-  class XLOIL_EXPORT RtdConnection
-  {
-  public:
-    RtdConnection(IRtdManager& mgr, std::wstring&& topic);
-    /// <summary>
-    /// Returns true if there is a value available for the connected topic
-    /// </summary>
-    bool 
-      hasValue() const;
-    /// <summary>
-    /// Returns the value for the connected topic or # NULL! if unavailable
-    /// </summary>
-    const ExcelObj& 
-      value();
-    /// <summary>
-    /// Starts the specified task as a producer for the connected topic.
-    /// </summary>
-    /// <returns>The published value (which may be # GETTING_DATA)</returns>
-    const ExcelObj& 
-      start(const RtdTask& task);
-    /// <summary>
-    /// Returns the connected value if available, otherwise starts the
-    /// specified task and returns the value (which may be # GETTING_DATA)
-    /// </summary>
-    const ExcelObj& 
-      run(const RtdTask& task)
-    {
-      return hasValue()
-        ? value()
-        : start(task);
-    }
-  private:
-    std::wstring _topic;
-    IRtdManager& _mgr;
-    const ExcelObj* _value;
-  };
 
   /// <summary>
   /// Connects to the Core RtdManager or the one specified, returning an
@@ -173,7 +195,4 @@ namespace xloil
   /// <param name="topic">Omit / null to use the current cell address
   /// as the topic
   /// </param>
-  XLOIL_EXPORT RtdConnection rtdConnect(
-    IRtdManager* mgr = nullptr,
-    const wchar_t* topic = nullptr);
 }

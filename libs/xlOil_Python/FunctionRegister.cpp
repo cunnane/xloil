@@ -8,6 +8,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Register/AsyncHelper.h>
 #include <xloil/Caller.h>
+#include <xloil/RtdServer.h>
 #include <pybind11/stl.h>
 #include <CTPL/ctpl_stl.h>
 #include <map>
@@ -31,12 +32,16 @@ namespace xloil
   {
     struct PyFuncInfo
     {
-      PyFuncInfo(const shared_ptr<FuncInfo>& info, const py::function& func, bool hasKeywordArgs)
+      PyFuncInfo(
+        const shared_ptr<FuncInfo>& info, 
+        const py::function& func, 
+        bool keywordArgs)
       {
         this->info = info;
         this->func = func;
-        this->hasKeywordArgs = hasKeywordArgs;
-        this->isLocalFunc = false;
+        hasKeywordArgs = keywordArgs;
+        isLocalFunc = false;
+        isRtdAsync = false;
         argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
       }
 
@@ -56,6 +61,7 @@ namespace xloil
       vector<pair<shared_ptr<IPyFromExcel>, py::object>> argConverters;
       shared_ptr<IPyToExcel> returnConverter;
       bool isLocalFunc;
+      bool isRtdAsync;
 
       void setFuncOptions(int val)
       {
@@ -64,7 +70,7 @@ namespace xloil
     };
 
 
-    pair<py::tuple, py::object> convertArgsToPython(PyFuncInfo* info, const ExcelObj** xlArgs)
+    pair<py::tuple, py::object> convertArgsToPython(const PyFuncInfo* info, const ExcelObj** xlArgs)
     {
       auto nArgs = info->argConverters.size();
       auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
@@ -95,7 +101,7 @@ namespace xloil
         return make_pair(pyArgs, py::none());
     }
 
-    ExcelObj* invokePyFunction(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+    void invokePyFunction(ExcelObj& result, const PyFuncInfo* info, PyObject* args, PyObject* kwargs)
     {
       try
       {
@@ -105,22 +111,19 @@ namespace xloil
         else
           ret = PySteal<py::object>(PyObject_CallObject(info->func.ptr(), args));
 
-        // TODO: Review this if we ever go to multi-threaded python
-        static ExcelObj result;
-
         result = info->returnConverter
           ? (*info->returnConverter)(*ret.ptr())
           : FromPyObj()(ret.ptr());
-
-        return &result;
       }
       catch (const std::exception& e)
       {
-        return returnValue(e);
+        result = e.what();
       }
     }
 
-    ExcelObj* pythonCallback(PyFuncInfo* info, const ExcelObj** xlArgs)
+    ExcelObj* pythonCallback(
+      PyFuncInfo* info, 
+      const ExcelObj** xlArgs) noexcept
     {
       try
       {
@@ -130,7 +133,9 @@ namespace xloil
 
         auto[args, kwargs] = convertArgsToPython(info, xlArgs);
 
-        return invokePyFunction(info, args.ptr(), kwargs.ptr());
+        static ExcelObj result; // Ok since python is single threaded
+        invokePyFunction(result, info, args.ptr(), kwargs.ptr());
+        return &result;
       }
       catch (const std::exception& e)
       {
@@ -142,9 +147,11 @@ namespace xloil
       }
     }
 
-    struct ThreadContext
+    constexpr const char* THREAD_CONTEXT_TAG = "xloil_thread_context";
+
+    struct AsyncNotifier
     {
-      ThreadContext()
+      AsyncNotifier()
         : _startTime(GetTickCount64())
       {}
       bool cancelled()
@@ -154,21 +161,30 @@ namespace xloil
     private:
       decltype(GetTickCount64()) _startTime;
     };
-
-    static ctpl::thread_pool* thePythonWorkerThread = nullptr;
-
-    static auto WorkerThreadDeleter = Event_PyBye().bind([]
+    
+    static ctpl::thread_pool* getWorkerThreadPool()
     {
-      if (thePythonWorkerThread)
-        delete thePythonWorkerThread;
-    });
+      constexpr size_t nThreads = 1;
+      static auto* workerPool = new ctpl::thread_pool(nThreads);
+      static auto workerPoolDeleter = Event_PyBye().bind([]
+      {
+        if (workerPool)
+          delete workerPool;
+      });
+      return workerPool;
+    }
 
-    void pythonAsyncCallback(PyFuncInfo* info, const ExcelObj* asyncHandle, const ExcelObj** xlArgs)
+    void pythonAsyncCallback(
+      PyFuncInfo* info, 
+      const ExcelObj* asyncHandle, 
+      const ExcelObj** xlArgs) noexcept
     {
       try
       {
-        py::gil_scoped_acquire gilAcquired;
+        PyObject *argsP, *kwargsP;
         {
+          py::gil_scoped_acquire gilAcquired;
+
           PyErr_Clear();
 
           // I think it's better to process the arguments to python here rather than 
@@ -178,27 +194,27 @@ namespace xloil
           if (kwargs.is_none())
             kwargs = py::dict();
 
-          kwargs["xloil_thread_context"] = ThreadContext();
+          kwargs[THREAD_CONTEXT_TAG] = AsyncNotifier();
 
           // Need to drop pybind links before capturing in lambda otherwise the destructor
           // is called at some random time after losing the GIL and it crashes.
-          auto argsP = args.release().ptr();
-          auto kwargsP = kwargs.release().ptr();
-
-          auto functor = AsyncHolder(
-            [info, argsP, kwargsP]() mutable
+          argsP = args.release().ptr();
+          kwargsP = kwargs.release().ptr();
+        }
+        auto functor = AsyncHolder(
+          [info, argsP, kwargsP]() mutable
           {
             py::gil_scoped_acquire gilAcquired;
             {
-              auto ret = invokePyFunction(info, argsP, kwargsP);
+              ExcelObj result;
+              invokePyFunction(result, info, argsP, kwargsP);
               Py_XDECREF(argsP);
               Py_XDECREF(kwargsP);
-              return ret;
+              return returnValue(std::move(result));
             }
           },
-            asyncHandle);
-          thePythonWorkerThread->push(functor);
-        }
+          asyncHandle);
+        getWorkerThreadPool()->push(functor);
       }
       catch (const std::exception& e)
       {
@@ -212,15 +228,145 @@ namespace xloil
       }
     }
 
+    struct RtdNotifier
+    {
+      RtdNotifier(IRtdNotify& n) : notifier(n) {}
+      bool cancelled()
+      {
+        return notifier.isCancelled();
+      }
+      IRtdNotify& notifier;
+    };
+
+    /// <summary>
+    /// Holder for python target function and its arguments.
+    /// Able to compare arguments with another AsyncTask
+    /// </summary>
+    struct AsyncTask
+    {
+
+      /// <summary>
+      /// Steals references to PyObjects
+      /// </summary>
+      AsyncTask(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+        : _info(info)
+        , _args(args)
+        , _kwargs(kwargs)
+      {}
+
+      PyFuncInfo* _info;
+      PyObject *_args, *_kwargs;
+
+      ~AsyncTask()
+      {
+        py::gil_scoped_acquire gilAcquired;
+        Py_XDECREF(_args);
+        Py_XDECREF(_kwargs);
+      }
+
+      std::future<void> operator()(IRtdNotify& notify)
+      {
+        return getWorkerThreadPool()->push(
+          [=, &notify](int /*threadId*/)
+          {
+            py::gil_scoped_acquire gilAcquired;
+
+            PyErr_Clear();
+
+            auto kwargs = py::reinterpret_borrow<py::object>(_kwargs);
+            kwargs[THREAD_CONTEXT_TAG] = RtdNotifier(notify);
+
+            ExcelObj result;
+            invokePyFunction(result, _info, _args, kwargs.ptr());
+            notify.publish(std::move(result));
+          }
+        );
+      }
+
+      bool operator==(const AsyncTask& that) const
+      {
+        py::gil_scoped_acquire gilAcquired;
+
+        auto args = py::reinterpret_borrow<py::tuple>(_args);
+        auto kwargs = py::reinterpret_borrow<py::dict>(_kwargs);
+        auto that_args = py::reinterpret_borrow<py::tuple>(that._args);
+        auto that_kwargs = py::reinterpret_borrow<py::dict>(that._kwargs);
+
+        if (args.size() != that_args.size() 
+          || kwargs.size() != that_kwargs.size())
+          return false;
+
+        for (auto i = args.begin(), j = that_args.begin();
+          i != args.end();
+          ++i, ++j)
+        {
+          if (!i->equal(*j))
+            return false;
+        }
+        for (auto i = kwargs.begin(); i != kwargs.end(); ++i)
+        {
+          if (!i->first.equal(py::str(THREAD_CONTEXT_TAG))
+            && !i->second.equal(that_kwargs[i->first]))
+            return false;
+        }
+        return true;
+      }
+    };
+
+    ExcelObj* pythonRtdCallback(
+      PyFuncInfo* info, 
+      const ExcelObj** xlArgs) noexcept
+    {
+      try
+      {
+        // TODO: consider argument capture and equality check under c++
+        PyObject *argsP, *kwargsP;
+        {
+          py::gil_scoped_acquire gilAcquired;
+
+          auto[args, kwargs] = convertArgsToPython(info, xlArgs);
+          if (kwargs.is_none())
+            kwargs = py::dict();
+
+          // Add this here so that dict sizes for running and newly 
+          // created tasks match
+          kwargs[THREAD_CONTEXT_TAG] = py::none();
+
+          // Need to drop pybind links before capturing in lambda otherwise the destructor
+          // is called at some random time after losing the GIL and it crashes.
+          argsP = args.release().ptr();
+          kwargsP = kwargs.release().ptr();
+        }
+
+        auto value = rtdAsync(
+          std::make_shared<RtdAsyncTask<AsyncTask>>(info, argsP, kwargsP));
+        return returnValue(value ? *value : CellError::NA);
+      }
+      catch (const std::exception& e)
+      {
+        return returnValue(e.what());
+      }
+      catch (...)
+      {
+        return returnValue(CellError::Null);
+      }
+    }
+
     shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
       shared_ptr<const FuncSpec> spec;
       if (funcInfo->info->options & FuncInfo::ASYNC)
       {
-        if (!thePythonWorkerThread)
-          thePythonWorkerThread = new ctpl::thread_pool(1);
+        getWorkerThreadPool(); // Ensure initialised
+        if (funcInfo->isRtdAsync)
+          XLO_THROW("Cannot specify async registration with Rtd async");
 
         spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
+      }
+      else if (funcInfo->isRtdAsync)
+      {
+        getWorkerThreadPool();// Ensure initialised
+        spec.reset(new CallbackSpec(funcInfo->info, &pythonRtdCallback, funcInfo));
       }
       else
         spec.reset(new CallbackSpec(funcInfo->info, &pythonCallback, funcInfo));
@@ -249,7 +395,7 @@ namespace xloil
       }
 
       void registerPyFuncs(
-        const py::module& pyModule,
+        PyObject* pyModule,
         const vector<shared_ptr<PyFuncInfo>>& functions)
       {
         _module = pyModule;
@@ -285,7 +431,9 @@ namespace xloil
         }
       }
 
-      const py::module& pyModule() const { return _module; }
+      // TODO: Is it possible the module will be unloaded?
+      // We don't really want to have to deal with the GIL
+      PyObject* pyModule() const { return _module; }
 
       const wchar_t* workbookName() const
       {
@@ -295,7 +443,7 @@ namespace xloil
     private:
       shared_ptr<const void> _fileWatcher;
       wstring _workbookName;
-      py::module _module;
+      PyObject* _module = Py_None;
     };
 
     std::shared_ptr<RegisteredModule>
@@ -328,8 +476,11 @@ namespace xloil
         // Our file source must be of type RegisteredModule so the cast is safe
         auto& pySource = static_cast<RegisteredModule&>(*foundSource);
         // Rescan the module, passing in the module handle if it exists
+        py::gil_scoped_acquire get_gil;
         scanModule(
-          !pySource.pyModule().is_none() ? pySource.pyModule() : py::wstr(filePath),
+          pySource.pyModule() != Py_None 
+            ? PyBorrow<py::module>(pySource.pyModule())
+            : py::wstr(filePath),
           pySource.workbookName());
         // Set the addin context back. Not exeception safe clearly.
         theCurrentContext = theCoreContext;
@@ -348,9 +499,14 @@ namespace xloil
       const py::object& moduleHandle,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
+      wstring modulePath;
+      {
+        py::gil_scoped_acquire get_gil;
+        modulePath = moduleHandle.attr("__file__").cast<wstring>();
+      }
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, moduleHandle.attr("__file__").cast<wstring>());
-      mod->registerPyFuncs(moduleHandle, functions);
+        theCurrentContext, modulePath);
+      mod->registerPyFuncs(moduleHandle.ptr(), functions);
     }
 
     namespace
@@ -382,11 +538,16 @@ namespace xloil
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
           .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
-          .def_readwrite("local", &PyFuncInfo::isLocalFunc);
+          .def_readwrite("local", &PyFuncInfo::isLocalFunc)
+          .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync);
 
-        py::class_<ThreadContext>(mod, "ThreadContext")
-          .def("cancelled", &ThreadContext::cancelled);
+        py::class_<AsyncNotifier>(mod, "AsyncNotifier")
+          .def("cancelled", &AsyncNotifier::cancelled);
 
+        py::class_<RtdNotifier>(mod, "RtdNotifier")
+          .def("cancelled", &RtdNotifier::cancelled);
+
+        mod.add_object("ASYNC_CONTEXT_TAG", py::str(THREAD_CONTEXT_TAG));
         mod.def("register_functions", &registerFunctions);
       });
     }
