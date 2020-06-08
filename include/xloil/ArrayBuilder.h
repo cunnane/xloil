@@ -11,26 +11,33 @@ namespace xloil
     class ArrayBuilderAlloc
     {
     public:
-      ArrayBuilderAlloc(wchar_t* buffer, size_t bufSize)
-        : _stringData(buffer)
-        , _endStringData(buffer + bufSize)
+      ArrayBuilderAlloc()
       {}
+
+      // TODO: we could support resize on this class, with a small amount
+      // of string fiddling 
+      ArrayBuilderAlloc(size_t nObjects, size_t stringLen)
+        : _nObjects(nObjects)
+      {
+        _buffer = (ExcelObj*)new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen];
+        _stringData = (wchar_t*)(_buffer + nObjects);
+        _endStringData = _stringData + stringLen;
+      }
 
       PStringView<> newString(size_t len)
       {
-        wchar_t* ptr = nullptr;
-        if (len > 0)
-        {
-          assert(_stringData <= _endStringData);
-          _stringData[0] = wchar_t(len);
-          _stringData[len] = L'\0';
-          ptr = _stringData;
-          _stringData += len + 2;
-        }
+        assert(_stringData <= _endStringData);
+        _stringData[0] = wchar_t(len);
+        wchar_t* ptr = _stringData;
+        _stringData += len + 1;
         return PStringView<>(ptr);
       }
 
+      ExcelObj& object(size_t i) { return _buffer[i]; }
+
     private:
+      ExcelObj* _buffer;
+      size_t _nObjects;
       wchar_t* _stringData;
       const wchar_t* _endStringData;
     };
@@ -38,7 +45,7 @@ namespace xloil
     class ArrayBuilderElement
     {
     public:
-      ArrayBuilderElement(ExcelObj* target, ArrayBuilderAlloc& allocator)
+      ArrayBuilderElement(ExcelObj& target, ArrayBuilderAlloc& allocator)
         : _target(target)
         , _stringAlloc(allocator)
       {}
@@ -49,18 +56,18 @@ namespace xloil
       { 
         // Note that _target is uninitialised memory, so we cannot 
         // call *_target = ExcelObj(x)
-        new (_target) ExcelObj(x); 
+        new (&_target) ExcelObj(x); 
       }
 
-      void operator=(double x) { new (_target) ExcelObj(x); }
-      void operator=(CellError x) { new (_target) ExcelObj(x); }
+      void operator=(double x) { new (&_target) ExcelObj(x); }
+      void operator=(CellError x) { new (&_target) ExcelObj(x); }
 
       /// <summary>
       /// Move assignment from an owned pascal string.
       /// </summary>
       void operator=(PString<wchar_t>&& x) 
       { 
-        new (_target) ExcelObj(std::forward<PString<wchar_t>>(x));
+        new (&_target) ExcelObj(std::forward<PString<wchar_t>>(x));
       }
 
       /// <summary>
@@ -89,22 +96,30 @@ namespace xloil
       void emplace_not_string(const ExcelObj& x)
       {
         assert(!x.isType(ExcelType::Str));
-        ExcelObj::overwrite(*_target, x);
+        ExcelObj::overwrite(_target, x);
       }
 
       void emplace(const wchar_t* str, size_t len)
       {
-        auto pstr = _stringAlloc.newString(len);
-        wmemcpy_s(pstr.pstr(), len, str, len);
-        auto xlObj = new (_target) ExcelObj();
-        // We overwrite the object's string store directly, knowing its
-        // d'tor will never be called as it is part of an array.
-        xlObj->val.str = pstr.data();
+        auto xlObj = new (&_target) ExcelObj();
         xlObj->xltype = msxll::xltypeStr;
+
+        if (len == 0)
+        {
+          xlObj->val.str = Const::EmptyStr().val.str;
+        }
+        else
+        {
+          auto pstr = _stringAlloc.newString(len);
+          wmemcpy_s(pstr.pstr(), len, str, len);
+          // This object's dtor will never be called, so the allocated
+          // pstr will only be freed as part of the entire array block
+          xlObj->val.str = pstr.data();
+        }
       }
 
     private:
-      ExcelObj* _target;
+      ExcelObj& _target;
       ArrayBuilderAlloc& _stringAlloc;
     };
   }
@@ -137,7 +152,6 @@ namespace xloil
     /// <param name="padTo2DimArray">Adds #N/A to ensure the array is at least 2x2</param>
     ExcelArrayBuilder(row_t nRows, col_t nCols,
       size_t totalStrLength = 0, bool padTo2DimArray = false)
-      : _stringAlloc(0, 0)
     {
       // Add the terminators and string counts to total length. Maybe 
       // not every cell will be a string so this is an over-estimate
@@ -154,10 +168,8 @@ namespace xloil
 
       auto arrSize = nPaddedRows * nPaddedCols;
 
-      auto* buf = new char[sizeof(ExcelObj) * arrSize + sizeof(wchar_t) * totalStrLength];
-      _arrayData = (ExcelObj*)buf;
-      _stringAlloc = detail::ArrayBuilderAlloc(
-        (wchar_t*)(_arrayData + arrSize), totalStrLength);
+      
+      _allocator = detail::ArrayBuilderAlloc(arrSize, totalStrLength);
       _nRows = nPaddedRows;
       _nColumns = nPaddedCols;
 
@@ -182,7 +194,7 @@ namespace xloil
     /// </summary>
     PStringView<> string(size_t len)
     {
-      return _stringAlloc.newString(len);
+      return _allocator.newString(len);
     }
 
     /// <summary>
@@ -191,18 +203,18 @@ namespace xloil
     /// </summary>
     detail::ArrayBuilderElement operator()(size_t i, size_t j)
     {
-      return detail::ArrayBuilderElement(element(i, j), _stringAlloc);
+      return detail::ArrayBuilderElement(element(i, j), _allocator);
     }
 
     detail::ArrayBuilderElement operator()(size_t i)
     {
-      return detail::ArrayBuilderElement(element(i, 0), _stringAlloc);
+      return detail::ArrayBuilderElement(element(i, 0), _allocator);
     }
 
-    ExcelObj* element(size_t i, size_t j)
+    ExcelObj& element(size_t i, size_t j)
     {
       assert(_nRows == 1 || _nColumns == 1 || (i < _nRows && j < _nColumns));
-      return _arrayData + (i * _nColumns + j);
+      return _allocator.object(i * _nColumns + j);
     }
 
     /// <summary>
@@ -211,15 +223,14 @@ namespace xloil
     /// </summary>
     ExcelObj toExcelObj()
     {
-      return ExcelObj(_arrayData, int(_nRows), int(_nColumns));
+      return ExcelObj(&_allocator.object(0), int(_nRows), int(_nColumns));
     }
 
     row_t nRows() const { return _nRows; }
     col_t nCols() const { return _nColumns; }
 
   private:
-    ExcelObj* _arrayData;
-    detail::ArrayBuilderAlloc _stringAlloc;
+    detail::ArrayBuilderAlloc _allocator;
     row_t _nRows;
     col_t _nColumns;
   };
