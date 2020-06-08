@@ -75,6 +75,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Utils", "libs\xlOil_U
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAddin", "tests\TestAddin\TestAddin.vcxproj", "{83F9EA0F-5B8C-40C2-BC5F-4D15060C9A72}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2} = {F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+		{F7E97195-7624-4E54-AA15-A1F85C96C609} = {F7E97195-7624-4E54-AA15-A1F85C96C609}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
