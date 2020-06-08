@@ -40,6 +40,7 @@
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="RtdServer.cpp" />
+    <ClCompile Include="xloHelp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">

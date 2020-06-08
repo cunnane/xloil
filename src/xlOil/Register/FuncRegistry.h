@@ -44,7 +44,11 @@ namespace xloil
       const std::shared_ptr<const FuncSpec>& info) noexcept;
 
   /// Remove a registered function. Zeros the passed pointer
-  bool deregisterFunc(const RegisteredFuncPtr& ptr);
+  bool 
+    deregisterFunc(const RegisteredFuncPtr& ptr);
+
+  RegisteredFuncPtr
+    findRegisteredFunc(const wchar_t* name);
 
   /// <summary>
   /// File source which collects and registers any declared

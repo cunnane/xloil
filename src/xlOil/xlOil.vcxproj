@@ -162,6 +162,7 @@
     <ClCompile Include="StaticRegister.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
+    <ClCompile Include="xloHelp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\COMInterface\COMInterface.vcxproj">

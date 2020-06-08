@@ -263,6 +263,12 @@ namespace xloil
       theCodePtr = theCodeCave;
     }
 
+    auto find(const wchar_t* name)
+    {
+      auto found = theRegistry.find(name);
+      return found != theRegistry.end() ? found->second : RegisteredFuncPtr();
+    }
+
   private:
     FunctionRegistry()
     {
@@ -523,6 +529,11 @@ namespace xloil
     }
   }
 
+  RegisteredFuncPtr findRegisteredFunc(const wchar_t * name)
+  {
+    return FunctionRegistry::get().find(name);
+  }
+ 
   bool deregisterFunc(const shared_ptr<RegisteredFunc>& ptr)
   {
     return FunctionRegistry::get().remove(ptr);
