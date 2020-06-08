@@ -218,6 +218,9 @@ namespace xloil
       xltype = msxll::xltypeMulti;
     }
 
+    template <class TIter>
+    ExcelObj(TIter begin, TIter end);
+
     /// <summary>
     /// Catch constructor: purpose is to avoid pointers
     /// being auto-cast to integral / bool types
@@ -264,7 +267,8 @@ namespace xloil
     template <class TDonor>
     ExcelObj& operator=(TDonor&& that)
     {
-      *this = ExcelObj(that);
+      *this = ExcelObj(std::forward<TDonor>(that));
+      return *this;
     }
 
     ExcelObj& operator=(ExcelObj&& donor)
@@ -281,17 +285,30 @@ namespace xloil
     /// </summary>
     void reset();
 
-    bool operator==(const ExcelObj& that) const
+    /// <summary>
+    /// The equality operator performs a deep comparison, recursing 
+    /// into arrays and with case-sensitive string comparison. This 
+    /// is different to the '<', operator which implements a cheap
+    /// pointer comparison for arrays. 
+    /// <seealso cref="compare"/>
+    /// </summary>
+    /// <param name="that"></param>
+    /// <returns></returns>
+    bool operator==(const ExcelObj& that) const;
+
+    bool operator<=(const ExcelObj& that) const
     {
-      return compare(*this, that) == 0;
+      return compare(*this, that, true, true) != 1;
     }
+
+    /// <summary>
+    /// Compares two ExcelObj using <see cref="compare"/> with a
+    /// case insenstive string comparison and no recursion into arrays
+    /// <seealso cref="compare"/>
+    /// </summary>
     bool operator<(const ExcelObj& that) const
     {
       return compare(*this, that) == -1;
-    }
-    bool operator<=(const ExcelObj& that) const
-    {
-      return compare(*this, that) != 1;
     }
 
     bool operator==(const CellError that) const
@@ -303,8 +320,8 @@ namespace xloil
     /// 
     /// When the types of <paramref name="left"/> and <paramref name="right"/> are 
     /// the same, numeric and string types are compared in the expected way. Arrays
-    /// are compared by size then by pointer (a fast default). Refs are compared as
-    /// address strings.  BigData and Flow types cannot be compared and return zero.
+    /// are compared by size. Refs are compared as address strings.  BigData and 
+    /// Flow types cannot be compared and return zero.
     /// 
     /// When the types differ, numeric types can still be compared but all others 
     /// are sorted by type number as repeated string conversions such as in a sort
@@ -313,11 +330,13 @@ namespace xloil
     /// <param name="left"></param>
     /// <param name="right"></param>
     /// <param name="caseSensitive">Whether string comparison is case sensitive</param>
+    /// <param name="recursive">Recursively compare arrays or order them only by size</param>
     /// <returns>-1, 0 or +1</returns>
     static int compare(
       const ExcelObj& left,
       const ExcelObj& right,
-      bool caseSensitive = false) noexcept;
+      bool caseSensitive = false,
+      bool recursive = false) noexcept;
 
     const Base* xloper() const { return this; }
     const Base* xloper() { return this; }
@@ -597,15 +616,59 @@ namespace xloil
       xltype |= msxll::xlbitDLLFree;
       return this;
     }
-
-  private:
+  
     /// The xloper type made safe for use in switch statements by zeroing
     /// the memory control flags blanked.
-    int ExcelObj::xtype() const
+    int xtype() const
     {
       return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);
     }
-    
+   private:
     static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
   };
+}
+
+namespace std {
+  /// <summary>
+  /// This hash does a non-recursive comparison, like operator '<'.
+  /// For arrays it does not satisfy A==B => hash(A) == hash(B), but 
+  /// for other types it will.
+  /// </summary>
+  template <>
+  struct hash<xloil::ExcelObj> 
+  {
+    XLOIL_EXPORT size_t operator ()(const xloil::ExcelObj& value) const;
+  };
+}
+
+#include <xloil/ArrayBuilder.h>
+
+namespace xloil
+{
+  namespace detail
+  {
+    template<class T>
+    inline size_t stringLength(const T&) { return 0; }
+    inline size_t stringLength(const std::string_view& s) { return s.length(); }
+    inline size_t stringLength(const std::wstring_view& s) { return s.length(); }
+    inline size_t stringLength(const std::string& s) { return s.length(); }
+    inline size_t stringLength(const std::wstring& s) { return s.length(); }
+    inline size_t stringLength(const char* s) { return strlen(s); }
+    inline size_t stringLength(const wchar_t* s) { return wcslen(s); }
+  }
+  template<class TIter>
+  ExcelObj::ExcelObj(TIter begin, TIter end)
+  {
+    size_t stringLen = 0, nItems = 0;
+    for (auto i = begin; i != end; ++i, ++nItems)
+      stringLen += detail::stringLength(*i);
+
+    ExcelArrayBuilder builder(nItems, 1, stringLen);
+    size_t idx = 0;
+    for (auto i = begin; i != end; ++i, ++idx)
+      builder(idx, 0) = *i;
+
+    xltype = msxll::xltypeNil;
+    *this = builder.toExcelObj();
+  }
 }

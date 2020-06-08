@@ -23,15 +23,8 @@ using std::string;
 using std::wstring;
 using std::vector;
 using namespace msxll;
+using namespace std::string_literals;
 
-//class ExcelObjectSetType : protected xloper12
-//{
-//protected:
-//  ExcelObjectSetType()
-//  {
-//    xltype = xltypeNil;
-//  }
-//};
 namespace xloil
 {
 namespace
@@ -203,15 +196,28 @@ namespace
 
   namespace
   {
-    template<class T> int cmp(T l, T r)
+    struct Compare
     {
-      return l < r ? -1 : (l == r ? 0 : 1);
-    }
+      template<class T> int operator()(T l, T r) const
+      {
+        return l < r ? -1 : (l == r ? 0 : 1);
+      }
+    };
+    struct CompareEqual
+    {
+      template<class T> int operator()(T l, T r) const
+      {
+        return l == r ? 0 : -1;
+      }
+    };
   }
-  int ExcelObj::compare(
+
+  template <class TCmp>
+  int doCompare(
     const ExcelObj& left, 
     const ExcelObj& right, 
-    bool caseSensitive) noexcept
+    bool caseSensitive,
+    bool recursive) noexcept
   {
     if (&left == &right)
       return 0;
@@ -223,13 +229,13 @@ namespace
       switch (lType)
       {
       case xltypeNum:
-        return cmp(left.val.num, right.val.num);
+        return TCmp()(left.val.num, right.val.num);
       case xltypeBool:
-        return cmp(left.val.xbool, right.val.xbool);
+        return TCmp()(left.val.xbool, right.val.xbool);
       case xltypeInt:
-        return cmp(left.val.w, right.val.w);
+        return TCmp()(left.val.w, right.val.w);
       case xltypeErr:
-        return cmp(left.val.err, right.val.err);
+        return TCmp()(left.val.err, right.val.err);
       case xltypeMissing:
       case xltypeNil:
         return 0;
@@ -242,15 +248,23 @@ namespace
         auto c = caseSensitive
           ? _wcsncoll(left.val.str + 1, right.val.str + 1, len)
           : _wcsnicoll(left.val.str + 1, right.val.str + 1, len);
-        return c != 0 ? c : cmp(lLen, rLen);
+        return c != 0 ? c : TCmp()(lLen, rLen);
       }
       case xltypeMulti:
       {
-        auto ret = cmp(left.val.array.columns * left.val.array.rows,
+        auto ret = TCmp()(left.val.array.columns * left.val.array.rows,
           right.val.array.columns * right.val.array.rows);
-        return (ret != 0)
-          ? ret
-          : cmp(left.val.array.lparray, right.val.array.lparray);
+        if (ret != 0)
+          return ret;
+        if (!recursive)
+          return 0;
+
+        auto arrL = left.val.array.lparray;
+        auto arrR = right.val.array.lparray;
+        const auto end = arrL + (left.val.array.columns * left.val.array.rows);
+        while (ret == 0 && arrL < end)
+          ret = TCmp()((ExcelObj&)*arrL++, (ExcelObj&)*arrR++);
+        return ret;
       }
       case xltypeRef:
       case xltypeSRef:
@@ -267,7 +281,7 @@ namespace
       constexpr int typeNumeric = xltypeNum | xltypeBool | xltypeInt;
 
       if (((lType | rType) & ~typeNumeric) == 0)
-        return cmp(left.toDouble(), right.toDouble());
+        return TCmp()(left.toDouble(), right.toDouble());
 
       // Errors come last
       if (((lType | rType) & xltypeErr) != 0)
@@ -276,6 +290,20 @@ namespace
       // We want all numerics to come before string, so mask them to zero
       return (lType & ~typeNumeric) < (rType & ~typeNumeric) ? -1 : 1;
     }
+  }
+
+  bool ExcelObj::operator==(const ExcelObj& that) const
+  {
+    return doCompare<CompareEqual>(*this, that, true, true) == 0;
+  }
+
+  int ExcelObj::compare(
+    const ExcelObj& left,
+    const ExcelObj& right,
+    bool caseSensitive,
+    bool recursive) noexcept
+  {
+    return doCompare<Compare>(left, right, caseSensitive, recursive);
   }
 
   std::wstring ExcelObj::toString(const wchar_t* separator) const
@@ -351,7 +379,7 @@ namespace
     }
     catch (...)
     {
-      return L"<ERROR>";
+      return L"<ERROR>"s;
     }
   }
   size_t ExcelObj::maxStringLength() const noexcept
@@ -616,6 +644,56 @@ namespace
     {
       static ExcelObj obj(PString<wchar_t>(L"\0"));
       return obj;
+    }
+  }
+}
+
+namespace
+{
+  // Boost hash_combine
+  inline void hash_combine(size_t& seed) { }
+
+  template <typename T, typename... Rest>
+  inline void hash_combine(size_t& seed, const T& v, Rest... rest) {
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    hash_combine(seed, rest...);
+  }
+}
+
+namespace std
+{
+  size_t hash<xloil::ExcelObj>::operator ()(const xloil::ExcelObj& value) const
+  {
+    switch (value.xtype())
+    {
+    case xltypeInt: return hash<int>()(value.val.w);
+    case xltypeNum: return hash<double>()(value.val.w);
+    case xltypeBool: return hash<bool>()(value.val.xbool);
+    case xltypeStr: return hash<wstring_view>()(value.asPascalStr().view());
+    case xltypeMissing:
+    case xltypeNil: return 0;
+    case xltypeErr: return hash<int>()(value.val.err);
+    case xltypeSRef:
+    {
+      size_t seed = 377;
+      hash_combine(seed,
+        value.val.sref.ref.colFirst,
+        value.val.sref.ref.colLast,
+        value.val.sref.ref.rwFirst,
+        value.val.sref.ref.rwLast);
+      return seed;
+    }
+    case xltypeRef:
+    {
+      size_t seed = 377;
+      hash_combine(seed, value.val.mref.idSheet, value.val.mref.lpmref);
+      return seed;
+    }
+    case xltypeMulti:
+      return hash<void*>()(value.val.array.lparray);
+    default:
+      return 0;
     }
   }
 }

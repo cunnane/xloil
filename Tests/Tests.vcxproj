@@ -198,6 +198,7 @@
     </ClCompile>
     <ClCompile Include="CodePageConversion.cpp" />
     <ClCompile Include="PString.cpp" />
+    <ClCompile Include="TestExcelObj.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
