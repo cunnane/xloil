@@ -13,5 +13,7 @@ namespace xloil
     void scanModule(
       const pybind11::object& mod, 
       const wchar_t* workbookName = nullptr);
+
+    void createWorkbookOpenHandler(const wchar_t* starredPattern);
   }
 }
