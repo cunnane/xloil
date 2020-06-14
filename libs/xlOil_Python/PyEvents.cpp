@@ -71,6 +71,7 @@ namespace xloil
         if (!_handlers.empty())
           _event -= _coreEventHandler;
       }
+
       PyEvent& add(const py::object& obj)
       {
         if (_handlers.empty())
@@ -146,7 +147,7 @@ namespace xloil
             .def("__isub__", &T::remove)
             .def("handlers", &T::handlers);
         }
-        mod.add_object(name, py::cast(event));
+        mod.add_object(name, py::cast(event, py::return_value_policy::take_ownership));
       }
 
       /// <summary>
