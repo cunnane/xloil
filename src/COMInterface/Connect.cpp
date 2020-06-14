@@ -3,7 +3,6 @@
 #include <xloil/Events.h>
 #include <xloil/ExcelCall.h>
 
-#include <oleacc.h> // must include before ExcelTypeLib
 #include "ExcelTypeLib.h"
 
 #include <set>
@@ -107,32 +106,6 @@ namespace xloil
       HWND _excelWindowHandle;
     };
 
-  /*  template <class TObj>
-    struct SessionScope
-    {
-      SessionScope(TObj* obj)
-      {
-        connector = obj;
-        _handler = xloil::Event_AutoClose() += [this]() { this->disconnect(); };
-      }
-
-      void disconnect()
-      {
-        if (connector)
-        {
-          xloil::Event_AutoClose() -= _handler;
-          delete connector;
-          connector = nullptr;
-        }
-      }
-
-      TObj* get() const { return connector; }
-
-    private:
-      TObj* connector;
-      typename std::remove_reference<decltype(Event_AutoClose())>::type::handler_id _handler;
-    };*/
-
     struct RegisterMe
     {
       RegisterMe() {}
@@ -173,5 +146,22 @@ namespace xloil
   Excel::_Application& excelApp()
   {
     return *theInstance.connect()->ExcelApp();
+  }
+
+  bool checkWorkbookIsOpen(const wchar_t* workbookName)
+  {
+    // See other possibility here. Seems a bit crazy?
+    // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
+    try
+    {
+      auto workbook = excelApp().Workbooks->GetItem(_variant_t(workbookName));
+      return !!workbook;
+    }
+    catch (_com_error& error)
+    {
+      if (error.Error() == DISP_E_BADINDEX)
+        return false;
+      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+    }
   }
 }

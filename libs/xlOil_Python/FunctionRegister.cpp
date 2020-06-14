@@ -385,11 +385,11 @@ namespace xloil
       RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
-        : FileSource(modulePath.c_str())
+        : FileSource(modulePath.c_str(), workbookName)
       {
-        const auto path = fs::path(modulePath);
+        auto path = fs::path(modulePath);
         _fileWatcher = std::static_pointer_cast<const void>
-          (Event::DirectoryChange(fs::path(path).remove_filename()).bind(handleFileChange));
+          (Event::DirectoryChange(path.remove_filename()).bind(handleFileChange));
         if (workbookName)
           _workbookName = workbookName;
       }
@@ -427,7 +427,7 @@ namespace xloil
         {
           if (_workbookName.empty())
             XLO_THROW("Local functions found without workbook specification");
-          registerLocal(_workbookName.c_str(), funcInfo, funcs);
+          registerLocal(funcInfo, funcs);
         }
       }
 
@@ -462,10 +462,15 @@ namespace xloil
       const wchar_t* fileName,
       const Event::FileAction action)
     {
-      auto filePath = (fs::path(dirName) / fileName).wstring();
+      const auto filePath = (fs::path(dirName) / fileName).wstring();
+      
       auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
+      
+      // If no active filecontext is found, then exit. Note that findFileContext
+      // will check if a linked workbook is still open 
       if (!foundSource)
         return;
+
       switch (action)
       {
       case Event::FileAction::Modified:
@@ -488,7 +493,7 @@ namespace xloil
       }
       case Event::FileAction::Delete:
       {
-        XLO_INFO(L"Module '{0}' deleted, removing functions.", filePath);
+        XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
         FileSource::deleteFileContext(foundSource);
         break;
       }

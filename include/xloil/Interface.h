@@ -66,7 +66,10 @@ namespace xloil
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
     /// <param name="watchFile">currently unimplemented</param>
-    FileSource(const wchar_t* sourceName, bool watchFile=false);
+    FileSource(
+      const wchar_t* sourceName, 
+      const wchar_t* linkedWorkbook=nullptr,
+      bool watchFile=false);
 
     virtual ~FileSource();
 
@@ -102,7 +105,6 @@ namespace xloil
     /// <param name="funcs"></param>
     void 
       registerLocal(
-        const wchar_t* workbookName,
         const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
         const std::vector<ExcelFuncObject> funcs);
 
