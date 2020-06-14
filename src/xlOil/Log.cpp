@@ -74,10 +74,13 @@ namespace xloil
 
     void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
     {
+      auto & logger = spdlog::default_logger();
       auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
         utf16ToUtf8(logFilePath), false);
       fileWrite->set_level(spdlog::level::from_str(logLevel));
-      spdlog::default_logger()->sinks().push_back(fileWrite);
+      logger->sinks().push_back(fileWrite);
+      if (fileWrite->level() < logger->level())
+        logger->set_level(fileWrite->level());
     }
   }
 
