@@ -162,15 +162,41 @@ namespace xloil
       decltype(GetTickCount64()) _startTime;
     };
     
-    static ctpl::thread_pool* getWorkerThreadPool()
+    inline ctpl::thread_pool* getWorkerThreadPool()
     {
-      constexpr size_t nThreads = 1;
-      static auto* workerPool = new ctpl::thread_pool(nThreads);
+      static auto* workerPool = []()
+      {
+        constexpr size_t nThreads = 1;
+        auto* pool = new ctpl::thread_pool(nThreads);
+
+        // We create a hanging reference in gil_scoped_aquire to prevent it 
+        // destroying the python thread state. The thread state contains thread 
+        // locals used by asyncio to find the event loop for that thread and avoid
+        // creating a new one.
+        pool->push([](int)
+        {
+          py::gil_scoped_acquire acquire;
+          acquire.inc_ref();
+        });
+        return pool;
+      }();
+
       static auto workerPoolDeleter = Event_PyBye().bind([]
       {
         if (workerPool)
+        {
+          // Resolve the hanging reference in gil_scoped_aquire and destroy the
+          // python thread state
+          workerPool->push([](int)
+          {
+            py::gil_scoped_acquire acquire;
+            acquire.dec_ref();
+          });
+          workerPool->stop();
           delete workerPool;
+        }
       });
+
       return workerPool;
     }
 
