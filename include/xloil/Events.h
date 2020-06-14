@@ -54,14 +54,15 @@ namespace xloil
     /// An observer-pattern based Event handler
     /// </summary>
     template<class R, class TCollector, class... Args>
-    class Event<R(Args...), TCollector>
+    class Event<R(Args...), TCollector> :
+      public std::enable_shared_from_this<Event<R(Args...), TCollector>>
     {
     public:
       using handler = std::function<R(Args...)>;
       using handler_id = const handler*;
 
-      Event(const char* name = 0) 
-        : _name(name ? name : "?") 
+      Event(const char* name = 0)
+        : _name(name ? name : "?")
       {}
 
       /// <summary>
@@ -107,15 +108,17 @@ namespace xloil
 
       /// <summary>
       /// Registers an event handler and returns a shared_ptr whose destructor
-      /// unregisters the event handler
+      /// unregisters the event handler. The dtor keeps a shared_ptr to this 
+      /// event to ensure the correct order of static destruction.
       /// </summary>
       /// <param name="h"></param>
       /// <returns></returns>
       auto bind(handler&& h)
       {
+        auto thisPtr = shared_from_this();
         return std::shared_ptr<const handler>(
           (*this) += std::forward<handler>(h),
-          [this](handler_id id) { (*this) -= id; });
+          [thisPtr](handler_id id) { (*thisPtr) -= id; });
       }
 
       R fire(Args&&... args) const
@@ -250,29 +253,50 @@ namespace xloil
 
     XLOIL_EXPORT Event<
       void(const wchar_t* directory, const wchar_t* filename, FileAction)> &
-        DirectoryChange(const std::wstring& path);
+      DirectoryChange(const std::wstring& path);
 
-
-#define XLOIL_STATIC_EVENTS \
-(AfterCalculate)\
-(CalcCancelled)\
-(WorkbookOpen)\
-(NewWorkbook)\
-(SheetSelectionChange)\
-(SheetBeforeDoubleClick)\
-(SheetBeforeRightClick)\
-(SheetActivate)\
-(SheetDeactivate)\
-(SheetCalculate)\
-(SheetChange)\
-(WorkbookAfterClose)\
-(WorkbookActivate)\
-(WorkbookDeactivate)\
-(WorkbookBeforeClose)\
-(WorkbookBeforeSave)\
-(WorkbookBeforePrint)\
-(WorkbookNewSheet)\
-(WorkbookAddinInstall)\
-(WorkbookAddinUninstall)
   }
+
+    /// <summary>
+    /// All the singleton xlOil events as a sequence. Use BOOST_PP_SEQ functions
+    /// to iterate over this sequence to create bindings. Non singleton/static
+    /// events such as DirectoryChange as not included here.
+    /// </summary>
+#define XLOIL_STATIC_EVENTS \
+    (AfterCalculate)\
+    (CalcCancelled)\
+    (WorkbookOpen)\
+    (NewWorkbook)\
+    (SheetSelectionChange)\
+    (SheetBeforeDoubleClick)\
+    (SheetBeforeRightClick)\
+    (SheetActivate)\
+    (SheetDeactivate)\
+    (SheetCalculate)\
+    (SheetChange)\
+    (WorkbookAfterClose)\
+    (WorkbookActivate)\
+    (WorkbookDeactivate)\
+    (WorkbookBeforeClose)\
+    (WorkbookBeforeSave)\
+    (WorkbookBeforePrint)\
+    (WorkbookNewSheet)\
+    (WorkbookAddinInstall)\
+    (WorkbookAddinUninstall)
+
+
+    /// <summary>
+    /// Creates a function body for a event declaration such as
+    /// <code>
+    ///   Event<void(void)>& MyEvent();
+    /// </code>
+    /// You need to include BOOST_PP_STRINGIZE to use this macro.
+    /// </summary>
+#define XLOIL_DEFINE_EVENT(name) \
+    decltype(name()) name() \
+    { \
+      static auto e = std::make_shared<std::remove_reference_t<\
+        decltype(name())>>(BOOST_PP_STRINGIZE(name)); \
+      return *e; \
+    };
 }
