@@ -162,10 +162,10 @@ namespace xloil
     virtual const wchar_t* progId() const noexcept = 0;
   };
 
-
   XLOIL_EXPORT std::shared_ptr<ExcelObj> rtdAsync(
     const std::shared_ptr<IRtdAsyncTask>& task);
 
+  void rtdAsyncManagerClear();
 
   /// <summary>
   /// Creates a new Rtd Manager.  Optionally wraps the an Excel::IRtdServer COM
@@ -176,7 +176,6 @@ namespace xloil
     newRtdManager(
       const wchar_t* progId = nullptr,
       const wchar_t* clsid = nullptr);
-
 
   /// <summary>
   /// Connects to the Core RtdManager or the one specified, returning an

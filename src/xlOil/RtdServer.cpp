@@ -9,6 +9,7 @@ using std::wstring;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::make_shared;
+using std::scoped_lock;
 
 namespace xloil
 {
@@ -23,7 +24,8 @@ namespace xloil
   {
     using CellTasks = std::list<
       std::pair<std::shared_ptr<IRtdAsyncTask>, wstring>>;
-
+    std::unordered_map<wstring, CellTasks> _tasksPerCell;
+    shared_ptr<IRtdManager> _mgr;
 
     struct Cleanup : public IRtdAsyncTask
     {
@@ -56,10 +58,6 @@ namespace xloil
         return _task->operator==(that);
       }
     };
-
-    std::unordered_map<wstring, CellTasks> _tasksPerCell;
-
-    shared_ptr<IRtdManager> _mgr;
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
     {
@@ -98,6 +96,22 @@ namespace xloil
       start(tasksInCell, task);
       return _mgr->subscribe(tasksInCell.back().second.c_str());
     }
+
+    void clear()
+    {
+      for (auto i = _tasksPerCell.begin(); i != _tasksPerCell.end(); ++i)
+      {
+        if (!i->second.empty())
+        {
+          // Make a copy of the list as the dtor of Cleanup edits it
+          auto copy(i->second);
+          for (auto j = copy.begin(); j != copy.end(); ++j)
+            _mgr->drop(j->second.c_str());
+        }
+      }
+       
+      _tasksPerCell.clear();
+    }
   };
 
   auto* getRtdAsyncManager()
@@ -117,5 +131,10 @@ namespace xloil
     // ExcelObj
     return std::const_pointer_cast<ExcelObj>(
       getRtdAsyncManager()->getValue(task));
+  }
+
+  void rtdAsyncManagerClear()
+  {
+    getRtdAsyncManager()->clear();
   }
 }
