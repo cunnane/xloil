@@ -11,5 +11,8 @@ namespace xloil
 
   /// Unloads any plugins prior to takedown of the Core XLL. 
   /// Called by xlAutoClose
-  void unloadPlugins() noexcept;
+  void unloadAllPlugins() noexcept;
+
+  std::vector<std::wstring> listPluginNames();
+
 }

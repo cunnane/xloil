@@ -74,6 +74,22 @@ namespace xloil
         }
       return result;
     }
+    toml::node_view<const toml::node> findPluginSettings(
+      const toml::table* table, const char* name)
+    {
+      // Note: if you get a compile error here, make sure the ctor for node_view
+      // is public.  It's hidden in the original code, which means it can only
+      // be constructed from a table, not a table iterator. This is an inconvenience
+      // which I fixed!
+      if (table)
+        for (auto i = table->cbegin(); i != table->cend(); ++i)
+        {
+          if (_stricmp((*i).key.c_str(), name) == 0)
+            return &(*i).value;
+        }
+   
+      return toml::node_view<const toml::node>();
+    }
   }
   std::shared_ptr<const toml::table> findSettingsFile(const wchar_t* dllPath)
   {

@@ -17,12 +17,26 @@ namespace xloil
   namespace Settings
   {
     std::wstring logFilePath(const toml::view_node& root);
+
     std::string logLevel(const toml::view_node& root);
+
     std::vector<std::wstring> plugins(const toml::view_node& root);
+
     std::wstring pluginSearchPattern(const toml::view_node& root);
+
     std::vector<std::wstring> dateFormats(const toml::view_node& root);
+
     std::vector<std::pair<std::wstring, std::wstring>>
       environmentVariables(const toml::view_node& root);
+
+    /// <summary>
+    /// Lookup name in table in a case-insensive way. TOML lookup is case 
+    /// sensitive because the creator "prefers it that way". That's fine, but 
+    /// Microsoft thinks differently and so since 'name' is a filename, case
+    /// sensitive lookup would be fairly astonishing.
+    /// </summary>
+    toml::node_view<const toml::node> findPluginSettings(
+      const toml::table* table, const char* name);
   };
 
   std::shared_ptr<const toml::table>
