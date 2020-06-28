@@ -15,9 +15,6 @@
     <ClCompile Include="Loaders\PluginLoader.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
-    <ClCompile Include="Register\AsyncHelper.cpp">
-      <Filter>Register</Filter>
-    </ClCompile>
     <ClCompile Include="Register\FuncRegistry.cpp">
       <Filter>Register</Filter>
     </ClCompile>
@@ -41,6 +38,8 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="RtdServer.cpp" />
     <ClCompile Include="xloHelp.cpp" />
+    <ClCompile Include="ThreadControl.cpp" />
+    <ClCompile Include="Async.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -48,9 +47,6 @@
     </ClInclude>
     <ClInclude Include="Loaders\PluginLoader.h">
       <Filter>Loaders</Filter>
-    </ClInclude>
-    <ClInclude Include="Register\AsyncHelper.h">
-      <Filter>Register</Filter>
     </ClInclude>
     <ClInclude Include="Register\FuncRegistry.h">
       <Filter>Register</Filter>
@@ -143,6 +139,12 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="State.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ThreadControl.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Async.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

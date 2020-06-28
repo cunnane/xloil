@@ -9,7 +9,7 @@
 #include <xlOilHelpers/StringUtils.h>
 #include <xlOil/State.h>
 #include <xlOil/Loaders/EntryPoint.h>
-#include <xlOil/Register/AsyncHelper.h>
+#include <xlOil/Async.h>
 #include <xlOil/Preprocessor.h>
 #include "Thunker.h"
 #include <unordered_set>
@@ -44,11 +44,12 @@ namespace xloil
 
 namespace xloil
 {
-  // With x64/Win32 function names are decorated. It no longer seemed
+  // With Win32 function names are decorated. It no longer seemed
   // like a good idea with x64.
   std::string decorateCFunction(const char* name, const size_t numPtrArgs)
   {
 #ifdef _WIN64
+    (void)numPtrArgs;
     return string(name);
 #else
     return fmt::format("_{0}@{1}", sizeof(void*) * numPtrArgs);
@@ -468,9 +469,33 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        XLO_ERROR(e.what());
+        return returnValue(e);
       }
     }
+
+    // TODO: this is not used and maybe not that useful!
+
+    class AsyncHolder
+    {
+    public:
+      // No need to copy the data as FuncRegistry will keep this alive
+      // Async handle is destroyed by Excel return, so must copy that
+      AsyncHolder(std::function<ExcelObj*()> func, const ExcelObj* asyncHandle)
+        : _call(func)
+        , _asyncHandle(*asyncHandle)
+      {
+      }
+      void operator()(int /*threadId*/) const
+      {
+        auto* result = _call();
+        asyncReturn(_asyncHandle, ExcelObj(*result));
+        if (result->xltype & msxll::xlbitDLLFree)
+          delete result;
+      }
+    private:
+      std::function<ExcelObj*()> _call;
+      ExcelObj _asyncHandle;
+    };
 
     void launchFunctionObjAsync(
       ObjectToFuncSpec* data, 

@@ -10,10 +10,11 @@ namespace xloil
   {
     static HMODULE theCoreModuleHandle = nullptr;
 
-    static const wchar_t* ourDllName;
+    static const wchar_t* ourDllName = nullptr;
     static wchar_t ourDllPath[4 * MAX_PATH]; // TODO: may not be long enough!!!
-    static int ourExcelVersion;
-    static HINSTANCE ourExcelHInstance;
+    static int ourExcelVersion = 0;
+    static HINSTANCE ourExcelHInstance = nullptr;
+    static DWORD ourMainThread = 0;
 
     void setDllPath(HMODULE handle)
     {
@@ -44,6 +45,7 @@ namespace xloil
     {
       theCoreModuleHandle = (HMODULE)coreHInstance;
       setDllPath(theCoreModuleHandle);
+      ourMainThread = GetCurrentThreadId();
       ourExcelVersion = getExcelVersion();
       ourExcelHInstance = getExcelHInstance();
     }
@@ -64,6 +66,10 @@ namespace xloil
     int excelVersion() noexcept
     {
       return ourExcelVersion;
+    }
+    size_t mainThreadId() noexcept
+    {
+      return ourMainThread;
     }
     void* excelHInstance() noexcept
     {

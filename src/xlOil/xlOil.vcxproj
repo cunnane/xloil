@@ -104,6 +104,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
+    <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />
     <ClInclude Include="..\..\include\xloil\Events.h" />
     <ClInclude Include="..\..\include\xloil\ExcelArray.h" />
@@ -124,6 +125,7 @@
     <ClInclude Include="..\..\include\xloil\Register.h" />
     <ClInclude Include="..\..\include\xloil\RtdServer.h" />
     <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
+    <ClInclude Include="..\..\include\xloil\ThreadControl.h" />
     <ClInclude Include="..\..\include\xloil\Throw.h" />
     <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
@@ -132,13 +134,13 @@
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
-    <ClInclude Include="Register\AsyncHelper.h" />
     <ClInclude Include="Register\FuncRegistry.h" />
     <ClInclude Include="Register\LocalFunctions.h" />
     <ClInclude Include="Register\PEHelper.h" />
     <ClInclude Include="Register\Thunker.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Async.cpp" />
     <ClCompile Include="RtdServer.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Date.cpp" />
@@ -154,12 +156,12 @@
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />
-    <ClCompile Include="Register\AsyncHelper.cpp" />
     <ClCompile Include="Register\FuncRegistry.cpp" />
     <ClCompile Include="Register\LocalFunctions.cpp" />
     <ClCompile Include="Register\PEHelper.cpp" />
     <ClCompile Include="Register\Thunker.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
+    <ClCompile Include="ThreadControl.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
     <ClCompile Include="xloHelp.cpp" />

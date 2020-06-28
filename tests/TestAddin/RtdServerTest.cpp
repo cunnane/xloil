@@ -8,20 +8,18 @@ using std::shared_ptr;
 
 namespace xloil
 {
-  
-
-  struct Counter
+  struct Counter : public RtdAsyncTask
   {
     Counter(int iStep) : _iStep(iStep) {}
 
     int _iStep;
 
-    std::future<void> operator()(IRtdNotify& notify)
+    std::future<void> operator()(RtdNotifier& notify) override
     {
       return std::async([&notify, step = _iStep]()
       {
         int _count = 0;
-        while (!notify.isCancelled())
+        while (!notify.cancelled())
         {
           notify.publish(ExcelObj(_count));
           std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -30,8 +28,9 @@ namespace xloil
       });
     }
 
-    bool operator==(const Counter& that) const
+    bool operator==(const IRtdAsyncTask& that_) const override
     {
+      const auto& that = (const Counter&)that_;
       return _iStep == that._iStep;
     }
   };
@@ -43,7 +42,7 @@ namespace xloil
   {
     auto iStep = step.toInt(1);
     auto value = rtdAsync(
-      std::make_shared<RtdAsyncTask<Counter>>(iStep));
+      std::make_shared<Counter>(iStep));
     return returnValue(value ? *value : CellError::NA);
   }
   XLO_FUNC_END(xloRtdCounter).macro();
@@ -62,11 +61,9 @@ namespace xloil
   {
     auto topic = tag.toString();
     auto* srv = getAnotherRtdServer();
-    if (!srv->peek(topic.c_str()).first)
-      srv->start(std::make_shared<RtdTask>(
-        [](IRtdNotify&) { return std::future<void>(); }), 
-        topic.c_str(),
-        true);
+    if (!srv->peek(topic.c_str()))
+      srv->start(topic.c_str(),
+        [](RtdNotifier&) { return std::future<void>(); });
     srv->publish(topic.c_str(), ExcelObj(val));
     return returnValue(tag);
   }

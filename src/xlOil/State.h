@@ -29,6 +29,8 @@ namespace xloil
     XLOIL_EXPORT void* excelHInstance() noexcept;
 
     XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
+    
+    XLOIL_EXPORT size_t mainThreadId() noexcept;
 
     void initAppContext(void* coreHInstance);
   }

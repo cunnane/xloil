@@ -7,11 +7,10 @@
 namespace xloil
 {
   /// <summary>
-  /// An instance of this interface will be passed to an RtdTask.
-  /// The <see cref="RtdTask"/> should poll isCancelled() and indicate 
-  /// new data with publish.
+  /// An instance of this interface will be passed to an RtdProducer.
+  /// The <see cref="RtdProducer"/> should indicate new data with publish.
   /// </summary>
-  struct IRtdNotify
+  struct IRtdPublish
   {
     /// <summary>
     /// Passes a value to underlying Rtd server, which will trigger an
@@ -19,24 +18,80 @@ namespace xloil
     /// </summary>
     /// <param name=""></param>
     virtual bool publish(ExcelObj&& value) noexcept = 0;
-
-    /// <summary>
-    /// If this returns true, the enclosing future should exit.
-    /// </summary>
-    /// <returns></returns>
-    virtual bool isCancelled() const = 0;
   };
 
   /// <summary>
-  /// A function object which should create a future. The code behind the future
-  /// should return data via <see cref="IRtdNotify"/> rather than the return 
-  /// statement.  It may run indefinitely, but should poll for cancellation
-  /// via <see cref="IRtdNotify::isCancelled"/>
+  /// A producter object should be able to start and stop execution of code
+  /// (ideally on another thread!) which writes results to an <see cref="IRtdPublish"/>
+  /// The interface of IRtdProducer is like a cancellable future.
   /// </summary>
   struct IRtdProducer
   {
-    virtual std::future<void> operator()(IRtdNotify&) = 0;
+    virtual ~IRtdProducer() {}
+    /// <summary>
+    /// Start task, writing updates to the giver publisher
+    /// </summary>
+    /// <param name=""></param>
+    virtual void start(IRtdPublish&) = 0;
+
+    /// <summary>
+    /// Return true if all child tasks have been cleanly shut down and this object
+    /// can be destroyed
+    /// </summary>
+    /// <returns></returns>
+    virtual bool done() = 0;
+
+    /// <summary>
+    /// Wait for pending completion of child tasks
+    /// </summary>
+    virtual void wait() = 0;
+
+    /// <summary>
+    /// Request publication ceases and child tasks be shut down
+    /// </summary>
+    virtual void cancel() = 0;
   };
+
+  /// <summary>
+  /// Associates a topic string with a producer and manages publication of 
+  /// results via <see cref="IRtdManager::publish"/>. This inte
+  /// </summary>
+  struct IRtdTopic
+  {
+    /// <summary>
+    /// Called when a worksheet function subscribes to the topic.
+    /// </summary>
+    /// <param name="numSubscribers">current number of subscibers (including this one)</param>
+    virtual void connect(size_t numSubscribers) = 0;
+
+    /// <summary>
+    /// Called when a worksheet function unsubscribes to the topic. e.g. because
+    /// a formula has been changed or deleted.
+    /// </summary>
+    /// <param name="numSubscribers"></param>
+    /// <returns>return true if you want the RtdManager to destroy this topic</returns>
+    virtual bool disconnect(size_t numSubscribers) = 0;
+
+    /// <summary>
+    /// Called by the RtdManager to tell the topic to stop all child workers
+    /// </summary>
+    virtual void stop() = 0;
+
+    /// <summary>
+    /// Return true if all child workers have cleanly shutdown and the object
+    /// can be destroyed
+    /// </summary>
+    /// <returns></returns>
+    virtual bool done() const = 0;
+
+    /// <summary>
+    /// The name of the topic
+    /// </summary>
+    /// <returns></returns>
+    virtual const wchar_t* topic() const = 0;
+  };
+;
+
   /// <summary>
   /// Represents a job to be run asynchronously via the RTD server.
   /// This is to support worksheet functions which run background jobs.
@@ -54,39 +109,147 @@ namespace xloil
     virtual bool operator==(const IRtdAsyncTask& that) const = 0;
   };
 
-  struct RtdTask : public IRtdProducer
+  /// <summary>
+  /// Extends <see cref="IRtdPublish"/> to provide a cancellation token. C++
+  /// does not currently support cancellable futures, so cancellation is 
+  /// usually via periodic checking of a bool.
+  /// </summary>
+  struct RtdNotifier : public IRtdPublish
   {
-    std::function<std::future<void>(IRtdNotify&)> _func;
-    RtdTask(const decltype(_func)& func) : _func(func) {}
-    std::future<void> operator()(IRtdNotify& n) override 
-    { 
-      return _func(n); 
+    RtdNotifier(
+      IRtdPublish& publisher,
+      const std::atomic<bool>& cancelFlag)
+      : _publisher(publisher)
+      , _cancel(cancelFlag)
+    {}
+
+    /// <summary>
+    /// This flag should be periodically checked to ensure cancellation is 
+    /// responsive. If it is true, the producer should immediately shut down
+    /// </summary>
+    /// <returns></returns>
+    bool cancelled() const
+    {
+      return _cancel;
     }
+
+    bool publish(ExcelObj&& value) noexcept override
+    {
+      return _cancel 
+        ? false 
+        : _publisher.publish(std::forward<ExcelObj>(value));
+    }
+
+  private:
+    IRtdPublish& _publisher;
+    const std::atomic<bool>& _cancel;
   };
 
-  template <class T>
-  struct RtdAsyncTask : public IRtdAsyncTask
+
+  /// <summary>
+  /// Concrete implemenation of <see cref="IRtdProducer"/> which implements the
+  /// interface using a <code>std::future<void></code>.
+  /// </summary>
+  template <class TBase>
+  class RtdProducerBase : public TBase
   {
-    template<class...Args>
-    RtdAsyncTask(Args... captures)
-      : _func(std::forward<Args>(captures)...)
+  public:
+    virtual std::future<void> operator()(RtdNotifier& notify) = 0;
+
+    virtual void start(IRtdPublish& n) override
+    {
+      // The producer may be stopped and restarted, so wait for any prior
+      // future to exit
+      wait();
+      _cancel = false;
+      _future = (*this)(RtdNotifier(n, _cancel));
+    }
+    bool done() override
+    {
+      return !_future.valid()
+        || _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    }
+    void wait() override
+    {
+      if (_future.valid())
+        _future.wait();
+    }
+    void cancel() override
+    {
+      _cancel = true;
+    }
+
+  private:
+    std::future<void> _future;
+    std::atomic<bool> _cancel = false;
+  };
+
+  /// <summary>
+  /// Wraps a <code>std::function</code> to make an IRtdProducer. The function 
+  /// should take an RtdNotifier and return a <code>std::future<void> </code>.
+  /// The future is just a synchronisation object - returned values should be
+  /// published through the notifier. The cancel flag in the notifier should be
+  /// periodically checked.
+  /// </summary>
+  class RtdProducer : public RtdProducerBase<IRtdProducer>
+  {
+  public:
+    using Prototype = std::function<std::future<void>(RtdNotifier&)>;
+
+    RtdProducer(const Prototype& func)
+     : _func(func)
     {}
-    std::future<void> operator()(IRtdNotify& notify)
+
+    std::future<void> operator()(RtdNotifier& notify) override
     {
       return _func(notify);
     }
-    bool operator==(const IRtdAsyncTask& that) const
-    {
-      return _func == ((const RtdAsyncTask<T>&)that)._func;
-    }
-    T _func;
+
+  private:
+    Prototype _func;
   };
+
+  /// <summary>
+  /// A base class for Rtd async tasks. 
+  /// </summary>
+  struct RtdAsyncTask : public RtdProducerBase<IRtdAsyncTask>
+  {
+  };
+
+  class IRtdManager;
+
+  /// <summary>
+  /// Concrete implementation of <see cref="IRtdTopc"/> which can be overriden to 
+  /// hook the virtual methods. 
+  /// </summary>
+  class XLOIL_EXPORT RtdTopic : public IRtdTopic, public IRtdPublish
+  {
+  public:
+    RtdTopic(
+      const wchar_t* topic,
+      IRtdManager& mgr,
+      const std::shared_ptr<IRtdProducer>& task);
+    virtual ~RtdTopic();
+    virtual void connect(size_t numSubscribers) override;
+    virtual bool disconnect(size_t numSubscribers) override;
+    virtual void stop() override;
+    virtual bool done() const override;
+    virtual const wchar_t* topic() const override;
+    virtual bool publish(ExcelObj&& value) noexcept override;
+    const std::shared_ptr<IRtdProducer>& task() const { return _task; }
+
+  protected:
+    std::shared_ptr<IRtdProducer> _task;
+    IRtdManager& _mgr;
+    std::wstring _topic;
+  };
+  
 
   /// <summary>
   /// An IRtdManager is a wrapper around an internal RTD Server. An RTD Server 
   /// is a producer/consumer queue which can trigger recalculations in 
-  /// cells marked as RTD consumers.  Note Excel will recalculate the entire
-  /// cell containing a consumer, it cannot distinguish between multiple 
+  /// cells marked as RTD subscribers (or consumers).  Note Excel will recalculate
+  /// the entire cell containing a subscriber, it cannot distinguish between multiple 
   /// functions in a single cell.  
   /// 
   /// An RTD producer can be started anywhere including in another cell, or 
@@ -95,14 +258,14 @@ namespace xloil
   /// UDF support, which is that async functions are cancelled if the user 
   /// interacts with the sheet.
   /// 
-  /// RTD producers and consumers find each other using a topic string. The
-  /// producer and consumer can be registered in either order.
+  /// RTD producers and subscribers find each other using a topic string. The
+  /// producer and subscribers can be registered in either order.
   /// </summary>
   class IRtdManager
   {
   public:
     /// <summary>
-    /// Starts a producer embedded in an <see cref="RtdTask"/>
+    /// Starts a producer embedded in an <see cref="RtdProducer"/>
     /// </summary>
     /// <param name="task"></param>
     /// <param name="topic">The topic key which consumers can use to 
@@ -114,10 +277,16 @@ namespace xloil
     /// and consumer started in the same cell
     /// </param>
     virtual void start(
-      const std::shared_ptr<IRtdProducer>& task,
-      const wchar_t* topic,
-      bool persistent = false) = 0;
+      const std::shared_ptr<IRtdTopic>& topic) = 0;
 
+    void start(
+      const wchar_t* topic,
+      const RtdProducer::Prototype& func)
+    {
+      start(
+        std::make_shared<RtdTopic>(
+          topic, *this, std::make_shared<RtdProducer>(func)));
+    }
     /// <summary>
     /// Subscribes to a producer with the specified topic. If no producer
     /// for the topic currently exists, the subscription will be held open
@@ -139,7 +308,7 @@ namespace xloil
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
-    virtual std::pair<std::shared_ptr<const ExcelObj>, bool> 
+    virtual std::shared_ptr<const ExcelObj>
       peek(
         const wchar_t* topic) = 0;
 
@@ -162,6 +331,12 @@ namespace xloil
     virtual const wchar_t* progId() const noexcept = 0;
   };
 
+  /// <summary>
+  /// Can be called from a worksheet function to run the given task asynchronously 
+  /// in the context of Excel using the RTD machinery. This function does not 
+  /// ensure the task will be run on another thread or process - the task must 
+  /// ensure it is not blocking the calling (main) thread.
+  /// </summary>
   XLOIL_EXPORT std::shared_ptr<ExcelObj> rtdAsync(
     const std::shared_ptr<IRtdAsyncTask>& task);
 
@@ -176,22 +351,4 @@ namespace xloil
     newRtdManager(
       const wchar_t* progId = nullptr,
       const wchar_t* clsid = nullptr);
-
-  /// <summary>
-  /// Connects to the Core RtdManager or the one specified, returning an
-  /// RtdConnection. The Core RtdManager is only accessible through this 
-  /// function. 
-  /// <example>
-  /// <code>
-  ///   auto p = rtdConnect();
-  ///   return p.hasValue() 
-  ///       ? p.value() 
-  ///       : p.start([](notify) { notify.publish(ExcelObj(1)); } );
-  /// </code>
-  /// </example>
-  /// </summary>
-  /// <param name="mgr">Omit / null to use the Core RtdManager</param>
-  /// <param name="topic">Omit / null to use the current cell address
-  /// as the topic
-  /// </param>
 }

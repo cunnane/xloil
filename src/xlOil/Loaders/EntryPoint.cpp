@@ -10,9 +10,10 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/State.h>
+#include <xloil/ThreadControl.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>
-#include <COMInterface/MessageQueue.h>
+
 
 using std::wstring;
 using std::string;
@@ -37,7 +38,7 @@ namespace xloil
       bool firstLoad = openXll(xllPath);
 
       excelApp(); // Creates the COM connection
-      COM::initMessageQueue();
+      initMessageQueue();
 
       return firstLoad ? 1 : 0;
     }

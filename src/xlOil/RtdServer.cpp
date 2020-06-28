@@ -19,45 +19,44 @@ namespace xloil
     return COM::newRtdManager(progId, clsid);
   }
 
+  class AsyncTaskTopic;
+  using CellTasks = std::list<std::shared_ptr<AsyncTaskTopic>>;
+
+  // TODO: could we just create a forwarding IRtdAsyncTask which intercepts 'cancel'
+  class AsyncTaskTopic : public RtdTopic
+  {
+    CellTasks& _cellTasks;
+
+  public:
+    AsyncTaskTopic(
+      const wchar_t* topic,
+      IRtdManager& mgr,
+      const shared_ptr<IRtdProducer>& task,
+      CellTasks& cellTasks)
+      : RtdTopic(topic, mgr, task)
+      , _cellTasks(cellTasks)
+    {
+    }
+
+    bool disconnect(size_t numSubscribers) override
+    {
+      RtdTopic::disconnect(numSubscribers);
+      // TODO: check numSubscribers == 0
+      stop();
+      _cellTasks.remove_if(
+        [target = this](CellTasks::reference t)
+        {
+          return t.get() == target;
+        }
+      );
+      return true;
+    }
+  };
 
   class RtdAsyncManager
   {
-    using CellTasks = std::list<
-      std::pair<std::shared_ptr<IRtdAsyncTask>, wstring>>;
     std::unordered_map<wstring, CellTasks> _tasksPerCell;
     shared_ptr<IRtdManager> _mgr;
-
-    struct Cleanup : public IRtdAsyncTask
-    {
-      std::shared_ptr<IRtdAsyncTask> _task;
-      CellTasks& _cellTasks;
-
-      Cleanup(
-        const shared_ptr<IRtdAsyncTask>& task,
-        CellTasks& cellTasks)
-        : _task(task)
-        , _cellTasks(cellTasks)
-      {}
-
-      virtual ~Cleanup()
-      {
-        _cellTasks.remove_if(
-          [task = _task](CellTasks::reference t)
-        {
-          return t.first == task;
-        }
-        );
-      }
-
-      std::future<void> operator()(IRtdNotify& n) override
-      {
-        return _task->operator()(n);
-      }
-      bool operator==(const IRtdAsyncTask& that) const override
-      {
-        return _task->operator==(that);
-      }
-    };
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
     {
@@ -67,9 +66,10 @@ namespace xloil
       LPOLESTR guidStr;
       StringFromCLSID(guid, &guidStr);
 
-      _mgr->start(make_shared<Cleanup>(task, tasks), guidStr, false);
+      auto topic = make_shared<AsyncTaskTopic>(guidStr, *_mgr, task, tasks);
+      _mgr->start(topic);
 
-      tasks.emplace_back(make_pair(task, guidStr));
+      tasks.emplace_back(topic);
       CoTaskMemFree(guidStr);
     }
 
@@ -82,31 +82,30 @@ namespace xloil
     {
       const auto address = CallerInfo().writeAddress(false);
       auto& tasksInCell = _tasksPerCell[address];
-      for (auto t = tasksInCell.begin(); t != tasksInCell.end(); ++t)
-        if (*task == *t->first)
+      for (auto& t: tasksInCell)
+        if (*task == (const IRtdAsyncTask&)*t->task())
         {
-          auto[value, isActive] = _mgr->peek(t->second.c_str());
-          if (value && !isActive)
-            return value;
-          else
-            return _mgr->subscribe(t->second.c_str());
+          auto value = _mgr->peek(t->topic());
+          return value && t->done()
+            ? value 
+            : _mgr->subscribe(t->topic());
         }
 
       // Couldn't find matching task so start it up
       start(tasksInCell, task);
-      return _mgr->subscribe(tasksInCell.back().second.c_str());
+      return _mgr->subscribe(tasksInCell.back()->topic());
     }
 
     void clear()
     {
-      for (auto i = _tasksPerCell.begin(); i != _tasksPerCell.end(); ++i)
+      for (auto& cell : _tasksPerCell)
       {
-        if (!i->second.empty())
+        if (!cell.second.empty())
         {
           // Make a copy of the list as the dtor of Cleanup edits it
-          auto copy(i->second);
-          for (auto j = copy.begin(); j != copy.end(); ++j)
-            _mgr->drop(j->second.c_str());
+          auto copy(cell.second);
+          for (auto& j : copy)
+            _mgr->drop(j->topic());
         }
       }
        
@@ -116,7 +115,7 @@ namespace xloil
 
   auto* getRtdAsyncManager()
   {
-    // TODO: I guess we should create a mutux here, although calling
+    // TODO: I guess we should create a mutex here, although calling
     // RTD functions from a multithreaded function is not likely to 
     // end well. Can we check for that in a non-expensive way?
     static auto ptr = make_shared<RtdAsyncManager>();

@@ -1,5 +1,6 @@
-#include "AsyncHelper.h"
+#include <xloil/Async.h>
 #include <xlOil/Events.h>
+#include <xloil/ExcelCall.h>
 #include <xlOilHelpers/WindowsSlim.h>
 
 namespace xloil
@@ -16,7 +17,6 @@ namespace xloil
     // to be garbage - just a zeroed block of memory
     ExcelObj result;
     callExcelRaw(msxll::xlAsyncReturn, &result, 2, callBackArgs);
-   
   }
 
   XLOIL_EXPORT bool yieldAndCheckIfEscPressed()
@@ -37,9 +37,9 @@ namespace xloil
       RegisterMe()
       {
         static auto handler = xloil::Event::CalcCancelled() += []()
-        { 
+        {
 #ifdef _WIN64
-          lastCancelTime = GetTickCount64(); 
+          lastCancelTime = GetTickCount64();
 #else
           lastCancelTime = GetTickCount();
 #endif

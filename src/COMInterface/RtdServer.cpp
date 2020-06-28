@@ -1,5 +1,5 @@
 #include "ComVariant.h"
-#include "MessageQueue.h"
+#include <xloil/ThreadControl.h>
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>
@@ -32,109 +32,77 @@ using std::unique_ptr;
 using std::future_status;
 using std::unordered_set;
 
+namespace
+{
+  // ATL needs this for some reason
+  class AtlModule : public CAtlDllModuleT<AtlModule>
+  {} theAtlModule;
+}
+
 namespace xloil 
 {
+  
+
+  RtdTopic::RtdTopic(
+    const wchar_t* topic,
+    IRtdManager& mgr, 
+    const shared_ptr<IRtdProducer>& task)
+    : _mgr(mgr)
+    , _task(task)
+    , _topic(topic)
+  {}
+
+  RtdTopic::~RtdTopic()
+  {
+    // Send cancellation and wait for graceful shutdown
+    stop();
+    _task->wait();
+  }
+
+  void RtdTopic::connect(size_t numSubscribers)
+  {
+    if (numSubscribers == 1)
+    {
+      _task->start(*this);
+    }
+  }
+  bool RtdTopic::disconnect(size_t numSubscribers)
+  {
+    if (numSubscribers == 0)
+    {
+      stop();
+      return true;
+    }
+    return false;
+  }
+  void RtdTopic::stop()
+  {
+    _task->cancel();
+  }
+  bool RtdTopic::done() const
+  {
+    return _task->done();
+  }
+  const wchar_t* RtdTopic::topic() const
+  {
+    return _topic.c_str();
+  }
+  bool RtdTopic::publish(ExcelObj&& value) noexcept
+  {
+    try
+    {
+      _mgr.publish(_topic.c_str(), std::forward<ExcelObj>(value));
+      return true;
+    }
+    catch (const std::exception& e)
+    {
+      XLO_ERROR(L"RTD error publishing {}: {}", _topic, utf8ToUtf16(e.what()));
+    }
+    return false;
+  }
+
   namespace COM
   {
-    // ATL needs this for some reason
-    class AtlModule : public CAtlDllModuleT<AtlModule>
-    {} theAtlModule;
-
-    class RtdServerImpl;
-    class RtdProducer : public IRtdNotify
-    {
-      std::atomic<bool> _cancelled;
-      RtdServerImpl* _server;
-      shared_ptr<IRtdProducer>  _task;
-      std::future<void> _taskFuture;
-      shared_ptr<const ExcelObj> _value;
-      wstring _topic;
-      bool _persistent;
-      std::mutex _lock;
-
-    public:
-      RtdProducer(
-        const shared_ptr<IRtdProducer>& task,
-        const wchar_t* topic,
-        RtdServerImpl* server,
-        bool persistent)
-        : _value()
-        , _task(task)
-        , _topic(topic)
-        , _server(server)
-        , _cancelled(false)
-        , _persistent(persistent)
-      {
-        // TODO start on connect rather?
-        _taskFuture = (*task)(*this);
-      }
-
-      ~RtdProducer()
-      {
-        cancel();
-        if (_taskFuture.valid())
-          _taskFuture.wait();
-      }
-
-      /// <summary>
-      /// Returns true if the producer is no longer referenced and  
-      /// can be scheduled for deletion
-      /// </summary>
-      bool disconnect(size_t remainingIds)
-      {
-        if (!_persistent && remainingIds == 0)
-        {
-          cancel();
-          return true;
-        }
-        return false;
-      }
-      void cancel()
-      {
-        _cancelled = true;
-        _task.reset();
-      }
-      bool complete() const
-      {
-        return !_taskFuture.valid()
-          || _taskFuture.wait_for(std::chrono::seconds(0)) == future_status::ready;
-      }
-      const shared_ptr<const ExcelObj>& value()
-      {
-        // If the future completed, it may have set an exception so we
-        // try to get the value.  After get() the future will be invalid
-        // so complete() will be false, hence we only do this once.
-        if (_taskFuture.valid() && complete())
-        {
-          try
-          {
-            _taskFuture.get();
-            // Free memory used by future
-            _taskFuture = std::future<void>();
-          } 
-          catch (const std::future_error& e)
-          {
-            _value.reset(new ExcelObj(e.what()));
-          }
-        }
-        scoped_lock lock(_lock);
-        return _value;
-      }
-
-      const wstring& topic() const
-      {
-        return _topic;
-      }
-
-      // IRtdNotify interface
-      bool publish(ExcelObj&& value) noexcept override;
-      bool isCancelled() const override
-      {
-        return _cancelled;
-      }
-    };
-
-
     class
       __declspec(novtable)
       RtdServerImpl :
@@ -150,7 +118,7 @@ namespace xloil
       ~RtdServerImpl()
       {
         for (auto& prod : _theProducers)
-          prod.second->cancel();
+          prod.second->stop();
       }
 
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
@@ -190,16 +158,23 @@ namespace xloil
         if (!strings || !newValue || !value)
           return E_POINTER;
 
-        std::scoped_lock lock(_lockSubscribers);
-
+        // We only look at the first topic string
         long index[] = { 0, 0 };
-        VARIANT topic;
-        SafeArrayGetElement(*strings, index, &topic);
+        VARIANT topicVariant;
+        SafeArrayGetElement(*strings, index, &topicVariant);
+        const auto topic = topicVariant.bstrVal;
 
-        _activeTopicIds[topicId] = topic.bstrVal;
-        _subscribers[topic.bstrVal].insert(topicId);
+        std::scoped_lock lock(_lockSubscribers, _lockProducers);
 
-        XLO_TRACE(L"RTD: connect {} to topicId {}", topic.bstrVal, topicId);
+        _activeTopicIds[topicId] = topic;
+        auto& subscribers = _subscribers[topic];
+        subscribers.insert(topicId);
+
+        auto producer = findProducer(topic);
+        if (producer)
+          producer->connect(subscribers.size());
+
+        XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
 
         return S_OK;
       }
@@ -240,16 +215,9 @@ namespace xloil
 
         XLO_TRACE("RTD: disconnect topicId {}", topicId);
 
-        // Reap any producers which have safely cancelled and completed
-        // TODO: could do this in separate thread
-        for (auto& p = _cancelledProducers.begin(); 
-          p != _cancelledProducers.end();)
-        {
-          if ((*p)->complete())
-            _cancelledProducers.erase(p++);
-          else ++p;
-        }
-
+        // Remove any done objects in the cancellation bucket
+        _cancelledProducers.remove_if([](auto& x) { return x->done(); });
+ 
         const auto& topic = _activeTopicIds[topicId];
         if (topic.empty())
           XLO_THROW("Could not find topic for id {0}", topicId);
@@ -260,12 +228,11 @@ namespace xloil
         // If the disconnect() causes the producer to cancel its task,
         // it will return true here. We may not be able to just delete it, 
         // we have to wait until any threads it created exit
-        auto producer = _theProducers.find(topic);
-        if (producer != _theProducers.end() 
-          && producer->second->disconnect(subscribers.size()))
+        auto producer = findProducer(topic.c_str());
+        if (producer && producer->disconnect(subscribers.size()))
         {
-          if (!producer->second->complete())
-            _cancelledProducers.push_back(producer->second);
+          if (!producer->done())
+            cancelProducer(producer);
           _theProducers.erase(topic);
         }
         
@@ -276,7 +243,6 @@ namespace xloil
         return S_OK;
       }
 
-      // Does nothing useful
       HRESULT __stdcall raw_Heartbeat(long* result) override
       {
         if (!result) return E_POINTER;
@@ -296,12 +262,15 @@ namespace xloil
       }
 
     private:
-      std::map<wstring, shared_ptr<RtdProducer>> _theProducers;
       std::unordered_map<long, wstring> _activeTopicIds;
+
+      // TODO: combine these maps?
+      std::unordered_map<wstring, shared_ptr<IRtdTopic>> _theProducers;
       std::unordered_map<wstring, unordered_set<long>> _subscribers;
+      std::unordered_map<wstring, shared_ptr<ExcelObj>> _values;
 
       unordered_set<long> _readyTopicIds;
-      std::list<shared_ptr<RtdProducer>> _cancelledProducers;
+      std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
 
       Excel::IRTDUpdateEvent* _updateCallback;
       std::mutex _lockProducers;
@@ -314,13 +283,28 @@ namespace xloil
           _updateCallback->UpdateNotify();
       }
 
-    public:
-      void update(const wchar_t* topic)
+      shared_ptr<IRtdTopic> findProducer(const wchar_t* topic)
       {
-        std::scoped_lock lock(_lockSubscribers);
+        auto iJob = _theProducers.find(topic);
+        if (iJob == _theProducers.end())
+          return nullptr;
+        return iJob->second;
+      }
+
+      void cancelProducer(const shared_ptr<IRtdTopic>& producer)
+      {
+        producer->stop();
+        _cancelledProducers.push_back(producer);
+      }
+
+    public:
+      void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
+      {
+        std::scoped_lock lock(_lockSubscribers, _lockProducers);
+
+        _values[topic] = value;
 
         const bool nothingWasReady = _readyTopicIds.empty();
-
         const auto& subscribers = _subscribers[topic];
         _readyTopicIds.insert(subscribers.begin(), subscribers.end());
 
@@ -332,29 +316,21 @@ namespace xloil
         }
       }
 
-      void addProducer(const shared_ptr<RtdProducer>& job)
+      void addProducer(const shared_ptr<IRtdTopic>& job)
       {
         std::scoped_lock lock(_lockProducers);
         // TODO: can we make map key wchar_t*??
         auto iProd = _theProducers.find(job->topic());
         if (iProd != _theProducers.end())
         {
-          iProd->second->cancel();
-          _cancelledProducers.push_back(iProd->second);
+          cancelProducer(iProd->second);
           iProd->second = job;
         }
         else
           _theProducers.emplace(job->topic(), job);
       }
 
-      RtdProducer* findProducer(const wchar_t* topic)
-      {
-        std::scoped_lock lock(_lockProducers);
-        auto iJob = _theProducers.find(topic);
-        if (iJob == _theProducers.end())
-          return nullptr;
-        return iJob->second.get();
-      }
+
 
       bool dropProducer(const wchar_t* topic)
       {
@@ -363,34 +339,17 @@ namespace xloil
         if (iProd == _theProducers.end())
           return false;
 
-        iProd->second->cancel();
-        _cancelledProducers.push_back(iProd->second);
+        cancelProducer(iProd->second);
+        _values.erase(topic); // TODO: does this throw if not found?
         return true;
       }
-      //void availableTopics() const
-      //{
-      //  _theProducers.b
-      //}
-    };
 
-    bool RtdProducer::publish(ExcelObj&& value) noexcept
-    {
-      if (!_cancelled)
+      auto value(const wchar_t* topic)
       {
-        try
-        {
-          scoped_lock(_lock);
-          _value.reset(new ExcelObj(std::forward<ExcelObj>(value)));
-          _server->update(_topic.c_str());
-          return true;
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR(L"RTD error publishing {}:", _topic, utf8ToUtf16(e.what()));
-        }
+        std::scoped_lock lock(_lockProducers);
+        return _values[topic];
       }
-      return false;
-    }
+    };
 
     class FactoryRtdServer : public IClassFactory
     {
@@ -570,34 +529,27 @@ namespace xloil
       }
 
       void start(
-        const shared_ptr<IRtdProducer>& task,
-        const wchar_t* topic,
-        bool persistent) override
+        const shared_ptr<IRtdTopic>& topic) override
       {
-        auto job = make_shared<RtdProducer>(task, topic, _server, persistent);
-        _server->addProducer(job);
+        _server->addProducer(topic);
       }
 
       shared_ptr<const ExcelObj> subscribe(const wchar_t * topic) override
       {
-        auto job = _server->findProducer(topic);
         callRtd(topic);
-        return job ? job->value() : nullptr;
+        return _server->value(topic);
       }
       bool publish(const wchar_t * topic, ExcelObj&& value) override
       {
-        auto job = _server->findProducer(topic);
-        if (job)
-          job->publish(std::forward<ExcelObj>(value));
-        return job;
+        _server->update(topic, make_shared<ExcelObj>(value));
+        return true;
       }
-      std::pair<shared_ptr<const ExcelObj>, bool> 
+      shared_ptr<const ExcelObj> 
         peek(const wchar_t* topic) override
       {
-        auto job = _server->findProducer(topic);
-        return std::make_pair(
-          job ? job->value() : shared_ptr<const ExcelObj>(), 
-          job ? !job->complete() : false);
+        // TODO: this is not enough to tell if the server is running.
+        // either value is always present or...?
+        return _server->value(topic);
       }
       bool drop(const wchar_t* topic) override
       {
