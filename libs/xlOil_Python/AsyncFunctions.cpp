@@ -25,6 +25,115 @@ namespace xloil
   {
     constexpr const char* THREAD_CONTEXT_TAG = "xloil_thread_context";
 
+
+    struct EventLoopController
+    {
+      std::atomic<bool> _stop = true;
+      PyObject* _runLoopFunction = nullptr;
+      std::future<void> _loopRunner;
+      ctpl::thread_pool _thread;
+      std::shared_ptr<const void> _shutdownHandler;
+
+      EventLoopController()
+        : _thread(1)
+      {
+        // We create a hanging reference in gil_scoped_aquire to prevent it 
+        // destroying the python thread state. The thread state contains thread 
+        // locals used by asyncio to find the event loop for that thread and avoid
+        // creating a new one.
+        _thread.push([](int)
+        {
+          py::gil_scoped_acquire acquire;
+          acquire.inc_ref();
+        });
+
+        _shutdownHandler = std::static_pointer_cast<const void>(
+          Event_PyBye().bind([self = this]
+        {
+          self->shutdown();
+        }));
+      }
+
+      void start()
+      {
+        
+
+        py::gil_scoped_acquire gilAcquired;
+
+        // This should always be run on the main thread, also the 
+        // GIL gives us a mutex.
+        if (!_runLoopFunction)
+        {
+          const auto xloilModule = py::module::import("xloil");
+          _runLoopFunction = xloilModule.attr("_pump_message_loop").ptr();
+        }
+
+        _stop = false;
+
+        _loopRunner = _thread.push(
+          [=](int)
+        {
+          py::gil_scoped_acquire gilAcquired;
+          try
+          {
+            PyBorrow<py::function>(_runLoopFunction).call(this);
+          }
+          catch (const std::exception& e)
+          {
+            XLO_ERROR("Error running asyncio loop: {0}", e.what());
+          }
+        }
+        );
+      }
+      /// <summary>
+      /// Executes the function on the python asyncio thread. The thread is normally
+      /// running the asyncio event loop.  This stops and restarts the loop to allow
+      /// the function to run.
+      /// </summary>
+      template<typename F>
+      void runInterrupt(F && f)
+      {
+        auto task = _thread.push(f);
+        stop();
+        start();
+      }
+
+      bool stopped()
+      {
+        return _stop;
+      }
+
+    private:
+      void stop()
+      {
+        _stop = true;
+        // Must wait for the loop to stop, otherwise we may switch the stop
+        // flag back without it ever being check
+        if (_loopRunner.valid())
+          _loopRunner.wait();
+      }
+
+      void shutdown()
+      {
+        stop();
+        // Resolve the hanging reference in gil_scoped_aquire and destroy
+        // the python thread state
+        _thread.push([](int)
+        {
+          py::gil_scoped_acquire acquire;
+          acquire.dec_ref();
+        }).wait();
+        _thread.stop();
+      }
+    };
+
+    auto& getEventLoop()
+    {
+      static std::unique_ptr<EventLoopController> p(new EventLoopController());
+      return *p;
+    }
+
+
     struct AsyncReturn : public AsyncHelper
     {
       AsyncReturn(
@@ -36,8 +145,11 @@ namespace xloil
 
       ~AsyncReturn()
       {
-        // This aborts, when it tries to call cancel on the task. Not sure why
-        //cancel();
+        try
+        {
+          cancel();
+        }
+        catch (...) {}
       }
 
       void set_task(const py::object& task)
@@ -68,106 +180,6 @@ namespace xloil
       shared_ptr<IPyToExcel> _returnConverter;
       py::object _task;
     };
-
-    inline ctpl::thread_pool* getWorkerThreadPool()
-    {
-      static auto* workerPool = []()
-      {
-        constexpr size_t nThreads = 1;
-        auto* pool = new ctpl::thread_pool(nThreads);
-
-        // We create a hanging reference in gil_scoped_aquire to prevent it 
-        // destroying the python thread state. The thread state contains thread 
-        // locals used by asyncio to find the event loop for that thread and avoid
-        // creating a new one.
-        pool->push([](int)
-        {
-          py::gil_scoped_acquire acquire;
-          acquire.inc_ref();
-        });
-        return pool;
-      }();
-
-      static auto workerPoolDeleter = Event_PyBye().bind([]
-      {
-        if (workerPool)
-        {
-          // Resolve the hanging reference in gil_scoped_aquire and destroy
-          // the python thread state
-          workerPool->push([](int)
-          {
-            py::gil_scoped_acquire acquire;
-            acquire.dec_ref();
-          });
-          workerPool->stop();
-          delete workerPool;
-        }
-      });
-
-      return workerPool;
-    }
-
-    struct EventLoopController
-    {
-      std::atomic<bool> _stop = true;
-      PyObject* _runLoopFunction = nullptr;
-
-      EventLoopController()
-      {}
-
-      void start()
-      {
-        _stop = false;
-
-        py::gil_scoped_acquire gilAcquired;
-
-        // This should always be run on the main thread, also the 
-        // GIL gives us a mutex.
-        if (!_runLoopFunction)
-        {
-          const auto xloilModule = py::module::import("xloil");
-          _runLoopFunction = xloilModule.attr("_pump_message_loop").ptr();
-        }
-
-        getWorkerThreadPool()->push(
-          [=](int)
-          {
-            py::gil_scoped_acquire gilAcquired;
-            try
-            {
-              py::reinterpret_borrow<py::function>(_runLoopFunction)
-                .call(&theLoopController);
-            }
-            catch (const std::exception& e)
-            {
-              XLO_ERROR("Error running asyncio loop: {0}", e.what());
-            }
-          }
-        );
-      }
-      /// <summary>
-      /// Executes the function on the python asyncio thread. The thread is normally
-      /// running the asyncio event loop.  This stops and restarts the loop to allow
-      /// the function to run.
-      /// </summary>
-      template<typename F>
-      auto runInterrupt(F && f)
-      {
-        // TODO: could call through another thread rather than stopping the event loop?
-        stop();
-        auto ret = getWorkerThreadPool()->push(f);
-        start();
-        return ret;
-      }
-      void stop()
-      {
-        _stop = true;
-      }
-      bool stopped()
-      {
-        return _stop;
-      }
-    } theLoopController;
 
     void pythonAsyncCallback(
       PyFuncInfo* info,
@@ -223,7 +235,7 @@ namespace xloil
             Py_XDECREF(kwargsP);
           }
         };
-        theLoopController.runInterrupt(functor);
+        getEventLoop().runInterrupt(functor);
       }
       catch (const std::exception& e)
       {
@@ -248,7 +260,7 @@ namespace xloil
       ~RtdReturn()
       {
         // TODO: maybe use a raw PyObject to avoid needing this?
-        if (_task.ptr())
+        if (_hasTask)
         {
           py::gil_scoped_acquire gilAcquired;
           _task.release();
@@ -256,7 +268,9 @@ namespace xloil
       }
       void set_task(const py::object& task)
       {
+        py::gil_scoped_acquire gilAcquired;
         _task = task;
+        _hasTask = true;
       }
       void set_result(const py::object& value)
       {
@@ -269,18 +283,41 @@ namespace xloil
 
       void cancel()
       {
-        if (_task.ptr())
+        if (_hasTask)
         {
           py::gil_scoped_acquire gilAcquired;
+          if (!_hasTask)
+            return;
+          _hasTask = false;
           _task.attr("cancel").call();
           _task.release();
         }
+      }
+      bool done()
+      {
+        if (!_hasTask) 
+          return true;
+
+        py::gil_scoped_acquire gilAcquired;
+        return _hasTask 
+          ? py::cast<bool>(_task.attr("done").call())
+          : true;
+      }
+      void wait()
+      {
+        if (!_hasTask)
+          return;
+
+        py::gil_scoped_acquire gilAcquired;
+        if (_hasTask)
+          _task.attr("wait").call();
       }
 
     private:
       IRtdPublish& _notify;
       shared_ptr<IPyToExcel> _returnConverter;
       py::object _task;
+      std::atomic<bool> _hasTask = false;
     };
 
     /// <summary>
@@ -292,7 +329,6 @@ namespace xloil
       PyFuncInfo* _info;
       PyObject *_args, *_kwargs;
       RtdReturn* _returnObj = nullptr;
-      std::future<void> _future;
 
       /// <summary>
       /// Steals references to PyObjects
@@ -315,7 +351,7 @@ namespace xloil
       {
         _returnObj = new RtdReturn(publish, _info->returnConverter);
 
-        _future = theLoopController.runInterrupt(
+        getEventLoop().runInterrupt(
           [=](int /*threadId*/)
           {
             py::gil_scoped_acquire gilAcquired;
@@ -331,13 +367,12 @@ namespace xloil
       }
       bool done() override
       {
-        return !_future.valid()
-          || _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        return !_returnObj || _returnObj->done();
       }
       void wait() override
       {
-        if (_future.valid())
-          _future.wait();
+        if (_returnObj)
+          _returnObj->wait();
       }
       void cancel() override
       {
@@ -346,13 +381,16 @@ namespace xloil
       }
       bool operator==(const IRtdAsyncTask& that_) const override
       {
+        const auto* that = dynamic_cast<const AsyncTask*>(&that_);
+        if (!that)
+          return false;
+
         py::gil_scoped_acquire gilAcquired;
 
-        const auto& that = (const AsyncTask&)that_;
         auto args = PyBorrow<py::tuple>(_args);
         auto kwargs = PyBorrow<py::dict>(_kwargs);
-        auto that_args = PyBorrow<py::tuple>(that._args);
-        auto that_kwargs = PyBorrow<py::dict>(that._kwargs);
+        auto that_args = PyBorrow<py::tuple>(that->_args);
+        auto that_kwargs = PyBorrow<py::dict>(that->_kwargs);
 
         if (args.size() != that_args.size()
           || kwargs.size() != that_kwargs.size())

@@ -116,7 +116,7 @@ def pyTestDate(x: dt.datetime):
     return x + dt.timedelta(days=1)
  
 
-# 
+#
 # Keyword args are supported by passing a two-column array of (string, value)
 #
 @xlo.func
@@ -151,6 +151,13 @@ async def pyTestAsyncRtd(x, time:int):
 async def pyTestAsync(x, time:int):
     await asyncio.sleep(time)
     return x
+
+
+@xlo.func(rtd=True)
+async def pyTestAsyncGen(secs):
+    while True:
+        await asyncio.sleep(secs)
+        yield dt.datetime.now()
 
 #
 # Trying a slightly more practical async usage: fetching web-pages

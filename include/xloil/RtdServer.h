@@ -114,7 +114,7 @@ namespace xloil
   /// does not currently support cancellable futures, so cancellation is 
   /// usually via periodic checking of a bool.
   /// </summary>
-  struct RtdNotifier : public IRtdPublish
+  struct RtdNotifier
   {
     RtdNotifier(
       IRtdPublish& publisher,
@@ -133,7 +133,7 @@ namespace xloil
       return _cancel;
     }
 
-    bool publish(ExcelObj&& value) noexcept override
+    bool publish(ExcelObj&& value) const noexcept
     {
       return _cancel 
         ? false 
@@ -154,7 +154,7 @@ namespace xloil
   class RtdProducerBase : public TBase
   {
   public:
-    virtual std::future<void> operator()(RtdNotifier& notify) = 0;
+    virtual std::future<void> operator()(RtdNotifier notify) = 0;
 
     virtual void start(IRtdPublish& n) override
     {
@@ -194,13 +194,13 @@ namespace xloil
   class RtdProducer : public RtdProducerBase<IRtdProducer>
   {
   public:
-    using Prototype = std::function<std::future<void>(RtdNotifier&)>;
+    using Prototype = std::function<std::future<void>(RtdNotifier)>;
 
     RtdProducer(const Prototype& func)
      : _func(func)
     {}
 
-    std::future<void> operator()(RtdNotifier& notify) override
+    std::future<void> operator()(RtdNotifier notify) override
     {
       return _func(notify);
     }
@@ -325,6 +325,12 @@ namespace xloil
         const wchar_t* topic,
         ExcelObj&& value) = 0;
 
+    /// <summary>
+    /// Drops the producer for a topic by calling RtdTopic::stop, then waiting
+    /// for it to complete.
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <returns></returns>
     virtual bool 
       drop(const wchar_t* topic) = 0;
 

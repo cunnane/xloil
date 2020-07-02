@@ -117,8 +117,16 @@ namespace xloil
 
       ~RtdServerImpl()
       {
-        for (auto& prod : _theProducers)
-          prod.second->stop();
+        try
+        {
+          for (auto& prod : _theProducers)
+            prod.second->stop();
+          _theProducers.clear();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("RtdServer destruction: {0}", e.what());
+        }
       }
 
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
@@ -140,10 +148,9 @@ namespace xloil
         if (!callback || !result)
           return E_POINTER;
         
-        std::scoped_lock lock(_lockProducers);
+        std::scoped_lock lock(_lockSubscribers);
 
         _updateCallback = callback;
-        _readyTopicIds.clear();
 
         *result = 1;
         return S_OK;
@@ -158,24 +165,31 @@ namespace xloil
         if (!strings || !newValue || !value)
           return E_POINTER;
 
-        // We only look at the first topic string
-        long index[] = { 0, 0 };
-        VARIANT topicVariant;
-        SafeArrayGetElement(*strings, index, &topicVariant);
-        const auto topic = topicVariant.bstrVal;
+        try
+        {
+          // We only look at the first topic string
+          long index[] = { 0, 0 };
+          VARIANT topicVariant;
+          SafeArrayGetElement(*strings, index, &topicVariant);
+          const auto topic = topicVariant.bstrVal;
 
-        std::scoped_lock lock(_lockSubscribers, _lockProducers);
+          std::scoped_lock lock(_lockSubscribers);
 
-        _activeTopicIds[topicId] = topic;
-        auto& subscribers = _subscribers[topic];
-        subscribers.insert(topicId);
+          _activeTopicIds[topicId] = topic;
+          auto& subscribers = _subscribers[topic];
+          subscribers.insert(topicId);
+          size_t nSubscribers = subscribers.size();
 
-        auto producer = findProducer(topic);
-        if (producer)
-          producer->connect(subscribers.size());
+          auto producer = findProducer(topic);
+          if (producer)
+            producer->connect(nSubscribers);
 
-        XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
-
+          XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Rtd Disconnect: {0}", e.what());
+        }
         return S_OK;
       }
 
@@ -185,13 +199,31 @@ namespace xloil
       {
         std::scoped_lock lock(_lockSubscribers);
 
-        const auto nReady = _readyTopicIds.size();
+        unordered_set<long> readyTopicIds;
+        {
+          std::scoped_lock lock(_lockNewValues);
+          for (auto&[topic, value] : _newValues)
+          {
+            _values[topic] = value;
+            const auto& subscribers = _subscribers[topic];
+            readyTopicIds.insert(subscribers.begin(), subscribers.end());
+          }
+
+          _newValues.clear();
+        }
+
+        const auto nReady = readyTopicIds.size();
+        *topicCount = (long)nReady;
+
+        if (nReady == 0)
+          return S_OK; // There may be no subscribers for the producers
+
         SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
         *data = SafeArrayCreate(VT_VARIANT, 2, bounds);
 
         void* element;
         auto iRow = 0;
-        for (auto topic : _readyTopicIds)
+        for (auto topic : readyTopicIds)
         {
           long index[] = { 0, iRow };
           assert(S_OK == SafeArrayPtrOfIndex(*data, index, &element));
@@ -203,42 +235,47 @@ namespace xloil
 
           ++iRow;
         }
-
-        _readyTopicIds.clear();
-        *topicCount = (long)nReady;
+        
         return S_OK;
       }
 
       HRESULT __stdcall raw_DisconnectData(long topicId) override
       {
-        std::scoped_lock lock(_lockProducers, _lockSubscribers);
-
-        XLO_TRACE("RTD: disconnect topicId {}", topicId);
-
-        // Remove any done objects in the cancellation bucket
-        _cancelledProducers.remove_if([](auto& x) { return x->done(); });
- 
-        const auto& topic = _activeTopicIds[topicId];
-        if (topic.empty())
-          XLO_THROW("Could not find topic for id {0}", topicId);
-
-        auto& subscribers = _subscribers[topic];
-        subscribers.erase(topicId);
-
-        // If the disconnect() causes the producer to cancel its task,
-        // it will return true here. We may not be able to just delete it, 
-        // we have to wait until any threads it created exit
-        auto producer = findProducer(topic.c_str());
-        if (producer && producer->disconnect(subscribers.size()))
+        try
         {
-          if (!producer->done())
-            cancelProducer(producer);
-          _theProducers.erase(topic);
+          std::scoped_lock lock(_lockSubscribers);
+
+          XLO_TRACE("RTD: disconnect topicId {}", topicId);
+
+          // Remove any done objects in the cancellation bucket
+          _cancelledProducers.remove_if([](auto& x) { return x->done(); });
+
+          const auto& topic = _activeTopicIds[topicId];
+          if (topic.empty())
+            XLO_THROW("Could not find topic for id {0}", topicId);
+
+          auto& subscribers = _subscribers[topic];
+          subscribers.erase(topicId);
+
+          // If the disconnect() causes the producer to cancel its task,
+          // it will return true here. We may not be able to just delete it, 
+          // we have to wait until any threads it created exit
+          auto producer = findProducer(topic.c_str());
+          if (producer && producer->disconnect(subscribers.size()))
+          {
+            if (!producer->done())
+              cancelProducer(producer);
+            _theProducers.erase(topic);
+          }
+
+          if (subscribers.empty())
+            _subscribers.erase(topic);
+          _activeTopicIds.erase(topicId);
         }
-        
-        if (subscribers.empty())
-          _subscribers.erase(topic);
-        _activeTopicIds.erase(topicId);
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Rtd Disconnect: {0}", e.what());
+        }
 
         return S_OK;
       }
@@ -252,12 +289,18 @@ namespace xloil
 
       HRESULT __stdcall raw_ServerTerminate() override
       {
-        std::scoped_lock lock(_lockProducers, _lockSubscribers);
-
-        _activeTopicIds.clear();
-        _readyTopicIds.clear();
-        _updateCallback = nullptr;
-
+        std::scoped_lock lock(_lockSubscribers);
+        try
+        {
+          for (auto& prod : _theProducers)
+            prod.second->stop();
+          _activeTopicIds.clear();
+          _updateCallback = nullptr;
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Rtd Disconnect: {0}", e.what());
+        }
         return S_OK;
       }
 
@@ -268,12 +311,15 @@ namespace xloil
       std::unordered_map<wstring, shared_ptr<IRtdTopic>> _theProducers;
       std::unordered_map<wstring, unordered_set<long>> _subscribers;
       std::unordered_map<wstring, shared_ptr<ExcelObj>> _values;
+      std::unordered_map<wstring, shared_ptr<ExcelObj>> _newValues;
 
-      unordered_set<long> _readyTopicIds;
       std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
 
       Excel::IRTDUpdateEvent* _updateCallback;
-      std::mutex _lockProducers;
+      // We use a separate lock for the newValues to avoid blocking it 
+      // too often: updates will come from other threads and just need to
+      // write into newValues.
+      std::mutex _lockNewValues;
       std::mutex _lockSubscribers;
 
       void callUpdateNotify()
@@ -300,17 +346,14 @@ namespace xloil
     public:
       void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
       {
-        std::scoped_lock lock(_lockSubscribers, _lockProducers);
+        // TODO: could write this non-blocking by using a singly linked list of values
+        std::scoped_lock lock(_lockNewValues);
 
-        _values[topic] = value;
-
-        const bool nothingWasReady = _readyTopicIds.empty();
-        const auto& subscribers = _subscribers[topic];
-        _readyTopicIds.insert(subscribers.begin(), subscribers.end());
+        _newValues[topic] = value;
 
         // We only need to notify Excel about new data once. Excel will
         // only callback RefreshData approximately every 2 seconds
-        if (nothingWasReady && _updateCallback)
+        if (_newValues.size() == 1 && _updateCallback)
         {
           queueWindowMessage([this]() { this->callUpdateNotify(); });
         }
@@ -318,7 +361,7 @@ namespace xloil
 
       void addProducer(const shared_ptr<IRtdTopic>& job)
       {
-        std::scoped_lock lock(_lockProducers);
+        std::scoped_lock lock(_lockSubscribers);
         // TODO: can we make map key wchar_t*??
         auto iProd = _theProducers.find(job->topic());
         if (iProd != _theProducers.end())
@@ -330,23 +373,27 @@ namespace xloil
           _theProducers.emplace(job->topic(), job);
       }
 
-
-
       bool dropProducer(const wchar_t* topic)
       {
-        std::scoped_lock lock(_lockProducers);
+        
+        std::scoped_lock lock(_lockSubscribers);
         auto iProd = _theProducers.find(topic);
         if (iProd == _theProducers.end())
           return false;
 
-        cancelProducer(iProd->second);
+        // Signal the producer to stop
+        iProd->second->stop();
+        // Destroy producer, the dtor of RtdTopic waits for completion
+        _theProducers.erase(iProd);
+
         _values.erase(topic); // TODO: does this throw if not found?
+        
         return true;
       }
 
       auto value(const wchar_t* topic)
       {
-        std::scoped_lock lock(_lockProducers);
+        std::scoped_lock lock(_lockSubscribers);
         return _values[topic];
       }
     };

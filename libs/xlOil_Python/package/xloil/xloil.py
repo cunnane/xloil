@@ -519,7 +519,7 @@ def _get_event_loop():
 
     return loop
         
-def _async_wrapper(fn, is_cancellable):
+def _async_wrapper(fn):
     
     @functools.wraps(fn)
     def synchronised(*args, **kwargs):
@@ -528,9 +528,20 @@ def _async_wrapper(fn, is_cancellable):
 
         cxt = kwargs.pop(xloil_core.ASYNC_CONTEXT_TAG)
 
+        # TODO: is inspect.isasyncgenfunction expensive?
+
         async def do_it():
-            result = await fn(*args, **kwargs)
-            cxt.set_result(result)
+            try:
+                if inspect.isasyncgenfunction(fn):
+                    async for result in fn(*args, **kwargs):
+                        cxt.set_result(result)
+                else:
+                    result = await fn(*args, **kwargs)
+                    cxt.set_result(result)
+            except asyncio.CancelledError:
+                raise
+            except e:
+                cxt.set_result(str(e))
 
         cxt.set_task(loop.create_task(do_it()))
 
@@ -637,8 +648,8 @@ def func(fn=None,
         # But it doesn't matter since the async wrapper is intended to 
         # hide the async property 
         try:
-            if inspect.iscoroutinefunction(fn):
-                fn = _async_wrapper(fn, not rtd)
+            if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
+                fn = _async_wrapper(fn)
                 _async = True
         except:
             pass

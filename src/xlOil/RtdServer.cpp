@@ -55,8 +55,8 @@ namespace xloil
 
   class RtdAsyncManager
   {
-    std::unordered_map<wstring, CellTasks> _tasksPerCell;
     shared_ptr<IRtdManager> _mgr;
+    std::unordered_map<wstring, CellTasks> _tasksPerCell;
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
     {
