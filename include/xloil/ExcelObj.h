@@ -541,7 +541,7 @@ namespace xloil
     /// <param name="nMonth"></param>
     /// <param name="nYear"></param>
     /// <returns>true if conversion suceeds, else false</returns>
-    bool toDMY(int &nDay, int &nMonth, int &nYear) const noexcept;
+    bool toYMD(int &nYear, int &nMonth, int &nDay) const noexcept;
 
     /// <summary>
     /// Attempts to convert the ExcelObj to a Date/Time.  This will only
@@ -555,7 +555,7 @@ namespace xloil
     /// <param name="nSecs"></param>
     /// <param name="uSecs"></param>
     /// <returns></returns>
-    bool toDMYHMS(int &nDay, int &nMonth, int &nYear, int& nHours,
+    bool toYMDHMS(int &nYear, int &nMonth, int &nDay, int& nHours,
       int& nMins, int& nSecs, int& uSecs) const noexcept;
 
     /// <summary>
@@ -659,7 +659,8 @@ namespace xloil
   template<class TIter>
   ExcelObj::ExcelObj(TIter begin, TIter end)
   {
-    size_t stringLen = 0, nItems = 0;
+    size_t stringLen = 0;
+    ExcelObj::row_t nItems = 0;
     for (auto i = begin; i != end; ++i, ++nItems)
       stringLen += detail::stringLength(*i);
 

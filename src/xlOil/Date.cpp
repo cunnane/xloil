@@ -15,15 +15,11 @@ namespace xloil
 {
   namespace
   {
-    constexpr int MillisPerSecond = 1000;
-    constexpr int MillisPerMinute = MillisPerSecond * 60;
-    constexpr int MillisPerHour = MillisPerMinute * 60;
-    constexpr int MillisPerDay = MillisPerHour * 24;
-    constexpr auto millisecsPerDay = double(duration_cast<milliseconds>(hours(24)).count());
+    constexpr auto microsecsPerDay = double(duration_cast<microseconds>(hours(24)).count());
   }
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
-  bool excelSerialDateToDMY(int nSerialDate, int &nDay, int &nMonth, int &nYear)
+  bool excelSerialDateToYMD(int nSerialDate, int &nYear, int &nMonth, int &nDay)
   {
     // TODO: range check???
 
@@ -60,15 +56,15 @@ namespace xloil
 
  
 
-  bool excelSerialDatetoDMYHMS(
-    double serial, int &nDay, int &nMonth, int &nYear, int& nHours, int& nMins, int& nSecs, int& uSecs)
+  bool excelSerialDatetoYMDHMS(
+    double serial, int &nYear, int &nMonth, int &nDay, int& nHours, int& nMins, int& nSecs, int& uSecs)
   {
     double intpart;
     if (std::modf(serial, &intpart) != 0.0)
     {
-      auto ms = milliseconds(long((serial - intpart) * millisecsPerDay));
-      auto secs = duration_cast<seconds>(ms);
-      ms -= duration_cast<milliseconds>(secs);
+      auto us = microseconds(long long((serial - intpart) * microsecsPerDay));
+      auto secs = duration_cast<seconds>(us);
+      us -= duration_cast<microseconds>(secs);
       auto mins = duration_cast<minutes>(secs);
       secs -= duration_cast<seconds>(mins);
       auto hour = duration_cast<hours>(mins);
@@ -77,16 +73,16 @@ namespace xloil
       nHours = hour.count();
       nMins = mins.count();
       nSecs = (int)secs.count();
-      uSecs = (int)ms.count();
+      uSecs = (int)us.count();
     }
     else
       nHours = nMins = nSecs = uSecs = 0;
-    excelSerialDateToDMY(int(intpart), nDay, nMonth, nYear);
+    excelSerialDateToYMD(int(intpart), nYear, nMonth, nDay);
     return true;
   }
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
-  int excelSerialDateFromDMY(int nDay, int nMonth, int nYear)
+  int excelSerialDateFromYMD(int nYear, int nMonth, int nDay)
   {
     // Excel/Lotus 123 have a bug with 29-02-1900. 1900 is not a
     // leap year, but Excel/Lotus 123 think it is...
@@ -110,14 +106,13 @@ namespace xloil
     return (int)nSerialDate;
   }
 
-  double excelSerialDateFromDMYHMS(int nDay, int nMonth, int nYear, int nHours, int nMins, int nSecs, int uSecs)
+  double excelSerialDateFromYMDHMS(int nYear, int nMonth, int nDay, int nHours, int nMins, int nSecs, int uSecs)
   {
-    double serial = excelSerialDateFromDMY(nDay, nMonth, nYear);
-    auto ms = duration_cast<milliseconds>(hours(nHours) + minutes(nMins) + seconds(nSecs)).count() + uSecs;
-    serial += ms / millisecsPerDay;
+    const auto micros = duration_cast<microseconds>(
+      hours(nHours) + minutes(nMins) + seconds(nSecs)).count() + uSecs;
+    const auto serial = excelSerialDateFromYMD(nYear, nMonth, nDay) + micros / microsecsPerDay;
     return serial;
   }
-
 
   // Thanks to:
   // https://stackoverflow.com/questions/13059091/creating-an-input-stream-from-constant-memory/13059195#13059195
@@ -145,29 +140,6 @@ namespace xloil
       wmembuf::str(base, size);
     }
   };
-
-  
-
-  /*std::array<bool, 256> camelHerder()
-  {
-    std::array<bool, 256> result;
-    for (auto c : "JFMASONDjfmasond")
-      result[c] = true;
-    return result;
-  }
-
-  static std::array<bool, 256> theFirstMonthLetters = camelHerder();
-
-  void camel(wchar_t* str, size_t len)
-  {
-    const auto pEnd = str + len;
-    while (!theFirstMonthLetters[(unsigned char)*str]) 
-      if (++str == pEnd)
-        return;
-    *str = towupper(*str);
-    while (++str < pEnd && iswalpha(*str))
-      *str = towlower(*str);
-  }*/
 
   unordered_set<wstring> theDateFormats;
 

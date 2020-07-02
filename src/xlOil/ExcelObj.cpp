@@ -422,23 +422,23 @@ namespace
     }
   }
 
-  bool ExcelObj::toDMY(
-    int &nDay, int &nMonth, int &nYear) const noexcept
+  bool ExcelObj::toYMD(
+    int &nYear, int &nMonth, int &nDay) const noexcept
   {
     if ((xltype & (xltypeNum | xltypeInt)) == 0)
       return false;
     const auto d = toInt();
-    return excelSerialDateToDMY(d, nDay, nMonth, nYear);
+    return excelSerialDateToYMD(d, nYear, nMonth, nDay);
   }
 
-  bool ExcelObj::toDMYHMS(
-    int & nDay, int & nMonth, int & nYear, 
+  bool ExcelObj::toYMDHMS(
+    int & nYear, int & nMonth, int & nDay,
     int & nHours, int & nMins, int & nSecs, int & uSecs) const noexcept
   {
     if ((xltype & (xltypeNum | xltypeInt)) == 0)
       return false;
     const auto d = toDouble();
-    return excelSerialDatetoDMYHMS(d, nDay, nMonth, nYear, nHours, nMins, nSecs, uSecs);
+    return excelSerialDatetoYMDHMS(d, nYear, nMonth, nDay, nHours, nMins, nSecs, uSecs);
   }
 
   bool ExcelObj::toDateTime(std::tm& result, 
@@ -450,8 +450,8 @@ namespace
     {
       int uSecs;
       result.tm_isdst = false;
-      return excelSerialDatetoDMYHMS(val.num, 
-        result.tm_yday, result.tm_mon, result.tm_year,
+      return excelSerialDatetoYMDHMS(val.num, 
+        result.tm_year, result.tm_mon, result.tm_yday,
         result.tm_hour, result.tm_min, result.tm_sec, uSecs);
     }
     case xltypeInt:
@@ -459,8 +459,8 @@ namespace
       result.tm_isdst = false;
       result.tm_hour = 0;
       result.tm_min = 0;
-      return excelSerialDateToDMY(val.w,
-        result.tm_yday, result.tm_mon, result.tm_year);
+      return excelSerialDateToYMD(val.w,
+        result.tm_year, result.tm_mon, result.tm_yday);
     }
     case xltypeStr:
     {
