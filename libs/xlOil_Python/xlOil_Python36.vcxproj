@@ -152,7 +152,9 @@
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="PyEvents.cpp" />
-    <ClCompile Include="File.cpp" />
+    <ClCompile Include="File.cpp">
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="InjectedModule.cpp" />
