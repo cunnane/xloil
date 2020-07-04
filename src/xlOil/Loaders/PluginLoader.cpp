@@ -113,10 +113,6 @@ namespace xloil
 
       try
       {
-        // The PushEnvVar class will remove any set environment
-        // variables when it goes out of scope
-        vector<shared_ptr<PushEnvVar>> environmentVariables;
-
         XLO_INFO(L"Loading plugin {}", pluginName);
         
         const auto pluginSettings = Settings::findPluginSettings(
@@ -142,8 +138,7 @@ namespace xloil
             auto value = expandWindowsRegistryStrings(
               expandEnvironmentStrings(val));
 
-            environmentVariables.emplace_back(
-              std::make_shared<PushEnvVar>(key.c_str(), value.c_str()));
+            SetEnvironmentVariable(key.c_str(), value.c_str());
           }
           // Load the plugin
           const auto lib = LoadLibrary(pluginPath.c_str());
