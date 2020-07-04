@@ -86,6 +86,15 @@ namespace xloil
       return *this;
     }
 
+    wchar_t& operator[](const size_type i)
+    {
+      return _data[i + 1];
+    }
+    wchar_t operator[](const size_type i) const
+    {
+      return _data[i + 1];
+    }
+
     operator std::wstring_view() const
     {
       return view();
