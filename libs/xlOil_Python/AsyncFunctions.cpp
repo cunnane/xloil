@@ -7,6 +7,7 @@
 #include <xloil/Async.h>
 #include <xloil/RtdServer.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/Caller.h>
 #include <CTPL/ctpl_stl.h>
 #include <vector>
 
@@ -253,9 +254,11 @@ namespace xloil
     {
       RtdReturn(
         IRtdPublish& notify,
-        const shared_ptr<IPyToExcel>& returnConverter)
+        const shared_ptr<IPyToExcel>& returnConverter,
+        const wchar_t* caller)
         : _notify(notify)
         , _returnConverter(returnConverter)
+        , _caller(caller)
       {}
       ~RtdReturn()
       {
@@ -277,7 +280,10 @@ namespace xloil
         py::gil_scoped_acquire gilAcquired;
         ExcelObj result = _returnConverter
           ? (*_returnConverter)(*value.ptr())
-          : FromPyObj()(value.ptr());
+          : FromPyObj()(value.ptr(), false);
+        // If nil, conversion wasn't possible, so use the cache
+        if (result.isType(ExcelType::Nil))
+          result = pyCacheAdd(value, _caller);
         _notify.publish(std::move(result));
       }
 
@@ -318,6 +324,7 @@ namespace xloil
       shared_ptr<IPyToExcel> _returnConverter;
       py::object _task;
       std::atomic<bool> _hasTask = false;
+      const wchar_t* _caller;
     };
 
     /// <summary>
@@ -329,6 +336,7 @@ namespace xloil
       PyFuncInfo* _info;
       PyObject *_args, *_kwargs;
       RtdReturn* _returnObj = nullptr;
+      wstring _caller;
 
       /// <summary>
       /// Steals references to PyObjects
@@ -337,6 +345,7 @@ namespace xloil
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
+        , _caller(CallerInfo().writeAddress(false))
       {}
 
       virtual ~AsyncTask()
@@ -349,7 +358,7 @@ namespace xloil
 
       void start(IRtdPublish& publish) override
       {
-        _returnObj = new RtdReturn(publish, _info->returnConverter);
+        _returnObj = new RtdReturn(publish, _info->returnConverter, _caller.c_str());
 
         getEventLoop().runInterrupt(
           [=](int /*threadId*/)

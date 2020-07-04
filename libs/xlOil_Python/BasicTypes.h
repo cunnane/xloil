@@ -203,7 +203,7 @@ namespace xloil
     struct FromPyObj
     {
       template <class TCtor>
-      auto operator()(const PyObject* obj, TCtor ctor) const
+      auto operator()(const PyObject* obj, TCtor ctor, bool useCache = true) const
       {
         auto p = (PyObject*)obj; // Python API isn't const-aware
         if (p == Py_None)
@@ -244,17 +244,20 @@ namespace xloil
         {
           return ctor(nestedIterableToExcel(p));
         }
-        else
+        else if (useCache)
         {
           return ctor(pyCacheAdd(PyBorrow<>(p)));
         }
+        else
+          return ctor(ExcelType::Nil);
       }
-      auto operator()(const PyObject* obj) const
+      auto operator()(const PyObject* obj, bool useCache = true) const
       {
         return operator()(obj, [](auto&&... args) 
-        { 
-          return ExcelObj(std::forward<decltype(args)>(args)...); 
-        });
+          { 
+            return ExcelObj(std::forward<decltype(args)>(args)...); 
+          }, 
+          useCache);
       }
     };
   }
