@@ -161,6 +161,7 @@
     <ClCompile Include="Numpy.cpp" />
     <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
+    <ClCompile Include="PyRtd.cpp" />
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>

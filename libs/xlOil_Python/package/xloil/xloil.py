@@ -5,6 +5,7 @@ import typing
 import numpy as np
 import os
 import sys
+import traceback
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
@@ -17,7 +18,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
     from xloil_core import event, cache
-    #from xloil_core import RtdManager, RtdTopic
+    from xloil_core import RtdManager, RtdTopic
 
 else:
     def in_wizard():
@@ -283,6 +284,28 @@ else:
 
     cache = Cache()
 
+    class RtdTopic:
+
+        def connect(self, num_subscribers):
+            pass
+        def disconnect(self, num_subscribers):
+            pass
+        def stop(self):
+            pass
+        def done(self):
+            pass
+        def topic(self):
+            pass
+
+    class RtdManager:
+
+        def start(self, topic:RtdTopic):
+            pass
+        def publish(self, topic:str, value):
+            pass
+        def subscribe(self, topic:str):
+            pass
+
 ########################################
 # END: XLOIL CORE FORWARD DECLARATIONS #
 ########################################
@@ -530,7 +553,7 @@ def _async_wrapper(fn):
 
         # TODO: is inspect.isasyncgenfunction expensive?
 
-        async def do_it():
+        async def run_async():
             try:
                 if inspect.isasyncgenfunction(fn):
                     async for result in fn(*args, **kwargs):
@@ -538,12 +561,12 @@ def _async_wrapper(fn):
                 else:
                     result = await fn(*args, **kwargs)
                     cxt.set_result(result)
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError, StopAsyncIteration):
                 raise
-            except e:
-                cxt.set_result(str(e))
+            except Exception as e:
+                cxt.set_result(str(e) + ": " + traceback.format_exc())
 
-        cxt.set_task(loop.create_task(do_it()))
+        cxt.set_task(loop.create_task(run_async()))
 
     return synchronised    
 
