@@ -197,19 +197,22 @@ namespace xloil
         long* topicCount,
         SAFEARRAY** data) override
       {
-        std::scoped_lock lock(_lockSubscribers);
-
-        unordered_set<long> readyTopicIds;
+        decltype(_newValues) newValues;
         {
+          // This lock is required for updates, so we avoid holding it and 
+          // quickly splice out the list of new values. 
+          // TODO: consider using lock-free list for updates
           std::scoped_lock lock(_lockNewValues);
-          for (auto&[topic, value] : _newValues)
-          {
-            _values[topic] = value;
-            const auto& subscribers = _subscribers[topic];
-            readyTopicIds.insert(subscribers.begin(), subscribers.end());
-          }
+          newValues.splice(newValues.begin(), _newValues);
+        }
 
-          _newValues.clear();
+        std::scoped_lock lock(_lockSubscribers);
+        unordered_set<long> readyTopicIds;
+        for (auto&[topic, value] : newValues)
+        {
+          _values[topic] = value;
+          const auto& subscribers = _subscribers[topic];
+          readyTopicIds.insert(subscribers.begin(), subscribers.end());
         }
 
         const auto nReady = readyTopicIds.size();
@@ -311,7 +314,7 @@ namespace xloil
       std::unordered_map<wstring, shared_ptr<IRtdTopic>> _theProducers;
       std::unordered_map<wstring, unordered_set<long>> _subscribers;
       std::unordered_map<wstring, shared_ptr<ExcelObj>> _values;
-      std::unordered_map<wstring, shared_ptr<ExcelObj>> _newValues;
+      std::list<std::pair<wstring, shared_ptr<ExcelObj>>> _newValues;
 
       std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
 
@@ -346,10 +349,9 @@ namespace xloil
     public:
       void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
       {
-        // TODO: could write this non-blocking by using a singly linked list of values
         std::scoped_lock lock(_lockNewValues);
 
-        _newValues[topic] = value;
+        _newValues.push_back(make_pair(wstring(topic), value));
 
         // We only need to notify Excel about new data once. Excel will
         // only callback RefreshData approximately every 2 seconds
@@ -620,6 +622,8 @@ namespace xloil
     std::shared_ptr<IRtdManager> newRtdManager(
       const wchar_t* progId, const wchar_t* clsid)
     {
+      if (!isMainThread())
+        XLO_THROW("RtdManager must be created on main thread");
       return make_shared<COM::RtdManager>(progId, clsid);
     }
   }
