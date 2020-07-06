@@ -136,15 +136,15 @@ def pyTestKwargs(argName, **kwargs):
 # Note that any interaction with Excel will cancel all async functions:
 # they are only asynchronous with each other, not with the user interface.
 #
-@xlo.func(local=False)
-async def pyTestAsync(x, time:int):
-    await asyncio.sleep(time)
-    return x
+#@xlo.func(local=False)
+#async def pyTestAsync(x, time:int):
+#    await asyncio.sleep(time)
+#    return x
 
-@xlo.func(thread_safe=True, local=False)
-async def pyTestAsyncThread(x, time:int):
-    await asyncio.sleep(time)
-    return x
+#@xlo.func(thread_safe=True, local=False)
+#async def pyTestAsyncThread(x, time:int):
+#    await asyncio.sleep(time)
+#    return x
 
 #
 # If an iterable object is returned, xlOil attempts to convert it to an
