@@ -7,8 +7,9 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
 #include <xlOilHelpers/StringUtils.h>
+#include <xlOil/State.h>
 #include <xlOil/Loaders/EntryPoint.h>
-#include <xlOil/Register/AsyncHelper.h>
+#include <xlOil/Async.h>
 #include <xlOil/Preprocessor.h>
 #include "Thunker.h"
 #include <unordered_set>
@@ -43,11 +44,12 @@ namespace xloil
 
 namespace xloil
 {
-  // With x64/Win32 function names are decorated. It no longer seemed
+  // With Win32 function names are decorated. It no longer seemed
   // like a good idea with x64.
   std::string decorateCFunction(const char* name, const size_t numPtrArgs)
   {
 #ifdef _WIN64
+    (void)numPtrArgs;
     return string(name);
 #else
     return fmt::format("_{0}@{1}", sizeof(void*) * numPtrArgs);
@@ -108,7 +110,7 @@ namespace xloil
 
 #ifdef _DEBUG
       // Check the thunk is hooked to Windows' satisfaction
-      void* procNew = GetProcAddress((HMODULE)coreModuleHandle(), stubName);
+      void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(), stubName);
       XLO_ASSERT(procNew == thunk);
 #endif
 
@@ -262,12 +264,20 @@ namespace xloil
       theCodePtr = theCodeCave;
     }
 
+    auto find(const wchar_t* name)
+    {
+      auto found = theRegistry.find(name);
+      return found != theRegistry.end() ? found->second : RegisteredFuncPtr();
+    }
+
   private:
     FunctionRegistry()
     {
-      theCoreDllName = ExcelObj(theCoreName());
-      theExportTable.reset(new DllExportTable((HMODULE)coreModuleHandle()));
+      theCoreDllName = ExcelObj(State::coreName());
+      theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
       theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));
+      if (theFirstStub < 0)
+        XLO_THROW("Could not find xlOil stub");
       _freeThunksAvailable = false;
     }
 
@@ -449,11 +459,48 @@ namespace xloil
 
   namespace
   {
-    ExcelObj* launchFunctionObj(ObjectToFuncSpec* data, const ExcelObj** args)
+    ExcelObj* launchFunctionObj(
+      ObjectToFuncSpec* data, 
+      const ExcelObj** args) noexcept
     {
-      return data->_function(*data->info(), args);
+      try
+      {
+        return data->_function(*data->info(), args);
+      }
+      catch (const std::exception& e)
+      {
+        return returnValue(e);
+      }
     }
-    void launchFunctionObjAsync(ObjectToFuncSpec* data, const ExcelObj* asyncHandle, const ExcelObj** args)
+
+    // TODO: this is not used and maybe not that useful!
+
+    class AsyncHolder
+    {
+    public:
+      // No need to copy the data as FuncRegistry will keep this alive
+      // Async handle is destroyed by Excel return, so must copy that
+      AsyncHolder(std::function<ExcelObj*()> func, const ExcelObj* asyncHandle)
+        : _call(func)
+        , _asyncHandle(*asyncHandle)
+      {
+      }
+      void operator()(int /*threadId*/) const
+      {
+        auto* result = _call();
+        asyncReturn(_asyncHandle, ExcelObj(*result));
+        if (result->xltype & msxll::xlbitDLLFree)
+          delete result;
+      }
+    private:
+      std::function<ExcelObj*()> _call;
+      ExcelObj _asyncHandle;
+    };
+
+    void launchFunctionObjAsync(
+      ObjectToFuncSpec* data, 
+      const ExcelObj* asyncHandle, 
+      const ExcelObj** args) noexcept
     {
       try
       {
@@ -507,11 +554,16 @@ namespace xloil
     }
   }
 
+  RegisteredFuncPtr findRegisteredFunc(const wchar_t * name)
+  {
+    return FunctionRegistry::get().find(name);
+  }
+ 
   bool deregisterFunc(const shared_ptr<RegisteredFunc>& ptr)
   {
     return FunctionRegistry::get().remove(ptr);
   }
-  
+
   StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
     : FileSource(pluginPath)
   {

@@ -38,6 +38,9 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
+  <PropertyGroup>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -142,23 +145,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AsyncFunctions.cpp" />
     <ClCompile Include="BasicTypes.cpp" />
     <ClCompile Include="Cache.cpp" />
     <ClCompile Include="CustomConverter.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="PyEvents.cpp" />
-    <ClCompile Include="File.cpp" />
+    <ClCompile Include="File.cpp">
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="InjectedModule.cpp" />
     <ClCompile Include="Numpy.cpp" />
     <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
+    <ClCompile Include="PyRtd.cpp" />
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ArrayHelpers.h" />
+    <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="Cache.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="Main.h" />

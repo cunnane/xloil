@@ -89,7 +89,7 @@ ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args&&... a
   }
   catch (const std::exception& e)
   {
-    return ExcelObj::returnValue(e.what());
+    return returnValue(e);
   }
 }
 
@@ -116,7 +116,7 @@ ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args&&
   }
   catch (const std::exception& e)
   {
-    return ExcelObj::returnValue(e.what());
+    return returnValue(e);
   }
 }
 

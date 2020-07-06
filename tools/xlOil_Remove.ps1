@@ -4,7 +4,7 @@ $OurAppData = Join-Path $env:APPDATA "xlOil"
 
 function Remove-Addin {
     param ([string]$AddinPath, $Version)
-    $RegKey=(gi "HKCU:\Software\Microsoft\Office\${Version}\Excel\Add-in Manager")
+    $RegKey=(gi "HKCU:\Software\Microsoft\Office\${Version}\Excel\Add-in Manager" -ErrorAction SilentlyContinue)
 
     if ($RegKey -eq $NULL) {exit}
 

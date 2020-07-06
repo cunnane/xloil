@@ -21,6 +21,9 @@
     <None Include="package\xloil\command_line.py">
       <Filter>package</Filter>
     </None>
+    <None Include="package\xloil\xloil_jupyter.py">
+      <Filter>package</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\xloil.py">

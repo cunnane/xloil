@@ -24,8 +24,8 @@ namespace xloil
     {
       if (PyDateTime_CheckExact(p))
       {
-        auto serial = excelSerialDateFromDMYHMS(
-          PyDateTime_GET_DAY(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_YEAR(p),
+        auto serial = excelSerialDateFromYMDHMS(
+          PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
           PyDateTime_DATE_GET_HOUR(p), PyDateTime_DATE_GET_MINUTE(p), PyDateTime_DATE_GET_SECOND(p),
           PyDateTime_DATE_GET_MICROSECOND(p)
         );
@@ -33,8 +33,8 @@ namespace xloil
       }
       else
       {
-        auto serial = excelSerialDateFromDMY(
-          PyDateTime_GET_DAY(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_YEAR(p));
+        auto serial = excelSerialDateFromYMD(
+          PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p));
         return ExcelObj(serial);
       }
     }
@@ -47,7 +47,7 @@ namespace xloil
       PyObject* fromInt(int x) const 
       {
         int day, month, year;
-        excelSerialDateToDMY(x, day, month, year);
+        excelSerialDateToYMD(x, year, month, day);
         return PyDate_FromDate(year, month, day);
       }
       PyObject* fromDouble(double x) const
@@ -68,7 +68,7 @@ namespace xloil
       PyObject* fromDouble(double x) const
       {
         int day, month, year, hours, mins, secs, usecs;
-        excelSerialDatetoDMYHMS(x, day, month, year, hours, mins, secs, usecs);
+        excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
         return PyDateTime_FromDateAndTime(year, month, day, hours, mins, secs, usecs);
       }
       PyObject* fromString(const PStringView<>& pstr) const

@@ -24,31 +24,42 @@ namespace xloil
   {
   public:
     template<class... Args>
-    Exception(const char* path, const int line, const char* func,
-      std::string_view formatStr, Args &&... args)
+    Exception(
+      const char* path, const int line, const char* func,
+      const std::string_view& formatStr, Args &&... args)
       : Exception(path, line, func, formatMessage(formatStr, std::forward<Args>(args)...))
-    {}
-    template<class... Args>
-    Exception(const char* path, const int line, const char* func,
-      std::wstring_view formatStr, Args &&... args)
-      : Exception(path, line, func, formatMessage(formatStr, std::forward<Args>(args)...))
-    {}
-    inline Exception(const char* path, const int line, const char* func, std::basic_string_view<wchar_t> msg)
-      : Exception(path, line, func, utf16ToUtf8(msg.data()))
     {}
 
-    XLOIL_EXPORT Exception(const char* path, const int line, const char* func, std::basic_string_view<char> msg);
-    XLOIL_EXPORT virtual ~Exception() throw();
+    template<class... Args>
+    Exception(
+      const char* path, const int line, const char* func,
+      const std::wstring_view& formatStr, Args &&... args)
+      : Exception(path, line, func, formatMessage(formatStr, std::forward<Args>(args)...))
+    {}
+
+    inline Exception(
+      const char* path, const int line, const char* func, 
+      const std::wstring& msg)
+      : Exception(path, line, func, utf16ToUtf8(msg.c_str()))
+    {}
+
+    inline Exception(
+      const char* path, const int line, const char* func,
+      const std::string& msg)
+      : Exception(path, line, func, msg.c_str())
+    {}
+
+    XLOIL_EXPORT Exception(
+      const char* path,
+      const int line,
+      const char* func,
+      const char* message) noexcept;
 
   private:
-    int _line;
-    std::string _file;
-    std::string _function;
-
     template<class TChar, class... Args>
     std::basic_string<TChar> formatMessage(
       std::basic_string_view<TChar> formatStr,
-      Args &&... args)
+      Args &&... args) noexcept
     {
       try
       {

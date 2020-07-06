@@ -67,21 +67,12 @@
     <Import Project="..\x64.props" />
     <Import Project="..\Release.props" />
   </ImportGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <PropertyGroup>
     <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -89,7 +80,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -97,7 +88,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -105,7 +96,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -113,6 +104,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
+    <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />
     <ClInclude Include="..\..\include\xloil\Events.h" />
     <ClInclude Include="..\..\include\xloil\ExcelArray.h" />
@@ -121,7 +113,7 @@
     <ClInclude Include="..\..\include\xloil\ExcelObjCache.h" />
     <ClInclude Include="..\..\include\xloil\ExcelRange.h" />
     <ClInclude Include="..\..\include\xloil\ExcelRef.h" />
-    <ClInclude Include="..\..\include\xloil\ExcelState.h" />
+    <ClInclude Include="..\..\include\xloil\Caller.h" />
     <ClInclude Include="..\..\include\xloil\ExportMacro.h" />
     <ClInclude Include="..\..\include\xloil\FuncSpec.h" />
     <ClInclude Include="..\..\include\xloil\Interface.h" />
@@ -131,28 +123,32 @@
     <ClInclude Include="..\..\include\xloil\Preprocessor.h" />
     <ClInclude Include="..\..\include\xloil\PString.h" />
     <ClInclude Include="..\..\include\xloil\Register.h" />
+    <ClInclude Include="..\..\include\xloil\RtdServer.h" />
     <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
+    <ClInclude Include="..\..\include\xloil\ThreadControl.h" />
     <ClInclude Include="..\..\include\xloil\Throw.h" />
-    <ClInclude Include="..\..\include\xloil\TriggeredPtr.h" />
     <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xloil\xlOil.h" />
+    <ClInclude Include="State.h" />
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
-    <ClInclude Include="Register\AsyncHelper.h" />
     <ClInclude Include="Register\FuncRegistry.h" />
     <ClInclude Include="Register\LocalFunctions.h" />
     <ClInclude Include="Register\PEHelper.h" />
     <ClInclude Include="Register\Thunker.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Async.cpp" />
+    <ClCompile Include="RtdServer.cpp" />
+    <ClCompile Include="State.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelObj.cpp" />
     <ClCompile Include="ExcelRange.cpp" />
     <ClCompile Include="ExcelRef.cpp" />
-    <ClCompile Include="ExcelState.cpp" />
+    <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="Interface.cpp" />
@@ -160,14 +156,15 @@
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />
-    <ClCompile Include="Register\AsyncHelper.cpp" />
     <ClCompile Include="Register\FuncRegistry.cpp" />
     <ClCompile Include="Register\LocalFunctions.cpp" />
     <ClCompile Include="Register\PEHelper.cpp" />
     <ClCompile Include="Register\Thunker.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
+    <ClCompile Include="ThreadControl.cpp" />
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
+    <ClCompile Include="xloHelp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\COMInterface\COMInterface.vcxproj">

@@ -13,8 +13,9 @@ namespace xloil
     std::shared_ptr<const ExcelObj> _Address, _SheetName;
   public:
     CallerInfo();
-    uint16_t fullAddressLength() const;
-    uint16_t writeFullAddress(wchar_t* buf, size_t bufLen) const;
+    uint16_t addressRCLength() const;
+    uint16_t writeAddress(wchar_t* buf, size_t bufLen, bool A1Style = false) const;
+    std::wstring writeAddress(bool A1Style = true) const;
   };
 
   /// <summary>

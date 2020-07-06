@@ -5,6 +5,7 @@ import typing
 import numpy as np
 import os
 import sys
+import traceback
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
@@ -17,6 +18,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
     from xloil_core import CustomConverter as _CustomConverter
     from xloil_core import event, cache
+    from xloil_core import RtdManager, RtdTopic
 
 else:
     def in_wizard():
@@ -282,6 +284,32 @@ else:
 
     cache = Cache()
 
+    class RtdTopic:
+
+        def connect(self, num_subscribers):
+            pass
+        def disconnect(self, num_subscribers):
+            pass
+        def stop(self):
+            pass
+        def done(self):
+            pass
+        def topic(self):
+            pass
+
+    class RtdManager:
+
+        def start(self, topic:RtdTopic):
+            pass
+        def publish(self, topic:str, value):
+            pass
+        def subscribe(self, topic:str):
+            pass
+
+########################################
+# END: XLOIL CORE FORWARD DECLARATIONS #
+########################################
+
 """
 Tag used to mark functions to register with Excel. It is added 
 by the xloil.func decorator to the target func's __dict__
@@ -424,13 +452,14 @@ def converter(typ=typing.Callable, range=False):
     return decorate
 
 
-class _FuncMeta:
+class _FuncDescription:
     def __init__(self, func):
         self._func = func
         self.args = _function_argspec(func)
         self.name = func.__name__
         self.help = func.__doc__
         self.is_async = False
+        self.rtd = False
         self.macro = False
         self.thread_safe = False
         self.volatile = False
@@ -479,12 +508,13 @@ class _FuncMeta:
             else:
                 holder.set_arg_type(i, converter)
 
-        holder.local = True if self.local is None else self.local
+        holder.local = True if (self.local is None and not self.is_async) else self.local
+        holder.rtd_async = self.rtd and self.is_async
 
-        # TODO: if local reject most FuncOpts
+        # TODO: if we are a local func we should reject most FuncOpts
         
-        holder.set_opts((FuncOpts.Async if self.is_async else 0) 
-                        | (FuncOpts.Macro if self.macro else 0) 
+        holder.set_opts((FuncOpts.Async if (self.is_async and not self.rtd) else 0) 
+                        | (FuncOpts.Macro if self.macro or self.rtd else 0) 
                         | (FuncOpts.ThreadSafe if self.thread_safe else 0)
                         | (FuncOpts.Volatile if self.volatile else 0))
 
@@ -494,43 +524,69 @@ class _FuncMeta:
 def _get_meta(fn):
     return fn.__dict__.get(_META_TAG, None)
  
-def _create_excelfunc_meta(fn):
+def _create_excelfunc_description(fn):
     if not hasattr(fn, _META_TAG):
-        fn.__dict__[_META_TAG] = _FuncMeta(fn)
+        fn.__dict__[_META_TAG] = _FuncDescription(fn)
     return _get_meta(fn)
 
+
+import asyncio
+
+def _get_event_loop():
+    loop = None
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    return loop
+        
 def _async_wrapper(fn):
-    import asyncio
-    """
-    Synchronises an 'async def' function. xloil will invoke it
-    in a background thread. The C++ layer doesn't doesnt want 
-    to have to deal with asyncio event loops.
-    """
+    
     @functools.wraps(fn)
     def synchronised(*args, **kwargs):
 
-        # Get current event loop or create one for this thread
-        loop = None
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        # Thread context passed from the C++ layer. Remove this 
-        # from args intented for the inner function call.
-        cxt = kwargs.pop("xloil_thread_context")
+        loop = _get_event_loop()
 
-        task = asyncio.ensure_future(fn(*args, **kwargs), loop=loop)
+        cxt = kwargs.pop(xloil_core.ASYNC_CONTEXT_TAG)
 
-        while not task.done():
-            loop.run_until_complete(asyncio.wait({task}, loop=loop, timeout=1))
-            if cxt.cancelled():
-                task.cancel()
- 
-        return task.result()
-        
+        # TODO: is inspect.isasyncgenfunction expensive?
+
+        async def run_async():
+            try:
+                if inspect.isasyncgenfunction(fn):
+                    async for result in fn(*args, **kwargs):
+                        cxt.set_result(result)
+                else:
+                    result = await fn(*args, **kwargs)
+                    cxt.set_result(result)
+            except (asyncio.CancelledError, StopAsyncIteration):
+                raise
+            except Exception as e:
+                cxt.set_result(str(e) + ": " + traceback.format_exc())
+
+        cxt.set_task(loop.create_task(run_async()))
+
     return synchronised    
+
+def _pump_message_loop(control):
+    """
+    Called internally to run the asyncio message loop. The control object
+    allows the loop to be stopped
+    """
+    loop = _get_event_loop()
+
+    async def check_stop():
+        while not control.stopped():
+            await asyncio.sleep(0.2)
+        loop.stop()
+
+    all_tasks = asyncio.Task.all_tasks()
+    stop_check = loop.create_task(check_stop())
+
+    loop.run_until_complete(asyncio.wait(all_tasks))
+    stop_check.cancel()
 
 
 def func(fn=None, 
@@ -539,6 +595,7 @@ def func(fn=None,
          group=None, 
          local=None,
          is_async=False, 
+         rtd=False,
          macro=False, 
          thread_safe=False, 
          volatile=False):
@@ -610,28 +667,29 @@ def func(fn=None,
     def decorate(fn):
 
         _async = is_async
-        # If asyncio is not supported e.g. python 2, this will fail
+        # If asyncio is not supported e.g. in python 2, this will fail
         # But it doesn't matter since the async wrapper is intended to 
-        # removes the async property
+        # hide the async property 
         try:
-            if inspect.iscoroutinefunction(fn):
+            if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
                 fn = _async_wrapper(fn)
                 _async = True
         except:
             pass
 
-        meta = _create_excelfunc_meta(fn)
+        descr = _create_excelfunc_description(fn)
 
         del arguments['fn']
         for arg, val in arguments.items():
             if arg is not 'fn' and val is not None:
-                meta.__dict__[arg] = val
+                descr.__dict__[arg] = val
 
-        meta.is_async = _async
+        descr.is_async = _async
 
         return fn
 
     return decorate if fn is None else decorate(fn)
+
 
 def arg(name, typeof=None, help=None, range=None):
     """ 
@@ -644,9 +702,9 @@ def arg(name, typeof=None, help=None, range=None):
     """
     
     def decorate(fn):
-        meta = _create_excelfunc_meta(fn) # In case we are called before @func
+        descr = _create_excelfunc_description(fn) # In case we are called before @func
     
-        args = meta.args
+        args = descr.args
     
         # The args are already populated from the function signature 
         # so we're guaranteed at most one match

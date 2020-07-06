@@ -28,7 +28,7 @@ def pySumNums(x: float, y: float, a: int = 2, b: int = 3) -> float:
 # The 'group' argument specifes a category of functions in Excel's 
 # function wizard
 #
-@xlo.func(name='pyRoundTrip', group='Useless', help='returns its argument')
+@xlo.func(name='pyRoundTrip', group='UselessFuncs', help='returns its argument')
 def pyTest1(x):
     '''
     Long description, too big for function wizard, which is actually limited
@@ -116,7 +116,7 @@ def pyTestDate(x: dt.datetime):
     return x + dt.timedelta(days=1)
  
 
-# 
+#
 # Keyword args are supported by passing a two-column array of (string, value)
 #
 @xlo.func
@@ -133,19 +133,63 @@ def pyTestKwargs(argName, **kwargs):
 # can run whilst waiting for the async return. However, the await keyword 
 # can pass control between running async functions.
 #
-# Note that any interaction with Excel will cancel all async functions:
-# they are only asynchronous with each other, not with the user interface.
+# There are two flavours of async function: RTD and native. The XLL interface
+# contains async support but any interaction with Excel will cancel all native async 
+# functions: they are only asynchronous with each other, not with the user interface.
+# This is fairly unexpected and generally undesirable, so xlOil has an implementation of 
+# async which works in the expected way using RTD at the expense of more overhead.
 #
-#@xlo.func(local=False)
-#async def pyTestAsync(x, time:int):
-#    await asyncio.sleep(time)
-#    return x
+@xlo.func(rtd=True)
+async def pyTestAsyncRtd(x, time:int):
+    await asyncio.sleep(time)
+    return x
 
-#@xlo.func(thread_safe=True, local=False)
-#async def pyTestAsyncThread(x, time:int):
-#    await asyncio.sleep(time)
-#    return x
+#
+# Native async functions cannot be declared local as VBA does not support this
+# 
+@xlo.func(local=False)
+async def pyTestAsync(x, time:int):
+    await asyncio.sleep(time)
+    return x
 
+
+@xlo.func(rtd=True)
+async def pyTestAsyncGen(secs):
+    while True:
+        await asyncio.sleep(secs)
+        yield dt.datetime.now()
+
+#
+# Trying a slightly more practical async usage: fetching web-pages
+#
+import aiohttp
+
+try:
+    import aiohttp
+    import ssl
+
+    @xlo.func(local=False, rtd=True)
+    async def pyGetUrl(url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, ssl=ssl.SSLContext()) as response:
+                return await response.text()
+#
+# For me with Anaconda 3.7, this exception was triggered because the SSL 
+# module couldn't find libssl & libcrypto. The DLLs were in <conda>\Library\bin
+# and that directory was on the path, but SSL refused to find them unless they
+# were copied to <conda>\DLLs. The issue is also mentioned here:
+# https://stackoverflow.com/questions/42563757/conda-update-condahttperror-http-none/60342954#60342954
+# The import worked fine from the command prompt so may be related to embedded
+# python or some well-meaning path twiddling in anaconda itself.
+#                  
+except ImportError:
+    @xlo.func(local=False)
+    def pyGetUrl(url):
+        return "You need to install aiohttp" 
+
+#------------------
+# Other handy bits
+#------------------
 #
 # If an iterable object is returned, xlOil attempts to convert it to an
 # array, with each element as a column. So a 1d iterator gives a 1d array
@@ -165,7 +209,8 @@ def pyTestIter(size:int, dims:int):
 
 #
 # Declaring a function as a macro allows use of the Excel.Application object
-# accessible via `xlo.app()`
+# accessible via `xlo.app()`. The available methods and properties are described
+# in the microsoft documentation
 #
 @xlo.func(macro=True)
 def pyTestCom():
@@ -181,6 +226,15 @@ def pyTestCom():
 def pyTestRange(r: xlo.AllowRange):
     r2 = r.cells(1, 1).value
     return r.cells(2, 2).address()
+
+#
+# Displays python's sys.path. Useful for debugging some module loads
+# 
+import sys        
+@xlo.func(local=False)
+def pysyspath():
+    return sys.path
+
 
 #--------------------------------
 # Custom argument type converters

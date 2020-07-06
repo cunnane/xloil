@@ -11,7 +11,7 @@ namespace xloil
   /// is out of range of valid Excel dates.
   /// </summary>
   XLOIL_EXPORT bool 
-    excelSerialDateToDMY(int nSerialDate, int &nDay, int &nMonth, int &nYear);
+    excelSerialDateToYMD(int nSerialDate, int &nYear, int &nMonth, int &nDay);
 
   /// <summary>
   /// Converts as Excel date expressed as floating point to day, month, year,
@@ -20,23 +20,23 @@ namespace xloil
   /// is out of range of valid Excel dates.
   /// </summary>
   XLOIL_EXPORT bool
-    excelSerialDatetoDMYHMS(
-      double serial, int &nDay, int &nMonth, 
-      int &nYear, int& nHours, int& nMins, int& nSecs, int& uSecs);
+    excelSerialDatetoYMDHMS(
+      double serial, int &nYear, int &nMonth, int &nDay,
+       int& nHours, int& nMins, int& nSecs, int& uSecs);
 
   /// <summary>
   /// Converts a date specifed as day, month, year to an Excel date serial number
   /// </summary>
   XLOIL_EXPORT int
-    excelSerialDateFromDMY(int nDay, int nMonth, int nYear);
+    excelSerialDateFromYMD(int nYear, int nMonth, int nDay);
 
   /// <summary>
   /// Converts a date specifed as day, month, year, hours, minutes, seconds and milliseconds
   /// to an Excel date serial number
   /// </summary>
   XLOIL_EXPORT double
-    excelSerialDateFromDMYHMS(
-      int nDay, int nMonth, int nYear, 
+    excelSerialDateFromYMDHMS(
+      int nYear, int nMonth, int nDay,
       int nHours, int nMins, int nSecs, int uSecs);
 
   /// <summary>

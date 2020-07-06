@@ -27,7 +27,7 @@ XLO_FUNC_START(
   xloRef(const ExcelObj& pxOper)
 )
 {
-  return ExcelObj::returnValue(
+  return returnValue(
     theExcelObjCache.add(
       make_shared<const ExcelObj>(pxOper)));
 }
@@ -44,9 +44,9 @@ XLO_FUNC_START(
   // We return a pointer to the stored object directly without setting
   // the flag which tells Excel to free it.
   if (theExcelObjCache.fetch(pxOper.asPascalStr().view(), result))
-    return const_cast<ExcelObj*>(result.get());
+    return returnReference(*result);
 
-  return ExcelObj::returnValue(CellError::Value);
+  return returnValue(CellError::Value);
 }
 XLO_FUNC_END(xloVal).threadsafe()
   .help(L"Given a string reference, returns a stored array or cell value. "

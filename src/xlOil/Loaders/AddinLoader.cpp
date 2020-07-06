@@ -6,6 +6,8 @@
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
+#include <xloil/State.h>
+#include <xloil/RtdServer.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 
@@ -47,7 +49,7 @@ namespace xloil
       if (found != addin->files().end())
         return make_pair(found->second, addin);
     }
-    return make_pair(std::shared_ptr<FileSource>(), std::shared_ptr<AddinContext>());
+    return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
   }
 
   void
@@ -63,7 +65,7 @@ namespace xloil
 
   auto processAddinSettings(const wchar_t* xllPath)
   {
-    auto settings = findSettingsFile(theCorePath());
+    auto settings = findSettingsFile(xllPath);
     if (!settings)
       return settings;
 
@@ -100,17 +102,17 @@ namespace xloil
       detail::loggerInitialise(spdlog::level::warn);
 #endif
 
-      auto settings = processAddinSettings(theCorePath());
+      auto settings = processAddinSettings(State::corePath());
       
-      ourCoreContext = createAddinContext(theCorePath(), settings);
-      ourCoreContext->tryAdd<StaticFunctionSource>(theCoreName(), theCoreName());
+      ourCoreContext = createAddinContext(State::corePath(), settings);
+      ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
 
       loadPlugins(ourCoreContext, Settings::plugins((*settings)["Addin"]));
     }
 
     // An explicit load of xloil.xll returns here
     if (_wcsicmp(fs::path(xllPath).replace_extension("dll").c_str(),
-      theCorePath()) == 0)
+      State::corePath()) == 0)
       return firstLoad;
 
     auto settings = processAddinSettings(xllPath);
@@ -134,10 +136,17 @@ namespace xloil
     // Check if only the core left
     if (theAddinContexts.size() == 1)
     {
-      theAddinContexts.erase(theCorePath());
-      // TODO: remove this legacy event?
+      theAddinContexts.erase(State::corePath());
+      
+      // Somewhat cheap trick to ensure any async tasks which may reference plugin
+      // code are destroyed in a timely manner prior to teardown.  Better would be
+      // to keep track of which tasks were registered by which addin
+      rtdAsyncManagerClear();
+
+      // TODO: remove this event?
       Event::AutoClose().fire();
-      unloadPlugins();
+
+      unloadAllPlugins();
       assert(theAddinContexts.empty());
     }
   }

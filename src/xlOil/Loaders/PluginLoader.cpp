@@ -1,6 +1,7 @@
 #include "PluginLoader.h"
 #include <xlOilHelpers/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
+#include <COMInterface/RtdManager.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Log.h>
 #include <xlOilHelpers/Settings.h>
@@ -26,6 +27,7 @@ using std::pair;
 using std::make_pair;
 using std::string;
 using std::unordered_map;
+using std::map;
 
 namespace xloil
 {
@@ -36,13 +38,34 @@ namespace xloil
     PluginInitFunc Init;
   };
 
+  template <class TChar>
+  struct CaselessCompare 
+  {
+    bool operator()(
+      const std::basic_string<TChar> & lhs, 
+      const std::basic_string<TChar> & rhs) const 
+    {
+      return (*this)(lhs.c_str(), rhs.c_str());
+    }
+    bool operator()(const TChar* lhs, const TChar* rhs) const 
+    {
+      if constexpr (std::is_same<TChar, wchar_t>::value)
+        return _wcsicmp(lhs, rhs) < 0;
+      else
+        return _stricmp(lhs, rhs) < 0;
+    }
+  };
+
   static auto& getLoadedPlugins()
   {
-    static auto instance = unordered_map<wstring, LoadedPlugin>();
+    static auto instance = map<
+      wstring, LoadedPlugin, CaselessCompare<wchar_t>>();
     return instance;
   }
 
-  void loadPlugins(AddinContext* context, const std::vector<std::wstring>& names) noexcept
+  void loadPlugins(
+    AddinContext* context, 
+    const std::vector<std::wstring>& names) noexcept
   {
     auto plugins = std::set<wstring>(names.cbegin(), names.cend());
 
@@ -71,7 +94,10 @@ namespace xloil
       }
     }
 
-    for (auto pluginName : plugins)
+    
+    auto& loadedPlugins = getLoadedPlugins();
+
+    for (const auto& pluginName : plugins)
     {
       // Look for the plugin in the same directory as xloil.dll, 
       // otherwise check the directory of the XLL
@@ -81,30 +107,28 @@ namespace xloil
 
       SetDllDirectory(pluginDir.c_str());
 
-      const auto path = pluginDir / (pluginName + L".dll");
+      const auto pluginPath = pluginDir / (pluginName + L".dll");
+
+      const auto pluginNameUtf8 = utf16ToUtf8(pluginName);
 
       try
       {
-        // The PushEnvVar class will remove any set environment
-        // variables when it goes out of scope
-        vector<shared_ptr<PushEnvVar>> environmentVariables;
-
-        XLO_INFO(L"Found plugin {}", pluginName);
+        XLO_INFO(L"Loading plugin {}", pluginName);
         
-        toml::node_view<const toml::node> pluginSettings;
-        if (context->settings())
-          pluginSettings = (*context->settings())[utf16ToUtf8(pluginName)];
+        const auto pluginSettings = Settings::findPluginSettings(
+          context->settings(), pluginNameUtf8.c_str());
 
         // If the plugin has already be loaded, we just notify it of 
         // a new XLL by calling attach and passing any XLL specific settings
-        auto pluginData = getLoadedPlugins().find(pluginName);
-        if (pluginData == getLoadedPlugins().end())
+        auto pluginData = loadedPlugins.find(pluginName);
+        if (pluginData == loadedPlugins.end())
         {
           // First load the plugin using any settings that have been specified in the
           // core config file, otherwise the ones in the add-ins ini file. This avoids
-          // race conditions with differnt add-in load orders.
+          // race conditions with different add-in load orders.
+
           auto loadSettings = theCoreContext()->settings()
-            ? (*theCoreContext()->settings())[utf16ToUtf8(pluginName)]
+            ? Settings::findPluginSettings(theCoreContext()->settings(), pluginNameUtf8.c_str())
             : pluginSettings;
 
           auto environment = Settings::environmentVariables(loadSettings);
@@ -114,11 +138,10 @@ namespace xloil
             auto value = expandWindowsRegistryStrings(
               expandEnvironmentStrings(val));
 
-            environmentVariables.emplace_back(
-              std::make_shared<PushEnvVar>(key.c_str(), value.c_str()));
+            SetEnvironmentVariable(key.c_str(), value.c_str());
           }
           // Load the plugin
-          const auto lib = LoadLibrary(path.c_str());
+          const auto lib = LoadLibrary(pluginPath.c_str());
           if (!lib)
             XLO_THROW(writeWindowsError());
 
@@ -145,7 +168,7 @@ namespace xloil
 
           // Add the plugin to the list of loaded plugins
           LoadedPlugin description = { context, lib, initFunc };
-          pluginData = getLoadedPlugins()
+          pluginData = loadedPlugins
             .insert(make_pair(pluginName, description)).first;
 
           // Register any static functions in the plugin by adding
@@ -167,7 +190,7 @@ namespace xloil
       catch (const std::exception& e)
       {
         XLO_ERROR(L"Plugin load failed for {0}: {1}\nPath={2}", 
-          path.wstring(), utf8ToUtf16(e.what()), getEnvVar(L"PATH"));
+          pluginPath.wstring(), utf8ToUtf16(e.what()), getEnvVar(L"PATH"));
       }
 
       // Undo addition to DLL search path 
@@ -175,16 +198,31 @@ namespace xloil
     }
   }
 
-  void unloadPlugins() noexcept
+  bool unloadPluginImpl(const wchar_t* name, LoadedPlugin& plugin) noexcept
   {
-    for (auto[name, descr] : getLoadedPlugins())
-    {
-      XLO_DEBUG(L"Unloading plugin {0}", name);
-      PluginContext plugin = { PluginContext::Unload, name.c_str(), nullptr };
-      descr.Init(0, plugin);
-      if (!FreeLibrary(descr.Handle))
-        XLO_WARN(L"FreeLibrary failed for {0}: {1}", name, writeWindowsError());
-    }
+    XLO_DEBUG(L"Unloading plugin {0}", name);
+    PluginContext context = { PluginContext::Unload, name, nullptr };
+    plugin.Init(0, context);
+    if (!FreeLibrary(plugin.Handle))
+      XLO_WARN(L"FreeLibrary failed for {0}: {1}", name, writeWindowsError());
+    return true;
+  }
+  
+  void unloadAllPlugins() noexcept
+  {
+    for (auto&[name, descr] : getLoadedPlugins())
+      unloadPluginImpl(name.c_str(), descr);
     getLoadedPlugins().clear();
+  }
+
+  std::vector<std::wstring> listPluginNames()
+  {
+    std::vector<std::wstring> result;
+    std::transform(
+      getLoadedPlugins().begin(),
+      getLoadedPlugins().end(),
+      std::back_inserter(result),
+      [](auto it) { return it.first; });
+    return std::move(result);
   }
 }

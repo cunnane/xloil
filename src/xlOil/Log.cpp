@@ -16,17 +16,21 @@ using std::make_shared;
 namespace xloil
 {
   XLOIL_EXPORT Exception::Exception(
-    const char* path, const int line, const char* func, std::basic_string_view<char> msg)
-    : runtime_error(msg.data())
-    , _line(line)
-    , _file(path)
-    , _function(func)
+    const char* path, 
+    const int line, 
+    const char* func, 
+    const char* msg) noexcept
+    : runtime_error(msg)
   {
-    XLO_INFO("{0} (in {2}:{3} during {1})", msg.data(), func, fs::path(path).filename().string(), line);
+    try
+    {
+      auto lastSlash = strrchr(path, '\\');
+      XLO_INFO("{0} (in {2}:{3} during {1})",
+        msg, func, lastSlash ? lastSlash : path, line);
+    }
+    catch (...)
+    {}
   }
-
-  XLOIL_EXPORT Exception::~Exception() noexcept
-  {}
 
   std::wstring writeWindowsError()
   {
@@ -70,10 +74,13 @@ namespace xloil
 
     void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
     {
+      auto & logger = spdlog::default_logger();
       auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
         utf16ToUtf8(logFilePath), false);
       fileWrite->set_level(spdlog::level::from_str(logLevel));
-      spdlog::default_logger()->sinks().push_back(fileWrite);
+      logger->sinks().push_back(fileWrite);
+      if (fileWrite->level() < logger->level())
+        logger->set_level(fileWrite->level());
     }
   }
 

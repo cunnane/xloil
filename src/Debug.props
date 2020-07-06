@@ -4,12 +4,6 @@
   <PropertyGroup Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Label="UserMacros" />
-  <PropertyGroup>
-    <LinkIncremental>true</LinkIncremental>
-    <LibraryPath>$(ProjectRoot)build\$(Platform)\Debug;$(LibraryPath)</LibraryPath>
-    <OutDir>$(ProjectRoot)build\$(Platform)\Debug\</OutDir>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>

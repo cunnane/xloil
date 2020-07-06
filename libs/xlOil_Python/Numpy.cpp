@@ -87,14 +87,14 @@ namespace xloil
       npy_datetime fromInt(int x) const
       {
         int day, month, year;
-        excelSerialDateToDMY(x, day, month, year);
+        excelSerialDateToYMD(x, year, month, day);
         npy_datetimestruct dt = { year, month, day };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
       npy_datetime fromDouble(double x) const
       {
         int day, month, year, hours, mins, secs, usecs;
-        excelSerialDatetoDMYHMS(x, day, month, year, hours, mins, secs, usecs);
+        excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
         npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }

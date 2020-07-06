@@ -35,5 +35,16 @@ namespace Tests
       Assert::AreEqual(result.tm_mon + 1, 2);
       Assert::AreEqual(result.tm_mday, 1);
     }
+    TEST_METHOD(Test_DateRoundTrip)
+    {
+      {
+        int input[] = { 2020, 2, 1, 11, 30, 4, 516 }, *d = std::end(input);
+        auto serial = excelSerialDateFromYMDHMS(*--d, *--d, *--d, *--d, *--d, *--d, *--d);
+        int output[_countof(input)];
+        d = std::end(output);
+        excelSerialDatetoYMDHMS(serial, *--d, *--d, *--d, *--d, *--d, *--d, *--d);
+        Assert::IsTrue(std::equal(input, std::end(input), output));
+      }
+    }
   };
 }

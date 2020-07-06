@@ -2,7 +2,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelRange.h>
 #include <xlOil/ExcelCall.h>
-#include <xlOil/ExcelState.h>
+#include <xlOil/Caller.h>
 
 namespace xloil
 {
@@ -113,6 +113,8 @@ namespace xloil
     {
       callExcelRaw(msxll::xlSet, nullptr, &_obj);
     }
+
+    const ExcelObj& asExcelObj() const { return _obj; }
 
   private:
     ExcelObj _obj;

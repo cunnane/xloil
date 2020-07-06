@@ -4,11 +4,14 @@
 #include "BasicTypes.h"
 #include "Dictionary.h"
 #include "File.h"
+#include "FunctionRegister.h"
+#include "AsyncFunctions.h"
+#include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
-#include <xloil/Register/AsyncHelper.h>
-#include <xloil/ExcelState.h>
+#include <xloil/Caller.h>
+#include <xloil/RtdServer.h>
 #include <pybind11/stl.h>
-#include <CTPL/ctpl_stl.h>
+
 #include <map>
 #include <filesystem>
 
@@ -28,44 +31,37 @@ namespace xloil
 {
   namespace Python
   {
-    struct PyFuncInfo
+    PyFuncInfo::PyFuncInfo(
+      const shared_ptr<FuncInfo>& info, 
+      const py::function& func, 
+      bool keywordArgs)
     {
-      PyFuncInfo(const shared_ptr<FuncInfo>& info, const py::function& func, bool hasKeywordArgs)
-      {
-        this->info = info;
-        this->func = func;
-        this->hasKeywordArgs = hasKeywordArgs;
-        this->isLocalFunc = false;
-        argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
-      }
+      this->info = info;
+      this->func = func;
+      hasKeywordArgs = keywordArgs;
+      isLocalFunc = false;
+      isRtdAsync = false;
+      argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
+    }
 
-      void setArgTypeDefault(size_t i, shared_ptr<IPyFromExcel> converter, py::object defaultVal)
-      {
-        argConverters[i] = std::make_pair(converter, defaultVal);
-      }
-
-      void setArgType(size_t i, shared_ptr<IPyFromExcel> converter)
-      {
-        argConverters[i] = std::make_pair(converter, py::object());
-      }
-
-      shared_ptr<FuncInfo> info;
-      py::function func;
-      bool hasKeywordArgs;
-      vector<pair<shared_ptr<IPyFromExcel>, py::object>> argConverters;
-      shared_ptr<IPyToExcel> returnConverter;
-      bool isLocalFunc;
-
-      void setFuncOptions(int val)
-      {
-        info->options = val;
-      }
-    };
-
-
-    pair<py::tuple, py::object> convertArgsToPython(PyFuncInfo* info, const ExcelObj** xlArgs)
+    void PyFuncInfo::setArgTypeDefault(size_t i, shared_ptr<IPyFromExcel> converter, py::object defaultVal)
     {
-      auto nArgs = info->argConverters.size();
+      argConverters[i] = std::make_pair(converter, defaultVal);
+    }
+
+    void PyFuncInfo::setArgType(size_t i, shared_ptr<IPyFromExcel> converter)
+    {
+      argConverters[i] = std::make_pair(converter, py::object());
+    }
+
+    void PyFuncInfo::setFuncOptions(int val)
+    {
+      info->options = val;
+    }
+
+    pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs)
+    {
+      auto nArgs = argConverters.size();
       auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
 
       // TODO: is it worth having a enum switch to convert primitive types rather than a v-call
@@ -73,8 +69,8 @@ namespace xloil
       {
         try
         {
-          auto* def = info->argConverters[i].second.ptr();
-          auto* pyObj = (*info->argConverters[i].first)(*xlArgs[i], def);
+          auto* def = argConverters[i].second.ptr();
+          auto* pyObj = (*argConverters[i].first)(*xlArgs[i], def);
           PyTuple_SET_ITEM(pyArgs.ptr(), i, pyObj);
         }
         catch (const std::exception& e)
@@ -82,10 +78,10 @@ namespace xloil
           // TODO: could we explain what type is required?
           // We give the arg number 1-based as it's more natural
           XLO_THROW(L"Error reading '{0}' arg #{1}: {2}",
-            info->info->args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
+            info->args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
-      if (info->hasKeywordArgs)
+      if (hasKeywordArgs)
       {
         auto kwargs = PySteal<py::dict>(readKeywordArgs(*xlArgs[nArgs]));
         return make_pair(pyArgs, kwargs);
@@ -94,32 +90,40 @@ namespace xloil
         return make_pair(pyArgs, py::none());
     }
 
-    ExcelObj* invokePyFunction(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+    void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs)
+    {
+      PyObject* ret;
+      if (kwargs != Py_None)
+        ret = PyObject_Call(func.ptr(), args, kwargs);
+      else
+        ret = PyObject_CallObject(func.ptr(), args);
+      if (!ret)
+        throw py::error_already_set();
+    }
+
+    void PyFuncInfo::invoke(ExcelObj& result, PyObject* args, PyObject* kwargs) noexcept
     {
       try
       {
         py::object ret;
         if (kwargs != Py_None)
-          ret = PySteal<py::object>(PyObject_Call(info->func.ptr(), args, kwargs));
+          ret = PySteal<py::object>(PyObject_Call(func.ptr(), args, kwargs));
         else
-          ret = PySteal<py::object>(PyObject_CallObject(info->func.ptr(), args));
+          ret = PySteal<py::object>(PyObject_CallObject(func.ptr(), args));
 
-        // TODO: Review this if we ever go to multi-threaded python
-        static ExcelObj result;
-
-        result = info->returnConverter
-          ? (*info->returnConverter)(*ret.ptr())
+        result = returnConverter
+          ? (*returnConverter)(*ret.ptr())
           : FromPyObj()(ret.ptr());
-
-        return &result;
       }
       catch (const std::exception& e)
       {
-        return ExcelObj::returnValue(e.what());
+        result = e.what();
       }
     }
 
-    ExcelObj* pythonCallback(PyFuncInfo* info, const ExcelObj** xlArgs)
+    ExcelObj* pythonCallback(
+      PyFuncInfo* info, 
+      const ExcelObj** xlArgs) noexcept
     {
       try
       {
@@ -127,99 +131,36 @@ namespace xloil
 
         PyErr_Clear();
 
-        auto[args, kwargs] = convertArgsToPython(info, xlArgs);
+        auto[args, kwargs] = info->convertArgs(xlArgs);
 
-        return invokePyFunction(info, args.ptr(), kwargs.ptr());
+        static ExcelObj result; // Ok since python is single threaded
+        info->invoke(result, args.ptr(), kwargs.ptr());
+        return &result;
       }
       catch (const std::exception& e)
       {
-        return ExcelObj::returnValue(e.what());
+        return returnValue(e.what());
       }
       catch (...)
       {
-        return ExcelObj::returnValue("#ERROR");
+        return returnValue(CellError::Null);
       }
     }
 
-    struct ThreadContext
-    {
-      ThreadContext()
-        : _startTime(GetTickCount64())
-      {}
-      bool cancelled()
-      {
-        return _startTime < lastCalcCancelledTicks() || yieldAndCheckIfEscPressed();
-      }
-    private:
-      decltype(GetTickCount64()) _startTime;
-    };
-
-    static ctpl::thread_pool* thePythonWorkerThread = nullptr;
-
-    static auto WorkerThreadDeleter = Event_PyBye().bind([]
-    {
-      if (thePythonWorkerThread)
-        delete thePythonWorkerThread;
-    });
-
-    void pythonAsyncCallback(PyFuncInfo* info, const ExcelObj* asyncHandle, const ExcelObj** xlArgs)
-    {
-      try
-      {
-        py::gil_scoped_acquire gilAcquired;
-        {
-          PyErr_Clear();
-
-          // I think it's better to process the arguments to python here rather than 
-          // copying the ExcelObj's and converting on the async thread (since CPython
-          // is single threaded anyway)
-          auto[args, kwargs] = convertArgsToPython(info, xlArgs);
-          if (kwargs.is_none())
-            kwargs = py::dict();
-
-          kwargs["xloil_thread_context"] = ThreadContext();
-
-          // Need to drop pybind links before capturing in lambda otherwise the destructor
-          // is called at some random time after losing the GIL and it crashes.
-          auto argsP = args.release().ptr();
-          auto kwargsP = kwargs.release().ptr();
-
-          auto functor = AsyncHolder(
-            [info, argsP, kwargsP]() mutable
-          {
-            py::gil_scoped_acquire gilAcquired;
-            {
-              auto ret = invokePyFunction(info, argsP, kwargsP);
-              Py_XDECREF(argsP);
-              Py_XDECREF(kwargsP);
-              return ret;
-            }
-          },
-            asyncHandle);
-          thePythonWorkerThread->push(functor);
-        }
-      }
-      catch (const std::exception& e)
-      {
-        XLO_WARN(e.what());
-        asyncReturn(*asyncHandle, ExcelObj(e.what()));
-      }
-      catch (...)
-      {
-        XLO_WARN("Async unknown error");
-        asyncReturn(*asyncHandle, ExcelObj(CellError::Value));
-      }
-    }
 
     shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
       shared_ptr<const FuncSpec> spec;
       if (funcInfo->info->options & FuncInfo::ASYNC)
       {
-        if (!thePythonWorkerThread)
-          thePythonWorkerThread = new ctpl::thread_pool(1);
+        if (funcInfo->isRtdAsync)
+          XLO_THROW("Cannot specify async registration with Rtd async");
 
         spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
+      }
+      else if (funcInfo->isRtdAsync)
+      {
+        spec.reset(new CallbackSpec(funcInfo->info, &pythonRtdCallback, funcInfo));
       }
       else
         spec.reset(new CallbackSpec(funcInfo->info, &pythonCallback, funcInfo));
@@ -238,17 +179,17 @@ namespace xloil
       RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
-        : FileSource(modulePath.c_str())
+        : FileSource(modulePath.c_str(), workbookName)
       {
-        const auto path = fs::path(modulePath);
+        auto path = fs::path(modulePath);
         _fileWatcher = std::static_pointer_cast<const void>
-          (Event::DirectoryChange(fs::path(path).remove_filename()).bind(handleFileChange));
+          (Event::DirectoryChange(path.remove_filename()).bind(handleFileChange));
         if (workbookName)
           _workbookName = workbookName;
       }
 
       void registerPyFuncs(
-        const py::module& pyModule,
+        PyObject* pyModule,
         const vector<shared_ptr<PyFuncInfo>>& functions)
       {
         _module = pyModule;
@@ -280,11 +221,13 @@ namespace xloil
         {
           if (_workbookName.empty())
             XLO_THROW("Local functions found without workbook specification");
-          registerLocal(_workbookName.c_str(), funcInfo, funcs);
+          registerLocal(funcInfo, funcs);
         }
       }
 
-      const py::module& pyModule() const { return _module; }
+      // TODO: Is it possible the module will be unloaded?
+      // We don't really want to have to deal with the GIL
+      PyObject* pyModule() const { return _module; }
 
       const wchar_t* workbookName() const
       {
@@ -294,7 +237,7 @@ namespace xloil
     private:
       shared_ptr<const void> _fileWatcher;
       wstring _workbookName;
-      py::module _module;
+      PyObject* _module = Py_None;
     };
 
     std::shared_ptr<RegisteredModule>
@@ -313,10 +256,15 @@ namespace xloil
       const wchar_t* fileName,
       const Event::FileAction action)
     {
-      auto filePath = (fs::path(dirName) / fileName).wstring();
+      const auto filePath = (fs::path(dirName) / fileName).wstring();
+      
       auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
+      
+      // If no active filecontext is found, then exit. Note that findFileContext
+      // will check if a linked workbook is still open 
       if (!foundSource)
         return;
+
       switch (action)
       {
       case Event::FileAction::Modified:
@@ -327,8 +275,11 @@ namespace xloil
         // Our file source must be of type RegisteredModule so the cast is safe
         auto& pySource = static_cast<RegisteredModule&>(*foundSource);
         // Rescan the module, passing in the module handle if it exists
+        py::gil_scoped_acquire get_gil;
         scanModule(
-          !pySource.pyModule().is_none() ? pySource.pyModule() : py::wstr(filePath),
+          pySource.pyModule() != Py_None 
+            ? PyBorrow<py::module>(pySource.pyModule())
+            : py::wstr(filePath),
           pySource.workbookName());
         // Set the addin context back. Not exeception safe clearly.
         theCurrentContext = theCoreContext;
@@ -336,7 +287,7 @@ namespace xloil
       }
       case Event::FileAction::Delete:
       {
-        XLO_INFO(L"Module '{0}' deleted, removing functions.", filePath);
+        XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
         FileSource::deleteFileContext(foundSource);
         break;
       }
@@ -347,9 +298,14 @@ namespace xloil
       const py::object& moduleHandle,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
+      wstring modulePath;
+      {
+        py::gil_scoped_acquire get_gil;
+        modulePath = moduleHandle.attr("__file__").cast<wstring>();
+      }
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, moduleHandle.attr("__file__").cast<wstring>());
-      mod->registerPyFuncs(moduleHandle, functions);
+        theCurrentContext, modulePath);
+      mod->registerPyFuncs(moduleHandle.ptr(), functions);
     }
 
     namespace
@@ -381,10 +337,8 @@ namespace xloil
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
           .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
-          .def_readwrite("local", &PyFuncInfo::isLocalFunc);
-
-        py::class_<ThreadContext>(mod, "ThreadContext")
-          .def("cancelled", &ThreadContext::cancelled);
+          .def_readwrite("local", &PyFuncInfo::isLocalFunc)
+          .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync);
 
         mod.def("register_functions", &registerFunctions);
       });

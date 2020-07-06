@@ -16,9 +16,12 @@ using namespace Office;
 using namespace VBIDE;
 
 // Excel.exe
-#import "libid:00020813-0000-0000-C000-000000000046"  \
+#import "libid:00020813-0000-0000-C000-000000000046" \
   rename("DocumentProperties", "DocumentPropertiesXL") \
-  rename( "DialogBox", "ExcelDialogBox" ) \
-  rename( "RGB", "ExcelRGB" ) \
-  rename( "CopyFile", "ExcelCopyFile" ) \
-  rename( "ReplaceText", "ExcelReplaceText" )
+  rename("DialogBox", "ExcelDialogBox" ) \
+  rename("RGB", "ExcelRGB" ) \
+  rename("CopyFile", "ExcelCopyFile" ) \
+  rename("ReplaceText", "ExcelReplaceText" )
+
+extern "C" const GUID __declspec(selectany) LIBID_Excel =
+  { 0x00020813,0x0000,0x0000,{0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46} };

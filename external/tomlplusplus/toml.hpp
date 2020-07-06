@@ -3123,16 +3123,18 @@ namespace toml
 
 			mutable viewed_type* node_ = nullptr;
 
-			TOML_NODISCARD_CTOR
-			node_view(viewed_type* node) noexcept
-				: node_{ node }
-			{}
-
 			template <typename Func>
 			static constexpr bool visit_is_nothrow
 				= noexcept(std::declval<viewed_type*>()->visit(std::declval<Func&&>()));
 
 		public:
+
+      // Steven: Not sure why this was declared private, couldn't find a way to
+      // construct this class given a table iterator, so fixed it.
+      TOML_NODISCARD_CTOR
+      node_view(viewed_type* node) noexcept
+        : node_{ node }
+      {}
 
 			TOML_NODISCARD_CTOR
 			node_view() noexcept = default;

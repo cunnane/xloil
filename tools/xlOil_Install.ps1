@@ -9,7 +9,7 @@ function Remove-From-Resiliancy {
     [System.Text.Encoding]::ASCII.GetBytes($FileName.ToLower()) | %{$FileName_UniHex+="{0:X2}00" -f $_}
 
     #Tests to see if the Disabled items registry key exists
-    $RegKey=(gi "HKCU:\Software\Microsoft\Office\${OfficeVersion}\Excel\Resiliency\DisabledItems\")
+    $RegKey=(gi "HKCU:\Software\Microsoft\Office\${OfficeVersion}\Excel\Resiliency\DisabledItems\" -ErrorAction SilentlyContinue)
     if ($RegKey -eq $NULL) {exit}
 
     #Cycles through all the properties and deletes it if it contains the file name.

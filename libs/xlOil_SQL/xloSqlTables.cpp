@@ -27,7 +27,7 @@ namespace xloil
         L"SELECT name FROM sqlite_master"
         "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'");
 
-      return ExcelObj::returnValue(sqlQueryToArray(stmt));
+      return returnValue(sqlQueryToArray(stmt));
     }
     XLO_FUNC_END(xloSqlTables).threadsafe();
   }

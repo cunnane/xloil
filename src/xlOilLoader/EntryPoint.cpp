@@ -176,8 +176,6 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     // 2) Look in Excel addins in registry for xlOil.xll
     // 3) Look in %APPDATA%/xloil settings file for Environment
 
-    vector<shared_ptr<PushEnvVar>> environmentVariables;
-
     auto settings = findSettingsFile(xloil_dll);
 
     // Check if the settings file contains an Environment block
@@ -191,8 +189,7 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
         auto value = expandWindowsRegistryStrings(
           expandEnvironmentStrings(val));
 
-        environmentVariables.emplace_back(
-          std::make_shared<PushEnvVar>(key.c_str(), value.c_str()));
+        SetEnvironmentVariable(key.c_str(), value.c_str());
       }
     }
 

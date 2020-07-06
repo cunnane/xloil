@@ -144,6 +144,9 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
     <None Include="package\xloil\command_line.py" />
+    <CopyFileToFolders Include="package\xloil\xloil_jupyter.py">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
     <None Include="package\xloil\__init__.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

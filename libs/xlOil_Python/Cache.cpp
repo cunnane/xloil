@@ -57,9 +57,9 @@ namespace xloil {
         ObjectCache<py::object, thePyCacheUniquifier> _cache;
       };
     }
-    ExcelObj pyCacheAdd(py::object&& obj)
+    ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
     {
-      return thePythonObjCache->_cache.add(std::forward<py::object>(obj));
+      return thePythonObjCache->_cache.add(py::object(obj), caller);
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {

@@ -54,7 +54,7 @@ namespace xloil
       builder(i) = PString(pstr + found[i]);
     }
 
-    return ExcelObj::returnValue(builder.toExcelObj());
+    return returnValue(builder.toExcelObj());
   }
   XLO_FUNC_END(xloSplit).threadsafe()
     .help(L"")

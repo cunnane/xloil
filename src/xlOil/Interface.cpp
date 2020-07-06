@@ -6,6 +6,7 @@
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
 #include <xlOil/Loaders/AddinLoader.h>
+#include <xloil/State.h>
 #include <ComInterface/Connect.h>
 
 using std::make_pair;
@@ -15,20 +16,18 @@ using std::shared_ptr;
 
 namespace xloil
 {
-
-
   const wchar_t* Core::theCorePath()
   {
-    return xloil::theCorePath();
+    return State::corePath();
   }
   const wchar_t* Core::theCoreName()
   {
-    return xloil::theCoreName();
+    return State::coreName();
   }
 
   int Core::theExcelVersion()
   {
-    return coreExcelVersion();
+    return State::excelVersion();
   }
 
   Excel::_Application& Core::theExcelApp()
@@ -58,9 +57,14 @@ namespace xloil
   {
   }
 
-  FileSource::FileSource(const wchar_t* sourceName, bool watchSource)
+  FileSource::FileSource(
+    const wchar_t* sourceName, 
+    const wchar_t* linkedWorkbook,
+    bool watchSource)
     : _source(sourceName)
   {
+    if (linkedWorkbook)
+      _workbookName = linkedWorkbook;
     //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
     // TODO: watch source
     //Event_DirectoryChange()
@@ -148,20 +152,28 @@ namespace xloil
   }
 
   void FileSource::registerLocal(
-    const wchar_t * workbookName, 
     const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
     const std::vector<ExcelFuncObject> funcs)
   {
-    if (!_workbookName.empty() && _workbookName != workbookName)
-      XLO_THROW("Cannot link more than one workbook with the same source");
-    xloil::registerLocalFuncs(workbookName, funcInfo, funcs);
-    _workbookName = workbookName;
+    if (_workbookName.empty())
+      XLO_THROW("Need a linked workbook to declare local functions");
+    xloil::registerLocalFuncs(_workbookName.c_str(), funcInfo, funcs);
   }
 
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
     FileSource::findFileContext(const wchar_t* source)
   {
-    return xloil::findFileSource(source);
+    auto found = xloil::findFileSource(source);
+    if (found.first)
+    {
+      const auto& wbName = found.first->_workbookName;
+      if (!wbName.empty() && !checkWorkbookIsOpen(wbName.c_str()))
+      {
+        deleteFileContext(found.first);
+        return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
+      }
+    }
+    return found;
   }
 
   void

@@ -1,5 +1,6 @@
 #pragma once
 #include "Register.h"
+#include "ExcelObj.h"
 
 namespace xloil { class FuncSpec; }
 
@@ -22,12 +23,40 @@ namespace xloil { class FuncSpec; }
   } \
   XLO_REGISTER_FUNC(func)
 
-#define XLO_RETURN_ERROR(err) return ExcelObj::returnValue(err)
+#define XLO_RETURN_ERROR(err) return xloil::returnValue(err)
 
 #define XLO_REGISTER_FUNC(func) extern auto _xlo_register_##func = xloil::registrationMemo(#func, func)
 
 namespace xloil
 {
+  /// <summary>
+   /// Constructs an ExcelObj from the given arguments, setting a flag to tell 
+   /// Excel that xlOil will need a callback to free the memory. **This method must
+   /// be used for final object passed back to Excel. It must not be used anywhere
+   /// else**.
+   /// </summary>
+  template<class... Args>
+  inline ExcelObj* returnValue(Args&&... args)
+  {
+    return (new ExcelObj(std::forward<Args>(args)...))->toExcel();
+  }
+  inline ExcelObj* returnValue(CellError err)
+  {
+    return const_cast<ExcelObj*>(&Const::Error(err));
+  }
+  inline ExcelObj* returnValue(const std::exception& e)
+  {
+    return returnValue(e.what());
+  }
+  inline ExcelObj* returnReference(const ExcelObj& obj)
+  {
+    return const_cast<ExcelObj*>(&obj);
+  }
+  inline ExcelObj* returnReference(ExcelObj& obj)
+  {
+    return &obj;
+  }
+
   struct FuncRegistrationMemo
   {
     typedef FuncRegistrationMemo self;

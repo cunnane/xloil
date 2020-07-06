@@ -22,20 +22,11 @@ namespace xloil
     using namespace detail;
     
     // Not exported, so separate
-    EventXll& AutoClose()
-    { 
-      static EventXll e("AutoClose"); return e;
-    }
+    XLOIL_DEFINE_EVENT(AutoClose)
 
-
-#define XLO_DEF_EVENT(r, _, name) \
-    XLOIL_EXPORT decltype(name()) name() \
-    { \
-      static std::remove_reference_t<decltype(name())> e(BOOST_PP_STRINGIZE(name)); \
-      return e; \
-    };
-
+#define XLO_DEF_EVENT(r, _, name) XLOIL_EXPORT XLOIL_DEFINE_EVENT(name)
     BOOST_PP_SEQ_FOR_EACH(XLO_DEF_EVENT, _, XLOIL_STATIC_EVENTS)
+#undef XLO_DEF_EVENT
 
     using DirectoryWatchEvent = Event<void(const wchar_t*, const wchar_t*, FileAction)>;
 
@@ -45,7 +36,7 @@ namespace xloil
     {
     public:
       DirectoryListener(const std::wstring& path, std::function<void(void)> finaliser)
-        : _eventSource()
+        : _eventSource(new DirectoryWatchEvent())
         , _lastTickCount(0)
         , _watchId(theFileWatcher.addWatch(path, this, false))
       {
@@ -64,14 +55,14 @@ namespace xloil
         if (ticks - _lastTickCount < 1000)
           return;
         _lastTickCount = ticks;
-        _eventSource.fire(dir.c_str(), filename.c_str(), FileAction(action));
+        _eventSource->fire(dir.c_str(), filename.c_str(), FileAction(action));
       }
 
-      DirectoryWatchEvent& event() { return _eventSource; }
+      DirectoryWatchEvent& event() { return *_eventSource; }
 
     private:
       FW::WatchID _watchId;
-      DirectoryWatchEvent _eventSource;
+      shared_ptr<DirectoryWatchEvent> _eventSource;
       size_t _lastTickCount;
     };
 

@@ -1,19 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <ProjectRoot>$(SolutionDir)</ProjectRoot>
+  </PropertyGroup>
+  <PropertyGroup>
+    <LibraryPath>$(SolutionDir)build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+	<OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
   <PropertyGroup>
     <IncludePath>$(ProjectRoot)external\boost-1.67;$(ProjectRoot)\external\spdlog\include;$(ProjectRoot)\external;$(ProjectRoot)\include;$(ProjectRoot)\src;$(IncludePath)</IncludePath>
-    <OutDir>
-    </OutDir>
     <IntDir>$(ProjectRoot)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_STATIC;_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;SPDLOG_COMPILED_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;SPDLOG_COMPILED_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
+	  <ConformanceMode>false</ConformanceMode>
     </ClCompile>
+	<Link>
+	  <AdditionalDependencies>spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

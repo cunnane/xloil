@@ -1,9 +1,7 @@
 #pragma once
-#include "ExcelCall.h"
 #include "ExcelObj.h"
 #include "Events.h"
-#include "ExcelState.h"
-#include "Interface.h"
+#include "Caller.h"
 #include <unordered_map>
 #include <string_view>
 #include <mutex>
@@ -12,25 +10,66 @@ namespace xloil
 {
   namespace detail
   {
-    inline PString<> writeCacheId(
-      wchar_t uniquifier, const CallerInfo& caller, uint16_t padding)
+    inline PString<> writeCacheId(const CallerInfo& caller, uint16_t padding)
     {
-      PString<> pascalStr(caller.fullAddressLength() + padding + 1);
-      auto* buf = pascalStr.pstr();
+      PString<> pascalStr(caller.addressRCLength() + padding + 1);
+      auto* buf = pascalStr.pstr() + 1;
 
-      wchar_t nWritten = 0;
-      // Cache uniquifier character
-      *(buf++) = uniquifier;
-      ++nWritten;
+      wchar_t nWritten = 1; // Leave space for uniquifier
 
       // Full cell address: eg. [wbName]wsName!RxCy
-      nWritten += (wchar_t)caller.writeFullAddress(buf, pascalStr.length() - 1);
+      nWritten += (wchar_t)caller.writeAddress(buf, pascalStr.length() - 1, false);
 
       // Fix up length
       pascalStr.resize(nWritten + padding);
 
       return pascalStr;
     }
+
+    inline PString<> writeCacheId(const wchar_t* caller, uint16_t padding)
+    {
+      const auto lenCaller = std::min<wchar_t>(
+        wcslen(caller), UINT16_MAX - padding - 1);
+
+      PString<> pascalStr(lenCaller + padding + 1);
+      auto* buf = pascalStr.pstr() + 1;
+
+      wchar_t nWritten = 1; // Leave space for uniquifier
+
+      // Full cell address: eg. [wbName]wsName!RxCy
+      nWritten += lenCaller;
+      wcscpy_s(buf, pascalStr.length() - 1, caller);
+
+      // Fix up length
+      pascalStr.resize(nWritten + padding);
+
+      return pascalStr;
+    }
+
+    // We need to explicitly define our own hash and compare so we can lookup
+    // string_view objects without first writing them to string. If that sounds
+    // like premature optimisation, it's because it is!
+    template<class Val>
+    struct Lookup : public std::unordered_map<
+      std::wstring,
+      std::shared_ptr<Val>>
+    {
+      // I thought this repeating of base template parameters was fixed in C++17
+      // ... but what would C++ be without verbosity.
+      using const_iterator = typename std::unordered_map<
+        std::wstring,
+        std::shared_ptr<Val>>::const_iterator;
+
+      template <class T>
+      _NODISCARD const_iterator search(const T& _Keyval) const
+      {
+        size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
+        for (_Unchecked_const_iterator _Where = _Begin(_Bucket); _Where != _End(_Bucket); ++_Where)
+          if (_Where->first == _Keyval)
+              return _Make_iter(_Where);
+        return (end());
+      }
+    };
   }
 
   /// <summary>
@@ -98,21 +137,21 @@ namespace xloil
     };
 
   private:
-    template <class Val> 
-    using Lookup = std::unordered_map<std::wstring, std::shared_ptr<Val>>;
-    using WorkbookCache = Lookup<CellCache>;
 
-    Lookup<WorkbookCache> _cache;
+ 
+    using WorkbookCache = detail::Lookup<CellCache>;
+
+    detail::Lookup<WorkbookCache> _cache;
     mutable std::mutex _cacheLock;
 
     size_t _calcId;
 
     typename std::conditional<TReverseLookup, 
-      std::unordered_map<TObj, std::wstring>, 
-      int>::type  _reverseLookup;
+      std::unordered_map<TObj, std::wstring>,
+      char>::type _reverseLookup;
     typename std::conditional<TReverseLookup,
       std::mutex, 
-      int>::type _reverseLookupLock;
+      char>::type _reverseLookupLock;
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
@@ -129,11 +168,9 @@ namespace xloil
       return cacheVal.add(std::forward<TObj>(obj));
     }
 
-    template<class V> V& findOrAdd(Lookup<V>& m, std::wstring_view keyView)
+    template<class V> V& findOrAdd(detail::Lookup<V>& m, const std::wstring_view& key)
     {
-      // TODO: YUK! Fix with boost?
-      std::wstring key(keyView);
-      auto found = m.find(key);
+      auto found = m.search(key);
       if (found == m.end())
       {
         auto p = std::make_shared<V>();
@@ -143,10 +180,11 @@ namespace xloil
       return *found->second;
     }
 
-    template<class V> V* find(Lookup<V>& m, std::wstring_view keyView)
+    template<class V> V* find(
+      detail::Lookup<V>& m, 
+      const std::wstring_view& key)
     {
-      std::wstring key(keyView);
-      auto found = m.find(key);
+      auto found = m.search(key);
       if (found == m.end())
         return nullptr;
       return found->second.get();
@@ -206,16 +244,22 @@ namespace xloil
       }
     }
 
-    ExcelObj add(TObj&& obj)
+    ExcelObj add(TObj&& obj, const wchar_t* caller = nullptr)
     {
-      CallerInfo caller;
-      constexpr unsigned char padding = 5;
+      CallerInfo callerInfo;
+      constexpr uint8_t padding = 5;
 
-      auto key = detail::writeCacheId(TUniquifier, caller, padding);
+      auto key = caller
+        ? detail::writeCacheId(caller, padding)
+        : detail::writeCacheId(callerInfo, padding);
+
+      key[0] = TUniquifier;
 
       // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
       // Search backwards because wbName may contain ']'
       auto lastBracket = key.rchr(L']');
+      if (lastBracket == PString<>::npos)
+        XLO_THROW("ObjectCache::add: caller must be worksheet address");
       auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
 
       // Capture sheet ref, i.e. wsName!cellRef
@@ -224,23 +268,22 @@ namespace xloil
         key.length() - padding - lastBracket - 1);
 
       std::vector<TObj> staleObjects;
-      size_t iPos = 0;
+      uint8_t iPos = 0;
       {
         std::scoped_lock lock(_cacheLock);
 
         auto& cellCache = fetchOrAddCell(wbName, wsRef);
-        iPos = addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
+        iPos = (uint8_t)addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
       }
 
-      unsigned char nPaddingUsed = 0;
+      uint8_t nPaddingUsed = 0;
       // Add cell object count in form ",XXX"
       if (iPos > 0)
       {
         auto buf = const_cast<wchar_t*>(key.end()) - padding;
         *(buf++) = L',';
-        // TODO: this will fail if iPos > 999
-        _itow_s(int(iPos), buf, padding - 1, 10);
-        nPaddingUsed = 1 + (decltype(nPaddingUsed))wcsnlen(buf, padding - 1);
+        _itow_s(iPos, buf, padding - 1, 10);
+        nPaddingUsed = 1 + (uint8_t)wcsnlen(buf, padding - 1);
       }
         
       key.resize(key.length() - padding + nPaddingUsed);
@@ -248,8 +291,8 @@ namespace xloil
       if constexpr (TReverseLookup)
       {
         std::scoped_lock lock(_reverseLookupLock);
-        for (auto o : staleObjects)
-          _reverseLookup.erase(o);
+        for (auto& x : staleObjects)
+          _reverseLookup.erase(x);
         _reverseLookup.insert(std::make_pair(obj, key.string()));
       }
 
