@@ -69,7 +69,7 @@ namespace xloil
         {
           // First add the module, if the scan fails it will still be on the
           // file change watchlist
-          FunctionRegistry::addModule(theCoreContext, modulePath, true, wbName);
+          FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
           scanModule(py::wstr(modulePath), wbName);
         }
         catch (const std::exception& e)

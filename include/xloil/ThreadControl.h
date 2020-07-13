@@ -25,7 +25,7 @@ namespace xloil
     
   XLOIL_EXPORT bool isMainThread();
 
-  template <class TReturn>
+  template<class TReturn> inline
   std::future<TReturn> runOnMainThread(const std::function<TReturn()>& func)
   {
     auto promise = std::make_shared<std::promise<TReturn>>();
@@ -36,6 +36,26 @@ namespace xloil
       queueWindowMessage([promise, func]()
       {
         promise->set_value(func());
+      });
+    }
+    return promise->get_future();
+  }
+
+  template<> inline
+  std::future<void> runOnMainThread<void>(const std::function<void()>& func)
+  {
+    auto promise = std::make_shared<std::promise<void>>();
+    if (isMainThread())
+    {
+      func();
+      promise->set_value();
+    }
+    else
+    {
+      queueWindowMessage([promise, func]()
+      {
+        func();
+        promise->set_value();
       });
     }
     return promise->get_future();

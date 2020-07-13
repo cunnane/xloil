@@ -32,6 +32,8 @@ namespace xloil
 {
   namespace Python
   {
+    constexpr wchar_t* PYTHON_ANON_SOURCE = L"PythonFuncs";
+
     PyFuncInfo::PyFuncInfo(
       const shared_ptr<FuncInfo>& info, 
       const py::function& func, 
@@ -179,11 +181,12 @@ namespace xloil
     public:
       RegisteredModule(
         const wstring& modulePath,
-        const bool watchFile,
         const wchar_t* workbookName)
-        : FileSource(modulePath.c_str(), workbookName)
+        : FileSource(
+            modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str(), 
+            workbookName)
       {
-        if (watchFile)
+        if (!modulePath.empty())
         {
           auto path = fs::path(modulePath);
           _fileWatcher = std::static_pointer_cast<const void>
@@ -218,12 +221,11 @@ namespace xloil
           }
         }
 
-        runOnMainThread<int>([nonLocal, self=this]() mutable
+        runOnMainThread<void>([nonLocal, self=this]() mutable
         { 
           self->registerFuncs(nonLocal);         
           for (auto& f : nonLocal)
             XLO_ERROR(L"Registration failed for: {0}", f->name());
-          return 0;
         });
 
         if (!funcInfo.empty())
@@ -253,11 +255,11 @@ namespace xloil
       FunctionRegistry::addModule(
         AddinContext* context,
         const std::wstring& modulePath,
-        const bool watchSource,
         const wchar_t* workbookName)
     {
-      auto[fileCtx, inserted] = context->tryAdd<RegisteredModule>(
-        modulePath.c_str(), modulePath, watchSource, workbookName);
+      auto[fileCtx, inserted] 
+        = context->tryAdd<RegisteredModule>(
+          modulePath.c_str(), modulePath, workbookName);
       return fileCtx;
     }
 
@@ -282,8 +284,10 @@ namespace xloil
         XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
         // TODO: can we be sure about this context setting?
         theCurrentContext = foundAddin.get();
+
         // Our file source must be of type RegisteredModule so the cast is safe
         auto& pySource = static_cast<RegisteredModule&>(*foundSource);
+
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         scanModule(
@@ -291,7 +295,8 @@ namespace xloil
             ? PyBorrow<py::module>(pySource.pyModule())
             : py::wstr(filePath),
           pySource.workbookName());
-        // Set the addin context back. Not exeception safe clearly.
+
+        // Set the addin context back. TODO: Not exeception safe clearly.
         theCurrentContext = theCoreContext;
         break;
       }
@@ -308,14 +313,47 @@ namespace xloil
       const py::object& moduleHandle,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
-      const auto hasFile = py::hasattr(moduleHandle, "__file__");
-      wstring modulePath = hasFile
+      // Called from python so we have the GIL
+
+      const auto modulePath = !moduleHandle.is_none()
         ? moduleHandle.attr("__file__").cast<wstring>()
-        : moduleHandle.attr("__name__").cast<wstring>();
+        : L"";
 
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, modulePath, hasFile);
+        theCurrentContext, modulePath);
       mod->registerPyFuncs(moduleHandle.ptr(), functions);
+    }
+    void deregisterFunctions(
+      const py::object& moduleHandle,
+      const py::object& functionNames)
+    {
+      // Called from python so we have the GIL
+
+      const auto modulePath = !moduleHandle.is_none()
+        ? moduleHandle.attr("__file__").cast<wstring>()
+        : L"";
+      
+      auto[foundSource, foundAddin] = FileSource::findFileContext(
+        modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str());
+
+      if (!foundSource)
+      {
+        XLO_WARN(L"Call to deregisterFunctions with unknown source '{0}'", modulePath);
+        return;
+      }
+      vector<wstring> funcNames;
+      auto iter = py::iter(functionNames);
+      while (iter != py::iterator::sentinel())
+      {
+        funcNames.push_back(iter->cast<wstring>());
+        ++iter;
+      }
+
+      runOnMainThread<void>([funcNames, foundSource]()
+      {
+        for (auto& func : funcNames)
+          foundSource->deregister(func);
+      });
     }
 
     namespace
@@ -351,6 +389,7 @@ namespace xloil
           .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync);
 
         mod.def("register_functions", &registerFunctions);
+        mod.def("deregister_functions", &deregisterFunctions);
       });
     }
   }

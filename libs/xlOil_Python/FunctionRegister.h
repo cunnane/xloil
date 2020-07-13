@@ -19,8 +19,7 @@ namespace xloil
       std::shared_ptr<RegisteredModule>
         addModule(
           AddinContext* context, 
-          const std::wstring& modulePath, 
-          const bool watchSource,
+          const std::wstring& modulePath,
           const wchar_t* workbookName = nullptr);
     };
 

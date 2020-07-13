@@ -17,7 +17,8 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
-        event, cache, RtdManager, RtdTopic, register_functions,
+        event, cache, RtdManager, RtdTopic, 
+        register_functions, deregister_functions,
         CustomConverter as _CustomConverter) 
 
 else:
@@ -306,7 +307,10 @@ else:
         def subscribe(self, topic:str):
             pass
 
-    def register_functions(module_handle, functions):
+    def register_functions(module, function_holders):
+        pass
+
+    def deregister_functions(module, function_names):
         pass
 
 ########################################
@@ -924,7 +928,7 @@ def scan_module(module, workbook_name=None):
         mod_directory, mod_filename = os.path.split(module)
         if len(mod_directory) > 0 and not mod_directory in sys.path:
             sys.path.append(mod_directory)
-        handle = importlib.import_module(os.path.basename(mod_filename))
+        handle = importlib.import_module(os.path.splitext(mod_filename)[0])
 
     # Allows 'local' modules to know which workbook they link to
     handle._xl_this_workbook = workbook_name

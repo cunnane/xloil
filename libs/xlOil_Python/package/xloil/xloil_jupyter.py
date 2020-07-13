@@ -124,6 +124,7 @@ class _JupyterConnection:
     
     _pending_messages = dict() # str -> Future
     _watched_variables = dict()
+    _registered_funcs = set()
 
     def __init__(self, connection_file, xloil_path):
 
@@ -166,8 +167,13 @@ class _JupyterConnection:
     def close(self):
         self._client.execute("_xloil_vars.close()\ndel _xloil_vars")
         copy = [x for x in self._watched_variables]
+        
         for topic in copy:
             _rtdManager.drop(topic.topic())
+
+        for func_name in self._registered_funcs:
+            xlo.deregister_functions(None, func_name)
+
 
     async def invoke(self, func_name, *args, **kwargs):
         args_data = repr(_serialise(args))
@@ -228,6 +234,7 @@ class _JupyterConnection:
 
                 if type(xloil_msg) is _VariableChangeMessage:
                     self.publish_variables(xloil_msg.updates)
+
                 elif type(xloil_msg) is _FuncRegisterMessage:
                     descr = xloil_msg.description
                     func_name = descr._func
@@ -239,15 +246,16 @@ class _JupyterConnection:
                     descr._func = shim
                     descr.rtd = True
                     descr.is_async = True
-                    import types
-                    fake_module = types.ModuleType(self._connection_file)
-                    xlo.register_functions(fake_module, [descr.create_holder()]) 
+                    xlo.register_functions(None, [descr.create_holder()]) 
+                    self._registered_funcs.add(func_name)
+
                 elif type(xloil_msg) is _FuncResultMessage:
                     if pending is None:
                         xlo.log(f"Unexpected function result: {msg}")
                     else:
                         pending.set_result(xloil_msg.result)
                         continue
+
                 else:
                     raise Exception(f"Unknown message: {xloil_msg}")
 
