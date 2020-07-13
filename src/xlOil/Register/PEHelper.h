@@ -16,7 +16,7 @@ namespace xloil
   public:
     DllExportTable(HMODULE image);
 
-    size_t findOffset(const char* funcName);
+    int findOffset(const char* funcName);
 
     DWORD* getAddress(size_t offset) const;
 

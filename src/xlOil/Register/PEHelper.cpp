@@ -30,7 +30,7 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
     XLO_THROW("Dll is exporting functions by ordinal, we don't currently support this");
 }
 
-size_t xloil::DllExportTable::findOffset(const char * funcName)
+int xloil::DllExportTable::findOffset(const char * funcName)
 {
   // TODO: lowerBound - the name table is sorted!
   /*auto found = std::lower_bound(name_table, name_table + numberOfNames, funcName,
@@ -39,9 +39,9 @@ size_t xloil::DllExportTable::findOffset(const char * funcName)
   for (size_t i = 0; i < numberOfNames; ++i)
   {
     if (strcmp((char*)imageBase + name_table[i], funcName) == 0)
-      return i;
+      return (int)i;
   }
-  abort();
+  return -1;
 }
 
 #pragma warning(disable: 4302 4311)
