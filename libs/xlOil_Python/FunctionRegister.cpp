@@ -10,6 +10,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
 #include <xloil/RtdServer.h>
+#include <xloil/ThreadControl.h>
 #include <pybind11/stl.h>
 
 #include <map>
@@ -178,12 +179,16 @@ namespace xloil
     public:
       RegisteredModule(
         const wstring& modulePath,
+        const bool watchFile,
         const wchar_t* workbookName)
         : FileSource(modulePath.c_str(), workbookName)
       {
-        auto path = fs::path(modulePath);
-        _fileWatcher = std::static_pointer_cast<const void>
-          (Event::DirectoryChange(path.remove_filename()).bind(handleFileChange));
+        if (watchFile)
+        {
+          auto path = fs::path(modulePath);
+          _fileWatcher = std::static_pointer_cast<const void>
+            (Event::DirectoryChange(path.remove_filename()).bind(handleFileChange));
+        }
         if (workbookName)
           _workbookName = workbookName;
       }
@@ -213,9 +218,13 @@ namespace xloil
           }
         }
 
-        registerFuncs(nonLocal);
-        for (auto& f : nonLocal)
-          XLO_ERROR(L"Registration failed for: {0}", f->name());
+        runOnMainThread<int>([nonLocal, self=this]() mutable
+        { 
+          self->registerFuncs(nonLocal);         
+          for (auto& f : nonLocal)
+            XLO_ERROR(L"Registration failed for: {0}", f->name());
+          return 0;
+        });
 
         if (!funcInfo.empty())
         {
@@ -244,10 +253,11 @@ namespace xloil
       FunctionRegistry::addModule(
         AddinContext* context,
         const std::wstring& modulePath,
+        const bool watchSource,
         const wchar_t* workbookName)
     {
       auto[fileCtx, inserted] = context->tryAdd<RegisteredModule>(
-        modulePath.c_str(), modulePath, workbookName);
+        modulePath.c_str(), modulePath, watchSource, workbookName);
       return fileCtx;
     }
 
@@ -298,13 +308,13 @@ namespace xloil
       const py::object& moduleHandle,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
-      wstring modulePath;
-      {
-        py::gil_scoped_acquire get_gil;
-        modulePath = moduleHandle.attr("__file__").cast<wstring>();
-      }
+      const auto hasFile = py::hasattr(moduleHandle, "__file__");
+      wstring modulePath = hasFile
+        ? moduleHandle.attr("__file__").cast<wstring>()
+        : moduleHandle.attr("__name__").cast<wstring>();
+
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, modulePath);
+        theCurrentContext, modulePath, hasFile);
       mod->registerPyFuncs(moduleHandle.ptr(), functions);
     }
 

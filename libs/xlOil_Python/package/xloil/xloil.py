@@ -9,16 +9,16 @@ import traceback
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
-# embedded interpreter, so we go ahead and import the module.  Otherwise we
-# define skeletons of the imported types to support type-checking, auto- 
-# completion and documentation.
+# embedded interpreter, so we go ahead and import the module. Otherwise we
+# define skeletons of the imported types to support type-checking, linting,
+# auto-completion and documentation.
 #
 if importlib.util.find_spec("xloil_core") is not None:
-    import xloil_core
-    from xloil_core import CellError, FuncOpts, Range, ExcelArray, in_wizard, log
-    from xloil_core import CustomConverter as _CustomConverter
-    from xloil_core import event, cache
-    from xloil_core import RtdManager, RtdTopic
+    import xloil_core         # pylint: disable=import-error
+    from xloil_core import (  # pylint: disable=import-error
+        CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
+        event, cache, RtdManager, RtdTopic, register_functions,
+        CustomConverter as _CustomConverter) 
 
 else:
     def in_wizard():
@@ -306,6 +306,9 @@ else:
         def subscribe(self, topic:str):
             pass
 
+    def register_functions(module_handle, functions):
+        pass
+
 ########################################
 # END: XLOIL CORE FORWARD DECLARATIONS #
 ########################################
@@ -434,6 +437,8 @@ def converter(typ=typing.Callable, range=False):
     def decorate(obj):
         if inspect.isclass(obj):
             class Converter(typ):
+                def __init__(self):
+                    pass # Keeps linter quiet
                 def __call__(self, *args, **kwargs):
                     instance = obj(*args, **kwargs)
                     class Inner(typ or instance.target):
@@ -452,7 +457,7 @@ def converter(typ=typing.Callable, range=False):
     return decorate
 
 
-class _FuncDescription:
+class FuncDescription:
     def __init__(self, func):
         self._func = func
         self.args = _function_argspec(func)
@@ -526,7 +531,7 @@ def _get_meta(fn):
  
 def _create_excelfunc_description(fn):
     if not hasattr(fn, _META_TAG):
-        fn.__dict__[_META_TAG] = _FuncDescription(fn)
+        fn.__dict__[_META_TAG] = FuncDescription(fn)
     return _get_meta(fn)
 
 
@@ -542,19 +547,23 @@ def _get_event_loop():
 
     return loop
         
-def _async_wrapper(fn):
-    
+def async_wrapper(fn):
+    """
+    Wraps an async function or generator with a function which runs that generator on the thread's
+    event loop. The wraped function requires an 'xloil_thread_context' argument which provides a 
+    callback object to return a result. xlOil will pass this object automatically to functions 
+    declared async.
+    """
+
     @functools.wraps(fn)
-    def synchronised(*args, **kwargs):
+    def synchronised(*args, xloil_thread_context, **kwargs):
 
         loop = _get_event_loop()
-
-        cxt = kwargs.pop(xloil_core.ASYNC_CONTEXT_TAG)
-
-        # TODO: is inspect.isasyncgenfunction expensive?
+        cxt = xloil_thread_context
 
         async def run_async():
             try:
+                # TODO: is inspect.isasyncgenfunction expensive?
                 if inspect.isasyncgenfunction(fn):
                     async for result in fn(*args, **kwargs):
                         cxt.set_result(result)
@@ -672,7 +681,7 @@ def func(fn=None,
         # hide the async property 
         try:
             if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
-                fn = _async_wrapper(fn)
+                fn = async_wrapper(fn)
                 _async = True
         except:
             pass
@@ -812,7 +821,7 @@ class _ArrayType:
         class Arr(np.ndarray):
             _xloil_converter_ = type_conv
 
-        return Arr;
+        return Arr
         
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
 Array = _ArrayType() 
@@ -907,17 +916,15 @@ def scan_module(module, workbook_name=None):
         Called by the xlOil C layer to import modules specified in the config.
     """
 
-    if inspect.ismodule(module):
+    if (inspect.ismodule(module) and module.hasattr('__file__')) or module in sys.modules:
         handle = importlib.reload(module) 
-    elif len(os.path.dirname(module)) > 0:
-        # Not completely sure of the wisdom of adding to sys.path here...
-        mod_directory = os.path.dirname(module)
-        if not mod_directory in sys.path:
-            sys.path.append(mod_directory)
-        mod_filename = os.path.splitext(os.path.basename(module))[0]
-        handle = importlib.import_module(mod_filename)
     else:
-        handle = importlib.import_module(module)
+        # Not completely sure of the wisdom of adding to sys.path here...
+        # But it's difficult to load a module by absolute path
+        mod_directory, mod_filename = os.path.split(module)
+        if len(mod_directory) > 0 and not mod_directory in sys.path:
+            sys.path.append(mod_directory)
+        handle = importlib.import_module(os.path.basename(mod_filename))
 
     # Allows 'local' modules to know which workbook they link to
     handle._xl_this_workbook = workbook_name

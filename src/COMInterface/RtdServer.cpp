@@ -41,8 +41,6 @@ namespace
 
 namespace xloil 
 {
-  
-
   RtdTopic::RtdTopic(
     const wchar_t* topic,
     IRtdManager& mgr, 
@@ -292,13 +290,9 @@ namespace xloil
 
       HRESULT __stdcall raw_ServerTerminate() override
       {
-        std::scoped_lock lock(_lockSubscribers);
         try
         {
-          for (auto& prod : _theProducers)
-            prod.second->stop();
-          _activeTopicIds.clear();
-          _updateCallback = nullptr;
+          terminate();
         }
         catch (const std::exception& e)
         {
@@ -322,8 +316,8 @@ namespace xloil
       // We use a separate lock for the newValues to avoid blocking it 
       // too often: updates will come from other threads and just need to
       // write into newValues.
-      std::mutex _lockNewValues;
-      std::mutex _lockSubscribers;
+      mutable std::mutex _lockNewValues;
+      mutable std::mutex _lockSubscribers;
 
       void callUpdateNotify()
       {
@@ -347,6 +341,18 @@ namespace xloil
       }
 
     public:
+      void terminate()
+      {
+        std::scoped_lock lock(_lockSubscribers);
+        if (!_updateCallback)
+          return; // Already terminated, or never started
+
+        for (auto& prod : _theProducers)
+          prod.second->stop();
+        _activeTopicIds.clear();
+        _updateCallback = nullptr;
+      }
+
       void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
       {
         std::scoped_lock lock(_lockNewValues);
@@ -377,7 +383,6 @@ namespace xloil
 
       bool dropProducer(const wchar_t* topic)
       {
-        
         std::scoped_lock lock(_lockSubscribers);
         auto iProd = _theProducers.find(topic);
         if (iProd == _theProducers.end())
@@ -393,10 +398,13 @@ namespace xloil
         return true;
       }
 
-      auto value(const wchar_t* topic)
+      auto value(const wchar_t* topic) const
       {
         std::scoped_lock lock(_lockSubscribers);
-        return _values[topic];
+        auto found = _values.find(topic);
+        if (found != _values.end())
+          return found->second;
+        return shared_ptr<ExcelObj>();
       }
     };
 
@@ -573,8 +581,15 @@ namespace xloil
       ~RtdManager()
       {
         CoRevokeClassObject(_comRegistrationCookie);
+
+        // Remove the registry keys used to locate the server (they would be 
+        // removed anyway on windows logoff)
         for (auto& key : _regKeysAdded)
           RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
+
+        // Although we can't force Excel to finalise the RTD server when we
+        // want (I think), we can deactive it and cut links to any external DLLs
+        _server->terminate();
       }
 
       void start(

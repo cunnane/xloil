@@ -20,6 +20,7 @@ namespace xloil
         addModule(
           AddinContext* context, 
           const std::wstring& modulePath, 
+          const bool watchSource,
           const wchar_t* workbookName = nullptr);
     };
 

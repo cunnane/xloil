@@ -31,9 +31,6 @@ namespace xloil
         ? py::wstr(workbookName) 
         : py::none();
 
-      // Any need for this?
-      //if (PyModule_Check(mod.ptr())) Event_PyReload().fire(mod);
-
       const auto modName = (string)py::str(mod);
       try
       {
@@ -62,22 +59,22 @@ namespace xloil
       void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
       {
         // Subtitute in to find target module name, removing extension
-        auto modName = fmt::format(_workbookPattern,
+        auto modulePath = fmt::format(_workbookPattern,
           wbPath,
           wstring(wbName, wcsrchr(wbName, L'.')));
 
-        if (!fs::exists(modName))
+        if (!fs::exists(modulePath))
           return;
         try
         {
           // First add the module, if the scan fails it will still be on the
           // file change watchlist
-          FunctionRegistry::addModule(theCoreContext, modName, wbName);
-          scanModule(py::wstr(modName), wbName);
+          FunctionRegistry::addModule(theCoreContext, modulePath, true, wbName);
+          scanModule(py::wstr(modulePath), wbName);
         }
         catch (const std::exception& e)
         {
-          XLO_WARN(L"Failed to load module {0}: {1}", modName, utf8ToUtf16(e.what()));
+          XLO_WARN(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
         }
       }
     };

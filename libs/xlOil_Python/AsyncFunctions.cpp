@@ -474,10 +474,6 @@ namespace xloil
 
         py::class_<EventLoopController>(mod, "EventLoopController")
           .def("stopped", &EventLoopController::stopped);
-
-        // This is a module level string so async function can find the
-        // control object we add to their keyword args.
-        mod.add_object("ASYNC_CONTEXT_TAG", py::str(THREAD_CONTEXT_TAG));
       });
     }
   }
