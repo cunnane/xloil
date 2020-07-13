@@ -26,7 +26,7 @@ namespace xloil
     {
       auto lastSlash = strrchr(path, '\\');
       XLO_INFO("{0} (in {2}:{3} during {1})",
-        msg, func, lastSlash ? lastSlash : path, line);
+        msg, func, lastSlash ? lastSlash + 1 : path, line);
     }
     catch (...)
     {}
@@ -74,7 +74,7 @@ namespace xloil
 
     void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
     {
-      auto & logger = spdlog::default_logger();
+      auto logger = spdlog::default_logger();
       auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
         utf16ToUtf8(logFilePath), false);
       fileWrite->set_level(spdlog::level::from_str(logLevel));
