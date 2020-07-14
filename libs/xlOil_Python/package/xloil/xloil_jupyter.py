@@ -113,12 +113,7 @@ class _VariableWatcher(xlo.RtdTopic):
     def topic(self):
         return self._topic
 
-import atexit
 _rtdManager = xlo.RtdManager()
-def _cleanup():
-    # Seems kind of ugly (you add a reference if you don't refer to it as a string)
-    del globals()['_rtdManager']
-atexit.register(_cleanup)
 
 class _JupyterConnection:
     

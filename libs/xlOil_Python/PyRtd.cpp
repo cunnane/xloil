@@ -109,12 +109,19 @@ namespace xloil
     class PyRtdManager
     {
       shared_ptr<IRtdManager> _impl;
+      shared_ptr<const void> _cleanup;
 
     public:
       PyRtdManager()
       {
         _impl = newRtdManager();
+        // Destroy the Rtd server if we are still around on python exit. The 
+        // Rtd server may maintain links to python objects and Excel may not
+        // call the server terminate function until after python has unloaded.
+        _cleanup = Event_PyBye().bind([self = this] { self->_impl.reset(); });
       }
+      ~PyRtdManager()
+      {}
       void start(const py_shared_ptr<IRtdTopic>& topic)
       {
         _impl->start(topic);
