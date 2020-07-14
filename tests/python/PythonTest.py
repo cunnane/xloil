@@ -28,7 +28,12 @@ def pySumNums(x: float, y: float, a: int = 2, b: int = 3) -> float:
 # The 'group' argument specifes a category of functions in Excel's 
 # function wizard
 #
-@xlo.func(name='pyRoundTrip', group='UselessFuncs', help='returns its argument')
+@xlo.func(
+    name='pyRoundTrip', 
+    group='UselessFuncs', 
+    help='returns its argument',
+    args={'x': 'the argument'}
+    )
 def pyTest1(x):
     '''
     Long description, too big for function wizard, which is actually limited
@@ -42,9 +47,9 @@ def pyTest1(x):
 # Ranges (e.g. A1:B2) passed as arguments are converted to numpy arrays
 # The default numpy dtype is object, but it's more performant to specify
 # a dtype if you can.  xlOil will raise an error if it cannot make the
-# conversion
+# conversion.
 #
-@xlo.func
+@xlo.func(args={'x': "2-dim array to return"})
 def pyTestArr2d(x: xlo.Array(float)):
 	return x
 
@@ -64,11 +69,12 @@ def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
 
 
 # 
-# This func uses the explicit `arg` specifier to allow it to give
-# per-argument help strings
+# This func uses the explicit `args` specifier with xlo.Arg. This overrides any
+# auto detection of the argument type or default by xlOil.
 # 
-@xlo.func
-@xlo.arg("multiple", typeof=float, help="value to multiply array by")
+@xlo.func(args=[ 
+        xlo.Arg("multiple", typeof=float, help="value to multiply array by", default=1)
+    ])
 def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 	return x * multiple
 
@@ -265,7 +271,7 @@ def pyTestCustomConv(x: arg_doubler):
 # formatted as a table with data in columns and a row of column headings
 # if the headings parameter is set
 #
-@xlo.func
+@xlo.func(args={'df': "Data to be read as a pandas dataframe"})
 def pyTestDFrame(df: xlo.PDFrame(headings=True)):
     return xlo.cache.add(df)
 

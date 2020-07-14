@@ -338,14 +338,14 @@ as another type if it was not created from a sheet reference.
 """
 AllowRange = typing.Union[ExcelValue, Range]
 
-class _ArgSpec:
+class Arg:
     """
     Holds the description of a function argument
     """
-    def __init__(self, name, default=None, is_keywords = False):
-        self.typeof = None
+    def __init__(self, name, help="", typeof=None, default=None, is_keywords=False):
+        self.typeof = typeof
         self.name = str(name)
-        self.help = ""
+        self.help = help
         self.default = default
         self.is_keywords = is_keywords
 
@@ -359,7 +359,7 @@ class _ArgSpec:
 
 def _function_argspec(func):
     """
-    Returns a list of _ArgSpec for a given function which describe
+    Returns a list of Arg for a given function which describe
     the function's arguments
     """
     sig = inspect.signature(func)
@@ -367,7 +367,7 @@ def _function_argspec(func):
     args = []
     for name, param in params.items():
         if param.kind == param.POSITIONAL_ONLY or param.kind == param.POSITIONAL_OR_KEYWORD:
-            spec = _ArgSpec(name, param.default)
+            spec = Arg(name, default=param.default)
             anno = param.annotation
             if anno is not param.empty:
                 spec.typeof = anno
@@ -380,7 +380,7 @@ def _function_argspec(func):
         elif param.kind == param.VAR_POSITIONAL:
              raise Exception(f"Unhandled argument type positional for {name}")
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            args.append(_ArgSpec(name, is_keywords=True))
+            args.append(Arg(name, is_keywords=True))
         else: 
             raise Exception(f"Unhandled argument type for {name}")
     return args
@@ -532,12 +532,6 @@ class FuncDescription:
 
 def _get_meta(fn):
     return fn.__dict__.get(_META_TAG, None)
- 
-def _create_excelfunc_description(fn):
-    if not hasattr(fn, _META_TAG):
-        fn.__dict__[_META_TAG] = FuncDescription(fn)
-    return _get_meta(fn)
-
 
 import asyncio
 
@@ -605,6 +599,7 @@ def _pump_message_loop(control):
 def func(fn=None, 
          name=None, 
          help=None, 
+         args=None,
          group=None, 
          local=None,
          is_async=False, 
@@ -687,52 +682,38 @@ def func(fn=None,
             if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
                 fn = async_wrapper(fn)
                 _async = True
-        except:
+        except NameError:
             pass
 
-        descr = _create_excelfunc_description(fn)
+        descr = FuncDescription(fn)
 
         del arguments['fn']
         for arg, val in arguments.items():
-            if arg is not 'fn' and val is not None:
+            if not arg in ['fn', 'args'] and val is not None:
                 descr.__dict__[arg] = val
 
+        if args is not None:
+            arg_names = [x.name.casefold() for x in descr.args]
+            if type(args) is dict:
+                for arg_name, arg_help in args.items():
+                    try:
+                        i = arg_names.index(arg_name.casefold())
+                        descr.args[i].help = arg_help
+                    except ValueError:
+                        raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
+            else:
+                for arg in args:
+                    try:
+                        i = arg_names.index(arg.name.casefold())
+                        descr.args[i] = arg
+                    except ValueError:
+                        raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
         descr.is_async = _async
 
+        fn.__dict__[_META_TAG] = descr
         return fn
 
     return decorate if fn is None else decorate(fn)
-
-
-def arg(name, typeof=None, help=None, range=None):
-    """ 
-        Decorator to specify argument type and help for a function exposed to Excel.
-        The help is displayed in the function wizard. 
-
-        This decorator is optional: xloil reads argument types from annotations, 
-        and even these are optional. Use this decorator to specify help strings or 
-        if 'typing' annotations are unavailable.
-    """
-    
-    def decorate(fn):
-        descr = _create_excelfunc_description(fn) # In case we are called before @func
-    
-        args = descr.args
-    
-        # The args are already populated from the function signature 
-        # so we're guaranteed at most one match
-        try:
-            match = next((x for x in args if x.name.casefold() == name.casefold()))
-        except:
-            raise Exception(f"No parameter '{name}' in function {fn.__name__}")
-        
-        if typeof is not None: match.typeof = typeof
-        if help is not None: match.help = help
-        if range is True: match.typeof = AllowRange
-
-        return fn
-
-    return decorate
 
 _excel_application_com_obj = None
 
