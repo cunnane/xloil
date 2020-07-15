@@ -83,12 +83,12 @@ setup(
     name="xlOil",
     version=version,
     author="Steven",
-    author_email="cunnane@gmail.com",
+    author_email="cunnane at gmail dot com",
     description="Excel interface layer and things",
     long_description=contents_of_readme,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/stevecu/xloil",
-    download_url='https://gitlab.com/stevecu/xloil/-/releases/' + version,
+    download_url='https://gitlab.com/stevecu/xloil/-/releases/',
     project_urls = {
       'Documentation': 'https://xloil.readthedocs.io',
     },
@@ -115,6 +115,8 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Office/Business :: Financial :: Spreadsheet',
+        'Operating System :: Microsoft :: Windows'
     ]
 )
