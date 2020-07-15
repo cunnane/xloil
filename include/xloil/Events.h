@@ -7,6 +7,7 @@
 #include <mutex>
 #include <future>
 #include <string>
+#include <boost/preprocessor/stringize.hpp>
 
 namespace xloil { class Range; }
 

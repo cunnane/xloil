@@ -33,7 +33,7 @@ namespace xloil
       to_char* target, 
       const size_t size, 
       const from_char* begin, 
-      const from_char* end) const
+      const from_char* end) const noexcept
     {
       auto* p = target;
       auto* pEnd = target + size;
@@ -64,7 +64,7 @@ namespace xloil
       to_char* target, 
       const size_t size, 
       const wchar_t* begin, 
-      const wchar_t* end) const
+      const wchar_t* end) const noexcept
     {
       return (*this)(target, size, (const from_char*)begin, (const from_char*)end);
     }
@@ -74,7 +74,7 @@ namespace xloil
   {
     using from_char = char32_t;
     using to_char = char16_t;
-    static void convertChar(char32_t codepoint, char16_t &h, char16_t &l)
+    static void convertChar(char32_t codepoint, char16_t &h, char16_t &l) noexcept
     {
       if (codepoint < 0x10000)
       {
@@ -90,7 +90,7 @@ namespace xloil
       to_char* target, 
       const size_t size, 
       const from_char* begin, 
-      const from_char* end) const
+      const from_char* end) const noexcept
     {
       auto* p = target;
       auto* pEnd = target + size;
@@ -119,14 +119,14 @@ namespace xloil
       wchar_t* target, 
       const size_t size,
       const from_char* begin, 
-      const from_char* end) const
+      const from_char* end) const noexcept
     {
       return (*this)((to_char*)target, size, begin, end);
     }
   };
 
   template <class TInt> inline
-  bool floatingToInt(double d, TInt& i)
+  bool floatingToInt(double d, TInt& i) noexcept
   {
     double intpart;
     if (std::modf(d, &intpart) != 0.0)

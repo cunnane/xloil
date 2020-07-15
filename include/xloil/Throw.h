@@ -17,7 +17,7 @@ namespace xloil
   /// Wrapper around GetLastError and FormatMessage to write out any error condition
   /// set by Windows API functions.
   /// </summary>
-  std::wstring writeWindowsError();
+  XLOIL_EXPORT std::wstring writeWindowsError();
 
 #pragma warning(disable: 4275) // Complaints about dll-interface. MS suggests disabling
   class Exception : public std::runtime_error
