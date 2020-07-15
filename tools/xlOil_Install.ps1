@@ -22,6 +22,22 @@ function Remove-From-Resiliancy {
     }
 }
 
+function Check-VBA-Access {
+	param ([string]$OfficeVersion)
+
+	$UserKey=(Get-ItemProperty -Path "HKCU:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -Name "AccessVBOM" -ErrorAction SilentlyContinue)
+	if ($RegKey.AccessVBOM -eq 1) { Write-Host "Hello" }
+	Write-Host $RegKey
+
+	$MachineKey=(Get-ItemProperty -Path "HKLM:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -Name "AccessVBOM" -ErrorAction SilentlyContinue)
+	if (($MachineKey.AccessVBOM -ne 1) -or ($UserKey.AccessVBOM -ne 1)) 
+	{ 
+		Write-Host "
+		To ensure xlOil local functions work, allow access to the VBA Object Model in
+		Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings"
+	}
+}
+
 #####################################################################################################
 #
 # Script Start
@@ -39,6 +55,9 @@ $ExcelVersion = $Excel.Version
 
 # Just in case we got put in Excel's naughty corner for misbehaving addins
 Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
+
+# Check access to the VBA Object model (for local functions)
+Check-VBA-Access $ExcelVersion
 
 #
 # You can't add an add-in unless there's an open and visible workbook.

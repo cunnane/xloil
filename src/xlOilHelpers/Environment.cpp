@@ -57,37 +57,66 @@ namespace xloil
     _previous.clear();
   }
 
+  namespace
+  {
+    template<int RegType>
+    bool getWindowsRegistryValue(
+      const std::wstring& hive,
+      const std::wstring& location,
+      void* buffer,
+      DWORD* bufSize)
+    {
+      HKEY root;
+      if (hive == L"HKLM")
+        root = HKEY_LOCAL_MACHINE;
+      else if (hive == L"HKCU")
+        root = HKEY_CURRENT_USER;
+      else if (hive == L"HKCR")
+        root = HKEY_CLASSES_ROOT;
+      else
+        return false;
+
+      const auto lastSlash = location.rfind(L'\\');
+      const auto subKey = location.substr(0, lastSlash);
+      const auto value = lastSlash + 1 < location.size()
+        ? location.substr(lastSlash + 1) : wstring();
+
+      return ERROR_SUCCESS == RegGetValue(
+        root,
+        subKey.c_str(),
+        value.c_str(),
+        RegType,
+        nullptr /*type not required*/,
+        buffer,
+        bufSize);
+    }
+  }
+
   bool getWindowsRegistryValue(
-    const std::wstring& hive, 
+    const std::wstring& hive,
     const std::wstring& location,
     std::wstring& result)
   {
-    HKEY root;
-    if (hive == L"HKLM")
-      root = HKEY_LOCAL_MACHINE;
-    else if (hive == L"HKCU")
-      root = HKEY_CURRENT_USER;
-    else if (hive == L"HKCR")
-      root = HKEY_CLASSES_ROOT;
-    else
-      return false;
-
-    const auto lastSlash = location.rfind(L'\\');
-    const auto subKey = location.substr(0, lastSlash);
-    const auto value = lastSlash + 1 < location.size() 
-      ? location.substr(lastSlash + 1) : wstring();
     wchar_t buffer[1024];
     DWORD bufSize = sizeof(buffer) / sizeof(wchar_t);
-    if (ERROR_SUCCESS == RegGetValue(
-      root,
-      subKey.c_str(),
-      value.c_str(),
-      RRF_RT_REG_SZ,
-      nullptr /*type not required*/,
-      &buffer,
-      &bufSize))
+    if (getWindowsRegistryValue<RRF_RT_REG_SZ>(hive, location, buffer, &bufSize))
     {
       result = buffer;
+      return true;
+    }
+    return false;
+  }
+
+  bool getWindowsRegistryValue(
+    const std::wstring& hive,
+    const std::wstring& location,
+    DWORD& result)
+  {
+    char buffer[sizeof(DWORD)];
+    DWORD bufSize = sizeof(DWORD);
+    if (getWindowsRegistryValue<RRF_RT_REG_DWORD>(hive, location, buffer, &bufSize))
+    {
+      result = *(DWORD*)buffer;
       return true;
     }
     return false;

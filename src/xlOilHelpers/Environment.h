@@ -72,6 +72,11 @@ namespace xloil
     const std::wstring& location,
     std::wstring& result);
 
+  bool getWindowsRegistryValue(
+    const std::wstring& hive,
+    const std::wstring& location,
+    unsigned long& result);
+
   /// <summary>
   /// Matches and expands registry keys in the given string. Registry
   /// keys should be specified in the form "<(HKXX)\(Reg\Key\Value)>" 
