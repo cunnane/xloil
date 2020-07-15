@@ -38,3 +38,6 @@ __pycache__
 /external/python
 /external/sqlite
 /docs/source/_build
+.vscode
+.ipynb_checkpoints
+~$*
