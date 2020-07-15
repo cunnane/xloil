@@ -11,6 +11,7 @@ namespace xloil
 {
   namespace Python
   {
+   
     namespace
     {
       // Works like the Range.Range function in VBA which is 1-based and
@@ -60,50 +61,12 @@ namespace xloil
 
       py::object getItem(const Range& range, pybind11::tuple loc)
       {
-        if (loc.size() != 2)
-          XLO_THROW("Expecting tuple of size 2");
-        auto r = loc[0];
-        auto c = loc[1];
-        size_t fromRow, fromCol, toRow, toCol, step = 1;
-        if (r.is_none())
-        {
-          fromRow = 0;
-          toRow = range.nRows();
-        }
-        else if (PySlice_Check(r.ptr()))
-        {
-          size_t sliceLength;
-          r.cast<py::slice>().compute(range.nRows(), &fromRow, &toRow, &step, &sliceLength);
-        }
-        else
-        {
-          fromRow = r.cast<size_t>();
-          toRow = fromRow + 1;
-        }
-
-        if (r.is_none())
-        {
-          fromCol = 0;
-          toCol = range.nRows();
-        }
-        else if (PySlice_Check(c.ptr()))
-        {
-          size_t sliceLength;
-          c.cast<py::slice>().compute(range.nCols(), &fromCol, &toCol, &step, &sliceLength);
-        }
-        else
-        {
-          fromCol = c.cast<size_t>();
-          // Check for single element access
-          if (fromRow == toRow + 1)
-            return convertExcelObj(range.value((int)fromRow, (int)fromCol));
-          toCol = fromCol + 1;
-        }
-
-        if (step != 1)
-          XLO_THROW("Slices step size must be 1");
-        
-        return py::cast(range.range(fromRow, fromCol, toRow, toCol));
+        size_t fromRow, fromCol, toRow, toCol;
+        bool single = sliceHelper(loc, range.nRows(), range.nCols(), 
+          fromRow, fromCol, toRow, toCol);
+        return single 
+          ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
+          : py::cast(range.range(fromRow, fromCol, toRow, toCol));
       }
 
       static int theBinder = addBinder([](pybind11::module& mod)

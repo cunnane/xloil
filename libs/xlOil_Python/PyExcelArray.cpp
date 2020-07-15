@@ -63,51 +63,14 @@ namespace xloil
 
     pybind11::object PyExcelArray::getItem(pybind11::tuple loc) const
     {
-      if (loc.size() != 2)
-        XLO_THROW("Expecting tuple of size 2");
-      auto r = loc[0];
-      auto c = loc[1];
-      size_t fromRow, fromCol, toRow, toCol, step = 1;
-      if (r.is_none())
-      {
-        fromRow = 0;
-        toRow = nRows();
-      }
-      else if (PySlice_Check(r.ptr()))
-      {
-        size_t sliceLength;
-        r.cast<py::slice>().compute(nRows(), &fromRow, &toRow, &step, &sliceLength);
-      }
-      else
-      {
-        fromRow = r.cast<size_t>();
-        toRow = fromRow + 1;
-      }
-
-      if (r.is_none())
-      {
-        fromCol = 0;
-        toCol = nRows();
-      }
-      else if (PySlice_Check(c.ptr()))
-      {
-        size_t sliceLength;
-        c.cast<py::slice>().compute(nCols(), &fromCol, &toCol, &step, &sliceLength);
-      }
-      else
-      {
-        fromCol = c.cast<size_t>();
-        // Check for single element access
-        if (fromRow == toRow + 1)
-          return operator()(fromRow, fromCol);
-        toCol = fromCol + 1;
-      }
-
-      if (step != 1)
-        XLO_THROW("Slice step size must be 1");
-
-      return py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
+      size_t fromRow, fromCol, toRow, toCol;
+      bool single = sliceHelper(loc, nRows(), nCols(),
+        fromRow, fromCol, toRow, toCol);
+      return single
+        ? operator()(fromRow, fromCol)
+        : py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
     }
+
     size_t PyExcelArray::nRows() const { return _base.nRows(); }
     size_t PyExcelArray::nCols() const { return _base.nCols(); }
     size_t PyExcelArray::size() const { return _base.size(); }

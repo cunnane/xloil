@@ -13,6 +13,7 @@
 #endif
 
 #include <xloilHelpers/StringUtils.h>
+#include <xloil/Throw.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <string>
@@ -111,7 +112,25 @@ namespace xloil
     }
     inline std::wstring pyErrIfOccurred()
     {
-      return PyErr_Occurred() ? utf8ToUtf16(pybind11::detail::error_string().c_str()) : std::wstring();
+      return PyErr_Occurred() 
+        ? utf8ToUtf16(pybind11::detail::error_string().c_str()) 
+        : std::wstring();
     }
+
+    /// <summary>
+    /// </summary>
+    /// <param name="loc"></param>
+    /// <param name="nRows"></param>
+    /// <param name="nCols"></param>
+    /// <param name="fromRow"></param>
+    /// <param name="fromCol"></param>
+    /// <param name="toRow"></param>
+    /// <param name="toCol"></param>
+    /// <returns>Returns true for single element access</returns>
+    bool sliceHelper(
+      const pybind11::tuple& loc,
+      const size_t nRows, const size_t nCols,
+      size_t& fromRow, size_t& fromCol,
+      size_t& toRow, size_t& toCol);
   }
 }
