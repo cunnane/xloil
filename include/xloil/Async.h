@@ -11,8 +11,6 @@ namespace xloil
 
   XLOIL_EXPORT bool yieldAndCheckIfEscPressed();
 
-  XLOIL_EXPORT size_t lastCalcCancelledTicks();
-
   class AsyncHelper
   {
     std::shared_ptr<const void> _eventHandler;

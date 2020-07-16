@@ -5,8 +5,6 @@
 
 namespace xloil
 {
-  static size_t lastCancelTime = 0;
-
   XLOIL_EXPORT void asyncReturn(
     const ExcelObj& asyncHandle, const ExcelObj& value)
   {
@@ -23,29 +21,6 @@ namespace xloil
   {
     auto[res, ret] = tryCallExcel(msxll::xlAbort);
     return (ret == 0 && res.asBool());
-  }
-
-  XLOIL_EXPORT size_t lastCalcCancelledTicks()
-  {
-    return lastCancelTime;
-  }
-
-  namespace
-  {
-    struct RegisterMe
-    {
-      RegisterMe()
-      {
-        static auto handler = xloil::Event::CalcCancelled() += []()
-        {
-#ifdef _WIN64
-          lastCancelTime = GetTickCount64();
-#else
-          lastCancelTime = GetTickCount();
-#endif
-        };
-      }
-    } theInstance;
   }
 }
 
