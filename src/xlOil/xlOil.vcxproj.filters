@@ -40,6 +40,7 @@
     <ClCompile Include="xloHelp.cpp" />
     <ClCompile Include="ThreadControl.cpp" />
     <ClCompile Include="Async.cpp" />
+    <ClCompile Include="xloVersion.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -145,6 +146,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\Async.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Version.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

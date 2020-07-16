@@ -128,6 +128,7 @@
     <ClInclude Include="..\..\include\xloil\ThreadControl.h" />
     <ClInclude Include="..\..\include\xloil\Throw.h" />
     <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
+    <ClInclude Include="..\..\include\xloil\Version.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xloil\xlOil.h" />
     <ClInclude Include="State.h" />
@@ -165,6 +166,7 @@
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
     <ClCompile Include="xloHelp.cpp" />
+    <ClCompile Include="xloVersion.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\COMInterface\COMInterface.vcxproj">
