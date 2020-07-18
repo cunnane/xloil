@@ -89,7 +89,7 @@ namespace xloil {
         for (auto e : theCellErrors)
           eType.value(utf16ToUtf8(enumAsWCString(e)).c_str(), e);
 
-        pyExcelErrorType = (PyTypeObject*)eType.get_type().ptr();
+        pyExcelErrorType = (PyTypeObject*)eType.ptr();
 
         mod.def("in_wizard", &Core::inFunctionWizard);
         mod.def("log", &writeToLog, py::arg("msg"), py::arg("level") = "info");
