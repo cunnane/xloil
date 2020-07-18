@@ -118,26 +118,29 @@ namespace xloil
         // Destroy the Rtd server if we are still around on python exit. The 
         // Rtd server may maintain links to python objects and Excel may not
         // call the server terminate function until after python has unloaded.
-        _cleanup = Event_PyBye().bind([self = this] { self->_impl.reset(); });
+        _cleanup = Event_PyBye().bind([self = this] 
+        { 
+          self->_impl.reset(); 
+        });
       }
       ~PyRtdManager()
       {}
       void start(const py_shared_ptr<IRtdTopic>& topic)
       {
-        _impl->start(topic);
+        impl().start(topic);
       }
       bool publish(
         const wchar_t* topic, 
         const py::object& value, 
         IPyToExcel* converter=nullptr)
       {
-        return _impl->publish(topic, converter
+        return impl().publish(topic, converter
             ? (*converter)(*value.ptr()) 
             : FromPyObj()(value.ptr()));
       }
       py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
       {
-        auto value = _impl->subscribe(topic);
+        auto value = impl().subscribe(topic);
         if (!value)
           return py::none();
         return PySteal<>(converter
@@ -146,12 +149,24 @@ namespace xloil
       }
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
       {
-        auto value = _impl->peek(topic);
+        auto value = impl().peek(topic);
         if (!value)
           return py::none();
         return PySteal<>(converter
           ? (*converter)(*value)
           : PyFromAny()(*value));
+      }
+      void drop(const wchar_t* topic)
+      {
+        if (_impl)
+          _impl->drop(topic);
+      }
+
+      IRtdManager& impl() const
+      {
+        if (!_impl)
+          XLO_THROW("RtdManager terminated");
+        return *_impl;
       }
     };
 
@@ -195,14 +210,15 @@ namespace xloil
 
         py::class_<PyRtdManager>(mod, "RtdManager")
           .def(py::init<>())
-          .def("start", &PyRtdManager::start, 
+          .def("start", &PyRtdManager::start,
             py::arg("topic"))
           .def("publish", &PyRtdManager::publish,
             py::arg("topic"), py::arg("value"), py::arg("converter") = nullptr)
           .def("subscribe", &PyRtdManager::subscribe,
-            py::arg("topic"), py::arg("converter")=nullptr)
+            py::arg("topic"), py::arg("converter") = nullptr)
           .def("peek", &PyRtdManager::peek,
-            py::arg("topic"), py::arg("converter") = nullptr);
+            py::arg("topic"), py::arg("converter") = nullptr)
+          .def("drop", &PyRtdManager::drop);
       });
     }
   }

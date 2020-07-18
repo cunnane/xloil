@@ -31,9 +31,12 @@ namespace xloil {
           XLO_TRACE("Python object cache destroyed");
         }
 
-        py::object add(const py::object& obj)
+        py::object add(const py::object& obj, const wchar_t* tag=nullptr)
         {
-          return PySteal(PyFromString()(_cache.add(py::object(obj))));
+          return PySteal(PyFromString()(
+            _cache.add(py::object(obj), tag 
+              ? (wstring(L"[_Py_]") + tag).c_str()
+              : nullptr)));
         }
         py::object get(const std::wstring_view& str)
         {
@@ -47,6 +50,10 @@ namespace xloil {
           else
             _cache.fetch(str, obj);
           return obj;
+        }
+        bool remove(const wchar_t* cacheRef)
+        {
+          return _cache.remove(cacheRef);
         }
         bool contains(const std::wstring_view& str)
         {
@@ -63,7 +70,6 @@ namespace xloil {
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
-      //return false;
       return thePythonObjCache->_cache.fetch(str, obj);
     }
 
@@ -72,9 +78,10 @@ namespace xloil {
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyCache>(mod, "ObjectCache")
-          .def("add", &PyCache::add)
-          .def("get", &PyCache::get)
-          .def("contains", &PyCache::contains)
+          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag")=nullptr)
+          .def("remove", &PyCache::remove, py::arg("ref"))
+          .def("get", &PyCache::get, py::arg("ref"))
+          .def("contains", &PyCache::contains, py::arg("ref"))
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::get)
           .def("__call__", &PyCache::add);

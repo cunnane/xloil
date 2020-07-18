@@ -29,7 +29,7 @@ namespace xloil
     inline PString<> writeCacheId(const wchar_t* caller, uint16_t padding)
     {
       const auto lenCaller = std::min<wchar_t>(
-        wcslen(caller), UINT16_MAX - padding - 1);
+        (wchar_t)wcslen(caller), UINT16_MAX - padding - 1);
 
       PString<> pascalStr(lenCaller + padding + 1);
       auto* buf = pascalStr.pstr() + 1;
@@ -137,8 +137,6 @@ namespace xloil
     };
 
   private:
-
- 
     using WorkbookCache = detail::Lookup<CellCache>;
 
     detail::Lookup<WorkbookCache> _cache;
@@ -159,7 +157,7 @@ namespace xloil
     void expireObjects()
     {
       // Called by Excel event so will always be synchonised
-      ++_calcId; // Wraps at MAX_UINT- doesn't matter
+      ++_calcId; // Wraps at MAX_UINT - but this doesn't matter
     }
 
     size_t addToCell(TObj&& obj, CellCache& cacheVal, std::vector<TObj>& staleObjects)
@@ -205,43 +203,19 @@ namespace xloil
 
     bool fetch(const std::wstring_view& cacheString, TObj& obj)
     {
-      if (cacheString[0] != TUniquifier || cacheString[1] != L'[')
+      int iResult;
+      std::wstring_view sheetRef;
+      auto* wbCache = fetchImpl(cacheString, sheetRef, iResult);
+
+      std::scoped_lock lock(_cacheLock);
+      if (!wbCache)
         return false;
 
-      constexpr auto npos = std::wstring_view::npos;
-
-      const auto firstBracket = 1;
-      const auto lastBracket = cacheString.find_last_of(']');
-      if (lastBracket == npos)
+      auto* cellCache = find(*wbCache, sheetRef);
+      if (!cellCache)
         return false;
-      const auto comma = cacheString.find_first_of(',', lastBracket);
 
-      auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
-      auto sheetRef = cacheString.substr(lastBracket + 1,
-        comma == npos ? npos : comma - lastBracket - 1);
-
-      int iResult = 0;
-      if (comma != npos)
-      {
-        // Oh dear, there's no std::from_chars for wchar_t
-        wchar_t tmp[4];
-        wcsncpy_s(tmp, 4, cacheString.data() + comma + 1, cacheString.length() - comma - 1);
-        iResult = _wtoi(tmp);
-      }
-
-      {
-        std::scoped_lock lock(_cacheLock);
-
-        auto* wbCache = find(_cache, workbook);
-        if (!wbCache)
-          return false;
-
-        auto* cellCache = find(*wbCache, sheetRef);
-        if (!cellCache)
-          return false;
-
-        return cellCache->tryFetch(iResult, obj);
-      }
+      return cellCache->tryFetch(iResult, obj);
     }
 
     ExcelObj add(TObj&& obj, const wchar_t* caller = nullptr)
@@ -299,6 +273,31 @@ namespace xloil
       return ExcelObj(std::move(key));
     }
 
+    /// <summary>
+    /// Remove the given cache reference and any associated objects
+    /// This should only be called with manually specifed cache reference
+    /// strings. Note the counter (,NNN) after the cache reference is ignored
+    /// if specifed and all matching objects are removed.
+    /// </summary>
+    /// <param name="cacheRef">cache reference to remove</param>
+    /// <returns>true if removal succeeded, otherwise false</returns>
+    bool remove(const std::wstring_view& cacheRef)
+    {
+      int iResult;
+      std::wstring_view sheetRef;
+      auto* wbCache = fetchImpl(cacheRef, sheetRef, iResult);
+
+      std::scoped_lock lock(_cacheLock);
+      if (!wbCache)
+        return false;
+
+      auto found = wbCache->search(sheetRef);
+      if (found == wbCache->end())
+        return false;
+      wbCache->erase(found);
+      return true;
+    }
+
   private:
     CellCache& fetchOrAddCell(const std::wstring_view& wbName, const std::wstring_view& wsRef)
     {
@@ -320,6 +319,41 @@ namespace xloil
         }
       }
       _cache.erase(wbName);
+    }
+
+    WorkbookCache* fetchImpl(
+      const std::wstring_view& cacheString,
+      std::wstring_view& sheetRef,
+      int& iResult)
+    {
+      if (cacheString[0] != TUniquifier || cacheString[1] != L'[')
+        return false;
+
+      constexpr auto npos = std::wstring_view::npos;
+
+      const auto firstBracket = 1;
+      const auto lastBracket = cacheString.find_last_of(']');
+      if (lastBracket == npos)
+        return false;
+      const auto comma = cacheString.find_first_of(',', lastBracket);
+
+      auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
+      sheetRef = cacheString.substr(lastBracket + 1,
+        comma == npos ? npos : comma - lastBracket - 1);
+
+      iResult = 0;
+      if (comma != npos)
+      {
+        // Oh dear, there's no std::from_chars for wchar_t
+        wchar_t tmp[4];
+        wcsncpy_s(tmp, 4,
+          cacheString.data() + comma + 1,
+          cacheString.length() - comma - 1);
+        iResult = _wtoi(tmp);
+      }
+
+      std::scoped_lock lock(_cacheLock);
+      return find(_cache, workbook);
     }
   };
 }

@@ -17,7 +17,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
-        event, cache, RtdManager, RtdTopic, 
+        event, cache, RtdManager, RtdTopic, get_event_loop,
         register_functions, deregister_functions,
         CustomConverter as _CustomConverter) 
 
@@ -306,13 +306,21 @@ else:
             pass
         def subscribe(self, topic:str):
             pass
-
+        def peek(self, topic:str, converter=None):
+            pass
+    
     def register_functions(module, function_holders):
         pass
 
     def deregister_functions(module, function_names):
         pass
 
+    def get_event_loop():
+        """
+        Returns the asyncio event loop assoicated with the async background
+        worker thread.
+        """
+        pass
 ########################################
 # END: XLOIL CORE FORWARD DECLARATIONS #
 ########################################
@@ -535,7 +543,7 @@ def _get_meta(fn):
 
 import asyncio
 
-def _get_event_loop():
+def _create_event_loop():
     loop = None
     try:
         loop = asyncio.get_event_loop()
@@ -556,7 +564,7 @@ def async_wrapper(fn):
     @functools.wraps(fn)
     def synchronised(*args, xloil_thread_context, **kwargs):
 
-        loop = _get_event_loop()
+        loop = get_event_loop()
         cxt = xloil_thread_context
 
         async def run_async():
@@ -582,18 +590,15 @@ def _pump_message_loop(control):
     Called internally to run the asyncio message loop. The control object
     allows the loop to be stopped
     """
-    loop = _get_event_loop()
+    loop = get_event_loop()
 
     async def check_stop():
         while not control.stopped():
             await asyncio.sleep(0.2)
         loop.stop()
 
-    all_tasks = asyncio.Task.all_tasks()
-    stop_check = loop.create_task(check_stop())
-
-    loop.run_until_complete(asyncio.wait(all_tasks))
-    stop_check.cancel()
+    loop.create_task(check_stop())
+    loop.run_forever()
 
 
 def func(fn=None, 

@@ -113,6 +113,7 @@ class _VariableWatcher(xlo.RtdTopic):
     def topic(self):
         return self._topic
 
+
 _rtdManager = xlo.RtdManager()
 
 class _JupyterConnection:
@@ -125,7 +126,7 @@ class _JupyterConnection:
 
         from jupyter_client.asynchronous import AsyncKernelClient
 
-        self._loop = asyncio.get_event_loop()
+        self._loop = xlo.get_event_loop()
         self._client = AsyncKernelClient()
         self._xloil_path = xloil_path.replace('\\', '/')
         self._connection_file = connection_file
@@ -147,13 +148,13 @@ class _JupyterConnection:
             f"sys.path.append('{self._xloil_path}')\n" + 
             "import xloil\n"
             "import xloil_jupyter\n"
-            "importlib.reload(xloil)\n" # Because we override xloil.func, need to reset that
-            "importlib.reload(xloil_jupyter)\n"
+            "importlib.reload(xloil)\n" # Because we override xloil.func, we need to reset that
             "xloil.func = xloil_jupyter._func_decorator\n" # Overide xloil.func to do our own thing
             "_xloil_vars = xloil_jupyter.MonitoredVariables(get_ipython())\n"
         )
 
         msg = await self._client.get_shell_msg()
+        self._sessionId = msg['header']['session']
         if 'content' in msg:
             content = msg['content']
             if content['status'] == 'error':
@@ -161,21 +162,22 @@ class _JupyterConnection:
 
     def close(self):
         self._client.execute("_xloil_vars.close()\ndel _xloil_vars")
-        copy = [x for x in self._watched_variables]
+
+        # Copy because the disconnect for a watched variable will
+        # remove it from this dict
+        variable_topics = [x.topic() for x in self._watched_variables.values()]
         
-        for topic in copy:
-            _rtdManager.drop(topic.topic())
+        for topic in variable_topics:
+            _rtdManager.drop(topic)
 
         for func_name in self._registered_funcs:
             xlo.deregister_functions(None, func_name)
-
 
     async def invoke(self, func_name, *args, **kwargs):
         args_data = repr(_serialise(args))
         kwargs_data = repr(_serialise(kwargs))
         msg_id = self._client.execute("xloil_jupyter.function_invoke("
            f"{func_name}, {args_data}, {kwargs_data})")
-           #f"{func_name}, 'fuck', r'sake')")
         future = self._loop.create_future()
         self._pending_messages[msg_id] = future
         return await future
@@ -210,6 +212,8 @@ class _JupyterConnection:
                 content = msg.get('content', None)
                 if content is None:
                     continue
+                
+                #xlo.log(f"Msg: {msg}", level='trace')
 
                 parent_id = msg.get('parent_header', {}).get('msg_id', None)
                 pending = self._pending_messages.get(parent_id, None)
@@ -225,23 +229,34 @@ class _JupyterConnection:
                 #meta_type = content['metadata']['type']
                 xloil_msg = _deserialise(xloil_data)
                 
-                xlo.log(f"Jupyter Msg: {xloil_msg}", level='trace')
+                xlo.log(f"Jupyter xlOil Msg: {xloil_msg}", level='trace')
 
                 if type(xloil_msg) is _VariableChangeMessage:
                     self.publish_variables(xloil_msg.updates)
 
                 elif type(xloil_msg) is _FuncRegisterMessage:
                     descr = xloil_msg.description
+
+                    # The func description has be "hacked" so that _func is 
+                    # the string name of the function to be invoked rather
+                    # that a function object.  We use the name to create a
+                    # shim which invokes jupyter. This is set as the 
+                    # function object
                     func_name = descr._func
+
                     @xlo.async_wrapper
                     async def shim(*args, **kwargs):
                         return await self.invoke(func_name, *args, **kwargs)
 
-                    # Re-hack func object, check _func is a str?
+                    # Correctly set the function description: it's also RTD 
+                    # async now
                     descr._func = shim
                     descr.rtd = True
                     descr.is_async = True
-                    xlo.register_functions(None, [descr.create_holder()]) 
+
+                    xlo.register_functions(None, [descr.create_holder()])
+
+                    # Keep track of our funtions for a clean shutdown
                     self._registered_funcs.add(func_name)
 
                 elif type(xloil_msg) is _FuncResultMessage:
@@ -262,21 +277,56 @@ class _JupyterConnection:
     #def __exit__(self, exc_type, exc_value, traceback)
 
 
+class _JupterTopic(xlo.RtdTopic):
 
-#TODO: Will definitely need this to avoid double importing functions etc.
-#_jupyter_connection_cache = dict()
+    def __init__(self, topic, connection_file, xloil_path): 
+        super().__init__()
+        self._connection = _JupyterConnection(connection_file, xloil_path)
+        self._topic = topic
+        self._task = None 
+        self._cacheRef = None
 
-# TODO: there's no way of closing the connection...without using RTD of course! RTD managed resource
-@xlo.func(rtd=True, 
+    def connect(self, num_subscribers):
+        if num_subscribers == 1:
+            conn = self._connection
+            async def run():
+                await conn.connect()
+                self._cacheRef = xlo.cache.add(conn, tag=self._topic)
+                _rtdManager.publish(self._topic, self._cacheRef)
+                await conn.process_messages()
+
+            self._task = conn._loop.create_task(run())
+
+    def disconnect(self, num_subscribers):
+        if num_subscribers == 0:
+            self.stop()
+
+            # Cleanup our cache reference
+            xlo.cache.remove(self._cacheRef)
+
+            # Schedule topic for destruction
+            return True 
+
+    def stop(self):
+        if not self._task is None:
+            self._task.cancel()
+        self._connection.close()
+
+    def done(self):
+        return self._task is None or self._task.done()
+
+    def topic(self):
+        return self._topic
+
+@xlo.func(
     help="Connects to a jupyter kernel using the kernel-XXX.json file "
          "generated by executing the %connect_info magic")
-async def xloJpyConnect(ConnectionFile):
-    conn = _JupyterConnection(ConnectionFile, os.path.dirname(__file__))
-    await conn.connect()
-    yield conn
-    await conn.process_messages()
-    conn.close()
-    yield "Kernel Stopped"
+def xloJpyConnect(ConnectionFile):
+    topic = ConnectionFile.lower()
+    if _rtdManager.peek(topic) is None:
+        conn = _JupterTopic(topic, ConnectionFile, os.path.dirname(__file__))
+        _rtdManager.start(conn)
+    return _rtdManager.subscribe(topic)
 
 @xlo.func(
     help="Fetches the value of the specifed variable from the given jupyter"

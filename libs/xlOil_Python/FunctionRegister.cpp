@@ -314,10 +314,11 @@ namespace xloil
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
       // Called from python so we have the GIL
-
       const auto modulePath = !moduleHandle.is_none()
         ? moduleHandle.attr("__file__").cast<wstring>()
         : L"";
+
+      py::gil_scoped_release releaseGil;
 
       auto mod = FunctionRegistry::addModule(
         theCurrentContext, modulePath);
@@ -380,7 +381,8 @@ namespace xloil
           .value("Volatile", FuncInfo::VOLATILE)
           .export_values();
 
-        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncHolder")
+        // TODO: Both these classes have terrible names...can we improve them?
+        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncHolder") 
           .def(py::init<const shared_ptr<FuncInfo>&, const py::function&, bool>())
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))

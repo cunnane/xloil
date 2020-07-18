@@ -26,64 +26,60 @@ namespace xloil
   {
     constexpr const char* THREAD_CONTEXT_TAG = "xloil_thread_context";
 
-
     struct EventLoopController
     {
       std::atomic<bool> _stop = true;
-      PyObject* _runLoopFunction = nullptr;
       std::future<void> _loopRunner;
       ctpl::thread_pool _thread;
       std::shared_ptr<const void> _shutdownHandler;
+      py::object _eventLoop;
+      py::object _runLoopFunction;
 
       EventLoopController()
         : _thread(1)
       {
+        py::gil_scoped_release releaseGil;
+
         // We create a hanging reference in gil_scoped_aquire to prevent it 
         // destroying the python thread state. The thread state contains thread 
         // locals used by asyncio to find the event loop for that thread and avoid
         // creating a new one.
-        _thread.push([](int)
-        {
-          py::gil_scoped_acquire acquire;
-          acquire.inc_ref();
-        });
+        _thread.push([self = this](int) mutable
+          {
+            py::gil_scoped_acquire acquire;
+            acquire.inc_ref();
+            const auto xloilMod = py::module::import("xloil");
+            self->_eventLoop = xloilMod.attr("_create_event_loop").call();
+            self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
+          }
+        ).wait();
 
         _shutdownHandler = std::static_pointer_cast<const void>(
           Event_PyBye().bind([self = this]
-        {
-          self->shutdown();
-        }));
+          {
+            self->shutdown();
+          })
+        );
+        
+        start();
       }
 
       void start()
       {
-        
-
-        py::gil_scoped_acquire gilAcquired;
-
-        // This should always be run on the main thread, also the 
-        // GIL gives us a mutex.
-        if (!_runLoopFunction)
-        {
-          const auto xloilModule = py::module::import("xloil");
-          _runLoopFunction = xloilModule.attr("_pump_message_loop").ptr();
-        }
-
         _stop = false;
-
         _loopRunner = _thread.push(
           [=](int)
-        {
-          py::gil_scoped_acquire gilAcquired;
-          try
           {
-            PyBorrow<py::function>(_runLoopFunction).call(this);
+            py::gil_scoped_acquire gilAcquired;
+            try
+            {
+              _runLoopFunction.call(this);
+            }
+            catch (const std::exception& e)
+            {
+              XLO_ERROR("Error running asyncio loop: {0}", e.what());
+            }
           }
-          catch (const std::exception& e)
-          {
-            XLO_ERROR("Error running asyncio loop: {0}", e.what());
-          }
-        }
         );
       }
       /// <summary>
@@ -102,6 +98,11 @@ namespace xloil
       bool stopped()
       {
         return _stop;
+      }
+
+      py::object getEventLoop() const
+      {
+        return _eventLoop;
       }
 
     private:
@@ -124,11 +125,14 @@ namespace xloil
           py::gil_scoped_acquire acquire;
           acquire.dec_ref();
         }).wait();
+
         _thread.stop();
+        _eventLoop = py::object();
+        _runLoopFunction = py::object();
       }
     };
 
-    auto& getEventLoop()
+    auto& getLoopController()
     {
       static std::unique_ptr<EventLoopController> p(new EventLoopController());
       return *p;
@@ -236,7 +240,7 @@ namespace xloil
             Py_XDECREF(kwargsP);
           }
         };
-        getEventLoop().runInterrupt(functor);
+        getLoopController().runInterrupt(functor);
       }
       catch (const std::exception& e)
       {
@@ -360,7 +364,7 @@ namespace xloil
       {
         _returnObj = new RtdReturn(publish, _info->returnConverter, _caller.c_str());
 
-        getEventLoop().runInterrupt(
+        getLoopController().runInterrupt(
           [=](int /*threadId*/)
           {
             py::gil_scoped_acquire gilAcquired;
@@ -474,6 +478,8 @@ namespace xloil
 
         py::class_<EventLoopController>(mod, "EventLoopController")
           .def("stopped", &EventLoopController::stopped);
+
+        mod.def("get_event_loop", []() { return getLoopController().getEventLoop(); });
       });
     }
   }

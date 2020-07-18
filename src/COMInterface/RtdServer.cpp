@@ -379,6 +379,10 @@ namespace xloil
         }
         else
           _theProducers.emplace(job->topic(), job);
+
+        // Add a value for this topic so calls to 'peek' do not return an
+        // empty pointer and can tell a topic publisher has been started
+        _values[job->topic()] = make_shared<ExcelObj>(CellError::NA);
       }
 
       bool dropProducer(const wchar_t* topic)
@@ -580,16 +584,7 @@ namespace xloil
 
       ~RtdManager()
       {
-        CoRevokeClassObject(_comRegistrationCookie);
-
-        // Remove the registry keys used to locate the server (they would be 
-        // removed anyway on windows logoff)
-        for (auto& key : _regKeysAdded)
-          RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
-
-        // Although we can't force Excel to finalise the RTD server when we
-        // want (I think), we can deactive it and cut links to any external DLLs
-        _server->terminate();
+        terminate();
       }
 
       void start(
@@ -624,6 +619,30 @@ namespace xloil
         return _progId.c_str();
       }
 
+  private:
+      void terminate()
+      {
+        // This is likely be to called during teardown, so trap any errors
+        try
+        {
+          CoRevokeClassObject(_comRegistrationCookie);
+
+          // Remove the registry keys used to locate the server (they would be 
+          // removed anyway on windows logoff)
+          for (auto& key : _regKeysAdded)
+            RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
+
+          // Although we can't force Excel to finalise the RTD server when we
+          // want (I think), we can deactive it and cut links to any external DLLs
+          _server->terminate();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("RtdManager::terminate: {0}", e.what());
+        }
+      }
+
+    
       // We don't use the value from the Rtd call, but it indicates to
       // Excel that the current UDF should be treated as an RTD function.
       // It prompts Excel to connect to the RTD server to link a topicId
