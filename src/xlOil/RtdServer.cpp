@@ -98,17 +98,7 @@ namespace xloil
 
     void clear()
     {
-      for (auto& cell : _tasksPerCell)
-      {
-        if (!cell.second.empty())
-        {
-          // Make a copy of the list as the dtor of Cleanup edits it
-          auto copy(cell.second);
-          for (auto& j : copy)
-            _mgr->drop(j->topic());
-        }
-      }
-       
+      _mgr->clear();
       _tasksPerCell.clear();
     }
   };

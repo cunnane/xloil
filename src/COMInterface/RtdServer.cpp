@@ -117,9 +117,7 @@ namespace xloil
       {
         try
         {
-          for (auto& prod : _theProducers)
-            prod.second->stop();
-          _theProducers.clear();
+          clear();
         }
         catch (const std::exception& e)
         {
@@ -292,7 +290,12 @@ namespace xloil
       {
         try
         {
-          terminate();
+          if (!_updateCallback)
+            return S_OK; // Already terminated, or never started
+          
+          clear();
+
+          _updateCallback = nullptr;
         }
         catch (const std::exception& e)
         {
@@ -341,16 +344,23 @@ namespace xloil
       }
 
     public:
-      void terminate()
+      void clear()
       {
         std::scoped_lock lock(_lockSubscribers);
-        if (!_updateCallback)
-          return; // Already terminated, or never started
 
         for (auto& prod : _theProducers)
-          prod.second->stop();
-        _activeTopicIds.clear();
-        _updateCallback = nullptr;
+        {
+          try
+          {
+            prod.second->stop();
+          }
+          catch (const std::exception& e)
+          {
+            XLO_INFO(L"Failed to stop producer: '{0}'", prod.second->topic());
+          }
+        }
+
+        _theProducers.clear();
       }
 
       void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
@@ -394,11 +404,12 @@ namespace xloil
 
         // Signal the producer to stop
         iProd->second->stop();
+
         // Destroy producer, the dtor of RtdTopic waits for completion
         _theProducers.erase(iProd);
 
-        _values.erase(topic); // TODO: does this throw if not found?
-        
+        // Publish #N/A
+        update(topic, make_shared<ExcelObj>(CellError::NA));
         return true;
       }
 
@@ -584,7 +595,14 @@ namespace xloil
 
       ~RtdManager()
       {
-        terminate();
+        clear();
+
+        CoRevokeClassObject(_comRegistrationCookie);
+
+        // Remove the registry keys used to locate the server (they would be 
+        // removed anyway on windows logoff)
+        for (auto& key : _regKeysAdded)
+          RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
       }
 
       void start(
@@ -619,26 +637,19 @@ namespace xloil
         return _progId.c_str();
       }
 
-  private:
-      void terminate()
+      void clear() override
       {
         // This is likely be to called during teardown, so trap any errors
         try
         {
-          CoRevokeClassObject(_comRegistrationCookie);
-
-          // Remove the registry keys used to locate the server (they would be 
-          // removed anyway on windows logoff)
-          for (auto& key : _regKeysAdded)
-            RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
-
           // Although we can't force Excel to finalise the RTD server when we
-          // want (I think), we can deactive it and cut links to any external DLLs
-          _server->terminate();
+          // want (as far as I know) we can deactive it and cut links to any 
+          // external DLLs
+          _server->clear();
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("RtdManager::terminate: {0}", e.what());
+          XLO_ERROR("RtdManager::clear: {0}", e.what());
         }
       }
 

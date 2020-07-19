@@ -326,13 +326,19 @@ namespace xloil
         ExcelObj&& value) = 0;
 
     /// <summary>
-    /// Drops the producer for a topic by calling RtdTopic::stop, then waiting
-    /// for it to complete.
+    /// Drops the producer for a topic by calling RtdTopic::stop, then waits
+    /// for it to complete and publishes #N/A
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
     virtual bool 
       drop(const wchar_t* topic) = 0;
+
+    /// <summary>
+    /// Drop  all ttopics
+    /// </summary>
+    virtual void 
+      clear() = 0;
 
     virtual const wchar_t* progId() const noexcept = 0;
   };
