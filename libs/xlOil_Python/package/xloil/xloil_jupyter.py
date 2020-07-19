@@ -157,6 +157,9 @@ class _JupyterConnection:
         # Setup the python path to find xloil_jupyter. We do a reload of xloil because
         # we override xloil.func - this allows repeated connection to the same kernel
         # without error.  We also connect the variable monitor
+
+        # TODO: if the target notebook already has imported xloil under a different name
+        # I suspect the overwrite of xloil.func will not work.
         msg_id = self._client.execute(
             "import sys, importlib, IPython\n" + 
             f"sys.path.append('{self._xloil_path}')\n" + 
@@ -167,17 +170,17 @@ class _JupyterConnection:
             "_xloil_vars = xloil_jupyter.MonitoredVariables(get_ipython())\n"
         )
 
-        # TODO: retry? check msg_id matches?
+        # TODO: retry?
         # Some examples online suggest get_shell_msg(msg_id) should work. It doesn't, which is 
-        # a shame as it would be rather nice. The jupyter documentation is rather sparse on how
-        # waiting for specific replies should be achieved.
-        msg = await self._client.get_shell_msg()
-        self._sessionId = msg['header']['session']
-        if msg.get('content', {}).get('status', None) == 'error':
-            raise Exception(f"Connection failed: {msg['content']['evalue']}")
-    
-        self._watched_variables.clear()
+        # a shame as it would be rather nice.
+        msg = {}
+        while msg.get('parent_header', {}).get('msg_id', None) != msg_id:
+            msg = await self._client.get_shell_msg()
+            if msg['content']['status'] == 'error':
+                raise Exception(f"Connection failed: {msg['content']['evalue']}")
 
+        self._sessionId = msg['header']['session']
+        self._watched_variables.clear()
         self._ready = True
 
 
