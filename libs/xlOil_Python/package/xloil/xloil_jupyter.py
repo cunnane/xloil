@@ -12,20 +12,6 @@ def _serialise(obj):
 def _deserialise(dump:str):
     return pickle.loads(dump.encode('utf-8'))
 
-#TODO: these messages seem like nice design, but they make the pickle bigger so kill them
-class _VariableChangeMessage:
-    def __init__(self, updates):
-        self.updates = updates
-
-class _FuncRegisterMessage:
-    def __init__(self, description):
-        self.description = description
-
-class _FuncResultMessage:
-    def __init__(self, result):
-        self.result = result
-
-
 class MonitoredVariables:
 
     def __init__(self, ipy_shell):
@@ -45,7 +31,7 @@ class MonitoredVariables:
 
         if len(updates) > 0:
             publish_display_data(
-                { "xloil/data": _serialise(_VariableChangeMessage(updates)) },
+                { "xloil/data": _serialise(updates) },
                 { 'type': "VariableChange" }
             )
 
@@ -70,8 +56,8 @@ def _func_decorator(fn, *args, **kwargs):
     spec._func = spec._func.__name__
 
     publish_display_data(
-        { "xloil/data": _serialise(_FuncRegisterMessage(spec)) },
-        { 'type': "FuncResult" }
+        { "xloil/data": _serialise(spec) },
+        { 'type': "FuncRegister" }
     )
 
     return fn
@@ -82,7 +68,7 @@ def function_invoke(func, args_data, kwargs_data):
     kwargs = _deserialise(kwargs_data)
     result = func(*args, **kwargs)
     publish_display_data(
-        { "xloil/data": _serialise(_FuncResultMessage(result)) },
+        { "xloil/data": _serialise(result) },
         { 'type': "FuncResult" }
     )
     return result # Not used, just in case tho
@@ -284,6 +270,8 @@ class _JupyterConnection:
             except (Empty, KeyError):
                 # Timed out waiting for messages, or msg had no content
                 continue 
+            
+            xlo.log(f"Jupyter Msg: {content}", level='trace')
 
             # Kernel is shutting down, break out of loop
             if msg['header']['msg_type'] == 'shutdown_reply':
@@ -307,17 +295,17 @@ class _JupyterConnection:
             xloil_data = data.get('xloil/data', None)
             if xloil_data is None: 
                 continue
-            xloil_msg = _deserialise(xloil_data)
-            #meta_type = content['metadata']['type']
+            payload = _deserialise(xloil_data)
+            meta_type = content['metadata']['type']
             
-            xlo.log(f"Jupyter xlOil Msg: {xloil_msg}", level='trace')
+            xlo.log(f"Jupyter xlOil Msg: {payload}", level='trace')
 
             # Handle xlOil messages
-            if type(xloil_msg) is _VariableChangeMessage:
-                self.publish_variables(xloil_msg.updates)
+            if meta_type == "VariableChange":
+                self.publish_variables(payload)
 
-            elif type(xloil_msg) is _FuncRegisterMessage:
-                descr = xloil_msg.description
+            elif meta_type == "FuncRegister":
+                descr = payload
 
                 # The func description has be "hacked" so that _func is 
                 # the string name of the function to be invoked rather
@@ -341,15 +329,15 @@ class _JupyterConnection:
                 # Keep track of our funtions for a clean shutdown
                 self._registered_funcs.add(func_name)
 
-            elif type(xloil_msg) is _FuncResultMessage:
+            elif meta_type == "FuncResult":
                 if pending is None:
                     xlo.log(f"Unexpected function result: {msg}")
                 else:
-                    pending.set_result(xloil_msg.result)
+                    pending.set_result(payload)
                     continue
 
             else:
-                raise Exception(f"Unknown xlOil message: {xloil_msg}")
+                raise Exception(f"Unknown xlOil message: {meta_type}, {payload}")
 
 
 
@@ -373,19 +361,23 @@ class _JupterTopic(xlo.RtdTopic):
             conn = self._connection
 
             async def run():
-                await conn.connect()
-                while True:
-                    self._cacheRef = xlo.cache.add(conn, tag=self._topic)
-                    # TODO: use a customer converter for this publish to stop xloil 
-                    # unpacking the cacheref
-                    _rtdManager.publish(self._topic, self._cacheRef)
-                    restart = await conn.process_messages()
-                    conn.close()
-                    if not restart:
-                        break
-                    await conn.wait_for_restart()
+                try:
+                    await conn.connect()
+                    while True:
+                        self._cacheRef = xlo.cache.add(conn, tag=self._topic)
+                        # TODO: use a customer converter for this publish to stop xloil 
+                        # unpacking the cacheref
+                        _rtdManager.publish(self._topic, self._cacheRef)
+                        restart = await conn.process_messages()
+                        conn.close()
+                        if not restart:
+                            break
+                        await conn.wait_for_restart()
 
-                _rtdManager.publish(self._topic, "KernelShutdown")
+                    _rtdManager.publish(self._topic, "KernelShutdown")
+
+                except Exception as e:
+                    _rtdManager.publish(self._topic, str(e))
 
             self._task = conn._loop.create_task(run())
 
