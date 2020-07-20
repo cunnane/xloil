@@ -101,11 +101,12 @@ namespace xloil
 
   namespace COM
   {
+    template<class TValue>
     class
       __declspec(novtable)
       RtdServerImpl :
         public CComObjectRootEx<CComSingleThreadModel>,
-        public CComCoClass<RtdServerImpl, &__uuidof(Excel::IRtdServer)>,
+        public CComCoClass<RtdServerImpl<TValue>, &__uuidof(Excel::IRtdServer)>,
         public IDispatchImpl<
           Excel::IRtdServer,
           &__uuidof(Excel::IRtdServer),
@@ -163,22 +164,25 @@ namespace xloil
 
         try
         {
-          // We only look at the first topic string
+          // We get the first topic string (and ignore the rest)
           long index[] = { 0, 0 };
-          VARIANT topicVariant;
-          SafeArrayGetElement(*strings, index, &topicVariant);
-          const auto topic = topicVariant.bstrVal;
+          VARIANT topicAsVariant;
+          SafeArrayGetElement(*strings, index, &topicAsVariant);
+
+          const auto topic = topicAsVariant.bstrVal;
 
           std::scoped_lock lock(_lockSubscribers);
 
+          // Find subscribers for this topic and link to the topic ID
           _activeTopicIds[topicId] = topic;
           auto& subscribers = _subscribers[topic];
           subscribers.insert(topicId);
-          size_t nSubscribers = subscribers.size();
 
+          // Look for the publisher and let them know how many subscribers 
+          // they now have
           auto producer = findProducer(topic);
           if (producer)
-            producer->connect(nSubscribers);
+            producer->connect(subscribers.size());
 
           XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
         }
@@ -310,8 +314,8 @@ namespace xloil
       // TODO: combine these maps?
       std::unordered_map<wstring, shared_ptr<IRtdTopic>> _theProducers;
       std::unordered_map<wstring, unordered_set<long>> _subscribers;
-      std::unordered_map<wstring, shared_ptr<ExcelObj>> _values;
-      std::list<std::pair<wstring, shared_ptr<ExcelObj>>> _newValues;
+      std::unordered_map<wstring, shared_ptr<TValue>> _values;
+      std::list<std::pair<wstring, shared_ptr<TValue>>> _newValues;
 
       std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
 
@@ -326,7 +330,7 @@ namespace xloil
       {
         std::scoped_lock lock(_lockSubscribers);
         if (_updateCallback)
-          _updateCallback->UpdateNotify();
+          _updateCallback->raw_UpdateNotify();
       }
 
       shared_ptr<IRtdTopic> findProducer(const wchar_t* topic)
@@ -356,14 +360,15 @@ namespace xloil
           }
           catch (const std::exception& e)
           {
-            XLO_INFO(L"Failed to stop producer: '{0}'", prod.second->topic());
+            XLO_INFO(L"Failed to stop producer: '{0}': {1}", 
+              prod.second->topic(), utf8ToUtf16(e.what()));
           }
         }
 
         _theProducers.clear();
       }
 
-      void update(const wchar_t* topic, const shared_ptr<ExcelObj>& value)
+      void update(const wchar_t* topic, const shared_ptr<TValue>& value)
       {
         std::scoped_lock lock(_lockNewValues);
 
@@ -390,9 +395,9 @@ namespace xloil
         else
           _theProducers.emplace(job->topic(), job);
 
-        // Add a value for this topic so calls to 'peek' do not return an
-        // empty pointer and can tell a topic publisher has been started
-        _values[job->topic()] = make_shared<ExcelObj>(CellError::NA);
+        // Add a value for this topic so calls to 'peek' can tell a topic 
+        // publisher has been started
+        _values[job->topic()] = shared_ptr<TValue>();
       }
 
       bool dropProducer(const wchar_t* topic)
@@ -408,27 +413,30 @@ namespace xloil
         // Destroy producer, the dtor of RtdTopic waits for completion
         _theProducers.erase(iProd);
 
-        // Publish #N/A
-        update(topic, make_shared<ExcelObj>(CellError::NA));
+        // Publish empty value
+        update(topic, shared_ptr<TValue>());
         return true;
       }
 
-      auto value(const wchar_t* topic) const
+      bool value(const wchar_t* topic, shared_ptr<const TValue>& val) const
       {
         std::scoped_lock lock(_lockSubscribers);
         auto found = _values.find(topic);
-        if (found != _values.end())
-          return found->second;
-        return shared_ptr<ExcelObj>();
+        if (found == _values.end())
+          return false;
+
+        val = found->second;
+        return true;
       }
     };
 
+    template <class TValue>
     class FactoryRtdServer : public IClassFactory
     {
     public:
-      RtdServerImpl* _instance;
+      RtdServerImpl<TValue>* _instance;
 
-      FactoryRtdServer(RtdServerImpl* p)
+      FactoryRtdServer(RtdServerImpl<TValue>* p)
         : _instance(p)
       {}
 
@@ -514,8 +522,8 @@ namespace xloil
 
     class RtdManager : public IRtdManager
     {
-      CComPtr<RtdServerImpl> _server;
-      CComPtr<FactoryRtdServer> _factory;
+      CComPtr<RtdServerImpl<ExcelObj>> _server;
+      CComPtr<FactoryRtdServer<ExcelObj>> _factory;
       DWORD _comRegistrationCookie;
       wstring _progId;
       std::list<wstring> _regKeysAdded;
@@ -523,7 +531,7 @@ namespace xloil
     public:
       RtdManager(const wchar_t* progId, const wchar_t* fixedClsid)
       {
-        _server = new CComObject<RtdServerImpl>();
+        _server = new CComObject<RtdServerImpl<ExcelObj>>();
         _factory = new FactoryRtdServer(_server.p);
 
         if (progId && !fixedClsid)
@@ -614,7 +622,11 @@ namespace xloil
       shared_ptr<const ExcelObj> subscribe(const wchar_t * topic) override
       {
         callRtd(topic);
-        return _server->value(topic);
+        shared_ptr<const ExcelObj> value;
+        // If there is a producer, but no value yet, put N/A
+        if (_server->value(topic, value) && !value)
+          value = make_shared<ExcelObj>(CellError::NA);
+        return value;
       }
       bool publish(const wchar_t * topic, ExcelObj&& value) override
       {
@@ -624,9 +636,11 @@ namespace xloil
       shared_ptr<const ExcelObj> 
         peek(const wchar_t* topic) override
       {
-        // TODO: this is not enough to tell if the server is running.
-        // either value is always present or...?
-        return _server->value(topic);
+        shared_ptr<const ExcelObj> value;
+        // If there is a producer, but no value yet, put N/A
+        if (_server->value(topic, value) && !value)
+          value = make_shared<ExcelObj>(CellError::NA);
+        return value;
       }
       bool drop(const wchar_t* topic) override
       {

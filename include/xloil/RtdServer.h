@@ -303,8 +303,10 @@ namespace xloil
         const wchar_t* topic) = 0;
 
     /// <summary>
-    /// Looks up a value for a specified producer if it exists without 
-    /// subscribing. Does not call Excel's RTD function.
+    /// Looks up a value for a specified producer, but does not subscribe.
+    /// If there is no producer for the topic, the returned pointer will
+    /// be null. If there is no published value, it will point to N/A.
+    /// Does not call Excel's RTD function.
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
