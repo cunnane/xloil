@@ -175,7 +175,6 @@
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="ExcelTypeLib.h" />
-    <ClInclude Include="MessageQueue.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
@@ -185,8 +184,7 @@
     <ClCompile Include="ComRange.cpp" />
     <ClCompile Include="ComVariant.cpp" />
     <ClCompile Include="Connect.cpp" />
-    <ClCompile Include="RtdServer.cpp" />
-    <ClCompile Include="MessageQueue.cpp" />
+    <ClCompile Include="RtdManager.cpp" />
     <ClCompile Include="WorkbookScopeFunctions.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
   </ItemGroup>
