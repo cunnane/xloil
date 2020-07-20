@@ -33,9 +33,13 @@ namespace xloil {
 
         py::object add(const py::object& obj, const wchar_t* tag=nullptr)
         {
+          // The cache expects callers to be of the form [.]xxx, so we add
+          // a prefix if a custom tag is specified. Note the forward slash
+          // cannot appear in a workbook name so this tag never collides with
+          // the caller-based default
           return PySteal(PyFromString()(
             _cache.add(py::object(obj), tag 
-              ? (wstring(L"[_Py_]") + tag).c_str()
+              ? (wstring(L"[/Py]") + tag).c_str()
               : nullptr)));
         }
         py::object get(const std::wstring_view& str)
@@ -84,7 +88,7 @@ namespace xloil {
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::get)
-          .def("__call__", &PyCache::add);
+          .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr);
         mod.add_object("cache", py::cast(new PyCache()));
       });
     }
