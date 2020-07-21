@@ -85,7 +85,7 @@ namespace xloil
       /// <summary>
       /// Executes the function on the python asyncio thread. The thread is normally
       /// running the asyncio event loop.  This stops and restarts the loop to allow
-      /// the function to run.
+      /// the function to run. Note we never actually use it...
       /// </summary>
       template<typename F>
       void runInterrupt(F && f)
@@ -196,51 +196,27 @@ namespace xloil
         PyObject *argsP, *kwargsP;
         AsyncReturn* asyncReturn;
 
-        {
-          py::gil_scoped_acquire gilAcquired;
+        py::gil_scoped_acquire gilAcquired;
 
-          PyErr_Clear();
+        PyErr_Clear();
 
-          // I think it's better to process the arguments to python here rather than 
-          // copying the ExcelObj's and converting on the async thread (since CPython
-          // is single threaded anyway)
-          auto[args, kwargs] = info->convertArgs(xlArgs);
-          if (kwargs.is_none())
-            kwargs = py::dict();
+        // I think it's better to process the arguments to python here rather than 
+        // copying the ExcelObj's and converting on the async thread (since CPython
+        // is single threaded anyway)
+        auto[args, kwargs] = info->convertArgs(xlArgs);
+        if (kwargs.is_none())
+          kwargs = py::dict();
 
-          // Raw ptr, but we take ownership below
-          asyncReturn = new AsyncReturn(
-            *asyncHandle,
-            info->returnConverter);
+        // Raw ptr, but we take ownership below
+        asyncReturn = new AsyncReturn(
+          *asyncHandle,
+          info->returnConverter);
 
-          // Kwargs will be dec-refed after the asyncReturn is used
-          kwargs[THREAD_CONTEXT_TAG] = py::cast(asyncReturn,
-            py::return_value_policy::take_ownership);
+        // Kwargs will be dec-refed after the asyncReturn is used
+        kwargs[THREAD_CONTEXT_TAG] = py::cast(asyncReturn,
+          py::return_value_policy::take_ownership);
 
-          // Need to drop pybind links before lambda capture in otherwise the lambda's 
-          // dtor is called at some random time after losing the GIL and it crashes.
-          argsP = args.release().ptr();
-          kwargsP = kwargs.release().ptr();
-        }
-
-        auto functor = [info, argsP, kwargsP, asyncReturn](int threadId) mutable
-        {
-          py::gil_scoped_acquire gilAcquired;
-          {
-            try
-            {
-              // This will return through the asyncReturn object
-              info->invoke(argsP, kwargsP);
-            }
-            catch (const std::exception& e)
-            {
-              asyncReturn->result(ExcelObj(e.what()));
-            }
-            Py_XDECREF(argsP);
-            Py_XDECREF(kwargsP);
-          }
-        };
-        getLoopController().runInterrupt(functor);
+        info->invoke(args.ptr(), kwargs.ptr());
       }
       catch (const std::exception& e)
       {
@@ -363,20 +339,14 @@ namespace xloil
       void start(IRtdPublish& publish) override
       {
         _returnObj = new RtdReturn(publish, _info->returnConverter, _caller.c_str());
+        py::gil_scoped_acquire gilAcquired;
 
-        getLoopController().runInterrupt(
-          [=](int /*threadId*/)
-          {
-            py::gil_scoped_acquire gilAcquired;
+        PyErr_Clear();
 
-            PyErr_Clear();
+        auto kwargs = PyBorrow<py::object>(_kwargs);
+        kwargs[THREAD_CONTEXT_TAG] = _returnObj;
 
-            auto kwargs = PyBorrow<py::object>(_kwargs);
-            kwargs[THREAD_CONTEXT_TAG] = _returnObj;
-
-            _info->invoke(_args, kwargs.ptr());
-          }
-        );
+        _info->invoke(_args, kwargs.ptr());
       }
       bool done() override
       {
