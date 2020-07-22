@@ -25,16 +25,14 @@ function Remove-From-Resiliancy {
 function Check-VBA-Access {
 	param ([string]$OfficeVersion)
 
-	$UserKey=(Get-ItemProperty -Path "HKCU:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -Name "AccessVBOM" -ErrorAction SilentlyContinue)
-	if ($RegKey.AccessVBOM -eq 1) { Write-Host "Hello" }
-	Write-Host $RegKey
+	$UserKey=(Get-ItemProperty -Path "HKCU:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -ErrorAction SilentlyContinue)
+	$MachineKey=(Get-ItemProperty -Path "HKLM:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -ErrorAction SilentlyContinue)
 
-	$MachineKey=(Get-ItemProperty -Path "HKLM:\Software\Microsoft\Office\${OfficeVersion}\Excel\Security" -Name "AccessVBOM" -ErrorAction SilentlyContinue)
-	if (($MachineKey.AccessVBOM -ne 1) -or ($UserKey.AccessVBOM -ne 1)) 
+	if (($MachineKey.AccessVBOM -eq 0) -or ($UserKey.AccessVBOM -eq 0)) 
 	{ 
-		Write-Host "
-		To ensure xlOil local functions work, allow access to the VBA Object Model in
-		Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings"
+		Write-Host (
+			"To ensure xlOil local functions work, allow access to the VBA Object Model in`n" +
+			"Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings`n")
 	}
 }
 
@@ -43,15 +41,21 @@ function Check-VBA-Access {
 # Script Start
 #
 
-$ADDIN_NAME = "xlOil.xll"
+$ADDIN_NAME   = "xlOil.xll"
 $INIFILE_NAME = "xlOil.ini"
-$OurAppData = Join-Path $env:APPDATA "xlOil"
+
+$XloilAppData = Join-Path $env:APPDATA "xlOil"
+$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
 
 #
-# Start Excel
+# Start Excel to get some environment settings (could probably get
+# them from the registry more quickly...)
 #
 $Excel = New-Object -Com Excel.Application
 $ExcelVersion = $Excel.Version
+$XlStartPath = $Excel.StartupPath
+$Excel.Quit()
+$Excel = $null
 
 # Just in case we got put in Excel's naughty corner for misbehaving addins
 Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
@@ -59,55 +63,32 @@ Remove-From-Resiliancy $ADDIN_NAME $ExcelVersion
 # Check access to the VBA Object model (for local functions)
 Check-VBA-Access $ExcelVersion
 
-#
-# You can't add an add-in unless there's an open and visible workbook.
-# It's a long-standing Excel bug which, like so many others, Microsoft
-# is unlikely to fix, not whilst the important task of tweaking the UI
-# appearance with every Office version takes priority.
-#
-$Excel.Visible = $true
-$Workbook = $Excel.Workbooks.Add()
-$Worksheet = $Workbook.Sheets(1)
-$Worksheet.Cells(1,1).Value = "Instaling xlOil addin"
-$AddinPath = Join-Path $PSScriptRoot $ADDIN_NAME
-$Addin = $Excel.AddIns.Add($AddinPath)
-$Addin.Installed = $true
-$Workbook.Close($false)
+# Ensure XLSTART dir really exists
+mkdir -Force $XlStartPath | Out-Null
 
-#
-# We need to null all the COM refs we used or Excel won't actually quit
-# even after this script has ended. It's a well-known problem see for example
-# https://stackoverflow.com/questions/42113082/excel-application-object-quit-leaves-excel-exe-running
-#
-$Workbook = $null
-$Worksheet = $null
-$Addin = $null
-$Excel.Quit()
-$Excel = $null
+# Copy the XLL
+Copy-Item -path (Join-Path $PSScriptRoot $ADDIN_NAME) -Destination $XlStartPath
 
-#
-# Copy the ini file to APPDATA
-#
-$IniFile = (Join-Path $OurAppData $INIFILE_NAME)
-
+# Copy the ini file to APPDATA, avoiding overwritting any existing ini
+$IniFile = (Join-Path $XloilAppData $INIFILE_NAME)
 if (!(Test-Path -Path $IniFile -PathType leaf)) {
-
-	mkdir -Force $OurAppData | Out-Null
+	
 	Copy-Item -path (Join-Path $PSScriptRoot $INIFILE_NAME) -Destination $IniFile
 
 	#
-	# Set the PATH environment in the ini so we can found xloil.dll if required
+	# Set the PATH environment in the ini so we can find xlOil.dll
 	#
 	(Get-Content -Encoding UTF8 -Path $IniFile) `
 		-replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
 	  Out-File -Encoding UTF8 $IniFile 
 
-	Write-Host "Settings files placed in ",$OurAppData
+	Write-Host "Settings file placed at ", $IniFile 
 
 } else {
 
-	Write-Host "Found existing settings file at `n",$IniFile , "`nCheck [Environment] block points to `n", $AddinPath
+	Write-Host ("Found existing settings file at `n", $IniFile , 
+				"`nCheck [Environment] block points to `n", $AddinPath)
 
 }
 
-Write-Host $AddinPath, "installed"
+Write-Host $AddinPath, "installed`n"

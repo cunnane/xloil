@@ -1,7 +1,4 @@
 ﻿
-$ADDIN_NAME = "xlOil.xll"
-$OurAppData = Join-Path $env:APPDATA "xlOil"
-
 function Remove-Addin {
     param ([string]$AddinPath, $Version)
     $RegKey=(gi "HKCU:\Software\Microsoft\Office\${Version}\Excel\Add-in Manager" -ErrorAction SilentlyContinue)
@@ -16,50 +13,31 @@ function Remove-Addin {
     }
 }
 
+#####################################################################################################
+#
+# Script Start
+#
+
+$ADDIN_NAME   = "xlOil.xll"
+$INIFILE_NAME = "xlOil.ini"
+
+$XloilAppData = Join-Path $env:APPDATA "xlOil"
+
+#
+# Start Excel to get some environment settings (could probably get
+# them from the registry more quickly...)
+#
 $Excel = New-Object -Com Excel.Application
 $ExcelVersion = $Excel.Version
-$Excel.Visible = $true
-
-#
-# You can't add an add-in unless there's an open and visible workbook.
-# There's no logical reason for this, it's a bug.
-#
-$Workbook = $Excel.Workbooks.Add()
-$Worksheet = $Workbook.Sheets(1)
-$Worksheet.Cells(1,1).Value2 = "Removing xlOil addin"
-
-
-#
-# For some reason I can't get the addins collection to index
-# from a string like in normal COM, so we have to loop
-#
-$AddinPath = ""
-For ($i = 1; $i -le $Excel.AddIns.Count; $i++) {
-    $Addin = $Excel.AddIns[$i]
-    if ($Addin.Name -like $ADDIN_NAME) {
-        $Addin.Installed = $false
-        $AddinPath = $Addin.Path
-    }
-}
-$Workbook.Close($false)
-
-#
-# We need to null all the COM refs we used or Excel won't actually quit
-# even after this script has ended. It's a well-known problem see for example
-# https://stackoverflow.com/questions/42113082/excel-application-object-quit-leaves-excel-exe-running
-#
-$Worksheet = $null
-$Workbook = $null
-$Addin = $null
+$XlStartPath = $Excel.StartupPath
 $Excel.Quit()
 $Excel = $null
 
-#
-# Microsoft neglected to provide a Remove function on the add-ins 
-# collection, because where would all the fun be in programming if
-# they wrote a fully featured API which works as expected and documented?
-#
+$AddinPath = Join-Path $XlStartPath $ADDIN_NAME
+
+# Ensure no xlOil addins are in the registry
 Remove-Addin $AddinPath $ExcelVersion
 
+Remove-Item –path $AddinPath 
 Write-Host (Join-Path $AddinPath $ADDIN_NAME), "removed"
-Write-Host "Left settings files in ",$OurAppData 
+Write-Host "Left settings files in ", $XloilAppData 
