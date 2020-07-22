@@ -166,6 +166,7 @@
     <ClCompile Include="XlCall.cpp" />
     <ClCompile Include="ExcelObjCache.cpp" />
     <ClCompile Include="xloHelp.cpp" />
+    <ClCompile Include="xloLog.cpp" />
     <ClCompile Include="xloVersion.cpp" />
   </ItemGroup>
   <ItemGroup>

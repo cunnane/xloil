@@ -41,6 +41,7 @@
     <ClCompile Include="ThreadControl.cpp" />
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="xloVersion.cpp" />
+    <ClCompile Include="xloLog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
