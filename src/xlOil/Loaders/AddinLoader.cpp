@@ -78,7 +78,7 @@ namespace xloil
     auto logFile = Settings::logFilePath(addinRoot);
     auto logLevel = Settings::logLevel(addinRoot);
     if (logFile.empty())
-      logFile = fs::path(xllPath).replace_extension("log");
+      logFile = fs::path(*settings->source().path).replace_extension("log");
     detail::loggerAddFile(logFile.c_str(), logLevel.c_str());
 
     // Add any requested date formats
