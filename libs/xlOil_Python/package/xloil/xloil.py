@@ -17,7 +17,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
-        event, cache, RtdManager, RtdTopic, get_event_loop,
+        event, cache, RtdManager, RtdPublisher, get_event_loop,
         register_functions, deregister_functions,
         CustomConverter as _CustomConverter) 
 
@@ -91,6 +91,12 @@ else:
         def ncols(self):
             """ Returns the number of columns in the range """
             pass
+        def __getitem__(self, tuple):
+            """ 
+            Given a 2-tuple, slices the range to return a sub Range or a 
+            single element.
+            """
+            pass
 
     class ExcelArray:
         """
@@ -135,8 +141,8 @@ else:
         """
         Enum-type class which represents an Excel error condition of the 
         form #N/A!, #NAME!, etc passed as a function argument. If your
-        function does not use a specific type-converter it can opt to handle
-        these errors.
+        function does not use a specific type-converter it may be passed 
+        an object of this type, which it can handle based on error condition.
         """
         Null = None
         Div0 = None
@@ -285,28 +291,108 @@ else:
 
     cache = Cache()
 
-    class RtdTopic:
+    class RtdPublisher:
+        """
+        RTD servers use a publisher/subscriber model with the 'topic' as the key
+        The publisher class is linked to a single topic string.
 
+        Typically the publisher will do nothing on construction, but when it detects
+        a subscriber using the connect() method, it creates a background publishing task
+        When disconnect() indicates there are no subscribers, it cancels this task with
+        a call to stop()
+
+        If the task is slow to return or spin up, it could be started the constructor  
+        and kept it running permanently, regardless of subscribers.
+
+        The publisher should call RtdManager.publish() to push values to subscribers.
+        """
+
+        def __init__(self):
+            """
+            This __init__ method must be called explicitly by subclasses or 
+            pybind will fatally crash Excel.
+            """
+            pass
         def connect(self, num_subscribers):
+            """
+            Called by the RtdManager when a sheet function subscribes to this 
+            topic. Typically a topic will start up its publisher on the first
+            subscriber, i.e. when num_subscribers == 1
+            """
             pass
         def disconnect(self, num_subscribers):
+            """
+            Called by the RtdManager when a sheet function disconnects from this 
+            topic. This happens when the function arguments are changed the
+            function deleted. Typically a topic will shutdown its publisher 
+            when num_subscribers == 0.
+
+            Whilst the topic remains live, it may still receive new connection
+            requests, so generally avoid finalising in this method.
+            """
             pass
         def stop(self):
+            """
+            Called by the RtdManager to indicate that a topic should shutdown
+            and dependent threads or tasks and finalise resource usage
+            """
             pass
-        def done(self):
+        def done(self) -> bool:
+            """
+            Returns True if the topic can safely be deleted without 
+            leaking resources.
+            """
             pass
-        def topic(self):
+        def topic(self) -> str:
+            """
+            Returns the name of the topic
+            """
             pass
 
     class RtdManager:
+        """
+        An RtdManager sits above an Rtd COM server. Each new RtdManager creates a
+        new underlying COM server. The manager connects publishers and subscribers
+        for topics, identified by a string. 
 
-        def start(self, topic:RtdTopic):
+        A topic publisher is registered using start(). Subsequent calls to subscribe()
+        will connect this topic and tell Excel that the current calling cell should be
+        recalculated when a new value is published.
+
+        RTD sits outside of Excel's normal calc cycle: publishers can publish new values 
+        at any time, triggering a re-calc of any cells containing subscribers. Note the
+        re-calc will only happen 'live' if Excel's caclulation mode is set to automatic
+        """
+
+        def start(self, topic:RtdPublisher):
+            """
+            Registers an RtdPublisher publisher with this manager. The RtdPublisher receives
+            notification when the number of subscribers changes
+            """
             pass
         def publish(self, topic:str, value):
+            """
+            Publishes a new value for the specified topic and updates all subscribers.
+            This function can be called even if no RtdPublisher has been started.
+            """
             pass
         def subscribe(self, topic:str):
+            """
+            Subscribes to the specified topic. If no publisher for the topic currently 
+            exists, it returns None, but the subscription is held open and will connect
+            to a publisher created later. If there is no published value, it will return 
+            CellError.NA.  
+            
+            This calls Excel's RTD function, which means the calling cell will be
+            recalculated every time a new value is published.
+            """
             pass
         def peek(self, topic:str, converter=None):
+            """
+            Looks up a value for a specified topic, but does not subscribe.
+            If there is no active publisher for the topic, it returns None.
+            If there is no published value, it will return CellError.NA.
+            """
             pass
     
     def register_functions(module, function_holders):
@@ -321,6 +407,7 @@ else:
         worker thread.
         """
         pass
+
 ########################################
 # END: XLOIL CORE FORWARD DECLARATIONS #
 ########################################
@@ -337,8 +424,8 @@ This annotation includes all the types which can be passed from xlOil to
 a function. There is not need to specify it to xlOil, but it could give 
 useful type-checking information to other software which reads annotation.
 """
-
 ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellError]
+
 """
 The special AllowRange annotation allows functions to receive the argument
 as an ExcelRange object if appropriate. The argument may still be passed
@@ -448,9 +535,12 @@ def converter(typ=typing.Callable, range=False):
 
     def decorate(obj):
         if inspect.isclass(obj):
+
             class Converter(typ):
+
                 def __init__(self):
                     pass # Keeps linter quiet
+
                 def __call__(self, *args, **kwargs):
                     instance = obj(*args, **kwargs)
                     class Inner(typ or instance.target):
@@ -460,12 +550,17 @@ def converter(typ=typing.Callable, range=False):
                     # by a function-which-takes-a-class and is returned
                     # from another function. Simple!
                     return Inner
+
             return Converter()
+
         else:
+
             class Converter(typ):
                 _xloil_converter_ = _CustomConverter(obj)
                 allow_range = range
+
             return Converter
+
     return decorate
 
 
@@ -645,14 +740,19 @@ def func(fn=None,
     help: str
         Overrides the help shown in the function wizard otherwise the function's 
         doc-string is used.
+    args: dict
+        A dictionary with key names matching function arguments and values specifying
+        information for that argument. The information can be a string, which is 
+        interpreted as the help to display in the function wizard or in can be an 
+        xloil.Arg object which can contain defaults, help and type information. 
     group: str
         Specifes a category of functions in Excel's function wizard under which
         this function should be placed.
     local: bool
-        For functions in a workbook-associated module, e.g. workbook.py, xlOil
-        defaults to scoping their name to the workbook itself. You can override
-        this behaviour with this parameter. It has no effect outside associated
-        modules.
+        Functions in a workbook-linked module, e.g. Book1.py, default to 
+        workbook-level scope (i.e. not usable outside that workbook) itself. You 
+        can override this behaviour with this parameter. It has no effect outside 
+        workbook-linked modules.
     macro: bool
         If True, registers the function as Macro Type. This grants the function
         extra priveledges, such as the ability to see un-calced cells and 
@@ -661,11 +761,10 @@ def func(fn=None,
         be declared with this attribute.
     is_async: bool
         Registers the function as asynchronous. It's better to add the use asyncio's
-        'async def' syntax if it is available. Note that async functions aren't
-        calculated in the background in Excel: if the user interrupts the calculation
-        by interacting with Excel, async functions are cancelled and restarted later.
+        'async def' syntax if it is available. Note that only async RTD functions are
+        calculated in the background in Excel
     thread_safe: bool
-        Declares the function as safe for multi-threaded calculation, i.e. the
+        Declares the function as safe for multi-threaded calculation. The
         function must not make any non-synchronised access to objects outside
         its scope. Since python (at least CPython) is single-threaded there is
         no performance benefit from enabling this.
@@ -713,6 +812,7 @@ def func(fn=None,
                         descr.args[i] = arg
                     except ValueError:
                         raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
+        
         descr.is_async = _async
 
         fn.__dict__[_META_TAG] = descr
@@ -906,15 +1006,17 @@ def scan_module(module, workbook_name=None):
         Called by the xlOil C layer to import modules specified in the config.
     """
 
-    if (inspect.ismodule(module) and module.hasattr('__file__')) or module in sys.modules:
-        handle = importlib.reload(module) 
-    else:
+    if type(module) is str:
         # Not completely sure of the wisdom of adding to sys.path here...
         # But it's difficult to load a module by absolute path
         mod_directory, mod_filename = os.path.split(module)
         if len(mod_directory) > 0 and not mod_directory in sys.path:
             sys.path.append(mod_directory)
         handle = importlib.import_module(os.path.splitext(mod_filename)[0])
+    elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
+        handle = importlib.reload(module)
+    else:
+        raise Exception(f"scan_module: could not process {str(module)}")
 
     # Allows 'local' modules to know which workbook they link to
     handle._xl_this_workbook = workbook_name

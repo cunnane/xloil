@@ -200,7 +200,7 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<IRtdTopic, PyRtdTopic, py_shared_ptr<IRtdTopic>>(mod, "RtdTopic")
+        py::class_<IRtdTopic, PyRtdTopic, py_shared_ptr<IRtdTopic>>(mod, "RtdPublisher")
           .def(py::init<>())
           .def("connect", &IRtdTopic::connect)
           .def("disconnect", &IRtdTopic::disconnect)

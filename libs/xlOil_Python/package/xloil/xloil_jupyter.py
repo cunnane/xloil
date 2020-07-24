@@ -73,7 +73,7 @@ def function_invoke(func, args_data, kwargs_data):
     )
     return result # Not used, just in case tho
 
-class _VariableWatcher(xlo.RtdTopic):
+class _VariableWatcher(xlo.RtdPublisher):
 
     def __init__(self, var_name, topic_name, connection): 
         super().__init__()
@@ -346,7 +346,7 @@ class _JupyterConnection:
     #def __exit__(self, exc_type, exc_value, traceback)
 
 
-class _JupterTopic(xlo.RtdTopic):
+class _JupterTopic(xlo.RtdPublisher):
 
     def __init__(self, topic, connection_file, xloil_path): 
         super().__init__()
@@ -357,7 +357,7 @@ class _JupterTopic(xlo.RtdTopic):
 
     def connect(self, num_subscribers):
 
-        if num_subscribers == 1 or self.done():
+        if self.done():
             conn = self._connection
 
             async def run():
@@ -401,6 +401,7 @@ class _JupterTopic(xlo.RtdTopic):
 
     def topic(self):
         return self._topic
+
 
 @xlo.func(
     help="Connects to a jupyter (ipython) kernel given a connection file. Functions created"
