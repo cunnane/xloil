@@ -35,6 +35,7 @@ xlOil features
     - Tight integration with numpy - very low overheads for array functions
     - Understands python tuples, lists, dictionarys and pandas dataframes
     - Async functions
+    - RTD functions and on-the-fly RTD server creation
     - Macro type functions which write to the sheet
     - Access to the Excel Application object 
     - Hook Excel events
@@ -46,12 +47,14 @@ xlOil features
     - Concise syntax to declare Excel functions: registration is automatic
     - Deal with Excel variants, Ranges, Arrays and strings in a natural C++ fashion
     - Object cache allows returning opaque objects to Excel and passing them back to other functions
+    - Async functions
+    - RTD functions and on-the-fly RTD server creation
 
 * SQL
     - Create tables from Excel ranges and arrays
     - Query and join them with the full sqlite3 SQL syntax
 
-* Utils: very fast functions to:
+* Utils: very fast functions to
     - Sort on multiple columns
     - Split and join strings
     - Make arrays from blocks

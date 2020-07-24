@@ -121,6 +121,7 @@ namespace xloil
   }
   bool isMainThread()
   {
+    // TODO: would a thread-local bool be quicker here?
     return State::mainThreadId() == GetCurrentThreadId();
   }
 }

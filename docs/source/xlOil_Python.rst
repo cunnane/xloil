@@ -3,11 +3,13 @@ xlOil Python
 ============
 
 .. toctree::
-	:maxdepth: 4
-	:caption: Contents:
-	
-	xlOil_Python_Example
-	xlOil_Python_Module
+    :maxdepth: 4
+    :caption: Contents
+    
+    xlOil_Python_Example
+    xlOil_Python_Module
+    xlOil_Python_Jupyter
+    xlOil_Python_Rtd
 
 Introduction
 ------------
@@ -119,7 +121,8 @@ Getting Started (trouble)
 -------------------------
 
 Check the `xlOil.log` file for errors. By default, the log file is created in the
-same directory as `xlOil.xll` in your python distribution. 
+same directory as `xlOil.ini` in your AppData directory.  If xlOil core has 
+succesfully loaded, the worksheet function `xloLog` will tell you where this file is.
 
 You may need to set the python paths in the `xlOil.ini` file for xlOil to find 
 your python distribution.
@@ -257,14 +260,14 @@ Some events use reference parameters, for example setting the `cancel` bool in `
 cancels the event.  In xlOil Iyou need to set the value using `cancel.value=True` because python 
 does not support reference parameters for primitive types.
 
-Events are (currently) global in the Excel instance, so you may need to check the workbook name when handling
-events.
+Events are (currently) global in the Excel instance, so you may need to check the workbook name when 
+handling events.
 
 xlOil has some extra events:
 
-    * `WorkbookAfterClose`: Excel's event *WorkbookBeforeClose*, is cancellable by the user so it is not 
-      possible to know if the workbook actually closed. `WorkbookAfterClose` fixes this but there may be
-      a long delay before the event is fired.
+    * `WorkbookAfterClose`: Excel's event *WorkbookBeforeClose*, is cancellable by the user so it is 
+      not possible to know if the workbook actually closed. `WorkbookAfterClose` fixes this but there
+      may be a long delay before the event is fired.
     * `CalcCancelled`: called when the user interrupts calculation, maybe useful for async functions
 
 Examples

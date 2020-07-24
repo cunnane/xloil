@@ -32,8 +32,9 @@ XLO_FUNC_START(
       make_shared<const ExcelObj>(pxOper)));
 }
 XLO_FUNC_END(xloRef).threadsafe()
-  .help(L"Adds the specified cell or array to the object cache and returns a string reference")
-  .arg(L"CellOrArray", L"Data to be stored");
+  .help(L"Adds the specified value or range or array to the object cache and "
+         "returns a string reference")
+  .arg(L"ValOrArray", L"Data to be stored");
 
 
 XLO_FUNC_START(
@@ -49,7 +50,8 @@ XLO_FUNC_START(
   return returnValue(CellError::Value);
 }
 XLO_FUNC_END(xloVal).threadsafe()
-  .help(L"Given a string reference, returns a stored array or cell value. "
-    "The cache is not saved so will need to be recreated by a full recalc (Ctrl-Alt-F9) on workbook open")
+  .help(L"Given a string reference, returns a stored array or value. Cached values "
+         "are not saved so will need to be recreated by a full recalc (Ctrl-Alt-F9) "
+         "on workbook open")
   .arg(L"CacheRef", L"Cache reference string");
 

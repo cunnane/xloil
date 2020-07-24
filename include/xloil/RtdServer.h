@@ -288,9 +288,9 @@ namespace xloil
           topic, *this, std::make_shared<RtdProducer>(func)));
     }
     /// <summary>
-    /// Subscribes to a producer with the specified topic. If no producer
-    /// for the topic currently exists, the subscription will be held open
-    /// pending a producer. This calls Excel's RTD function, which means the
+    /// Subscribes to a the specified topic. If no publisher for the topic
+    /// currently exists, the subscription will be held open pending
+    /// one being created. This calls Excel's RTD function, which means the
     /// calling cell will be recalculated every time the producer published
     /// a new value.
     /// </summary>
@@ -303,7 +303,7 @@ namespace xloil
         const wchar_t* topic) = 0;
 
     /// <summary>
-    /// Looks up a value for a specified producer, but does not subscribe.
+    /// Looks up a value for a specified topic, but does not subscribe.
     /// If there is no producer for the topic, the returned pointer will
     /// be null. If there is no published value, it will point to N/A.
     /// Does not call Excel's RTD function.
@@ -337,7 +337,7 @@ namespace xloil
       drop(const wchar_t* topic) = 0;
 
     /// <summary>
-    /// Drop  all ttopics
+    /// Drop all topics
     /// </summary>
     virtual void 
       clear() = 0;

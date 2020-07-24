@@ -8,6 +8,7 @@ xlOil documentation
 
 	Introduction
 	Core
+	xlOil_Core_Functions
 	xlOil_Cpp
 	xlOil_Python
 	xlOil_SQL

@@ -107,9 +107,9 @@ The log file
 ------------
 
 If a function doesn't appear or behave as expected, check the log file created by default
-in the same directory as xlOil.xll.  A setting in `xloil.ini` controls the log level.
+in the same directory as xlOil.ini.  A setting in `xlOil.ini` controls the log level.
 
-A common problem is that the COM interface misbehaves either failing on start-up or failing
+A common problem is that the COM interface misbehaves by either failing on start-up or failing
 because of an open dialog box in Excel.  For a start-up fail, unload and reload the addin. 
 For other errors try to close dialog boxes or panes and if that fails, restart Excel.
 
@@ -169,7 +169,7 @@ Excel supports several classes of user-defined functions:
   - RTD: (real time data) background threads which push data onto the sheet when it becomes available
   - Cluster: can be packaged to run on a remote Excel compute cluster
 
-xlOil currently supports all but RTD and Cluster functions.
+xlOil currently supports all but Cluster functions.
 
 Excel can pass functions / macros data in one of these types:
 
@@ -185,6 +185,8 @@ Excel can pass functions / macros data in one of these types:
 There is no date type. Excel's builtin date functions interpret numbers as days since 1900. 
 Excel does not support timezones.
 
+.. _core-cached-objects:
+
 Cached Objects
 --------------
 
@@ -199,11 +201,13 @@ recovered using ``=xloVal(<CacheString>)``
 
 An example use case is where you would otherwise use a named range.
 
-**Problem**: You have large set of data on `Sheet1` which is processed in several other 
+**Problem**
+
+You have large set of data on `Sheet1` which is processed in several other 
 sheets and you want to ensure that when data is added to the set, all 
 functions that reference are updated.
 
-**Solution**:
+**Solution**
 
 - You are disciplined and only add rows to the middle, then carefully 
   cut / paste.
@@ -218,3 +222,7 @@ However, there is a disadvantage to using `xloRef`: the cache is cleared when
 a workbook is closed, but Excel does not know to recalculate the `xloRef` 
 functions when the workbook is reopened. Hence you need to force a sheet
 recalculation using *Ctrl-Alt-F9*.
+
+In addition to caching arrays, xlOil plugins use the cache to opaquely return
+referencs to in-memory structures.  Although the strings look similar, they 
+cannot be written to the sheet using `xloVal`.

@@ -447,7 +447,7 @@ class Arg:
     @property
     def has_default(self):
         """ 
-        Since None is a fairly likely default value this function 
+        Since None is a fairly likely default value, this function 
         indicates whether there was a user-specified default
         """
         return self.default is not inspect._empty
