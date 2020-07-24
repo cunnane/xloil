@@ -165,29 +165,109 @@ async def pyTestAsyncGen(secs):
         await asyncio.sleep(secs)
         yield dt.datetime.now()
 
-#
-# Trying a slightly more practical async usage: fetching web-pages
-#
-import aiohttp
 
+#---------------------------------
+# RTD functions and the RTD server
+#---------------------------------
+#
+# We try a slightly more practical usage of RTD async: fetching URLs.  
+# (We need the aiohttp package for this)
+#
 try:
     import aiohttp
     import ssl
 
-    @xlo.func(local=False, rtd=True)
-    async def pyGetUrl(url):
+    # This is the implementation: it pulls the URL and returns the response as text
+    async def _getUrlImpl(url):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, ssl=ssl.SSLContext()) as response:
-                return await response.text()
-#
-# For me with Anaconda 3.7, this exception was triggered because the SSL 
-# module couldn't find libssl & libcrypto. The DLLs were in <conda>\Library\bin
-# and that directory was on the path, but SSL refused to find them unless they
-# were copied to <conda>\DLLs. The issue is also mentioned here:
-# https://stackoverflow.com/questions/42563757/conda-update-condahttperror-http-none/60342954#60342954
-# The import worked fine from the command prompt so may be related to embedded
-# python or some well-meaning path twiddling in anaconda itself.
-#                  
+               return await response.text() 
+        
+    
+    #
+    # We declare an async gen function which calls the implementation either once,
+    # or at regular intervals
+    #
+    @xlo.func(local=False, rtd=True)
+    async def pyGetUrl(url, seconds=0):
+        yield await _getUrlImpl(url)
+        while seconds > 0:
+            await asyncio.sleep(seconds)
+            yield await _getUrlImpl(url)
+             
+
+    #
+    # Below we show how to write the above function in "long form" with
+    # explicit connections to the RtdManager. In our implementation below
+    # we repeatedly poll the URL every 4 seconds, This is just an example 
+    # to show how to use the full RTD functionality: in general it is 
+    # better to let xlOil handle things and use an async generator.
+    # 
+    
+    # We create a new RTD COM server, which is managed by the RtdManager
+    _rtdManager = xlo.RtdManager()
+
+    # 
+    # RTD servers use a publisher/subscriber model with the 'topic' as the
+    # key. The publisher below is linked to a single topic string, which is the 
+    # url to be fetched. 
+    # 
+    # We have designed the publisher to do nothing on construction. When it detects
+    # a subscriber, it creates a publishing task on xlOil's asyncio loop (which runs
+    # in a background thread). When there are no more subscriber, it cancels this task.
+    # If the task was very slow to return, we could have opted to start it in the constructor  
+    # and kept it running permanently, regardless of subscribers.
+    # 
+    class UrlGetter(xlo.RtdPublisher):
+
+        def __init__(self, url):
+            super().__init__()  # You *must* call this explicitly or the python binding library will crash
+            self._url = url
+            self._task = None
+           
+        def connect(self, num_subscribers):
+        
+            if self.done():
+            
+                async def run():
+                    try:
+                        while True:
+                            data = await _getUrlImpl(self._url);
+                            _rtdManager.publish(self._url, data)
+                            await asyncio.sleep(4)                     
+                    except Exception as e:
+                        _rtdManager.publish(self._url, str(e))
+                        
+                self._task = xlo.get_event_loop().create_task(run())
+                
+        def disconnect(self, num_subscribers):
+            if num_subscribers == 0:
+                self.stop()
+                return True # This publisher is no longer required: schedule it for destruction
+                
+        def stop(self):
+            if self._task is not None: 
+                self._task.cancel()
+        
+        def done(self):
+            return self._task is None or self._task.done()
+            
+        def topic(self):
+            return self._url
+    
+    
+    @xlo.func(local=False)    
+    def pyGetUrlLive(url):
+        # We 'peek' into the RTD manager to see if there is already a publisher for 
+        # our topic. If not we create one, then issue the subscribe request, which 
+        # registers the calling cell with Excel as an RTD cell.
+        if _rtdManager.peek(url) is None:
+            publisher = UrlGetter(url)
+            _rtdManager.start(publisher)
+        return _rtdManager.subscribe(url)       
+       
+        
+    
 except ImportError:
     @xlo.func(local=False)
     def pyGetUrl(url):
