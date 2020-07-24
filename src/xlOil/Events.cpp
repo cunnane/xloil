@@ -36,7 +36,7 @@ namespace xloil
     {
     public:
       DirectoryListener(const std::wstring& path, std::function<void(void)> finaliser)
-        : _eventSource(new DirectoryWatchEvent())
+        : _eventSource(new DirectoryWatchEvent(("Watch_" + utf16ToUtf8(path)).c_str()))
         , _lastTickCount(0)
         , _watchId(theFileWatcher.addWatch(path, this, false))
       {
