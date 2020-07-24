@@ -31,6 +31,8 @@ using std::wstring;
 using std::unique_ptr;
 using std::future_status;
 using std::unordered_set;
+using std::unordered_map;
+using std::pair;
 
 namespace
 {
@@ -175,14 +177,12 @@ namespace xloil
 
           // Find subscribers for this topic and link to the topic ID
           _activeTopicIds[topicId] = topic;
-          auto& subscribers = _subscribers[topic];
-          subscribers.insert(topicId);
+          auto& record = _records[topic];
+          record.subscribers.insert(topicId);
 
-          // Look for the publisher and let them know how many subscribers 
-          // they now have
-          auto producer = findProducer(topic);
-          if (producer)
-            producer->connect(subscribers.size());
+          // Let the publisher know how many subscribers they now have
+          if (record.publisher)
+            record.publisher->connect(record.subscribers.size());
 
           XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
         }
@@ -202,17 +202,17 @@ namespace xloil
           // This lock is required for updates, so we avoid holding it and 
           // quickly splice out the list of new values. 
           // TODO: consider using lock-free list for updates
-          std::scoped_lock lock(_lockNewValues);
+          scoped_lock lock(_lockNewValues);
           newValues.splice(newValues.begin(), _newValues);
         }
 
-        std::scoped_lock lock(_lockSubscribers);
+        scoped_lock lock(_lockSubscribers);
         unordered_set<long> readyTopicIds;
         for (auto&[topic, value] : newValues)
         {
-          _values[topic] = value;
-          const auto& subscribers = _subscribers[topic];
-          readyTopicIds.insert(subscribers.begin(), subscribers.end());
+          auto& record = _records[topic];
+          record.value = value;
+          readyTopicIds.insert(record.subscribers.begin(), record.subscribers.end());
         }
 
         const auto nReady = readyTopicIds.size();
@@ -257,23 +257,29 @@ namespace xloil
           if (topic.empty())
             XLO_THROW("Could not find topic for id {0}", topicId);
 
-          auto& subscribers = _subscribers[topic];
-          subscribers.erase(topicId);
+          auto& record = _records[topic];
+          record.subscribers.erase(topicId);
 
-          // If the disconnect() causes the producer to cancel its task,
+          // If the disconnect() causes the publisher to cancel its task,
           // it will return true here. We may not be able to just delete it, 
-          // we have to wait until any threads it created exit
-          auto producer = findProducer(topic.c_str());
-          if (producer && producer->disconnect(subscribers.size()))
+          // we have to wait until any threads it created have exited
+          if (record.publisher)
           {
-            if (!producer->done())
-              cancelProducer(producer);
-            _theProducers.erase(topic);
-          }
+            if (record.publisher->disconnect(record.subscribers.size()))
+            {
+              if (!record.publisher->done())
+                cancelProducer(record.publisher);
 
-          if (subscribers.empty())
-            _subscribers.erase(topic);
+              // Disconnect should only return true when num_subscribers = 0, 
+              // so it's safe to erase the entire record
+              _records.erase(topic);
+            }
+          }
+          else if (record.subscribers.empty())
+            _records.erase(topic);
+
           _activeTopicIds.erase(topicId);
+
         }
         catch (const std::exception& e)
         {
@@ -311,34 +317,31 @@ namespace xloil
     private:
       std::unordered_map<long, wstring> _activeTopicIds;
 
-      // TODO: combine these maps?
-      std::unordered_map<wstring, shared_ptr<IRtdTopic>> _theProducers;
-      std::unordered_map<wstring, unordered_set<long>> _subscribers;
-      std::unordered_map<wstring, shared_ptr<TValue>> _values;
-      std::list<std::pair<wstring, shared_ptr<TValue>>> _newValues;
+      struct TopicRecord
+      {
+        shared_ptr<IRtdTopic> publisher;
+        unordered_set<long> subscribers;
+        shared_ptr<TValue> value;
+      };
+      
+      unordered_map<wstring, TopicRecord> _records;
 
+      std::list<pair<wstring, shared_ptr<TValue>>> _newValues;
       std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
 
       Excel::IRTDUpdateEvent* _updateCallback;
+
       // We use a separate lock for the newValues to avoid blocking it 
       // too often: updates will come from other threads and just need to
       // write into newValues.
       mutable std::mutex _lockNewValues;
       mutable std::mutex _lockSubscribers;
 
-      void callUpdateNotify()
+      void callUpdateNotify() const
       {
-        std::scoped_lock lock(_lockSubscribers);
+        scoped_lock lock(_lockSubscribers);
         if (_updateCallback)
           _updateCallback->raw_UpdateNotify();
-      }
-
-      shared_ptr<IRtdTopic> findProducer(const wchar_t* topic)
-      {
-        auto iJob = _theProducers.find(topic);
-        if (iJob == _theProducers.end())
-          return nullptr;
-        return iJob->second;
       }
 
       void cancelProducer(const shared_ptr<IRtdTopic>& producer)
@@ -350,27 +353,29 @@ namespace xloil
     public:
       void clear()
       {
-        std::scoped_lock lock(_lockSubscribers);
+        scoped_lock lock(_lockSubscribers);
 
-        for (auto& prod : _theProducers)
+        for (auto& record : _records)
         {
           try
           {
-            prod.second->stop();
+            if (record.second.publisher)
+              record.second.publisher->stop();
           }
           catch (const std::exception& e)
           {
             XLO_INFO(L"Failed to stop producer: '{0}': {1}", 
-              prod.second->topic(), utf8ToUtf16(e.what()));
+              record.first, utf8ToUtf16(e.what()));
           }
         }
 
-        _theProducers.clear();
+        _records.clear();
+        _cancelledProducers.clear();
       }
 
       void update(const wchar_t* topic, const shared_ptr<TValue>& value)
       {
-        std::scoped_lock lock(_lockNewValues);
+        scoped_lock lock(_lockNewValues);
 
         _newValues.push_back(make_pair(wstring(topic), value));
 
@@ -385,47 +390,37 @@ namespace xloil
       void addProducer(const shared_ptr<IRtdTopic>& job)
       {
         std::scoped_lock lock(_lockSubscribers);
-        // TODO: can we make map key wchar_t*??
-        auto iProd = _theProducers.find(job->topic());
-        if (iProd != _theProducers.end())
-        {
-          cancelProducer(iProd->second);
-          iProd->second = job;
-        }
-        else
-          _theProducers.emplace(job->topic(), job);
-
-        // Add a value for this topic so calls to 'peek' can tell a topic 
-        // publisher has been started
-        _values[job->topic()] = shared_ptr<TValue>();
+        auto& record = _records[job->topic()];
+        if (record.publisher)
+          cancelProducer(record.publisher);
+        record.publisher = job;
       }
 
       bool dropProducer(const wchar_t* topic)
       {
         std::scoped_lock lock(_lockSubscribers);
-        auto iProd = _theProducers.find(topic);
-        if (iProd == _theProducers.end())
+        auto i = _records.find(topic);
+        if (i == _records.end())
           return false;
 
-        // Signal the producer to stop
-        iProd->second->stop();
+        // Signal the publisher to stop
+        i->second.publisher->stop();
 
         // Destroy producer, the dtor of RtdTopic waits for completion
-        _theProducers.erase(iProd);
+        i->second.publisher.reset();
 
         // Publish empty value
         update(topic, shared_ptr<TValue>());
         return true;
       }
-
       bool value(const wchar_t* topic, shared_ptr<const TValue>& val) const
       {
         std::scoped_lock lock(_lockSubscribers);
-        auto found = _values.find(topic);
-        if (found == _values.end())
+        auto found = _records.find(topic);
+        if (found == _records.end())
           return false;
 
-        val = found->second;
+        val = found->second.value;
         return true;
       }
     };
