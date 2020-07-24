@@ -3,32 +3,14 @@
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
 #include "CallHelper.h"
+#include <xloil/ThreadControl.h>
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Log.h>
 
 namespace xloil
 {
-  static const std::function<void()>* theTargetFunc = nullptr;
-
-  // TODO: make these commmands so they are hidden?
-  XLO_ENTRY_POINT(XLOIL_XLOPER*) xloRunFuncInXLLContext()
-  {
-    // Do we need this result?
-    static ExcelObj result;
-    try
-    {
-      InXllContext context;
-      (*theTargetFunc)();
-    }
-    catch (...)
-    {
-    }
-    return &result;
-  }
-  XLO_REGISTER_FUNC(xloRunFuncInXLLContext)
-    .macro().hidden();
-
+  static const std::function<void()>* theVoidFunc = nullptr;
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
   static XLOIL_XLOPER** theExcelCallArgs = nullptr;
@@ -40,7 +22,10 @@ namespace xloil
     try
     {
       InXllContext context;
-      result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
+      if (theVoidFunc)
+        (*theVoidFunc)();
+      else
+        result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
     {
@@ -60,7 +45,7 @@ namespace xloil
   }
   bool InXllContext::check()
   {
-    return _count > 0 || InComContext::_count == 0;
+    return InComContext::_count > 0 ? false : _count > 0;
   }
 
   int InXllContext::_count = 0;
@@ -95,13 +80,16 @@ namespace xloil
       return true;
     }
 
-    theTargetFunc = &f;
+    theVoidFunc = &f;
 
-    auto ret = retryComCall([]() 
-    { 
-      return excelApp().Run("xloRunFuncInXLLContext");
+    auto ret = runOnMainThread<std::optional<_variant_t>>([]() 
+    {
+      return retryComCall([]()
+      {
+        return excelApp().Run("xloRunFuncInXLLContext");
+      });
     });
-    return ret.has_value();
+    return ret.get().has_value();
   }
 
   int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
@@ -111,6 +99,7 @@ namespace xloil
       Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
       return true;
     }
+    theVoidFunc = nullptr;
     theExcelCallFunc = func;
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;
