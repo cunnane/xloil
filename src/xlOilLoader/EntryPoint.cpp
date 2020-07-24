@@ -4,7 +4,6 @@
 #include <xlOil/XlCallSlim.h>
 #include <xloil/Loaders/EntryPoint.h>
 #include <xloil/ExportMacro.h>
-#include <xloil/Log.h>
 #include <xloil/ExcelCall.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>

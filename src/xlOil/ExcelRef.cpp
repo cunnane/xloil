@@ -9,7 +9,9 @@ namespace xloil
     {
     case ExcelType::SRef:
     {
-      callExcelRaw(msxll::xlSheetId, &_obj); // TODO: may not work as expected in macro funcs
+      // TODO: this may not work as expected in macro funcs
+      if (0 != callExcelRaw(msxll::xlSheetId, &_obj))
+        XLO_THROW("ExcelRef: call to xlSheetId failed");
       const auto& r = from.val.sref.ref;
       create(_obj.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;

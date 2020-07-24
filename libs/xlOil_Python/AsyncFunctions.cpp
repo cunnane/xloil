@@ -193,9 +193,6 @@ namespace xloil
     {
       try
       {
-        PyObject *argsP, *kwargsP;
-        AsyncReturn* asyncReturn;
-
         py::gil_scoped_acquire gilAcquired;
 
         PyErr_Clear();
@@ -208,7 +205,7 @@ namespace xloil
           kwargs = py::dict();
 
         // Raw ptr, but we take ownership below
-        asyncReturn = new AsyncReturn(
+        auto* asyncReturn = new AsyncReturn(
           *asyncHandle,
           info->returnConverter);
 

@@ -33,12 +33,14 @@ Excel has supported RTD functions at least since Excel 2002.  In Excel 2010, Exc
 native async functions.
 
 RTD:
+
     * Pro: operates independently of the calc cycle - true background execution
     * Pro: provides notification when an RTD function call is changed or removed
     * Con: increased overhead compared to native async
     * Con: requires automatic calculation enabled (or repeated presses of F9 until calc is done)
 
 Native async:
+
     * Pro: Lighter weight compared to RTD
     * Pro: works with manual calc mode
     * Con: tied to calc cycle, so any interruption cancels all async functions
