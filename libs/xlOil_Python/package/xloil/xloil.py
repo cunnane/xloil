@@ -17,7 +17,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
-        event, cache, RtdManager, RtdPublisher, get_event_loop,
+        event, cache, RtdServer, RtdPublisher, get_event_loop,
         register_functions, deregister_functions,
         CustomConverter as _CustomConverter) 
 

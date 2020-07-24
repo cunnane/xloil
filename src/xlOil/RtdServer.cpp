@@ -13,34 +13,33 @@ using std::scoped_lock;
 
 namespace xloil
 {
-  std::shared_ptr<IRtdManager> newRtdManager(
+  std::shared_ptr<IRtdServer> newRtdServer(
     const wchar_t* progId, const wchar_t* clsid)
   {
-    return COM::newRtdManager(progId, clsid);
+    return COM::newRtdServer(progId, clsid);
   }
 
-  class AsyncTaskTopic;
-  using CellTasks = std::list<std::shared_ptr<AsyncTaskTopic>>;
+  class AsyncTaskPublisher;
+  using CellTasks = std::list<shared_ptr<AsyncTaskPublisher>>;
 
   // TODO: could we just create a forwarding IRtdAsyncTask which intercepts 'cancel'
-  class AsyncTaskTopic : public RtdTopic
+  class AsyncTaskPublisher : public RtdPublisher
   {
     CellTasks& _cellTasks;
 
   public:
-    AsyncTaskTopic(
+    AsyncTaskPublisher(
       const wchar_t* topic,
-      IRtdManager& mgr,
-      const shared_ptr<IRtdProducer>& task,
+      IRtdServer& mgr,
+      const shared_ptr<IRtdTask>& task,
       CellTasks& cellTasks)
-      : RtdTopic(topic, mgr, task)
+      : RtdPublisher(topic, mgr, task)
       , _cellTasks(cellTasks)
-    {
-    }
+    {}
 
     bool disconnect(size_t numSubscribers) override
     {
-      RtdTopic::disconnect(numSubscribers);
+      RtdPublisher::disconnect(numSubscribers);
       // TODO: check numSubscribers == 0
       stop();
       _cellTasks.remove_if(
@@ -55,7 +54,7 @@ namespace xloil
 
   class RtdAsyncManager
   {
-    shared_ptr<IRtdManager> _mgr;
+    shared_ptr<IRtdServer> _mgr;
     std::unordered_map<wstring, CellTasks> _tasksPerCell;
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
@@ -66,15 +65,16 @@ namespace xloil
       LPOLESTR guidStr;
       StringFromCLSID(guid, &guidStr);
 
-      auto topic = make_shared<AsyncTaskTopic>(guidStr, *_mgr, task, tasks);
+      auto topic = make_shared<AsyncTaskPublisher>(guidStr, *_mgr, task, tasks);
+      CoTaskMemFree(guidStr);
+
       _mgr->start(topic);
 
       tasks.emplace_back(topic);
-      CoTaskMemFree(guidStr);
     }
 
   public:
-    RtdAsyncManager() : _mgr(newRtdManager())
+    RtdAsyncManager() : _mgr(newRtdServer())
     {}
 
     shared_ptr<const ExcelObj> getValue(
@@ -122,7 +122,7 @@ namespace xloil
       getRtdAsyncManager()->getValue(task));
   }
 
-  void rtdAsyncManagerClear()
+  void rtdAsyncServerClear()
   {
     getRtdAsyncManager()->clear();
   }

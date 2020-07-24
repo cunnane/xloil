@@ -103,7 +103,7 @@ class _VariableWatcher(xlo.RtdPublisher):
 class JupyterNotReadyError(Exception):
     pass
 
-_rtdManager = xlo.RtdManager()
+_rtdServer = xlo.RtdServer()
 
 class _JupyterConnection:
     
@@ -183,7 +183,7 @@ class _JupyterConnection:
         variable_topics = [x.topic() for x in self._watched_variables.values()]
         
         for topic in variable_topics:
-            _rtdManager.drop(topic)
+            _rtdServer.drop(topic)
         
         # Remove any stragglers
         self._watched_variables.clear()
@@ -244,9 +244,9 @@ class _JupyterConnection:
             self._watched_variables[name] = watcher
 
             xlo.log(f"Starting variable watch {name}", level='trace')
-            _rtdManager.start(watcher)
+            _rtdServer.start(watcher)
 
-        return _rtdManager.subscribe(topic)
+        return _rtdServer.subscribe(topic)
 
     def stop_watch_variable(self, name):
         try:
@@ -256,7 +256,7 @@ class _JupyterConnection:
 
     def publish_variables(self, updates:dict):
         for name, value in updates.items():
-            _rtdManager.publish(self._watch_prefix(name), value)
+            _rtdServer.publish(self._watch_prefix(name), value)
 
     async def process_messages(self):
    
@@ -367,17 +367,17 @@ class _JupterTopic(xlo.RtdPublisher):
                         self._cacheRef = xlo.cache.add(conn, tag=self._topic)
                         # TODO: use a customer converter for this publish to stop xloil 
                         # unpacking the cacheref
-                        _rtdManager.publish(self._topic, self._cacheRef)
+                        _rtdServer.publish(self._topic, self._cacheRef)
                         restart = await conn.process_messages()
                         conn.close()
                         if not restart:
                             break
                         await conn.wait_for_restart()
 
-                    _rtdManager.publish(self._topic, "KernelShutdown")
+                    _rtdServer.publish(self._topic, "KernelShutdown")
 
                 except Exception as e:
-                    _rtdManager.publish(self._topic, str(e))
+                    _rtdServer.publish(self._topic, str(e))
 
             self._task = conn._loop.create_task(run())
 
@@ -413,10 +413,10 @@ class _JupterTopic(xlo.RtdPublisher):
 )
 def xloJpyConnect(ConnectionFile):
     topic = ConnectionFile.lower()
-    if _rtdManager.peek(topic) is None:
+    if _rtdServer.peek(topic) is None:
         conn = _JupterTopic(topic, ConnectionFile, os.path.dirname(__file__))
-        _rtdManager.start(conn)
-    return _rtdManager.subscribe(topic)
+        _rtdServer.start(conn)
+    return _rtdServer.subscribe(topic)
 
 @xlo.func(
     help="Fetches the value of the specifed variable from the given jupyter"

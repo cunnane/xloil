@@ -204,8 +204,8 @@ try:
     # better to let xlOil handle things and use an async generator.
     # 
     
-    # We create a new RTD COM server, which is managed by the RtdManager
-    _rtdManager = xlo.RtdManager()
+    # We create a new RTD COM server
+    _rtdServer = xlo.RtdServer()
 
     # 
     # RTD servers use a publisher/subscriber model with the 'topic' as the
@@ -233,10 +233,10 @@ try:
                     try:
                         while True:
                             data = await _getUrlImpl(self._url);
-                            _rtdManager.publish(self._url, data)
+                            _rtdServer.publish(self._url, data)
                             await asyncio.sleep(4)                     
                     except Exception as e:
-                        _rtdManager.publish(self._url, str(e))
+                        _rtdServer.publish(self._url, str(e))
                         
                 self._task = xlo.get_event_loop().create_task(run())
                 
@@ -261,10 +261,10 @@ try:
         # We 'peek' into the RTD manager to see if there is already a publisher for 
         # our topic. If not we create one, then issue the subscribe request, which 
         # registers the calling cell with Excel as an RTD cell.
-        if _rtdManager.peek(url) is None:
+        if _rtdServer.peek(url) is None:
             publisher = UrlGetter(url)
-            _rtdManager.start(publisher)
-        return _rtdManager.subscribe(url)       
+            _rtdServer.start(publisher)
+        return _rtdServer.subscribe(url)       
        
         
     

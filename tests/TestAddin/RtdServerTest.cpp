@@ -52,9 +52,9 @@ namespace xloil
     XLO_FUNC_END(xloRtdCounter).macro();
 
 
-    IRtdManager* getAnotherRtdServer()
+    IRtdServer* getAnotherRtdServer()
     {
-      static shared_ptr<IRtdManager> ptr = newRtdManager();
+      static shared_ptr<IRtdServer> ptr = newRtdServer();
       //static auto deleter = Event_Shutdown() += [&]() { ptr.reset(); };
       return ptr.get();
     }

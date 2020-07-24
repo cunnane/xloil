@@ -141,7 +141,7 @@ namespace xloil
       // Somewhat cheap trick to ensure any async tasks which may reference plugin
       // code are destroyed in a timely manner prior to teardown.  Better would be
       // to keep track of which tasks were registered by which addin
-      rtdAsyncManagerClear();
+      rtdAsyncServerClear();
 
       // TODO: remove this event?
       Event::AutoClose().fire();

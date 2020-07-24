@@ -106,15 +106,15 @@ namespace xloil
       }
     };
 
-    class PyRtdManager
+    class PyRtdServer
     {
-      shared_ptr<IRtdManager> _impl;
+      shared_ptr<IRtdServer> _impl;
       shared_ptr<const void> _cleanup;
 
     public:
-      PyRtdManager()
+      PyRtdServer()
       {
-        _impl = newRtdManager();
+        _impl = newRtdServer();
         // Destroy the Rtd server if we are still around on python exit. The 
         // Rtd server may maintain links to python objects and Excel may not
         // call the server terminate function until after python has unloaded.
@@ -123,9 +123,9 @@ namespace xloil
           self->_impl.reset(); 
         });
       }
-      ~PyRtdManager()
+      ~PyRtdServer()
       {}
-      void start(const py_shared_ptr<IRtdTopic>& topic)
+      void start(const py_shared_ptr<IRtdPublisher>& topic)
       {
         impl().start(topic);
       }
@@ -162,63 +162,63 @@ namespace xloil
           _impl->drop(topic);
       }
 
-      IRtdManager& impl() const
+      IRtdServer& impl() const
       {
         if (!_impl)
-          XLO_THROW("RtdManager terminated");
+          XLO_THROW("RtdServer terminated");
         return *_impl;
       }
     };
 
-    class PyRtdTopic : public IRtdTopic
+    class PyRtdTopic : public IRtdPublisher
     {
     public:
-      using IRtdTopic::IRtdTopic;
+      using IRtdPublisher::IRtdPublisher;
 
       virtual void connect(size_t numSubscribers) override
       {
-        PYBIND11_OVERLOAD_PURE(void, IRtdTopic, connect, numSubscribers)
+        PYBIND11_OVERLOAD_PURE(void, IRtdPublisher, connect, numSubscribers)
       }
       virtual bool disconnect(size_t numSubscribers) override
       {
-        PYBIND11_OVERLOAD_PURE(bool, IRtdTopic, disconnect, numSubscribers)
+        PYBIND11_OVERLOAD_PURE(bool, IRtdPublisher, disconnect, numSubscribers)
       }
       virtual void stop() override
       {
-        PYBIND11_OVERLOAD_PURE(void, IRtdTopic, stop, )
+        PYBIND11_OVERLOAD_PURE(void, IRtdPublisher, stop, )
       }
       virtual bool done() const override
       {
-        PYBIND11_OVERLOAD_PURE(bool, IRtdTopic, done, )
+        PYBIND11_OVERLOAD_PURE(bool, IRtdPublisher, done, )
       }
       virtual const wchar_t * topic() const override
       {
-        PYBIND11_OVERLOAD_PURE(const wchar_t *, IRtdTopic, topic, )
+        PYBIND11_OVERLOAD_PURE(const wchar_t *, IRtdPublisher, topic, )
       }
     };
     namespace
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<IRtdTopic, PyRtdTopic, py_shared_ptr<IRtdTopic>>(mod, "RtdPublisher")
+        py::class_<IRtdPublisher, PyRtdTopic, py_shared_ptr<IRtdPublisher>>(mod, "RtdPublisher")
           .def(py::init<>())
-          .def("connect", &IRtdTopic::connect)
-          .def("disconnect", &IRtdTopic::disconnect)
-          .def("stop", &IRtdTopic::stop)
-          .def("done", &IRtdTopic::done)
-          .def("topic", &IRtdTopic::topic);
+          .def("connect", &IRtdPublisher::connect)
+          .def("disconnect", &IRtdPublisher::disconnect)
+          .def("stop", &IRtdPublisher::stop)
+          .def("done", &IRtdPublisher::done)
+          .def("topic", &IRtdPublisher::topic);
 
-        py::class_<PyRtdManager>(mod, "RtdManager")
+        py::class_<PyRtdServer>(mod, "RtdServer")
           .def(py::init<>())
-          .def("start", &PyRtdManager::start,
+          .def("start", &PyRtdServer::start,
             py::arg("topic"))
-          .def("publish", &PyRtdManager::publish,
+          .def("publish", &PyRtdServer::publish,
             py::arg("topic"), py::arg("value"), py::arg("converter") = nullptr)
-          .def("subscribe", &PyRtdManager::subscribe,
+          .def("subscribe", &PyRtdServer::subscribe,
             py::arg("topic"), py::arg("converter") = nullptr)
-          .def("peek", &PyRtdManager::peek,
+          .def("peek", &PyRtdServer::peek,
             py::arg("topic"), py::arg("converter") = nullptr)
-          .def("drop", &PyRtdManager::drop);
+          .def("drop", &PyRtdServer::drop);
       });
     }
   }

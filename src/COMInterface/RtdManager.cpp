@@ -43,30 +43,30 @@ namespace
 
 namespace xloil 
 {
-  RtdTopic::RtdTopic(
+  RtdPublisher::RtdPublisher(
     const wchar_t* topic,
-    IRtdManager& mgr, 
-    const shared_ptr<IRtdProducer>& task)
+    IRtdServer& mgr, 
+    const shared_ptr<IRtdTask>& task)
     : _mgr(mgr)
     , _task(task)
     , _topic(topic)
   {}
 
-  RtdTopic::~RtdTopic()
+  RtdPublisher::~RtdPublisher()
   {
     // Send cancellation and wait for graceful shutdown
     stop();
     _task->wait();
   }
 
-  void RtdTopic::connect(size_t numSubscribers)
+  void RtdPublisher::connect(size_t numSubscribers)
   {
     if (numSubscribers == 1)
     {
       _task->start(*this);
     }
   }
-  bool RtdTopic::disconnect(size_t numSubscribers)
+  bool RtdPublisher::disconnect(size_t numSubscribers)
   {
     if (numSubscribers == 0)
     {
@@ -75,19 +75,19 @@ namespace xloil
     }
     return false;
   }
-  void RtdTopic::stop()
+  void RtdPublisher::stop()
   {
     _task->cancel();
   }
-  bool RtdTopic::done() const
+  bool RtdPublisher::done() const
   {
     return _task->done();
   }
-  const wchar_t* RtdTopic::topic() const
+  const wchar_t* RtdPublisher::topic() const
   {
     return _topic.c_str();
   }
-  bool RtdTopic::publish(ExcelObj&& value) noexcept
+  bool RtdPublisher::publish(ExcelObj&& value) noexcept
   {
     try
     {
@@ -319,7 +319,7 @@ namespace xloil
 
       struct TopicRecord
       {
-        shared_ptr<IRtdTopic> publisher;
+        shared_ptr<IRtdPublisher> publisher;
         unordered_set<long> subscribers;
         shared_ptr<TValue> value;
       };
@@ -327,7 +327,7 @@ namespace xloil
       unordered_map<wstring, TopicRecord> _records;
 
       std::list<pair<wstring, shared_ptr<TValue>>> _newValues;
-      std::list<shared_ptr<IRtdTopic>> _cancelledProducers;
+      std::list<shared_ptr<IRtdPublisher>> _cancelledProducers;
 
       Excel::IRTDUpdateEvent* _updateCallback;
 
@@ -344,7 +344,7 @@ namespace xloil
           _updateCallback->raw_UpdateNotify();
       }
 
-      void cancelProducer(const shared_ptr<IRtdTopic>& producer)
+      void cancelProducer(const shared_ptr<IRtdPublisher>& producer)
       {
         producer->stop();
         _cancelledProducers.push_back(producer);
@@ -387,7 +387,7 @@ namespace xloil
         }
       }
 
-      void addProducer(const shared_ptr<IRtdTopic>& job)
+      void addProducer(const shared_ptr<IRtdPublisher>& job)
       {
         std::scoped_lock lock(_lockSubscribers);
         auto& record = _records[job->topic()];
@@ -406,7 +406,7 @@ namespace xloil
         // Signal the publisher to stop
         i->second.publisher->stop();
 
-        // Destroy producer, the dtor of RtdTopic waits for completion
+        // Destroy producer, the dtor of RtdPublisher waits for completion
         i->second.publisher.reset();
 
         // Publish empty value
@@ -426,12 +426,12 @@ namespace xloil
     };
 
     template <class TValue>
-    class FactoryRtdServer : public IClassFactory
+    class RtdServerFactory : public IClassFactory
     {
     public:
       RtdServerImpl<TValue>* _instance;
 
-      FactoryRtdServer(RtdServerImpl<TValue>* p)
+      RtdServerFactory(RtdServerImpl<TValue>* p)
         : _instance(p)
       {}
 
@@ -515,19 +515,19 @@ namespace xloil
       return res;
     }
 
-    class RtdManager : public IRtdManager
+    class RtdServer : public IRtdServer
     {
       CComPtr<RtdServerImpl<ExcelObj>> _server;
-      CComPtr<FactoryRtdServer<ExcelObj>> _factory;
+      CComPtr<RtdServerFactory<ExcelObj>> _factory;
       DWORD _comRegistrationCookie;
       wstring _progId;
       std::list<wstring> _regKeysAdded;
 
     public:
-      RtdManager(const wchar_t* progId, const wchar_t* fixedClsid)
+      RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
       {
         _server = new CComObject<RtdServerImpl<ExcelObj>>();
-        _factory = new FactoryRtdServer(_server.p);
+        _factory = new RtdServerFactory(_server.p);
 
         if (progId && !fixedClsid)
           XLO_THROW("If you specify an RTD ProgId you must also specify a "
@@ -596,7 +596,7 @@ namespace xloil
         CoTaskMemFree(clsidStr);
       }
 
-      ~RtdManager()
+      ~RtdServer()
       {
         clear();
 
@@ -609,7 +609,7 @@ namespace xloil
       }
 
       void start(
-        const shared_ptr<IRtdTopic>& topic) override
+        const shared_ptr<IRtdPublisher>& topic) override
       {
         _server->addProducer(topic);
       }
@@ -658,7 +658,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("RtdManager::clear: {0}", e.what());
+          XLO_ERROR("RtdServer::clear: {0}", e.what());
         }
       }
 
@@ -673,12 +673,12 @@ namespace xloil
       }
     };
 
-    std::shared_ptr<IRtdManager> newRtdManager(
+    std::shared_ptr<IRtdServer> newRtdServer(
       const wchar_t* progId, const wchar_t* clsid)
     {
       if (!isMainThread())
-        XLO_THROW("RtdManager must be created on main thread");
-      return make_shared<COM::RtdManager>(progId, clsid);
+        XLO_THROW("RtdServer must be created on main thread");
+      return make_shared<COM::RtdServer>(progId, clsid);
     }
   }
 }
