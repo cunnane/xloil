@@ -166,7 +166,7 @@ namespace xloil
       sheetRef = &_Address->val.mref.lpmref->reftbl[0];
       break;
     default:
-      wmemcpy(buf, L"MysteryCaller", 13);
+      wmemcpy(buf, L"[Mystery]Caller", 13);
       addressLen = 13;
       break;
     }
