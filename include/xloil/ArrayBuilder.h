@@ -38,11 +38,9 @@ namespace xloil
       void fillNA()
       {
         new (_buffer) ExcelObj(CellError::NA);
-        auto sourceBegin = _buffer;
-        auto sourceEnd = sourceBegin + sizeof(ExcelObj);
-
+        auto* source = _buffer;
         for (auto i = 1; i < _nObjects; ++i)
-          memcpy_s(_buffer + i, sizeof(ExcelObj), sourceBegin, sizeof(ExcelObj));
+          memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
       }
 
     private:
