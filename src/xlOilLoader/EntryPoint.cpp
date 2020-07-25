@@ -177,9 +177,8 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     }
     else if (fs::exists(ourXllDir / xloil_dll)) // Check same directory as XLL
     {
-      auto dllPath = ourXllDir / xloil_dll;
-      OutputDebugStringW((wstring(L"xlOil Loader: SetDllDirectory = ") + dllPath.wstring()).c_str());
-      SetDllDirectory(dllPath.c_str());
+      OutputDebugStringW((wstring(L"xlOil Loader: SetDllDirectory = ") + ourXllDir.wstring()).c_str());
+      SetDllDirectory(ourXllDir.c_str());
     }
     else
     {
