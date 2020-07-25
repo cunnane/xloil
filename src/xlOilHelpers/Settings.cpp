@@ -95,18 +95,18 @@ namespace xloil
   {
     fs::path path;
  
-    auto settingsFileName = fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
-
-    // First check the same directory as the dll itself
-    path = fs::path(dllPath).remove_filename() / settingsFileName;
-      
-    // Then look in the user's appdata
-    if (!fs::exists(path))
-      path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
-
-    if (fs::exists(path))
-      return make_shared<toml::table>(toml::parse_file(path.string()));
+    const auto settingsFileName = 
+      fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
     
-    return shared_ptr<const toml::table>();
+    // Look in the user's appdata
+    path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
+
+    // Then check the same directory as the dll itself
+    if (!fs::exists(path))
+      path = fs::path(dllPath).remove_filename() / settingsFileName;
+
+    return fs::exists(path) 
+      ? make_shared<toml::table>(toml::parse_file(path.string())) 
+      : shared_ptr<const toml::table>();
   }
 }
