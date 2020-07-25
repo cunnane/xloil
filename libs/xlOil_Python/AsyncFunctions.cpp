@@ -46,13 +46,23 @@ namespace xloil
         // creating a new one.
         _thread.push([self = this](int) mutable
           {
-            py::gil_scoped_acquire acquire;
-            acquire.inc_ref();
-            const auto xloilMod = py::module::import("xloil");
-            self->_eventLoop = xloilMod.attr("_create_event_loop").call();
-            self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
+            try
+            {
+              py::gil_scoped_acquire acquire;
+              acquire.inc_ref();
+              const auto xloilMod = py::module::import("xloil.xloil");
+              self->_eventLoop = xloilMod.attr("_create_event_loop").call();
+              self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
+            }
+            catch (const std::exception& e)
+            {
+              XLO_ERROR("Failed to initialise python worker thread: {0}", e.what());
+            }
           }
         ).wait();
+
+        if (!_runLoopFunction.ptr())
+          XLO_THROW("Cannot start python worker thread");
 
         _shutdownHandler = std::static_pointer_cast<const void>(
           Event_PyBye().bind([self = this]

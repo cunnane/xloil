@@ -101,7 +101,9 @@ namespace xloil
 #else
       detail::loggerInitialise(spdlog::level::warn);
 #endif
-
+      // xlOil.ini lives either in the same directory as xlOil.dll or the user's
+      // AppData.  Since the XLL is installed by default into the XLSTART folder,
+      // the ini cannot live alongside it or Excel will try to open it!
       auto settings = processAddinSettings(State::corePath());
       
       ourCoreContext = createAddinContext(State::corePath(), settings);
@@ -111,8 +113,7 @@ namespace xloil
     }
 
     // An explicit load of xloil.xll returns here
-    if (_wcsicmp(fs::path(xllPath).replace_extension("dll").c_str(),
-      State::corePath()) == 0)
+    if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0)
       return firstLoad;
 
     auto settings = processAddinSettings(xllPath);

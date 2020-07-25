@@ -142,11 +142,21 @@ namespace xloil
 
   template<class...Args>
   inline std::wstring
-    formatWStr(const wchar_t* fmt, Args&&...args)
+    formatStr(const wchar_t* fmt, Args&&...args)
   {
     const auto size = (size_t)_scwprintf(fmt, args...);
     std::wstring result(size + 1, '\0');
     swprintf_s(&result[0], size + 1, fmt, args...);
+    return result;
+  }
+
+  template<class...Args>
+  inline std::string
+    formatStr(const char* fmt, Args&&...args)
+  {
+    const auto size = (size_t)_scprintf(fmt, args...);
+    std::string result(size + 1, '\0');
+    sprintf_s(&result[0], size + 1, fmt, args...);
     return result;
   }
 }

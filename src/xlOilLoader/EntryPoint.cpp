@@ -50,18 +50,19 @@ namespace
     }
   }
 
-  std::fstream theLogFile;
+  std::unique_ptr<std::fstream> theLogFile;
 
   /// <summary>
   /// Very cheap log file to catch startup errors before
   /// the core dll can initialise spdlog.
   /// </summary>
-  void logError(const std::string& err)
+  void logError(const char* err)
   {
-    OutputDebugStringA(err.c_str());
-    if (!theLogFile.good())
-      theLogFile = std::fstream(fs::path(ourXllPath).replace_extension("log"));
-    theLogFile << err << std::endl;
+    OutputDebugStringA(err);
+    if (!theLogFile)
+      theLogFile.reset(new std::fstream(fs::path(ourXllPath).replace_extension("log"), std::ios::app));
+    *theLogFile << err << "\n";
+    theLogFile->flush();
   }
 
   // Avoids using xloil so we can call before the dll is found
@@ -90,14 +91,16 @@ namespace
 /// </summary>
 FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
 {
+  std::string msg;
   switch (dliNotify)
   {
   case dliFailGetProc:
-    throw std::runtime_error("Unable to find procedure: "s
-      + pdli->dlp.szProcName + " in " + pdli->szDll);
+    msg = formatStr("Unable to find procedure: %s in %s", pdli->dlp.szProcName, pdli->szDll);
   default:
-    throw std::runtime_error("Unable to load library: "s + pdli->szDll);
+    msg = formatStr("Unable to load library: %s", pdli->szDll);
   }
+  logError(msg.c_str());
+  return nullptr;
 }
 
 extern "C" const PfnDliHook __pfnDliFailureHook2 = delayLoadFailureHook;
@@ -126,38 +129,34 @@ XLO_ENTRY_POINT(int) DllMain(
 // Name of core dll. Not sure if there's an automatic way to get this
 constexpr wchar_t* const xloil_dll = L"XLOIL.DLL";
 
-/// <summary>
-/// Looks for the core xlOil.dll
-/// </summary>
-fs::path wheresWally(const wchar_t* dll)
+void loadEnvironmentBlock(const toml::table& settings)
 {
-  // Check already loaded
-  if (GetModuleHandle(dll) != 0)
-    return fs::path();
+  auto environment = Settings::environmentVariables(settings["Addin"]);
 
-  // Check same directory as XLL
-  fs::path path = fs::path(ourXllPath).remove_filename();
-  if (fs::exists(path / dll))
-    return path;
-
-  // Check if the addin is installed
-  auto excelVersion = getExcelVersion();
-  wstring addinPath;
-  size_t iAddin = 0; // Small bug, first OPEN key does not have a number
-  while (getWindowsRegistryValue(
-    L"HKCU",
-    formatWStr(L"Software\\Microsoft\\Office\\%d.0\\Excel\\Options\\OPEN%s",
-      excelVersion, iAddin > 0 ? std::to_wstring(iAddin) : wstring()),
-    addinPath))
+  for (auto&[key, val] : environment)
   {
-    for (auto& c : addinPath) c = toupper(c);
-    if (addinPath.find(dll) != wstring::npos)
-      return fs::path(addinPath).remove_filename();
+    auto value = expandWindowsRegistryStrings(
+      expandEnvironmentStrings(val));
+
+    SetEnvironmentVariable(key.c_str(), value.c_str());
   }
-
-  return fs::path();
 }
-
+int loadCore(const wchar_t* ourXllPath)
+{
+  // If the delay load fails, it will throw a SEH exception, so we must use
+  // __try/__except to avoid this crashing Excel.
+  int ret = -1;
+  __try
+  {
+    ret = xloil::coreAutoOpen(ourXllPath);
+  }
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
+    // TODO: add GetExceptionCode(), without using string
+    logError("Failed to load xlOil.dll");
+  }
+  return ret;
+}
 
 /// <summary>
 /// xlAutoOpen is how Microsoft Excel loads XLL files.
@@ -169,54 +168,58 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 {
   try
   {
-    // We need to find xloil.dll. The search order is
-    // 0) Check already loaded
-    // 1) Look in same dir as XLL
-    // 2) Look in Excel addins in registry for xlOil.xll
-    // 3) Look in %APPDATA%/xloil settings file for Environment
+    // We need to find xloil.dll. 
+    const fs::path ourXllDir = fs::path(ourXllPath).remove_filename();
 
-    auto settings = findSettingsFile(xloil_dll);
-
-    // Check if the settings file contains an Environment block
-    if (settings)
+    if (GetModuleHandle(xloil_dll) != 0) // Is it already loaded?
     {
-      auto environment = Settings::environmentVariables(
-        (*settings)["Addin"]);
-      
-      for (auto&[key, val] : environment)
-      {
-        auto value = expandWindowsRegistryStrings(
-          expandEnvironmentStrings(val));
-
-        SetEnvironmentVariable(key.c_str(), value.c_str());
-      }
+      // Nothing to do
     }
-
-    auto dllPath = wheresWally(xloil_dll);
-    if (!dllPath.empty())
+    else if (fs::exists(ourXllDir / xloil_dll)) // Check same directory as XLL
     {
+      auto dllPath = ourXllDir / xloil_dll;
       OutputDebugStringW((wstring(L"xlOil Loader: SetDllDirectory = ") + dllPath.wstring()).c_str());
       SetDllDirectory(dllPath.c_str());
     }
-    int ret = xloil::coreAutoOpen(ourXllPath.c_str());
+    else
+    {
+      // Load as many environment blocks as we can and hope the dynamic loader
+      // finds the DLL!  We used to look through the installed addins for 
+      // xloil.xll, but since we now load this using the XLSTART folder, 
+      // it won't appear in the registry
+
+      // Load the environment block from our settings file (if it exists)
+      auto settings = findSettingsFile(ourXllPath.c_str());
+      if (settings)
+        loadEnvironmentBlock(*settings);
+
+      // Look for xloil.ini in our directory or AppData
+      if (_wcsicmp(fs::path(ourXllPath).filename().c_str(), L"xloil.xll") != 0)
+      {
+        auto coreSettings = findSettingsFile(
+          fs::path(ourXllPath).replace_filename(xloil_dll).c_str());
+        if (coreSettings)
+          loadEnvironmentBlock(*settings);
+      }
+    }
+
+    auto ret = loadCore(ourXllPath.c_str());
+
     SetDllDirectory(NULL);
 
-    if (ret > 0)
-    {
-      theXllIsOpen = true;
+    if (ret <= 0)
+      return 1; // Failure, yet we still have to return 1.
 
-      // xleventCalculationEnded not hooked as the XLL event is not triggered
-      // by programmatic recalc, but the COM event (more usefully) is
-      xloil::tryCallExcel(msxll::xlEventRegister,
-        "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
-    }
+    theXllIsOpen = true;
+
+    // We don't bother to hook xlEventCalculationEnded as this XLL event is not triggered
+    // by programmatic recalc, but the COM event is hence is much more useful.
+    xloil::tryCallExcel(msxll::xlEventRegister,
+      "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
   }
-  catch (const std::exception& e)
+  catch (const std::exception& e )
   {
     logError(e.what());
-  }
-  catch (...)
-  {
   }
   return 1;
 }
