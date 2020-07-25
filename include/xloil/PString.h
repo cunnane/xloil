@@ -273,10 +273,10 @@ namespace xloil
   };
 
   /// <summary>
-  /// A view i.e. non-owning, a Pascal string, see the discussion in 
+  /// A view (i.e. non-owning) of a Pascal string, see the discussion in 
   /// <see cref="PString"/> for background on Pascal strings
   /// 
-  /// This class cannot view  a sub-string of a Pascal string, but 
+  /// This class cannot view a sub-string of a Pascal string, but 
   /// calling the <see cref="PStringView::view"/> method returns
   /// a std::string_view class which can.
   /// </summary>
