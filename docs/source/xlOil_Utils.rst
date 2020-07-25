@@ -153,12 +153,22 @@ xloConcat: concatenates strings
 xloSplit: splits strings at a separator
 ---------------------------------------
 
-.. function:: xloSplit(string, separators, [consecutiveAsOne])
+.. function:: xloSplit(stringOrArray, separators, [consecutiveAsOne])
 
     Splits a string at one or more separator characters, returning an array.
     A separators can only be a single character, but multiple separators
     can be specified. If `consecutiveAsOne` is omitted or TRUE, consecutive
     separators are treated as one, otherwise they generate empty cells.
+
+    If a array of strings is passed, splitting will occur on each array
+    element and the array orientation wil be preserved. The array must be 
+    1-dimensional
+
+    Any non string values are ignored - no coercision is performed.
+
+    The `separators` input can be a string containing any number of characters;
+    each will be treated as a distinct separator - multi-character separators
+    are not supported.
 
     **Examples**
 

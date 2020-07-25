@@ -10,55 +10,141 @@ using std::vector;
 
 namespace xloil
 {
+  namespace
+  {
+    void findSplitPoints(
+      vector<wchar_t>& found, 
+      PStringView<>& input,  // This string will be modified!
+      const wstring& sep,
+      const bool consecutiveAsOne)
+    {
+      const auto view = input.view();
+      auto pstr = input.data();
+      const auto length = pstr[0];
+
+      wchar_t prev = 0, next;
+      while ((next = view.find(sep.c_str(), prev)) != (wchar_t)wstring::npos)
+      {
+        *pstr = next - prev;
+        found.push_back(prev);
+
+        if (consecutiveAsOne)
+        {
+          while (sep.find(view[next]) != wstring::npos)
+            if (++next == view.size())
+              break;
+        }
+        else
+          ++next;
+        pstr += (next - prev);
+        prev = next;
+      }
+
+      // Add suffix
+      *pstr = length - prev;
+      found.push_back(prev);
+    }
+  }
+
   XLO_FUNC_START(xloSplit(
-    const ExcelObj& string,
+    const ExcelObj& stringOrArray,
     const ExcelObj& separators,
     const ExcelObj& consecutiveAsOne
   ))
   {
+    // Note this functon relies on the currently observed fact that 
+    // Excel doesn't mind if we modify the input data a little bit,
+    // then pass it back as the return value to avoid copies. That 
+    // is it appears to copy the function result before freeing any
+    // memory associated with the inputs.
     auto consecutive = consecutiveAsOne.toBool(true);
-    auto pstr = string.asPascalStr().data();
-    auto view = string.asPascalStr().view();
-    auto length = pstr[0];
     auto sep = separators.toString();
 
-    vector<wchar_t> found;
-    
-    wchar_t prev = 0, next;
-    while ((next = view.find(sep.c_str(), prev)) != (wchar_t)wstring::npos)
+    if (stringOrArray.isType(ExcelType::Multi))
     {
-      *pstr = next - prev;
-      found.push_back(prev);
+      ExcelArray inputArray(stringOrArray);
+      if (inputArray.dims() != 1)
+        XLO_THROW("Input array must be 1-dim");
 
-      if (consecutive)
+      // Location of the sub-string start points
+      vector<vector<wchar_t>> found(inputArray.size());
+      size_t totalStrLength = 0, maxTokens = 1;
+      size_t iVal = 0;
+      for (auto& val : inputArray)
       {
-        while (sep.find(view[next]) != wstring::npos)
-          if (++next == view.size())
-            break;
+        if (val.isType(ExcelType::Str))
+        {
+          auto pStr = val.asPascalStr();
+          totalStrLength += pStr.length();
+          findSplitPoints(found[iVal], pStr, sep, consecutive);
+          maxTokens = std::max(maxTokens, found[iVal].size());
+        }
+        ++iVal;
+      }
+
+      // Orient output array consistent with input
+      bool byRow = inputArray.nCols() == 1;
+
+      ExcelArrayBuilder builder(
+        byRow ? inputArray.size() : maxTokens, 
+        byRow ? maxTokens : inputArray.size(),
+        totalStrLength);
+
+      // We don't intend to write to every cell, so need to initialise
+      builder.fillNA();
+
+      if (byRow)
+      {
+        for (auto i = 0; i < found.size(); ++i)
+        {
+          if (found[i].empty()) // No tokens or was not a string
+            builder(i, 0) = inputArray(i);
+          else
+          {
+            auto pStr = inputArray(i).asPascalStr();
+            for (auto j = 0; j < found[i].size(); ++j)
+              builder(i, j) = PString(pStr.data() + found[i][j]);
+          }
+        }
       }
       else
-        ++next;
-      pstr += (next - prev);
-      prev = next;
+      {
+        for (auto i = 0; i < found.size(); ++i)
+        {
+          if (found[i].empty()) // No tokens or was not a string
+            builder(0, i) = inputArray(i);
+          else
+          {
+            auto pStr = inputArray(i).asPascalStr();
+            for (auto j = 0; j < found[i].size(); ++j)
+              builder(j, i) = PString(pStr.data() + found[i][j]);
+          }
+        }
+      }
+
+      return returnValue(builder.toExcelObj());
     }
-
-    // Add suffix
-    *pstr = length - prev;
-    found.push_back(prev);
-
-    // Reset pstr
-    pstr = string.asPascalStr().data();
-    ExcelArrayBuilder builder((uint32_t)found.size(), 1, length);
-    for (auto i = 0; i < found.size(); ++i)
+    else if (stringOrArray.isType(ExcelType::Str))
     {
-      builder(i) = PString(pstr + found[i]);
-    }
+      vector<wchar_t> found;
 
-    return returnValue(builder.toExcelObj());
+      auto pStr = stringOrArray.asPascalStr();
+      findSplitPoints(found, pStr, sep, consecutive);
+
+      ExcelArrayBuilder builder((uint32_t)found.size(), 1, pStr.length());
+      for (auto i = 0; i < found.size(); ++i)
+        builder(i) = PString(pStr.data() + found[i]);
+
+      return returnValue(builder.toExcelObj());
+    }
+    else // Not a string or array, so do not modify
+      return returnValue(stringOrArray);
   }
   XLO_FUNC_END(xloSplit).threadsafe()
-    .help(L"")
-    .arg(L"string", L"string")
-    .arg(L"separators", L"separator between strings")
-    .arg(L"consecutiveAsOne");
+    .help(L"Splits a string or array of strings on a given separator. The array must be"
+           "1-dim.")
+    .arg(L"String", L"String or array of strings. Any non-strings will be unmodified")
+    .arg(L"Separators", L"Separators between strings: each character is interpreted "
+                         "as a distinct separator")
+    .arg(L"ConsecutiveAsOne", L"Treat consecutive delimiters as one");
 }
