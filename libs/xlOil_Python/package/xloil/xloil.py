@@ -1012,7 +1012,7 @@ def scan_module(module, workbook_name=None):
         mod_directory, mod_filename = os.path.split(module)
         if len(mod_directory) > 0 and not mod_directory in sys.path:
             sys.path.append(mod_directory)
-        handle = importlib.import_module(os.path.splitext(mod_filename)[0])
+        handle = importlib.import_module(mod_filename.replace('.py', ''))
     elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
         handle = importlib.reload(module)
     else:
