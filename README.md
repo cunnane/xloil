@@ -37,20 +37,26 @@ xlOil features
   - Very concise syntax to declare an Excel function
   - Optional type checking of function parameters
   - Supports keyword arguments
-  - Choice of globally availble functions or code modules associated and limited to a single        workbook
+  - Choice of globally declared functions or code modules limited to a single workbook just
+    like VBA workbook-level functions
   - Tight integration with numpy - very low overheads for array functions
   - Understands python tuples, lists, dictionarys and pandas dataframes
   - Async functions
-  - Macro type functions which write to the sheet
+  - RTD functions and on-the-fly RTD server creation
+  - Macro type functions which write to ranges on the sheet
   - Access to the Excel Application object
   - Hook Excel events
   - Pass any python object back to Excel and then back into any python function
   - Simple and quick add-in deployment
+  - Two-way connection to Jupyter notebooks: run worksheet functions in Jupyter and query variables
+    in the jupyter kernel
 * C++
   - Safe and convenient wrappers around most things in the C-API
   - Concise syntax to declare Excel functions: registration is automatic
   - Deal with Excel variants, Ranges, Arrays and strings in a natural C++ fashion
   - Object cache allows returning opaque objects to Excel and passing them back to other functions
+  - Simplified RTD server creation
+  - RTD-based background calculation
 * SQL
   - Create tables from Excel ranges and arrays
   - Query and join them with the full sqlite3 SQL syntax

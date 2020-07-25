@@ -14,7 +14,7 @@ specifying it in the xlOil ini file like this:
     ...
 
     [xlOil_Python]
-    LoadModules=["xloil_jupyter"]
+    LoadModules=["xloil.jupyter"]
 
 To establish the connection, run the magic `%connect_info` in a Jupyter cell.  The output should
 look like:
