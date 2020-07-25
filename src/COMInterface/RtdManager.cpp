@@ -224,16 +224,18 @@ namespace xloil
         SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
         *data = SafeArrayCreate(VT_VARIANT, 2, bounds);
 
-        void* element;
+        void* element = nullptr;
         auto iRow = 0;
         for (auto topic : readyTopicIds)
         {
           long index[] = { 0, iRow };
-          assert(S_OK == SafeArrayPtrOfIndex(*data, index, &element));
+          auto ret = SafeArrayPtrOfIndex(*data, index, &element);
+          assert(S_OK == ret);
           *(VARIANT*)element = _variant_t(topic);
 
           index[0] = 1;
-          assert(S_OK == SafeArrayPtrOfIndex(*data, index, &element));
+          ret = SafeArrayPtrOfIndex(*data, index, &element);
+          assert(S_OK == ret);
           *(VARIANT*)element = _variant_t();
 
           ++iRow;
