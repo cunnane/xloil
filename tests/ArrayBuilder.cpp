@@ -39,5 +39,37 @@ namespace Tests
       Assert::AreEqual(arr(1, 0).toDouble(), row1[0]);
       Assert::AreEqual(arr(1, 1).toDouble(), row1[1]);
     }
+
+    TEST_METHOD(ArrayAccess)
+    {
+      ExcelArrayBuilder builder(6, 4);
+      builder.fillNA();
+
+      for (auto i = 0u; i < builder.nRows(); ++i)
+        for (auto j = 0u; j < builder.nCols(); ++j)
+          builder(i, j) = i * j;
+
+      ExcelArray array(builder.toExcelObj());
+      Assert::AreEqual(array.nRows(), builder.nRows());
+      Assert::AreEqual(array.nCols(), builder.nCols());
+
+      for (auto n = 1u; n < array.nCols(); ++n)
+      {
+        auto sub = array.subArray(0, 1, -1, n);
+
+        Assert::AreEqual(array.nRows(), sub.nRows());
+
+        // Check sub-array equals array using a whole-array index
+        auto k = 0u;
+        for (auto i = 0u; i < sub.nRows(); ++i)
+          for (auto j = 1u; j < sub.nCols(); ++j)
+            Assert::IsTrue(array(i, j) == sub(k++));
+
+        // Check sub-array whole-index matches iterator
+        k = 0;
+        for (auto& val : sub)
+          Assert::IsTrue(val == sub(k++));
+      }
+    }
   };
 }

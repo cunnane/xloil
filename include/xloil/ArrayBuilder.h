@@ -35,6 +35,16 @@ namespace xloil
 
       ExcelObj& object(size_t i) { return _buffer[i]; }
 
+      void fillNA()
+      {
+        new (_buffer) ExcelObj(CellError::NA);
+        auto sourceBegin = _buffer;
+        auto sourceEnd = sourceBegin + sizeof(ExcelObj);
+
+        for (auto i = 1; i < _nObjects; ++i)
+          memcpy_s(_buffer + i, sizeof(ExcelObj), sourceBegin, sizeof(ExcelObj));
+      }
+
     private:
       ExcelObj* _buffer;
       size_t _nObjects;
@@ -228,6 +238,15 @@ namespace xloil
 
     row_t nRows() const { return _nRows; }
     col_t nCols() const { return _nColumns; }
+
+    /// <summary>
+    /// Fills the array with N/A - useful if you do not want to worry
+    /// about filling in every value
+    /// </summary>
+    void fillNA()
+    {
+      _allocator.fillNA(); 
+    }
 
   private:
     detail::ArrayBuilderAlloc _allocator;

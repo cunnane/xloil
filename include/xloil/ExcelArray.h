@@ -175,9 +175,13 @@ namespace xloil
 
     /// <summary>
     /// Returns 2 if both nRows and nCols exceed 1, otherwise returns 1
+    /// unless the array has zero size, in which case returns zero.
     /// </summary>
     /// <returns></returns>
-    uint8_t dims() const { return _rows > 1 && _columns > 1 ? 2 : 1; }
+    uint8_t dims() const 
+    {
+      return _rows > 1 && _columns > 1 ? 2 : (_rows == 0 || _columns == 0 ? 0 : 1);
+    }
 
     /// <summary>
     /// Returns an iterator to the start of the specified row. Note this iterator
@@ -208,7 +212,9 @@ namespace xloil
     /// <returns></returns>
     ExcelArrayIterator end() const 
     { 
-      return ExcelArrayIterator(row_end(nRows() - 1), _columns, _baseCols);
+      // The whole array iterator steps beyond the end of the last start of the
+      // next row which may be different if _columns != _baseCols
+      return ExcelArrayIterator(row_begin(_columns > 0 ? nRows() : 0), _columns, _baseCols);
     }
 
     /// <summary>
