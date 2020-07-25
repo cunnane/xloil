@@ -304,7 +304,7 @@ else:
         If the task is slow to return or spin up, it could be started the constructor  
         and kept it running permanently, regardless of subscribers.
 
-        The publisher should call RtdManager.publish() to push values to subscribers.
+        The publisher should call RtdServer.publish() to push values to subscribers.
         """
 
         def __init__(self):
@@ -315,14 +315,14 @@ else:
             pass
         def connect(self, num_subscribers):
             """
-            Called by the RtdManager when a sheet function subscribes to this 
+            Called by the RtdServer when a sheet function subscribes to this 
             topic. Typically a topic will start up its publisher on the first
             subscriber, i.e. when num_subscribers == 1
             """
             pass
         def disconnect(self, num_subscribers):
             """
-            Called by the RtdManager when a sheet function disconnects from this 
+            Called by the RtdServer when a sheet function disconnects from this 
             topic. This happens when the function arguments are changed the
             function deleted. Typically a topic will shutdown its publisher 
             when num_subscribers == 0.
@@ -333,7 +333,7 @@ else:
             pass
         def stop(self):
             """
-            Called by the RtdManager to indicate that a topic should shutdown
+            Called by the RtdServer to indicate that a topic should shutdown
             and dependent threads or tasks and finalise resource usage
             """
             pass
@@ -349,9 +349,9 @@ else:
             """
             pass
 
-    class RtdManager:
+    class RtdServer:
         """
-        An RtdManager sits above an Rtd COM server. Each new RtdManager creates a
+        An RtdServer sits above an Rtd COM server. Each new RtdServer creates a
         new underlying COM server. The manager connects publishers and subscribers
         for topics, identified by a string. 
 
