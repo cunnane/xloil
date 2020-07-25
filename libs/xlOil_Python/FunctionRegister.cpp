@@ -45,6 +45,10 @@ namespace xloil
       isLocalFunc = false;
       isRtdAsync = false;
       argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
+      if (!info)
+        XLO_THROW("No function info specified in func registration");
+      if (!func.ptr() || func.is_none())
+        XLO_THROW(L"No python function specified for {0}", info->name);
     }
 
     void PyFuncInfo::setArgTypeDefault(size_t i, shared_ptr<IPyFromExcel> converter, py::object defaultVal)
