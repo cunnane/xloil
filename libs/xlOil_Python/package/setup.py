@@ -82,9 +82,9 @@ version = Path(staging_dir / "Version.txt").read_text()
 setup(
     name="xlOil",
     version=version,
-    author="Steven",
-    author_email="cunnane at gmail dot com",
-    description="Excel interface layer and things",
+    author="Steven Cunnane",
+    author_email="my-surname@gmail.com",
+    description="Excel interop for Python and Jupyter",
     long_description=contents_of_readme,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/stevecu/xloil",
@@ -115,8 +115,10 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        'Office/Business :: Financial :: Spreadsheet',
+        'Topic :: Office/Business :: Financial :: Spreadsheet',
+        'Framework :: Jupyter',
         'Operating System :: Microsoft :: Windows'
     ]
 )
