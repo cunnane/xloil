@@ -311,7 +311,7 @@ namespace
     switch (xtype())
     {
     case xltypeNum:
-      return formatWStr(L"%G", val.num);
+      return formatStr(L"%G", val.num);
 
     case xltypeBool:
       return wstring(val.xbool ? L"TRUE" : L"FALSE");
