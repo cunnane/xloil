@@ -91,6 +91,8 @@ subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
 for files in build_files.values():
     for file in files:
         for arch in architectures:
+            try: os.makedirs(staging_dir / arch)
+            except FileExistsError: pass
             copy_file(build_dir / arch / "Release" / file, staging_dir / arch)
 
 
@@ -116,7 +118,7 @@ copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
 #
 # Build python wheels
 #
-try: sh.rmtree(python_package_dir / "dist")
+try: sh.rmtree(python_package_dir)
 except: pass
 
 for arch in architectures:

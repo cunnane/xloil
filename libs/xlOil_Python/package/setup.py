@@ -48,16 +48,16 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_NewAddin.ps1',
     'xlOil_Remove.ps1']]
 
-verXY = target_py_ver.replace('.','')
-data_files += [str(bin_dir / f'xlOil_Python{verXY}.dll')]
+py_version_XY = target_py_ver.replace('.','')
+data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.dll')]
 
 #
 # Special treatment for ini file
 # 
-try: os.makedirs(verXY)
+try: os.makedirs(py_version_XY)
 except FileExistsError: pass
 
-ini_path = Path(verXY) / 'xlOil.ini'
+ini_path = Path(py_version_XY) / 'xlOil.ini'
 sh.copyfile(bin_dir / 'xlOil.ini', ini_path)
 
 # Fix up the version number in the ini file
