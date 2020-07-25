@@ -78,6 +78,9 @@ subprocess.run(f"BuildRelease.cmd", cwd=tools_dir)
 # Write the combined include file
 subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir} {include_dir}", cwd=tools_dir)
 
+# Write the version file
+subprocess.run(f"powershell ./tools/WriteVersion.ps1", cwd=soln_dir)
+
 # Build the docs
 subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
 
