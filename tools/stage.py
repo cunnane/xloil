@@ -23,6 +23,7 @@ architectures = ["x64"]
 python_versions = ["3.6", "3.7"]
 python_package_dir = staging_dir / "pypackage"
 
+
 build_files = {
     'Core' : ["xlOil.xll", "xlOil.dll", "xloil.ini"],
     'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python.dll"],
@@ -52,9 +53,9 @@ lib_files = [
         'to': 'pypackage'
     },
     {
-        'from': 'libs/xlOil_Python',
-        'files': ['package/xloil/xloil.py'],
-        'to': architectures
+        'from': '.',
+        'files': ['README.md'],
+        'to': 'pypackage'
     }
 ]
 
@@ -88,6 +89,11 @@ subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
 # Start of file copying
 #
 
+# Clean any previous python package
+try: sh.rmtree(python_package_dir)
+except (FileNotFound): pass
+
+
 for files in build_files.values():
     for file in files:
         for arch in architectures:
@@ -118,8 +124,6 @@ copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
 #
 # Build python wheels
 #
-try: sh.rmtree(python_package_dir)
-except: pass
 
 for arch in architectures:
     for pyver in python_versions:
