@@ -67,9 +67,11 @@ Check-VBA-Access $ExcelVersion
 mkdir -Force $XlStartPath | Out-Null
 
 # Copy the XLL
+
 Copy-Item -path (Join-Path $PSScriptRoot $ADDIN_NAME) -Destination $XlStartPath
 
 # Copy the ini file to APPDATA, avoiding overwritting any existing ini
+md $XloilAppData -ErrorAction Ignore
 $IniFile = (Join-Path $XloilAppData $INIFILE_NAME)
 if (!(Test-Path -Path $IniFile -PathType leaf)) {
 	
@@ -91,4 +93,4 @@ if (!(Test-Path -Path $IniFile -PathType leaf)) {
 
 }
 
-Write-Host $AddinPath, "installed`n"
+Write-Host "$ADDIN_NAME installed from $PSScriptRoot to $XlStartPath `n"
