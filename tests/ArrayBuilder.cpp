@@ -62,8 +62,8 @@ namespace Tests
         // Check sub-array equals array using a whole-array index
         auto k = 0u;
         for (auto i = 0u; i < sub.nRows(); ++i)
-          for (auto j = 1u; j < sub.nCols(); ++j)
-            Assert::IsTrue(array(i, j) == sub(k++));
+          for (auto j = 1u; j < n; ++j, ++k)
+            Assert::IsTrue(array(i, j) == sub(k));
 
         // Check sub-array whole-index matches iterator
         k = 0;
