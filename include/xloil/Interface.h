@@ -81,12 +81,11 @@ namespace xloil
     /// If this function is called a second time it replaces 
     /// all currently registered functions with the new set.
     /// 
-    /// Returns true if all function registrations suceeded.
     /// </summary>
     /// <param name="specs">functions to register</param>
-    bool 
+    void 
       registerFuncs(
-        std::vector<std::shared_ptr<const FuncSpec> >& specs);
+        const std::vector<std::shared_ptr<const FuncSpec> >& specs);
 
     /// <summary>
     /// Removes the specified function from Excel

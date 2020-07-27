@@ -225,13 +225,8 @@ namespace xloil
           }
         }
 
-        runOnMainThread<void>([nonLocal, self=this]() mutable
-        { 
-          self->registerFuncs(nonLocal);         
-          for (auto& f : nonLocal)
-            XLO_ERROR(L"Registration failed for: {0}", f->name());
-        });
-
+        registerFuncs(nonLocal);         
+  
         if (!funcInfo.empty())
         {
           if (_workbookName.empty())
@@ -354,11 +349,8 @@ namespace xloil
         ++iter;
       }
 
-      runOnMainThread<void>([funcNames, foundSource]()
-      {
-        for (auto& func : funcNames)
-          foundSource->deregister(func);
-      });
+      for (auto& func : funcNames)
+        foundSource->deregister(func);
     }
 
     namespace

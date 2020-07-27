@@ -89,33 +89,25 @@ namespace xloil
     return settings;
   }
 
-  bool openXll(const wchar_t* xllPath)
+  void openCore() 
   {
-    bool firstLoad = false;
-    // On First load, register the core functions
-    if (theAddinContexts.empty())
-    {
-      firstLoad = true;
-#if _DEBUG
-      detail::loggerInitialise(spdlog::level::debug);
-#else
-      detail::loggerInitialise(spdlog::level::warn);
-#endif
-      // xlOil.ini lives either in the same directory as xlOil.dll or the user's
-      // AppData.  Since the XLL is installed by default into the XLSTART folder,
-      // the ini cannot live alongside it or Excel will try to open it!
-      auto settings = processAddinSettings(State::corePath());
-      
-      ourCoreContext = createAddinContext(State::corePath(), settings);
-      ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
+    auto settings = processAddinSettings(State::corePath());
 
-      loadPlugins(ourCoreContext, Settings::plugins((*settings)["Addin"]));
-    }
+    ourCoreContext = createAddinContext(State::corePath(), settings);
+    ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
+  }
 
-    // An explicit load of xloil.xll returns here
+
+  void openXll(const wchar_t* xllPath)
+  {
+    // An explicit load of xloil.xll returns here since the other bits get done in openCore
     if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0)
-      return firstLoad;
-
+    {
+      auto plugins = Settings::plugins((*ourCoreContext->settings())["Addin"]);
+      loadPlugins(ourCoreContext, plugins);
+      return;
+    }
+      
     auto settings = processAddinSettings(xllPath);
     
     // Delete existing context if addin is reloaded
@@ -126,8 +118,6 @@ namespace xloil
     assert(ctx);
 
     loadPlugins(ctx, Settings::plugins((*settings)["Addin"]));
-
-    return firstLoad;
   }
 
   void closeXll(const wchar_t* xllPath)

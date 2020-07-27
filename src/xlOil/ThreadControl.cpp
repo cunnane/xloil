@@ -2,6 +2,7 @@
 #include <xloil/ThreadControl.h>
 #include <xlOilHelpers/WindowsSlim.h>
 #include <xloil/Loaders/EntryPoint.h>
+#include <COMInterface/XllContextInvoke.h>
 #include <xloil/Log.h>
 #include <xloil/State.h>
 #include <functional>
@@ -43,24 +44,44 @@ namespace xloil
       if (!_hiddenWindow)
         XLO_ERROR(L"Failed to create window: {0}", writeWindowsError());
     }
-    using QueueItem = std::function<void()>;
+
+    struct QueueItem : std::enable_shared_from_this<QueueItem>
+    {
+      std::function<void()> _func;
+      std::shared_ptr<std::promise<void>> _promise;
+      bool _usesXllApi;
+      int _nRetries; 
+      unsigned _waitTime;
+      bool _isAPC;
+
+      QueueItem(const std::function<void()>& func, std::shared_ptr<std::promise<void>> promise, bool usesXllApi, int nRetries, unsigned waitTime, bool isAPC)
+        : _func(func)
+        , _promise(promise)
+        , _usesXllApi(usesXllApi)
+        , _nRetries(nRetries)
+        , _waitTime(waitTime)
+        , _isAPC(isAPC)
+      {}
+
+      void operator()();
+    };
 
     static constexpr unsigned WINDOW_MESSAGE = 666;
 
-    void QueueAPC(const QueueItem& func)
+    void QueueAPC(shared_ptr<QueueItem> item)
     {
       scoped_lock lock(_lock);
-      const bool emptyQueue = _queue.empty();
-      _queue.emplace_back(new QueueItem(func));
+      const bool emptyQueue = _apcQueue.empty();
+      _apcQueue.emplace_back(item);
       if (emptyQueue)
-        QueueUserAPC(processQueue, _threadHandle, (ULONG_PTR)this);
+        QueueUserAPC(processAPCQueue, _threadHandle, (ULONG_PTR)this);
     }
 
-    void QueueWindow(const QueueItem& func)
+    void QueueWindow(shared_ptr<QueueItem> item)
     {
       scoped_lock lock(_lock);
-      const bool emptyQueue = _queue.empty();
-      _queue.emplace_back(new QueueItem(func));
+      const bool emptyQueue = _windowQueue.empty();
+      _windowQueue.emplace_back(item);
       if (emptyQueue)
         PostMessage(_hiddenWindow, WINDOW_MESSAGE, (WPARAM)this, 0);
     }
@@ -73,7 +94,7 @@ namespace xloil
       {
       case WINDOW_MESSAGE:
       {
-        processQueue((ULONG_PTR)wParam);
+        processWindowQueue((ULONG_PTR)wParam);
         return S_OK;
       }
       default:
@@ -81,21 +102,35 @@ namespace xloil
       }
     }
 
-    static void processQueue(ULONG_PTR ptr)
+    static void processWindowQueue(ULONG_PTR ptr)
     {
       auto& self = *(Messenger*)ptr;
-      std::vector<shared_ptr<QueueItem>> jobs;
+      processQueue(self, self._windowQueue, true);
+    }
+
+    static void processAPCQueue(ULONG_PTR ptr)
+    {
+      auto& self = *(Messenger*)ptr;
+      processQueue(self, self._apcQueue, true);
+    }
+
+    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue, bool isAPC)
+    {
+      decltype(_apcQueue) jobs;
       {
         scoped_lock lock(self._lock);
-        jobs.assign(self._queue.begin(), self._queue.end());
-        self._queue.clear();
+        jobs.assign(queue.begin(), queue.end());
+        queue.clear();
       }
 
       for (auto& job : jobs)
+      {
         (*job)();
+      }
     }
 
-    std::deque<shared_ptr<QueueItem>> _queue;
+    std::deque<shared_ptr<QueueItem>> _windowQueue;
+    std::deque<shared_ptr<QueueItem>> _apcQueue;
     std::mutex _lock;
 
     HWND _hiddenWindow;
@@ -111,17 +146,60 @@ namespace xloil
   {
     getMessenger();
   }
-  void queueAPC(const std::function<void()>& func)
+
+  void enqueue(shared_ptr<Messenger::QueueItem> item)
   {
-    getMessenger().QueueAPC(func);
+    if (item->_isAPC)
+      getMessenger().QueueAPC(item);
+    else
+      getMessenger().QueueWindow(item);
   }
-  void queueWindowMessage(const std::function<void()>& func)
+
+  void Messenger::QueueItem::operator()()
   {
-    getMessenger().QueueWindow(func);
+    try
+    {
+      if (_usesXllApi)
+        runInXllContext(_func);
+      else
+        _func();
+    }
+    catch (const ComBusyException& e)
+    {
+      if (0 == _nRetries--)
+        _promise->set_exception(make_exception_ptr(e));
+      Sleep(_waitTime);
+      enqueue(shared_from_this());
+    }
+    catch (const std::exception& e) // what about SEH?
+    {
+      _promise->set_exception(make_exception_ptr(e));
+    }
   }
+
+
   bool isMainThread()
   {
     // TODO: would a thread-local bool be quicker here?
     return State::mainThreadId() == GetCurrentThreadId();
+  }
+
+  std::future<void> excelApiCall(const std::function<void()>& func, int flags, int nRetries, unsigned waitTime)
+  {
+    auto promise = std::make_shared<std::promise<void>>();
+
+    auto queueItem = make_shared<Messenger::QueueItem>([promise, func]()
+      {
+          func();
+          promise->set_value();
+      },
+      promise, (flags & (int)QueueType::XLL_API), nRetries, waitTime, (flags & (int)QueueType::APC));
+
+    if ((flags & (int)QueueType::ENQUEUE) == 0 && isMainThread())
+      (*queueItem)();
+    else
+      enqueue(queueItem);
+
+    return promise->get_future();
   }
 }

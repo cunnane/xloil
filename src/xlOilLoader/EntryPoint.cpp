@@ -206,21 +206,22 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
 
     SetDllDirectory(NULL);
 
-    if (ret <= 0)
-      return 1; // Failure, yet we still have to return 1.
-
     theXllIsOpen = true;
 
     // We don't bother to hook xlEventCalculationEnded as this XLL event is not triggered
     // by programmatic recalc, but the COM event is hence is much more useful.
-    xloil::tryCallExcel(msxll::xlEventRegister,
-      "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    // TODO: could this be called by xlOil.dll? I seem to remember not.
+    if (ret == 1)
+    {
+      xloil::tryCallExcel(msxll::xlEventRegister,
+        "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    }
   }
   catch (const std::exception& e )
   {
     logError(e.what());
   }
-  return 1;
+  return 1; // We alway return 1, even on failure.
 }
 
 XLO_ENTRY_POINT(int) xlAutoClose(void)

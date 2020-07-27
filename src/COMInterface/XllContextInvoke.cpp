@@ -2,7 +2,6 @@
 #include "ExcelTypeLib.h"
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
-#include "CallHelper.h"
 #include <xloil/ThreadControl.h>
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
@@ -10,6 +9,25 @@
 
 namespace xloil
 {
+  // See https://social.msdn.microsoft.com/Forums/vstudio/en-US/9168f9f2-e5bc-4535-8d7d-4e374ab8ff09/hresult-800ac472-from-set-operations-in-excel?forum=vsto
+  constexpr HRESULT VBA_E_IGNORE = 0x800ac472;
+
+  template <class TFunc>
+  auto tryComCall(TFunc fn) -> typename std::invoke_result<TFunc>::type
+  {
+    try
+    {
+      return fn();
+    }
+    catch (_com_error& error)
+    {
+      if (error.Error() == VBA_E_IGNORE)
+        throw ComBusyException("Excel COM is busy. A dialog box may be open. If this error persists, restart Excel.");
+      else
+        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+    }
+  }
+
   static const std::function<void()>* theVoidFunc = nullptr;
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
@@ -67,54 +85,45 @@ namespace xloil
 
   bool runInXllContext(const std::function<void()>& f)
   {
+    // TODO: this whole Xll context thing may go wrong in a multi-thread evironment. Are we gteed to be on main?
     if (InXllContext::check())
     {
       f();
       return true;
     }
 
-    auto[result, xlret] = tryCallExcel(msxll::xlfGetDocument, 1);
-    if (xlret == 0)
-    {
-      f();
-      return true;
-    }
+    // Crashes when called from window proc at startup - investigate?
+    //auto[result, xlret] = tryCallExcel(msxll::xlfGetDocument, 1);
+    //if (xlret == 0)
 
     theVoidFunc = &f;
 
-    auto ret = runOnMainThread<std::optional<_variant_t>>([]() 
+    return tryComCall([]()
     {
-      return retryComCall([]()
-      {
-        return excelApp().Run("xloRunFuncInXLLContext");
-      });
+      return excelApp().Run("xloRunInXLLContext");
     });
-    return ret.get().has_value();
   }
 
   int runInXllContext(int func, ExcelObj* result, int nArgs, const ExcelObj** args)
   {
     if (InXllContext::check())
     {
-      Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
-      return true;
+      return Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
     }
     theVoidFunc = nullptr;
     theExcelCallFunc = func;
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;
     theExcelCallNumArgs = nArgs;
-    //XLO_TRACE("Calling into XLL context fn= {0:#x}", (size_t)&fn);
-    auto ret = retryComCall([]()
+    auto ret = tryComCall([]()
     { 
       return excelApp().Run("xloRunInXLLContext");
     });
     if (!ret)
       return msxll::xlretInvXlfn;
-    auto variant = ret.value();
     
-    if (SUCCEEDED(VariantChangeType(&variant, &variant, 0, VT_I4)))
-      return variant.lVal;
+    if (SUCCEEDED(VariantChangeType(&ret, &ret, 0, VT_I4)))
+      return ret.lVal;
 
     return msxll::xlretInvXlfn;
   }

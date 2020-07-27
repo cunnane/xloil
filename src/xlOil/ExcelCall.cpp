@@ -25,17 +25,31 @@ namespace xloil
       return L"unknown error";
     }
   }
+  
+  // TODO: currently unused, supposed to indicate functions which are safe to call outside XLL context
+  // I'm not sure they are in fact safe!
+  bool isSafeFunction(int funcNumber)
+  {
+    switch (funcNumber)
+    {
+    case xlFree:
+    case xlStack:
+    case xlSheetId:
+    case xlSheetNm:
+    case xlGetInst:
+    case xlGetHwnd:
+    case xlGetInstPtr:
+    case xlAsyncReturn:
+      return true;
+    default:
+      return false;
+    }
+  }
 
   XLOIL_EXPORT int callExcelRaw(
     int func, ExcelObj* result, size_t nArgs, const ExcelObj** args)
   {
     auto ret = Excel12v(func, result, (int)nArgs, (XLOIL_XLOPER**)args);
-    // The likely cause of xlretInvXlfn is running outside XLL context
-    // so try to run in XLL context
-    if (ret == xlretInvXlfn)
-    {
-      ret = runInXllContext(func, result, (int)nArgs, args);
-    }
     if (result)
       result->fromExcel();
     return ret;

@@ -5,6 +5,7 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
+#include <xlOil/ThreadControl.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <ComInterface/Connect.h>
@@ -72,45 +73,53 @@ namespace xloil
 
   FileSource::~FileSource()
   {
-    XLO_DEBUG(L"Deregistering functions in source '{0}'", _source);
-    forgetLocalFunctions(_workbookName.c_str());
-    for (auto& f : _functions)
-      xloil::deregisterFunc(f.second);
-    _functions.clear();
+    excelApiCall([self=this]()
+    {
+      XLO_DEBUG(L"Deregistering functions in source '{0}'", self->_source);
+      forgetLocalFunctions(self->_workbookName.c_str());
+      for (auto& f : self->_functions)
+        xloil::deregisterFunc(f.second);
+      self->_functions.clear();
+    }, QueueType::XLL_API);
   }
 
-  bool FileSource::registerFuncs(
-    std::vector<std::shared_ptr<const FuncSpec> >& funcSpecs)
+  void FileSource::registerFuncs(
+    const std::vector<std::shared_ptr<const FuncSpec> >& funcSpecs)
   {
-    decltype(_functions) newFuncs;
-
-    for (auto& f : funcSpecs)
+    excelApiCall([specs = funcSpecs, self = this]() mutable
     {
-      // If registration succeeds, just add the function to the new map
-      auto ptr = registerFunc(f);
-      if (ptr)
+      decltype(self->_functions) newFuncs;
+
+      for (auto& f : specs)
       {
-        _functions.erase(f->name());
-        newFuncs.emplace(f->name(), ptr);
-        f.reset();
+        // If registration succeeds, just add the function to the new map
+        auto ptr = self->registerFunc(f);
+        if (ptr)
+        {
+          self->_functions.erase(f->name());
+          newFuncs.emplace(f->name(), ptr);
+          f.reset();
+        }
       }
-    }
 
-    // Remove all the null FuncSpec ptrs
-    funcSpecs.erase(
-      std::remove_if(funcSpecs.begin(), funcSpecs.end(), [](auto& f) { return !f; }),
-      funcSpecs.end());
+      // Remove all the null FuncSpec ptrs
+      specs.erase(
+        std::remove_if(specs.begin(), specs.end(), [](auto& f) { return !f; }),
+        specs.end());
 
-    // Any functions remaining in the old map must have been removed from the module
-    // so we can deregister them, but if that fails we have to keep them or they
-    // will be orphaned
-    for (auto& f : _functions)
-      if (!xloil::deregisterFunc(f.second))
-        newFuncs.emplace(f);
+      // Any functions remaining in the old map must have been removed from the module
+      // so we can deregister them, but if that fails we have to keep them or they
+      // will be orphaned
+      for (auto& f : self->_functions)
+        if (!xloil::deregisterFunc(f.second))
+          newFuncs.emplace(f);
 
-    _functions = newFuncs;
+      self->_functions = newFuncs;
 
-    return funcSpecs.empty();
+      for (auto& f : specs)
+        XLO_ERROR(L"Registration failed for: {0}", f->name());
+
+    }, QueueType::XLL_API);
   }
 
   RegisteredFuncPtr FileSource::registerFunc(
@@ -143,9 +152,13 @@ namespace xloil
   bool FileSource::deregister(const std::wstring& name)
   {
     auto iFunc = _functions.find(name);
-    if (iFunc != _functions.end() && xloil::deregisterFunc(iFunc->second))
+    if (iFunc != _functions.end())
     {
-      _functions.erase(iFunc);
+      excelApiCall([iFunc, self = this]()
+      {
+        if (xloil::deregisterFunc(iFunc->second))
+          self->_functions.erase(iFunc);
+      }, QueueType::XLL_API);
       return true;
     }
     return false;
@@ -157,7 +170,10 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    xloil::registerLocalFuncs(_workbookName.c_str(), funcInfo, funcs);
+    excelApiCall([=, self = this]()
+    {
+      xloil::registerLocalFuncs(self->_workbookName.c_str(), funcInfo, funcs);
+    });
   }
 
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>

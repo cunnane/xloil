@@ -385,7 +385,7 @@ namespace xloil
         // only callback RefreshData approximately every 2 seconds
         if (_newValues.size() == 1 && _updateCallback)
         {
-          queueWindowMessage([this]() { this->callUpdateNotify(); });
+          excelApiCall([this]() { this->callUpdateNotify(); });
         }
       }
 

@@ -23,24 +23,59 @@ using std::shared_ptr;
 namespace
 {
   static HMODULE theCoreModuleHandle = nullptr;
+  static bool theCoreIsLoaded = false;
 }
 
 namespace xloil
 {
+  struct RetryAtStartup
+  {
+    void operator()()
+    {
+      try
+      {
+        connectCOM();
+        excelApiCall([=]() { openXll(path.c_str()); }, QueueType::XLL_API);
+      }
+      catch (const ComConnectException& e)
+      {
+        Sleep(1000);
+        excelApiCall(RetryAtStartup{ path }, QueueType::WINDOW | QueueType::ENQUEUE, 0);
+      }
+    }
+    wstring path;
+  };
+
   XLOIL_EXPORT int coreAutoOpen(const wchar_t* xllPath) noexcept
   {
     try
     {
       InXllContext xllContext;
-      
-      State::initAppContext(theCoreModuleHandle);
-   
-      bool firstLoad = openXll(xllPath);
 
-      excelApp(); // Creates the COM connection
+      State::initAppContext(theCoreModuleHandle);
+      // A return val of 1 tells the XLL to hook XLL-api events. There may be
+      // mulltiple XLLs, but we only want to hook the events once, when we load 
+      // the core DLL.
+      int retVal = 0;
+
+      if (!theCoreIsLoaded)
+      {
+#if _DEBUG
+        detail::loggerInitialise(spdlog::level::debug);
+#else
+        detail::loggerInitialise(spdlog::level::warn);
+#endif
+        openCore();
+
+        theCoreIsLoaded = true;
+        retVal = 1;
+      }
+
       initMessageQueue();
 
-      return firstLoad ? 1 : 0;
+      excelApiCall(RetryAtStartup{ wstring(xllPath) });
+
+      return retVal;
     }
     catch (const std::exception& e)
     {

@@ -572,8 +572,7 @@ namespace xloil
     // plugin has been loaded, so that all functions on the queue belong to the 
     // current plugin
     auto specs = processRegistryQueue(pluginPath);
-    if (!registerFuncs(specs))
-      XLO_ERROR(L"When loading {0}, failed to register: {0}", pluginPath, specs[0]->name());
+    registerFuncs(specs);
   }
 
   namespace

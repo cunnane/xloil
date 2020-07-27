@@ -169,7 +169,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CallHelper.h" />
     <ClInclude Include="ComEventSink.h" />
     <ClInclude Include="ComRange.h" />
     <ClInclude Include="ComVariant.h" />

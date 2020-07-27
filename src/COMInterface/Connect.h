@@ -1,10 +1,20 @@
 #pragma once
+#include <xloil/Throw.h>
 
 namespace Excel { struct _Application; }
 
 namespace xloil
 {
-  void reconnectCOM();
+  // We don't inherit from our own Exception class as that writes to the log in its ctor
+  class ComConnectException : public std::runtime_error
+  {
+  public:
+    ComConnectException(const char* message)
+      : std::runtime_error(message)
+    {}
+  };
+
+  void connectCOM();
 
   Excel::_Application& excelApp();
 
