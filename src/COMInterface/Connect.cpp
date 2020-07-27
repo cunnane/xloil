@@ -77,7 +77,10 @@ namespace xloil
         }
         catch (_com_error& error)
         {
-          throw ComConnectException("COM Error {0:#x}: {1}");// , (size_t)error.Error(), error.ErrorMessage());
+          throw ComConnectException(
+            utf16ToUtf8(
+              fmt::format(L"COM Error {0:#x}: {1}", 
+                (size_t)error.Error(), error.ErrorMessage())).c_str());
         }
       }
 
