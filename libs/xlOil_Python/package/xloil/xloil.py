@@ -374,6 +374,9 @@ else:
             """
             Publishes a new value for the specified topic and updates all subscribers.
             This function can be called even if no RtdPublisher has been started.
+
+            This function does not use any Excel API and is safe to call at any time
+            on any thread.
             """
             pass
         def subscribe(self, topic:str):
@@ -385,6 +388,9 @@ else:
             
             This calls Excel's RTD function, which means the calling cell will be
             recalculated every time a new value is published.
+
+            Calling this function outside of a worksheet function called by Excel may
+            produce undesired results and possibly crash Excel.
             """
             pass
         def peek(self, topic:str, converter=None):
@@ -392,6 +398,9 @@ else:
             Looks up a value for a specified topic, but does not subscribe.
             If there is no active publisher for the topic, it returns None.
             If there is no published value, it will return CellError.NA.
+
+            This function does not use any Excel API and is safe to call at
+            any time on any thread.
             """
             pass
     

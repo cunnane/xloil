@@ -308,6 +308,9 @@ namespace xloil
     /// currently exists, the subscription will be held open pending
     /// one being created. This calls Excel's RTD function, which means the
     /// calling cell will be recalculated every time a new value is published.
+    /// 
+    /// Calling this method when not in a worksheet function invoked by Excel
+    /// is undefined behaviour.
     /// </summary>
     /// <param name="topic"></param>
     /// <returns>The ExcelObj currently being published by the publisher
