@@ -9,23 +9,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="package\setup.py">
-      <Filter>package</Filter>
-    </None>
     <None Include="package\README.md">
-      <Filter>package</Filter>
-    </None>
-    <None Include="package\xloil\__init__.py">
       <Filter>package</Filter>
     </None>
     <None Include="package\xloil\command_line.py">
       <Filter>package</Filter>
     </None>
+    <None Include="package\setup.py" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\xloil.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\jupyter.py" />
+    <CopyFileToFolders Include="package\xloil\__init__.py" />
+    <CopyFileToFolders Include="package\xloil\jupyter.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
