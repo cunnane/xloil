@@ -21,7 +21,6 @@
   <ItemGroup>
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="Settings.cpp" />
-    <ClCompile Include="StringUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Environment.h" />

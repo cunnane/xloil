@@ -1,5 +1,7 @@
 #pragma once
 
+// Heavily chopped down windows include which contains just want we need
+
 #ifndef NOMINMAX
 #define NOMINMAX  //Macros min(a, b) and max(a, b)
 #endif

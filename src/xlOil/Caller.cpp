@@ -2,7 +2,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
 #include <xloil/Loaders/EntryPoint.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
 
 using namespace msxll;

@@ -5,7 +5,7 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
-#include <xlOil/ThreadControl.h>
+#include <xlOil/ApiMessage.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <ComInterface/Connect.h>

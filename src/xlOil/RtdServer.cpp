@@ -1,6 +1,6 @@
 #include <COMinterface/RtdManager.h>
 #include <xloil/RtdServer.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <xloil/Caller.h>
 #include <xlOil/Events.h>
 #include <combaseapi.h>

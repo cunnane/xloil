@@ -1,6 +1,6 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Register/FuncRegistry.h>
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xlOil/FuncSpec.h>
 #include <xlOil/Throw.h>
 

@@ -4,12 +4,18 @@
 
 namespace xloil
 {
+  /// <summary>
+  /// Converts a UTF-16 wstring to a UTF-8 string
+  /// </summary>
   inline std::string utf16ToUtf8(const std::wstring_view& str)
   {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     return converter.to_bytes(str.data());
   }
 
+  /// <summary>
+  /// Converts a UTF-8 string to a UTF-16 wstring
+  /// </summary>
   inline std::wstring utf8ToUtf16(const std::string_view& str)
   {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -24,6 +30,11 @@ namespace xloil
     constexpr char32_t HI_SURROGATE_START = 0xD800;
   }
 
+  /// <summary>
+  /// Concerts a UTF-16 wchar_t string to a UTF-32 char32_t one.
+  /// This string conversion appears to be missing from the standard codecvt
+  /// library as of C++17.
+  /// </summary>
   struct ConvertUTF16ToUTF32
   {
     using to_char = char32_t;
@@ -74,6 +85,7 @@ namespace xloil
   {
     using from_char = char32_t;
     using to_char = char16_t;
+
     static void convertChar(char32_t codepoint, char16_t &h, char16_t &l) noexcept
     {
       if (codepoint < 0x10000)
@@ -84,8 +96,8 @@ namespace xloil
       }
       h = (char16_t)(detail::LEAD_OFFSET + (codepoint >> 10));
       l = (char16_t)(0xDC00 + (codepoint & 0x3FF));
-
     }
+
     size_t operator()(
       to_char* target, 
       const size_t size, 
@@ -125,6 +137,14 @@ namespace xloil
     }
   };
 
+  /// <summary>
+  /// Tries to convert the provided floating point double to an integer.
+  /// Returns false if the input has a fractional part or is too large for
+  /// the given integer type.
+  /// </summary>
+  /// <param name="d"></param>
+  /// <param name="i"></param>
+  /// <returns></returns>
   template <class TInt> inline
   bool floatingToInt(double d, TInt& i) noexcept
   {
@@ -132,14 +152,17 @@ namespace xloil
     if (std::modf(d, &intpart) != 0.0)
       return false;
 
-    // todo: ? std::numeric_limits<TInt>::
-    if (!(intpart > INT_MIN && intpart < INT_MAX))
+    if (!(intpart > (std::numeric_limits<TInt>::min)()
+      && intpart < (std::numeric_limits<TInt>::max)()))
       return false;
 
-    i = int(intpart);
+    i = TInt(intpart);
     return true;
   }
 
+  /// <summary>
+  /// Wraps sprintf and returns a wstring
+  /// </summary>
   template<class...Args>
   inline std::wstring
     formatStr(const wchar_t* fmt, Args&&...args)
@@ -150,6 +173,9 @@ namespace xloil
     return result;
   }
 
+  /// <summary>
+  /// Wraps sprintf and returns a string
+  /// </summary>
   template<class...Args>
   inline std::string
     formatStr(const char* fmt, Args&&...args)

@@ -1,7 +1,7 @@
 #include <xloil/Async.h>
 #include <xlOil/Events.h>
 #include <xloil/ExcelCall.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 
 namespace xloil
 {

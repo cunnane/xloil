@@ -1,5 +1,5 @@
 #include <xlOil/Log.h>
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Loaders/EntryPoint.h>

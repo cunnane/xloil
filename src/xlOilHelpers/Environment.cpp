@@ -1,5 +1,5 @@
 #include "Environment.h"
-#include "WindowsSlim.h"
+#include <xloil/WindowsSlim.h>
 #include <regex>
 #include <cassert>
 

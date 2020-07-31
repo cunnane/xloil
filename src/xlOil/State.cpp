@@ -1,5 +1,5 @@
 #include <xloil/State.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
 #include <COMInterface/Connect.h>

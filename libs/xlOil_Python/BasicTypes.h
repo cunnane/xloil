@@ -4,7 +4,7 @@
 #include <xlOil/ExcelArray.h>
 #include "Numpy.h"
 #include <xlOil/Log.h>
-#include <xloilHelpers/StringUtils.h>
+#include <xloil/StringUtils.h>
 #include <xlOil/ExcelRange.h>
 #include "Cache.h"
 #include "Date.h"

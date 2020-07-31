@@ -16,7 +16,5 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT int 
     coreAutoClose(const wchar_t* xllPath) noexcept;
-
-  XLOIL_EXPORT void onCalculationEnded() noexcept;
   XLOIL_EXPORT void onCalculationCancelled() noexcept;
 }

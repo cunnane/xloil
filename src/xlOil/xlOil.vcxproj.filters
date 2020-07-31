@@ -143,13 +143,19 @@
     <ClInclude Include="State.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ThreadControl.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\Async.h">
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\Version.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ApiMessage.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\StringUtils.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\WindowsSlim.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

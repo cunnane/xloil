@@ -3,7 +3,7 @@
 #include <xloil/NumericTypeConverters.h>
 #include <xloil/Throw.h>
 #include <xloil/Date.h>
-#include <xloilHelpers/StringUtils.h>
+#include <xloil/StringUtils.h>
 #include <xlOil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>

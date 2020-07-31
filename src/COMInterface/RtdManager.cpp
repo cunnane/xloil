@@ -1,5 +1,5 @@
 #include "ComVariant.h"
-#include <xloil/ThreadControl.h>
+#include <xloil/ApiMessage.h>
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>
@@ -8,7 +8,7 @@
 #include <xloil/Events.h>
 #include <xloil/Log.h>
 #include <xloil/ExcelObjCache.h>
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 
 #include <atlbase.h>
 #include <atlcom.h>

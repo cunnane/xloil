@@ -20,10 +20,10 @@ namespace xloil
   {
     enum QueueTypeValues
     {
-      WINDOW  = 1 << 0,
-      APC     = 1 << 1,
-      ENQUEUE = 1 << 2,
-      XLL_API = 1 << 3
+      WINDOW  = 1 << 0, /// Run item via a hidden window message 
+      APC     = 1 << 1, /// Run item via an APC call
+      ENQUEUE = 1 << 2, /// Always queue item, do not try to run immediately
+      XLL_API = 1 << 3  /// Item uses XLL API functions
     };
   }
 
@@ -49,7 +49,8 @@ namespace xloil
   /// call (APC) callback or a message to a hidden window which will be executed
   /// on the main thread when Excel pumps its message loop or Excel passes control
   /// to windows respectively.  APC is generally executed when the user interacts 
-  /// with Excel and window messages immediately after calculation.
+  /// with Excel and window messages immediately after calculation. Generally the
+  /// windows message is the most responsive choice.
   /// 
   /// Calls to the XLL interface require the main thread (with some exceptions) and
   /// being in the correct 'context', i.e. being in a function invoked by Excel.

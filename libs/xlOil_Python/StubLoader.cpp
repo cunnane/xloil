@@ -1,8 +1,8 @@
 #include <xloil/Interface.h>
-#include <xloilHelpers/StringUtils.h>
+#include <xloil/StringUtils.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
-#include <xloilHelpers/WindowsSlim.h>
+#include <xloil/WindowsSlim.h>
 #include <cstdlib>
 #include <tomlplusplus/toml.hpp>
 #include <boost/preprocessor/stringize.hpp>

@@ -1,5 +1,5 @@
 #include "TypeConverters.h"
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xlOil/Throw.h>
 
 namespace xloil

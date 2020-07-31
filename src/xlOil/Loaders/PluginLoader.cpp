@@ -1,5 +1,5 @@
 #include "PluginLoader.h"
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
 #include <COMInterface/RtdManager.h>
 #include <xlOil/Interface.h>

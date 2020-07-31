@@ -6,11 +6,11 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/Log.h>
 #include <xlOil/Loaders/PluginLoader.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/State.h>
-#include <xloil/ThreadControl.h>
+#include <xloil/ApiMessage.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>
 
@@ -37,7 +37,7 @@ namespace xloil
         connectCOM();
         excelApiCall([=]() { openXll(path.c_str()); }, QueueType::XLL_API);
       }
-      catch (const ComConnectException& e)
+      catch (const ComConnectException&)
       {
         Sleep(1000);
         excelApiCall(RetryAtStartup{ path }, QueueType::WINDOW | QueueType::ENQUEUE, 0);
@@ -98,18 +98,6 @@ namespace xloil
       XLO_ERROR("Finalisation error: {0}", e.what());
     }
     return 0;
-  }
-
-  XLOIL_EXPORT void onCalculationEnded() noexcept
-  {
-    try
-    {
-      InXllContext xllContext;
-      xloil::Event::AfterCalculate().fire();
-    }
-    catch (...)
-    {
-    }
   }
   XLOIL_EXPORT void onCalculationCancelled() noexcept
   {

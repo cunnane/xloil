@@ -1,7 +1,7 @@
 #pragma once
 
 #include <xloil/ExportMacro.h>
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xloil/Interface.h>
 
 #ifdef _DEBUG
@@ -11,7 +11,7 @@
 #endif 
 
 #define SPDLOG_WCHAR_TO_UTF8_SUPPORT
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xlOil/WindowsSlim.h>
 #include <spdlog/spdlog.h> 
 #include <string>
 

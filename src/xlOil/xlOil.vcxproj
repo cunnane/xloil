@@ -125,10 +125,12 @@
     <ClInclude Include="..\..\include\xloil\Register.h" />
     <ClInclude Include="..\..\include\xloil\RtdServer.h" />
     <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
-    <ClInclude Include="..\..\include\xloil\ThreadControl.h" />
+    <ClInclude Include="..\..\include\xloil\ApiMessage.h" />
+    <ClInclude Include="..\..\include\xloil\StringUtils.h" />
     <ClInclude Include="..\..\include\xloil\Throw.h" />
     <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
     <ClInclude Include="..\..\include\xloil\Version.h" />
+    <ClInclude Include="..\..\include\xloil\WindowsSlim.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xloil\xlOil.h" />
     <ClInclude Include="State.h" />

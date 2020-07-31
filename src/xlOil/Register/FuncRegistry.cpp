@@ -6,7 +6,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
-#include <xlOilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xlOil/State.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Async.h>

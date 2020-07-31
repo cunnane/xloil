@@ -7,7 +7,7 @@
 #include "ArrayHelpers.h"
 #include <xlOil/ArrayBuilder.h>
 #include <xloil/Date.h>
-#include <xloilHelpers/StringUtils.h>
+#include <xloil/StringUtils.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
@@ -400,6 +400,7 @@ namespace xloil
           for (auto i = 0; i < dims[0]; ++i)
             for (auto j = 0; j < dims[1]; ++j)
               accumulateObjectStringLength(*(PyObject**)PyArray_GETPTR2(pArr, i, j), stringLength);
+          break;
         default:
           XLO_THROW("FromArray: dimension must be 1 or 2");
         }

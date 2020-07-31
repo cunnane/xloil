@@ -12,7 +12,7 @@
 #  define _DEBUG
 #endif
 
-#include <xloilHelpers/StringUtils.h>
+#include <xloil/StringUtils.h>
 #include <xloil/Throw.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>

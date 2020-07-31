@@ -1,6 +1,6 @@
 #pragma once
-#include <xloil/ThreadControl.h>
-#include <xlOilHelpers/WindowsSlim.h>
+#include <xloil/ApiMessage.h>
+#include <xlOil/WindowsSlim.h>
 #include <xloil/Loaders/EntryPoint.h>
 #include <COMInterface/XllContextInvoke.h>
 #include <xloil/Log.h>
@@ -105,16 +105,16 @@ namespace xloil
     static void processWindowQueue(ULONG_PTR ptr)
     {
       auto& self = *(Messenger*)ptr;
-      processQueue(self, self._windowQueue, true);
+      processQueue(self, self._windowQueue);
     }
 
     static void processAPCQueue(ULONG_PTR ptr)
     {
       auto& self = *(Messenger*)ptr;
-      processQueue(self, self._apcQueue, true);
+      processQueue(self, self._apcQueue);
     }
 
-    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue, bool isAPC)
+    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue)
     {
       decltype(_apcQueue) jobs;
       {
