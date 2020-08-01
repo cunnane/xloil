@@ -16,6 +16,9 @@
       <Filter>package</Filter>
     </None>
     <None Include="package\setup.py" />
+    <None Include="package\xloil\shadow_core.py">
+      <Filter>package</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\xloil.py">
