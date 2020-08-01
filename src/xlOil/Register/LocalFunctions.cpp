@@ -5,29 +5,25 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Log.h>
+#include <COMInterface/ComVariant.h>
 #include <COMInterface/WorkbookScopeFunctions.h>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include <map>
+
 using std::wstring;
 using std::map;
 using std::shared_ptr;
 using std::vector;
+using std::make_shared;
 
-#define XLOIL_LOCAL_RANGE_FUNC xloil_local_range_200
 namespace xloil
 {
-  struct Closure
-  {
-    ExcelFuncObject func;
-    std::shared_ptr<const FuncInfo> info;
-  };
-
   // ensure this is cleaned before things close.
 
-  map < wstring, map<wstring, Closure>> theRegistry;
+  map < wstring, map<wstring, shared_ptr<const LambdaFuncSpec>>> theRegistry;
 
-  Closure& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
+  const LambdaFuncSpec& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
   {
     auto wb = theRegistry.find(wbName);
     if (wb == theRegistry.end())
@@ -35,7 +31,7 @@ namespace xloil
     auto func = wb->second.find(funcName);
     if (func == wb->second.end())
       XLO_THROW(L"Local function '{1}' in workbook '{0}' not found", wbName, funcName);
-    return func->second;
+    return *func->second;
   }
 
   auto workbookCloseHandler = Event::WorkbookAfterClose().bind(
@@ -48,23 +44,20 @@ namespace xloil
 
   void registerLocalFuncs(
     const wchar_t* workbookName,
-    const std::vector<std::shared_ptr<const FuncInfo>>& registeredFuncs,
+    const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
     const std::vector<ExcelFuncObject> funcs)
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
-    vector<wstring> coreRedirects(registeredFuncs.size());
-    for (size_t i = 0; i < registeredFuncs.size(); ++i)
+    vector<shared_ptr<const FuncSpec>> funcSpecs;
+    for (size_t i = 0; i < funcInfo.size(); ++i)
     {
-      auto& info = registeredFuncs[i];
-      if (info->numArgs() > 28)
-        XLO_ERROR(L"Local function {0} has more than 28 arguments", info->name);
-      wbFuncs[info->name] = Closure{ funcs[i], info };
-      bool usesRanges = std::any_of(info->args.begin(), info->args.end(),
-        [](auto& p) { return p.allowRange; });
-      coreRedirects[i] = fmt::format(L"xloil_local_{1}{0}", info->numArgs(), usesRanges ? L"range_" : L"");
+      auto& info = funcInfo[i];
+      auto spec = make_shared<LambdaFuncSpec>(info, funcs[i]);
+      funcSpecs.push_back(spec);
+      wbFuncs[info->name] = spec;
     }
-    writeLocalFunctionsToVBA(workbookName, registeredFuncs, coreRedirects);
+    COM::writeLocalFunctionsToVBA(workbookName, funcSpecs);
   }
 
   void forgetLocalFunctions(const wchar_t* workbookName)
@@ -74,71 +67,67 @@ namespace xloil
 }
 
 using namespace xloil;
-
-template<class... Args>
-ExcelObj* doFunc(const ExcelObj& workbook, const ExcelObj& function, Args&&... args)
+XLO_ENTRY_POINT(int) localFunctionEntryPoint(
+  const VARIANT* workbookName,
+  const VARIANT* funcName,
+  VARIANT* returnVal,
+  const VARIANT* args)
 {
   try
   {
-    if constexpr (sizeof...(Args) > 0)
-      const ExcelObj* params[] = { args... };
-    else
-      const ExcelObj* params[] = { nullptr };
-    const auto& closure = xloil::findOrThrow(workbook.toString().c_str(), function.toString().c_str());
-    return closure.func(*closure.info, params);
-  }
-  catch (const std::exception& e)
-  {
-    return returnValue(e);
-  }
-}
+    VariantClear(returnVal);
 
-template<class... Args>
-ExcelObj* doFuncRange(const ExcelObj& workbook, const ExcelObj& function, Args&&... args)
-{
-  try
-  {
-    const ExcelObj* params[] = { args... };
-    const auto& closure = xloil::findOrThrow(workbook.toString().c_str(), function.toString().c_str());
-    const auto& info = closure.info;
-    const auto nArgs = info->numArgs();
-    std::list<ExcelObj> rangeConversions;
-    for (size_t i = 0; i < nArgs; ++i)
+    // TODO: check they really are strings!
+    auto& func = findOrThrow(workbookName->bstrVal, funcName->bstrVal);
+
+    const auto nArgs = func.info()->numArgs();
+    vector<ExcelObj> xllArgs;
+    vector<const ExcelObj*> argPtrs;
+    xllArgs.reserve(nArgs);
+    argPtrs.reserve(nArgs);
+
+    if ((args->vt & VT_ARRAY) == 0)
     {
-      if (params[i]->isType(ExcelType::RangeRef) && !info->args[i].allowRange)
+      XLO_THROW("Not implemnted yet");
+    }
+    else
+    {
+      auto pArray = args->parray;
+      const auto dims = pArray->cDims;
+      VARTYPE vartype;
+      SafeArrayGetVartype(pArray, &vartype);
+      if (vartype != VT_VARIANT || dims != 1)
+        XLO_THROW("Expecting 1d array of variant for args");
+
+      VARIANT* pData;
+      if (FAILED(SafeArrayAccessData(pArray, (void**)&pData)))
+        XLO_THROW("Failed accessing args array");
+      
+      std::shared_ptr<SAFEARRAY> arrayCloser(pArray, SafeArrayUnaccessData);
+
+      const auto arrSize = pArray->rgsabound[0].cElements;
+      if (arrSize != nArgs)
+        XLO_THROW("Expecting {0} args, got {1}", nArgs, arrSize);
+
+      for (auto i = 0u; i < arrSize; ++i)
       {
-        rangeConversions.emplace_back();
-        callExcelRaw(msxll::xlCoerce, &rangeConversions.back(), params[i]);
-        params[i] = &rangeConversions.back();
+        xllArgs.emplace_back(COM::variantToExcelObj(pData[i], func.info()->args[i].allowRange));
+        argPtrs.emplace_back(&xllArgs.back());
       }
     }
-    return closure.func(*closure.info, params);
+
+    auto result = func.call(&argPtrs[0]);
+
+    *returnVal = COM::excelObjToVariant(*result);
+
+    if ((result->xltype & msxll::xlbitDLLFree) != 0)
+      delete result;
+
+    return S_OK;
   }
   catch (const std::exception& e)
   {
-    return returnValue(e);
+    *returnVal = COM::stringToVariant(e.what());
+    return E_FAIL;
   }
 }
-
-XLO_ENTRY_POINT(XLOIL_XLOPER*) xloil_local_0(const ExcelObj& workbook, const ExcelObj& function)
-{
-  return doFunc(workbook, function);
-}
-XLO_REGISTER_FUNC(xloil_local_0).macro().hidden();
-
-#define XLOIL_LOCAL(N, impl, name) \
-  XLO_ENTRY_POINT(ExcelObj*) name##_##N( \
-    const ExcelObj& workbook, const ExcelObj& function, \
-    BOOST_PP_ENUM_PARAMS(N, const ExcelObj& arg) )\
-  { \
-    return impl(workbook, function, BOOST_PP_ENUM_PARAMS(N, &arg)); \
-  } \
-  XLO_REGISTER_FUNC(name##_##N).macro().hidden()
-
-#define RPT(z, N, data) XLOIL_LOCAL(N, doFunc, xloil_local);
-BOOST_PP_REPEAT_FROM_TO(1, 28, RPT, data)
-#undef RPT
-
-#define RPT(z, N, data) XLOIL_LOCAL(N, doFuncRange, xloil_local_range).allowRange();
-BOOST_PP_REPEAT_FROM_TO(1, 28, RPT, data)
-#undef RPT

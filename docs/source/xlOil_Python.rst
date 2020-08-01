@@ -5,7 +5,7 @@ xlOil Python
 .. toctree::
     :maxdepth: 4
     :caption: Contents
-    
+
     xlOil_Python_Example
     xlOil_Python_Module
     xlOil_Python_Jupyter
@@ -179,7 +179,6 @@ workbook. (It achieves this by creating a VBA stub to invoke them). This scoping
 can be overidden by the `xlo.func` decorator.
 
 Local functions have some limitations compared to global scope ones:
-- Max 28 arguments
 - No async or threadsafe
 - Slower due to the VBA redirect
 - Workbook must be saved as macro enabled (xlsm extension)

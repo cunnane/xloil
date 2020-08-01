@@ -55,7 +55,7 @@ namespace xloil
       , _entryPoint(entryPoint)
     {}
 
-    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
 
     std::wstring _dllName;
     std::string _entryPoint;
@@ -90,7 +90,7 @@ namespace xloil
       , _context(context)
     {}
 
-    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
 
   //TODO: private:
     std::shared_ptr<void> _context;
@@ -104,7 +104,7 @@ namespace xloil
   {
     template<> struct callback_traits<RegisterCallback> 
     { 
-      template<class T> using type = RegisterCallbackT<T>; 
+      template<class T> using type = RegisterCallbackT<T>;
     };
     template<> struct callback_traits<AsyncCallback> 
     { 
@@ -116,17 +116,22 @@ namespace xloil
   /// Constructs a FuncSpec from an std::function object which 
   /// takes <see cref="ExcelObj"/> arguments
   /// </summary>
-  class ObjectToFuncSpec : public FuncSpec
+  class LambdaFuncSpec : public FuncSpec
   {
   public:
-    ObjectToFuncSpec(
+    LambdaFuncSpec(
       const std::shared_ptr<const FuncInfo>& info,
       const ExcelFuncObject& function)
       : FuncSpec(info)
       , _function(function)
     {}
 
-    XLOIL_EXPORT virtual std::shared_ptr<RegisteredFunc> registerFunc() const;
+    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
+
+    ExcelObj* call(const ExcelObj** args) const
+    {
+      return _function(*info(), args);
+    }
 
     ExcelFuncObject _function;
   };

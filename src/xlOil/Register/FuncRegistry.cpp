@@ -460,7 +460,7 @@ namespace xloil
   namespace
   {
     ExcelObj* launchFunctionObj(
-      ObjectToFuncSpec* data, 
+      LambdaFuncSpec* data, 
       const ExcelObj** args) noexcept
     {
       try
@@ -498,7 +498,7 @@ namespace xloil
     };
 
     void launchFunctionObjAsync(
-      ObjectToFuncSpec* data, 
+      LambdaFuncSpec* data, 
       const ExcelObj* asyncHandle, 
       const ExcelObj** args) noexcept
     {
@@ -531,9 +531,9 @@ namespace xloil
     }
   }
 
-  std::shared_ptr<RegisteredFunc> ObjectToFuncSpec::registerFunc() const
+  std::shared_ptr<RegisteredFunc> LambdaFuncSpec::registerFunc() const
   {
-    auto copyThis = make_shared<ObjectToFuncSpec>(*this);
+    auto copyThis = make_shared<LambdaFuncSpec>(*this);
     if ((info()->options & FuncInfo::ASYNC) != 0)
       return AsyncCallbackSpec(info(), &launchFunctionObjAsync, copyThis).registerFunc();
     else
