@@ -11,11 +11,9 @@ namespace xloil
 {
   namespace Python
   {
-   
     namespace
     {
-      // Works like the Range.Range function in VBA which is 1-based and
-      // includes the right hand end-point
+      // Works like the Range.Range function in VBA except is zero-based
       inline auto subRange(const Range& r,
         int fromR, int fromC,
         int* toR = 0, int* toC = 0, 
@@ -25,10 +23,9 @@ namespace xloil
           XLO_THROW("Must specify end row or number of rows");
         if (!(toC || nCols))
           XLO_THROW("Must specify end column or number of columns");
-        --fromR; --fromC; // Correct for 1-based indexing
         return r.range(fromR, fromC,
-          toR ? *toR : fromR + *nRows,
-          toC ? *toC : fromC + *nCols);
+          toR ? *toR : fromR + (int)*nRows,
+          toC ? *toC : fromC + (int)*nCols);
       }
 
       // Works like the Range.Cell function in VBA which is 1-based
@@ -55,6 +52,7 @@ namespace xloil
 
       void rangeClear(Range& r)
       {
+        // Release gil - see reasons above
         py::gil_scoped_release lose_gil;
         r.clear();
       }
@@ -62,9 +60,9 @@ namespace xloil
       py::object getItem(const Range& range, pybind11::tuple loc)
       {
         size_t fromRow, fromCol, toRow, toCol;
-        bool single = sliceHelper(loc, range.nRows(), range.nCols(), 
+        bool singleValue = sliceHelper(loc, range.nRows(), range.nCols(), 
           fromRow, fromCol, toRow, toCol);
-        return single 
+        return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
           : py::cast(range.range(fromRow, fromCol, toRow, toCol));
       }
