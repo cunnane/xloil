@@ -114,7 +114,8 @@ namespace xloil
       callExcelRaw(msxll::xlSet, nullptr, &_obj);
     }
 
-    const ExcelObj& asExcelObj() const { return _obj; }
+    operator const ExcelObj& () const { return _obj; }
+    operator ExcelObj && () { return std::move(_obj); }
 
   private:
     ExcelObj _obj;

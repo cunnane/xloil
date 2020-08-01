@@ -154,7 +154,6 @@ namespace xloil
           builder(i, j) = elementConvert(pData[j * nRows + i]);
         }
       
-
       return builder.toExcelObj();
     }
 
@@ -172,15 +171,15 @@ namespace xloil
         Excel::Range* pRange;
         if (S_OK != variant.pdispVal->QueryInterface(&pRange))
           XLO_THROW("Unexpected variant type: could not convert to Range");
-
-        // OK to release here as variant is keeping the IDispatch alive
+        
+        auto xlRef = ExcelRef(pRange->GetAddress(true, true, Excel::xlA1));
         variant.pdispVal->Release();
 
         if (allowRange)
-          return ExcelRef(pRange->GetAddress(true, true, Excel::xlA1))
-            .asExcelObj();
+          return xlRef; // Should use move conversion
         else
-          return variantToExcelObj(pRange->Value2, false);
+          // Probably faster than variantToExcelObj(pRange->Value2). Check?
+          return xlRef.value(); 
       }
       case VT_ERROR:
         return variant.scode == DISP_E_PARAMNOTFOUND
