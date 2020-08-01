@@ -52,7 +52,7 @@ namespace xloil
     (void)numPtrArgs;
     return string(name);
 #else
-    return fmt::format("_{0}@{1}", sizeof(void*) * numPtrArgs);
+    return fmt::format("_{0}@{1}", name, sizeof(void*) * numPtrArgs);
 #endif // _WIN64
   }
 
@@ -322,7 +322,8 @@ namespace xloil
     // won't be registered as an Excel func.
     // https://stackoverflow.com/questions/15343282/how-to-remove-an-excel-udf-programmatically
 
-    // TODO: mangle name for 32 bits!!
+    // SetExcel12EntryPt is automatically created by xlcall.cpp, but is only used for
+    // clusters, which we aren't supporting at this current time.
     auto arbitraryFunction = decorateCFunction("SetExcel12EntryPt", 1);
     auto[tempRegId, retVal] = tryCallExcel(
       xlfRegister, FunctionRegistry::get().theCoreDllName, arbitraryFunction.c_str(), "I", name, nullptr, 2);

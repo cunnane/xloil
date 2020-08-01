@@ -453,7 +453,7 @@ namespace xloil
         return E_NOTIMPL;
       }
 
-      HRESULT QueryInterface(REFIID riid, void** ppv)
+      HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppv)
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == __uuidof(IClassFactory))

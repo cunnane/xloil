@@ -45,7 +45,7 @@ namespace xloil
         bounds[1].lLbound = 0;
         bounds[1].cElements = nCols;
 
-        auto array = unique_ptr<SAFEARRAY, HRESULT(*)(SAFEARRAY*)> (
+        auto array = unique_ptr<SAFEARRAY, HRESULT(__stdcall *)(SAFEARRAY*)> (
           SafeArrayCreate(VT_VARIANT, 2, bounds), SafeArrayDestroy);
 
         VARIANT* data = nullptr;
@@ -120,9 +120,9 @@ namespace xloil
     template<>
     size_t stringLength<BSTR>(BSTR* pData, size_t nRows, size_t nCols)
     {
-      auto len = 0;
-      for (auto i = 0; i < nRows; i++)
-        for (auto j = 0; j < nCols; j++)
+      auto len = 0u;
+      for (auto i = 0u; i < nRows; i++)
+        for (auto j = 0u; j < nCols; j++)
           len += wcslen(pData[i * nCols + j]);
       return len;
     }
@@ -130,8 +130,8 @@ namespace xloil
     size_t stringLength<VARIANT>(VARIANT* pData, size_t nRows, size_t nCols)
     {
       auto len = 0;
-      for (auto i = 0; i < nRows; i++)
-        for (auto j = 0; j < nCols; j++)
+      for (auto i = 0u; i < nRows; i++)
+        for (auto j = 0u; j < nCols; j++)
         {
           auto& p = pData[i * nCols + j];
           if (p.vt == VT_BSTR)
@@ -148,8 +148,8 @@ namespace xloil
       ExcelArrayBuilder builder(
         (ExcelObj::row_t)nRows, (ExcelObj::col_t)nCols, strLength);
 
-      for (auto i = 0; i < nRows; i++)
-        for (auto j = 0; j < nCols; j++)
+      for (auto i = 0u; i < nRows; i++)
+        for (auto j = 0u; j < nCols; j++)
         {
           builder(i, j) = elementConvert(pData[j * nRows + i]);
         }
@@ -178,7 +178,7 @@ namespace xloil
         if (allowRange)
           return xlRef; // Should use move conversion
         else
-          // Probably faster than variantToExcelObj(pRange->Value2). Check?
+          // Probably faster than variantToExcelObj(pRange->Value2).
           return xlRef.value(); 
       }
       case VT_ERROR:

@@ -67,12 +67,15 @@ namespace xloil
 }
 
 using namespace xloil;
-XLO_ENTRY_POINT(int) localFunctionEntryPoint(
+int __stdcall localFunctionEntryPoint(
   const VARIANT* workbookName,
   const VARIANT* funcName,
   VARIANT* returnVal,
   const VARIANT* args)
 {
+  // This ensures the function is exported undecorated in x86 and x64
+#pragma comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)
+
   try
   {
     VariantClear(returnVal);

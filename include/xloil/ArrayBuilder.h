@@ -39,7 +39,7 @@ namespace xloil
       {
         new (_buffer) ExcelObj(CellError::NA);
         auto* source = _buffer;
-        for (auto i = 1; i < _nObjects; ++i)
+        for (auto i = 1u; i < _nObjects; ++i)
           memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
       }
 

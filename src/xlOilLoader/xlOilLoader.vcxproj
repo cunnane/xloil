@@ -64,10 +64,12 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Debug.props" />
+    <Import Project="..\x86.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\Release.props" />
+    <Import Project="..\x86.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -109,8 +111,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>xlOilAddin.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -130,7 +131,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
-      <ModuleDefinitionFile>xlOil.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>xlOilAddin.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -154,7 +155,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
-      <ModuleDefinitionFile>xlOil.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>xlOilAddin.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -178,8 +179,7 @@
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
+      <ModuleDefinitionFile>xlOilAddin.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -195,7 +195,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="xlOil.def" />
+    <None Include="xlOilAddin.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

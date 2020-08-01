@@ -108,7 +108,7 @@ namespace xloil
       processQueue(self, self._windowQueue);
     }
 
-    static void processAPCQueue(ULONG_PTR ptr)
+    static void __stdcall processAPCQueue(ULONG_PTR ptr)
     {
       auto& self = *(Messenger*)ptr;
       processQueue(self, self._apcQueue);

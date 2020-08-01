@@ -1,10 +1,11 @@
-#include <xloilHelpers/WindowsSlim.h>
+
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
-#include <xloil/Loaders/EntryPoint.h>
-#include <xloil/ExportMacro.h>
-#include <xloil/ExcelCall.h>
+#include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/ExportMacro.h>
+#include <xlOil/ExcelCall.h>
+#include <xlOil/WindowsSlim.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 #include <delayimp.h>

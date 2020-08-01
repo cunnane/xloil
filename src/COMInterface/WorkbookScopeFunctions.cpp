@@ -18,7 +18,7 @@ namespace xloil
 {
   namespace COM
   {
-    // TODO: handle mangling in 32-bit
+    
     bool checkRegistryKeys()
     {
       auto excelVersion = Core::theExcelVersion();
@@ -101,7 +101,8 @@ namespace xloil
 
           // We write:
           // Public Function name(Optional arg0, Optional arg1,...)
-          // name = Application.Run("xloil_local_N", workbook, name, arg0, arg1, ...)
+          // Dim args: args = Array(arg0, arg1, ...)
+          // localFunctionEntryPoint workbook, name, name, args
           // End Function
           auto& name = registeredFuncs[i]->name();
 
@@ -109,20 +110,10 @@ namespace xloil
           writer.write(fmt::format(L"Dim args: args=Array({0})", args));
           writer.write(fmt::format(L"localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
             name, workbookName, name));
-          //writer.write(fmt::format(L"{0} = ret", name));
           writer.write(L"End Function");
-
-          // registry[name] = registeredFuncs[i];
         }
       }
       XLO_RETHROW_COM_ERROR;
-    }
-    void writeLocalFunctionHelp(
-      const wchar_t* workbookName,
-      const vector<shared_ptr<const FuncSpec>>& registeredFuncs)
-    {
-      auto workbook = excelApp().Workbooks->GetItem(_variant_t(workbookName));
-
     }
   }
 }

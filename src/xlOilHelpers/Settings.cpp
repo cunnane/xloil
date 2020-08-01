@@ -1,5 +1,5 @@
 #include "Settings.h"
-#include <xloilHelpers/StringUtils.h>
+#include <xlOil/StringUtils.h>
 #include <xloilHelpers/Environment.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
