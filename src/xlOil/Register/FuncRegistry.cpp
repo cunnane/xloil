@@ -2,7 +2,7 @@
 #include <xlOil/Register.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Events.h>
-#include "PEHelper.h"
+#include <xlOilHelpers/PEHelper.h>
 #include <xlOil/ExcelObj.h>
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Log.h>
@@ -11,7 +11,7 @@
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Async.h>
 #include <xlOil/Preprocessor.h>
-#include "Thunker.h"
+#include <xlOilHelpers/Thunker.h>
 #include <unordered_set>
 #include <codecvt>
 #include <future>
@@ -66,7 +66,9 @@ namespace xloil
 
     // TODO: We can allocate wipthin our DLL's address space by using
     // NtAllocateVirtualMemory or VirtualAlloc with MEM_TOP_DOWN
-    static char theCodeCave[16384 * 2];
+    // Currently this gives space for about 1500 thunks
+    static constexpr auto theCaveSize = 16384 * 8u;
+    static char theCodeCave[theCaveSize];
 
     /// <summary>
     /// The next available spot in our code cave
@@ -85,9 +87,13 @@ namespace xloil
 
       const size_t codeBufferSize = sizeof(theCodeCave) + theCodeCave - theCodePtr;
       size_t codeBytesWritten;
+#ifdef _WIN64
+      auto* thunk = buildThunkLite(callback, contextData, numArgs,
+        theCodePtr, codeBufferSize, codeBytesWritten);
+#else
       auto* thunk = buildThunk(callback, contextData, numArgs,
         theCodePtr, codeBufferSize, codeBytesWritten);
-
+#endif
       XLO_ASSERT(thunk == (void*)theCodePtr);
       theCodePtr += codeBytesWritten;
       return std::make_pair(thunk, codeBytesWritten);
@@ -288,7 +294,7 @@ namespace xloil
     bool _freeThunksAvailable;
   };
 
-  char FunctionRegistry::theCodeCave[16384 * 2];
+  char FunctionRegistry::theCodeCave[theCaveSize];
   char* FunctionRegistry::theCodePtr = theCodeCave;
 
 

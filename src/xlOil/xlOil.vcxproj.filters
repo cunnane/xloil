@@ -21,12 +21,6 @@
     <ClCompile Include="Register\LocalFunctions.cpp">
       <Filter>Register</Filter>
     </ClCompile>
-    <ClCompile Include="Register\PEHelper.cpp">
-      <Filter>Register</Filter>
-    </ClCompile>
-    <ClCompile Include="Register\Thunker.cpp">
-      <Filter>Register</Filter>
-    </ClCompile>
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelObj.cpp" />
     <ClCompile Include="Date.cpp" />
@@ -54,12 +48,6 @@
       <Filter>Register</Filter>
     </ClInclude>
     <ClInclude Include="Register\LocalFunctions.h">
-      <Filter>Register</Filter>
-    </ClInclude>
-    <ClInclude Include="Register\PEHelper.h">
-      <Filter>Register</Filter>
-    </ClInclude>
-    <ClInclude Include="Register\Thunker.h">
       <Filter>Register</Filter>
     </ClInclude>
     <ClInclude Include="Loaders\EntryPoint.h">

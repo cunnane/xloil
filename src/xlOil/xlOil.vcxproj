@@ -70,33 +70,9 @@
   <PropertyGroup>
     <IncludePath>$(SolutionDir)external\Excel2013SDK\INCLUDE;$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <PreprocessorDefinitions>ASMJIT_STATIC;XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -139,8 +115,6 @@
     <ClInclude Include="Loaders\AddinLoader.h" />
     <ClInclude Include="Register\FuncRegistry.h" />
     <ClInclude Include="Register\LocalFunctions.h" />
-    <ClInclude Include="Register\PEHelper.h" />
-    <ClInclude Include="Register\Thunker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Async.cpp" />
@@ -161,8 +135,6 @@
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Register\FuncRegistry.cpp" />
     <ClCompile Include="Register\LocalFunctions.cpp" />
-    <ClCompile Include="Register\PEHelper.cpp" />
-    <ClCompile Include="Register\Thunker.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
     <ClCompile Include="ThreadControl.cpp" />
     <ClCompile Include="XlCall.cpp" />

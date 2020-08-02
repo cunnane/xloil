@@ -39,6 +39,24 @@ namespace xloil
     size_t bufferSize,
     size_t& codeSize);
 
+#ifdef _WIN64
+  /// <summary>
+  /// A hand optimised version of buildThunk which runs faster and reduces final binary
+  /// size by ~80kb by avoiding the use of asmjit's compiler. The resulting ASM code is
+  /// faster, avoiding spills, particuarly for async functions and when number of args
+  /// exceeds 5.
+  /// (Currently only available under 64-bit)
+  /// </summary>
+  template <class TCallback>
+  void* buildThunkLite(
+    TCallback callback,
+    const void* data,
+    const size_t numArgs,
+    char* codeBuffer,
+    size_t bufferSize,
+    size_t& codeSize);
+#endif
+
   /// <summary>
   /// Patches the context data object in a given thunk to a new location.
   /// @see buildThunk.

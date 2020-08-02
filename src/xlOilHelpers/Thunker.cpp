@@ -2,6 +2,7 @@
 #include <xlOil/Register.h>
 #include <xlOil/Throw.h>
 #include <xlOil/Log.h>
+#define ASMJIT_STATIC
 #include <asmjit/src/asmjit/asmjit.h>
 #include <string>
 #include <algorithm>
@@ -54,30 +55,103 @@ namespace
 
     return kErrorOk;
   }
-
-  class SimpleErrorHandler : public asmjit::ErrorHandler {
-  public:
-    SimpleErrorHandler() : _err(asmjit::kErrorOk) {}
-    virtual void handleError(asmjit::Error err, const char* message, asmjit::BaseEmitter* origin) {
-      ASMJIT_UNUSED(origin);
-      _err = err;
-      _message = message;
-    }
-
-    asmjit::Error _err;
-    string _message;
-  };
-
 }
+
 namespace xloil
 {
-  void createArrayOfArgsOnStack(asmjit::x86::Compiler& cc, x86::Mem& stackPtr, size_t startArg, size_t endArg)
+  // Saves 80kb in the release build :)
+  void handRoll64(CodeHolder* code,
+    void* callback,
+    const void* data,
+    size_t numArgs,
+    bool async)
+  {
+    asmjit::x86::Assembler asmb(code);
+
+    // We will need some local stack to create the array of xloper* which 
+    // is sent to the callback
+    // For async, we had additional arg for return handle
+    if (async)
+      ++numArgs;
+    constexpr auto ptrSize = (int32_t)sizeof(void*);
+    const auto stackSize = (unsigned)numArgs * ptrSize;
+
+    FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
+    const auto ptrType = Type::IdOfT<int*>::kTypeId;
+
+    for (size_t i = 0; i < numArgs; i++)
+      signature.addArg(ptrType);
+
+    // Normal callbacks should return, async ones will not
+    signature.setRet(async ? Type::kIdVoid : ptrType);
+    
+    FuncDetail func;
+    func.init(signature);
+
+    // The frame emits the correct function prolog & epilog
+    FuncFrame frame;
+    frame.init(func);
+    frame.setLocalStackSize(stackSize);
+    // Not sure why the spill zone size isn't included automatically
+    frame.updateCallStackSize(func.callConv().spillZoneSize()); 
+    frame.finalize();
+    asmb.emitProlog(frame);
+    
+    // See the help for FuncFrame to understand why these stack offsets work
+    x86::Mem localStack(x86::rsp, frame.localStackOffset());
+    x86::Mem stackArgs(x86::rsp, frame.stackAdjustment() + func.argStackSize());
+
+    // For an async callback, the first arg in rcx will be the handle. We don't 
+    // add this to the argument array
+    const auto startArg = async ? 1 : 0;
+    
+    // Under x64 Microsoft calling convention the args will be in rcx, rdx, r8, r9
+    // with the remainder on the stack. rax is considered volatile and we clobber it
+    for (auto i = startArg; i < numArgs; ++i)
+    {
+      const auto offset = (ptrSize * (i - (uint32_t)startArg));
+      auto stackPos = localStack.cloneAdjusted(offset);
+      // TODO: this would be nicer as a cascading switch, but it won't write faster code!
+      switch (i + 1)
+      {
+      case 1:
+        asmb.mov(stackPos, x86::rcx); break;
+      case 2:
+        asmb.mov(stackPos, x86::rdx); break;
+      case 3:
+        asmb.mov(stackPos, x86::r8); break;
+      case 4:
+        asmb.mov(stackPos, x86::r9); break;
+      default:
+        asmb.mov(x86::rax, stackArgs.cloneAdjusted((i - 4) * ptrSize));
+        asmb.mov(stackPos, x86::rax);
+      }
+    }
+
+    // Setup arguments for callback
+    if (async)
+    {
+      asmb.mov(x86::rdx, x86::rcx);
+      asmb.lea(x86::r8, localStack);
+    }
+    else
+      asmb.lea(x86::rdx, localStack);
+    asmb.mov(x86::rcx, imm(data));
+
+    asmb.call(imm((void*)callback));
+
+    // We just pass on the value returned by the callback
+    asmb.emitEpilog(frame);
+  }
+
+  void createArrayOfArgsOnStack(
+    asmjit::x86::Compiler& cc, x86::Mem& stackPtr, size_t startArg, size_t endArg)
   {
     const size_t numArgs = endArg - startArg;
     if (numArgs == 0)
       return;
 
-    const auto ptrSize = (int32_t)sizeof(void*);
+    constexpr auto ptrSize = (int32_t)sizeof(void*);
 
     // Get some space on the stack
     stackPtr = cc.newStack((unsigned)numArgs * ptrSize, alignof(void*));
@@ -104,16 +178,8 @@ namespace xloil
     x86::Mem argsPtr;
     createArrayOfArgsOnStack(cc, argsPtr, 0, numArgs);
     
-    // For an x64 call, there are only two arguments and we explictly place 
-    // them in rcx and rdx as per the calling convention.
-    //
-    // We do this manually as asmjit's register allocator is sub-optimal
-    // and will generate additional movs and spills.
-    //
-#ifdef _WIN64
-    cc.mov(x86::rcx, imm(data));
-    cc.lea(x86::rdx, argsPtr);
-#endif
+    x86::Gp args = cc.newUIntPtr("arg2");
+    cc.lea(args, argsPtr);
 
     // Setup the signature to call the target callback, this is not a stdcall
     // that was only for the call from Excel to xlOil
@@ -121,17 +187,8 @@ namespace xloil
       cc.call(imm((void*)callback), 
         FuncSignatureT<ExcelObj*, const void*, const ExcelObj**>(CallConv::kIdHost)));
 
-    // For x86 we rely on asmjit to handle the calling convention and
-    // register allocation.
-    //
-#ifndef _WIN64 
-    x86::Gp arg1 = cc.newUIntPtr("arg1");
-    x86::Gp arg2 = cc.newUIntPtr("arg2");
-    cc.mov(arg1, imm(data));
-    cc.lea(arg2, argsPtr);
-    call->setArg(0, arg1);
-    call->setArg(1, arg2);
-#endif
+    call->setArg(0, imm(data));
+    call->setArg(1, args);
 
     // Allocate a register for the return value, in fact 
     // this is a no-op as we just return the callback value
@@ -157,44 +214,45 @@ namespace xloil
     x86::Mem argsPtr;
     x86::Gp handle = cc.newUIntPtr("handle");
 
-    cc.setArg(0, handle); // Will be rcx on x64
+    cc.setArg(0, handle);
     createArrayOfArgsOnStack(cc, argsPtr, 1, numArgs + 1);
-
-    // For an x64 call, there are only three arguments and we explictly  
-    // place them in rcx, rdx and r8 as per the calling convention.
-    //
-    // We do this explictly as asmjit's register allocator seems to get
-    // confused and spill and mov things all over.
-    //
-#ifdef _WIN64
-    cc.mov(x86::rdx, handle);
-    cc.mov(x86::rcx, imm(data));
-    cc.lea(x86::r8, argsPtr);
-#endif
 
 #pragma warning(disable: 4189) // "Local variable is initialized but not referenced"
 
+    x86::Gp args = cc.newUIntPtr("args");
+    cc.lea(args, argsPtr);
+    
     // Setup the signature to call the target callback. Note the void return type
     // as the function will return it's value by invoking xlAsyncReturn.
     FuncCallNode* call(
       cc.call(imm((void*)callback),
         FuncSignatureT<void, const void*, const ExcelObj*, const ExcelObj**>(CallConv::kIdHost)));
 
-    // For x86 we rely on asmjit to handle the calling convention and
-    // register allocation.
-    //
-#ifndef _WIN64
-    call->setArg(0, handle);
-    call->setArg(1, imm(data));
-    x86::Gp args = cc.newUIntPtr("args");
-    cc.lea(args, argsPtr);
+    call->setArg(0, imm(data));
+    call->setArg(1, handle);
     call->setArg(2, args);
-#endif
 
     // No return from async, this is a no-op.
     cc.ret();
   }
 
+
+  void writeToBuffer(CodeHolder& codeHolder, char* codeBuffer, size_t bufferSize, size_t& codeSize)
+  {
+    // TODO: run compactThunks first?
+    if (codeHolder.codeSize() > bufferSize)
+      XLO_THROW("Cannot write thunk: buffer exhausted");
+
+    auto err = asmJitWriteCode((uint8_t*)codeBuffer, &codeHolder, codeSize);
+    if (err != kErrorOk)
+      XLO_THROW("Thunk write failed: {0}", DebugUtils::errorAsString(err));
+
+    // We need to get permissions to write to the code cave, since it's in the
+    // executable part of the program it won't be writeable by default.
+    DWORD dummy;
+    if (!VirtualProtect(codeBuffer, codeSize, PAGE_EXECUTE_READWRITE, &dummy))
+      XLO_THROW(writeWindowsError());
+  }
 
   template <class TCallback>
   void* buildThunk(
@@ -212,10 +270,6 @@ namespace xloil
     // Initialise place to hold code before compilation
     CodeHolder codeHolder;
     codeHolder.init(theRunTime.codeInfo());
-
-    // What does this do?
-    SimpleErrorHandler errorHandler;
-    codeHolder.setErrorHandler(&errorHandler);
 
     // Initialise JIT compiler
     x86::Compiler cc(&codeHolder);
@@ -250,25 +304,41 @@ namespace xloil
     if (err)
       XLO_THROW("Thunk compilation failed: {0}", DebugUtils::errorAsString(err));
 
-    // TODO: run compactThunks first?
-    if (codeHolder.codeSize() > bufferSize)
-      XLO_THROW("Cannot write thunk: buffer exhausted");
+    writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
 
-    err = asmJitWriteCode((uint8_t*)codeBuffer, &codeHolder, codeSize);
-    if (err != kErrorOk)
-      XLO_THROW("Thunk write failed: {0}", DebugUtils::errorAsString(err));
+    return codeBuffer;
+  }
 
-    // We need to get permissions to write to the code cave, since it's in the
-    // executable part of the program it won't be writeable by default.
-    DWORD dummy;
-    if (!VirtualProtect(codeBuffer, codeSize, PAGE_EXECUTE_READWRITE, &dummy))
-      XLO_THROW(writeWindowsError());
+  template <class TCallback>
+  void* buildThunkLite(
+    TCallback callback,
+    const void* data,
+    const size_t numArgs,
+    char* codeBuffer,
+    size_t bufferSize,
+    size_t& codeSize)
+  {
+    using namespace asmjit;
+
+    XLO_DEBUG("Building thunk with {0} arguments", numArgs);
+
+    // Initialise place to hold code before compilation
+    CodeHolder codeHolder;
+    codeHolder.init(theRunTime.codeInfo());
+
+    handRoll64(&codeHolder, (void*)callback, data, numArgs, std::is_same<TCallback, AsyncCallback>::value);
+
+    writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
+
     return codeBuffer;
   }
 
   // Explicitly instantiate buildThunk;
   template void* buildThunk<RegisterCallback>(RegisterCallback, const void*, const size_t, char*, size_t, size_t&);
   template void* buildThunk<AsyncCallback>(AsyncCallback, const void*, const size_t, char*, size_t, size_t&);
+  template void* buildThunkLite<RegisterCallback>(RegisterCallback, const void*, const size_t, char*, size_t, size_t&);
+  template void* buildThunkLite<AsyncCallback>(AsyncCallback, const void*, const size_t, char*, size_t, size_t&);
+
 
   bool patchThunkData(char* thunk, size_t thunkSize, const void* fromData, const void* toData)
   {
