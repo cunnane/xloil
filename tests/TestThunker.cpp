@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "CppUnitTest.h"
 #include <xloilHelpers/Thunker.h>
 #include <xloil/Register.h>
