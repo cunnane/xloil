@@ -182,12 +182,18 @@ Local functions have some limitations compared to global scope ones:
 - No async or threadsafe
 - Slower due to the VBA redirect
 - Workbook must be saved as macro enabled (xlsm extension)
+- No function wizard help, but CTRL+SHIFT+A to show argument names is available
 
 Another way to package python code for distribution is to create an XLL, see
 :ref:`core-distributing-addins`
 
 xlOil sets the module-level variable `_xl_this_workbook` to the workbook name in a 
 workbook module.
+
+(It is possible to use the Application.MacroOptions call to add help to the wizard, 
+identically named functions will conflict which somewhat defeats the purpose of local
+functions).
+
 
 Array Functions
 ---------------

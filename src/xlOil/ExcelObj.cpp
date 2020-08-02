@@ -638,7 +638,7 @@ namespace
       case CellError::NA:          return cellErrors[6];
       case CellError::GettingData: return cellErrors[7];
       }
-      XLO_THROW("Bad thing happened");
+      XLO_THROW("Unexpected CellError type");
     }
     const ExcelObj& EmptyStr()
     {
@@ -651,7 +651,7 @@ namespace
 namespace
 {
   // Boost hash_combine
-  inline void hash_combine(size_t& seed) { }
+  inline void hash_combine(size_t& /*seed*/) { }
 
   template <typename T, typename... Rest>
   inline void hash_combine(size_t& seed, const T& v, Rest... rest) {
