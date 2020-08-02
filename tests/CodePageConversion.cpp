@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "CppUnitTest.h"
 #include <xlOil/StringUtils.h>
 #include <locale>

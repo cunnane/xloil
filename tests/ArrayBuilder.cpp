@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "CppUnitTest.h"
 #include <xlOil/ArrayBuilder.h>
 #include <xlOil/ExcelArray.h>

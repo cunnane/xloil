@@ -2,14 +2,11 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="CodePageConversion.cpp" />
-    <ClCompile Include="pch.cpp" />
     <ClCompile Include="ArrayBuilder.cpp" />
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="PString.cpp" />
     <ClCompile Include="TestExcelObj.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="pch.h" />
+    <ClCompile Include="TestThunker.cpp" />
   </ItemGroup>
 </Project>
