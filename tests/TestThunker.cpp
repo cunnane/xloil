@@ -56,14 +56,14 @@ namespace Tests
       buildThunkLite(callback, pContext, 7, buffer2, bufSize, codeSize);
 
       {
-        context = 4;
+        context = 5;
 
         typedef ExcelObj* (*SevenArgs)(ExcelObj*, ExcelObj*, ExcelObj*, ExcelObj*, ExcelObj*, ExcelObj*, ExcelObj*);
-        auto result1 = ((SevenArgs)(void*)buffer1)(&arg1, &arg2, &arg1, &arg2, &arg1, &arg2, &arg1);
-        auto result2 = ((SevenArgs)(void*)buffer2)(&arg1, &arg2, &arg1, &arg2, &arg1, &arg2, &arg1);
+        auto result1 = ((SevenArgs)(void*)buffer1)(&arg1, &arg1, &arg1, &arg1, &arg1, &arg2, &arg1);
+        auto result2 = ((SevenArgs)(void*)buffer2)(&arg1, &arg1, &arg1, &arg1, &arg1, &arg2, &arg1);
 
-        Assert::IsTrue(*result1 == arg1);
-        Assert::IsTrue(*result2 == arg1);
+        Assert::IsTrue(*result1 == arg2);
+        Assert::IsTrue(*result2 == arg2);
       }
 
       buildThunk    (asyncCallback, pContext, 3, buffer1, bufSize, codeSize);

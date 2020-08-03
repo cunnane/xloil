@@ -68,16 +68,13 @@ namespace xloil
   {
     asmjit::x86::Assembler asmb(code);
 
-    // We will need some local stack to create the array of xloper* which 
-    // is sent to the callback
     // For async, we had additional arg for return handle
     if (async)
       ++numArgs;
-    constexpr auto ptrSize = (int32_t)sizeof(void*);
-    const auto stackSize = (unsigned)numArgs * ptrSize;
 
+    // Build the signature of the function we are creating
     FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
-    const auto ptrType = Type::IdOfT<int*>::kTypeId;
+    constexpr auto ptrType = Type::IdOfT<int*>::kTypeId;
 
     for (size_t i = 0; i < numArgs; i++)
       signature.addArg(ptrType);
@@ -91,15 +88,27 @@ namespace xloil
     // The frame emits the correct function prolog & epilog
     FuncFrame frame;
     frame.init(func);
+
+    // We will need some local stack to create the array of xloper* which 
+    // is sent to the callback
+    constexpr auto ptrSize = (int32_t)sizeof(void*);
+    const auto stackSize = (unsigned)numArgs * ptrSize;
     frame.setLocalStackSize(stackSize);
-    // Not sure why the spill zone size isn't included automatically
+
+    // Need to allocate some spill zone for the call to the callback
     frame.updateCallStackSize(func.callConv().spillZoneSize()); 
+
     frame.finalize();
+
+    // Note we do not preserve the frame pointer as there is litte benefit
+    // in debugging the thunk
     asmb.emitProlog(frame);
     
-    // See the help for FuncFrame to understand why these stack offsets work
+    // See the help for FuncFrame to understand why these stack offsets work.
+    // There doesn't seem to be a clean way of getting to the first stack argument
+    // without manually skipping the spill zone
     x86::Mem localStack(x86::rsp, frame.localStackOffset());
-    x86::Mem stackArgs(x86::rsp, frame.stackAdjustment() + func.argStackSize());
+    x86::Mem stackArgs(x86::rsp, frame.saOffsetFromSP() + frame.spillZoneSize());
 
     // For an async callback, the first arg in rcx will be the handle. We don't 
     // add this to the argument array
@@ -131,7 +140,7 @@ namespace xloil
     // Setup arguments for callback
     if (async)
     {
-      asmb.mov(x86::rdx, x86::rcx);
+      asmb.mov(x86::rdx, x86::rcx);  // Set the async return handle
       asmb.lea(x86::r8, localStack);
     }
     else
@@ -140,7 +149,7 @@ namespace xloil
 
     asmb.call(imm((void*)callback));
 
-    // We just pass on the value returned by the callback
+    // We just pass on the value (an xloper*) returned by the callback
     asmb.emitEpilog(frame);
   }
 
