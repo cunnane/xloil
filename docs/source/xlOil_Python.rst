@@ -289,5 +289,14 @@ Examples
 Looking for xlOil functions in imported modules
 -----------------------------------------------
 
-To tell xlOil to look for functions in a python module use ``xloil.scan_module(name)``. xlOil will
-import ``name`` if required, then look for decorated functions to register.
+To tell xlOil to look for functions in a python module use ``xloil.scan_module(name)``. 
+xlOil will import ``name`` if required, then look for decorated functions to register.
+
+
+xloPyLoad: import and scan a python module (worksheet function)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. function:: xloPyLoad(ModuleName)
+
+    Imports the specifed python module and scans it for xloil functions by calling
+    ``xloil.scan_module(name)``

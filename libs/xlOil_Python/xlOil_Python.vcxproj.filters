@@ -16,7 +16,6 @@
       <Filter>package</Filter>
     </None>
     <None Include="package\setup.py" />
-    <None Include="package\xloil\shadow_core.py" />
     <None Include="package\xloil\xloil.py">
       <Filter>package</Filter>
     </None>
@@ -26,10 +25,9 @@
     <None Include="package\xloil\excelfuncs.py">
       <Filter>package</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="package\xloil\__init__.py">
+    <None Include="package\xloil\__init__.py" />
+    <None Include="package\xloil\shadow_core.py">
       <Filter>package</Filter>
-    </CopyFileToFolders>
+    </None>
   </ItemGroup>
 </Project>
