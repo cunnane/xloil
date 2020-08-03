@@ -166,10 +166,15 @@ namespace xloil
     }
     catch (const ComBusyException& e)
     {
-      if (0 == _nRetries--)
+      if (--_nRetries < 0)
         _promise->set_exception(make_exception_ptr(e));
-      Sleep(_waitTime);
-      enqueue(shared_from_this());
+      else
+      {
+        Sleep(_waitTime);
+        // Wait a little longer next time
+        _waitTime += 200;
+        enqueue(shared_from_this());
+      }
     }
     catch (const std::exception& e) // what about SEH?
     {
