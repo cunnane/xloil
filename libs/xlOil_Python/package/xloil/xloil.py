@@ -608,7 +608,8 @@ try:
                 return df
         
             raise Exception(f"Unsupported type: {type(x)!r}")
-finally:
+
+except ImportError:
     pass
 
 

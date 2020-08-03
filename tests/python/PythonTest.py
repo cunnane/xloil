@@ -22,7 +22,7 @@ def pySum(x, y, z):
 @xlo.func
 def pySumNums(x: float, y: float, a: int = 2, b: int = 3) -> float:
 	return x * a + y * b
-
+    
 #
 # The registered function name can be overriden as can the doc-string.
 # The 'group' argument specifes a category of functions in Excel's 
@@ -37,9 +37,9 @@ def pySumNums(x: float, y: float, a: int = 2, b: int = 3) -> float:
 def pyTest1(x):
     '''
     Long description, too big for function wizard, which is actually limited
-    to 255 chars, presumably due to an oversight when increasing the string
-    length limit to 32k in the XLL interface in Excel 2010. Strange it hasn't
-    been fixed yet....
+    to 255 chars, presumably because, despite it being quite central to Excel
+    the function wizard hasn't been improved in 20 years.... The icons on the
+    other hand...
     '''
     return x
 
@@ -321,7 +321,18 @@ import sys
 def pysyspath():
     return sys.path
 
+#
+# Threads
+# 
+import numpy as np
+import threading
 
+@xlo.func(local=False, threaded=True)
+def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> float:
+    # Do something numpy intensive to allow thread switching
+    np.sum(np.ones((a, b)) * x ** (np.ones((u, v)) / y))
+    return threading.get_ident()
+    
 #--------------------------------
 # Custom argument type converters
 #---------------------------------
@@ -347,36 +358,40 @@ def pyTestCustomConv(x: arg_doubler):
 # Pandas Dataframes
 #-------------------
 #
-# xlo.PDFrame converts a block to a pandas DataFrame. The block should be
-# formatted as a table with data in columns and a row of column headings
-# if the headings parameter is set
-#
-@xlo.func(args={'df': "Data to be read as a pandas dataframe"})
-def pyTestDFrame(df: xlo.PDFrame(headings=True)):
-    return xlo.cache.add(df)
 
-#
-# We can tell xlo.PDFrame to set the datafram index to a specified column 
-# name. If you want the index column name to be dynamic, you'll need to
-# drop the index param and call DataFrame.set_index yourself.
-#
-@xlo.func
-def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
-    return xlo.cache(df)
+try:
+    # xlo.PDFrame converts a block to a pandas DataFrame. The block should be
+    # formatted as a table with data in columns and a row of column headings
+    # if the headings parameter is set
+    #
+    @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
+    def pyTestDFrame(df: xlo.PDFrame(headings=True)):
+        return xlo.cache.add(df)
 
-#
-# This function tests that we can fetch data from the frames created by the
-# previous functions
-#
-@xlo.func
-def pyTestFrameFetch(df, index=None, col_name=None):
-    if index is not None:
-        if col_name is not None:
-            return df.loc[index, col_name]
+    #
+    # We can tell xlo.PDFrame to set the datafram index to a specified column 
+    # name. If you want the index column name to be dynamic, you'll need to
+    # drop the index param and call DataFrame.set_index yourself.
+    #
+    @xlo.func
+    def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
+        return xlo.cache(df)
+
+    #
+    # This function tests that we can fetch data from the frames created by the
+    # previous functions
+    #
+    @xlo.func
+    def pyTestFrameFetch(df, index=None, col_name=None):
+        if index is not None:
+            if col_name is not None:
+                return df.loc[index, col_name]
+            else:
+                return df.loc[index].values
         else:
-            return df.loc[index].values
-    else:
-        return df[col_name]
+            return df[col_name]
+except ImportError:
+    pass
 
 #-----------------
 # Event handling 
@@ -419,3 +434,4 @@ def event_stopPrinting(wbName, cancel):
 #
 xlo.event.AfterCalculate += event_writeTimeToA1
 xlo.event.WorkbookBeforePrint += event_stopPrinting
+
