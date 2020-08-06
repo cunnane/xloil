@@ -174,6 +174,7 @@
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="ExcelTypeLib.h" />
+    <ClInclude Include="ClassFactory.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />

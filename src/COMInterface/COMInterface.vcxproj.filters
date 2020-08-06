@@ -9,6 +9,7 @@
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="ComEventSink.h" />
     <ClInclude Include="RtdManager.h" />
+    <ClInclude Include="ClassFactory.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
