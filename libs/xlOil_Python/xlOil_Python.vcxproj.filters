@@ -12,22 +12,29 @@
     <None Include="package\README.md">
       <Filter>package</Filter>
     </None>
-    <None Include="package\xloil\command_line.py">
-      <Filter>package</Filter>
-    </None>
     <None Include="package\setup.py" />
-    <None Include="package\xloil\xloil.py">
+    <None Include="package\xloil\pandas.py">
       <Filter>package</Filter>
     </None>
-    <None Include="package\xloil\jupyter.py">
-      <Filter>package</Filter>
-    </None>
-    <None Include="package\xloil\excelfuncs.py">
-      <Filter>package</Filter>
-    </None>
-    <None Include="package\xloil\__init__.py" />
     <None Include="package\xloil\shadow_core.py">
       <Filter>package</Filter>
     </None>
+    <None Include="package\xloil\xloil.py">
+      <Filter>package</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="package\xloil\__init__.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\command_line.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\excelfuncs.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\jupyter.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

@@ -53,11 +53,51 @@ namespace xloil
       }
     };
 
+    py::object cannotConvertException;
+
+    class CustomReturn : public IPyToExcel
+    {
+    private:
+      py::object _callable;
+    public:
+      CustomReturn(py::object&& callable)
+        : _callable(callable)
+      {}
+      virtual ExcelObj operator()(const PyObject& pyObj) const
+      {
+        // Use raw C API for extra speed as this code is on a critical path
+        auto p = (PyObject*)&pyObj;
+        auto args = PyTuple_New(1);
+        PyTuple_SET_ITEM(args, 0, p);
+        Py_INCREF(p); // SetItem steals a reference
+        auto result = PyObject_CallObject(_callable.ptr(), args);
+        Py_DECREF(args);
+        if (!result)
+        {
+          auto error = PyErr_Occurred();
+          if (!PyErr_GivenExceptionMatches(error, cannotConvertException.ptr()))
+            throw py::error_already_set();
+          PyErr_Clear();
+          return ExcelObj();
+        }
+        auto converted = PySteal<>(result);
+        return FromPyObj()(converted.ptr(), false);
+      }
+    };
+
+    class CannotConvert {};
+
     static int theBinder = addBinder([](py::module& mod)
     {
-      pybind11::class_<CustomConverter, IPyFromExcel, std::shared_ptr<CustomConverter>>
+      py::class_<CustomConverter, IPyFromExcel, std::shared_ptr<CustomConverter>>
         (mod, "CustomConverter")
         .def(py::init<py::object>(), py::arg("callable"));
+
+      py::class_<CustomReturn, IPyToExcel, std::shared_ptr<CustomReturn>>
+        (mod, "CustomReturn")
+        .def(py::init<py::object>(), py::arg("callable"));
+
+      cannotConvertException = py::exception<CannotConvert>(mod, "CannotConvert");
     });
   }
 }

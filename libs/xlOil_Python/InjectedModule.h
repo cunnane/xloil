@@ -10,6 +10,7 @@ namespace xloil
     constexpr char* const theInjectedModuleName = "xloil_core";
     PyObject* buildInjectedModule();
 
+    // TODO: these should be in their own header
     class IPyFromExcel : public IConvertFromExcel<PyObject*>
     {
     public:
@@ -32,7 +33,7 @@ namespace xloil
     /// specified type. Returns a reference to the bound class.
     /// </summary>
     template <class T>
-    auto bindFrom(pybind11::module& mod, const char* type)
+    auto bindPyConverter(pybind11::module& mod, const char* type)
     {
       // TODO: static string concat?
       return pybind11::class_<T, IPyFromExcel, std::shared_ptr<T>>
@@ -44,7 +45,7 @@ namespace xloil
     /// specified type. Returns a reference to the bound class.
     /// </summary>
     template <class T>
-    auto bindTo(pybind11::module& mod, const char* type)
+    auto bindXlConverter(pybind11::module& mod, const char* type)
     {
       return pybind11::class_<T, IPyToExcel, std::shared_ptr<T>>(mod, 
         ("From_" + std::string(type)).c_str());

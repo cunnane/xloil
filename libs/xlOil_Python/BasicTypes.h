@@ -175,19 +175,27 @@ namespace xloil
       }
     };
 
-    inline ExcelObj fromPyLong(const PyObject* obj)
+    struct FromPyLong
     {
-      return ExcelObj(PyLong_AsLong((PyObject*)obj));
-    }
-    inline ExcelObj fromPyFloat(const PyObject* obj)
+      auto operator()(const PyObject* obj) const
+      {
+        return ExcelObj(PyLong_AsLong((PyObject*)obj));
+      }
+    };
+    struct FromPyFloat
     {
-      return ExcelObj(PyFloat_AS_DOUBLE(obj));
-    }
-    inline ExcelObj fromPyBool(const PyObject* obj)
+      auto operator()(const PyObject* obj) const
+      {
+        return ExcelObj(PyFloat_AS_DOUBLE(obj));
+      }
+    };
+    struct FromPyBool
     {
-      return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
-    }
-
+      auto operator()(const PyObject* obj) const
+      {
+        return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
+      }
+    };
     struct FromPyString
     {
       template <class TCtor>
@@ -198,7 +206,16 @@ namespace xloil
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ctor(std::move(pstr));
       }
+      auto operator()(const PyObject* obj) const
+      {
+        return operator()(obj, [](auto&&... args)
+        {
+          return ExcelObj(std::forward<decltype(args)>(args)...);
+        });
+      }
     };
+
+    extern std::shared_ptr<const IPyToExcel> theCustomReturnConverter;
 
     struct FromPyObj
     {
@@ -240,7 +257,14 @@ namespace xloil
         {
           return FromPyString()(p, ctor);
         }
-        else if (PyIterable_Check(p))
+        else if (theCustomReturnConverter)
+        {
+          auto val = (*theCustomReturnConverter)(*p);
+          if (!val.isType(ExcelType::Nil))
+            return ctor(std::move(val));
+        }
+        
+        if (PyIterable_Check(p))
         {
           return ctor(nestedIterableToExcel(p));
         }
@@ -249,7 +273,7 @@ namespace xloil
           return ctor(pyCacheAdd(PyBorrow<>(p)));
         }
         else
-          return ctor(ExcelType::Nil);
+          return ctor(CellError::Value);
       }
       auto operator()(const PyObject* obj, bool useCache = true) const
       {

@@ -19,7 +19,9 @@ if importlib.util.find_spec("xloil_core") is not None:
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         register_functions, deregister_functions,
-        CustomConverter as _CustomConverter) 
+        CannotConvert, set_return_converter,
+        CustomConverter as _CustomConverter,
+        CustomReturn as _CustomReturn)
 
 else:
     from .shadow_core import *
@@ -30,7 +32,6 @@ Tag used to mark functions to register with Excel. It is added
 by the xloil.func decorator to the target func's __dict__
 """
 _META_TAG = "_xloil_func_"
-_CONVERTER_TAG = "_xloil_converter_"
 
 """
 This annotation includes all the types which can be passed from xlOil to
@@ -91,7 +92,7 @@ def _function_argspec(func):
             args.append(Arg(name, is_keywords=True))
         else: 
             raise Exception(f"Unhandled argument type for {name}")
-    return args
+    return args, sig.return_annotation
 
 
 def _get_typeconverter(type_name, from_excel=True):
@@ -99,12 +100,16 @@ def _get_typeconverter(type_name, from_excel=True):
     try:
         to_from = 'To' if from_excel else 'From'
         name = f"{to_from}_{type_name}"
-        if not hasattr(xloil_core, name):
-            name = f"{to_from}_cache"
+        #if not hasattr(xloil_core, name):
+        #    name = f"{to_from}_cache"
         return getattr(xloil_core, name)()
         
     except:
         raise Exception(f"No converter {to_from.lower()} {type_name}. Expected {name}")
+
+class _Converter:
+     _xloil_converter = None
+     _xloil_allow_range = False
 
 def converter(typ=typing.Callable, range=False):
     """
@@ -149,38 +154,41 @@ def converter(typ=typing.Callable, range=False):
     def decorate(obj):
         if inspect.isclass(obj):
 
-            class Converter(typ):
+            #
+            # The construction is a little cryptic here to support nice syntax. The
+            # target `obj` is intented to be used in a typing expresion like x: obj(...).
+            # Hence obj(...) must return something which inherits from the desired type
+            # `typ` but is also identifiable to xlOil as a converter.
+            #
+            class TypingHolder(typ):
 
                 def __init__(self):
                     pass # Keeps linter quiet
 
                 def __call__(self, *args, **kwargs):
                     instance = obj(*args, **kwargs)
-                    class Inner(typ or instance.target):
-                        _xloil_converter_ = _CustomConverter(instance)
-                        allow_range = range
-                    # This is a function which returns a class created
-                    # by a function-which-takes-a-class and is returned
-                    # from another function. Simple!
-                    return Inner
+                    class Converter(typ or instance.target, _Converter):
+                        _xloil_converter = _CustomConverter(instance)
+                        _xloil_allow_range = range
 
-            return Converter()
+                    return Converter
+
+            return TypingHolder()
 
         else:
 
-            class Converter(typ):
-                _xloil_converter_ = _CustomConverter(obj)
-                allow_range = range
+            class Converter(typ, _Converter):
+                _xloil_converter = _CustomConverter(obj)
+                _xloil_allow_range = range
 
             return Converter
 
     return decorate
 
-
 class FuncDescription:
     def __init__(self, func):
         self._func = func
-        self.args = _function_argspec(func)
+        self.args, self.return_type = _function_argspec(func)
         self.name = func.__name__
         self.help = func.__doc__
         self.is_async = False
@@ -218,10 +226,9 @@ class FuncDescription:
             # out what to return based on the Excel type
             converter = xloil_core.To_object()
             if x.typeof is not None:
-                # If it has this attr, we've already figured out the converter type
-                if hasattr(x.typeof, _CONVERTER_TAG):
-                    converter = getattr(x.typeof, _CONVERTER_TAG)
-                    info.args[i].allow_range = getattr(x.typeof, 'allow_range', False)
+                if inspect.isclass(x.typeof) and issubclass(x.typeof, _Converter):
+                    converter = x.typeof._xloil_converter
+                    info.args[i].allow_range = x.typeof._xloil_allow_range
                 elif x.typeof is AllowRange:
                     info.args[i].allow_range = True
                 elif x.typeof is ExcelValue:
@@ -232,6 +239,15 @@ class FuncDescription:
                 holder.set_arg_type_defaulted(i, converter, x.default)
             else:
                 holder.set_arg_type(i, converter)
+
+        if self.return_type is not inspect._empty:
+            ret = self.return_type
+            if issubclass(ret, _Converter):
+                holder.return_converter = _CustomReturn(ret._xloil_converter)
+            elif isinstance(x.typeof, type) and x.typeof is not object:
+                holder.return_converter = _get_typeconverter(ret.__name__, from_excel=False)
+            else:
+                pass # TODO: Ignore - warn user?
 
         holder.local = True if (self.local is None and not self.is_async) else self.local
         holder.rtd_async = self.rtd and self.is_async
@@ -525,92 +541,14 @@ class _ArrayType:
         name = f"To_Array_{element.__name__}_{dims or 2}d" 
         type_conv = getattr(xloil_core, name)(trim)
 
-        class Arr(np.ndarray):
-            _xloil_converter_ = type_conv
+        class Arr(np.ndarray, _Converter):
+            _xloil_converter = type_conv
+            _xloil_allow_range = False
 
         return Arr
         
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
 Array = _ArrayType() 
-
-
-try:
-    import pandas as pd
-
-    @converter(pd.DataFrame)
-    class PDFrame:
-        """
-        Converter which takes tables with horizontal records to pandas dataframes.
-
-        Examples
-        --------
-
-        ::
-
-            @xlo.func
-            def array1(x: xlo.PDFrame(int)):
-                pass
-
-            @xlo.func
-            def array2(y: xlo.PDFrame(float, headings=True)):
-                pass
-
-            @xlo.func
-            def array3(z: xlo.PDFrame(str, index='Index')):
-                pass
-    
-        Methods
-        -------
-
-        **PDFrame(element, headings, index)** : 
-            
-            element : type
-                Pandas performance can be improved by explicitly specifying  
-                a type. In particular, creation of a homogenously typed
-                Dataframe does not require copying the data.
-
-            headings : bool
-                Specifies that the first row should be interpreted as column
-                headings
-
-            index : various
-                Is used in a call to pandas.DataFrame.set_index()
-
-
-        """
-        def __init__(self, element=None, headings=True, index=None):
-            # TODO: use element_type!
-            self._element_type = element
-            self._headings = headings
-            self._index = index
-
-        def __call__(self, x):
-            if isinstance(x, ExcelArray):
-                df = None
-                idx = self._index
-                if self._headings:
-                    if x.nrows < 2:
-                        raise Exception("Expected at least 2 rows")
-                    headings = x[0,:].to_numpy(dims=1)
-                    data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
-                    if idx is not None and idx in data:
-                        index = data.pop(idx)
-                        idx = None
-                        df = pd.DataFrame(data, index=index)
-                    else:
-                        # This will do a copy.  The copy can be avoided by monkey
-                        # patching pandas - see stackoverflow
-                        df = pd.DataFrame(data)
-                else:
-                    df = pd.DataFrame(x.to_numpy())
-                if idx is not None:
-                    df.set_index(idx, inplace=True)
-                return df
-        
-            raise Exception(f"Unsupported type: {type(x)!r}")
-
-except ImportError:
-    pass
 
 
 def scan_module(module, workbook_name=None):
@@ -648,3 +586,26 @@ def scan_module(module, workbook_name=None):
         xloil_core.register_functions(handle, to_register)
 
     return handle
+
+class _ReturnConverters:
+
+    _converters = set()
+
+    def add(self, conv):
+        self._converters.add(conv)
+        xloil_core.set_return_converter(_CustomReturn(self))
+    
+    def remove(self, conv):
+        self._converters.remove(conv)
+        if len(self._converters) == 0:
+            xloil_core.set_return_converter(None)
+
+    def __call__(self, obj):
+        for c in self._converters:
+            try:
+                return c(obj)
+            except (xloil_core.CannotConvert):
+                continue
+        raise xloil_core.CannotConvert()
+
+return_converters = _ReturnConverters()

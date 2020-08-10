@@ -133,23 +133,39 @@
       <AdditionalDependencies>spdlog.lib;xloil.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup>
-	<PostBuildEvent>
-      <Command>XCOPY "$(ProjectDir)package\xloil" "$(TargetDir)\xloil" /S /Y</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="StubLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="package\README.md" />
     <None Include="package\setup.py" />
-    <None Include="package\xloil\excelfuncs.py" />
-    <None Include="package\xloil\xloil.py" />
-    <None Include="package\xloil\command_line.py" />
-    <None Include="package\xloil\jupyter.py" />
-    <None Include="package\xloil\__init__.py" />
-    <None Include="package\xloil\shadow_core.py" />
+    <CopyFileToFolders Include="package\xloil\excelfuncs.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\pandas.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\xloil.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\command_line.py">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\jupyter.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\__init__.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\shadow_core.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

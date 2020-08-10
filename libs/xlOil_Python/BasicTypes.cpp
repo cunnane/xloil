@@ -4,26 +4,57 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
+using std::shared_ptr;
 
 namespace xloil 
 {
   namespace Python
   {
     template <class T>
-    void declare(pybind11::module& mod, const char* type)
+    void convertPy(pybind11::module& mod, const char* type)
     {
-      bindFrom<T>(mod, type).def(py::init<>());
+      bindPyConverter<PyFromExcel<T>>(mod, type).def(py::init<>());
     }
     
+    template<class TFunc>
+    class PyFuncToXl : public IPyToExcel
+    {
+    public:
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        return TFunc()(&obj);
+      }
+    };
+
+    template <class T>
+    void convertXl(pybind11::module& mod, const char* type)
+    {
+      bindXlConverter<PyFuncToXl<T>>(mod, type).def(py::init<>());
+    }
+
+    shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;
+
+    void setReturnConverter(shared_ptr<const IPyToExcel> conv)
+    {
+      theCustomReturnConverter = conv;
+    }
+
     static int theBinder = addBinder([](py::module& mod)
     {
       // Bind converters for standard types
-      declare<PyFromExcel<PyFromInt>>(mod, "int");
-      declare<PyFromExcel<PyFromDouble>>(mod, "float");
-      declare<PyFromExcel<PyFromBool>>(mod, "bool");
-      declare<PyFromExcel<PyFromString>>(mod, "str");
-      declare<PyFromExcel<PyFromAny<>>>(mod, "object");
-      declare<PyFromExcel<PyCacheObject>>(mod, "cache");
+      convertPy<PyFromInt>(mod, "int");
+      convertPy<PyFromDouble>(mod, "float");
+      convertPy<PyFromBool>(mod, "bool");
+      convertPy<PyFromString>(mod, "str");
+      convertPy<PyFromAny<>>(mod, "object");
+      convertPy<PyCacheObject>(mod, "cache");
+
+      convertXl<FromPyLong>(mod, "int");
+      convertXl<FromPyFloat>(mod, "float");
+      convertXl<FromPyBool>(mod, "bool");
+      convertXl<FromPyString>(mod, "str");
+
+      mod.def("set_return_converter", setReturnConverter);
     });
   }
 }

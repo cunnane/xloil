@@ -140,9 +140,16 @@ namespace xloil
 
         auto[args, kwargs] = info->convertArgs(xlArgs);
 
-        static ExcelObj result; // Ok since python is single threaded
+        static ExcelObj result; // Ok since we have the GIL
         info->invoke(result, args.ptr(), kwargs.ptr());
-        return &result;
+
+        // It's not safe to return the static object if the function
+        // is being multi-threaded by Excel as we can't control when
+        // Excel will read the result.
+        if ((info->info->options & FuncInfo::THREAD_SAFE) != 0)
+          return returnValue(result);
+        else
+          return &result;
       }
       catch (const std::exception& e)
       {
@@ -349,6 +356,8 @@ namespace xloil
         ++iter;
       }
 
+      py::gil_scoped_release releaseGil;
+
       for (auto& func : funcNames)
         foundSource->deregister(func);
     }
@@ -383,6 +392,7 @@ namespace xloil
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
           .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
+          .def_readwrite("return_converter", &PyFuncInfo::returnConverter)
           .def_readwrite("local", &PyFuncInfo::isLocalFunc)
           .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync);
 

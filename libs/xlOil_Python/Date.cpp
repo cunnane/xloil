@@ -20,22 +20,33 @@ namespace xloil
       return (PyDate_CheckExact(p) || PyDateTime_CheckExact(p));
     }
 
+    ExcelObj pyDateTimeToSerial(PyObject* p)
+    {
+      auto serial = excelSerialDateFromYMDHMS(
+        PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
+        PyDateTime_DATE_GET_HOUR(p), PyDateTime_DATE_GET_MINUTE(p), PyDateTime_DATE_GET_SECOND(p),
+        PyDateTime_DATE_GET_MICROSECOND(p)
+      );
+      return ExcelObj(serial);
+    }
+
+    ExcelObj pyDateToSerial(PyObject* p)
+    {
+      auto serial = excelSerialDateFromYMD(
+        PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p));
+      return ExcelObj(serial);
+    }
+
     ExcelObj pyDateToExcel(PyObject* p)
     {
       if (PyDateTime_CheckExact(p))
-      {
-        auto serial = excelSerialDateFromYMDHMS(
-          PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
-          PyDateTime_DATE_GET_HOUR(p), PyDateTime_DATE_GET_MINUTE(p), PyDateTime_DATE_GET_SECOND(p),
-          PyDateTime_DATE_GET_MICROSECOND(p)
-        );
-        return ExcelObj(serial);
-      }
+        return ExcelObj(pyDateTimeToSerial(p));
+      else if (PyDate_CheckExact(p))
+        return ExcelObj(pyDateToSerial(p));
       else
       {
-        auto serial = excelSerialDateFromYMD(
-          PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p));
-        return ExcelObj(serial);
+        // Nil return used to indicate no conversion possible
+        return ExcelObj();
       }
     }
 
@@ -81,15 +92,26 @@ namespace xloil
         return PyFromCache::fromString(pstr);
       }
     };
-    class XlFromDate : public IConvertToExcel<PyObject>
+    class XlFromDate : public IPyToExcel
     {
     public:
-      virtual ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject& obj) const override
       {
-        return pyDateToExcel(const_cast<PyObject*>(&obj));
+        return PyDate_CheckExact(&obj)
+          ? ExcelObj(pyDateToSerial((PyObject*)&obj))
+          : ExcelObj();
       }
     };
-
+    class XlFromDateTime : public IPyToExcel
+    {
+    public:
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        return PyDateTime_CheckExact(&obj)
+          ? ExcelObj(pyDateTimeToSerial((PyObject*)&obj))
+          : ExcelObj();
+      }
+    };
     namespace
     {
       template<class T>
@@ -100,9 +122,10 @@ namespace xloil
       }
       static int theBinder = addBinder([](py::module& mod)
       {
-        bindFrom<PyFromExcel<PyFromDateTime>>(mod, "datetime").def(py::init<>());
-        bindFrom<PyFromExcel<PyFromDate<>>>(mod, "date").def(py::init<>());
-        bindTo<XlFromDate>(mod, "date").def(py::init<>());
+        bindPyConverter<PyFromExcel<PyFromDateTime>>(mod, "datetime").def(py::init<>());
+        bindPyConverter<PyFromExcel<PyFromDate<>>>(mod, "date").def(py::init<>());
+        bindXlConverter<XlFromDateTime>(mod, "datetime").def(py::init<>());
+        bindXlConverter<XlFromDate>(mod, "date").def(py::init<>());
       });
     }
   }
