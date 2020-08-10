@@ -19,6 +19,7 @@ namespace xloil
         int* toR = 0, int* toC = 0, 
         size_t* nRows = 0, size_t* nCols = 0)
       {
+        py::gil_scoped_release loseGil;
         if (!(toR || nRows))
           XLO_THROW("Must specify end row or number of rows");
         if (!(toC || nCols))
@@ -46,14 +47,14 @@ namespace xloil
         const auto val = FromPyObj()(pyval.ptr());
         // Release gil when setting values in as this may trigger calcs 
         // which call back into other python functions.
-        py::gil_scoped_release lose_gil;
+        py::gil_scoped_release loseGil;
         r = val;
       };
 
       void rangeClear(Range& r)
       {
         // Release gil - see reasons above
-        py::gil_scoped_release lose_gil;
+        py::gil_scoped_release loseGil;
         r.clear();
       }
 
