@@ -20,7 +20,7 @@ namespace xloil
     namespace
     {
       /// <summary>
-      /// This struct is designed to hold a reference to an arithemtic type so
+      /// This struct is designed to hold a reference to an arithmetic type so
       /// it can be modified in Python, otherwise arithmetic types are immutable.
       /// </summary>
       template <class T>
@@ -34,17 +34,17 @@ namespace xloil
       /// non-const ref to an arithmetic type with ArithmeticRef.
       /// </summary>
       template<class T, bool = std::is_arithmetic<std::remove_reference_t<T>>::value>
-      struct ReplaceAritmeticRef
+      struct ReplaceArithmeticRef
       {
         auto operator()(T x) const { return x; }
       };
       template<class T>
-      struct ReplaceAritmeticRef<const T&, false>
+      struct ReplaceArithmeticRef<const T&, false>
       {
         const T& operator()(const T& x) const { return x; }
       };
       template<class T>
-      struct ReplaceAritmeticRef<T&, true>
+      struct ReplaceArithmeticRef<T&, true>
       {
         ArithmeticRef<T> operator()(T& x) const {
           return ArithmeticRef<T> { x };
@@ -109,9 +109,9 @@ namespace xloil
           for (auto& h : _handlers)
           {
             auto* handler = PyWeakref_GET_OBJECT(h.ptr());
-            // See above for the purpose of ReplaceAritmeticRef
+            // See above for the purpose of ReplaceArithmeticRef
             if (handler != Py_None)
-              py::cast<py::function>(handler)(ReplaceAritmeticRef<Args>()(args)...);
+              py::cast<py::function>(handler)(ReplaceArithmeticRef<Args>()(args)...);
           }
         }
         catch (const std::exception& e)
@@ -151,7 +151,7 @@ namespace xloil
       }
 
       /// <summary>
-      /// AritmeticRef is designed to hold a reference to an arithemtic type so
+      /// ArithmeticRef is designed to hold a reference to an arithmetic type so
       /// it can be modified in Python, otherwise arithmetic types are immutable.
       /// Python doesn't allow override of the '=' operator so we have to just
       /// expose the 'value property'
