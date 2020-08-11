@@ -7,10 +7,10 @@ import os
 import asyncio
 
 def _serialise(obj):
-    return pickle.dumps(obj, protocol=0).decode('utf-8')
+    return pickle.dumps(obj, protocol=0).decode('latin1')
 
 def _deserialise(dump:str):
-    return pickle.loads(dump.encode('utf-8'))
+    return pickle.loads(dump.encode('latin1'))
 
 class MonitoredVariables:
 
@@ -127,13 +127,14 @@ class _JupyterConnection:
 
     async def connect(self):
         
+        from queue import Empty
+        
         self._client.wait_for_ready(timeout=3)
         # TODO: what if we timeout?
 
         # Flush shell channel (wait_for_ready doesn't do this for some reason), but we need it 
         # receive the shell message below
-        while True:
-            from queue import Empty
+        while True:    
             try:
                 msg = await self._client.get_shell_msg(timeout=0.2)
             except Empty:
@@ -146,24 +147,36 @@ class _JupyterConnection:
 
         # TODO: if the target notebook already has imported xloil under a different name
         # I suspect the overwrite of xloil.func will not work.
+        
+        log("Initialising Jupyter connection", level='trace')
+        
         msg_id = self._client.execute(
             "import sys, importlib, IPython\n" + 
-            f"sys.path.append('{self._xloil_path}')\n" + 
+            f"if not '{self._xloil_path}' in sys.path: sys.path.append('{self._xloil_path}')\n" + 
             "import xloil\n"
-            "import xloil_jupyter\n"
-            "importlib.reload(xloil)\n"
-            "xloil.func = xloil_jupyter._func_decorator\n" # Overide xloil.func to do our own thing
-            "_xloil_vars = xloil_jupyter.MonitoredVariables(get_ipython())\n"
+            "import xloil.jupyter\n"
+            "xloil.func = xloil.jupyter._func_decorator\n" # Overide xloil.func to do our own thing
+            "_xloil_vars = xloil.jupyter.MonitoredVariables(get_ipython())\n"
         )
 
         # TODO: retry?
         # Some examples online suggest get_shell_msg(msg_id) should work. It doesn't, which is 
         # a shame as it would be rather nice.
-        msg = {}
-        while msg.get('parent_header', {}).get('msg_id', None) != msg_id:
-            msg = await self._client.get_shell_msg()
-            if msg['content']['status'] == 'error':
-                raise Exception(f"Connection failed: {msg['content']['evalue']}")
+        msg = None
+        while True:
+            if not self._client.is_alive():
+                raise Exception("Jupyter client died")
+            
+            try:
+                msg = await self._client.get_shell_msg(timeout=1)
+            except Empty:
+                log("Waiting for Jupyter initialisation", level='trace')
+                continue
+                
+            if msg.get('parent_header', {}).get('msg_id', None) == msg_id:
+                if msg['content']['status'] == 'error':
+                    raise Exception(f"Connection failed: {msg['content']['evalue']}")
+                break
 
         self._sessionId = msg['header']['session']
         self._watched_variables.clear()
@@ -386,7 +399,8 @@ class _JupterTopic(xlo.RtdPublisher):
             self.stop()
 
             # Cleanup our cache reference
-            xlo.cache.remove(self._cacheRef)
+            if self._cacheRef is not None:
+                xlo.cache.remove(self._cacheRef)
 
             # Schedule topic for destruction
             return True 
