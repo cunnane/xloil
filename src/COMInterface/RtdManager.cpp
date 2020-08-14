@@ -54,9 +54,16 @@ namespace xloil
 
   RtdPublisher::~RtdPublisher()
   {
-    // Send cancellation and wait for graceful shutdown
-    stop();
-    _task->wait();
+    try
+    {
+      // Send cancellation and wait for graceful shutdown
+      stop();
+      _task->wait();
+    }
+    catch (const std::exception& e)
+    {
+      XLO_ERROR("Rtd Disconnect: {0}", e.what());
+    }
   }
 
   void RtdPublisher::connect(size_t numSubscribers)
