@@ -1,6 +1,7 @@
 import inspect
 import functools
 import importlib
+import importlib.util
 import typing
 import numpy as np
 import os
@@ -252,15 +253,10 @@ def _get_meta(fn):
 import asyncio
 
 def _create_event_loop():
-    loop = None
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     return loop
-        
+
 def async_wrapper(fn):
     """
     Wraps an async function or generator with a function which runs that generator on the thread's
@@ -273,40 +269,38 @@ def async_wrapper(fn):
     def synchronised(*args, xloil_thread_context, **kwargs):
 
         loop = get_event_loop()
-        cxt = xloil_thread_context
+        ctx = xloil_thread_context
 
         async def run_async():
+            result = None
             try:
                 # TODO: is inspect.isasyncgenfunction expensive?
                 if inspect.isasyncgenfunction(fn):
                     async for result in fn(*args, **kwargs):
-                        cxt.set_result(result)
+                        ctx.set_result(result)
                 else:
                     result = await fn(*args, **kwargs)
-                    cxt.set_result(result)
+                    ctx.set_result(result)
             except (asyncio.CancelledError, StopAsyncIteration):
+                ctx.set_done()
                 raise
             except Exception as e:
-                cxt.set_result(str(e) + ": " + traceback.format_exc())
-
-        cxt.set_task(loop.create_task(run_async()))
+                ctx.set_result(str(e) + ": " + traceback.format_exc())
+                
+            ctx.set_done()
+            
+        ctx.set_task(asyncio.run_coroutine_threadsafe(run_async(), loop))
 
     return synchronised    
 
-def _pump_message_loop(control):
+def _pump_message_loop(loop, timeout):
     """
-    Called internally to run the asyncio message loop. The control object
-    allows the loop to be stopped
+    Called internally to run the asyncio message loop.
     """
-    loop = get_event_loop()
-
-    async def check_stop():
-        while not control.stopped():
-            await asyncio.sleep(0.2)
-        loop.stop()
-
-    loop.create_task(check_stop())
-    loop.run_forever()
+    async def wait():
+        await asyncio.sleep(timeout)
+    
+    loop.run_until_complete(wait())
 
 
 def func(fn=None, 
@@ -608,7 +602,8 @@ try:
                 return df
         
             raise Exception(f"Unsupported type: {type(x)!r}")
-finally:
+
+except ImportError:
     pass
 
 
@@ -640,8 +635,10 @@ def scan_module(module, workbook_name=None):
     
     # Look for functions with an xloil decorator (_META_TAG) and create
     # a function holder object for each of them
-    to_register = [_get_meta(x[1]).create_holder() 
-                   for x in inspect.getmembers(handle, lambda obj: hasattr(obj, _META_TAG))]
+    xloil_funcs = inspect.getmembers(handle, 
+        lambda obj: inspect.isfunction(obj) and hasattr(obj, _META_TAG))
+
+    to_register = [_get_meta(x[1]).create_holder() for x in xloil_funcs]
 
     if any(to_register):
         xloil_core.register_functions(handle, to_register)

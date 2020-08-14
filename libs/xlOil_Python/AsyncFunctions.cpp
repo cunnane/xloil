@@ -26,7 +26,7 @@ namespace xloil
   {
     constexpr const char* THREAD_CONTEXT_TAG = "xloil_thread_context";
 
-    struct EventLoopController
+    class EventLoopController
     {
       std::atomic<bool> _stop = true;
       std::future<void> _loopRunner;
@@ -34,6 +34,7 @@ namespace xloil
       std::shared_ptr<const void> _shutdownHandler;
       py::object _eventLoop;
       py::object _runLoopFunction;
+      py::object _callSoonFunction;
 
       EventLoopController()
         : _thread(1)
@@ -53,6 +54,7 @@ namespace xloil
               const auto xloilMod = py::module::import("xloil.xloil");
               self->_eventLoop = xloilMod.attr("_create_event_loop").call();
               self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
+              self->_callSoonFunction = self->_eventLoop.attr("call_soon_threadsafe");
             }
             catch (const std::exception& e)
             {
@@ -74,16 +76,24 @@ namespace xloil
         start();
       }
 
+      EventLoopController(const EventLoopController&) = delete;
+      EventLoopController& operator=(const EventLoopController&) = delete;
+
+    public:
       void start()
       {
         _stop = false;
         _loopRunner = _thread.push(
           [=](int)
           {
-            py::gil_scoped_acquire gilAcquired;
             try
             {
-              _runLoopFunction.call(this);
+              py::gil_scoped_acquire gilAcquired;
+              while (!_stop)
+              {
+                constexpr double timeout = 0.5; // seconds 
+                _runLoopFunction.call(this->_eventLoop, timeout);
+              }
             }
             catch (const std::exception& e)
             {
@@ -100,6 +110,7 @@ namespace xloil
       template<typename F>
       void runInterrupt(F && f)
       {
+        py::gil_scoped_release noGil;
         auto task = _thread.push(f);
         stop();
         start();
@@ -115,6 +126,18 @@ namespace xloil
         return _eventLoop;
       }
 
+      void callback(const py::object& func)
+      {
+        if (!active())
+          return;
+        _callSoonFunction.call(func);
+      }
+      static EventLoopController& instance()
+      {
+        static EventLoopController instance;
+        return instance;
+      }
+      
     private:
       void stop()
       {
@@ -139,13 +162,18 @@ namespace xloil
         _thread.stop();
         _eventLoop = py::object();
         _runLoopFunction = py::object();
+        _callSoonFunction = py::object();
+      }
+
+      bool active()
+      {
+        return _thread.size() > 0;
       }
     };
 
     auto& getLoopController()
     {
-      static std::unique_ptr<EventLoopController> p(new EventLoopController());
-      return *p;
+      return EventLoopController::instance();
     }
 
 
@@ -180,13 +208,15 @@ namespace xloil
           : FromPyObj()(value.ptr());
         result(obj);
       }
-
+      void set_done()
+      {}
+      
       void cancel() override
       {
         if (_task.ptr())
         {
           py::gil_scoped_acquire gilAcquired;
-          _task.attr("cancel").call();
+          getLoopController().callback(_task.attr("cancel"));
           _task.release();
         }
       }
@@ -249,68 +279,71 @@ namespace xloil
       {}
       ~RtdReturn()
       {
-        // TODO: maybe use a raw PyObject to avoid needing this?
-        if (_hasTask)
-        {
-          py::gil_scoped_acquire gilAcquired;
-          _task.release();
-        }
+        if (!_running && !_task.ptr())
+          return;
+
+        py::gil_scoped_acquire gilAcquired;
+        _running = false;
+        _task = py::object();
       }
       void set_task(const py::object& task)
       {
         py::gil_scoped_acquire gilAcquired;
         _task = task;
-        _hasTask = true;
+        _running = true;
       }
-      void set_result(const py::object& value)
+      void set_result(const py::object& value) const
       {
+        if (!_running)
+          return;
         py::gil_scoped_acquire gilAcquired;
+
+        // Convert result to ExcelObj
         ExcelObj result = _returnConverter
           ? (*_returnConverter)(*value.ptr())
           : FromPyObj()(value.ptr(), false);
+
         // If nil, conversion wasn't possible, so use the cache
         if (result.isType(ExcelType::Nil))
           result = pyCacheAdd(value, _caller);
+
         _notify.publish(std::move(result));
       }
-
+      void set_done()
+      {
+        if (!_running)
+          return;
+        py::gil_scoped_acquire gilAcquired;
+        _running = false;
+        _task = py::object();
+      }
       void cancel()
       {
-        if (_hasTask)
-        {
-          py::gil_scoped_acquire gilAcquired;
-          if (!_hasTask)
-            return;
-          _hasTask = false;
-          _task.attr("cancel").call();
-          _task.release();
-        }
+        if (!_running)
+          return;
+        py::gil_scoped_acquire gilAcquired;
+        _running = false;
+        getLoopController().callback(_task.attr("cancel"));
       }
       bool done()
       {
-        if (!_hasTask) 
-          return true;
-
-        py::gil_scoped_acquire gilAcquired;
-        return _hasTask 
-          ? py::cast<bool>(_task.attr("done").call())
-          : true;
+        return !_running;
       }
       void wait()
       {
-        if (!_hasTask)
-          return;
-
-        py::gil_scoped_acquire gilAcquired;
-        if (_hasTask)
-          _task.attr("wait").call();
+        // TODO: not actually blocking, does this matter?
+        if (_task.ptr())
+        {
+          py::gil_scoped_acquire gilAcquired;
+          getLoopController().callback(_task.attr("wait"));
+        }
       }
 
     private:
       IRtdPublish& _notify;
       shared_ptr<IPyToExcel> _returnConverter;
       py::object _task;
-      std::atomic<bool> _hasTask = false;
+      std::atomic<bool> _running = true;
       const wchar_t* _caller;
     };
 
@@ -318,34 +351,34 @@ namespace xloil
     /// Holder for python target function and its arguments.
     /// Able to compare arguments with another AsyncTask
     /// </summary>
-    struct AsyncTask : public IRtdAsyncTask
+    struct RtdAsyncTask : public IRtdAsyncTask
     {
       PyFuncInfo* _info;
       PyObject *_args, *_kwargs;
-      RtdReturn* _returnObj = nullptr;
+      shared_ptr<RtdReturn> _returnObj;
       wstring _caller;
 
       /// <summary>
       /// Steals references to PyObjects
       /// </summary>
-      AsyncTask(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+      RtdAsyncTask(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
         , _caller(CallerInfo().writeAddress(false))
       {}
 
-      virtual ~AsyncTask()
+      virtual ~RtdAsyncTask()
       {
         py::gil_scoped_acquire gilAcquired;
         Py_XDECREF(_args);
         Py_XDECREF(_kwargs);
-        delete _returnObj;
+        _returnObj.reset();
       }
 
       void start(IRtdPublish& publish) override
       {
-        _returnObj = new RtdReturn(publish, _info->returnConverter, _caller.c_str());
+        _returnObj.reset(new RtdReturn(publish, _info->returnConverter, _caller.c_str()));
         py::gil_scoped_acquire gilAcquired;
 
         PyErr_Clear();
@@ -371,7 +404,7 @@ namespace xloil
       }
       bool operator==(const IRtdAsyncTask& that_) const override
       {
-        const auto* that = dynamic_cast<const AsyncTask*>(&that_);
+        const auto* that = dynamic_cast<const RtdAsyncTask*>(&that_);
         if (!that)
           return false;
 
@@ -429,7 +462,8 @@ namespace xloil
         }
 
         auto value = rtdAsync(
-          std::make_shared<AsyncTask>(info, argsP, kwargsP));
+          std::make_shared<RtdAsyncTask>(info, argsP, kwargsP));
+
         return returnValue(value ? *value : CellError::NA);
       }
       catch (const std::exception& e)
@@ -447,17 +481,20 @@ namespace xloil
       {
         py::class_<AsyncReturn>(mod, "AsyncReturn")
           .def("set_result", &AsyncReturn::set_result)
+          .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task);
 
-        py::class_<RtdReturn>(mod, "RtdReturn")
+        py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)
+          .def("set_done", &RtdReturn::set_done)
           .def("set_task", &RtdReturn::set_task);
 
-        py::class_<EventLoopController>(mod, "EventLoopController")
-          .def("stopped", &EventLoopController::stopped);
 
         mod.def("get_event_loop", []() { return getLoopController().getEventLoop(); });
       });
+
+      // Uncomment this for debugging in case weird things happen with the GIL not releasing
+      //static auto gilCheck = Event::AfterCalculate().bind([]() { XLO_INFO("PyGIL State: {}", PyGILState_Check());  });
     }
   }
 }
