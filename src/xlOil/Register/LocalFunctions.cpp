@@ -80,46 +80,56 @@ int __stdcall localFunctionEntryPoint(
   {
     VariantClear(returnVal);
 
-    // TODO: check they really are strings!
+    if (workbookName->vt != VT_BSTR || funcName->vt != VT_BSTR)
+      XLO_THROW("WorkbookName and funcName parameters must be strings");
+
     auto& func = findOrThrow(workbookName->bstrVal, funcName->bstrVal);
 
     const auto nArgs = func.info()->numArgs();
-    vector<ExcelObj> xllArgs;
-    vector<const ExcelObj*> argPtrs;
-    xllArgs.reserve(nArgs);
-    argPtrs.reserve(nArgs);
 
     if ((args->vt & VT_ARRAY) == 0)
+      XLO_THROW("Args must be an array");
+
+    auto pArray = args->parray;
+    const auto dims = pArray->cDims;
+ 
+    if (dims != 1)
+      XLO_THROW("Expecting 1d array of variant for 'args'");
+
+    const auto arrSize = pArray->rgsabound[0].cElements;
+    if (arrSize != nArgs)
+      XLO_THROW("Expecting {0} args, got {1}", nArgs, arrSize);
+
+    const ExcelObj** xllArgPtr = nullptr;
+    vector<ExcelObj> xllArgs;
+    vector<const ExcelObj*> argPtrs;
+
+    if (arrSize > 0)
     {
-      XLO_THROW("Not implemnted yet");
-    }
-    else
-    {
-      auto pArray = args->parray;
-      const auto dims = pArray->cDims;
       VARTYPE vartype;
       SafeArrayGetVartype(pArray, &vartype);
-      if (vartype != VT_VARIANT || dims != 1)
-        XLO_THROW("Expecting 1d array of variant for args");
+      if (vartype != VT_VARIANT)
+        XLO_THROW("Expecting an array of variant for 'args'");
 
       VARIANT* pData;
       if (FAILED(SafeArrayAccessData(pArray, (void**)&pData)))
-        XLO_THROW("Failed accessing args array");
-      
-      std::shared_ptr<SAFEARRAY> arrayCloser(pArray, SafeArrayUnaccessData);
+        XLO_THROW("Failed accessing 'args' array");
 
-      const auto arrSize = pArray->rgsabound[0].cElements;
-      if (arrSize != nArgs)
-        XLO_THROW("Expecting {0} args, got {1}", nArgs, arrSize);
+      std::shared_ptr<SAFEARRAY> arrayFinaliser(pArray, SafeArrayUnaccessData);
+
+      xllArgs.reserve(nArgs);
+      argPtrs.reserve(nArgs);
 
       for (auto i = 0u; i < arrSize; ++i)
       {
         xllArgs.emplace_back(COM::variantToExcelObj(pData[i], func.info()->args[i].allowRange));
         argPtrs.emplace_back(&xllArgs.back());
       }
+
+      xllArgPtr = &argPtrs[0];
     }
 
-    auto result = func.call(&argPtrs[0]);
+    auto* result = func.call(xllArgPtr);
 
     *returnVal = COM::excelObjToVariant(*result);
 
