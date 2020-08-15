@@ -13,7 +13,7 @@ namespace xloil
       size_t* _refCount;
 
       PyExcelArray(const PyExcelArray& from, 
-        size_t fromRow, size_t fromCol, int toRow, int toCol);
+        int fromRow, int fromCol, int toRow, int toCol);
 
     public:
       PyExcelArray(const PyExcelArray& from);
@@ -34,7 +34,7 @@ namespace xloil
       pybind11::object operator()(size_t row, size_t col) const;
       pybind11::object operator()(size_t row) const;
 
-      PyExcelArray subArray(size_t fromRow, size_t fromCol, int toRow, int toCol) const;
+      PyExcelArray subArray(int fromRow, int fromCol, int toRow, int toCol) const;
       pybind11::object getItem(pybind11::tuple) const;
       size_t nRows() const;
       size_t nCols() const;

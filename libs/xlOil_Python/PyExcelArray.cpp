@@ -14,7 +14,7 @@ namespace xloil
 
     PyExcelArray::PyExcelArray(
       const PyExcelArray& from, 
-      size_t fromRow, size_t fromCol,
+      int fromRow, int fromCol,
       int toRow, int toCol)
       : _base(ExcelArray(from._base, fromRow, fromCol, toRow, toCol))
       , _refCount(from._refCount)
@@ -44,31 +44,52 @@ namespace xloil
       if (_refCount == 0)
         delete _refCount;
     }
-    size_t PyExcelArray::refCount() const { return *_refCount; }
-    const ExcelArray& PyExcelArray::base() const { return _base; }
+
+    size_t PyExcelArray::refCount() const 
+    { 
+      return *_refCount; 
+    }
+
+    const ExcelArray& PyExcelArray::base() const 
+    { 
+      return _base; 
+    }
 
     py::object PyExcelArray::operator()(size_t row, size_t col) const
     {
       return PySteal<>(PyFromExcel<PyFromAny<>>()(_base(row, col)));
     }
+
     py::object PyExcelArray::operator()(size_t row) const
     {
       return PySteal<>(PyFromExcel<PyFromAny<>>()(_base(row)));
     }
 
-    PyExcelArray PyExcelArray::subArray(size_t fromRow, size_t fromCol, int toRow, int toCol) const
+    PyExcelArray PyExcelArray::subArray(
+      int fromRow, int fromCol, int toRow, int toCol) const
     {
       return PyExcelArray(*this, fromRow, fromCol, toRow, toCol);
     }
 
     pybind11::object PyExcelArray::getItem(pybind11::tuple loc) const
     {
-      size_t fromRow, fromCol, toRow, toCol;
-      bool single = sliceHelper(loc, nRows(), nCols(),
-        fromRow, fromCol, toRow, toCol);
-      return single
-        ? operator()(fromRow, fromCol)
-        : py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
+      if (dims() == 1)
+      {
+        size_t from, to;
+        bool singleElem = sliceHelper1d(loc[0], size(), from, to);
+        return singleElem
+          ? operator()(from)
+          : py::cast<PyExcelArray>(subArray(from, 0, to, 1));
+      }
+      else
+      {
+        size_t fromRow, fromCol, toRow, toCol;
+        bool singleElem = sliceHelper2d(loc, nRows(), nCols(),
+          fromRow, fromCol, toRow, toCol);
+        return singleElem
+          ? operator()(fromRow, fromCol)
+          : py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
+      }
     }
 
     size_t PyExcelArray::nRows() const { return _base.nRows(); }
@@ -110,8 +131,8 @@ namespace xloil
           .def("sub_array", &PyExcelArray::subArray, 
             py::arg("from_row"), 
             py::arg("from_col"),
-            py::arg("to_row") = 0, 
-            py::arg("to_col") = 0)
+            py::arg("to_row") = -1, 
+            py::arg("to_col") = -1)
           .def("to_numpy", &toArray,
             py::arg("dtype") = py::none(), 
             py::arg("dims") = 2)

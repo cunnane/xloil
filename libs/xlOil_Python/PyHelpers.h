@@ -49,10 +49,6 @@ namespace pybind11
     // Not sure how to implement
     //explicit str(const bytes &b);
 
-    /** \rst
-    Return a string representation of the object. This is analogous to
-    the ``str()`` function in Python.
-    \endrst */
     explicit wstr(handle h) : object(raw_str(h.ptr()), stolen_t{}) { }
 
     operator std::wstring() const {
@@ -127,7 +123,11 @@ namespace xloil
     /// <param name="toRow"></param>
     /// <param name="toCol"></param>
     /// <returns>Returns true for single element access</returns>
-    bool sliceHelper(
+    bool sliceHelper1d(
+      const pybind11::object& index,
+      const size_t size, size_t& from, size_t& to);
+
+    bool sliceHelper2d(
       const pybind11::tuple& loc,
       const size_t nRows, const size_t nCols,
       size_t& fromRow, size_t& fromCol,

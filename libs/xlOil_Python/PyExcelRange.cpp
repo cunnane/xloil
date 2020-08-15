@@ -60,7 +60,7 @@ namespace xloil
       py::object getItem(const Range& range, pybind11::tuple loc)
       {
         size_t fromRow, fromCol, toRow, toCol;
-        bool singleValue = sliceHelper(loc, range.nRows(), range.nCols(), 
+        bool singleValue = sliceHelper2d(loc, range.nRows(), range.nCols(), 
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
