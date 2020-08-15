@@ -178,3 +178,29 @@ xloSplit: splits strings at a separator
 
         -> Foo      Bar     Baz
 
+
+xloIndex: gets values or sub-arrays for arrays and ranges
+---------------------------------------------------------
+
+.. function:: xloIndex(ArrayOrRef, [FromRow], [FromCol], [ToRow], [ToCol])
+
+    Extends the Excel INDEX function to support xloRefs and sub-arrays. With
+    the first three arguments, `xloIndex` behaves like INDEX but can be passed
+    an xloRef. This is an efficient way to fetch data from xloRef objects as it 
+    avoids copying the entire object to Excel.
+
+    If *ToRow* and *ToCol* are provided they specify the right-hand end (not 
+    inclusive) of a sub-array from (*FromRow*, *FromCol*) to (*ToRow*, *ToCol*).
+
+    **The row and column indices are 1-based**.  If any of the indices is zero or 
+    negative it is interpreted as an offset from the number of rows or columns 
+    in the parent array.
+
+    **Examples**
+
+    ::
+
+        =xloIndex(A1:D5,1,3) -> returns C1
+        =xloIndex(A1:D5,-1,-1) -> returns D5
+        =xloIndex(A1:D5,1,3,3,4) -> returns C1:D3
+        =xloIndex(A1:D5,-2,-2,0,0) -> returns C4:D5

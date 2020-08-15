@@ -5,6 +5,23 @@
 
 namespace xloil
 {
+  namespace detail
+  {
+    template <class TSize>
+    inline bool sliceIndices(int& from, const int to, TSize& size)
+    {
+      if (from < 0)
+      {
+        from += size;
+        if (from < 0)
+          return false;
+      }
+      const auto end = to + (to < 0 ? size : 0);
+      const auto sz  = end - from;
+      size = (TSize)sz;
+      return sz >= 0;
+    }
+  }
   class ExcelArray;
 
   class ExcelArrayIterator
@@ -75,16 +92,21 @@ namespace xloil
     /// <param name="trim">If true, trim the array to the last non-empty row and columns</param>
     XLOIL_EXPORT explicit ExcelArray(const ExcelObj& obj, bool trim = true);
 
-    ExcelArray::ExcelArray(const ExcelObj& obj, size_t nRows, size_t nCols)
-      : _rows((row_t)nRows)
-      , _columns((col_t)nCols)
+    ExcelArray::ExcelArray(const ExcelObj& obj, row_t nRows, col_t nCols)
+      : _rows(nRows)
+      , _columns(nCols)
     {
       if (obj.type() != ExcelType::Multi)
         XLO_THROW("Expected array");
-      if (nRows > (size_t)obj.val.array.rows || nCols > (size_t)obj.val.array.columns)
-        XLO_THROW("Out of range");
-      _data = (const ExcelObj*)obj.val.array.lparray;
-      _baseCols = (col_t)obj.val.array.columns;
+
+      auto arr = obj.val.array;
+
+      if (nRows > (row_t)arr.rows || nCols > (col_t)arr.columns)
+        XLO_THROW("Array size ({}, {}) out of range ({}, {})",
+          nRows, nCols, arr.rows, arr.columns);
+
+      _data = (const ExcelObj*)arr.lparray;
+      _baseCols = (col_t)arr.columns;
     }
 
     /// <summary>
@@ -97,11 +119,20 @@ namespace xloil
     /// <param name="fromCol">Starting column, included</param>
     /// <param name="toRow">Ending row, not included</param>
     /// <param name="toCol">Ending column, not included</param>
-    ExcelArray(const ExcelArray& arr, row_t fromRow, col_t fromCol, int toRow=-1, int toCol=-1)
-      : _rows((row_t)((toRow < 0 ? arr._rows + toRow + 1 : toRow) - fromRow))
-      , _columns((col_t)((toCol < 0 ? arr._columns + toCol + 1 : toCol) - fromCol))
-      , _baseCols(arr._baseCols)
+    ExcelArray(const ExcelArray& arr, 
+      int fromRow, int fromCol, 
+      int toRow, int toCol)
+      : _baseCols(arr._baseCols)
+      , _rows(arr.nRows())
+      , _columns(arr.nCols())
     {
+      if (!detail::sliceIndices(fromRow, toRow, _rows))
+        XLO_THROW("Invalid sub-array row indices {}, {} in array of size ({}, {})",
+          fromRow, toRow, arr.nRows());
+      if (!detail::sliceIndices(fromCol, toCol, _columns))
+        XLO_THROW("Invalid sub-array column indices {}, {} in array of size ({}, {})",
+          fromCol, toCol, arr.nCols());
+
       _data = arr._data + fromRow * _baseCols + fromCol;
     }
 
@@ -153,18 +184,35 @@ namespace xloil
     }
 
     /// <summary>
-    /// Returns a new ExcelArray which is a sub-array of the current one.
-    /// It includes fromRow and fromCol but excludes toRow and toCol.
+    /// Returns a sub-array as a new ExcelArray.
+    /// It extends from (fromRow, fromCol) to the end of the array.
     /// 
-    /// Negative values for <paramref name="toRow"/> and <paramref name="toCol"/>
-    /// are interpreted as one plus offsets from nRows and Cols respectively.
+    /// Negative values for <paramref name="fromRow"/> and <paramref name="fromCol"/>
+    /// are interpreted as offsets from nRows and nCols respectively.
     /// </summary>
     /// <param name="fromRow"></param>
     /// <param name="fromCol"></param>
-    /// <param name="toRow">The end row (not inclusive)</param>
-    /// <param name="toCol">The end column (not inclusive) </param>
     /// <returns></returns>
-    ExcelArray subArray(row_t fromRow, col_t fromCol, int toRow=-1, int toCol=-1) const
+    ExcelArray subArray(int fromRow, int fromCol) const
+    {
+      return ExcelArray(*this, fromRow, fromCol, nRows(), nCols());
+    }
+    /// <summary>
+    /// Returns a sub-array as a new ExcelArray.
+    /// It extends from (fromRow, fromCol) to (toRow, toCol) not including the right
+    /// hand ends.
+    /// 
+    /// Negative values for the parameters are interpreted as offsets from nRows and 
+    /// nCols respectively.
+    /// </summary>
+    /// <param name="fromRow"></param>
+    /// <param name="fromCol"></param>
+    /// <param name="toRow"></param>
+    /// <param name="toCol"></param>
+    /// <returns></returns>
+    ExcelArray subArray(
+      int fromRow, int fromCol,
+      int toRow, int toCol) const
     {
       return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
     }
@@ -261,6 +309,8 @@ namespace xloil
         return ExcelType::BigData;
       }
     }
+
+    XLOIL_EXPORT ExcelObj toExcelObj(const bool alwaysCopy = true) const;
 
   private:
     const ExcelObj* _data;

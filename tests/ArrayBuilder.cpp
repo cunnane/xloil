@@ -54,7 +54,7 @@ namespace Tests
 
       for (auto n = 1u; n < array.nCols(); ++n)
       {
-        auto sub = array.subArray(0, 1, -1, n);
+        auto sub = array.subArray(0, 1, array.nRows(), n);
 
         Assert::AreEqual(array.nRows(), sub.nRows());
 
@@ -68,6 +68,25 @@ namespace Tests
         k = 0;
         for (auto& val : sub)
           Assert::IsTrue(val == sub(k++));
+      }
+    }
+
+    TEST_METHOD(SubArrayAccess)
+    {
+      constexpr auto R = 6, C = 4;
+      ExcelArrayBuilder builder(R, C);
+      builder.fillNA();
+
+      for (auto i = 0u; i < builder.nRows(); ++i)
+        for (auto j = 0u; j < builder.nCols(); ++j)
+          builder(i, j) = i * j;
+
+      ExcelArray array(builder.toExcelObj());
+
+      for (auto n = -R + 1; n < R - 1; ++n)
+      {
+        auto sub = array.subArray(n, 1, R, 2);
+        Assert::IsTrue(sub(0) == array(n < 0 ? R + n : n, 1));
       }
     }
   };

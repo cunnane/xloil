@@ -1,6 +1,7 @@
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelRange.h>
+#include <xloil/ArrayBuilder.h>
 
 namespace xloil
 {
@@ -27,5 +28,31 @@ namespace xloil
     }
     else
       XLO_THROW(L"Type {0} not allowed as an array element", enumAsWCString(obj.type()));
+  }
+
+  ExcelObj ExcelArray::toExcelObj(const bool alwaysCopy) const
+  {
+    // Single value return
+    if (nCols() == 1 && nRows() == 1)
+      return at(0);
+
+    // Empty array
+    if (dims() == 0)
+      return ExcelObj();
+
+    // Point to source data if possible, avoid copy
+    if (!alwaysCopy && _columns == _baseCols)
+      return ExcelObj(_data, _rows, _columns);
+
+    size_t strLen = 0;
+    for (auto& v : (*this))
+      strLen += v.stringLength();
+
+    ExcelArrayBuilder builder(nRows(), nCols(), strLen);
+    for (auto i = 0; i < nRows(); ++i)
+      for (auto j = 0; j < nCols(); ++j)
+        builder(i, j) = at(i, j);
+
+    return builder.toExcelObj();
   }
 }

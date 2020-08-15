@@ -45,5 +45,15 @@ namespace xloil
     return objectCacheAdd(std::make_shared<const ExcelObj>(obj));
   }
 
+  inline const ExcelObj& objectCacheExpand(const ExcelObj& obj)
+  {
+    if (obj.isType(ExcelType::Str) && objectCacheCheckReference(obj))
+    {
+      std::shared_ptr<const ExcelObj> cacheVal;
+      if (xloil::objectCacheFetch(obj.asPascalStr().view(), cacheVal))
+        return *cacheVal;
+    }
+    return obj;
+  }
   // TODO: registry of caches to avoid two uniquifiers
 }

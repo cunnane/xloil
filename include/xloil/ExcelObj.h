@@ -212,6 +212,9 @@ namespace xloil
     /// </summary>
     ExcelObj(const ExcelObj* data, int nRows, int nCols)
     {
+      // Excel will crash if passed an empty array
+      if (nRows <= 0 || nCols <= 0)
+        XLO_THROW("Cannot create empty array");
       val.array.rows = nRows;
       val.array.columns = nCols;
       val.array.lparray = (Base*)data;

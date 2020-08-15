@@ -24,6 +24,7 @@
     <ClCompile Include="xloConcat.cpp" />
     <ClCompile Include="xloFill.cpp" />
     <ClCompile Include="xloFillNA.cpp" />
+    <ClCompile Include="xloIndex.cpp" />
     <ClCompile Include="xloPad.cpp" />
     <ClCompile Include="xloSort.cpp" />
     <ClCompile Include="xloSplit.cpp" />
