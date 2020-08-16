@@ -112,7 +112,11 @@ namespace xloil
         ? utf8ToUtf16(pybind11::detail::error_string().c_str()) 
         : std::wstring();
     }
-
+    inline auto pyToStr(const PyObject* p)
+    {
+      // Is morally const: py::handle doesn't change refcount
+      return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
+    }
     /// <summary>
     /// </summary>
     /// <param name="loc"></param>

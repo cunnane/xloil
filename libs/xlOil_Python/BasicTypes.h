@@ -179,6 +179,8 @@ namespace xloil
     {
       auto operator()(const PyObject* obj) const
       {
+        if (!PyLong_Check(obj))
+          XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
         return ExcelObj(PyLong_AsLong((PyObject*)obj));
       }
     };
@@ -186,6 +188,8 @@ namespace xloil
     {
       auto operator()(const PyObject* obj) const
       {
+        if (!PyFloat_Check(obj))
+          XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
         return ExcelObj(PyFloat_AS_DOUBLE(obj));
       }
     };
@@ -193,6 +197,8 @@ namespace xloil
     {
       auto operator()(const PyObject* obj) const
       {
+        if (!PyBool_Check(obj))
+          XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
         return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
       }
     };
@@ -201,6 +207,8 @@ namespace xloil
       template <class TCtor>
       auto operator()(const PyObject* obj, TCtor ctor) const
       {
+        if (!PyUnicode_Check(obj))
+          XLO_THROW("Expected python str, got '{0}'", pyToStr(obj));
         auto len = (char16_t)std::min<size_t>(USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
         PString<> pstr(len);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
