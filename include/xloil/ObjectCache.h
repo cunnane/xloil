@@ -206,11 +206,11 @@ namespace xloil
       int iResult;
       std::wstring_view sheetRef;
       auto* wbCache = fetchImpl(cacheString, sheetRef, iResult);
-
-      std::scoped_lock lock(_cacheLock);
       if (!wbCache)
         return false;
 
+      std::scoped_lock lock(_cacheLock);
+ 
       auto* cellCache = find(*wbCache, sheetRef);
       if (!cellCache)
         return false;
@@ -286,10 +286,10 @@ namespace xloil
       int iResult;
       std::wstring_view sheetRef;
       auto* wbCache = fetchImpl(cacheRef, sheetRef, iResult);
-
-      std::scoped_lock lock(_cacheLock);
       if (!wbCache)
         return false;
+
+      std::scoped_lock lock(_cacheLock);
 
       auto found = wbCache->search(sheetRef);
       if (found == wbCache->end())
@@ -326,15 +326,15 @@ namespace xloil
       std::wstring_view& sheetRef,
       int& iResult)
     {
-      if (cacheString[0] != TUniquifier || cacheString[1] != L'[')
-        return false;
+      if (cacheString.size() < 4 || cacheString[0] != TUniquifier || cacheString[1] != L'[')
+        return nullptr;
 
       constexpr auto npos = std::wstring_view::npos;
 
       const auto firstBracket = 1;
       const auto lastBracket = cacheString.find_last_of(']');
       if (lastBracket == npos)
-        return false;
+        return nullptr;
       const auto comma = cacheString.find_first_of(',', lastBracket);
 
       auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
