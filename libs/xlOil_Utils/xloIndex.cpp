@@ -53,8 +53,8 @@ namespace xloil
     .help(L"Extends the INDEX function to xlOil refs and sub-arrays. Indices are 1-based. "
           L"Returns a single value if ToRow and ToCol are omitted otherwise returns an array.")
     .arg(L"ArrayOrRef", L"A range/array or and xlOil ref")
-    .arg(L"FromRow", L"Starting row, 1 if omitted. If negative counts back from last row")
-    .arg(L"FromCol", L"Starting column, 1 if omitted. If negative counts back from last column")
-    .arg(L"ToRow", L"End row, not inclusive. If omitted uses FromRow+1. If zero or negative counts back from last row")
-    .arg(L"ToCol", L"End column, not inclusive. If omitted uses FromCol+1. If zero or negative counts back from last column");
+    .optArg(L"FromRow", L"Starting row, 1 if omitted. If negative counts back from last row")
+    .optArg(L"FromCol", L"Starting column, 1 if omitted. If negative counts back from last column")
+    .optArg(L"ToRow", L"End row, not inclusive. If omitted uses FromRow+1. If zero or negative counts back from last row")
+    .optArg(L"ToCol", L"End column, not inclusive. If omitted uses FromCol+1. If zero or negative counts back from last column");
 }

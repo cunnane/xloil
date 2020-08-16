@@ -77,6 +77,12 @@ namespace xloil
       _info->category = txt;
       return *this;
     }
+    self& optArg(const wchar_t* name, const wchar_t* help = nullptr, bool allowRange = false)
+    {
+      arg(name, help, allowRange);
+      _info->args.back().optional = true;
+      return *this;
+    }
     self& arg(const wchar_t* name, const wchar_t* help = nullptr, bool allowRange = false)
     {
       _info->args.emplace_back(FuncArg(name, help));

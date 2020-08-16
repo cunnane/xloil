@@ -146,5 +146,5 @@ namespace xloil
     .arg(L"String", L"String or array of strings. Any non-strings will be unmodified")
     .arg(L"Separators", L"Separators between strings: each character is interpreted "
                          "as a distinct separator")
-    .arg(L"ConsecutiveAsOne", L"Treat consecutive delimiters as one");
+    .optArg(L"ConsecutiveAsOne", L"(true) Treat consecutive delimiters as one");
 }

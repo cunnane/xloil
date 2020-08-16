@@ -236,6 +236,7 @@ class FuncDescription:
                 elif isinstance(x.typeof, type) and x.typeof is not object:
                     converter = _get_typeconverter(x.typeof.__name__, from_excel=True)
             if x.has_default:
+                info.args[i].optional = True
                 holder.set_arg_type_defaulted(i, converter, x.default)
             else:
                 holder.set_arg_type(i, converter)

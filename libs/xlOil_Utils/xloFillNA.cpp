@@ -74,6 +74,6 @@ namespace xloil
     .help(L"Replaces #N/As in the given array with a specifed value")
     .arg(L"Value", L"The value to fill with, must be a single type e.g. int, string, etc.")
     .arg(L"Array", L"The array containing #N/As")
-    .arg(L"Trim", L"[opt] Specifies whether the array should be trimmed to the last row "
-      "and column containing a non-#N/A and non-empty string value. Default is true");
+    .optArg(L"Trim", L"(true) Specifies whether the array should be trimmed to the last row "
+      "and column containing a non-#N/A and non-empty string value.");
 }

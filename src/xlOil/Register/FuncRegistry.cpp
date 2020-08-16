@@ -155,10 +155,14 @@ namespace xloil
       else if (opts & FuncInfo::THREAD_SAFE)
         argTypes += '$';
 
-      // Concatenate argument names
+      // Concatenate argument names, adding optional indicator if required
       wstring argNames;
       for (auto x : info->args)
-        argNames.append(x.name).append(L",");
+        if (x.optional)
+          argNames.append(formatStr(L"[%s],", x.name.c_str()));
+        else
+          argNames.append(x.name).append(L",");
+
       if (numArgs > 0)
         argNames.pop_back();  // Delete final comma
 

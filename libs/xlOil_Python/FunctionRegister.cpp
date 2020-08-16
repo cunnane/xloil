@@ -370,7 +370,8 @@ namespace xloil
           .def(py::init<const wchar_t*, const wchar_t*>())
           .def_readwrite("name", &FuncArg::name)
           .def_readwrite("help", &FuncArg::help)
-          .def_readwrite("allow_range", &FuncArg::allowRange);
+          .def_readwrite("allow_range", &FuncArg::allowRange)
+          .def_readwrite("optional", &FuncArg::optional);
 
         py::class_<FuncInfo, shared_ptr<FuncInfo>>(mod, "FuncInfo")
           .def(py::init())

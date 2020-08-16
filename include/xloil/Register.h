@@ -37,6 +37,8 @@ namespace xloil
     /// </summary>
     bool allowRange;
 
+    bool optional = false;
+
     bool operator==(const FuncArg& that) const
     {
       return name == that.name && help == that.help;

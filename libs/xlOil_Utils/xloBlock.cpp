@@ -180,9 +180,8 @@ namespace xloil
   }
   XLO_FUNC_END(xloBlock).threadsafe()
     .help(L"Creates a block matrix given a layout specification."
-      "Layout has the form '1, 2, 3; 4, ,5' where numbers "
-      "refer to the n-th argument (1-based). Semi-colon indicates"
-      "a new row. Two consecutive commas mean an automatically "
-      "resized padded space. Whitespace is ignored.")
+      "Layout has the form '1, 2, 3; 4, ,5' where numbers refer"
+      "to the n-th argument (1-based). Semi-colon indicates a new row."
+      "Two consecutive commas mean a resized padded space. Whitespace is ignored.")
     .arg(L"Layout", L"String specifying how to layout the blocks");
 }
