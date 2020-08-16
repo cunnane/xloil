@@ -127,10 +127,10 @@ namespace xloil
       , _columns(arr.nCols())
     {
       if (!detail::sliceIndices(fromRow, toRow, _rows))
-        XLO_THROW("Invalid sub-array row indices {}, {} in array of size ({}, {})",
+        XLO_THROW("Invalid sub-array row indices {0}, {1} in array of size ({2}, {3})",
           fromRow, toRow, arr.nRows());
       if (!detail::sliceIndices(fromCol, toCol, _columns))
-        XLO_THROW("Invalid sub-array column indices {}, {} in array of size ({}, {})",
+        XLO_THROW("Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
           fromCol, toCol, arr.nCols());
 
       _data = arr._data + fromRow * _baseCols + fromCol;
