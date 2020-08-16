@@ -42,7 +42,6 @@ class PDFrame:
         index : various
             Is used in a call to pandas.DataFrame.set_index()
 
-
     """
     def __init__(self, element=None, headings=True, index=None):
         # TODO: use element_type!
@@ -61,8 +60,8 @@ class PDFrame:
                 data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
                 if idx is not None and idx in data:
                     index = data.pop(idx)
+                    df = pd.DataFrame(data, index=index).rename_axis(idx)
                     idx = None
-                    df = pd.DataFrame(data, index=index)
                 else:
                     # This will do a copy.  The copy can be avoided by monkey
                     # patching pandas - see stackoverflow
@@ -81,7 +80,8 @@ def PandasReturn(val):
         # TODO: not exactly performant!
         header = val.columns.values
         index = val.index.values[:,np.newaxis]
-        pad = np.full((np.atleast_2d(header).shape[0], index.shape[1]), ' ')
+        pad = np.full((np.atleast_2d(header).shape[0], index.shape[1]), ' ', dtype=object)
+        pad[0, 0] = val.index.name
         return np.block([[pad, header], [index, val.values]])
     elif type(val) is pd.Timestamp:
         return val.to_pydatetime()
