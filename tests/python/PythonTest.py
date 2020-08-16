@@ -116,9 +116,10 @@ def pyTestCache(cachedObj=None):
 #      conversion is required (because it uses the XLL interface)
 #   2) Excel dates cannot contain timezone information
 #   3) Excel dates cannot be before 1 Jan 1900 or after December 31, 9999
-#
+# We don't specify a datetime return type
+# 
 @xlo.func
-def pyTestDate(x: dt.datetime):
+def pyTestDate(x: dt.datetime) -> dt.datetime:
     return x + dt.timedelta(days=1)
  
 
@@ -325,13 +326,13 @@ def pysyspath():
 # Threads
 # 
 import numpy as np
-import threading
+import ctypes
 
 @xlo.func(local=False, threaded=True)
-def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> float:
+def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> int:
     # Do something numpy intensive to allow thread switching
     np.sum(np.ones((a, b)) * x ** (np.ones((u, v)) / y))
-    return threading.get_ident()
+    return ctypes.windll.kernel32.GetCurrentThreadId(None)
     
 #--------------------------------
 # Custom argument type converters
@@ -360,9 +361,13 @@ def pyTestCustomConv(x: arg_doubler):
 #
 
 try:
+    import pandas as pd
+
+    #
     # xlo.PDFrame converts a block to a pandas DataFrame. The block should be
     # formatted as a table with data in columns and a row of column headings
-    # if the headings parameter is set
+    # if the headings parameter is set. We have to explicitly add the return
+    # value to the cache or it will be expanded to the sheet
     #
     @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
     def pyTestDFrame(df: xlo.PDFrame(headings=True)):
@@ -388,8 +393,11 @@ try:
                 return df.loc[index, col_name]
             else:
                 return df.loc[index].values
-        else:
+        elif col_name is not None:
             return df[col_name]
+        else:
+            return df
+        
 except ImportError:
     pass
 
@@ -434,4 +442,3 @@ def event_stopPrinting(wbName, cancel):
 #
 xlo.event.AfterCalculate += event_writeTimeToA1
 xlo.event.WorkbookBeforePrint += event_stopPrinting
-
