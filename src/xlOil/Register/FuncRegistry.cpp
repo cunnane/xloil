@@ -166,7 +166,7 @@ namespace xloil
       if (numArgs > 0)
         argNames.pop_back();  // Delete final comma
 
-      bool truncatedArgNames = argNames.length() > 255;
+      const bool truncatedArgNames = argNames.length() > 255;
       if (truncatedArgNames)
       {
         XLO_WARN(L"Excel does not support a concatenated argument name length of "
@@ -188,6 +188,15 @@ namespace xloil
       if (numArgs > 0 && !argHelp.back().empty())
         argHelp.back() += L"  ";
 
+      // Truncate argument help strings to 255 chars
+      for (auto& h : argHelp)
+        if (h.size() > 255)
+        {
+          XLO_WARN(L"Excel does not support argument help strings longer than 255 chars. "
+            "Truncating for function '{0}'", info->name);
+          h.resize(255);
+        }
+
       // Set the function type
       int macroType = 1;
       if (opts & FuncInfo::COMMAND)
@@ -195,13 +204,14 @@ namespace xloil
       else if (opts & FuncInfo::HIDDEN)
         macroType = 0;
 
-      // Function help string. Yup, more 255 char limits
+      // Function help string. Yup, more 255 char limits, those MS folks are terse
       auto truncatedHelp = info->help;
       if (info->help.length() > 255)
       {
         XLO_WARN(L"Excel does not support help strings longer than 255 chars. "
           "Truncating for function '{0}'", info->name);
         truncatedHelp.assign(info->help.c_str(), 255);
+        truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
       }
 
 #ifndef _WIN64

@@ -55,7 +55,7 @@ namespace xloil {
             _cache.fetch(str, obj);
           return obj;
         }
-        bool remove(const wchar_t* cacheRef)
+        bool remove(const std::wstring& cacheRef)
         {
           return _cache.remove(cacheRef);
         }

@@ -56,9 +56,16 @@ namespace xloil
 
   RtdPublisher::~RtdPublisher()
   {
-    // Send cancellation and wait for graceful shutdown
-    stop();
-    _task->wait();
+    try
+    {
+      // Send cancellation and wait for graceful shutdown
+      stop();
+      _task->wait();
+    }
+    catch (const std::exception& e)
+    {
+      XLO_ERROR("Rtd Disconnect: {0}", e.what());
+    }
   }
 
   void RtdPublisher::connect(size_t numSubscribers)
@@ -304,12 +311,19 @@ namespace xloil
       {
         try
         {
-          if (!_updateCallback)
+          if (!isServerRunning())
             return S_OK; // Already terminated, or never started
-          
-          clear();
 
-          _updateCallback = nullptr;
+          // Terminate is called when there are no subscribers to the server
+          // or the add-in is being closed. Clearing _updateCallback prevents 
+          // the sending of further updates which could crash Excel.
+          {
+            scoped_lock lock(_lockNewValues);
+            _updateCallback = nullptr;
+            _newValues.clear();
+          }
+
+          clear();
         }
         catch (const std::exception& e)
         {
@@ -333,7 +347,7 @@ namespace xloil
       std::list<pair<wstring, shared_ptr<TValue>>> _newValues;
       std::list<shared_ptr<IRtdPublisher>> _cancelledProducers;
 
-      Excel::IRTDUpdateEvent* _updateCallback;
+      std::atomic<Excel::IRTDUpdateEvent*> _updateCallback;
 
       // We use a separate lock for the newValues to avoid blocking it 
       // too often: updates will come from other threads and just need to
@@ -341,13 +355,10 @@ namespace xloil
       mutable std::mutex _lockNewValues;
       mutable std::mutex _lockSubscribers;
 
-      void callUpdateNotify() const
+      bool isServerRunning() const
       {
-        scoped_lock lock(_lockSubscribers);
-        if (_updateCallback)
-          _updateCallback->raw_UpdateNotify();
+        return _updateCallback;
       }
-
       void cancelProducer(const shared_ptr<IRtdPublisher>& producer)
       {
         producer->stop();
@@ -379,15 +390,21 @@ namespace xloil
 
       void update(const wchar_t* topic, const shared_ptr<TValue>& value)
       {
-        scoped_lock lock(_lockNewValues);
+        if (!isServerRunning())
+          return;
 
+        scoped_lock lock(_lockNewValues);
         _newValues.push_back(make_pair(wstring(topic), value));
 
         // We only need to notify Excel about new data once. Excel will
         // only callback RefreshData approximately every 2 seconds
-        if (_newValues.size() == 1 && _updateCallback)
+        if (_newValues.size() == 1)
         {
-          excelApiCall([this]() { this->callUpdateNotify(); });
+          excelApiCall([this]()
+          {
+            if (isServerRunning())
+              (*_updateCallback).raw_UpdateNotify();
+          }, QueueType::WINDOW, 100);
         }
       }
 
