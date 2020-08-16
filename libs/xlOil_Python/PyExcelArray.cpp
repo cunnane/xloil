@@ -13,14 +13,14 @@ namespace xloil
     extern PyTypeObject* ExcelArrayType = nullptr;
 
     PyExcelArray::PyExcelArray(
-      const PyExcelArray& from, 
-      int fromRow, int fromCol,
-      int toRow, int toCol)
-      : _base(ExcelArray(from._base, fromRow, fromCol, toRow, toCol))
+      const PyExcelArray& from,
+      ExcelArray&& rebase)
+      : _base(std::move(rebase))
       , _refCount(from._refCount)
     {
       *_refCount += 1;
     }
+
     PyExcelArray::PyExcelArray(const PyExcelArray& from)
       : _base(from._base)
       , _refCount(from._refCount)
@@ -68,7 +68,7 @@ namespace xloil
     PyExcelArray PyExcelArray::subArray(
       int fromRow, int fromCol, int toRow, int toCol) const
     {
-      return PyExcelArray(*this, fromRow, fromCol, toRow, toCol);
+      return PyExcelArray(*this, _base.subArray(fromRow, fromCol, toRow, toCol));
     }
 
     pybind11::object PyExcelArray::getItem(pybind11::tuple loc) const
@@ -88,7 +88,9 @@ namespace xloil
           fromRow, fromCol, toRow, toCol);
         return singleElem
           ? operator()(fromRow, fromCol)
-          : py::cast<PyExcelArray>(subArray(fromRow, fromCol, (int)toRow, (int)toCol));
+          : py::cast<PyExcelArray>(
+              PyExcelArray(*this, 
+              ExcelArray(_base, fromRow, fromCol, toRow, toCol)));
       }
     }
 

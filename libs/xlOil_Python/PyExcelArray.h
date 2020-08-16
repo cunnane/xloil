@@ -12,8 +12,9 @@ namespace xloil
       ExcelArray _base;
       size_t* _refCount;
 
-      PyExcelArray(const PyExcelArray& from, 
-        int fromRow, int fromCol, int toRow, int toCol);
+      PyExcelArray(
+        const PyExcelArray& from,
+        ExcelArray&& rebase);
 
     public:
       PyExcelArray(const PyExcelArray& from);

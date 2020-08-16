@@ -111,31 +111,28 @@ namespace xloil
 
     /// <summary>
     /// Creates an ExcelArray which is a subarry of a given one.
-    /// Negative toRow or toCol parameters are interpreted as offsets from 
-    /// the end (plus 1), hence setting fromRow=0 and toRow=-1 returns all rows. 
     /// </summary>
     /// <param name="arr">The parent array</param>
     /// <param name="fromRow">Starting row, included</param>
     /// <param name="fromCol">Starting column, included</param>
     /// <param name="toRow">Ending row, not included</param>
     /// <param name="toCol">Ending column, not included</param>
-    ExcelArray(const ExcelArray& arr, 
-      int fromRow, int fromCol, 
-      int toRow, int toCol)
+    ExcelArray(const ExcelArray& arr,
+      row_t fromRow, col_t fromCol,
+      row_t toRow, col_t toCol)
       : _baseCols(arr._baseCols)
-      , _rows(arr.nRows())
-      , _columns(arr.nCols())
+      , _rows(toRow - fromRow)
+      , _columns(toCol - fromCol)
     {
-      if (!detail::sliceIndices(fromRow, toRow, _rows))
-        XLO_THROW("Invalid sub-array row indices {0}, {1} in array of size ({2}, {3})",
-          fromRow, toRow, arr.nRows());
-      if (!detail::sliceIndices(fromCol, toCol, _columns))
-        XLO_THROW("Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
-          fromCol, toCol, arr.nCols());
-
+      if (!((arr.nRows() >= toRow) && (toRow > fromRow)))
+        XLO_THROW("ExcelArray row indices out of range");
+      if (!((arr.nCols() >= toCol) && (toCol > fromCol)))
+        XLO_THROW("ExcelArray column indices out of range");
       _data = arr._data + fromRow * _baseCols + fromCol;
     }
 
+   
+    
     /// <summary>
     /// Retieves the i,j-th element from the array
     /// </summary>
@@ -319,6 +316,27 @@ namespace xloil
     col_t _baseCols;
 
     friend class ExcelArrayIterator;
+
+    /// <summary>
+    /// Ctor used by subrange
+    /// </summary>
+    ExcelArray(
+      int fromRow, int fromCol,
+      int toRow, int toCol, const ExcelArray& arr)
+      : _baseCols(arr._baseCols)
+      , _rows(arr.nRows())
+      , _columns(arr.nCols())
+    {
+      if (!detail::sliceIndices(fromRow, toRow, _rows))
+        XLO_THROW("Invalid sub-array row indices {0}, {1} in array of size ({2}, {3})",
+          fromRow, toRow, arr.nRows());
+      if (!detail::sliceIndices(fromCol, toCol, _columns))
+        XLO_THROW("Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
+          fromCol, toCol, arr.nCols());
+
+      _data = arr._data + fromRow * _baseCols + fromCol;
+    }
+
 
     void checkRange(size_t row, size_t col) const
     {
