@@ -30,7 +30,7 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
     XLO_THROW("Dll is exporting functions by ordinal, we don't currently support this");
 }
 
-int xloil::DllExportTable::findOffset(const char * funcName)
+int xloil::DllExportTable::findOffset(const char* funcName)
 {
   // TODO: lowerBound - the name table is sorted!
   /*auto found = std::lower_bound(name_table, name_table + numberOfNames, funcName,
@@ -48,7 +48,7 @@ int xloil::DllExportTable::findOffset(const char * funcName)
 bool xloil::DllExportTable::hook(size_t offset, void * hook)
 {
   if (offset >= numberOfNames)
-    throw std::exception();
+    throw std::runtime_error("Function offset out of bounds of export table");
   auto target = func_table + ord_table[offset];
   DWORD oldProtect;
   if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) return false;

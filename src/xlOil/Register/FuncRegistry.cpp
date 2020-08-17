@@ -44,6 +44,8 @@ namespace xloil
 
 namespace xloil
 {
+  constexpr char* XLOIL_STUB_NAME_STR = XLO_STR(XLOIL_STUB_NAME);
+
   // With Win32 function names are decorated. It no longer seemed
   // like a good idea with x64.
   std::string decorateCFunction(const char* name, const size_t numPtrArgs)
@@ -105,22 +107,23 @@ namespace xloil
     /// <param name="info"></param>
     /// <param name="thunk"></param>
     /// <returns>The name of the entry point selected</returns>
-    const char* hookEntryPoint(const FuncInfo&, const void* thunk)
+    auto hookEntryPoint(const FuncInfo& info, const void* thunk)
     {
-      auto* stubName = theExportTable->getName(theFirstStub);
-
       // Hook the thunk by modifying the export address table
-      XLO_DEBUG("Hooking thunk to name {0}", stubName);
+      XLO_DEBUG(L"Hooking thunk for {0}", info.name);
       
       theExportTable->hook(theFirstStub, (void*)thunk);
 
+      const auto entryPoint = decorateCFunction(XLOIL_STUB_NAME_STR, 0);
+
 #ifdef _DEBUG
       // Check the thunk is hooked to Windows' satisfaction
-      void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(), stubName);
+      void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(), 
+        entryPoint.c_str());
       XLO_ASSERT(procNew == thunk);
 #endif
 
-      return stubName;
+      return entryPoint;
     }
 
     static int registerWithExcel(
@@ -214,12 +217,6 @@ namespace xloil
         truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
       }
 
-#ifndef _WIN64
-      // With x64/Win32 function names are decorated. It no longer seemed
-      // like a good idea with x64.
-      auto decoratedEntryPoint = decorateCFunction(entryPoint, numArgs);
-      entryPoint = decoratedEntryPoint.c_str();
-#endif
       // TODO: this copies the excelobj
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
         info->name, utf8ToUtf16(entryPoint), numArgs);
@@ -260,19 +257,8 @@ namespace xloil
       if (func->deregister())
       {
         theRegistry.erase(func->info()->name);
-        // Note this DOES NOT recover the space used for thunks, so we make a note
-        _freeThunksAvailable = true;
         return true;
       }
-      return false;
-    }
-
-    bool compactThunks()
-    {
-      if (!_freeThunksAvailable)
-        return false;
-      // TODO: clear and reregister all functions!  Return true if success
-      // Or just allocate each thunk with the NtAlloc thingy?
       return false;
     }
 
@@ -295,17 +281,15 @@ namespace xloil
     {
       theCoreDllName = ExcelObj(State::coreName());
       theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
-      theFirstStub = theExportTable->findOffset(XLO_STR(XLOIL_STUB_NAME));
+      theFirstStub = theExportTable->findOffset(
+        decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
       if (theFirstStub < 0)
         XLO_THROW("Could not find xlOil stub");
-      _freeThunksAvailable = false;
     }
 
     map<wstring, RegisteredFuncPtr> theRegistry;
     unique_ptr<DllExportTable> theExportTable;
     size_t theFirstStub;
-    
-    bool _freeThunksAvailable;
   };
 
   char FunctionRegistry::theCodeCave[theCaveSize];
@@ -380,7 +364,9 @@ namespace xloil
     {
       auto& registry = FunctionRegistry::get();
       _registerId = registry.registerWithExcel(
-        spec->info(), spec->_entryPoint.c_str(), ExcelObj(spec->_dllName));
+        spec->info(), 
+        decorateCFunction(spec->_entryPoint.c_str(), spec->info()->numArgs()).c_str(), 
+        ExcelObj(spec->_dllName));
     }
   };
 
@@ -403,8 +389,8 @@ namespace xloil
     int doRegister() const
     {
       auto& registry = FunctionRegistry::get();
-      auto* entryPoint = registry.hookEntryPoint(*info(), _thunk);
-      return registry.registerWithExcel(info(), entryPoint, registry.theCoreDllName);
+      auto entryPoint = registry.hookEntryPoint(*info(), _thunk);
+      return registry.registerWithExcel(info(), entryPoint.c_str(), registry.theCoreDllName);
     }
 
     virtual bool reregister(const std::shared_ptr<const FuncSpec>& other)

@@ -356,21 +356,26 @@ namespace xloil
 
     char bufferBefore[10], bufferAfter[10];
     auto bufsize = sizeof(bufferBefore);
-    // TODO: This will only work in 64-bits as asmjit will load the data 
-    // into another register, maybe ecx, but we can't be sure.
-    // Probably better to just scan memory for the mov instruction
     {
       CodeHolder code;
       code.init(theRunTime.codeInfo());
       x86::Assembler as(&code);
+#ifdef _WIN64
       as.mov(x86::rcx, imm(fromData));
+#else
+      as.mov(x86::esp, imm(fromData));
+#endif
       asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize);
     }
     {
       CodeHolder code;
       code.init(theRunTime.codeInfo());
       x86::Assembler as(&code);
+#ifdef _WIN64
       as.mov(x86::rcx, imm(toData));
+#else
+      as.mov(x86::esp, imm(toData));
+#endif
       asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize);
     }
    

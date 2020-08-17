@@ -23,7 +23,7 @@ namespace Tests
   TEST_CLASS(ThunkerTests)
   {
   public:
-
+#ifdef _WIN64
     TEST_METHOD(TestHandRoll)
     {
       // The context selects the argument to return in the callbacks
@@ -82,5 +82,6 @@ namespace Tests
         Assert::IsTrue(asyncReturn == arg1);
       }
     }
+#endif
   };
 }

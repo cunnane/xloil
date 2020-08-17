@@ -10,7 +10,7 @@ features which are not language specific.
 Getting Started
 ---------------
 
-Currently you need **Excel 2010 (64-bit)** or later.
+Currently you need **Excel 2010** or later.
 
 If you have python available, you can install xlOil via pip. See 
 :doc:`xlOil_Python`, otherwise follow the below instructions.
