@@ -211,7 +211,7 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow, int toCol) const
     {
-      return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
+      return ExcelArray(fromRow, fromCol, toRow, toCol, *this);
     }
 
     row_t nRows() const { return _rows; }
