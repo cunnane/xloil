@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+from pathlib import Path
 
 _powershellMessage = "Failed to execute script. You may need to change powershell permissions " + \
                      "by typing 'powershell -Command Set-ExecutionPolicy -Scope CurrentUser RemoteSigned'"
@@ -16,6 +17,27 @@ def _script_dir():
 def _install_xloil():
     target_script = os.path.join(_script_dir(), "xloil_Install.ps1")
     _runPowerShell(target_script)
+
+    # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just do 
+    # a regex replace rather than read the file as structured TOML
+
+    ini_path = Path(os.getenv('APPDATA')) / "xlOil" / "xlOil.ini"
+    ini_txt = ini_path.read_text()
+    
+    python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
+    python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
+
+    def toml_lit_string(s):
+        return "'''" + s.replace('\\','\\\\') + "'''"
+
+    ini_txt, count1 = re.subn(r'(\w*PYTHONPATH).*', '\g<1>=' + toml_lit_string(python_path), ini_txt)
+    ini_txt, count2 = re.subn(r'(\w*PYTHON_PREFIX).*','\g<1>=' + toml_lit_string(sys.prefix), ini_txt)
+    ini_txt, count3 = re.subn(r'(\w*xlOilPythonVersion).*',f'\g<1>="{python_ver}"', ini_txt)
+
+    if count1 != 1 or count2 != 1 or count3 != 1:
+        print(f'WARNING: Failed to set python paths in {ini_path}. You may have to do this manually.')
+    else:
+        ini_path.write_text(ini_file)
 
 def _remove_xloil():
     target_script = os.path.join(_script_dir(), "xloil_Remove.ps1")
