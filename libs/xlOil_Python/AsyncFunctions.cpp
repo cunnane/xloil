@@ -331,12 +331,7 @@ namespace xloil
       }
       void wait()
       {
-        // TODO: not actually blocking, does this matter?
-        if (_task.ptr())
-        {
-          py::gil_scoped_acquire gilAcquired;
-          getLoopController().callback(_task.attr("wait"));
-        }
+        // asyncio.Future has no 'wait'
       }
 
     private:
