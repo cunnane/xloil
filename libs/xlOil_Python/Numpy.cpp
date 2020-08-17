@@ -29,8 +29,8 @@ namespace xloil
   {
     bool importNumpy()
     {
-      import_array();
-      return true;
+      auto ret = _import_array();
+      return ret == 0;
     }
     bool isArrayDataType(PyTypeObject* t)
     {
