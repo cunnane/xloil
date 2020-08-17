@@ -122,9 +122,22 @@ for job in lib_files:
 copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
 
 #
+# Create distributable archives
+#
+import tarfile
+
+xloil_version =  (soln_dir / 'Version.txt').read_text().replace('\n','')
+
+for arch in architectures:
+    with tarfile.open(staging_dir / f"xlOil-{xloil_version}-{arch}.tar.bz2", "w:bz2") as tar:
+        tar.add(staging_dir / arch, arcname=arch)
+
+with tarfile.open(staging_dir / f"xlOil-{xloil_version}-docs.tar.bz2", "w:bz2") as tar:
+    tar.add(staging_dir / "docs", arcname='docs')
+
+#
 # Build python wheels
 #
-
 for arch in architectures:
     for pyver in python_versions:
         subprocess.run(f"python setup.py bdist_wheel --arch {arch} --pyver {pyver}", cwd=f"{python_package_dir}")# --python-tag py2 --plat-name x86")
@@ -134,3 +147,11 @@ for arch in architectures:
         print("Renaming:", wheel, correct_name)
         os.rename(wheel, python_package_dir / "dist" / correct_name)
 
+#
+# Next steps
+#
+print('\n\nTo upload the python package to PyPI:')
+print(f'cd {str(python_package_dir)}')
+print('twine upload --repository-url https://test.pypi.org/legacy/ dist/*')
+print('  or ')
+print('twine upload dist/*')
