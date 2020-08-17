@@ -19,22 +19,23 @@ Release Instructions
 
 ::
 
-    cd tools
+    cd <xloil_root>\tools
     python stage.py
 
 (Optional) test python wheels with 
 
 ::
 
-    cd build\staging\pypackage
+    cd <xloil_root>\build\staging\pypackage
     pip install dist/xlOil-0.3-cp37-cp37m-win_amd64.whl
     pip uninstall dist/xlOil-0.3-cp37-cp37m-win_amd64.whl
 
-Use twine to upload to PyPI:
+Use twine to upload to PyPI (note you need to ensure twine has the right login
+keys/secrets):
 
 ::
 
-    cd build\staging\pypackage
+    cd <xloil_root>\build\staging\pypackage
 
     # (Optional test)
     twine upload --repository-url https://test.pypi.org/legacy/ dist/*
