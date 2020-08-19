@@ -252,16 +252,23 @@ class FuncDescription:
             else:
                 pass # TODO: Ignore - warn user?
 
-        holder.local = True if (self.local is None and not self.is_async) else self.local
-        holder.rtd_async = self.rtd and self.is_async
-
-        # TODO: if we are a local func we should reject most FuncOpts
         
-        holder.set_opts((FuncOpts.Async if (self.is_async and not self.rtd) else 0) 
-                        | (FuncOpts.Macro if self.macro or self.rtd else 0) 
+        # RTD-async is default unless rtd=False was explicitly specified.
+        holder.rtd_async = self.is_async and self.rtd is not False
+        native_async = self.is_async and not holder.rtd_async
+
+        holder.local = True if (self.local is None and not native_async) else self.local
+
+        func_options = ((FuncOpts.Async if native_async else 0)
+                        | (FuncOpts.Macro if self.macro else 0)
                         | (FuncOpts.ThreadSafe if self.threaded else 0)
                         | (FuncOpts.Volatile if self.volatile else 0))
 
+        if holder.local:
+            if func_options != 0:
+                log(f"Ignoring func options for local function {self.name}", level='warn')
+        else:
+            holder.set_opts(func_options)
         return holder
 
 
@@ -328,7 +335,7 @@ def func(fn=None,
          group=None, 
          local=None,
          is_async=False, 
-         rtd=False,
+         rtd=None,
          macro=False, 
          threaded=False, 
          volatile=False):
@@ -578,7 +585,12 @@ def scan_module(module, workbook_name=None):
     xloil_funcs = inspect.getmembers(handle, 
         lambda obj: inspect.isfunction(obj) and hasattr(obj, _META_TAG))
 
-    to_register = [_get_meta(x[1]).create_holder() for x in xloil_funcs]
+    to_register = []
+    for f_name, f in xloil_funcs:
+        try:
+            to_register.append(_get_meta(f).create_holder())
+        except Exception as e:
+            log(f"Register failed for {f_name}: {str(e)}", level='error')
 
     if any(to_register):
         xloil_core.register_functions(handle, to_register)

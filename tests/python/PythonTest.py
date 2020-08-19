@@ -146,21 +146,22 @@ def pyTestKwargs(argName, **kwargs):
 # This is fairly unexpected and generally undesirable, so xlOil has an implementation of 
 # async which works in the expected way using RTD at the expense of more overhead.
 #
-@xlo.func(rtd=True)
+@xlo.func
 async def pyTestAsyncRtd(x, time:int):
     await asyncio.sleep(time)
     return x
-
+    
 #
-# Native async functions cannot be declared local as VBA does not support this
+# Native async functions cannot be declared local as VBA does not support this. We do
+# not actually need to specify local=False, as xloil will automatically set this.
 # 
-@xlo.func(local=False)
+@xlo.func(rtd=False, local=False)
 async def pyTestAsync(x, time:int):
     await asyncio.sleep(time)
     return x
 
 
-@xlo.func(rtd=True)
+@xlo.func
 async def pyTestAsyncGen(secs):
     while True:
         await asyncio.sleep(secs)
@@ -257,7 +258,7 @@ try:
             return self._url
     
     
-    @xlo.func(local=False)    
+    @xlo.func(local=False)  
     def pyGetUrlLive(url):
         # We 'peek' into the RTD manager to see if there is already a publisher for 
         # our topic. If not we create one, then issue the subscribe request, which 

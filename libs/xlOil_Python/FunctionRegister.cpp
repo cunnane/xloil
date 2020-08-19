@@ -35,8 +35,8 @@ namespace xloil
     constexpr wchar_t* PYTHON_ANON_SOURCE = L"PythonFuncs";
 
     PyFuncInfo::PyFuncInfo(
-      const shared_ptr<FuncInfo>& info, 
-      const py::function& func, 
+      const shared_ptr<FuncInfo>& info,
+      const py::function& func,
       bool keywordArgs)
     {
       this->info = info;
@@ -129,7 +129,7 @@ namespace xloil
     }
 
     ExcelObj* pythonCallback(
-      PyFuncInfo* info, 
+      PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
       try
@@ -194,8 +194,8 @@ namespace xloil
         const wstring& modulePath,
         const wchar_t* workbookName)
         : FileSource(
-            modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str(), 
-            workbookName)
+          modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str(),
+          workbookName)
       {
         if (!modulePath.empty())
         {
@@ -225,15 +225,25 @@ namespace xloil
           else
           {
             funcInfo.push_back(f->info);
-            funcs.push_back([f](const FuncInfo&, const ExcelObj** args)
+            if (f->isRtdAsync)
             {
-              return pythonCallback(f.get(), args);
-            });
+              funcs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
+              {
+                return pythonRtdCallback(f.get(), args);
+              });
+            }
+            else
+            {
+              funcs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
+              {
+                return pythonCallback(f.get(), args);
+              });
+            }
           }
         }
 
-        registerFuncs(nonLocal);         
-  
+        registerFuncs(nonLocal);
+
         if (!funcInfo.empty())
         {
           if (_workbookName.empty())
@@ -263,7 +273,7 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto[fileCtx, inserted] 
+      auto[fileCtx, inserted]
         = context->tryAdd<RegisteredModule>(
           modulePath.c_str(), modulePath, workbookName);
       return fileCtx;
@@ -275,9 +285,9 @@ namespace xloil
       const Event::FileAction action)
     {
       const auto filePath = (fs::path(dirName) / fileName).wstring();
-      
+
       auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
-      
+
       // If no active filecontext is found, then exit. Note that findFileContext
       // will check if a linked workbook is still open 
       if (!foundSource)
@@ -297,9 +307,9 @@ namespace xloil
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         scanModule(
-          pySource.pyModule() != Py_None 
-            ? PyBorrow<py::module>(pySource.pyModule())
-            : py::wstr(filePath),
+          pySource.pyModule() != Py_None
+          ? PyBorrow<py::module>(pySource.pyModule())
+          : py::wstr(filePath),
           pySource.workbookName());
 
         // Set the addin context back. TODO: Not exeception safe clearly.
@@ -339,7 +349,7 @@ namespace xloil
       const auto modulePath = !moduleHandle.is_none()
         ? moduleHandle.attr("__file__").cast<wstring>()
         : L"";
-      
+
       auto[foundSource, foundAddin] = FileSource::findFileContext(
         modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str());
 
@@ -388,7 +398,7 @@ namespace xloil
           .export_values();
 
         // TODO: Both these classes have terrible names...can we improve them?
-        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncHolder") 
+        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncHolder")
           .def(py::init<const shared_ptr<FuncInfo>&, const py::function&, bool>())
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))

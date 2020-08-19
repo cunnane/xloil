@@ -49,7 +49,7 @@ namespace xloil
         std::make_shared<Counter>(iStep));
       return returnValue(value ? *value : CellError::NA);
     }
-    XLO_FUNC_END(xloRtdCounter).macro();
+    XLO_FUNC_END(xloRtdCounter);
 
 
     IRtdServer* getAnotherRtdServer()
@@ -71,7 +71,7 @@ namespace xloil
       srv->publish(topic.c_str(), ExcelObj(val));
       return returnValue(tag);
     }
-    XLO_FUNC_END(xloRtdSet).macro();
+    XLO_FUNC_END(xloRtdSet);
 
     XLO_FUNC_START(
       xloRtdGet(ExcelObj& tag)
@@ -82,6 +82,6 @@ namespace xloil
         ? *value
         : Const::Error(CellError::NA));
     }
-    XLO_FUNC_END(xloRtdGet).macro();
+    XLO_FUNC_END(xloRtdGet);
   }
 }
