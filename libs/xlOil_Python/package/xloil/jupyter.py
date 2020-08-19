@@ -139,16 +139,15 @@ class _JupyterConnection:
                 msg = await self._client.get_shell_msg(timeout=0.2)
             except Empty:
                 break
-        
 
-        # Setup the python path to find xloil_jupyter. We do a reload of xloil because
+        # Setup the python path to find xloil.jupyter. We do a reload of xloil because
         # we override xloil.func - this allows repeated connection to the same kernel
         # without error.  We also connect the variable monitor
 
         # TODO: if the target notebook already has imported xloil under a different name
         # I suspect the overwrite of xloil.func will not work.
         
-        log("Initialising Jupyter connection", level='trace')
+        xlo.log("Initialising Jupyter connection", level='trace')
         
         msg_id = self._client.execute(
             "import sys, importlib, IPython\n" + 
@@ -166,13 +165,13 @@ class _JupyterConnection:
         while True:
             if not self._client.is_alive():
                 raise Exception("Jupyter client died")
-            
+
             try:
                 msg = await self._client.get_shell_msg(timeout=1)
             except Empty:
-                log("Waiting for Jupyter initialisation", level='trace')
+                xlo.log("Waiting for Jupyter initialisation", level='trace')
                 continue
-                
+
             if msg.get('parent_header', {}).get('msg_id', None) == msg_id:
                 if msg['content']['status'] == 'error':
                     raise Exception(f"Connection failed: {msg['content']['evalue']}")
@@ -212,7 +211,6 @@ class _JupyterConnection:
             # We'd expect to see exec_state == 'starting', on iopub but sometimes it doesn't 
             # appear (???) so we settle for any exec_state with a new session id.
             msg = await self._client.get_iopub_msg()
-            #xlo.log(f"WFR: {msg}")
             exec_state = msg.get('content', {}).get('execution_state', None)
             session = msg['header']['session']
             if exec_state is not None and session != self._sessionId:
@@ -234,7 +232,7 @@ class _JupyterConnection:
 
         args_data = repr(_serialise(args))
         kwargs_data = repr(_serialise(kwargs))
-        msg_id = self.execute("xloil_jupyter.function_invoke("
+        msg_id = self.execute("xloil.jupyter.function_invoke("
            f"{func_name}, {args_data}, {kwargs_data})")
         future = self._loop.create_future()
         self._pending_messages[msg_id] = future
@@ -359,7 +357,7 @@ class _JupyterConnection:
     #def __exit__(self, exc_type, exc_value, traceback)
 
 
-class _JupterTopic(xlo.RtdPublisher):
+class _JupyterTopic(xlo.RtdPublisher):
 
     def __init__(self, topic, connection_file, xloil_path): 
         super().__init__()
@@ -428,7 +426,8 @@ class _JupterTopic(xlo.RtdPublisher):
 def xloJpyConnect(ConnectionFile):
     topic = ConnectionFile.lower()
     if _rtdServer.peek(topic) is None:
-        conn = _JupterTopic(topic, ConnectionFile, os.path.dirname(__file__))
+        conn = _JupyterTopic(topic, ConnectionFile, 
+                             os.path.join(os.path.dirname(__file__), os.pardir))
         _rtdServer.start(conn)
     return _rtdServer.subscribe(topic)
 
