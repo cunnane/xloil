@@ -26,6 +26,7 @@ if importlib.util.find_spec("xloil_core") is not None:
 
 else:
     from .shadow_core import *
+    from .shadow_core import (_CustomReturn)
     
 
 """
@@ -590,19 +591,19 @@ class _ReturnConverters:
 
     def add(self, conv):
         self._converters.add(conv)
-        xloil_core.set_return_converter(_CustomReturn(self))
+        set_return_converter(_CustomReturn(self))
     
     def remove(self, conv):
         self._converters.remove(conv)
         if len(self._converters) == 0:
-            xloil_core.set_return_converter(None)
+            set_return_converter(None)
 
     def __call__(self, obj):
         for c in self._converters:
             try:
                 return c(obj)
-            except (xloil_core.CannotConvert):
+            except (CannotConvert):
                 continue
-        raise xloil_core.CannotConvert()
+        raise CannotConvert()
 
 return_converters = _ReturnConverters()

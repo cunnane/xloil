@@ -390,8 +390,23 @@ def deregister_functions(module, function_names):
     pass
 
 def get_event_loop():
-        """
-        Returns the asyncio event loop assoicated with the async background
-        worker thread.
-        """
+    """
+    Returns the asyncio event loop assoicated with the async background
+    worker thread.
+    """
+    pass
+
+def set_return_converter(conv):
+    pass
+
+class CannotConvert(Exception):
+    """
+    Should be thrown by a return converter when it is unable to handle the 
+    provided type.  It does not indicate a fatal condition, as xlOil will
+    fallback to another converter, so no message string is required.
+    """
+    pass
+
+class _CustomReturn:
+    def __init__(self, conv):
         pass
