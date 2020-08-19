@@ -1,4 +1,4 @@
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "PyHelpers.h"
 #include "PyExcelArray.h"
 #include "BasicTypes.h"
@@ -54,8 +54,6 @@ namespace xloil {
       return 0;
     }
 
-    PyTypeObject* pyExcelErrorType = nullptr;
-
     namespace
     {
       void writeToLog(const char* message, const char* level)
@@ -82,14 +80,6 @@ namespace xloil {
               XLO_THROW("Not implemented");
             });
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
-
-
-        // Bind CellError type to xloil::CellError enum
-        auto eType = py::enum_<CellError>(mod, "CellError");
-        for (auto e : theCellErrors)
-          eType.value(utf16ToUtf8(enumAsWCString(e)).c_str(), e);
-
-        pyExcelErrorType = (PyTypeObject*)eType.ptr();
 
         mod.def("in_wizard", &Core::inFunctionWizard);
         mod.def("log", &writeToLog, py::arg("msg"), py::arg("level") = "info");

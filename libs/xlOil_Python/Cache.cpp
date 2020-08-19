@@ -1,5 +1,6 @@
 #include <xloil/ObjectCache.h>
 #include <xlOil/ExcelObjCache.h>
+#include "PyCoreModule.h"
 #include "BasicTypes.h"
 #include "Cache.h"
 #include "Main.h"

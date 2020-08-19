@@ -1,7 +1,7 @@
 #include "PyHelpers.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "PyExcelArray.h"
 #include <pybind11/pybind11.h>
 

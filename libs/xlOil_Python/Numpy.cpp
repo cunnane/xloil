@@ -1,10 +1,11 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "Numpy.h"
 #include "BasicTypes.h"
+#include "PyCoreModule.h"
+#include "ArrayHelpers.h"
 #include <xlOil/TypeConverters.h>
 #include <xlOil/NumericTypeConverters.h>
 #include <xlOil/ExcelArray.h>
-#include "ArrayHelpers.h"
 #include <xlOil/ArrayBuilder.h>
 #include <xloil/Date.h>
 #include <xloil/StringUtils.h>

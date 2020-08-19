@@ -1,6 +1,6 @@
 #include "AsyncFunctions.h"
 #include "FunctionRegister.h"
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "BasicTypes.h"
 #include "PyHelpers.h"
 #include <xloil/ExcelObj.h>

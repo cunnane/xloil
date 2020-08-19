@@ -1,20 +1,19 @@
 #pragma once
 
-#include <xlOil/ExcelObj.h>
-#include <xlOil/ExcelArray.h>
 #include "Numpy.h"
-#include <xlOil/Log.h>
-#include <xloil/StringUtils.h>
-#include <xlOil/ExcelRange.h>
 #include "Cache.h"
 #include "Date.h"
 #include "Main.h"
 #include "Tuple.h"
-#include "InjectedModule.h"
+#include "ExcelErrors.h"
 #include "PyHelpers.h"
-
+#include <xlOil/ExcelObj.h>
+#include <xlOil/ExcelArray.h>
+#include <xlOil/TypeConverters.h>
+#include <xlOil/Log.h>
+#include <xloil/StringUtils.h>
+#include <xlOil/ExcelRange.h>
 #include <string>
-
 
 using namespace std::literals::string_literals;
 
@@ -22,6 +21,13 @@ namespace xloil
 {
   namespace Python
   {
+    class IPyFromExcel : public IConvertFromExcel<PyObject*>
+    {
+    public:
+      virtual PyObject* fromArray(const ExcelArray& arr) const = 0;
+    };
+    using IPyToExcel = IConvertToExcel<PyObject>;
+
     template<class TSuper=nullptr_t>
     class PyFromCache : public CacheConverter<PyObject*, NullCoerce<TSuper, PyFromCache<>>>
     {

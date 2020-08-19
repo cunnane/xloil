@@ -1,6 +1,7 @@
 #pragma once
 #include "PyHelpers.h"
 #include "PyExcelArray.h"
+#include "PyCoreModule.h"
 #include "BasicTypes.h"
 
 using std::vector;

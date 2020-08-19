@@ -1,4 +1,4 @@
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include <pybind11/pybind11.h>

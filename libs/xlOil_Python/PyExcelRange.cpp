@@ -1,4 +1,4 @@
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "PyHelpers.h"
 #include "BasicTypes.h"
 #include <xlOil/ExcelRange.h>

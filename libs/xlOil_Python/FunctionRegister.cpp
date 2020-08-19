@@ -1,9 +1,9 @@
 #include "FunctionRegister.h"
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "Main.h"
 #include "BasicTypes.h"
 #include "Dictionary.h"
-#include "File.h"
+#include "ReadSource.h"
 #include "FunctionRegister.h"
 #include "AsyncFunctions.h"
 #include <xloil/StaticRegister.h>

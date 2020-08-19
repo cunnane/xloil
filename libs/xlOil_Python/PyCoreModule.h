@@ -1,5 +1,6 @@
 #pragma once
-#include <xlOil/TypeConverters.h>
+
+#include "BasicTypes.h"
 #include <pybind11/pybind11.h>
 #include <functional>
 
@@ -9,14 +10,6 @@ namespace xloil
   {
     constexpr char* const theInjectedModuleName = "xloil_core";
     PyObject* buildInjectedModule();
-
-    // TODO: these should be in their own header
-    class IPyFromExcel : public IConvertFromExcel<PyObject*>
-    {
-    public:
-      virtual PyObject* fromArray(const ExcelArray& arr) const = 0;
-    };
-    using IPyToExcel = IConvertToExcel<PyObject>;
 
     /// <summary>
     /// Registers a binder, that is, a function which binds types in the
@@ -50,10 +43,5 @@ namespace xloil
       return pybind11::class_<T, IPyToExcel, std::shared_ptr<T>>(mod, 
         ("From_" + std::string(type)).c_str());
     }
-
-    /// <summary>
-    /// Type object correponding to the bound xloil::CellError
-    /// </summary>
-    extern PyTypeObject* pyExcelErrorType;
   }
 }

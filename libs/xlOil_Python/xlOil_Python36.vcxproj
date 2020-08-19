@@ -151,34 +151,39 @@
     <ClCompile Include="CustomConverter.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
+    <ClCompile Include="ExcelErrors.cpp" />
+    <ClCompile Include="PyCoreModule.cpp" />
     <ClCompile Include="PyEvents.cpp" />
-    <ClCompile Include="File.cpp">
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-    </ClCompile>
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="InjectedModule.cpp" />
     <ClCompile Include="Numpy.cpp" />
     <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
     <ClCompile Include="PyHelpers.cpp" />
     <ClCompile Include="PyRtd.cpp" />
+    <ClCompile Include="ReadSource.cpp">
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</MultiProcessorCompilation>
+    </ClCompile>
     <ClCompile Include="Tuple.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="Cache.h" />
-    <ClInclude Include="File.h" />
+    <ClInclude Include="ExcelErrors.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="Date.h" />
     <ClInclude Include="Dictionary.h" />
     <ClInclude Include="FunctionRegister.h" />
     <ClInclude Include="BasicTypes.h" />
-    <ClInclude Include="InjectedModule.h" />
     <ClInclude Include="Numpy.h" />
+    <ClInclude Include="PyCoreModule.h" />
     <ClInclude Include="PyExcelArray.h" />
     <ClInclude Include="PyHelpers.h" />
+    <ClInclude Include="ReadSource.h" />
     <ClInclude Include="Tuple.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

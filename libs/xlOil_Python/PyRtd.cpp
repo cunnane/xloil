@@ -1,4 +1,4 @@
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include "BasicTypes.h"
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>

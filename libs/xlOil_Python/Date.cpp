@@ -1,6 +1,6 @@
 #include "xloil/Date.h"
 #include "BasicTypes.h"
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include <Python.h>
 #include <datetime.h>
 

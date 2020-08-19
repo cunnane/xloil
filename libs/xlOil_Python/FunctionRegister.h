@@ -1,5 +1,5 @@
 #pragma once
-#include "InjectedModule.h"
+#include "PyCoreModule.h"
 #include <map>
 #include <string>
 #include <pybind11/pybind11.h>
