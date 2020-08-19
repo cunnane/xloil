@@ -3,7 +3,7 @@ xlOil C++
 ======================
 
 The xlOil C++ interface has a `doxygen API description <doxygen/index.html>`_. It provides
-a layer above the `XLL API https://docs.microsoft.com/en-us/office/client-developer/excel/excel-xll-sdk-api-function-reference`_
+a layer above the `XLL API <https://docs.microsoft.com/en-us/office/client-developer/excel/excel-xll-sdk-api-function-reference>`_
 and includes features not available via the XLL API, such as RTD Servers and event handling. 
 
 
