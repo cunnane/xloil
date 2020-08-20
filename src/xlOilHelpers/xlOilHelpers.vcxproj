@@ -28,7 +28,6 @@
     <ClInclude Include="Environment.h" />
     <ClInclude Include="PEHelper.h" />
     <ClInclude Include="Settings.h" />
-    <ClInclude Include="StringUtils.h" />
     <ClInclude Include="Thunker.h" />
     <ClInclude Include="WindowsSlim.h" />
   </ItemGroup>
