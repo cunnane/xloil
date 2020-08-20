@@ -194,7 +194,7 @@ class FuncDescription:
         self.name = func.__name__
         self.help = func.__doc__
         self.is_async = False
-        self.rtd = False
+        self.rtd = None
         self.macro = False
         self.threaded = False
         self.volatile = False
@@ -252,9 +252,8 @@ class FuncDescription:
             else:
                 pass # TODO: Ignore - warn user?
 
-        
         # RTD-async is default unless rtd=False was explicitly specified.
-        holder.rtd_async = self.is_async and self.rtd is not False
+        holder.rtd_async = self.is_async and (self.rtd is not False)
         native_async = self.is_async and not holder.rtd_async
 
         holder.local = True if (self.local is None and not native_async) else self.local
@@ -414,23 +413,19 @@ def func(fn=None,
     arguments = locals()
     def decorate(fn):
 
-        _async = is_async
-        # If asyncio is not supported e.g. in python 2, this will fail
-        # But it doesn't matter since the async wrapper is intended to 
-        # hide the async property 
-        try:
-            if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
-                fn = async_wrapper(fn)
-                _async = True
-        except NameError:
-            pass
+        _is_async = is_async
+        if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
+            fn = async_wrapper(fn)
+            _is_async = True
 
         descr = FuncDescription(fn)
 
         del arguments['fn']
         for arg, val in arguments.items():
-            if not arg in ['fn', 'args'] and val is not None:
+            if not arg in ['fn', 'args', 'name']:
                 descr.__dict__[arg] = val
+        if name is not None:
+            descr.name = name
 
         if args is not None:
             arg_names = [x.name.casefold() for x in descr.args]
@@ -449,7 +444,7 @@ def func(fn=None,
                     except ValueError:
                         raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
         
-        descr.is_async = _async
+        descr.is_async = _is_async
 
         fn.__dict__[_META_TAG] = descr
         return fn
@@ -587,10 +582,11 @@ def scan_module(module, workbook_name=None):
 
     to_register = []
     for f_name, f in xloil_funcs:
+        import traceback
         try:
             to_register.append(_get_meta(f).create_holder())
         except Exception as e:
-            log(f"Register failed for {f_name}: {str(e)}", level='error')
+            log(f"Register failed for {f_name}: {traceback.format_exc()}", level='error')
 
     if any(to_register):
         xloil_core.register_functions(handle, to_register)
