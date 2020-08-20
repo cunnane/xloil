@@ -18,18 +18,19 @@ staging_dir = build_dir / "staging"
 plugin_dir = soln_dir / "libs"
 include_dir = soln_dir / "include"
 
-architectures = ["x64"]
+architectures = ["x64", "Win32"]
 
-python_versions = ["3.6", "3.7"]
+python_versions = ["3.6", "3.7", "3.8"]
 python_package_dir = staging_dir / "pypackage"
 
-
-build_files = {
+build_files = {}
+build_files['x64'] = {
     'Core' : ["xlOil.xll", "xlOil.dll", "xloil.ini"],
-    'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python.dll"],
+    'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python38.dll", "xlOil_Python.dll"],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
 }
+build_files['Win32'] = build_files['x64'].copy()
 
 lib_files = [
      { 
@@ -74,7 +75,8 @@ def latest_file(dir):
 print("Soln dir: ", str(soln_dir))
 
 # Build the library
-subprocess.run(f"BuildRelease.cmd", cwd=tools_dir)
+for arch in architectures:
+    subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir)
 
 # Write the combined include file
 subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir} {include_dir}", cwd=tools_dir)
@@ -91,12 +93,12 @@ subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
 
 # Clean any previous python package
 try: sh.rmtree(python_package_dir)
-except (FileNotFound): pass
+except (FileNotFoundError, OSError): pass
 
 
-for files in build_files.values():
-    for file in files:
-        for arch in architectures:
+for arch in architectures:
+    for files in build_files[arch].values():
+        for file in files:
             try: os.makedirs(staging_dir / arch)
             except FileExistsError: pass
             copy_file(build_dir / arch / "Release" / file, staging_dir / arch)
@@ -112,6 +114,8 @@ for job in lib_files:
         for f in job['files']:
             print(" ", f)
             target_path = staging_dir / target
+            try: os.makedirs(target_path)
+            except FileExistsError: pass
             if os.path.isabs(f):
                 copy_file(f, target_path)
             elif os.path.isdir(source / f):
@@ -139,12 +143,23 @@ with tarfile.open(staging_dir / f"xlOil-{xloil_version}-docs.tar.bz2", "w:bz2") 
 # Build python wheels
 #
 for arch in architectures:
+    platform_tags = { 'Win32': 'win32_foo', 'x64': 'win32_x64_foo'}
+    plat_name = platform_tags[arch]
+    our_pytag = f'cp{sys.version_info.major}{sys.version_info.minor}'
     for pyver in python_versions:
-        subprocess.run(f"python setup.py bdist_wheel --arch {arch} --pyver {pyver}", cwd=f"{python_package_dir}")# --python-tag py2 --plat-name x86")
+        #
+        # We need the foo suffix because setup ignores the --python-tag specification so we have
+        # to manually rename the files. Glorious automation.
+        #
+        
+        cmd = f"python setup.py bdist_wheel --arch {arch} --pyver {pyver} --plat-name {plat_name}"
+        print(f"Running: {cmd}.")
+        subprocess.run(cmd, cwd=f"{python_package_dir}")
+
         wheel = Path(latest_file(python_package_dir / "dist"))
         verXY = pyver.replace('.','')
-        correct_name = wheel.name.replace("cp37", f'cp{verXY}')
-        print("Renaming:", wheel, correct_name)
+        ### TODO: the cp37 depends on the current py version in use
+        correct_name = wheel.name.replace(our_pytag, f'cp{verXY}').replace('_foo','')
         os.rename(wheel, python_package_dir / "dist" / correct_name)
 
 #

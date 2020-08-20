@@ -78,7 +78,7 @@ class BinaryDistribution(Distribution):
     def has_ext_modules(self):
         return True
 
-version = Path(staging_dir / "Version.txt").read_text()
+version = Path(staging_dir / "Version.txt").read_text().replace('\n', '')
 setup(
     name="xlOil",
     version=version,
