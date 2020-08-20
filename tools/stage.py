@@ -143,7 +143,7 @@ with tarfile.open(staging_dir / f"xlOil-{xloil_version}-docs.tar.bz2", "w:bz2") 
 # Build python wheels
 #
 for arch in architectures:
-    platform_tags = { 'Win32': 'win32_foo', 'x64': 'win32_x64_foo'}
+    platform_tags = { 'Win32': 'win32_foo', 'x64': 'win_amd64_foo'}
     plat_name = platform_tags[arch]
     our_pytag = f'cp{sys.version_info.major}{sys.version_info.minor}'
     for pyver in python_versions:
