@@ -36,10 +36,10 @@ def _install_xloil():
     ini_txt, count3 = re.subn(r'^(\s*xlOilPythonVersion\s*=).*', rf'\g<1>"{python_ver}"', ini_txt, flags=re.M)
 
     if count1 != 1 or count2 != 1 or count3 != 1:
-        print (count1, count2, count3)
         print(f'WARNING: Failed to set python paths in {ini_path}. You may have to do this manually.')
     else:
         ini_path.write_text(ini_txt)
+        print(f'Edited {ini_path} to point to {sys.prefix} python distribution.')
 
 def _remove_xloil():
     target_script = os.path.join(_script_dir(), "xloil_Remove.ps1")

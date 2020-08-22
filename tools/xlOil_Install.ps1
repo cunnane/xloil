@@ -77,20 +77,18 @@ if (!(Test-Path -Path $IniFile -PathType leaf)) {
 	
 	Copy-Item -path (Join-Path $PSScriptRoot $INIFILE_NAME) -Destination $IniFile
 
-	#
-	# Set the PATH environment in the ini so we can find xlOil.dll
-	#
-	(Get-Content -Encoding UTF8 -Path $IniFile) `
-		-replace "'''%PATH%'''", "'''%PATH%;$PSScriptRoot'''" |
-	  Out-File -Encoding UTF8 $IniFile 
-
-	Write-Host "Settings file placed at ", $IniFile 
-
 } else {
 
-	Write-Host ("Found existing settings file at `n", $IniFile , 
-				"`nCheck [Environment] block points to `n", $AddinPath)
+	Write-Host ("Found existing settings file at `n", $IniFile)
 
 }
+#
+# Set the PATH environment in the ini so we can find xlOil.dll
+#
+(Get-Content -Encoding UTF8 -Path $IniFile) `
+	-replace "^(\s*XLOIL_PATH\s*=).*", "`$1'''$PSScriptRoot'''" |
+	Out-File -Encoding UTF8 $IniFile 
+
+Write-Host "Edited settings file ", $IniFile 
 
 Write-Host "$ADDIN_NAME installed from $PSScriptRoot to $XlStartPath `n"
