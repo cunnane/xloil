@@ -6,9 +6,14 @@ import distutils.dir_util
 import distutils.file_util
 from glob import glob
 import shutil as sh
+from argparse import ArgumentParser
 
 def merge_dict(x, y):
     return {**x, **y}
+
+parser = ArgumentParser()
+parser.add_argument("--post-ver")
+cmd_args,_ = parser.parse_known_args()
 
 tools_dir = Path(os.path.realpath(__file__)).parent
 soln_dir = tools_dir.parent
@@ -145,14 +150,20 @@ with tarfile.open(staging_dir / f"xlOil-{xloil_version}-docs.tar.bz2", "w:bz2") 
 for arch in architectures:
     platform_tags = { 'Win32': 'win32_foo', 'x64': 'win_amd64_foo'}
     plat_name = platform_tags[arch]
+
     our_pytag = f'cp{sys.version_info.major}{sys.version_info.minor}'
+
+    pypi_version = xloil_version
+    if 'post_ver' in cmd_args:
+        pypi_version += f'.post{cmd_args.post_ver}'
+       
     for pyver in python_versions:
         #
         # We need the foo suffix because setup ignores the --python-tag specification so we have
         # to manually rename the files. Glorious automation.
         #
         
-        cmd = f"python setup.py bdist_wheel --arch {arch} --pyver {pyver} --plat-name {plat_name}"
+        cmd = f"python setup.py bdist_wheel --arch {arch} --pyver {pyver} --version {pypi_version} --plat-name {plat_name}"
         print(f"Running: {cmd}.")
         subprocess.run(cmd, cwd=f"{python_package_dir}")
 
@@ -165,8 +176,14 @@ for arch in architectures:
 #
 # Next steps
 #
-print('\n\nTo upload the python package to PyPI:')
-print(f'cd {str(python_package_dir)}')
-print('twine upload --repository-url https://test.pypi.org/legacy/ dist/*')
-print('  or ')
-print('twine upload dist/*')
+print(
+    '\n'
+    '\nTo test the python package:'
+    f'\n  > pip install {str(python_package_dir)}\\dist\\<wheel file>'
+    '\n'
+    '\nTo upload the python package to PyPI:'
+    f'\n  > cd {str(python_package_dir)}'
+    '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
+    '\nor'
+    '\n  > twine upload dist/*'
+    )

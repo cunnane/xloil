@@ -12,6 +12,7 @@ import re
 parser = ArgumentParser()
 parser.add_argument("--arch")
 parser.add_argument("--pyver")
+parser.add_argument("--version")
 args, unknown = parser.parse_known_args()
 
 if 'arch' not in args:
@@ -20,11 +21,13 @@ if 'arch' not in args:
 if 'pyver' not in args:
     raise Exception("No python version specified")
 
+if 'version' not in args:
+    raise Exception("No xloil version specified")
+
 target_py_ver = args.pyver
 
 # Pass the un-parsed args to setuptools
 sys.argv = [sys.argv[0]] + unknown
-
 
 #
 # Define directoies
@@ -32,7 +35,6 @@ sys.argv = [sys.argv[0]] + unknown
  
 staging_dir = Path('..')
 bin_dir = staging_dir / args.arch
-
 
 #
 # Specify data files to copy
@@ -78,10 +80,9 @@ class BinaryDistribution(Distribution):
     def has_ext_modules(self):
         return True
 
-version = Path(staging_dir / "Version.txt").read_text().replace('\n', '')
 setup(
     name="xlOil",
-    version=version,
+    version=args.version,
     author="Steven Cunnane",
     author_email="my-surname@gmail.com",
     description="Excel interop for Python and Jupyter",
@@ -115,6 +116,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Office/Business :: Financial :: Spreadsheet',
