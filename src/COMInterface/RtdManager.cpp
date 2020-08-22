@@ -193,7 +193,7 @@ namespace xloil
           if (record.publisher)
             record.publisher->connect(record.subscribers.size());
 
-          XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
+          XLO_DEBUG(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
         }
         catch (const std::exception& e)
         {
@@ -259,7 +259,7 @@ namespace xloil
         {
           std::scoped_lock lock(_lockSubscribers);
 
-          XLO_TRACE("RTD: disconnect topicId {}", topicId);
+          XLO_DEBUG("RTD: disconnect topicId {}", topicId);
 
           // Remove any done objects in the cancellation bucket
           _cancelledProducers.remove_if([](auto& x) { return x->done(); });

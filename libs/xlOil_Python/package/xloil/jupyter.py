@@ -122,7 +122,7 @@ class _JupyterConnection:
         self._connection_file = connection_file
 
         cf = jupyter_client.find_connection_file(self._connection_file)
-        xlo.log(f"Jupyter: found connection for file {self._connection_file}", level='trace')
+        xlo.log(f"Jupyter: found connection for file {self._connection_file}", level='debug')
         self._client.load_connection_file(cf)
 
     async def connect(self):
@@ -147,7 +147,7 @@ class _JupyterConnection:
         # TODO: if the target notebook already has imported xloil under a different name
         # I suspect the overwrite of xloil.func will not work.
         
-        xlo.log("Initialising Jupyter connection", level='trace')
+        xlo.log(f"Initialising Jupyter connection {self._connection_file}", level='debug')
         
         msg_id = self._client.execute(
             "import sys, importlib, IPython\n" + 
@@ -169,7 +169,7 @@ class _JupyterConnection:
             try:
                 msg = await self._client.get_shell_msg(timeout=1)
             except Empty:
-                xlo.log("Waiting for Jupyter initialisation", level='trace')
+                xlo.log("Waiting for Jupyter initialisation", level='debug')
                 continue
 
             if msg.get('parent_header', {}).get('msg_id', None) == msg_id:
@@ -217,7 +217,7 @@ class _JupyterConnection:
                 break
             await asyncio.sleep(1)
 
-        xlo.log(f"Restart: new session {session}", level='trace')
+        xlo.log(f"Jupyter restart: new session {session}", level='info')
 
         await self.connect()
 
@@ -254,7 +254,7 @@ class _JupyterConnection:
             watcher = _VariableWatcher(name, topic, self)
             self._watched_variables[name] = watcher
 
-            xlo.log(f"Starting variable watch {name}", level='trace')
+            xlo.log(f"Starting variable watch {name}", level='debug')
             _rtdServer.start(watcher)
 
         return _rtdServer.subscribe(topic)
