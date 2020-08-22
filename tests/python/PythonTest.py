@@ -1,4 +1,5 @@
 import xloil as xlo
+from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
 
@@ -371,7 +372,7 @@ try:
     # value to the cache or it will be expanded to the sheet
     #
     @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
-    def pyTestDFrame(df: xlo.PDFrame(headings=True)):
+    def pyTestDFrame(df: PDFrame(headings=True)):
         return xlo.cache.add(df)
 
     #
@@ -380,7 +381,7 @@ try:
     # drop the index param and call DataFrame.set_index yourself.
     #
     @xlo.func
-    def pyTestDFrameIndex(df: xlo.PDFrame(headings=True, index="Time")):
+    def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time")):
         return xlo.cache(df)
 
     #

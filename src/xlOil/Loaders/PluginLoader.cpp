@@ -174,6 +174,8 @@ namespace xloil
           // Register any static functions in the plugin by adding
           // it as a source.
           context->tryAdd<StaticFunctionSource>(pluginName.c_str(), pluginName.c_str());
+
+          XLO_DEBUG(L"Finished loading plugin {0}", pluginName);
         }
 
         // Now "attach" the current XLL, passing in its associated settings

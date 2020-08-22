@@ -274,9 +274,9 @@ class FuncDescription:
 def _get_meta(fn):
     return fn.__dict__.get(_META_TAG, None)
 
-import asyncio
 
 def _create_event_loop():
+    import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     return loop
@@ -288,6 +288,8 @@ def async_wrapper(fn):
     callback object to return a result. xlOil will pass this object automatically to functions 
     declared async.
     """
+
+    import asyncio
 
     @functools.wraps(fn)
     def synchronised(*args, xloil_thread_context, **kwargs):
@@ -321,6 +323,8 @@ def _pump_message_loop(loop, timeout):
     """
     Called internally to run the asyncio message loop.
     """
+    import asyncio
+
     async def wait():
         await asyncio.sleep(timeout)
     
