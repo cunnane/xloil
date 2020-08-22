@@ -16,7 +16,7 @@ TODO: support transpose with a t
 */
 namespace xloil
 {
-#define XLOBLOCK_NARGS 20
+#define XLOBLOCK_NARGS 30
 #define XLOBLOCK_ARG_NAME arg
 #define COPY_ARG(z,N,d) args[N - 1] = &arg##N;
 
