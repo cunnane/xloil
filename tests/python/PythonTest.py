@@ -307,14 +307,14 @@ def pyTestCom():
     return app.ProductCode
 
 #
-# The special xlo.AllowRange annotation allows the function to receive ranges
-# as an ExcelRange object. This allows manipulation without making a copy of
-# the data in the range.
+# The special xlo.AllowRange annotation allows the function to receive range arguments
+# as an ExcelRange object. This allows extraction of part of the data without making a copy of
+# the entire range as an array.
 #
 @xlo.func(macro=True)
 def pyTestRange(r: xlo.AllowRange):
-    r2 = r.cells(1, 1).value
-    return r.cells(2, 2).address()
+    r2 = r.cells(0, 0).value
+    return r.cells(1, 1).address()
 
 #
 # Displays python's sys.path. Useful for debugging some module loads

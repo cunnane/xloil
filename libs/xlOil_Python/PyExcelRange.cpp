@@ -16,23 +16,19 @@ namespace xloil
       // Works like the Range.Range function in VBA except is zero-based
       inline auto subRange(const Range& r,
         int fromR, int fromC,
-        int* toR = 0, int* toC = 0, 
-        size_t* nRows = 0, size_t* nCols = 0)
+        int* toR = nullptr, int* toC = nullptr,
+        size_t* nRows = nullptr, size_t* nCols = nullptr)
       {
         py::gil_scoped_release loseGil;
-        if (!(toR || nRows))
-          XLO_THROW("Must specify end row or number of rows");
-        if (!(toC || nCols))
-          XLO_THROW("Must specify end column or number of columns");
-        return r.range(fromR, fromC,
-          toR ? *toR : fromR + (int)*nRows,
-          toC ? *toC : fromC + (int)*nCols);
+        const auto toRow = toR ? *toR : (nRows ? fromR + (int)*nRows - 1: Range::TO_END);
+        const auto toCol = toC ? *toC : (nCols ? fromC + (int)*nCols - 1: Range::TO_END);
+        return r.range(fromR, fromC, toRow, toCol);
       }
 
-      // Works like the Range.Cell function in VBA which is 1-based
+      // Works like the Range.Cell function in VBA except is zero based
       inline auto rangeCell(const Range& r, int row, int col)
       {
-        return r.cell(row - 1, col - 1);
+        return r.cell(row, col);
       }
       auto convertExcelObj(ExcelObj&& val)
       {
@@ -60,8 +56,9 @@ namespace xloil
 
       py::object getItem(const Range& range, pybind11::tuple loc)
       {
-        size_t fromRow, fromCol, toRow, toCol;
-        bool singleValue = sliceHelper2d(loc, range.nRows(), range.nCols(), 
+        size_t fromRow, fromCol, toRow, toCol, nRows, nCols;
+        std::tie(nRows, nCols) = range.shape();
+        bool singleValue = sliceHelper2d(loc, nRows, nCols,
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
@@ -79,11 +76,12 @@ namespace xloil
             py::arg("from_col"),
             py::arg("to_row") = nullptr,
             py::arg("to_col") = nullptr,
-            py::arg("num_rows") = -1, 
-            py::arg("num_cols") = -1)
+            py::arg("num_rows") = nullptr,
+            py::arg("num_cols") = nullptr)
           .def("cells", rangeCell,
             py::arg("row"), 
             py::arg("col"))
+          .def("__getitem__", getItem)
           .def_property("value",
             rangeGetValue,
             rangeSetValue,
@@ -97,7 +95,7 @@ namespace xloil
           .def_property_readonly("shape", 
             [](const Range& r)
             {
-              return std::make_pair(r.nRows(), r.nCols());
+              return r.shape();
             });
 
       }, 99);

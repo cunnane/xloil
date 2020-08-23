@@ -58,14 +58,11 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow = Range::TO_END, int toCol = Range::TO_END) const
     {
-      // Excel's ranges are _inclusive_ at the right hand end. This is
-      // unusual in programming languages, so we hide it by adjusting
-      // toRow / toCol here
       return ExcelRef(sheetId(),
         ref().rwFirst + fromRow,
         ref().colFirst + fromCol,
-        toRow < 0 ? ref().rwLast + toRow + 1 : ref().rwFirst + toRow - 1,
-        toCol < 0 ? ref().colLast + toCol + 1 : ref().colFirst + toCol - 1);
+        toRow == Range::TO_END ? ref().rwLast : ref().rwFirst + toRow,
+        toCol == Range::TO_END ? ref().colLast : ref().colFirst + toCol);
     }
 
     row_t nRows() const
@@ -75,6 +72,11 @@ namespace xloil
     col_t nCols() const
     {
       return (col_t)(ref().colLast - ref().colFirst);
+    }
+
+    std::tuple<row_t, col_t, row_t, col_t> bounds() const
+    {
+      return { ref().rwFirst, ref().colFirst ,ref().rwLast, ref().colLast };
     }
 
     /// <summary>
@@ -156,14 +158,13 @@ namespace xloil
   {
   public:
     explicit XllRange(const ExcelRef& ref);
-
     virtual Range* range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final;
 
-    virtual row_t nRows() const final;
+    virtual std::tuple<row_t, col_t> shape() const final;
 
-    virtual col_t nCols() const final;
+    virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const final;
 
     /// <summary>
     /// Returns the address of the range in the form

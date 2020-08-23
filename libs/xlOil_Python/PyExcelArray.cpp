@@ -58,18 +58,22 @@ namespace xloil
 
     py::object PyExcelArray::operator()(size_t row, size_t col) const
     {
-      return PySteal<>(PyFromExcel<PyFromAny<>>()(_base(row, col)));
+      return PySteal<>(
+        PyFromExcel<PyFromAny<>>()(
+          _base((ExcelArray::row_t)row, (ExcelArray::col_t)col)));
     }
 
     py::object PyExcelArray::operator()(size_t row) const
     {
-      return PySteal<>(PyFromExcel<PyFromAny<>>()(_base(row)));
+      return PySteal<>(
+        PyFromExcel<PyFromAny<>>()(
+          _base((ExcelArray::row_t)row)));
     }
 
-    PyExcelArray PyExcelArray::subArray(
+    PyExcelArray PyExcelArray::slice(
       int fromRow, int fromCol, int toRow, int toCol) const
     {
-      return PyExcelArray(*this, _base.subArray(fromRow, fromCol, toRow, toCol));
+      return PyExcelArray(*this, _base.slice(fromRow, fromCol, toRow, toCol));
     }
 
     pybind11::object PyExcelArray::getItem(pybind11::tuple loc) const
@@ -80,7 +84,7 @@ namespace xloil
         bool singleElem = sliceHelper1d(loc[0], size(), from, to);
         return singleElem
           ? operator()(from)
-          : py::cast<PyExcelArray>(subArray(from, 0, to, 1));
+          : py::cast<PyExcelArray>(slice(from, 0, to, 1));
       }
       else
       {
@@ -131,7 +135,7 @@ namespace xloil
         // Bind the PyExcelArray type to ExcelArray. PyExcelArray is a wrapper
         // around the core ExcelArray type.
         auto aType = py::class_<PyExcelArray>(mod, "ExcelArray")
-          .def("sub_array", &PyExcelArray::subArray, 
+          .def("sub_array", &PyExcelArray::slice, 
             py::arg("from_row"), 
             py::arg("from_col"),
             py::arg("to_row") = -1, 

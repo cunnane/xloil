@@ -54,7 +54,7 @@ namespace Tests
 
       for (auto n = 1u; n < array.nCols(); ++n)
       {
-        auto sub = array.subArray(0, 1, array.nRows(), n);
+        auto sub = array.slice(0, 1, array.nRows(), n);
 
         Assert::AreEqual(array.nRows(), sub.nRows());
 
@@ -85,7 +85,7 @@ namespace Tests
 
       for (auto n = -R + 1; n < R - 1; ++n)
       {
-        auto sub = array.subArray(n, 1, R, 2);
+        auto sub = array.slice(n, 1, R, 2);
         Assert::IsTrue(sub(0) == array(n < 0 ? R + n : n, 1));
       }
     }

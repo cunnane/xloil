@@ -13,8 +13,11 @@ namespace xloil
 {
   constexpr uint16_t XL_CELL_ADDRESS_A1_MAX_LEN = 3 + 7 + 1 + 3 + 7 + 1;
   constexpr uint16_t XL_CELL_ADDRESS_RC_MAX_LEN = 29;
-  constexpr uint16_t XL_SHEET_NAME_MAX_LEN = 31;
-  constexpr uint16_t XL_STRING_MAX_LEN = 32767;
+  constexpr uint16_t XL_SHEET_NAME_MAX_LEN      = 31;
+  constexpr uint16_t XL_STRING_MAX_LEN          = 32767;
+  constexpr uint32_t XL_MAX_ROWS                = 1048576;
+  constexpr uint16_t XL_MAX_COLS                = 16384;
+  constexpr uint16_t XL_MAX_UDF_ARGS            = 255;
 
   /// <summary>
   /// Describes the underlying type of the variant <see cref="ExcelObj"/>

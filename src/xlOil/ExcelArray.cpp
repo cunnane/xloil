@@ -49,8 +49,8 @@ namespace xloil
       strLen += v.stringLength();
 
     ExcelArrayBuilder builder(nRows(), nCols(), strLen);
-    for (auto i = 0; i < nRows(); ++i)
-      for (auto j = 0; j < nCols(); ++j)
+    for (auto i = 0u; i < nRows(); ++i)
+      for (auto j = 0u; j < nCols(); ++j)
         builder(i, j) = at(i, j);
 
     return builder.toExcelObj();

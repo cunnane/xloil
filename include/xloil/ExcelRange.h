@@ -16,13 +16,14 @@ namespace xloil
     using row_t = ExcelObj::row_t;
     using col_t = ExcelObj::col_t;
 
-    static constexpr int TO_END = -1;
+    static constexpr int TO_END = INT_MAX;
 
     /// <summary>
-    /// Gives a subrange relative to the current range. Unlike Excel's VBA Range function
-    /// we used zero-based indexing and do not include the right-hand endpoint.
-    /// Similar to Excel's function, we do not insist the sub-range is a subset, so
-    /// fromRow can be negative or toRow can be past the end of the referenced range.
+    /// Gives a subrange relative to the current range.  Similar to Excel's function, 
+    /// we do not insist the sub-range is a subset, so fromRow can be negative or toRow 
+    /// can be past the end of the referenced range. Unlike Excel, the indices are zero-based
+    /// Omitting toRow or fromRow or passing the special value TO_END goes to the end of the 
+    /// parent range.
     /// </summary>
     /// <param name="fromRow"></param>
     /// <param name="fromCol"></param>
@@ -42,22 +43,34 @@ namespace xloil
     /// <returns></returns>
     Range* cell(int i, int j) const
     {
-      return range(i, j, i + 1, j + 1);
+      return range(i, j, i, j);
     }
+
+    virtual std::tuple<row_t, col_t> shape() const = 0;
+    
+    virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const = 0;
 
     /// <summary>
     /// Returns the number of rows in the range
     /// </summary>
-    virtual row_t nRows() const = 0;
+    row_t nRows() const
+    {
+      return std::get<0>(shape());
+    }
 
     /// <summary>
     /// Returns the number of columns in the range
     /// </summary>
-    virtual col_t nCols() const = 0;
+    col_t nCols() const
+    {
+      return std::get<1>(shape());
+    }
 
     size_t size() const
     {
-      return nRows() * nCols();
+      row_t nRows; col_t nCols;
+      std::tie(nRows, nCols) = shape();
+      return nRows * nCols;
     }
 
     /// <summary>

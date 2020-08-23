@@ -57,22 +57,33 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow, int toCol) const
     {
-      //auto lastRow = toRow < 0 ? ref().rwLast + toRow + 1 : ref().rwFirst + toRow - 1;
-      //auto lastCol = toCol < 0 ? ref().colLast + toCol + 1 : ref().colFirst + toCol - 1;
+      if (toRow == Range::TO_END)
+        toRow = _range->Row + _range->Rows->GetCount();
+      if (toCol == Range::TO_END)
+        toCol = _range->Column + _range->Columns->GetCount();
+
       auto r =_range->GetRange(
-        _range->Cells->Item[fromRow][fromCol], 
-        _range->Cells->Item[toRow][toCol]);
+        _range->Cells->Item[fromRow - 1][fromCol - 1], 
+        _range->Cells->Item[toRow - 1][toCol - 1]);
       return new ComRange(r);
     }
 
-    Range::row_t ComRange::nRows() const
+
+    std::tuple<Range::row_t, Range::col_t> ComRange::shape() const
     {
-      return _range->Rows->GetCount();
+      return { _range->Rows->GetCount(), _range->Columns->GetCount() };
     }
-    Range::col_t ComRange::nCols() const
+
+    std::tuple<Range::row_t, Range::col_t, Range::row_t, Range::col_t> ComRange::bounds() const
     {
-      return _range->Columns->GetCount();
+      return { 
+        _range->Row, 
+        _range->Column, 
+        _range->Row + _range->Rows->GetCount() - 1,
+        _range->Column + _range->Columns->GetCount() - 1 
+      };
     }
+
     std::wstring ComRange::address(bool local) const
     {
       try

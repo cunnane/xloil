@@ -203,6 +203,7 @@
     <ClCompile Include="CodePageConversion.cpp" />
     <ClCompile Include="PString.cpp" />
     <ClCompile Include="TestExcelObj.cpp" />
+    <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestThunker.cpp" />
   </ItemGroup>
   <ItemGroup>

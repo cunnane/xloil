@@ -35,7 +35,7 @@ namespace xloil
       pybind11::object operator()(size_t row, size_t col) const;
       pybind11::object operator()(size_t row) const;
 
-      PyExcelArray subArray(int fromRow, int fromCol, int toRow, int toCol) const;
+      PyExcelArray slice(int fromRow, int fromCol, int toRow, int toCol) const;
       pybind11::object getItem(pybind11::tuple) const;
       size_t nRows() const;
       size_t nCols() const;

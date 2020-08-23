@@ -47,7 +47,7 @@ namespace xloil
         sql += headings
           ? headings->at(j)
           : arr(0, j).toString();
-        auto col = arr.subArray(headings ? 0 : 1, j, -1, j + 1);
+        auto col = arr.slice(headings ? 0 : 1, j, -1, j + 1);
         auto colType = col.dataType();
         switch (colType)
         {
@@ -80,7 +80,7 @@ namespace xloil
       const vector<wstring>* headings)
     {
       auto schema = tableSchema(arr, headings);
-      auto arrayData = arr.subArray(headings ? 0 : 1, 0);
+      auto arrayData = arr.slice(headings ? 0 : 1, 0);
       auto sql = fmt::format(
         L"CREATE VIRTUAL TABLE {0} USING xlarray({1},{2},0)", name, (long long)&arrayData, schema);
 

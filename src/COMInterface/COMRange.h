@@ -29,9 +29,9 @@ namespace xloil
         int fromRow, int fromCol,
         int toRow = TO_END, int toCol = TO_END) const final;
 
-      virtual row_t nRows() const final;
+      virtual std::tuple<row_t, col_t> shape() const final;
 
-      virtual col_t nCols() const final;
+      virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const final;
 
       /// <summary>
       /// Returns the address of the range in the form

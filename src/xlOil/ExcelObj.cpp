@@ -12,12 +12,6 @@
 #include <vector>
 #include <string>
 
-#define MAX_XL11_ROWS            65536
-#define MAX_XL11_COLS              256
-#define MAX_XL12_ROWS          1048576
-#define MAX_XL12_COLS            16384
-#define MAX_XL11_UDF_ARGS           30
-#define MAX_XL12_UDF_ARGS          255
 
 using std::string;
 using std::wstring;

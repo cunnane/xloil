@@ -17,11 +17,12 @@ namespace xloil
           return false;
       }
       const auto end = to + (to < 0 ? size : 0);
-      const auto sz  = end - from;
+      const auto sz = end - from;
       size = (TSize)sz;
       return sz >= 0;
     }
   }
+
   class ExcelArray;
 
   class ExcelArrayIterator
@@ -190,7 +191,7 @@ namespace xloil
     /// <param name="fromRow"></param>
     /// <param name="fromCol"></param>
     /// <returns></returns>
-    ExcelArray subArray(int fromRow, int fromCol) const
+    ExcelArray slice(int fromRow, int fromCol) const
     {
       return ExcelArray(*this, fromRow, fromCol, nRows(), nCols());
     }
@@ -207,7 +208,7 @@ namespace xloil
     /// <param name="toRow"></param>
     /// <param name="toCol"></param>
     /// <returns></returns>
-    ExcelArray subArray(
+    ExcelArray slice(
       int fromRow, int fromCol,
       int toRow, int toCol) const
     {

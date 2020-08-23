@@ -51,29 +51,27 @@ namespace xloil
     ref().colFirst = fromCol;
     ref().rwLast = toRow;
     ref().colLast = toCol;
-    if (fromRow > toRow)
-      XLO_THROW("Empty range: fromRow={0}, toRow={1}, ", fromRow, toRow);
-    if (fromCol > toCol)
-      XLO_THROW("Empty range: fromCol={0}, toCol={1}", fromCol, toCol);
+    if (toRow >= XL_MAX_ROWS || fromRow > toRow)
+      XLO_THROW("ExcelRef out of range fromRow={0}, toRow={1}", fromRow, toRow);
+    if (toCol >= XL_MAX_COLS || fromCol > toCol)
+      XLO_THROW("ExcelRef out of range fromCol={0}, toCol={1}", fromCol, toCol);
   }
-
   XllRange::XllRange(const ExcelRef& ref)
     : _ref(ref)
   {}
-
   Range* XllRange::range(int fromRow, int fromCol, int toRow, int toCol) const
   {
     return new XllRange(_ref.range(fromRow, fromCol, toRow, toCol));
   }
 
-  Range::row_t XllRange::nRows() const
+  std::tuple<Range::row_t, Range::col_t> XllRange::shape() const
   {
-    return _ref.nRows();
+    return { _ref.nRows(), _ref.nCols() };
   }
 
-  Range::col_t XllRange::nCols() const
+  std::tuple<Range::row_t, Range::col_t, Range::row_t, Range::col_t> XllRange::bounds() const
   {
-    return _ref.nCols();
+    return _ref.bounds();
   }
 
   std::wstring XllRange::address(bool local) const

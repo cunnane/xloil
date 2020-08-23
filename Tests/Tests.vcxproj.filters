@@ -8,5 +8,6 @@
     <ClCompile Include="PString.cpp" />
     <ClCompile Include="TestExcelObj.cpp" />
     <ClCompile Include="TestThunker.cpp" />
+    <ClCompile Include="TestRange.cpp" />
   </ItemGroup>
 </Project>

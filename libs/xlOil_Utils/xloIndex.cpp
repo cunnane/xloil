@@ -42,12 +42,12 @@ namespace xloil
     if (toRow > 0) --toRow;
     if (toCol > 0) --toCol;
 
-    const auto subArray = array.subArray(
+    const auto slice = array.slice(
       fromRow, fromCol, 
       toRow == 0 ? array.nRows() : toRow,
       toCol == 0 ? array.nCols() : toCol);
 
-    return returnValue(subArray.toExcelObj(false));
+    return returnValue(slice.toExcelObj(false));
   }
   XLO_FUNC_END(xloIndex).threadsafe()
     .help(L"Extends the INDEX function to xlOil refs and sub-arrays. Indices are 1-based. "
