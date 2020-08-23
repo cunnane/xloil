@@ -49,6 +49,9 @@ The last con is particularly problematic for native async: *any* user interactio
 interrupt the calc, so whilst native async functions can run asynchronously with each other, they
 cannot be used to perform background calculations.
 
+There is another advantage of RTD for xlOil: RTD functions can be 'local', i.e. called through a 
+VBA stub.
+
 
 xlOil's RTD Interface
 ---------------------

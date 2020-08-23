@@ -3,31 +3,75 @@
 
 def in_wizard():
     """ 
-    Returns true if the function is being invoked from the function 
-    wizard. Costly functions should exit in this case. But checking 
-    for the wizard is itself not cheap, so use this sparingly.
+    Returns true if the function is being invoked from the function wizard: costly functions should 
+    exit in this case to maintain UI responsiveness. Checking for the wizard is itself not cheap, so 
+    use this sparingly.
     """
     pass
 
 def log(msg, level="info"):
+    """
+    Writes a log message a the specified information level. In order of precendece the levels are:
+    error, warn, info, debug, trace.  Trace output can only be seen with a debug build of xlOil.
+    """
     pass
 
 class Range:
     """
     Similar to an Excel Range object, this class allows access to an area on a 
     worksheet. It uses similar syntax to Excel's object, supporting the ``cell``
-    and ``range`` functions.
+    and ``range`` functions, however they are zero-based like python.
+
+    A Range can be accessed and sliced using the usual syntax (the slice step must be 1):
+
+    ::
+
+        x[1, 1] # The value at (1, 1) as a python type: int, str, float, etc.
+
+        x[1, :] # The second row as another Range object
+
+        x[:-1, :-1] # A sub-range omitting the last row and column
+
     """
-    def range(self, from_row, from_col, num_rows=-1, num_cols=-1, to_row=None, to_col=None):
+    def range(self, from_row, from_col, num_rows=None, num_cols=None, to_row=None, to_col=None):
         """ 
-        Creates a subrange starting from the specified row and columns and ending
-        either at a specified row and column or spannig a number of rows and columns.
-        Using negative numbers or num_rows or num_cols means an offset from the end,
-        as per the usual python array conventions.
+        Creates a subrange using offsets from the top left corner of the parent range.
+        Like Excel's Range function, we allow negative offsets to select ranges outside the
+        parent.
+
+        Parameters
+        ----------
+
+        from_row: int
+            Starting row offset from the top left of the parent range. Zero-based. Can be negative
+
+        from_col: int
+            Starting row offset from the top left of the parent range. Zero-based. Can be negative
+
+        to_row: int
+            End row offset from the top left of the parent range. This row will be included in 
+            the range. The offset is zero-based and can be negative to select ranges outside the
+            parent range. Do not specify both `to_row` and `num_rows`.
+
+        to_col: int
+            End column offset from the top left of the parent range. This column will be included in 
+            the range. The offset is zero-based and can be negative to select ranges outside the
+            parent range. Do not specify both `to_col` and `num_cols`.
+
+        num_rows: int
+            Number of rows in output range. Must be positive. If neither `num_rows` or `to_rows` 
+            are specified, the range ends at the last row of the parent range.
+
+        num_cols: int
+            Number of columns in output range. Must be positive. If neither `num_cols` or `to_cols` 
+            are specified, the range ends at the last column of the parent range.
         """
         pass
     def cell(self, row, col):
-        """ Returns a Range object which consists of the single cell specified """
+        """ 
+        Returns a Range object which consists of the single cell specified. Note the indices
+        are zero-based from the top left of the parent range.
+        """
         pass
     @property
     def value(self):
@@ -57,9 +101,9 @@ class Range:
         pass
     def address(self,local=False):
         """
-        Gets the range address in A1 format e.g.
-            local=False # [Book1]Sheet1!F37
-            local=True  # F37
+        Gets the range address in A1 format. The `local` parameter specifies whether
+        the workbook and sheet name should be included. For example `local=True` gives
+        "[Book1]Sheet1!F37" and `local=False` returns "F37".
         """
         pass
     @property
@@ -72,8 +116,8 @@ class Range:
         pass
     def __getitem__(self, tuple):
         """ 
-        Given a 2-tuple, slices the range to return a sub Range or a 
-        single element.
+        Given a 2-tuple, slices the range to return a sub Range or a single element. Uses
+        normal python slicing conventions.
         """
         pass
 
@@ -83,10 +127,16 @@ class ExcelArray:
     copying the underlying data. It's not a general purpose array class 
     but rather used to create efficiencies in type converters.
     
-    It can be accessed and sliced using the usual syntax:
+    It can be accessed and sliced using the usual syntax (the slice step must be 1):
+
+    ::
+
         x[1, 1] # The value at 1,1 as int, str, float, etc.
+
         x[1, :] # The second row as another ExcelArray
-    
+
+        x[:-1, :-1] # A sub-array omitting the last row and column
+
     """
     def __getitem__(self, tuple):
         """ 
@@ -189,10 +239,10 @@ class Event:
     """
 
     AfterCalculate= _Event()
+    CalcCancelled= _Event()
     """
     Called when the user interrupts calculation by interacting with Excel.
     """
-    CalcCancelled= _Event()
     NewWorkbook= _Event()
     SheetSelectionChange= _Event()
     SheetBeforeDoubleClick= _Event()
@@ -204,6 +254,7 @@ class Event:
     WorkbookOpen= _Event()
     WorkbookActivate= _Event()
     WorkbookDeactivate= _Event()
+    WorkbookAfterClose= _Event()
     """
     Excel's event *WorkbookBeforeClose*, is  cancellable by the user so it is not 
     possible to know if the workbook actually closed.  When xlOil calls 
@@ -212,7 +263,6 @@ class Event:
 
     The event is not called for each workbook when xlOil exits.
     """
-    WorkbookAfterClose= _Event()
     WorkbookBeforeSave= _Event()
     WorkbookBeforePrint= _Event()
     WorkbookNewSheet= _Event()

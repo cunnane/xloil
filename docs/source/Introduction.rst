@@ -65,7 +65,7 @@ xlOil features
 Why xlOil was created
 ---------------------
 
-Programming with Excel has no ideal solution. You have a choice of poisons:
+Programming with Excel has no ideal solution. You have a choice of APIs:
 
 - VBA - great integration with Excel, but clunky syntax compared with
   other languages, few common libraries, limited IDE, testing and source 
@@ -80,6 +80,8 @@ Programming with Excel has no ideal solution. You have a choice of poisons:
 - .Net API - actually sits on top of COM, the best modern interface
   but only for .Net languages and speed-limited by COM overheads, still missing 
   some C-API features.
+- Javascript API - supports Office on multiple devices and operating system, but 
+  very slow with limited functionality compared to other APIs.
 
 xlOil tries to give you the C and COM APIs blended in a more friendly 
 fashion and adds:
