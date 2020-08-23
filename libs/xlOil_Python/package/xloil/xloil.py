@@ -49,11 +49,30 @@ as another type if it was not created from a sheet reference.
 """
 AllowRange = typing.Union[ExcelValue, Range]
 
-class _Arg:
+class Arg:
     """
-    Holds the description of a function argument
+    Holds the description of a function argument. Can be used with the 'func'
+    decorator to specify the argument description.
     """
     def __init__(self, name, help="", typeof=None, default=None, is_keywords=False):
+        """
+        Parameters
+        ----------
+
+        name: str
+            The name of the argument which appears in Excel's function wizard
+        help: str, optional
+            Help string to display in the function wizard
+        typeof: object, optional
+            Selects the type converter used to pass the argument value
+        default: object, optional
+            A default value to pass if the argument is not specified in Excel
+        is_keywords: bool, optional
+            Denotes the special kwargs argument. xlOil will expect a two-column array
+            in Excel which it will interpret as key, value pairs and convert to a
+            dictionary.
+        """
+
         self.typeof = typeof
         self.name = str(name)
         self.help = help
@@ -78,7 +97,7 @@ def _function_argspec(func):
     args = []
     for name, param in params.items():
         if param.kind == param.POSITIONAL_ONLY or param.kind == param.POSITIONAL_OR_KEYWORD:
-            spec = _Arg(name, default=param.default)
+            spec = Arg(name, default=param.default)
             anno = param.annotation
             if anno is not param.empty:
                 spec.typeof = anno
@@ -91,7 +110,7 @@ def _function_argspec(func):
         elif param.kind == param.VAR_POSITIONAL:
              raise Exception(f"Unhandled argument type positional for {name}")
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            args.append(_Arg(name, is_keywords=True))
+            args.append(Arg(name, is_keywords=True))
         else: 
             raise Exception(f"Unhandled argument type for {name}")
     return args, sig.return_annotation
