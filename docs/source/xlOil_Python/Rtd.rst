@@ -57,6 +57,6 @@ xlOil's RTD Interface
 ---------------------
 
 Below we explain the details of the RTD mechanism for cases where finer-grained control is required
-(such as in the `xloil_jupyter` module, :doc:`xlOil_Python_Jupyter`)
+(such as in the `xloil_jupyter` module, :doc:`Jupyter`)
 
-See the example in :doc:`xlOil_Python_Example`.
+See the example in :doc:`Example`.

@@ -2,8 +2,9 @@
 xlOil SQL
 =========
 
-The SQL plugin uses sqlite3 to provide functions which query Excel 
-arrays (or ranges) as if they were tables in a database. Multiple tables can be queried and joined.
+The SQL plugin uses sqlite3 to provide functions which query Excel arrays (or
+ranges) as if they were tables in a database. Multiple tables can be queried 
+and joined.
 
 .. contents::
     :local:
@@ -13,10 +14,15 @@ arrays (or ranges) as if they were tables in a database. Multiple tables can be 
 Getting Started
 ---------------
 
-xlOil_SQL does not require any settings and is loaded in a default xlOil 
-installation unless the reference is removed from the `xlOil.ini` settings
-file, so you can immediately open `xloil/tests/sql/TestSQL.xlsx` to see it in 
-action.
+xlOil_SQL does not require any settings and is automatically loaded in a default 
+xlOil installation.  It should appear in the plugin list in
+`%APPDATA%/xlOil/xlOil.ini`:
+
+::
+
+    Plugins=["xlOil_SQL.dll"]
+
+You can open the example spreadsheet at :ref:`core-example-sheets` to see it in action.
 
 For a quick demo, create a 3 column table of data in an new Excel workbook. 
 Make the headings 'Foo', 'Bar' and 'Baz'.  The contents of the data can be 

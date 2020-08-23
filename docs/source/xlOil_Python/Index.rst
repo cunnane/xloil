@@ -9,7 +9,7 @@ xlOil Python
     GettingStarted
     Concepts
     Example
-    Module
+    ModuleReference
     Pandas
     Jupyter
     Rtd

@@ -11,9 +11,8 @@ xlOil documentation
 	Core
 	xlOil_Core_Functions
 	xlOil_Cpp
-	xlOil_Python/Index
-	xlOil_Python/*
-	xlOil_SQL/Index
+	xlOil_Python/index
+	xlOil_SQL/index
 	xlOil_Utils
 	Developer
 

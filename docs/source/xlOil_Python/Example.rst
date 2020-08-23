@@ -2,5 +2,8 @@
 xlOil Python Examples
 ======================
 
-.. literalinclude:: /../../../tests/python/PythonTest.py
+This is code for the xlOil python test spreadsheet. You can find the associated sheet at 
+:ref:`core-example-sheets`.
+
+.. literalinclude:: /../../tests/python/PythonTest.py
 

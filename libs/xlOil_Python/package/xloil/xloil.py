@@ -49,7 +49,7 @@ as another type if it was not created from a sheet reference.
 """
 AllowRange = typing.Union[ExcelValue, Range]
 
-class Arg:
+class _Arg:
     """
     Holds the description of a function argument
     """
@@ -63,8 +63,8 @@ class Arg:
     @property
     def has_default(self):
         """ 
-        Since 'None' is a fairly likely default value, this property 
-        indicates whether there was a user-specified default
+        Since 'None' is a fairly likely default value, this property indicates 
+        whether there was a user-specified default
         """
         return self.default is not inspect._empty
 
@@ -78,7 +78,7 @@ def _function_argspec(func):
     args = []
     for name, param in params.items():
         if param.kind == param.POSITIONAL_ONLY or param.kind == param.POSITIONAL_OR_KEYWORD:
-            spec = Arg(name, default=param.default)
+            spec = _Arg(name, default=param.default)
             anno = param.annotation
             if anno is not param.empty:
                 spec.typeof = anno
@@ -91,7 +91,7 @@ def _function_argspec(func):
         elif param.kind == param.VAR_POSITIONAL:
              raise Exception(f"Unhandled argument type positional for {name}")
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            args.append(Arg(name, is_keywords=True))
+            args.append(_Arg(name, is_keywords=True))
         else: 
             raise Exception(f"Unhandled argument type for {name}")
     return args, sig.return_annotation
@@ -188,6 +188,10 @@ def converter(typ=typing.Callable, range=False):
     return decorate
 
 class FuncDescription:
+    """
+    Used to create the description of a worksheet function to register. 
+    External users would not typically use this class directly.
+    """
     def __init__(self, func):
         self._func = func
         self.args, self.return_type = _function_argspec(func)
@@ -284,9 +288,12 @@ def _create_event_loop():
 def async_wrapper(fn):
     """
     Wraps an async function or generator with a function which runs that generator on the thread's
-    event loop. The wraped function requires an 'xloil_thread_context' argument which provides a 
+    event loop. The wrapped function requires an 'xloil_thread_context' argument which provides a 
     callback object to return a result. xlOil will pass this object automatically to functions 
     declared async.
+
+    This function is used by the `func` decorator and generally should not be invoked
+    directly.
     """
 
     import asyncio
@@ -460,16 +467,27 @@ _excel_application_com_obj = None
 # TODO: Option to use win32com instead of comtypes?
 def app():
     """
-        Returns a handle to the Excel.Application object using 
-        the comtypes library. The Excel.Application object is the root of
-        Excel's COM interface and supports a wide range of operations.
-        It is well documented by Microsoft.  Many of the operations are 
-        only supported in functions declared as Macro Type.
+        Returns a handle to the Excel.Application object using the *comtypes* 
+        library. The Excel.Application object is the root of Excel's COM
+        interface and supports a wide range of operations. It is well 
+        documented by Microsoft, see 
+        https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview
+        and 
+        https://docs.microsoft.com/en-us/office/vba/api/excel.application(object).
+        
+        Many operations using the Application object will only work in 
+        functions declared as **macro type**.
 
         Examples
         --------
+
         To get the name of the active worksheet:
-            xlo.app().ActiveSheet.Name
+
+        ::
+            
+            @func(macro=True)
+            def sheetName():
+                return xlo.app().ActiveSheet.Name
 
     """
     global _excel_application_com_obj

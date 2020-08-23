@@ -2,6 +2,9 @@
 xlOil Jupyter Interaction
 =========================
 
+.. contents::
+    :local:
+    
 Introduction
 ------------
 

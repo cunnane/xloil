@@ -4,7 +4,7 @@ xlOil Python Concepts
 
 .. contents::
     :local:
-    
+
 Cached Objects
 --------------
 
@@ -109,22 +109,31 @@ this quandry we can specify:
 Dates
 -----
 
-Excel has limited support for dates. There is no primitive date object in the XLL
-interfae, but cells containing numbers can be formatted as dates.  This means that 
-worksheet functions cannot tell whether values received are intended as dates - this 
-applies to Excel built-ins as well: they will interpret any number as a date if
-requested.  (It is possible to check for dates via the COM interface but this would
-give behaviour inconsistent with the built-ins)
+In the Python plugin, just applying the argument annotation `datetime` will request a date 
+conversion. Dates returned from functions will be converted to Excel date numbers:
 
-In the Python plugin, just applying the argument annotation `datetime.datetime`
-will request a date conversion.
+::
 
-xlOil can interpret strings as dates. In the settings file, the key 
-``DateFormats`` specifies an array of date-formats to try when parsing strings.
-Naturally, adding more formats decreases performance.  The formats use the
-``std::get_time`` syntax, see https://en.cppreference.com/w/cpp/io/manip/get_time.
+    from datetime import datetime, timedelta
+    @func
+    def AddDay(date: datetime):
+        return date + timedelta(days = 1)
+
+
+xlOil can interpret strings as dates. In the settings file, the key ``DateFormats`` 
+specifies an array of date-formats to try when parsing strings. Naturally, adding more 
+formats decreases performance.  The formats use the C++ ``std::get_time`` syntax,
+see https://en.cppreference.com/w/cpp/io/manip/get_time.
+
 Since ``std::get_time`` is **case-sensitive** on Windows, so is xlOil's date parsing
-(this may be fixed in a future release).
+(this may be fixed in a future release as it is quite annoying for month names).
+
+Excel has limited internal support for dates. There is no primitive date object in the  
+XLL interface used by xlOil, but cells containing numbers can be formatted as dates.  
+This means that  worksheet functions cannot tell whether values received are intended 
+as dates - this applies to Excel built-in date functions as well: they will interpret 
+any number as a date. (It is possible to check for date formatting via the COM interface 
+but this would give behaviour inconsistent with the built-ins)
 
 Excel does not understand timezones and neither does ``std::get_time``, so these
 are currently unsupported.

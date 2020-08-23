@@ -68,7 +68,10 @@ html_static_path = ['_static']
 
 autodoc_default_flags = ['members']
 
-autosummary_generate = True
+autosummary_generate = False
+
+# See https://stackoverflow.com/questions/34216659/sphinx-autosummary-produces-two-summaries-for-each-class 
+numpydoc_show_class_members=False
 
 #
 # Required for readthedocs build as the master_doc seems to default to 'contents' there

@@ -11,8 +11,10 @@ def in_wizard():
 
 def log(msg, level="info"):
     """
-    Writes a log message a the specified information level. In order of precendece the levels are:
-    error, warn, info, debug, trace.  Trace output can only be seen with a debug build of xlOil.
+    Writes a log message at a level of *error*, *warn*, *info*, *debug* or *trace*.
+    Only messages with a level higher than the log level defined in the xlOil
+    settings will be output to the log file. Trace output can only be seen with 
+    a debug build of xlOil.
     """
     pass
 
@@ -169,7 +171,7 @@ class ExcelArray:
 class CellError:
     """
     Enum-type class which represents an Excel error condition of the 
-    form #N/A!, #NAME!, etc passed as a function argument. If your
+    form `#N/A!`, `#NAME!`, etc passed as a function argument. If your
     function does not use a specific type-converter it may be passed 
     an object of this type, which it can handle based on error condition.
     """
@@ -380,9 +382,11 @@ class RtdPublisher:
 
 class RtdServer:
     """
-    An RtdServer sits above an Rtd COM server. Each new RtdServer creates a
-    new underlying COM server. The manager connects publishers and subscribers
-    for topics, identified by a string. 
+    An RtdServer allows asynchronous interaction with Excel by posting update
+    notifications which cause Excel to recalcate certain cells.  The python 
+    RtdServer object manages an RTD COM server with each new RtdServer creating
+    an underlying COM server. The RtdServer works on a publisher/subscriber
+    model with topics identified by a string. 
 
     A topic publisher is registered using start(). Subsequent calls to subscribe()
     will connect this topic and tell Excel that the current calling cell should be

@@ -13,7 +13,7 @@ Getting Started
 Currently you need **Excel 2010** or later.
 
 If you have python available, you can install xlOil via pip. See 
-:doc:`xlOil_Python`, otherwise follow the below instructions.
+:doc:`xlOil_Python/GettingStarted`, otherwise follow the below instructions.
 
 Download the binary package (e.g. from gitlab) and unzip to a directory of 
 your choice. 
@@ -44,30 +44,28 @@ To check your setup and see some of the capabilities of xlOil, try:
 
 .. _core-edit-settings-files:
 
-Edit the settings files
------------------------
+Editing the settings file
+-------------------------
 
-There is an `xlOil.ini` file linked to the main xloil.xll addin. (This ini file 
-is actually parsed as TOML, an extension of the ini format).
+There is an `xlOil.ini` file linked to the main `xloil.xll` addin. (This ini file 
+is actually parsed as TOML, an extension of the ini format). xlOil searches for
+this file first in `%APPDATA%/xlOil` then in the directory containing the `xlOil.xll` 
+addin. 
 
-xlOil first searches for this file in the directory containing the `xlOil.xll` 
-addin, then in `%APPDATA%/xlOil`.
-
-The most important setting in `xlOil.ini` is the choice of plugins:
+The two most important setting in `xlOil.ini` are:
 
 ::
-
+    ...
+    XLOIL_PATH='''C:\lib\xloil```
+    ...
     Plugins=["xloil_Python.dll", "xlOil_SQL.dll"]
 
-xlOil searches for these plugins first in the directory containing `xlOil.xll`, 
-then the usual DLL search paths. Optionally you can load all plugins in the 
-same directory as `xlOil.xll` with a pattern match, by setting:
+``XLOIL_PATH`` allows the `xlOil.xll` addin to locate the main xlOil DLL if the 
+addin is being run from a different directory.  When the main DLL has loaded, 
+xlOil loads the specified plugins. It searches for these plugins first in the 
+directory containing `xlOil.dll`, then the directory containing the XLL, then 
+the usual DLL search paths. 
 
-::
-
-    PluginSearchPattern="xloil_*.dll"
-
-xlOil won't load the same plugin twice if these two methods overlap!
 
 Setting enviroment variables in settings files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,6 +152,15 @@ Now you can load ``myfuncs.xll`` in Excel and call the `greet` function. Note th
 is no need to register ``myfuncs.xll`` in Excel's addin manager, you can just drop
 the file onto your Excel window.
 
+Optionally you can load all plugins in the same directory as the XLL with 
+a pattern match:
+
+::
+
+    PluginSearchPattern="xloil_*.dll"
+
+xlOil won't complain if this methods attempt to load the same plugin as specified
+in the ``Plugins`` key.
 
 Excel Functions (UDFs)
 ----------------------

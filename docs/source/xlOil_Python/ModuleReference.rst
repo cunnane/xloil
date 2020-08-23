@@ -7,7 +7,5 @@ xlOil Python Module Reference
 	:members:
 	:imported-members:
 	:undoc-members:
-	
-.. autosummary::
-	:toctree:
+
 	
