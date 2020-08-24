@@ -43,9 +43,12 @@ namespace xloil
     {
       return utf8ToUtf16(findStr(root, "PluginSearchPattern", ""));
     }
-    std::wstring logFilePath(const toml::view_node& root)
+    std::wstring logFilePath(const toml::table& root, bool useDefault)
     {
-      return utf8ToUtf16(findStr(root, "LogFile", ""));
+      auto found = findStr(root["Addin"], "LogFile", "");
+      return !found.empty()
+        ? utf8ToUtf16(found)
+        : fs::path(*root.source().path).replace_extension("log").wstring();
     }
     std::string logLevel(const toml::view_node& root)
     {

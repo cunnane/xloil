@@ -168,8 +168,9 @@ namespace xloil
     formatStr(const wchar_t* fmt, Args&&...args)
   {
     const auto size = (size_t)_scwprintf(fmt, args...);
-    std::wstring result(size + 1, '\0');
+    std::wstring result(size + 1, 0);
     swprintf_s(&result[0], size + 1, fmt, args...);
+    result.pop_back();
     return result;
   }
 
@@ -181,8 +182,9 @@ namespace xloil
     formatStr(const char* fmt, Args&&...args)
   {
     const auto size = (size_t)_scprintf(fmt, args...);
-    std::string result(size + 1, '\0');
+    std::string result(size + 1, 0);
     sprintf_s(&result[0], size + 1, fmt, args...);
+    result.pop_back();
     return result;
   }
 }

@@ -293,7 +293,7 @@ namespace xloil
     const msxll::XLREF12& ref,
     bool A1Style)
   {
-    return captureStringBuffer([&](auto buf, auto sz)
+    return captureWStringBuffer([&](auto buf, auto sz)
     {
       return xlrefSheetAddress(sheet, ref, buf, sz, A1Style);
     });
@@ -303,7 +303,7 @@ namespace xloil
     const msxll::XLREF12& ref,
     bool A1Style)
   {
-    return captureStringBuffer([&](auto buf, auto sz)
+    return captureWStringBuffer([&](auto buf, auto sz)
       {
         return A1Style
           ? xlrefToLocalA1(ref, buf, sz)

@@ -8,6 +8,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
+#define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #include <delayimp.h>
 #include <fstream>
 
@@ -22,7 +23,11 @@ using namespace std::string_literals;
 
 namespace
 {
+  static HMODULE theModuleHandle = nullptr;
+
   static wstring ourXllPath;
+  static wstring ourLogFilePath;
+
   // This bool is required due to apparent bugs in the XLL interface:
   // Excel may call XLL event handlers after calling xlAutoClose,
   // and it may call xlAutoClose without ever having called xlAutoOpen
@@ -43,6 +48,7 @@ namespace
         return false;
       }
       ourXllPath = wstring(path, path + size);
+      ourLogFilePath = fs::path(ourXllPath).replace_extension("log");
       return true;
     }
     catch (...)
@@ -51,19 +57,25 @@ namespace
     }
   }
 
-  std::unique_ptr<std::fstream> theLogFile;
+  auto& getLogFile()
+  {
+    static std::fstream logFile(ourLogFilePath, std::ios::app);
+    return logFile;
+  }
 
   /// <summary>
   /// Very cheap log file to catch startup errors before
   /// the core dll can initialise spdlog.
   /// </summary>
-  void logError(const char* err)
+  template <class T>
+  void writeLog(const T& msg)
   {
-    OutputDebugStringA(err);
-    if (!theLogFile)
-      theLogFile.reset(new std::fstream(fs::path(ourXllPath).replace_extension("log"), std::ios::app));
-    *theLogFile << err << "\n";
-    theLogFile->flush();
+    //OutputDebugStringA(msg);
+    auto t = std::time(nullptr);
+    tm tm;
+    localtime_s(&tm, &t);
+    getLogFile() << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << ": " << msg << "\n";
+    getLogFile().flush();
   }
 
   // Avoids using xloil so we can call before the dll is found
@@ -100,16 +112,11 @@ FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
   default:
     msg = formatStr("Unable to load library: %s", pdli->szDll);
   }
-  logError(msg.c_str());
+  writeLog(msg);
   return nullptr;
 }
 
-extern "C" const PfnDliHook __pfnDliFailureHook2 = delayLoadFailureHook;
-
-namespace
-{
-  static HMODULE theModuleHandle = nullptr;
-}
+ExternC PfnDliHook __pfnDliFailureHook2 = nullptr;
 
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
@@ -126,7 +133,6 @@ XLO_ENTRY_POINT(int) DllMain(
   return TRUE;
 }
 
-
 // Name of core dll. Not sure if there's an automatic way to get this
 constexpr wchar_t* const xloil_dll = L"XLOIL.DLL";
 
@@ -142,20 +148,24 @@ void loadEnvironmentBlock(const toml::table& settings)
     SetEnvironmentVariable(key.c_str(), value.c_str());
   }
 }
-int loadCore(const wchar_t* ourXllPath)
+
+int loadCore(const wchar_t* xllPath)
 {
   // If the delay load fails, it will throw a SEH exception, so we must use
   // __try/__except to avoid this crashing Excel.
   int ret = -1;
+  auto previousHook = __pfnDliFailureHook2;
+  __pfnDliFailureHook2 = &delayLoadFailureHook;
   __try
   {
-    ret = xloil::coreAutoOpen(ourXllPath);
+    ret = xloil::coreAutoOpen(xllPath);
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
     // TODO: add GetExceptionCode(), without using string
-    logError("Failed to load xlOil.dll");
+    writeLog("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
   }
+  __pfnDliFailureHook2 = previousHook;
   return ret;
 }
 
@@ -170,38 +180,50 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
   try
   {
     // We need to find xloil.dll. 
-    const fs::path ourXllDir = fs::path(ourXllPath).remove_filename();
+    const auto ourXllDir = fs::path(ourXllPath).remove_filename();
 
+    const auto settings = findSettingsFile(ourXllPath.c_str());
+    auto traceLoad = false;
+    if (settings)
+    {
+      traceLoad = (*settings)["Addin"]["StartupTrace"].value_or(false);
+      ourLogFilePath = Settings::logFilePath(*settings);
+      if (traceLoad)
+        writeLog(formatStr("Found ini file at '%s'", settings->source().path->c_str()));
+    }
     if (GetModuleHandle(xloil_dll) != 0) // Is it already loaded?
     {
-      // Nothing to do
+      if (traceLoad)
+        writeLog("xlOil.dll already loaded!");
     }
     else if (fs::exists(ourXllDir / xloil_dll)) // Check same directory as XLL
     {
-      OutputDebugStringW((wstring(L"xlOil Loader: SetDllDirectory = ") + ourXllDir.wstring()).c_str());
+      if (traceLoad)
+        writeLog(formatStr("Found xlOil.dll, using SetDllDirectory = '%s'", ourXllDir.string().c_str()));
       SetDllDirectory(ourXllDir.c_str());
     }
     else
     {
-      // Load as many environment blocks as we can and hope the dynamic loader
-      // finds the DLL!  We used to look through the installed addins for 
-      // xloil.xll, but since we now load this using the XLSTART folder, 
-      // it won't appear in the registry
-
       // Load the environment block from our settings file (if it exists)
-      auto settings = findSettingsFile(ourXllPath.c_str());
       if (settings)
         loadEnvironmentBlock(*settings);
 
-      // Look for xloil.ini in our directory or AppData
+      // If we aren't xloil.xll (where we would already have loaded xloil.ini)
+      // look for xloil.ini and see if it contains an enviroment block
       if (_wcsicmp(fs::path(ourXllPath).filename().c_str(), L"xloil.xll") != 0)
       {
         auto coreSettings = findSettingsFile(
           fs::path(ourXllPath).replace_filename(xloil_dll).c_str());
         if (coreSettings)
+        {
+          writeLog(formatStr("Found xloil.ini at '%s'", coreSettings->source().path->c_str()));
           loadEnvironmentBlock(*settings);
+        }
       }
     }
+
+    if (traceLoad)
+      writeLog(formatStr("Environment PATH=%s", getEnvVar("PATH").c_str()));
 
     auto ret = loadCore(ourXllPath.c_str());
 
@@ -218,9 +240,9 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
         "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
     }
   }
-  catch (const std::exception& e )
+  catch (const std::exception& e)
   {
-    logError(e.what());
+    writeLog(e.what());
   }
   return 1; // We alway return 1, even on failure.
 }

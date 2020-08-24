@@ -10,24 +10,31 @@ using std::wsregex_iterator;
 
 namespace xloil
 {
-
   std::wstring getEnvVar(const wchar_t * name)
+  {
+    return captureWStringBuffer(
+      [name](auto* buf, auto len)
+      {
+        return GetEnvironmentVariableW(name, buf, (DWORD)len);
+      });
+  }
+
+  std::string getEnvVar(const char * name)
   {
     return captureStringBuffer(
       [name](auto* buf, auto len)
-    {
-      return GetEnvironmentVariable(name, buf, (DWORD)len);
-    });
+      {
+        return GetEnvironmentVariableA(name, buf, (DWORD)len);
+      });
   }
 
   std::wstring expandEnvironmentStrings(const wchar_t* str)
   {
-    return captureStringBuffer(
+    return captureWStringBuffer(
       [str](auto* buf, auto len)
-    {
-      return ExpandEnvironmentStrings(str, buf, (DWORD)len);
-    }
-    );
+      {
+        return ExpandEnvironmentStringsW(str, buf, (DWORD)len);
+      });
   }
 
   PushEnvVar::PushEnvVar(const wstring& name, const wstring& value)

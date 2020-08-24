@@ -9,24 +9,37 @@ namespace xloil
   /// signatures like
   ///    int_charsWritten GetTheString(wchar* buffer, int bufferSize);
   /// </summary>
-  template<class F>
-  std::wstring captureStringBuffer(F bufWriter, size_t initialSize = 1024)
+  namespace detail
   {
-    std::wstring s;
-    s.reserve(initialSize);
-    size_t len;
-    // We assume, hopefully correctly, that the bufWriter function on
-    // failure returns either -1 or the required buffer length.
-    while ((len = bufWriter(s.data(), s.capacity())) > s.capacity())
-      s.reserve(len == size_t(-1) ? s.size() * 2 : len);
+    template<class TChar, class F>
+    auto captureStringBufferImpl(F bufWriter, size_t initialSize)
+    {
+      std::basic_string<TChar> s;
+      s.reserve(initialSize);
+      size_t len;
+      // We assume, hopefully correctly, that the bufWriter function on
+      // failure returns either -1 or the required buffer length.
+      while ((len = bufWriter(s.data(), s.capacity())) > s.capacity())
+        s.reserve(len == size_t(-1) ? s.size() * 2 : len);
 
-    // However, some windows functions, e.g. ExpandEnvironmentStrings 
-    // include the null-terminator in the returned buffer length whereas
-    // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
-    // Wonderful.
-    s._Eos(s.data()[len - 1] == '\0' ? len - 1 : len);
-    s.shrink_to_fit();
-    return s;
+      // However, some windows functions, e.g. ExpandEnvironmentStrings 
+      // include the null-terminator in the returned buffer length whereas
+      // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
+      // Wonderful.
+      s._Eos(s.data()[len - 1] == '\0' ? len - 1 : len);
+      s.shrink_to_fit();
+      return s;
+    }
+  }
+  template<class F>
+  auto captureStringBuffer(F bufWriter, size_t initialSize = 1024)
+  {
+    return detail::captureStringBufferImpl<char, F>(bufWriter, initialSize);
+  }
+  template<class F>
+  auto captureWStringBuffer(F bufWriter, size_t initialSize = 1024)
+  {
+    return detail::captureStringBufferImpl<wchar_t, F>(bufWriter, initialSize);
   }
 
   /// <summary>
@@ -34,6 +47,7 @@ namespace xloil
   /// or an empty string if it does not exist
   /// </summary>
   std::wstring getEnvVar(const wchar_t* name);
+  std::string getEnvVar(const char * name);
 
   /// <summary>
   /// Expands environment variables in the specified string.

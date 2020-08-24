@@ -16,7 +16,7 @@ namespace xloil
 
   namespace Settings
   {
-    std::wstring logFilePath(const toml::view_node& root);
+    std::wstring logFilePath(const toml::table& root, bool useDefault = true);
 
     std::string logLevel(const toml::view_node& root);
 
