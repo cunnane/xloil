@@ -51,9 +51,11 @@ When an Excel workbook is opened, xlOil tries to load the module `<workbook_name
 (this is configurable).
 
 When registering functions from such a workbook module, xlOil defaults to making
-any declared functions "local". This means their scope is limited to the workbook.
-(It achieves this by creating a VBA stub to invoke them). This scoping can be
-overidden by the `xlo.func` decorator.
+any declared functions "local": this means their scope is limited to the workbook.
+It also means the function is automatically macro-type. (xlOil achieves this by
+creating a VBA stub to invoke them).
+
+This behaviour can be overrided by `local` argument to the `func` decorator.
 
 Local functions have some limitations compared to global scope ones:
 - No native async or threadsafe, but RTD async is OK
