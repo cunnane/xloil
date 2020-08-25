@@ -14,11 +14,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil", "src\xlOil\xlOil.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOilAddin", "src\xloilLoader\xloilLoader.vcxproj", "{F7E97195-7624-4E54-AA15-A1F85C96C609}"
 	ProjectSection(ProjectDependencies) = postProject
-		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2} = {F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}
 		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "COMInterface", "src\COMInterface\COMInterface.vcxproj", "{1F999F4F-7843-43FA-BEE7-B4334D6DD36B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2} = {F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{67EB80BB-D718-428C-80BD-E409C27FAD25}"
 	ProjectSection(SolutionItems) = preProject
@@ -81,6 +83,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestAddin", "tests\TestAddi
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python38", "libs\xlOil_Python\xlOil_Python38.vcxproj", "{A329C5CF-49AA-40AF-A8AF-EB7B9E7C07AC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
