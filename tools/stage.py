@@ -154,7 +154,7 @@ for arch in architectures:
     our_pytag = f'cp{sys.version_info.major}{sys.version_info.minor}'
 
     pypi_version = xloil_version
-    if 'post_ver' in cmd_args:
+    if 'post_ver' in cmd_args and cmd_args.post_ver is not None:
         pypi_version += f'.post{cmd_args.post_ver}'
        
     for pyver in python_versions:
