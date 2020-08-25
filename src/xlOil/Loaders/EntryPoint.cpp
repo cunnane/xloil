@@ -39,8 +39,13 @@ namespace xloil
       }
       catch (const ComConnectException&)
       {
-        Sleep(1000);
-        excelApiCall(RetryAtStartup{ path }, QueueType::WINDOW | QueueType::ENQUEUE, 0);
+        excelApiCall(
+          RetryAtStartup{ path },
+          QueueType::WINDOW | QueueType::ENQUEUE, 
+          0, // no retry
+          0,
+          1000 // wait 1 second before call
+        ); 
       }
     }
     wstring path;
@@ -51,8 +56,6 @@ namespace xloil
     try
     {
       InXllContext xllContext;
-
-      State::initAppContext(theCoreModuleHandle);
       // A return val of 1 tells the XLL to hook XLL-api events. There may be
       // mulltiple XLLs, but we only want to hook the events once, when we load 
       // the core DLL.
@@ -65,6 +68,8 @@ namespace xloil
 #else
         detail::loggerInitialise(spdlog::level::warn);
 #endif
+        State::initAppContext(theCoreModuleHandle);
+
         openCore();
 
         theCoreIsLoaded = true;

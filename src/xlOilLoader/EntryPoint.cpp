@@ -116,7 +116,7 @@ FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
   return nullptr;
 }
 
-ExternC PfnDliHook __pfnDliFailureHook2 = nullptr;
+extern "C" PfnDliHook __pfnDliFailureHook2 = nullptr;
 
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,

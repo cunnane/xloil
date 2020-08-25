@@ -62,5 +62,6 @@ namespace xloil
       const std::function<void()>& func, 
       int flags = QueueType::WINDOW, 
       int nRetries = 10, 
-      unsigned waitTime = 200);
+      unsigned waitBetweenRetries = 200,
+      unsigned waitBeforeCall = 0);
 }
