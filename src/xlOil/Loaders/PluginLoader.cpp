@@ -4,6 +4,7 @@
 #include <COMInterface/RtdManager.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Log.h>
+#include <xlOil/Throw.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Register/FuncRegistry.h>
@@ -36,24 +37,6 @@ namespace xloil
     AddinContext* Context;
     HMODULE Handle;
     PluginInitFunc Init;
-  };
-
-  template <class TChar>
-  struct CaselessCompare 
-  {
-    bool operator()(
-      const std::basic_string<TChar> & lhs, 
-      const std::basic_string<TChar> & rhs) const 
-    {
-      return (*this)(lhs.c_str(), rhs.c_str());
-    }
-    bool operator()(const TChar* lhs, const TChar* rhs) const 
-    {
-      if constexpr (std::is_same<TChar, wchar_t>::value)
-        return _wcsicmp(lhs, rhs) < 0;
-      else
-        return _stricmp(lhs, rhs) < 0;
-    }
   };
 
   static auto& getLoadedPlugins()

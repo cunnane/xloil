@@ -4,6 +4,7 @@
 #include <xloil/Loaders/EntryPoint.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
+#include <array>
 
 using namespace msxll;
 

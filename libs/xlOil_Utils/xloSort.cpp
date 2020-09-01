@@ -5,6 +5,7 @@
 #include <xlOil/Preprocessor.h>
 #include <algorithm>
 #include <numeric>
+#include <array>
 
 using std::array;
 using std::vector;

@@ -3,7 +3,6 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/PString.h>
 #include <string>
-#include <array>
 #include <cassert>
 #include <optional>
 
@@ -66,7 +65,7 @@ namespace xloil
   /// Array of all CellError types, useful for autogeneration
   /// of bindings
   /// </summary>
-  static const std::array<CellError, 8> theCellErrors =
+  static const CellError theCellErrors[] =
   {
     CellError::Null,
     CellError::Div0,
@@ -217,7 +216,7 @@ namespace xloil
     {
       // Excel will crash if passed an empty array
       if (nRows <= 0 || nCols <= 0)
-        XLO_THROW("Cannot create empty array");
+        throw std::range_error("ExcelObj: Cannot create empty array");
       val.array.rows = nRows;
       val.array.columns = nCols;
       val.array.lparray = (Base*)data;

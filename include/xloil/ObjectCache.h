@@ -2,6 +2,7 @@
 #include "ExcelObj.h"
 #include "Events.h"
 #include "Caller.h"
+#include <xloil/Throw.h>
 #include <unordered_map>
 #include <string_view>
 #include <mutex>

@@ -3,6 +3,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/Throw.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <filesystem>

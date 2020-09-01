@@ -7,6 +7,7 @@
 #include <xlOil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
+#include <array>
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -610,7 +611,7 @@ namespace
 
     const ExcelObj& Error(CellError e)
     {
-      static std::array<ExcelObj, theCellErrors.size()> cellErrors =
+      static std::array<ExcelObj, _countof(theCellErrors)> cellErrors =
       {
         ExcelObj(CellError::Null),
         ExcelObj(CellError::Div0),

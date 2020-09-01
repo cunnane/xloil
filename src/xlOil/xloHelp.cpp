@@ -1,7 +1,7 @@
 #include <xloil/Register/FuncRegistry.h>
 #include <xloil/StaticRegister.h>
 #include <xloil/ArrayBuilder.h>
-
+#include <xloil/Throw.h>
 namespace xloil
 {
   XLO_FUNC_START(xloHelp(

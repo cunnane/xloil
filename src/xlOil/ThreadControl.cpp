@@ -4,6 +4,7 @@
 #include <xloil/Loaders/EntryPoint.h>
 #include <COMInterface/XllContextInvoke.h>
 #include <xloil/Log.h>
+#include <xloil/Throw.h>
 #include <xloil/State.h>
 #include <functional>
 #include <queue>

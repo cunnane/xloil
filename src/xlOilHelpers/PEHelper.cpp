@@ -10,11 +10,11 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
 
   auto* pDosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-    XLO_THROW("Dll export table: bad DOS image");
+    throw std::runtime_error("Dll export table: fatal error - bad DOS image");
 
   auto* pNTHeader = (PIMAGE_NT_HEADERS)(imageBase + pDosHeader->e_lfanew);
   if (pNTHeader->Signature != IMAGE_NT_SIGNATURE)
-    XLO_THROW("Dll export table: bad NT image");
+    throw std::runtime_error("Dll export table: fatal error - bad NT image");
     
   auto opt_hdr = pNTHeader->OptionalHeader;
   auto& exp_entry = opt_hdr.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
@@ -27,7 +27,7 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
   numberOfNames = pExportDirectory->NumberOfNames;
 
   if (pExportDirectory->NumberOfFunctions != pExportDirectory->NumberOfNames)
-    XLO_THROW("Dll is exporting functions by ordinal, we don't currently support this");
+    throw std::runtime_error("Dll export table: ordinal export detected - not currently supported");
 }
 
 int xloil::DllExportTable::findOffset(const char* funcName)
@@ -48,7 +48,7 @@ int xloil::DllExportTable::findOffset(const char* funcName)
 bool xloil::DllExportTable::hook(size_t offset, void * hook)
 {
   if (offset >= numberOfNames)
-    throw std::runtime_error("Function offset out of bounds of export table");
+    throw std::runtime_error("Function offset out of bounds of export table during hook");
   auto target = func_table + ord_table[offset];
   DWORD oldProtect;
   if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) return false;

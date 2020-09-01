@@ -1,5 +1,5 @@
 #pragma once
-#include <xlOil/Throw.h>
+#include <xloil/StringUtils.h>
 #include <string>
 
 namespace xloil
@@ -69,8 +69,9 @@ namespace xloil
       if (this == &that)
         return *this;
       if(!write(that.pstr(), that.length()))
-        XLO_THROW("PString buffer too short: {0} required, {1} available", 
-          (int)that.length(), (int)length());
+        throw std::out_of_range(
+          formatStr("PString buffer too short: %u required, %u available", 
+            that.length(), length()));
       return *this;
     }
 
@@ -81,8 +82,9 @@ namespace xloil
     PStringImpl& operator=(const TChar* str)
     {
       if(!write(str))
-        XLO_THROW("PString buffer too short: {0} required, {1} available", 
-          wcslen(str), (int)length());
+        throw std::out_of_range(
+          formatStr("PString buffer too short: %u required, %u available",
+            wcslen(str), length()));
       return *this;
     }
 
@@ -320,7 +322,7 @@ namespace xloil
       if (sz <= length())
         _data[0] = sz;
       else
-        XLO_THROW("Cannot increase size of PStringView");
+        throw std::out_of_range("Cannot increase size of PStringView");
     }
 
     /// <summary>
