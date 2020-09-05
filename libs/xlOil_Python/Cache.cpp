@@ -20,8 +20,16 @@ namespace xloil {
       struct PyCache
       {
         PyCache()
+          : _cache(false)
         {
           thePythonObjCache = this;
+          _workbookCloseHandler = std::static_pointer_cast<const void>(
+            xloil::Event::WorkbookAfterClose().bind(
+              [this](auto wbName)
+              { 
+                py::gil_scoped_acquire getGil;
+                _cache.onWorkbookClose(wbName); 
+              }));
         }
 
         // Just to prevent any potential errors!
@@ -67,6 +75,7 @@ namespace xloil {
         }
 
         ObjectCache<py::object, thePyCacheUniquifier> _cache;
+        std::shared_ptr<const void> _workbookCloseHandler;
       };
     }
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)

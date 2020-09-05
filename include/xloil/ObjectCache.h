@@ -190,7 +190,7 @@ namespace xloil
     }
 
   public:
-    ObjectCache()
+    ObjectCache(bool reapOnWorkbookClose = true)
       : _calcId(1)
     {
       using namespace std::placeholders;
@@ -198,8 +198,9 @@ namespace xloil
       _calcEndHandler = std::static_pointer_cast<const void>(
         xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::expireObjects), this)));
       
-      _workbookCloseHandler = std::static_pointer_cast<const void>(
-        xloil::Event::WorkbookAfterClose().bind(std::bind(std::mem_fn(&self::onWorkbookClose), this, _1)));
+      if (reapOnWorkbookClose)
+        _workbookCloseHandler = std::static_pointer_cast<const void>(
+          xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
     }
 
     bool fetch(const std::wstring_view& cacheString, TObj& obj)
@@ -299,13 +300,6 @@ namespace xloil
       return true;
     }
 
-  private:
-    CellCache& fetchOrAddCell(const std::wstring_view& wbName, const std::wstring_view& wsRef)
-    {
-      auto& wbCache = findOrAdd(_cache, wbName);
-      return findOrAdd(wbCache, wsRef);
-    }
-
     void onWorkbookClose(const wchar_t* wbName)
     {
       // Called by Excel Event so will always be synchonised
@@ -320,6 +314,13 @@ namespace xloil
         }
       }
       _cache.erase(wbName);
+    }
+
+  private:
+    CellCache& fetchOrAddCell(const std::wstring_view& wbName, const std::wstring_view& wsRef)
+    {
+      auto& wbCache = findOrAdd(_cache, wbName);
+      return findOrAdd(wbCache, wsRef);
     }
 
     WorkbookCache* fetchImpl(

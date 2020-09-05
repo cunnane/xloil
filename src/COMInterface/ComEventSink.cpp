@@ -1,8 +1,10 @@
-#include <xlOil/Events.h>
+
 #include "ExcelTypeLib.h"
 #include "Connect.h"
 #include "ComRange.h"
 #include "XllContextInvoke.h"
+#include <xlOil/Events.h>
+#include <xlOil/ApiMessage.h>
 #include <set>
 
 using std::set;
@@ -185,9 +187,16 @@ namespace xloil
         Workbook* Wb,
         VARIANT_BOOL* Cancel)
       {
-        bool cancel = *Cancel;
+        if (*Cancel == VARIANT_TRUE)
+          return;
+        bool cancel = false;
         Event::WorkbookBeforeClose().fire(Wb->Name, cancel);
-        *Cancel = cancel ? -1 : 0;
+        *Cancel = cancel ? VARIANT_TRUE : VARIANT_FALSE;
+        if (!cancel)
+        {
+          // Wait 5s, then check if the workbook was actually closed
+          excelApiCall([]() { WorkbookMonitor::check(); }, QueueType::WINDOW, 0, 0, 5000);
+        }
       }
       void WorkbookBeforeSave(
         Workbook* Wb,
@@ -231,9 +240,6 @@ namespace xloil
         LCID lcid, WORD wFlags, DISPPARAMS* pdispparams, VARIANT* pvarResult,
         EXCEPINFO* pexcepinfo, UINT* puArgErr)
       {
-        if ((riid != IID_NULL))
-          return E_INVALIDARG;
-
         // TODO: TRY CATCH
         auto* rgvarg = pdispparams->rgvarg;
 
