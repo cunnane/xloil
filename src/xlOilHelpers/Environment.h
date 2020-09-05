@@ -83,13 +83,13 @@ namespace xloil
   /// Returns false if the key was not matched.
   /// </summary>
   bool getWindowsRegistryValue(
-    const std::wstring& hive,
-    const std::wstring& location,
+    const wchar_t* hive,
+    const wchar_t* location,
     std::wstring& result);
 
   bool getWindowsRegistryValue(
-    const std::wstring& hive,
-    const std::wstring& location,
+    const wchar_t* hive,
+    const wchar_t* location,
     unsigned long& result);
 
   /// <summary>

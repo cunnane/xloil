@@ -8,6 +8,7 @@
 #include <xlOil/Events.h>
 #include <xloil/State.h>
 #include <xloil/RtdServer.h>
+#include <COMInterface/Connect.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 
@@ -87,7 +88,7 @@ namespace xloil
     return settings;
   }
 
-  void openCore() 
+  void createCoreContext() 
   {
     auto settings = processAddinSettings(State::corePath());
 
@@ -98,7 +99,7 @@ namespace xloil
 
   void openXll(const wchar_t* xllPath)
   {
-    // An explicit load of xloil.xll returns here since the other bits get done in openCore
+    // An explicit load of xloil.xll returns here since the other bits get done in createCoreContext
     if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0)
     {
       auto plugins = Settings::plugins((*ourCoreContext->settings())["Addin"]);
@@ -137,6 +138,8 @@ namespace xloil
 
       unloadAllPlugins();
       assert(theAddinContexts.empty());
+
+      COM::disconnectCom();
     }
   }
 }

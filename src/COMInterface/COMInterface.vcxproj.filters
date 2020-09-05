@@ -10,6 +10,8 @@
     <ClInclude Include="ComEventSink.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="ClassFactory.h" />
+    <ClInclude Include="ComAddin.h" />
+    <ClInclude Include="RibbonExtensibility.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Connect.cpp" />
@@ -19,5 +21,7 @@
     <ClCompile Include="ComVariant.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
     <ClCompile Include="RtdManager.cpp" />
+    <ClCompile Include="ComAddin.cpp" />
+    <ClCompile Include="RibbonExtensibility.cpp" />
   </ItemGroup>
 </Project>

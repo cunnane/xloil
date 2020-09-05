@@ -117,7 +117,7 @@ namespace xloil
       __declspec(novtable)
       RtdServerImpl :
         public CComObjectRootEx<CComSingleThreadModel>,
-        public CComCoClass<RtdServerImpl<TValue>, &__uuidof(Excel::IRtdServer)>,
+        public CComCoClass<RtdServerImpl<TValue>>,
         public IDispatchImpl<
           Excel::IRtdServer,
           &__uuidof(Excel::IRtdServer),
@@ -452,8 +452,9 @@ namespace xloil
       RtdServerImpl<ExcelObj>* _server;
     public:
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
-        : _registrar(progId, fixedClsid)
+        : _registrar(new CComObject<RtdServerImpl<ExcelObj>>(), progId, fixedClsid)
       {
+        // TODO: no need for member var.
         _server = &_registrar.server();
 #ifdef _DEBUG
         //void* testObj;

@@ -153,6 +153,7 @@
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="ExcelErrors.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
+    <ClCompile Include="PyRibbon.cpp" />
     <ClCompile Include="ReadSource.cpp">
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>

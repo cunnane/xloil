@@ -77,7 +77,7 @@ namespace xloil
     }
     Excel::_Application& excelApp() noexcept
     {
-      return xloil::excelApp();
+      return COM::excelApp();
     }
   }
 }

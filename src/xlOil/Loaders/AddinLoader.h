@@ -13,7 +13,7 @@ namespace xloil
   void
     deleteFileSource(const std::shared_ptr<FileSource>& source);
 
-  void openCore();
+  void createCoreContext();
   void openXll(const wchar_t* xllPath);
   void closeXll(const wchar_t* xllPath);
 }

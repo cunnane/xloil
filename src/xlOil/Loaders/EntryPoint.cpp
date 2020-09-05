@@ -34,14 +34,14 @@ namespace xloil
     {
       try
       {
-        connectCOM();
+        COM::connectCom();
         excelApiCall([=]() { openXll(path.c_str()); }, QueueType::XLL_API);
       }
-      catch (const ComConnectException&)
+      catch (const COM::ComConnectException&)
       {
         excelApiCall(
           RetryAtStartup{ path },
-          QueueType::WINDOW | QueueType::ENQUEUE, 
+          QueueType::WINDOW, 
           0, // no retry
           0,
           1000 // wait 1 second before call
@@ -51,7 +51,7 @@ namespace xloil
     wstring path;
   };
 
-  XLOIL_EXPORT int coreAutoOpen(const wchar_t* xllPath) noexcept
+  XLOIL_EXPORT int autoOpenHandler(const wchar_t* xllPath) noexcept
   {
     try
     {
@@ -70,7 +70,7 @@ namespace xloil
 #endif
         State::initAppContext(theCoreModuleHandle);
 
-        openCore();
+        createCoreContext();
 
         theCoreIsLoaded = true;
         retVal = 1;
@@ -88,7 +88,7 @@ namespace xloil
     }
     return -1;
   }
-  XLOIL_EXPORT int coreAutoClose(const wchar_t* xllPath) noexcept
+  XLOIL_EXPORT int autoCloseHandler(const wchar_t* xllPath) noexcept
   {
     try
     {

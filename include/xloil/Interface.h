@@ -12,6 +12,7 @@ namespace xloil { class RegisteredFunc; class AddinContext; }
 
 namespace xloil
 {
+  // TODO: remove / move to State
   namespace Core
   {
     /// <summary>
@@ -50,6 +51,27 @@ namespace xloil
     XLOIL_EXPORT void throwInFunctionWizard();
   }
 
+  struct RibbonControl
+  {
+    const wchar_t* Id;
+    const wchar_t* Tag;
+  };
+
+  class IComAddin
+  {
+  public:
+    virtual ~IComAddin() {}
+    virtual const wchar_t* progid() const = 0;
+    virtual void connect() = 0;
+    virtual void disconnect() = 0;
+    virtual void setRibbon(
+      const wchar_t* xml,
+      const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers) = 0;
+  };
+
+  XLOIL_EXPORT std::shared_ptr<IComAddin> 
+    makeComAddin(const wchar_t* name, const wchar_t* description = nullptr);
+
   /// <summary>
   /// A file source collects Excel UDFs created from a single file.
   /// The file could be a plugin DLL or source file. You can inherit
@@ -65,7 +87,7 @@ namespace xloil
     /// 
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
-    /// <param name="watchFile">currently unimplemented</param>
+    /// <param name="watchFile">Currently unimplemented</param>
     FileSource(
       const wchar_t* sourceName, 
       const wchar_t* linkedWorkbook=nullptr,
@@ -144,6 +166,7 @@ namespace xloil
     AddinContext(
       const wchar_t* pathName, 
       std::shared_ptr<const toml::table> settings);
+
     ~AddinContext();
 
     /// <summary>
@@ -186,6 +209,15 @@ namespace xloil
     /// Returns the full pathname of the XLL addin
     /// </summary>
     const std::wstring& pathName() const { return _pathName; }
+
+    /// <summary>
+    /// Returns the filename of the XLL addin
+    /// </summary>
+    const wchar_t* fileName() const 
+    {
+      auto slash = _pathName.find_last_of(L'\\');
+      return _pathName.c_str() + slash + 1;
+    }
 
     void removeFileSource(ContextMap::const_iterator which);
 

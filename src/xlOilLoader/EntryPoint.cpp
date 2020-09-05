@@ -158,7 +158,7 @@ int loadCore(const wchar_t* xllPath)
   __pfnDliFailureHook2 = &delayLoadFailureHook;
   __try
   {
-    ret = xloil::coreAutoOpen(xllPath);
+    ret = xloil::autoOpenHandler(xllPath);
   }
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
@@ -252,7 +252,7 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   try
   {
     if (theXllIsOpen)
-      xloil::coreAutoClose(ourXllPath.c_str());
+      xloil::autoCloseHandler(ourXllPath.c_str());
     theXllIsOpen = true;
   }
   catch (...)

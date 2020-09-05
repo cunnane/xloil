@@ -9,12 +9,12 @@ namespace xloil
   /// Called by the XLL loader's xlAutoOpen
   /// </summary>
   XLOIL_EXPORT int 
-    coreAutoOpen(const wchar_t* xllPath) noexcept;
+    autoOpenHandler(const wchar_t* xllPath) noexcept;
 
   /// <summary>
   /// Called by the XLL loader's xlAutoClose
   /// </summary>
   XLOIL_EXPORT int 
-    coreAutoClose(const wchar_t* xllPath) noexcept;
+    autoCloseHandler(const wchar_t* xllPath) noexcept;
   XLOIL_EXPORT void onCalculationCancelled() noexcept;
 }

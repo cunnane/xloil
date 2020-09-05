@@ -24,8 +24,8 @@ namespace xloil
       auto excelVersion = Core::theExcelVersion();
       auto regKey = fmt::format(L"Software\\Microsoft\\Office\\{0}.0\\Excel\\Security\\AccessVBOM", excelVersion);
       DWORD currentUser = 666, localMachine = 666;
-      getWindowsRegistryValue(L"HKCU", regKey, currentUser);
-      getWindowsRegistryValue(L"HKLM", regKey, localMachine);
+      getWindowsRegistryValue(L"HKCU", regKey.c_str(), currentUser);
+      getWindowsRegistryValue(L"HKLM", regKey.c_str(), localMachine);
       if (currentUser == 0 || localMachine == 0)
         XLO_THROW("Allow access to VBA Object Model in "
           "File > Options > Trust Center > Trust Center Settings > Macro Settings");

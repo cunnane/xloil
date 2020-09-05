@@ -8,7 +8,8 @@
 #include <xlOil/ApiMessage.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
-#include <ComInterface/Connect.h>
+#include <COMInterface/Connect.h>
+#include <COMInterface/ComAddin.h>
 
 using std::make_pair;
 using std::wstring;
@@ -33,7 +34,7 @@ namespace xloil
 
   Excel::_Application& Core::theExcelApp()
   {
-    return excelApp();
+    return COM::excelApp();
   }
 
   bool Core::inFunctionWizard()
@@ -183,7 +184,7 @@ namespace xloil
     if (found.first)
     {
       const auto& wbName = found.first->_workbookName;
-      if (!wbName.empty() && !checkWorkbookIsOpen(wbName.c_str()))
+      if (!wbName.empty() && !COM::checkWorkbookIsOpen(wbName.c_str()))
       {
         deleteFileContext(found.first);
         return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
@@ -198,8 +199,15 @@ namespace xloil
     xloil::deleteFileSource(source);
   }
 
-  void AddinContext::removeFileSource(ContextMap::const_iterator which)
+  void 
+    AddinContext::removeFileSource(ContextMap::const_iterator which)
   {
     _files.erase(which);
+  }
+
+  std::shared_ptr<IComAddin> xloil::makeComAddin(
+    const wchar_t * name, const wchar_t * description)
+  {
+    return COM::createComAddin(name, description);
   }
 }

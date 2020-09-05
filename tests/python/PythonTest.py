@@ -444,3 +444,32 @@ def event_stopPrinting(wbName, cancel):
 #
 xlo.event.AfterCalculate += event_writeTimeToA1
 xlo.event.WorkbookBeforePrint += event_stopPrinting
+
+def press1():
+    xlo.log("1 Pressed")
+    pass
+    
+ribbon = xlo.create_ribbon(r'''
+    <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+        <ribbon>
+            <tabs>
+                <tab id="customTab" label="xloPyTest" insertAfterMso="TabHome">
+                    <group idMso="GroupClipboard" />
+                    <group idMso="GroupFont" />
+                    <group id="customGroup" label="MyButtons">
+                        <button id="pyButt1" label="Button1" size="large" onAction="press1" imageMso="Bold" />
+                    </group>
+                    <group idMso="GroupEnterDataAlignment" />
+                    <group idMso="GroupEnterDataNumber" />
+                    <group idMso="GroupQuickFormatting" />
+                </tab>
+            </tabs>
+        </ribbon>
+    </customUI>
+    ''', 
+    handlers={
+        'press1': press1
+    })
+    
+
+

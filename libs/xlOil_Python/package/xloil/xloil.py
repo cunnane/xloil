@@ -20,6 +20,7 @@ if importlib.util.find_spec("xloil_core") is not None:
         CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         register_functions, deregister_functions,
+        create_ribbon,
         CannotConvert, set_return_converter,
         CustomConverter as _CustomConverter,
         CustomReturn as _CustomReturn)

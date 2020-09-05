@@ -160,6 +160,7 @@
     <ClCompile Include="PyExcelArray.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
     <ClCompile Include="PyHelpers.cpp" />
+    <ClCompile Include="PyRibbon.cpp" />
     <ClCompile Include="PyRtd.cpp" />
     <ClCompile Include="ReadSource.cpp">
       <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</MultiProcessorCompilation>

@@ -100,10 +100,11 @@ namespace xloil
   }
 
   bool getWindowsRegistryValue(
-    const std::wstring& hive,
-    const std::wstring& location,
+    const wchar_t* hive,
+    const wchar_t* location,
     std::wstring& result)
   {
+    assert(hive && location);
     wchar_t buffer[1024];
     DWORD bufSize = sizeof(buffer) / sizeof(wchar_t);
     if (getWindowsRegistryValue<RRF_RT_REG_SZ>(hive, location, buffer, &bufSize))
@@ -115,10 +116,11 @@ namespace xloil
   }
 
   bool getWindowsRegistryValue(
-    const std::wstring& hive,
-    const std::wstring& location,
+    const wchar_t* hive,
+    const wchar_t* location,
     DWORD& result)
   {
+    assert(hive && location);
     char buffer[sizeof(DWORD)];
     DWORD bufSize = sizeof(DWORD);
     if (getWindowsRegistryValue<RRF_RT_REG_DWORD>(hive, location, buffer, &bufSize))
@@ -147,7 +149,7 @@ namespace xloil
       match = *next;
       assert(match.size() == 3);
       result += match.prefix().str();
-      if (getWindowsRegistryValue(match[1].str(), match[2].str(), regValue))
+      if (getWindowsRegistryValue(match[1].str().c_str(), match[2].str().c_str(), regValue))
         result += regValue;
       next++;
     }
