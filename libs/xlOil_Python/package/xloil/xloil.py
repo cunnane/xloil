@@ -603,19 +603,37 @@ def scan_module(module, workbook_name=None):
     """
 
     if type(module) is str:
-        # Not completely sure of the wisdom of adding to sys.path here...
-        # But it's difficult to load a module by absolute path
         mod_directory, mod_filename = os.path.split(module)
+        name = mod_filename.replace('.py', '')
+
+        # Not completely sure of the wisdom of adding to sys.path here...
+        # It's difficult to re-load a module if it has been created from
+        # a file location.
         if len(mod_directory) > 0 and not mod_directory in sys.path:
             sys.path.append(mod_directory)
-        handle = importlib.import_module(mod_filename.replace('.py', ''))
+        # It would be better to do this if we can figure out how:  
+        # spec = importlib.util.spec_from_file_location(name, mod_directory)
+        spec = importlib.util.find_spec(name)
+        handle = importlib.util.module_from_spec(spec)
+
+        # This is why we're doing the module load step-by-step: we
+        # want to control the value written to sys.modules to avoid
+        # name collisions when loading workbook modules
+        sys_mod_name = name if workbook_name is None else "xloil.wb." + name
+        sys.modules[sys_mod_name] = handle
+
+        spec.loader.exec_module(handle)
+
     elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
+        # We can only reload modules with a __file__ attribute, e.g. not
+        # xloil_core
         handle = importlib.reload(module)
     else:
         raise Exception(f"scan_module: could not process {str(module)}")
 
     # Allows 'local' modules to know which workbook they link to
-    handle._xl_this_workbook = workbook_name
+    if workbook_name is not None:
+        handle._xloil_workbook = workbook_name
     
     # Look for functions with an xloil decorator (_META_TAG) and create
     # a function holder object for each of them

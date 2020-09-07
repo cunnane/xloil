@@ -13,14 +13,19 @@ namespace xloil
   {
     class RegisteredModule;
     class IPyFromExcel;
-
+ 
     namespace FunctionRegistry
     {
+      /// <summary>
+      /// Adds the specified module to the specified context if the module
+      /// has not already been read. If the module already exists, just 
+      /// returns a reference to it.
+      /// </summary>
       std::shared_ptr<RegisteredModule>
         addModule(
           AddinContext* context, 
           const std::wstring& modulePath,
-          const wchar_t* workbookName = nullptr);
+          const wchar_t* workbookName);
     };
 
     class PyFuncInfo

@@ -32,7 +32,8 @@ namespace xloil
 {
   namespace Python
   {
-    constexpr wchar_t* PYTHON_ANON_SOURCE = L"PythonFuncs";
+    constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
+    constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
     PyFuncInfo::PyFuncInfo(
       const shared_ptr<FuncInfo>& info,
@@ -182,35 +183,112 @@ namespace xloil
       return spec;
     }
 
-    void handleFileChange(
-      const wchar_t* dirName,
-      const wchar_t* fileName,
-      const Event::FileAction action);
+    class WatchedSource : public FileSource
+    {
+    public:
+      WatchedSource(
+        const wchar_t* sourceName,
+        const wchar_t* linkedWorkbook = nullptr)
+        : FileSource(sourceName, linkedWorkbook)
+      {
+        auto path = fs::path(sourceName);
+        _fileWatcher = std::static_pointer_cast<const void>(
+          Event::DirectoryChange(path.remove_filename()).bind(
+            [this](auto dir, auto file, auto act) { handleDirChange(dir, file, act); }));
 
-    class RegisteredModule : public FileSource
+        if (linkedWorkbook)
+          _workbookWatcher = std::static_pointer_cast<const void>(
+            Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); }));
+      }
+
+      virtual void reload() = 0;
+
+    private:
+      shared_ptr<const void> _fileWatcher;
+      shared_ptr<const void> _workbookWatcher;
+
+      void handleClose(
+        const wchar_t* wbName)
+      {
+        if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
+          FileSource::deleteFileContext(shared_from_this());
+      }
+
+      void handleDirChange(
+        const wchar_t* dirName,
+        const wchar_t* fileName,
+        const Event::FileAction action)
+      {
+        if (_wcsicmp(fileName, sourceName()) != 0)
+          return;
+
+        const auto filePath = (fs::path(dirName) / fileName).wstring();
+
+        // Directories should match as our directory watch listener only checks
+        // the specified directory
+        assert(_wcsicmp(filePath.c_str(), sourcePath().c_str()) == 0);
+
+        switch (action)
+        {
+        case Event::FileAction::Modified:
+        {
+          XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
+          reload();
+          break;
+        }
+        case Event::FileAction::Delete:
+        {
+          XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
+          FileSource::deleteFileContext(shared_from_this());
+          break;
+        }
+        }
+      }
+    };
+
+    class RegisteredModule : public WatchedSource
     {
     public:
       RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
-        : FileSource(
-          modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str(),
-          workbookName)
+        : WatchedSource(
+            modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
+            workbookName)
       {
-        if (!modulePath.empty())
+        _linkedWorkbook = workbookName;
+      }
+
+      ~RegisteredModule()
+      {
+        try
         {
-          auto path = fs::path(modulePath);
-          _fileWatcher = std::static_pointer_cast<const void>
-            (Event::DirectoryChange(path.remove_filename()).bind(handleFileChange));
+          // TODO: cancel running async tasks?
+          py::gil_scoped_acquire get_gil;
+
+          // Call module cleanup function
+          auto thisMod = PyBorrow<py::module>(_module);
+          if (py::hasattr(thisMod, XLOPY_CLEANUP_FUNCTION))
+            thisMod.attr(XLOPY_CLEANUP_FUNCTION).call();
+         
+          auto success = unloadModule(thisMod);
+
+          XLO_DEBUG(L"Python module unload {1} for '{0}'", 
+            sourceName(), success ? L"succeeded" : L"failed");
         }
-        if (workbookName)
-          _workbookName = workbookName;
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Error unloading python module '{0}': {1}", 
+            utf16ToUtf8(sourceName()), e.what());
+        }
       }
 
       void registerPyFuncs(
         PyObject* pyModule,
         const vector<shared_ptr<PyFuncInfo>>& functions)
       {
+        // Note we don't increment the ref-counter for the module to 
+        // simplify our destructor
         _module = pyModule;
         vector<shared_ptr<const FuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
@@ -218,7 +296,7 @@ namespace xloil
 
         for (auto& f : functions)
         {
-          if (_workbookName.empty())
+          if (!_linkedWorkbook)
             f->isLocalFunc = false;
           if (!f->isLocalFunc)
             nonLocal.push_back(createSpec(f));
@@ -246,24 +324,37 @@ namespace xloil
 
         if (!funcInfo.empty())
         {
-          if (_workbookName.empty())
+          if (!_linkedWorkbook)
             XLO_THROW("Local functions found without workbook specification");
           registerLocal(funcInfo, funcs);
         }
       }
 
-      // TODO: Is it possible the module will be unloaded?
-      // We don't really want to have to deal with the GIL
-      PyObject* pyModule() const { return _module; }
-
-      const wchar_t* workbookName() const
+      void reload()
       {
-        return _workbookName.empty() ? nullptr : _workbookName.c_str();
+        // TODO: can we be sure about this context setting?
+       // 
+        auto[source, addin] = FileSource::findFileContext(sourcePath().c_str());
+        if (source.get() != this)
+          XLO_THROW(L"Error reloading '{0}': source ptr mismatch", sourcePath());
+
+        auto currentContext = theCurrentContext;
+        theCurrentContext = addin.get();
+
+        // Rescan the module, passing in the module handle if it exists
+        py::gil_scoped_acquire get_gil;
+        scanModule(
+          _module != Py_None
+            ? PyBorrow<py::module>(_module)
+            : py::wstr(sourceName()),
+          linkedWorkbook().c_str());
+
+        // Set the addin context back. TODO: Not exception safe clearly.
+        theCurrentContext = currentContext;
       }
 
     private:
-      shared_ptr<const void> _fileWatcher;
-      wstring _workbookName;
+      bool _linkedWorkbook;
       PyObject* _module = Py_None;
     };
 
@@ -273,56 +364,13 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto[fileCtx, inserted]
-        = context->tryAdd<RegisteredModule>(
-          modulePath.c_str(), modulePath, workbookName);
-      return fileCtx;
-    }
+      auto[source, addin] = FileSource::findFileContext(modulePath.c_str());
+      if (source)
+        return std::static_pointer_cast<RegisteredModule>(source);
 
-    void handleFileChange(
-      const wchar_t* dirName,
-      const wchar_t* fileName,
-      const Event::FileAction action)
-    {
-      const auto filePath = (fs::path(dirName) / fileName).wstring();
-
-      auto[foundSource, foundAddin] = FileSource::findFileContext(filePath.c_str());
-
-      // If no active filecontext is found, then exit. Note that findFileContext
-      // will check if a linked workbook is still open 
-      if (!foundSource)
-        return;
-
-      switch (action)
-      {
-      case Event::FileAction::Modified:
-      {
-        XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
-        // TODO: can we be sure about this context setting?
-        theCurrentContext = foundAddin.get();
-
-        // Our file source must be of type RegisteredModule so the cast is safe
-        auto& pySource = static_cast<RegisteredModule&>(*foundSource);
-
-        // Rescan the module, passing in the module handle if it exists
-        py::gil_scoped_acquire get_gil;
-        scanModule(
-          pySource.pyModule() != Py_None
-          ? PyBorrow<py::module>(pySource.pyModule())
-          : py::wstr(filePath),
-          pySource.workbookName());
-
-        // Set the addin context back. TODO: Not exeception safe clearly.
-        theCurrentContext = theCoreContext;
-        break;
-      }
-      case Event::FileAction::Delete:
-      {
-        XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
-        FileSource::deleteFileContext(foundSource);
-        break;
-      }
-      }
+      auto fileSrc = make_shared<RegisteredModule>(modulePath, workbookName);
+      context->addSource(fileSrc);
+      return fileSrc;
     }
 
     void registerFunctions(
@@ -337,7 +385,7 @@ namespace xloil
       py::gil_scoped_release releaseGil;
 
       auto mod = FunctionRegistry::addModule(
-        theCurrentContext, modulePath);
+        theCurrentContext, modulePath, nullptr);
       mod->registerPyFuncs(moduleHandle.ptr(), functions);
     }
     void deregisterFunctions(
@@ -351,7 +399,7 @@ namespace xloil
         : L"";
 
       auto[foundSource, foundAddin] = FileSource::findFileContext(
-        modulePath.empty() ? PYTHON_ANON_SOURCE : modulePath.c_str());
+        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
 
       if (!foundSource)
       {

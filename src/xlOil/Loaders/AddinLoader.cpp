@@ -58,9 +58,9 @@ namespace xloil
   {
     for (auto[name, addinCtx] : theAddinContexts)
     {
-      auto found = addinCtx->files().find(context->sourceName());
+      auto found = addinCtx->files().find(context->sourcePath());
       if (found != addinCtx->files().end())
-        return addinCtx->removeFileSource(found);
+        addinCtx->removeSource(found);
     }
   }
 

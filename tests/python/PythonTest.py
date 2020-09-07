@@ -325,6 +325,13 @@ def pysyspath():
     return sys.path
 
 #
+# Displays python's sys.modules. Useful for debugging some module loads
+# 
+@xlo.func(local=False)
+def pysysmodules():
+    return sys.modules
+    
+#
 # Threads
 # 
 import numpy as np
@@ -334,6 +341,7 @@ import ctypes
 def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> int:
     # Do something numpy intensive to allow thread switching
     np.sum(np.ones((a, b)) * x ** (np.ones((u, v)) / y))
+    # Return the thread ID to prove the functions were executed on different threads
     return ctypes.windll.kernel32.GetCurrentThreadId(None)
     
 #--------------------------------
@@ -412,14 +420,14 @@ except ImportError:
 #
 # Currently event handlers are global, so for workbook local modules
 # such as this one, we check compare the the workbook name to the global
-# `_xl_this_workbook` which is set by xlOil when the module is imported
+# `_xloil_workbook` which is set by xlOil when the module is imported
 #
 @xlo.func
 def getLinkedWbName():
-    return _xl_this_workbook
+    return _xloil_workbook
     
 def event_writeTimeToA1():
-    if xlo.app().ActiveWorkbook.Name != _xl_this_workbook:
+    if xlo.app().ActiveWorkbook.Name != _xloil_workbook:
         return
         
     sheet_name = xlo.app().ActiveSheet.Name
@@ -434,22 +442,45 @@ def event_writeTimeToA1():
 # syntax `cancel.value = True`
 #
 def event_stopPrinting(wbName, cancel):
-    if wbName != _xl_this_workbook:
+    if wbName != _xloil_workbook:
         return
     xlo.Range("B1").value = "Cancelled print for: " + wbName
     cancel.value = True
 
 #
-# Link the above handlers to the events. To unlink them, use `-=`.
+# Link the above handlers to events. To unlink them, use `-=`. Note that
+# xlOil only holds weak references to the event handler functions, so they must
+# be made module scope variables to stay alive, i.e. the following will not work:
 #
+#       xlo.event.AfterCalculate += lambda x: <do something>
+# 
+# Rather write:
+# 
+#       _handler = lambda x: <do something>
+#       xlo.event.AfterCalculate += _handler
+#
+# The advantage of the weak reference is that the handler is automatically unlinked
+# when the containing module is unloaded, so there is no need to explictly do `-=`
+# in the `_xloil_unload` function.
+#
+
 xlo.event.AfterCalculate += event_writeTimeToA1
 xlo.event.WorkbookBeforePrint += event_stopPrinting
 
+#----------------------
+# GUI: Creating Ribbons
+#----------------------
+#
+# xlOil is able to create a ribbon entry for a workbook which is automatically 
+# removed when the workbook is closed and the associated workbook module is 
+# unloaded.  To create the ribbon XML use an editor such as Office RibbonX Editor:
+# https://github.com/fernandreu/office-ribbonx-editor
+#
 def press1():
     xlo.log("1 Pressed")
     pass
     
-ribbon = xlo.create_ribbon(r'''
+_ribbon = xlo.create_ribbon(r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -472,4 +503,12 @@ ribbon = xlo.create_ribbon(r'''
     })
     
 
+#
+# xlOil will attempt to call a function with this name when the module is unloaded,
+# for example, because the linked workbook is closed. xlOil explictly clears the 
+# module's __dict__ before unload, so any globals, like _ribbon above will be 
+# deleted.
+#
+def _xloil_unload():
+    pass
 

@@ -60,27 +60,27 @@ namespace xloil
   }
 
   FileSource::FileSource(
-    const wchar_t* sourceName, 
+    const wchar_t* sourcePath, 
     const wchar_t* linkedWorkbook,
     bool watchSource)
-    : _source(sourceName)
+    : _sourcePath(sourcePath)
   {
+    auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
+    _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
     if (linkedWorkbook)
       _workbookName = linkedWorkbook;
     //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
-    // TODO: watch source
-    //Event_DirectoryChange()
   }
 
   FileSource::~FileSource()
   {
-    excelApiCall([self=this]()
+    excelApiCall([this]()
     {
-      XLO_DEBUG(L"Deregistering functions in source '{0}'", self->_source);
-      forgetLocalFunctions(self->_workbookName.c_str());
-      for (auto& f : self->_functions)
+      XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
+      forgetLocalFunctions(_workbookName.c_str());
+      for (auto& f : _functions)
         xloil::deregisterFunc(f.second);
-      self->_functions.clear();
+      _functions.clear();
     }, QueueType::XLL_API);
   }
 
@@ -183,6 +183,8 @@ namespace xloil
     auto found = xloil::findFileSource(source);
     if (found.first)
     {
+      // Slightly gross little check that the linked workbook is still open
+      // Can we do better?
       const auto& wbName = found.first->_workbookName;
       if (!wbName.empty() && !COM::checkWorkbookIsOpen(wbName.c_str()))
       {
@@ -200,7 +202,7 @@ namespace xloil
   }
 
   void 
-    AddinContext::removeFileSource(ContextMap::const_iterator which)
+    AddinContext::removeSource(ContextMap::const_iterator which)
   {
     _files.erase(which);
   }

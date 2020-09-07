@@ -80,7 +80,7 @@ namespace xloil
   /// Plugins should avoid keeping references to file sources, or if
   /// they do be careful to clean them up when an XLL detaches
   /// </summary>
-  class XLOIL_EXPORT FileSource
+  class XLOIL_EXPORT FileSource : public std::enable_shared_from_this<FileSource>
   {
   public:
     /// <summary>
@@ -89,7 +89,7 @@ namespace xloil
     /// <param name="sourcePath">Should be a full pathname</param>
     /// <param name="watchFile">Currently unimplemented</param>
     FileSource(
-      const wchar_t* sourceName, 
+      const wchar_t* sourcePath, 
       const wchar_t* linkedWorkbook=nullptr,
       bool watchFile=false);
 
@@ -138,14 +138,21 @@ namespace xloil
     static std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
       findFileContext(const wchar_t* sourcePath);
 
+    /// <summary>
+    /// Removes the specified source from all add-in contexts
+    /// </summary>
+    /// <param name="context"></param>
     static void
       deleteFileContext(const std::shared_ptr<FileSource>& context);
 
-    const std::wstring& sourceName() const { return _source; }
+    const std::wstring& sourcePath() const { return _sourcePath; }
+    const std::wstring& linkedWorkbook() const { return _workbookName; }
+    const wchar_t* sourceName() const { return _sourceName; }
 
   private:
     std::map<std::wstring, std::shared_ptr<RegisteredFunc>> _functions;
-    std::wstring _source;
+    std::wstring _sourcePath;
+    const wchar_t* _sourceName;
     std::wstring _workbookName;
 
     // TODO: implement std::string _functionPrefix;
@@ -184,13 +191,13 @@ namespace xloil
       auto found = FileSource::findFileContext(sourcePath).first;
       if (found)
       {
-        _files[sourcePath] = found;
+        addSource(found);
         return std::make_pair(std::static_pointer_cast<TSource>(found), false);
       }
       else
       {
         auto newSource = std::make_shared<TSource>(std::forward<Args>(args)...);
-        _files[sourcePath] = newSource;
+        addSource(newSource);
         return std::make_pair(newSource, true);
       }
     }
@@ -219,7 +226,12 @@ namespace xloil
       return _pathName.c_str() + slash + 1;
     }
 
-    void removeFileSource(ContextMap::const_iterator which);
+    void addSource(const std::shared_ptr<FileSource>& source)
+    {
+      _files[source->sourcePath()] = source;
+    }
+
+    void removeSource(ContextMap::const_iterator which);
 
   private:
     AddinContext(const AddinContext&) = delete;

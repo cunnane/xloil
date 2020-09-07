@@ -10,8 +10,10 @@ namespace xloil
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
     findFileSource(const wchar_t* sourcePath);
 
-  void
-    deleteFileSource(const std::shared_ptr<FileSource>& source);
+  /// <summary>
+  /// Removes the file source from all add-in contexts
+  /// </summary>
+  void deleteFileSource(const std::shared_ptr<FileSource>& source);
 
   void createCoreContext();
   void openXll(const wchar_t* xllPath);

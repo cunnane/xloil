@@ -44,6 +44,32 @@ namespace xloil
           modName, e.what(), pyPath);
       }
     }
+    
+    bool unloadModule(const py::module& module)
+    {
+      py::gil_scoped_acquire get_gil;
+
+      // Because xloil.scan_module adds workbook modules with the prefix
+      // 'xloil.wb.', we can't simply lookup the module name in sys.modules.
+      // We could rely on our knowledge of the prefix but iterating is not 
+      // slow and is less fragile.
+      auto sysModules = PyBorrow<py::dict>(PyImport_GetModuleDict());
+      py::handle modName;
+      for (auto[k, v] : sysModules)
+        if (v.is(module))
+          modName = k;
+
+      if (!modName.ptr())
+        return false;
+
+      // Need to explictly clear the module's dict so that all globals get
+      // dec-ref'd - they are not removed even when the module's ref-count 
+      // hits zero.
+      module.attr("__dict__").cast<py::dict>().clear();
+
+      const auto ret = PyDict_DelItem(sysModules.ptr(), modName.ptr());
+      return ret == 0;
+    }
 
     struct WorkbookOpenHandler
     {
@@ -65,10 +91,12 @@ namespace xloil
 
         if (!fs::exists(modulePath))
           return;
+
         try
         {
           // First add the module, if the scan fails it will still be on the
-          // file change watchlist
+          // file change watchlist. Note we always add workbook modules to the 
+          // core context to avoid confusion.
           FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
           scanModule(py::wstr(modulePath), wbName);
         }
