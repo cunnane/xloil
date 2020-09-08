@@ -194,8 +194,10 @@ namespace xloil
         *Cancel = cancel ? VARIANT_TRUE : VARIANT_FALSE;
         if (!cancel)
         {
-          // Wait 5s, then check if the workbook was actually closed
-          excelApiCall([]() { WorkbookMonitor::check(); }, QueueType::WINDOW, 0, 0, 5000);
+          // Wait 2s, then check if the workbook was actually closed. If the 
+          // user still has the save/close dialog open, the COM call will fail
+          // so we retry 10 times every two seconds.
+          excelApiCall([]() { WorkbookMonitor::check(); }, QueueType::WINDOW, 10, 2000, 2000);
         }
       }
       void WorkbookBeforeSave(
