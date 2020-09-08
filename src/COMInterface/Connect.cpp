@@ -97,7 +97,6 @@ namespace xloil {
         Excel::_ApplicationPtr _xlApp;
         std::shared_ptr<Excel::AppEvents> _handler;
         HWND _excelWindowHandle;
-        //std::shared_ptr<ComAddin> _comAddin;
       };
 
       std::unique_ptr<COMConnector> theComConnector;

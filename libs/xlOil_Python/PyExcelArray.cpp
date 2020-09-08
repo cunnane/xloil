@@ -84,7 +84,7 @@ namespace xloil
         bool singleElem = sliceHelper1d(loc[0], size(), from, to);
         return singleElem
           ? operator()(from)
-          : py::cast<PyExcelArray>(slice(from, 0, to, 1));
+          : py::cast<PyExcelArray>(slice((int)from, 0, (int)to, 1));
       }
       else
       {

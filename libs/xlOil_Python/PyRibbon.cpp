@@ -28,7 +28,7 @@ namespace xloil
     auto createRibbon(const wchar_t* xml, const py::dict& handlers)
     {
       auto addin = makeComAddin(theCurrentContext->fileName());
-      setRibbon(addin.get(), xml , handlers);
+      setRibbon(addin.get(), xml, handlers);
       addin->connect();
       return addin;
     }

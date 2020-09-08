@@ -153,7 +153,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_THROW("ComAddin failed to close: {0}", e.what());
+          XLO_ERROR("ComAddin failed to close: {0}", e.what());
         }
       }
 
