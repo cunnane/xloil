@@ -25,6 +25,9 @@ For examples, have a look at :doc:`Example` and :ref:`core-example-sheets`.
 Getting Started
 ---------------
 
+**You must use the same bit-ness of python and Excel**.  So if your Excel is 32-bit, you must
+install xloil using a 32-bit python distibution.
+
 Run the following at a command prompt with python environment settings:
 
 ::

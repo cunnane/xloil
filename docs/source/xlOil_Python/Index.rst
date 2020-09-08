@@ -10,6 +10,7 @@ xlOil Python
     Concepts
     Example
     ModuleReference
+    CustomGUI
     Pandas
     Jupyter
     Rtd

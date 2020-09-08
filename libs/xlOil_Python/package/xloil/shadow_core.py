@@ -464,3 +464,62 @@ class CannotConvert(Exception):
 class _CustomReturn:
     def __init__(self, conv):
         pass
+
+class RibbonControl:
+    """
+    This object is passed to ribbon callback handlers to indicate which control  
+    raised the callback.
+    """
+    @property
+    def id(self):
+        """
+        A string that represents the Id attribute for the control or custom 
+        menu item.
+        """
+        pass
+    @property
+    def tag(self):
+        """
+        A string that represents the Tag attribute for the control or custom 
+        menu item.
+        """
+        pass
+
+class ComAddin:
+    def connect(self):
+        """
+        Connects this COM add-in to Excel. Any specified ribbon customisations
+        will be passed to Excel.
+        """
+        pass
+    def disconnect(self):
+        """
+        Unloads the COM add-in and any ribbon customisation.
+        """
+        pass
+    def set_ribbon(xml:str, handlers:dict):
+        """
+        See `create_ribbon`. This function can only be called when the add-in
+        is disconnected.
+        """
+        pass
+
+def create_ribbon(xml:str, handlers:dict) -> ComAddin:
+    """
+    Returns a (connected) ComAddin object which passes the specified ribbon
+    customisation XML to Excel.  When the returned object is deleted, it 
+    unloads the Ribbon customisation and the associated COM add-in.
+
+    Parameters
+    ----------
+
+    xml: str
+        A Ribbon XML string, most easily created with a specialised editor.
+
+    handlers: dict
+        The ``handlers`` dictionary links callbacks named in the Ribbon XML to
+        python functions. Each handler should take a single ``RibbonControl``
+        argument which describes the control which raised the callback.
+
+    """
+    pass
