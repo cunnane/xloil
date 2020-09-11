@@ -1,10 +1,13 @@
 #include "PyCoreModule.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
+#include "ArrayHelpers.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 using std::shared_ptr;
+
+// TODO: py dict output to Excel?
 
 namespace xloil
 {
@@ -39,11 +42,47 @@ namespace xloil
         return dict.release().ptr();
       }
     };
+    using PyDictFromExcel = PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>;
 
     PyObject* readKeywordArgs(const ExcelObj& obj)
     {
       return PyFromExcel<PyDictFromArray<FromExcel<PyFromString>, FromExcel<PyFromAny<>>>>()(obj);
     }
+   
+    class XlFromDict: public IPyToExcel
+    {
+    public:
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        auto p = (PyObject*)&obj;
+        if (!PyDict_Check(p))
+          return ExcelObj();
+        const auto size = PyDict_Size(p);
+
+        size_t stringLength = 0;
+        PyObject *key, *value;
+        Py_ssize_t pos = 0;
+
+        while (PyDict_Next(p, &pos, &key, &value)) 
+        {
+          accumulateObjectStringLength(key, stringLength);
+          accumulateObjectStringLength(value, stringLength);
+        }
+
+        ExcelArrayBuilder builder(size, 2, stringLength);
+
+        pos = 0;
+        size_t row = 0; // Cannot use pos - it is an internal pointer only
+        while (PyDict_Next(p, &pos, &key, &value))
+        {
+          builder(row, 0).emplace(FromPyObj()(key, true, builder.charAllocator()));
+          builder(row, 1).emplace(FromPyObj()(value, true, builder.charAllocator()));
+          ++row;
+        }
+
+        return builder.toExcelObj();
+      }
+    };
 
     namespace
     {
@@ -56,7 +95,9 @@ namespace xloil
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-          declare<PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>>(mod, "dict_object_from_Excel");
+          //declare<PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>>(mod, "dict_object_from_Excel");
+          bindPyConverter<PyDictFromExcel>(mod, "dict").def(py::init<>());
+          bindXlConverter<XlFromDict>(mod, "dict").def(py::init<>());
       });
     }
   }

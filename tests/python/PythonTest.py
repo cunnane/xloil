@@ -126,10 +126,13 @@ def pyTestDate(x: dt.datetime) -> dt.datetime:
 
 #
 # Keyword args are supported by passing a two-column array of (string, value)
+# This function also tests the dict return conversion (without specifying the
+# return as dict, the iterable converter would be used resulting in output of
+# only the keys)
 #
 @xlo.func
-def pyTestKwargs(argName, **kwargs):
-    return kwargs[argName]
+def pyTestKwargs(**kwargs) -> dict:
+    return kwargs
 
 #------------------
 # Async functions

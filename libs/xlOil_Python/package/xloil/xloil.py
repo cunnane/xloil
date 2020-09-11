@@ -271,7 +271,7 @@ class FuncDescription:
             ret = self.return_type
             if issubclass(ret, _Converter):
                 holder.return_converter = _CustomReturn(ret._xloil_converter)
-            elif isinstance(x.typeof, type) and x.typeof is not object:
+            elif isinstance(ret, type) and ret is not object:
                 holder.return_converter = _get_typeconverter(ret.__name__, from_excel=False)
             else:
                 pass # TODO: Ignore - warn user?
