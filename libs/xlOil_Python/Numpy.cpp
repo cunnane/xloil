@@ -200,7 +200,7 @@ namespace xloil
     template<>
     size_t getItemSize<NPY_STRING>(const ExcelArray& arr)
     {
-      size_t strLength = 0;
+      uint16_t strLength = 0;
       for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
         strLength = std::max(strLength, arr.at(i).maxStringLength());
       return strLength * sizeof(TypeTraits<NPY_STRING>::storage);
@@ -326,13 +326,12 @@ namespace xloil
         PyArray_ITEMSIZE(pArr) == sizeof(TDataType) && PyArray_TYPE(pArr) == TNpType;
       }
       static constexpr size_t stringLength = 0;
-      void builderEmplace(
+      auto toExcelObj(
         ExcelArrayBuilder& b, 
-        size_t i, size_t j,
         void* arrayPtr)
       {
         auto x = (TDataType*)arrayPtr;
-        b(i, j) = *x;
+        return ExcelObj(*x);
       }
     };
 
@@ -358,9 +357,8 @@ namespace xloil
           XLO_THROW("Incorrect array type");
       }
 
-      void builderEmplace(
+      auto toExcelObj(
         ExcelArrayBuilder& builder, 
-        size_t i, size_t j,
         void* arrayPtr)
       {
         auto x = (char32_t*)arrayPtr;
@@ -371,7 +369,7 @@ namespace xloil
         // Because not every UTF-32 char takes two UTF-16 chars, we resize
         // to the actual number used
         pstr.resize((char16_t)nChars);
-        builder(i, j) = std::move(pstr);
+        return ExcelObj(std::move(pstr));
       }
     };
 
@@ -407,16 +405,12 @@ namespace xloil
         }
       }
       
-      static void builderEmplace(
+      static auto toExcelObj(
         ExcelArrayBuilder& builder, 
-        size_t i, size_t j,
         void* arrayPtr)
       {
-        auto* x = *(PyObject**)arrayPtr;
-        FromPyObj()(x, [&builder, i, j](auto&& arg)
-        { 
-          return builder(i, j) = std::forward<decltype(arg)>(arg); 
-        });
+        const auto* pyObj = *(PyObject**)arrayPtr;
+        return FromPyObj()(pyObj, true, builder.charAllocator());
       }
     };
 
@@ -444,7 +438,7 @@ namespace xloil
 
         ExcelArrayBuilder builder((uint32_t)dims[0], 1, converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
-          converter.builderEmplace(builder, j, 0, PyArray_GETPTR1(pyArr, j));
+          builder(j, 0).emplace(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
         
         return _cache
           ? objectCacheAdd(builder.toExcelObj())
@@ -478,7 +472,7 @@ namespace xloil
           converter.stringLength);
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
-            converter.builderEmplace(builder, i, j, PyArray_GETPTR2(pyArr, i, j));
+            builder(i, j).emplace(converter.toExcelObj(builder, PyArray_GETPTR2(pyArr, i, j)));
 
         return _cache
           ? xloil::objectCacheAdd(builder.toExcelObj())

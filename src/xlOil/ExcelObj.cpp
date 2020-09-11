@@ -175,14 +175,14 @@ namespace
       case xltypeMulti:
         // Arrays are allocated as an array of char which contains all their strings
         // So we don't need to loop and free them individually
-        delete[](char*)(val.array.lparray);
+        delete[] (char*)(val.array.lparray);
         break;
 
       case xltypeBigData: break;
         //TODO: Not implemented yet, we don't create our own bigdata
 
       case xltypeRef:
-        delete[](char*)val.mref.lpmref;
+        delete[] (char*)val.mref.lpmref;
         break;
       }
     }
@@ -377,7 +377,7 @@ namespace
       return L"<ERROR>"s;
     }
   }
-  size_t ExcelObj::maxStringLength() const noexcept
+  uint16_t ExcelObj::maxStringLength() const noexcept
   {
     switch (xtype())
     {
@@ -410,7 +410,7 @@ namespace
       auto p = val.array.lparray;
       const auto pEnd = p + (val.array.rows * val.array.columns);
       while (p < pEnd) n += ((const ExcelObj*)p++)->maxStringLength();
-      return n;
+      return (int16_t)std::min<size_t>(USHRT_MAX, n);
     }
     default:
       return 4;
@@ -637,7 +637,7 @@ namespace
     }
     const ExcelObj& EmptyStr()
     {
-      static ExcelObj obj(PString<wchar_t>(L"\0"));
+      static ExcelObj obj(PString<>::steal(L"\0"));
       return obj;
     }
   }

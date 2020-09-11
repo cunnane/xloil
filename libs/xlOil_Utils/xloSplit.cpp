@@ -55,7 +55,7 @@ namespace xloil
     // Note this functon relies on the currently observed fact that 
     // Excel doesn't mind if we modify the input data a little bit,
     // then pass it back as the return value to avoid copies. That 
-    // is it appears to copy the function result before freeing any
+    // is, it appears to copy the function result before freeing the
     // memory associated with the inputs.
     auto consecutive = consecutiveAsOne.toBool(true);
     auto sep = separators.toString();
@@ -101,9 +101,13 @@ namespace xloil
             builder(i, 0) = inputArray(i);
           else
           {
+            // We are actually taking a pointer to part of the input string,
+            // pretending we 'own' it, then emplacing the resulting ExcelObj
+            // in the builder to avoid a copy. The emplacement uses move ctors
+            // so the PString dtor will not be called on the 'owned' sub-string
             auto pStr = inputArray(i).asPascalStr();
             for (auto j = 0; j < found[i].size(); ++j)
-              builder(i, j) = PString(pStr.data() + found[i][j]);
+              builder(i, j).emplace_pstr(pStr.data() + found[i][j]);
           }
         }
       }
@@ -117,7 +121,7 @@ namespace xloil
           {
             auto pStr = inputArray(i).asPascalStr();
             for (auto j = 0; j < found[i].size(); ++j)
-              builder(j, i) = PString(pStr.data() + found[i][j]);
+              builder(j, i).emplace_pstr(pStr.data() + found[i][j]);
           }
         }
       }
@@ -133,7 +137,7 @@ namespace xloil
 
       ExcelArrayBuilder builder((uint32_t)found.size(), 1, pStr.length());
       for (auto i = 0; i < found.size(); ++i)
-        builder(i) = PString(pStr.data() + found[i]);
+        builder(i).emplace_pstr(pStr.data() + found[i]);
 
       return returnValue(builder.toExcelObj());
     }

@@ -208,24 +208,22 @@ namespace xloil
         return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
       }
     };
+
     struct FromPyString
     {
-      template <class TCtor>
-      auto operator()(const PyObject* obj, TCtor ctor) const
+      template <class TAlloc = PStringAllocator<wchar_t>>
+      auto operator()(
+        const PyObject* obj, 
+        const TAlloc& allocator = PStringAllocator<wchar_t>()) const
       {
         if (!PyUnicode_Check(obj))
           XLO_THROW("Expected python str, got '{0}'", pyToStr(obj));
-        auto len = (char16_t)std::min<size_t>(USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
-        PString<> pstr(len);
+
+        const auto len = (char16_t)std::min<size_t>(
+          USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
+        PString<wchar_t, TAlloc> pstr(len, allocator);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
-        return ctor(std::move(pstr));
-      }
-      auto operator()(const PyObject* obj) const
-      {
-        return operator()(obj, [](auto&&... args)
-        {
-          return ExcelObj(std::forward<decltype(args)>(args)...);
-        });
+        return ExcelObj(std::move(pstr));
       }
     };
 
@@ -233,69 +231,64 @@ namespace xloil
 
     struct FromPyObj
     {
-      template <class TCtor>
-      auto operator()(const PyObject* obj, TCtor ctor, bool useCache = true) const
+      template <class TAlloc = PStringAllocator<wchar_t>>
+      auto operator()(
+        const PyObject* obj, 
+        bool useCache = true, 
+        const TAlloc& stringAllocator = PStringAllocator<wchar_t>()) const
       {
         auto p = (PyObject*)obj; // Python API isn't const-aware
         if (p == Py_None)
         {
           // Return #N/A here as xltypeNil is turned to zero by Excel
-          return ctor(CellError::NA);
+          return ExcelObj(CellError::NA);
         }
         else if (PyLong_Check(p))
         {
-          return ctor(PyLong_AsLong(p));
+          return ExcelObj(PyLong_AsLong(p));
         }
         else if (PyFloat_Check(p))
         {
-          return ctor(PyFloat_AS_DOUBLE(p));
+          return ExcelObj(PyFloat_AS_DOUBLE(p));
         }
         else if (PyBool_Check(p))
         {
-          return ctor(PyObject_IsTrue(p) > 0);
+          return ExcelObj(PyObject_IsTrue(p) > 0);
         }
         else if (isNumpyArray(p))
         {
-          return ctor(numpyArrayToExcel(p));
+          return ExcelObj(numpyArrayToExcel(p));
         }
         else if (isPyDate(p))
         {
-          return ctor(pyDateToExcel(p));
+          return ExcelObj(pyDateToExcel(p));
         }
         else if (Py_TYPE(p) == pyExcelErrorType)
         {
           auto err = pybind11::reinterpret_borrow<pybind11::object>(p).cast<CellError>();
-          return ctor(err);
+          return ExcelObj(err);
         }
         else if (PyUnicode_Check(p))
         {
-          return FromPyString()(p, ctor);
+          return FromPyString()(p, stringAllocator);
         }
         else if (theCustomReturnConverter)
         {
           auto val = (*theCustomReturnConverter)(*p);
           if (!val.isType(ExcelType::Nil))
-            return ctor(std::move(val));
+            return ExcelObj(std::move(val));
         }
         
         if (PyIterable_Check(p))
         {
-          return ctor(nestedIterableToExcel(p));
+          return nestedIterableToExcel(p);
         }
         else if (useCache)
         {
-          return ctor(pyCacheAdd(PyBorrow<>(p)));
+          return pyCacheAdd(PyBorrow<>(p));
         }
         else
-          return ctor(CellError::Value);
-      }
-      auto operator()(const PyObject* obj, bool useCache = true) const
-      {
-        return operator()(obj, [](auto&&... args) 
-          { 
-            return ExcelObj(std::forward<decltype(args)>(args)...); 
-          }, 
-          useCache);
+          return ExcelObj(CellError::Value);
       }
     };
   }

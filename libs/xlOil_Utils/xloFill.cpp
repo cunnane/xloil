@@ -26,13 +26,13 @@ namespace xloil
       // the same pointer each time.
       for (auto i = 0; i < nRowsVal; ++i)
         for (auto j = 0; j < nColsVal; ++j)
-          builder(i, j) = PString<>(pstr.data());
+          builder(i, j).emplace_pstr(pstr.data());
     }
     else
     {
       for (auto i = 0; i < nRowsVal; ++i)
         for (auto j = 0; j < nColsVal; ++j)
-          builder(i, j).emplace_not_string(*value);
+          builder(i, j).copy_non_string(*value);
     }
 
     return returnValue(builder.toExcelObj());

@@ -7,6 +7,32 @@ namespace xloil
 {
   namespace detail
   {
+    struct ArrayBuilderCharAllocator
+    {
+      ArrayBuilderCharAllocator()
+      {}
+
+      ArrayBuilderCharAllocator(wchar_t* data, size_t size)
+        : _stringData(data)
+#ifdef _DEBUG
+        , _endStringData(data + size)
+#endif
+      {}
+      constexpr wchar_t* allocate(size_t n)
+      {
+        assert(_stringData + n <= _endStringData);
+        auto ptr = _stringData;
+        _stringData += n;
+        return ptr;
+      }
+      constexpr void deallocate(wchar_t*, size_t) { }
+    private:
+      wchar_t* _stringData;
+#ifdef _DEBUG
+      const wchar_t* _endStringData;
+#endif
+    };
+
     class ArrayBuilderAlloc
     {
     public:
@@ -16,19 +42,16 @@ namespace xloil
       // TODO: we could support resize on this class, with a small amount
       // of string fiddling 
       ArrayBuilderAlloc(size_t nObjects, size_t stringLen)
-        : _nObjects(nObjects)
-      {
-        _buffer = (ExcelObj*)new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen];
-        _stringData = (wchar_t*)(_buffer + nObjects);
-        _endStringData = _stringData + stringLen;
-      }
+        : _buffer((ExcelObj*)
+            new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
+        , _nObjects(nObjects)
+        , _alloc((wchar_t*)(_buffer + nObjects), stringLen)
+      {}
 
       PStringView<> newString(size_t len)
       {
-        assert(_stringData <= _endStringData);
-        _stringData[0] = wchar_t(len);
-        wchar_t* ptr = _stringData;
-        _stringData += len + 1;
+        auto ptr = _alloc.allocate(len + 1);
+        ptr[0] = wchar_t(len);
         return PStringView<>(ptr);
       }
 
@@ -42,11 +65,12 @@ namespace xloil
           memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
       }
 
+      const auto& charAllocator() const { return _alloc; }
+
     private:
       ExcelObj* _buffer;
       size_t _nObjects;
-      wchar_t* _stringData;
-      const wchar_t* _endStringData;
+      ArrayBuilderCharAllocator _alloc;
     };
 
     class ArrayBuilderElement
@@ -54,15 +78,15 @@ namespace xloil
     public:
       ArrayBuilderElement(ExcelObj& target, ArrayBuilderAlloc& allocator)
         : _target(target)
-        , _stringAlloc(allocator)
+        , _alloc(allocator)
       {}
 
       template <class T, 
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
       void operator=(T x) 
       { 
-        // Note that _target is uninitialised memory, so we cannot 
-        // call *_target = ExcelObj(x)
+        // Note that _target is uninitialised memory, so we cannot call
+        // *_target = ExcelObj(x)
         new (&_target) ExcelObj(x); 
       }
 
@@ -70,43 +94,58 @@ namespace xloil
       void operator=(CellError x) { new (&_target) ExcelObj(x); }
 
       /// <summary>
-      /// Move assignment from an owned pascal string.
-      /// </summary>
-      void operator=(PString<wchar_t>&& x) 
-      { 
-        new (&_target) ExcelObj(std::forward<PString<wchar_t>>(x));
-      }
-
-      /// <summary>
       /// Assign by copying data from a string_view.
       /// </summary>
       void operator=(const std::wstring_view& str)
       {
-        emplace(str.data(), str.length());
+        copy_string(str.data(), str.length());
       }
+
+      /// <summary>
+      /// Copy from an ExcelObj
+      /// </summary>
       void operator=(const ExcelObj& x)
       {
         assert(x.isType(ExcelType::ArrayValue));
         if (x.isType(ExcelType::Str))
         {
           auto pstr = x.asPascalStr();
-          emplace(pstr.begin(), pstr.length());
+          copy_string(pstr.begin(), pstr.length());
         }
         else
-          emplace_not_string(x);
+          ExcelObj::overwrite(_target, x);
       }
 
       /// <summary>
-      /// Optimisation when you know the type of ExcelObj 
-      /// is not a string
+      /// Move emplacement for an ExcelObj. Only safe if it is not a string or
+      /// is a string allocated using the ArrayBuilder's charAllocator.
       /// </summary>
-      void emplace_not_string(const ExcelObj& x)
+      void emplace(ExcelObj&& x)
+      {
+        new (&_target) ExcelObj(std::forward<ExcelObj>(x));
+      }
+
+      /// <summary>
+      /// Emplacement for a static pascal string buffer - does not copy nor
+      /// free the buffer.
+      /// </summary>
+      /// <param name="pstr"></param>
+      void emplace_pstr(wchar_t* pstr)
+      {
+        new (&_target) ExcelObj(PString<>::steal(pstr));
+      }
+
+      /// <summary>
+      /// Optimisation of operator= when you know the type of ExcelObj is not
+      /// a string
+      /// </summary>
+      void copy_non_string(const ExcelObj& x)
       {
         assert(!x.isType(ExcelType::Str));
         ExcelObj::overwrite(_target, x);
       }
 
-      void emplace(const wchar_t* str, size_t len)
+      void copy_string(const wchar_t* str, size_t len)
       {
         auto xlObj = new (&_target) ExcelObj();
         xlObj->xltype = msxll::xltypeStr;
@@ -117,7 +156,7 @@ namespace xloil
         }
         else
         {
-          auto pstr = _stringAlloc.newString(len);
+          auto pstr = _alloc.newString(len);
           wmemcpy_s(pstr.pstr(), len, str, len);
           // This object's dtor will never be called, so the allocated
           // pstr will only be freed as part of the entire array block
@@ -127,7 +166,7 @@ namespace xloil
 
     private:
       ExcelObj& _target;
-      ArrayBuilderAlloc& _stringAlloc;
+      ArrayBuilderAlloc& _alloc;
     };
   }
 
@@ -193,15 +232,17 @@ namespace xloil
       }
     }
 
+    const auto& charAllocator() const { return _allocator.charAllocator(); }
+
     /// <summary>
-    /// Allocate a PString in the array's string store. This is
-    /// only required for some optimisations as string values
-    /// assigned to ArrayBuilder elements are automatically copied
-    /// into the string store.
+    /// Allocate a PString in the array's string store. This can be used for
+    /// optimisations where a temporary string would otherwise be created in
+    /// an ExcelObj.  Strings in an ExcelObj passed to ArrayBuilder elements
+    /// are automatically copied into the string store.
     /// </summary>
-    PStringView<> string(size_t len)
+    auto string(uint16_t len)
     {
-      return _allocator.newString(len);
+      return PString<wchar_t, detail::ArrayBuilderCharAllocator>(len, charAllocator());
     }
 
     /// <summary>

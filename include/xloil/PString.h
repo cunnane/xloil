@@ -167,7 +167,18 @@ namespace xloil
     {}
   };
 
-
+  template<class T>
+  struct PStringAllocator
+  {
+    constexpr T* allocate(size_t n)
+    {
+      return new T[n];
+    }
+    constexpr void deallocate(T* p, size_t /*n*/) 
+    {
+      delete[] p; 
+    }
+  };
   /// <summary>
   /// A Pascal string is a length-counted, rather than null-terminated string
   /// The first character in the string buffer contains its length, and the 
@@ -178,35 +189,36 @@ namespace xloil
   ///  
   /// PString owns its data buffer, <see cref="PStringView"/> does not.
   /// </summary>
-  template <class TChar = wchar_t>
+  template <class TChar = wchar_t, class TAlloc=PStringAllocator<TChar>>
   class PString : public PStringImpl<TChar>
   {
+  private:
+    TAlloc _alloc;
+
   public:
     using size_type = PStringImpl::size_type;
+    using allocator_type = TAlloc;
 
     /// <summary>
     /// Create a PString of the specified length
     /// </summary>
-    explicit PString(size_type length)
-      : PStringImpl(length == 0 ? nullptr : new TChar[length + 1])
+    explicit PString(size_type length, TAlloc allocator = TAlloc())
+      : PStringImpl(length == 0 
+        ? nullptr 
+        : allocator.allocate(length + 1))
+      , _alloc(allocator)
     {
       if (length > 0)
         _data[0] = length;
     }
 
-    /// <summary>
-    /// Take ownership of a Pascal string buffer, constructed externally 
-    /// </summary>
-    explicit PString(TChar* data)
-      : PStringImpl(data)
-    {}
-
+  
     /// <summary>
     /// Construct from an STL string
     /// </summary>
     /// <param name="str"></param>
-    explicit PString(const std::basic_string<TChar>& str)
-      : PString((TChar)str.length())
+    explicit PString(const std::basic_string<TChar>& str, TAlloc allocator = TAlloc())
+      : PString((TChar)str.length(), allocator)
     {
       const auto nBytes = length() * sizeof(TChar);
       memcpy_s(_data + 1, nBytes, str.data(), nBytes);
@@ -216,8 +228,8 @@ namespace xloil
     /// Construct from another PString or PStringView
     /// </summary>
     /// <param name="that"></param>
-    PString(const PStringImpl& that)
-      : PString(that.length())
+    PString(const PStringImpl& that, TAlloc allocator = TAlloc())
+      : PString(that.length(), allocator)
     {
       wmemcpy_s(_data + 1, _data[0], that.pstr(), that.length());
     }
@@ -228,20 +240,31 @@ namespace xloil
     /// <param name="that"></param>
     PString(PString&& that)
       : PStringImpl(nullptr)
+      , _alloc(that._alloc)
     {
       std::swap(_data, that._data);
     }
 
     ~PString()
     {
-      delete[] _data;
+      _alloc.deallocate(_data, length() + 1);
+    }
+
+    /// <summary>
+    /// Take ownership of a Pascal string buffer, constructed externally, ideally
+    /// with the same allocator
+    /// </summary>
+    static auto steal(TChar* data, TAlloc allocator = TAlloc())
+    {
+      return PString(data, allocator);
     }
 
     PString& operator=(PString&& that)
     {
-      delete[] _data;
+      _alloc.deallocate(_data, length() + 1);
       _data = nullptr;
       std::swap(_data, that._data);
+      _alloc = that._alloc;
       return *this;
     }
     using PStringImpl::operator=;
@@ -272,6 +295,11 @@ namespace xloil
         *this = std::move(copy);
       }
     }
+  private:
+    explicit PString(TChar* data, TAlloc allocator = TAlloc())
+      : PStringImpl(data)
+      , _alloc(allocator)
+    {}
   };
 
   /// <summary>

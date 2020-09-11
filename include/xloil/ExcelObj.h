@@ -432,12 +432,12 @@ namespace xloil
     /// this object without actually attempting the conversion.
     /// This method is very fast except for arrays.
     /// </summary>
-    size_t maxStringLength() const noexcept;
+    uint16_t maxStringLength() const noexcept;
 
     /// <summary>
     /// Returns the string length if this object is a string, else zero.
     /// </summary>
-    size_t stringLength() const
+    uint16_t stringLength() const
     {
       return xltype == msxll::xltypeStr ? val.str[0] : 0;
     }
@@ -603,8 +603,9 @@ namespace xloil
 
     /// <summary>
     /// Replaces the target object with the source without calling 
-    /// the target's destructor.  Dangerous, but useful for uninitialised
-    /// or non-allocating (e.g. numeric, error, nil) target objects.
+    /// the target's destructor.  Dangerous, but an optimisation for 
+    /// uninitialised or non-allocating (e.g. numeric, error, nil) 
+    /// target objects.
     /// </summary>
     /// <param name="to"></param>
     /// <param name="from"></param>
