@@ -1,7 +1,6 @@
 #pragma once
 #include "ExportMacro.h"
 #include "Register.h"
-#include "ExcelObj.h"
 #include "FuncSpec.h"
 #include <memory>
 #include <map>

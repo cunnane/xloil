@@ -1,5 +1,6 @@
 #pragma once
 #include "ExportMacro.h"
+#include <xloil/ExcelObj.h>
 #include <xloil/Events.h>
 #include <memory>
 namespace xloil { class ExcelObj; }
