@@ -46,12 +46,14 @@ namespace xloil
     {
     public:
       PyObject * fromDouble(double x) const { return PyFloat_FromDouble(x); }
+      constexpr wchar_t* failMessage() const { return L"Expected float"; }
     };
 
     class PyFromBool : public PyFromCache<PyFromBool>
     {
     public:
       PyObject * fromBool(bool x) const { if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE; }
+      constexpr wchar_t* failMessage() const { return L"Expected bool"; }
     };
 
     class PyFromString : public CacheConverter<PyObject*, PyFromString>
@@ -65,6 +67,8 @@ namespace xloil
       PyObject* fromInt(int x) const { return PyUnicode_FromFormat("%i", x); }
       PyObject* fromBool(bool x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
       PyObject* fromDouble(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+
+      constexpr wchar_t* failMessage() const { return L"Expected string"; }
     };
 
     class PyFromInt : public PyFromCache<PyFromInt>
@@ -78,6 +82,7 @@ namespace xloil
           return PyLong_FromLong(i);
         return nullptr;
       }
+      constexpr wchar_t* failMessage() const { return L"Expected int"; }
     };
 
     template<class TSuper = nullptr_t>
@@ -108,6 +113,8 @@ namespace xloil
       {
         return pybind11::cast(newXllRange(obj)).release().ptr();
       }
+
+      constexpr wchar_t* failMessage() const { return L"Unknown type"; }
     };
     
     /// <summary>
@@ -131,6 +138,8 @@ namespace xloil
         }
         return nullptr;
       }
+
+      constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
     };
 
     template <class TImpl>
@@ -147,7 +156,8 @@ namespace xloil
       {
         auto ret = _impl(xl, defaultVal);
         if (!ret)
-          XLO_THROW(L"Failed converting {0}: {1}", xl.toString(), pyErrIfOccurred());
+          XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(), 
+            PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
         
         return ret;
       }
@@ -155,7 +165,8 @@ namespace xloil
       {
         auto ret = _impl.fromArrayObj(arr);
         if (!ret)
-          XLO_THROW(L"Failed converting to array: {0}", pyErrIfOccurred());
+          XLO_THROW(L"Cannot convert to array: {0}", 
+            PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
         
         return ret;
       }

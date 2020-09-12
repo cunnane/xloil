@@ -273,6 +273,8 @@ namespace xloil
           &PyArray_Type,
            nDims, dims, TNpType, NULL, data, (int)itemsize, NPY_ARRAY_OWNDATA, NULL);
       }
+
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
 
     template <int TNpType>
@@ -314,6 +316,8 @@ namespace xloil
           &PyArray_Type,
           nDims, dims, TNpType, NULL, data, (int)itemsize, NPY_ARRAY_OWNDATA, NULL);
       }
+
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
 
     template <int TNpType, bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>

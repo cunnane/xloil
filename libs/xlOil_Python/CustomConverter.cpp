@@ -27,6 +27,7 @@ namespace xloil
       {
         return PyFromString().fromString(pstr);
       }
+      constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
     };
 
     class CustomConverter : public IPyFromExcel

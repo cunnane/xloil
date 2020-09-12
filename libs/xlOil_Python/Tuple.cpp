@@ -121,6 +121,7 @@ namespace xloil
         }
         return outer.release().ptr();
       }
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
 
     PyObject* excelArrayToNestedTuple(const ExcelObj & obj)

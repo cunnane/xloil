@@ -83,9 +83,8 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          // TODO: could we explain what type is required?
           // We give the arg number 1-based as it's more natural
-          XLO_THROW(L"Error reading '{0}' arg #{1}: {2}",
+          XLO_THROW(L"Error in arg {1} '{0}': {2}",
             info->args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }

@@ -72,6 +72,7 @@ namespace xloil
           return PyDate_FromDate(tm.tm_year, tm.tm_mon, tm.tm_yday);
         return PyFromCache::fromString(pstr);
       }
+      constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
     class PyFromDateTime : public PyFromDate<PyFromDateTime>
     {
@@ -91,6 +92,7 @@ namespace xloil
             tm.tm_hour, tm.tm_min, tm.tm_sec, 0);
         return PyFromCache::fromString(pstr);
       }
+      constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
     class XlFromDate : public IPyToExcel
     {

@@ -41,6 +41,7 @@ namespace xloil
 
         return dict.release().ptr();
       }
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
     using PyDictFromExcel = PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>;
 
@@ -95,7 +96,6 @@ namespace xloil
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-          //declare<PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>>(mod, "dict_object_from_Excel");
           bindPyConverter<PyDictFromExcel>(mod, "dict").def(py::init<>());
           bindXlConverter<XlFromDict>(mod, "dict").def(py::init<>());
       });
