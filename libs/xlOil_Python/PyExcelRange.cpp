@@ -65,6 +65,15 @@ namespace xloil
           : py::cast(range.range(fromRow, fromCol, toRow, toCol));
       }
 
+      class PyFromRange : public FromExcelBase<PyObject*, PyFromRange>
+      {
+      public:
+        PyObject* fromRef(const ExcelObj& obj) const 
+        {
+          return pybind11::cast(newXllRange(obj)).release().ptr();
+        }
+        constexpr wchar_t* failMessage() const { return L"Expected range"; }
+      };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         // Bind Range class from xloil::ExcelRange
@@ -97,6 +106,8 @@ namespace xloil
             {
               return r.shape();
             });
+
+        bindPyConverter<PyFromExcel<PyFromRange>>(mod, "Range").def(py::init<>());
 
       }, 99);
     }

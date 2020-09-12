@@ -310,12 +310,12 @@ def pyTestCom():
     return app.ProductCode
 
 #
-# The special xlo.AllowRange annotation allows the function to receive range arguments
-# as an ExcelRange object. This allows extraction of part of the data without making a copy of
-# the entire range as an array.
+# The special xlo.Range annotation allows the function to receive range arguments
+# as an ExcelRange object. This allows extraction of part of the data without making a 
+# copy of the entire range as an array.
 #
 @xlo.func(macro=True)
-def pyTestRange(r: xlo.AllowRange):
+def pyTestRange(r: xlo.Range):
     r2 = r.cells(0, 0).value
     return r.cells(1, 1).address()
 
@@ -356,7 +356,7 @@ def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> int:
 # from a given bool, float, int, str, ExcelArray or ExcelRange.
 #
 # The converter can be applied to an argument using the usual annotation
-# syntax, or using the `arg` specfier.
+# syntax, or using the `args` argument to xlo.func().
 # 
 @xlo.converter()
 def arg_doubler(x):

@@ -251,18 +251,24 @@ class FuncDescription:
             # Default option is the generic converter which tries to figure
             # out what to return based on the Excel type
             converter = xloil_core.To_object()
-            if x.typeof is not None:
-                if inspect.isclass(x.typeof) and issubclass(x.typeof, _Converter):
-                    converter = x.typeof._xloil_converter
-                    info.args[i].allow_range = x.typeof._xloil_allow_range
-                elif x.typeof is AllowRange:
-                    info.args[i].allow_range = True
-                elif x.typeof is ExcelValue:
+            this_arg = info.args[i]
+            atype = x.typeof
+            if atype is not None:
+                if inspect.isclass(atype) and issubclass(atype, _Converter):
+                    converter = atype._xloil_converter
+                    this_arg.allow_range = atype._xloil_allow_range
+                elif atype is AllowRange:
+                    this_arg.allow_range = True
+                elif atype is Range:
+                    this_arg.allow_range = True
+                    converter = _get_typeconverter("Range", from_excel=True)
+                elif atype is ExcelValue:
                     pass # This the explicit generic type, so do nothing
-                elif isinstance(x.typeof, type) and x.typeof is not object:
-                    converter = _get_typeconverter(x.typeof.__name__, from_excel=True)
+                elif isinstance(atype, type) and atype is not object:
+                    converter = _get_typeconverter(atype.__name__, from_excel=True)
+
             if x.has_default:
-                info.args[i].optional = True
+                this_arg.optional = True
                 holder.set_arg_type_defaulted(i, converter, x.default)
             else:
                 holder.set_arg_type(i, converter)
@@ -553,7 +559,7 @@ class _ArrayType:
     Methods
     -------
 
-    **(element, dims, trim)** :    
+    **(dtype, dims, trim)** :    
         Element types are converted to numpy dtypes, which means the only supported types are: 
         int, float, bool, str, datetime, object.
         (Numpy has a richer variety of dtypes than this but Excel does not.) 
@@ -577,8 +583,8 @@ class _ArrayType:
 
     """
 
-    def __call__(self, element=object, dims=2, trim=True):
-        name = f"To_Array_{element.__name__}_{dims or 2}d" 
+    def __call__(self, dtype=object, dims=2, trim=True):
+        name = f"To_Array_{dtype.__name__}_{dims or 2}d" 
         type_conv = getattr(xloil_core, name)(trim)
 
         class Arr(np.ndarray, _Converter):
