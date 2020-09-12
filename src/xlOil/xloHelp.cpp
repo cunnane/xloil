@@ -20,7 +20,7 @@ namespace xloil
     for (auto& arg : args)
       stringLen += arg.name.size() + arg.help.size();
     
-    ExcelArrayBuilder builder(1 + nArgs, 2, stringLen);
+    ExcelArrayBuilder builder(1 + (ExcelObj::row_t)nArgs, 2, stringLen);
     builder(0, 0) = info->name;
     builder(0, 1) = info->help;
     for (auto i = 0u; i < nArgs; ++i)

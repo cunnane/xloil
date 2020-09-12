@@ -65,7 +65,7 @@ namespace xloil
         SafeArrayUnaccessData(array.get());
 
         VARIANT result;
-        VariantInit(&result); // required?
+        VariantInit(&result); // TODO: required?
         result.vt = VT_VARIANT | VT_ARRAY;
         result.parray = array.release();
 
@@ -120,7 +120,7 @@ namespace xloil
     template<>
     size_t stringLength<BSTR>(BSTR* pData, size_t nRows, size_t nCols)
     {
-      auto len = 0u;
+      size_t len = 0u;
       for (auto i = 0u; i < nRows; i++)
         for (auto j = 0u; j < nCols; j++)
           len += wcslen(pData[i * nCols + j]);
@@ -129,7 +129,7 @@ namespace xloil
     template<>
     size_t stringLength<VARIANT>(VARIANT* pData, size_t nRows, size_t nCols)
     {
-      auto len = 0;
+      size_t len = 0;
       for (auto i = 0u; i < nRows; i++)
         for (auto j = 0u; j < nCols; j++)
         {
