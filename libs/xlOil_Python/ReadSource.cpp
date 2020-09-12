@@ -27,8 +27,10 @@ namespace xloil
       const auto xloilModule = py::module::import("xloil");
       const auto scanFunc = xloilModule.attr("scan_module").cast<py::function>();
 
+      // If you don't cast the wstr to object, you get none implicitly 
+      // converted to wstr. Principle of least astonishment violated.
       const auto wbName = workbookName 
-        ? py::wstr(workbookName) 
+        ? (py::object)py::wstr(workbookName) 
         : py::none();
 
       const auto modName = (string)py::str(mod);

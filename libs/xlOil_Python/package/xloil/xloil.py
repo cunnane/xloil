@@ -2,6 +2,7 @@ import inspect
 import functools
 import importlib
 import importlib.util
+import importlib.abc
 import typing
 import numpy as np
 import os
@@ -596,6 +597,22 @@ class _ArrayType:
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
 Array = _ArrayType() 
 
+class _ModuleFinder(importlib.abc.MetaPathFinder):
+
+    path_map = dict()
+
+    def find_spec(self, fullname, path, target=None):
+        path = self.path_map.get(fullname, None)
+        if path is None:
+            return None
+        return importlib.util.spec_from_file_location(fullname, self.path_map[fullname])
+
+    def find_module(self, fullname, path):
+        return None
+
+
+_module_finder = _ModuleFinder()
+sys.meta_path.append(_module_finder)
 
 def scan_module(module, workbook_name=None):
     """
@@ -609,26 +626,16 @@ def scan_module(module, workbook_name=None):
     """
 
     if type(module) is str:
-        mod_directory, mod_filename = os.path.split(module)
-        name = mod_filename.replace('.py', '')
+        mod_directory, filename = os.path.split(module)
+        filename = filename.replace('.py', '')
 
-        # Not completely sure of the wisdom of adding to sys.path here...
-        # It's difficult to re-load a module if it has been created from
-        # a file location.
-        if len(mod_directory) > 0 and not mod_directory in sys.path:
-            sys.path.append(mod_directory)
-        # It would be better to do this if we can figure out how:  
-        # spec = importlib.util.spec_from_file_location(name, mod_directory)
-        spec = importlib.util.find_spec(name)
-        handle = importlib.util.module_from_spec(spec)
+        # avoid name collisions when loading workbook modules
+        mod_name = filename if workbook_name is None else "xloil_wb_" + filename
 
-        # This is why we're doing the module load step-by-step: we
-        # want to control the value written to sys.modules to avoid
-        # name collisions when loading workbook modules
-        sys_mod_name = name if workbook_name is None else "xloil.wb." + name
-        sys.modules[sys_mod_name] = handle
-
-        spec.loader.exec_module(handle)
+        if workbook_name is not None:
+            _module_finder.path_map[mod_name] = module
+   
+        handle = importlib.import_module(mod_name)
 
     elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
         # We can only reload modules with a __file__ attribute, e.g. not
