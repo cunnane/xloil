@@ -33,6 +33,7 @@ namespace xloil
     public:
       RibbonImpl()
       {
+        _idsOfNames[L"onLoadHandler"] = 2;
       }
 
       virtual HRESULT __stdcall raw_GetCustomUI(
@@ -135,7 +136,7 @@ namespace xloil
         }
         else if (dispidMember == 2)
         {
-          return onLoadHandler(rgvarg[1].pdispVal);
+          return onLoadHandler(rgvarg[0].pdispVal);
         }
         else if (dispidMember - theFirstDispid < _functions.size())
         {
