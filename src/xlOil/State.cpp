@@ -12,9 +12,7 @@ namespace xloil
 
     static const wchar_t* ourDllName = nullptr;
     static wchar_t ourDllPath[4 * MAX_PATH]; // TODO: may not be long enough!!!
-    static int ourExcelVersion = 0;
-    static HINSTANCE ourExcelHInstance = nullptr;
-    static DWORD ourMainThread = 0;
+    static State::ExcelState ourExcelState;
 
     void setDllPath(HMODULE handle)
     {
@@ -37,6 +35,12 @@ namespace xloil
       auto instPtr = callExcel(msxll::xlGetInstPtr);
       return (HINSTANCE)instPtr.val.bigdata.h.hdata;
     }
+
+    HWND getExcelHWnd()
+    {
+      auto hwnd = callExcel(msxll::xlGetHwnd);
+      return (HWND)hwnd.val.w;
+    }
   }
 
   namespace State
@@ -45,9 +49,13 @@ namespace xloil
     {
       theCoreModuleHandle = (HMODULE)coreHInstance;
       setDllPath(theCoreModuleHandle);
-      ourMainThread = GetCurrentThreadId();
-      ourExcelVersion = getExcelVersion();
-      ourExcelHInstance = getExcelHInstance();
+      ourExcelState = ExcelState
+      {
+        getExcelVersion(),
+        getExcelHInstance(),
+        (int)getExcelHWnd(),
+        GetCurrentThreadId()
+      };
     }
 
     void* coreModuleHandle() noexcept
@@ -63,17 +71,9 @@ namespace xloil
     {
       return ourDllName;
     }
-    int excelVersion() noexcept
+    XLOIL_EXPORT ExcelState& excelState() noexcept
     {
-      return ourExcelVersion;
-    }
-    size_t mainThreadId() noexcept
-    {
-      return ourMainThread;
-    }
-    void* excelHInstance() noexcept
-    {
-      return ourExcelHInstance;
+      return ourExcelState;
     }
     Excel::_Application& excelApp() noexcept
     {

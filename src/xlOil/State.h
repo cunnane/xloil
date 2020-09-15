@@ -21,16 +21,20 @@ namespace xloil
     /// </summary>
     XLOIL_EXPORT const wchar_t* coreName() noexcept;
 
+    struct ExcelState
+    {
+      int version;
+      void* hInstance;
+      int hWnd;
+      size_t mainThreadId;
+    };
+
     /// <summary>
     /// Returns the Excel major version number
     /// </summary>
-    XLOIL_EXPORT int excelVersion() noexcept;
-
-    XLOIL_EXPORT void* excelHInstance() noexcept;
+    XLOIL_EXPORT ExcelState& excelState() noexcept;
 
     XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
-    
-    XLOIL_EXPORT size_t mainThreadId() noexcept;
 
     void initAppContext(void* coreHInstance);
   }

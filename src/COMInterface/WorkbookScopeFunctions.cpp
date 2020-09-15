@@ -7,6 +7,7 @@
 #include <xloil/Interface.h>
 #include <xloil/Register/FuncRegistry.h>
 #include <xloil/ExcelCall.h>
+#include <xloil/State.h>
 #include <vector>
 #include <memory>
 
@@ -18,10 +19,9 @@ namespace xloil
 {
   namespace COM
   {
-    
     bool checkRegistryKeys()
     {
-      auto excelVersion = Core::theExcelVersion();
+      auto excelVersion = State::excelState().version;
       auto regKey = fmt::format(L"Software\\Microsoft\\Office\\{0}.0\\Excel\\Security\\AccessVBOM", excelVersion);
       DWORD currentUser = 666, localMachine = 666;
       getWindowsRegistryValue(L"HKCU", regKey.c_str(), currentUser);

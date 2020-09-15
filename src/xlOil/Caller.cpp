@@ -28,7 +28,7 @@ namespace
   struct xldlg_enum_struct
   {
     bool is_dlg;
-    short low_hwnd;
+    HWND  hwnd;
     const char *window_title_text; // set to NULL if don't care
     DWORD pid;
   };
@@ -40,9 +40,9 @@ namespace
     // Check if the parent window is Excel.
     // Note: Because of the change from MDI (Excel 2010)
     // to SDI (Excel 2013) we check the process IDs
-    if (p_enum->low_hwnd)
+    if (p_enum->hwnd)
     {
-      if (LOWORD((DWORD)GetParent(hwnd)) != p_enum->low_hwnd)
+      if (GetParent(hwnd) != p_enum->hwnd)
         return TRUE; // Tells Windows to continue iterating.
     }
     else
@@ -93,17 +93,9 @@ namespace
     short hwnd = 0;
     DWORD pid = 0;
     const char* windowName;
-    if (xloil::State::excelVersion() < 13)
-    {
-      XLOPER xHwnd;
-      // Calls Excel4, which only returns the low part of the Excel
-      // main window handle. This is OK for the search however.
-      if (Excel4(xlGetHwnd, &xHwnd, 0))
-        return false; // Couldn't get it, so assume not
-                      
-      hwnd = xHwnd.val.w;
+    auto& state = xloil::State::excelState();
+    if (state.version < 13)
       windowName = "";
-    }
     else
     {
       windowName = "Function Arguments";
@@ -111,7 +103,7 @@ namespace
     }
 
     // Search for bosa_sdm_xl* dialog box with no title string.
-    xldlg_enum_struct es = { FALSE, hwnd, windowName, pid };
+    xldlg_enum_struct es = { FALSE, (HWND)state.hWnd, windowName, pid };
     EnumWindows((WNDENUMPROC)xldlg_enum_proc, (LPARAM)&es);
     return es.is_dlg;
   }

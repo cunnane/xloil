@@ -27,17 +27,6 @@ namespace xloil
     XLOIL_EXPORT const wchar_t* theCoreName();
 
     /// <summary>
-    /// Returns the Excel major version
-    /// </summary>
-    XLOIL_EXPORT int theExcelVersion();
-
-    /// <summary>
-    /// Give a reference to the COM Excel application object for the
-    /// running instance
-    /// </summary>
-    XLOIL_EXPORT Excel::_Application& theExcelApp();
-
-    /// <summary>
     /// Returns true if the function wizard dialogue box is being used.
     /// Quite an expensive check.
     /// </summary>

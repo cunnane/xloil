@@ -27,16 +27,6 @@ namespace xloil
     return State::coreName();
   }
 
-  int Core::theExcelVersion()
-  {
-    return State::excelVersion();
-  }
-
-  Excel::_Application& Core::theExcelApp()
-  {
-    return COM::excelApp();
-  }
-
   bool Core::inFunctionWizard()
   {
     return xloil::inFunctionWizard();
