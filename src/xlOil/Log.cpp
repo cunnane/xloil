@@ -3,7 +3,9 @@
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Loaders/EntryPoint.h>
+#include <xloil/State.h>
 #include <xlOil/Throw.h>
+#include "LogWindow.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <filesystem>
@@ -59,7 +61,7 @@ namespace xloil
     {
       auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
       dbgWrite->set_level(level);
-
+   
       auto logger = make_shared<spdlog::logger>("logger",
         spdlog::sinks_init_list{ dbgWrite });
 
@@ -71,6 +73,16 @@ namespace xloil
 
       // Flush log after each Excel calc cycle
       static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
+    }
+
+    void loggerInitPopupWindow()
+    {
+      auto& state = State::excelState();
+      auto logWindow = makeLogWindowSink(
+        (HWND)state.hWnd, (HINSTANCE)State::coreModuleHandle());
+
+      auto logger = spdlog::default_logger();
+      logger->sinks().push_back(logWindow);
     }
 
     void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)

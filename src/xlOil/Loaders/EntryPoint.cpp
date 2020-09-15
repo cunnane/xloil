@@ -66,9 +66,10 @@ namespace xloil
 #if _DEBUG
         detail::loggerInitialise(spdlog::level::debug);
 #else
-        detail::loggerInitialise(spdlog::level::warn);
+        detail::loggerInitialise(spdlog::level::err);
 #endif
         State::initAppContext(theCoreModuleHandle);
+        detail::loggerInitPopupWindow();
 
         createCoreContext();
 

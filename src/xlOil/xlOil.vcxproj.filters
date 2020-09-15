@@ -36,6 +36,7 @@
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="xloVersion.cpp" />
     <ClCompile Include="xloLog.cpp" />
+    <ClCompile Include="LogWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -146,6 +147,8 @@
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="LogWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">
@@ -157,5 +160,8 @@
     <Filter Include="Include">
       <UniqueIdentifier>{28b63a3a-8cbf-47cb-adb4-a08c46149d07}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
 </Project>
