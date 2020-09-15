@@ -4,9 +4,9 @@ xlOil Python Async/Rtd
 Introduction
 ------------
 
-In Excel, RTD functions are able to return values independently of Excel's calculation cycle.
-The classic example of this is a stock ticker with live prices.  It is very easy to create 
-an RTD function in xlOil_Python -- the following will give you a ticking clock:
+In Excel, RTD (real time data) functions are able to return values independently of Excel's 
+calculation cycle. The classic example of this is a stock ticker with live prices.  It is very 
+easy to create an RTD function in xlOil_Python -- the following will give you a ticking clock:
 
 ::
 
@@ -29,7 +29,7 @@ use Excel's native async support, but this has some drawbacks, which we discuss 
 Comparison between Excel's async and RTD
 ----------------------------------------
 
-Excel has supported RTD functions at least since Excel 2002.  In Excel 2010, Excel introduced 
+Excel has supported RTD functions since at least Excel 2002.  In Excel 2010, Excel introduced 
 native async functions.
 
 RTD:
@@ -41,9 +41,9 @@ RTD:
 
 Native async:
 
-    * Pro: Lighter weight compared to RTD
+    * Pro: Less overhead compared to RTD
     * Pro: works with manual calc mode
-    * Con: tied to calc cycle, so any interruption cancels all async functions
+    * Con: tied to calc cycle, so any interruption cancels all asyncs functions
 
 The last con is particularly problematic for native async: *any* user interaction with Excel will
 interrupt the calc, so whilst native async functions can run asynchronously with each other, they

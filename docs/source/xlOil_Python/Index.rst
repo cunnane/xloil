@@ -8,9 +8,10 @@ xlOil Python
 
     GettingStarted
     Concepts
-    Example
-    ModuleReference
+    TypeConversion
     CustomGUI
     Pandas
     Jupyter
     Rtd
+    Example
+    ModuleReference

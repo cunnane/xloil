@@ -31,8 +31,8 @@ xlOil features
     - Very concise syntax to declare an Excel function
     - Optional type checking of function parameters
     - Supports keyword arguments
-    - Choice of globally declared functions or code modules limited to a single workbook just
-      like VBA workbook-level functions
+    - Choice of globally declared functions or code modules limited to a single workbook (just
+      like VBA workbook-level functions)
     - Tight integration with numpy - very low overheads for array functions
     - Understands python tuples, lists, dictionarys and pandas dataframes
     - Async functions
@@ -44,6 +44,7 @@ xlOil features
     - Simple and quick add-in deployment
     - Two-way connection to Jupyter notebooks: run worksheet functions in Jupyter and query variables
       in the jupyter kernel
+    - On-the-fly creation/destruction of COM addin objects and Ribbon UI
 
 * C++
     - Safe and convenient wrappers around most things in the C-API

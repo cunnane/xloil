@@ -5,44 +5,6 @@ xlOil Python Concepts
 .. contents::
     :local:
 
-Cached Objects
---------------
-
-If xlOil cannot convert a returned python object to Excel, it will place it in 
-a object dictionary and return a reference string of the form
-``<UniqueChar>[WorkbookName]SheetName!CellRef,#``
-
-If a string of this kind if encountered when reading function arguments, xlOil 
-automatically tries to fetch the corresponding python object. With this
-mechanism you can pass python objects opaquely between functions by using
-cache reference strings outputted from one function as arguments to another.
-
-For example:
-
-::
-
-    @xlo.func
-    def make_lambda(pow):
-        return lambda x: x ** pow
-
-    @xlo.func
-    def apply_lambda(f, x):
-        return f(x)
-
-Since xlOil doesn't know how to convert a lambda function to an Excel object,
-the first function will output a cache reference string.  That string will be 
-automatically turned back into a lambda if passed as an argument to the second 
-function.
-
-The python cache is separate to the Core object cache accessed using `xloRef`
-and `xloVal`.  The Core cache stores native Excel objects such as arrays.
-When reading functions arguments xlOil tries to lookup strings in both of these
-caches. 
-
-The leading `UniqueChar` means xlOil can very quickly determine that a string
-isn't a cache reference, so the overhead of checking if every string argument
-is a cache object is very fast in practice. 
-
 
 Local Functions and Workbook Modules
 ------------------------------------
@@ -52,10 +14,10 @@ When an Excel workbook is opened, xlOil tries to load the module `<workbook_name
 
 When registering functions from such a workbook module, xlOil defaults to making
 any declared functions "local": this means their scope is limited to the workbook.
-It also means the function is automatically macro-type. (xlOil achieves this by
+It also means the function is automatically macro-type. (xlOil achieves this by 
 creating a VBA stub to invoke them).
 
-This behaviour can be overrided by `local` argument to the `func` decorator.
+This behaviour can be overriden by `local` argument to the `func` decorator.
 
 Local functions have some limitations compared to global scope ones:
 - No native async or threadsafe, but RTD async is OK
@@ -66,11 +28,11 @@ Local functions have some limitations compared to global scope ones:
 Another way to package python code for distribution is to create an XLL, see
 :ref:`core-distributing-addins`
 
-xlOil sets the module-level variable `_xl_this_workbook` to the workbook name in a 
+xlOil sets the module-level variable `_xloil_workbook` to the workbook name in a 
 workbook module.
 
 (Technical note: It is possible to use the Application.MacroOptions call to add help to the 
-function wizard for VBA, but identically named functions will conflict which somewhat defeats 
+function wizard for VBA, but identically named functions will conflict which rather defeats 
 the purpose of local functions).
 
 
@@ -105,40 +67,6 @@ this quandry we can specify:
     @xlo.func
     def poly(x: xlo.Array(dims=1), coeffs: xlo.Array(float)):
         return np.sum(coeffs * X[:,None] ** range(coeffs.T.shape[0]), axis=1)
-
-
-
-Dates
------
-
-In the Python plugin, just applying the argument annotation `datetime` will request a date 
-conversion. Dates returned from functions will be converted to Excel date numbers:
-
-::
-
-    from datetime import datetime, timedelta
-    @func
-    def AddDay(date: datetime):
-        return date + timedelta(days = 1)
-
-
-xlOil can interpret strings as dates. In the settings file, the key ``DateFormats`` 
-specifies an array of date-formats to try when parsing strings. Naturally, adding more 
-formats decreases performance.  The formats use the C++ ``std::get_time`` syntax,
-see https://en.cppreference.com/w/cpp/io/manip/get_time.
-
-Since ``std::get_time`` is **case-sensitive** on Windows, so is xlOil's date parsing
-(this may be fixed in a future release as it is quite annoying for month names).
-
-Excel has limited internal support for dates. There is no primitive date object in the  
-XLL interface used by xlOil, but cells containing numbers can be formatted as dates.  
-This means that  worksheet functions cannot tell whether values received are intended 
-as dates - this applies to Excel built-in date functions as well: they will interpret 
-any number as a date. (It is possible to check for date formatting via the COM interface 
-but this would give behaviour inconsistent with the built-ins)
-
-Excel does not understand timezones and neither does ``std::get_time``, so these
-are currently unsupported.
 
 
 Events

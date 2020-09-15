@@ -18,6 +18,34 @@ def log(msg, level="info"):
     """
     pass
 
+def run_later(func,
+        num_retries = 10,
+        retry_delay = 500,
+        wait_time = 0):
+    """
+    Schedules a callback to be run in the COM API context. Much of the COM API in unavailable
+    during the calc cycle, in particular anything which involves writing to the sheet.
+
+    Parameters
+    ----------
+
+    func: callable
+        A callable which takes no arguments and returns nothing
+
+    num_retries: int
+        Number of times to retry the call if Excel's COM API is busy, e.g. a dialog box
+        is open or it is running a calc cycle
+
+    retry_delay: int
+        Millisecond delay between retries
+
+    wait_time: int
+        Number of milliseconds to wait before first attempting to run this function
+
+    """
+    pass
+
+
 class Range:
     """
     Similar to an Excel Range object, this class allows access to an area on a 
@@ -171,8 +199,8 @@ class ExcelArray:
 class CellError:
     """
     Enum-type class which represents an Excel error condition of the 
-    form `#N/A!`, `#NAME!`, etc passed as a function argument. If your
-    function does not use a specific type-converter it may be passed 
+    form `#N/A!`, `#NAME!`, etc passed as a function argument. If a 
+    function argument does not specify a type (e.g. int, str) it may be passed 
     an object of this type, which it can handle based on error condition.
     """
     Null = None
@@ -438,9 +466,18 @@ class RtdServer:
         pass
 
 def register_functions(module, function_holders):
+    """
+    Register worksheet functions for a specified module. The function_holders
+    must be objects created with FuncDescription.create_holder. Generally, there
+    is no need to call this directly, it is used by xlOil internals.
+    """
     pass
 
 def deregister_functions(module, function_names):
+    """
+    Deregisters worksheet functions linked to specified module. Generally, there
+    is no need to call this directly.
+    """
     pass
 
 def get_event_loop():
@@ -485,28 +522,31 @@ class RibbonControl:
         """
         pass
 
-class ComAddin:
+class RibbonUI:
+    """
+    Controls an Ribbon and it's associated COM addin
+    """
     def connect(self):
         """
-        Connects this COM add-in to Excel. Any specified ribbon customisations
-        will be passed to Excel.
+        Connects this COM add-in underlying this Ribbon to Excel. Any specified 
+        ribbon XML will be passed to Excel.
         """
         pass
     def disconnect(self):
         """
-        Unloads the COM add-in and any ribbon customisation.
+        Unloads the underlying COM add-in and any ribbon customisation.
         """
         pass
     def set_ribbon(xml:str, handlers:dict):
         """
-        See `create_ribbon`. This function can only be called when the add-in
+        See `create_ribbon`. This function can only be called when the Ribbon
         is disconnected.
         """
         pass
 
-def create_ribbon(xml:str, handlers:dict) -> ComAddin:
+def create_ribbon(xml:str, handlers:dict) -> RibbonUI:
     """
-    Returns a (connected) ComAddin object which passes the specified ribbon
+    Returns a (connected) RibbonUI object which passes the specified ribbon
     customisation XML to Excel.  When the returned object is deleted, it 
     unloads the Ribbon customisation and the associated COM add-in.
 
