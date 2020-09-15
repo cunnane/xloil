@@ -172,7 +172,7 @@ namespace xloil
       const bool truncatedArgNames = argNames.length() > 255;
       if (truncatedArgNames)
       {
-        XLO_WARN(L"Excel does not support a concatenated argument name length of "
+        XLO_INFO(L"Excel does not support a concatenated argument name length of "
           "more than 255 chars (including commans). Truncating for function '{0}'", info->name);
         argNames.resize(255);
       }
@@ -195,7 +195,7 @@ namespace xloil
       for (auto& h : argHelp)
         if (h.size() > 255)
         {
-          XLO_WARN(L"Excel does not support argument help strings longer than 255 chars. "
+          XLO_INFO(L"Excel does not support argument help strings longer than 255 chars. "
             "Truncating for function '{0}'", info->name);
           h.resize(255);
         }
@@ -211,7 +211,7 @@ namespace xloil
       auto truncatedHelp = info->help;
       if (info->help.length() > 255)
       {
-        XLO_WARN(L"Excel does not support help strings longer than 255 chars. "
+        XLO_INFO(L"Excel does not support help strings longer than 255 chars. "
           "Truncating for function '{0}'", info->name);
         truncatedHelp.assign(info->help.c_str(), 255);
         truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
