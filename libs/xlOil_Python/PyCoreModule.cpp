@@ -2,6 +2,7 @@
 #include "PyHelpers.h"
 #include "PyExcelArray.h"
 #include "BasicTypes.h"
+#include <xloil/ApiMessage.h>
 #include <xloil/Log.h>
 #include <map>
 
@@ -61,6 +62,18 @@ namespace xloil {
         SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::from_str(level), message);
       }
 
+      void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
+      {
+        excelApiCall([callable]()
+          {
+            py::gil_scoped_acquire getGil;
+            callable.call();
+          },
+          QueueType::WINDOW,
+          nRetries,
+          retryPause,
+          delay);
+      }
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         // Bind the two base classes for python converters
@@ -83,6 +96,12 @@ namespace xloil {
 
         mod.def("in_wizard", &Core::inFunctionWizard);
         mod.def("log", &writeToLog, py::arg("msg"), py::arg("level") = "info");
+        mod.def("run_later",
+          &runLater,
+          py::arg("func"),
+          py::arg("num_retries") = 10,
+          py::arg("retry_delay") = 500,
+          py::arg("wait_time") = 0);
       }, 1000);
     }
 } }
