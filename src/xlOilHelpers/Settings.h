@@ -20,6 +20,8 @@ namespace xloil
 
     std::string logLevel(const toml::view_node& root);
 
+    std::string logPopupLevel(const toml::view_node& root);
+
     std::vector<std::wstring> plugins(const toml::view_node& root);
 
     std::wstring pluginSearchPattern(const toml::view_node& root);

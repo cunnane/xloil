@@ -26,7 +26,7 @@ namespace xloil
   namespace detail
   {
     void loggerInitialise(spdlog::level::level_enum level);
-    void loggerInitPopupWindow();
+    void loggerInitPopupWindow(const char* logLevel);
     void loggerAddFile(const wchar_t* logFilePath, const char* logLevel);
   }
 

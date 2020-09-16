@@ -54,6 +54,10 @@ namespace xloil
     {
       return findStr(root, "LogLevel", "warn");
     }
+    std::string logPopupLevel(const toml::view_node& root)
+    {
+      return findStr(root, "LogPopupLevel", "error");
+    }
     std::vector<std::wstring> dateFormats(const toml::view_node& root)
     {
       return findVecStr(root, "DateFormats");

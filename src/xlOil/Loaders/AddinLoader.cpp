@@ -94,8 +94,8 @@ namespace xloil
     ourCoreContext = openXll(State::corePath());
 
     // Can only do this once not per-addin
-    detail::loggerInitPopupWindow();
-    //  Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str());
+    detail::loggerInitPopupWindow(
+      Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str());
 
     ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
   }

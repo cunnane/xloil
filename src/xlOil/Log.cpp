@@ -75,13 +75,13 @@ namespace xloil
       static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
     }
 
-    void loggerInitPopupWindow()
+    void loggerInitPopupWindow(const char* popupLevel)
     {
       auto& state = State::excelState();
       auto logWindow = makeLogWindowSink(
         (HWND)state.hWnd,
         (HINSTANCE)State::coreModuleHandle(), 
-        spdlog::level::from_str("error"));
+        spdlog::level::from_str(popupLevel));
 
       auto logger = spdlog::default_logger();
       logger->sinks().push_back(logWindow);
