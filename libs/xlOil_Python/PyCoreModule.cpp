@@ -59,7 +59,9 @@ namespace xloil {
     {
       void writeToLog(const char* message, const char* level)
       {
-        SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), spdlog::level::from_str(level), message);
+        const auto levelEnum = spdlog::level::from_str(level);
+        if (levelEnum != spdlog::level::off)
+          SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), levelEnum, message);
       }
 
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)

@@ -296,7 +296,7 @@ class FuncDescription:
 
         if holder.local:
             if func_options != 0:
-                log(f"Ignoring func options for local function {self.name}", level='warn')
+                log(f"Ignoring func options for local function {self.name}", level='info')
         else:
             holder.set_opts(func_options)
         return holder
