@@ -69,42 +69,42 @@ namespace xloil
         return 0;
 
       case WM_COMMAND:
-
-        switch (LOWORD(wParam))
+      {
+        const auto id = LOWORD(wParam);
+        switch (id)
         {
         case ID_CAPTURELEVEL_ERROR:
-          theSelectedLogLevel = spdlog::level::critical;
         case ID_CAPTURELEVEL_WARNING:
-          theSelectedLogLevel = spdlog::level::warn;
         case ID_CAPTURELEVEL_INFO:
-          theSelectedLogLevel = spdlog::level::info;
         case ID_CAPTURELEVEL_DEBUG:
-          theSelectedLogLevel = spdlog::level::debug;
         case ID_CAPTURELEVEL_TRACE:
-          theSelectedLogLevel = spdlog::level::trace;
 
           CheckMenuRadioItem(
             theMenuBar,
-            ID_CAPTURELEVEL_ERROR, // first item in range 
-            ID_CAPTURELEVEL_TRACE,    // last item in range 
-            LOWORD(wParam),           // item to check 
-            MF_BYCOMMAND              // IDs, not positions 
+            ID_CAPTURELEVEL_ERROR,   // first item in range 
+            ID_CAPTURELEVEL_TRACE,   // last item in range 
+            id,                      // item to check 
+            MF_BYCOMMAND             // IDs, not positions 
           );
+
+          theSelectedLogLevel = (spdlog::level::level_enum)
+            (spdlog::level::err - (id - ID_CAPTURELEVEL_ERROR));
 
           return 0;
         default:
           return DefWindowProc(hwnd, message, wParam, lParam);
         }
-
+      }
       default:
         return DefWindowProc(hwnd, message, wParam, lParam);
       }
     }
 
-    void setTextBoxContents(const wchar_t* text)
+    void setTextBoxContents(const wchar_t* text, size_t numLines = 0)
     {
       // Add text to the window. 
       SendMessage(theTextControl, WM_SETTEXT, 0, (LPARAM)text);
+      SendMessage(theTextControl, EM_LINESCROLL, 0, numLines);
     }
 
     HWND createWindow(HWND parentWnd, HINSTANCE hInstance, const wchar_t* winTitle)
@@ -150,10 +150,9 @@ namespace xloil
       return hwnd;
     }
 
-    void showWindow(HWND hwnd, size_t linesToScroll = 0)
+    void showWindow(HWND hwnd)
     {
       ShowWindow(hwnd, SW_SHOWNORMAL);
-      SendMessage(theTextControl, EM_LINESCROLL, 0, linesToScroll);
       theWindowIsOpen = true;
     }
 
@@ -164,7 +163,11 @@ namespace xloil
   public:
     using level_enum = spdlog::level::level_enum;
 
-    LogWindowSink(HWND parentWindow, HINSTANCE parentInstance)
+    LogWindowSink(
+      HWND parentWindow, 
+      HINSTANCE parentInstance, 
+      spdlog::level::level_enum popupLevel)
+      : _popupLevel(popupLevel)
     {
       _logWindow = LogWindow::createWindow(parentWindow, parentInstance, L"xlOil Log");
       set_pattern_(""); // Just calls set_formatter_
@@ -215,7 +218,7 @@ namespace xloil
       
       setWindowText();
 
-      LogWindow::showWindow(_logWindow, _messages.size());
+      LogWindow::showWindow(_logWindow);
     }
 
     void appendToWindow(const string& msg)
@@ -235,7 +238,7 @@ namespace xloil
 
     void setWindowText()
     {
-      LogWindow::setTextBoxContents(_windowText.c_str());
+      LogWindow::setTextBoxContents(_windowText.c_str(), _messages.size());
     }
 
     std::list<string> _messages;
@@ -246,8 +249,8 @@ namespace xloil
   };
 
   std::shared_ptr<spdlog::sinks::sink>
-    makeLogWindowSink(HWND parentWindow, HINSTANCE parentInstance)
+    makeLogWindowSink(HWND parentWindow, HINSTANCE parentInstance, spdlog::level::level_enum popupLevel)
   {
-    return std::make_shared<LogWindowSink>(parentWindow, parentInstance);
+    return std::make_shared<LogWindowSink>(parentWindow, parentInstance, popupLevel);
   }
 }

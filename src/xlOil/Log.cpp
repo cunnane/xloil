@@ -79,7 +79,9 @@ namespace xloil
     {
       auto& state = State::excelState();
       auto logWindow = makeLogWindowSink(
-        (HWND)state.hWnd, (HINSTANCE)State::coreModuleHandle());
+        (HWND)state.hWnd,
+        (HINSTANCE)State::coreModuleHandle(), 
+        spdlog::level::from_str("error"));
 
       auto logger = spdlog::default_logger();
       logger->sinks().push_back(logWindow);
