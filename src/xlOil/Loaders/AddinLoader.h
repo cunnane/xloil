@@ -6,6 +6,7 @@ namespace xloil
   class AddinContext; class FileSource;
 
   AddinContext* theCoreContext();
+  void createCoreContext();
 
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
     findFileSource(const wchar_t* sourcePath);
@@ -15,7 +16,7 @@ namespace xloil
   /// </summary>
   void deleteFileSource(const std::shared_ptr<FileSource>& source);
 
-  void createCoreContext();
-  void openXll(const wchar_t* xllPath);
+  AddinContext* openXll(const wchar_t* xllPath);
+  void loadPluginsForAddin(AddinContext* ctx);
   void closeXll(const wchar_t* xllPath);
 }

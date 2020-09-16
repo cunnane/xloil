@@ -1,3 +1,4 @@
+#include "AddinLoader.h"
 #include <xlOil/Interface.h>
 #include <xlOil/Register/FuncRegistry.h>
 #include <xlOilHelpers/Settings.h>
@@ -90,23 +91,23 @@ namespace xloil
 
   void createCoreContext() 
   {
-    auto settings = processAddinSettings(State::corePath());
+    ourCoreContext = openXll(State::corePath());
 
-    ourCoreContext = createAddinContext(State::corePath(), settings);
+    // Can only do this once not per-addin
+    detail::loggerInitPopupWindow();
+    //  Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str());
+
     ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
   }
 
-
-  void openXll(const wchar_t* xllPath)
+  void loadPluginsForAddin(AddinContext* ctx)
   {
-    // An explicit load of xloil.xll returns here since the other bits get done in createCoreContext
-    if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0)
-    {
-      auto plugins = Settings::plugins((*ourCoreContext->settings())["Addin"]);
-      loadPlugins(ourCoreContext, plugins);
-      return;
-    }
-      
+    auto plugins = Settings::plugins((*ctx->settings())["Addin"]);
+    loadPlugins(ctx, plugins);
+  }
+
+  AddinContext* openXll(const wchar_t* xllPath)
+  {
     auto settings = processAddinSettings(xllPath);
     
     // Delete existing context if addin is reloaded
@@ -115,8 +116,7 @@ namespace xloil
     
     auto ctx = createAddinContext(xllPath, settings);
     assert(ctx);
-
-    loadPlugins(ctx, Settings::plugins((*settings)["Addin"]));
+    return ctx;
   }
 
   void closeXll(const wchar_t* xllPath)

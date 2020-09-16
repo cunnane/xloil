@@ -13,7 +13,9 @@
 #include <xloil/ApiMessage.h>
 #include <COMInterface/Connect.h>
 #include <COMInterface/XllContextInvoke.h>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 
 using std::wstring;
 using std::string;
@@ -35,12 +37,15 @@ namespace xloil
       try
       {
         COM::connectCom();
-        excelApiCall([=]() { openXll(path.c_str()); }, QueueType::XLL_API);
+        excelApiCall([=]() 
+        {  
+          loadPluginsForAddin(addinContext);
+        }, QueueType::XLL_API);
       }
       catch (const COM::ComConnectException&)
       {
         excelApiCall(
-          RetryAtStartup{ path },
+          RetryAtStartup{ addinContext },
           QueueType::WINDOW, 
           0, // no retry
           0,
@@ -48,7 +53,7 @@ namespace xloil
         ); 
       }
     }
-    wstring path;
+    AddinContext* addinContext;
   };
 
   XLOIL_EXPORT int autoOpenHandler(const wchar_t* xllPath) noexcept
@@ -69,17 +74,22 @@ namespace xloil
         detail::loggerInitialise(spdlog::level::err);
 #endif
         State::initAppContext(theCoreModuleHandle);
-        detail::loggerInitPopupWindow();
-
+        
         createCoreContext();
+
+        excelApiCall(RetryAtStartup{ theCoreContext() });
 
         theCoreIsLoaded = true;
         retVal = 1;
+
+        initMessageQueue();
       }
 
-      initMessageQueue();
-
-      excelApiCall(RetryAtStartup{ wstring(xllPath) });
+      if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
+      {
+        auto addinContext = openXll(xllPath);
+        excelApiCall(RetryAtStartup{ addinContext });
+      }
 
       return retVal;
     }
