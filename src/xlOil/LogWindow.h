@@ -7,4 +7,6 @@ namespace xloil
       HWND parentWindow,
       HINSTANCE parentInstance,
       spdlog::level::level_enum popupLevel);
+
+  void openLogWindow();
 }

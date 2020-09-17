@@ -4,6 +4,7 @@
 #include <spdlog/details/pattern_formatter.h>
 #include <xloil/WindowsSlim.h>
 #include <xloil/StringUtils.h>
+#include <xloil/Throw.h>
 #include <mutex>
 #include "resource.h"
 #include <regex>
@@ -16,6 +17,7 @@ namespace xloil
   namespace LogWindow
   {
     HMENU theMenuBar;
+    HWND theMainWindow;
     HWND theTextControl;
     HMENU theTextControlId = (HMENU)101;
     spdlog::level::level_enum theSelectedLogLevel = spdlog::level::warn;
@@ -43,11 +45,8 @@ namespace xloil
           NULL);       // pointer not needed 
 
         if (!theTextControl)
-        {
-          /*auto err = GetLastErrorStdStr();
-          MessageBox(NULL, TEXT("CreateWindow Failed!"), err.c_str(), MB_ICONERROR);*/
           return EXIT_FAILURE;
-        }
+        
         return 0;
 
       case WM_SETFOCUS:
@@ -87,6 +86,7 @@ namespace xloil
             MF_BYCOMMAND             // IDs, not positions 
           );
 
+          // Some sneaky but fragile enum arithmetic
           theSelectedLogLevel = (spdlog::level::level_enum)
             (spdlog::level::err - (id - ID_CAPTURELEVEL_ERROR));
 
@@ -104,10 +104,11 @@ namespace xloil
     {
       // Add text to the window. 
       SendMessage(theTextControl, WM_SETTEXT, 0, (LPARAM)text);
+      // Scroll to the last line
       SendMessage(theTextControl, EM_LINESCROLL, 0, numLines);
     }
 
-    HWND createWindow(HWND parentWnd, HINSTANCE hInstance, const wchar_t* winTitle)
+    void createWindow(HWND parentWnd, HINSTANCE hInstance, const wchar_t* winTitle)
     {
       // Define the main window class
       WNDCLASSEX win;
@@ -129,7 +130,7 @@ namespace xloil
 
       // TODO: how to handle error?
       if (!RegisterClassEx(&win))
-        return 0;
+        XLO_THROW("Failed to create LogWindow: {0}", writeWindowsError());
 
       theMenuBar = LoadMenu(hInstance, MAKEINTRESOURCE(IDR_LOG_WINDOW_MENU));
 
@@ -147,12 +148,15 @@ namespace xloil
         NULL // No Window Creation data
       );
 
-      return hwnd;
+      if (!hwnd)
+        XLO_THROW("Failed to create LogWindow: {0}", writeWindowsError());
+
+      theMainWindow = hwnd;
     }
 
-    void showWindow(HWND hwnd)
+    void showWindow()
     {
-      ShowWindow(hwnd, SW_SHOWNORMAL);
+      ShowWindow(theMainWindow, SW_SHOWNORMAL);
       theWindowIsOpen = true;
     }
 
@@ -169,7 +173,7 @@ namespace xloil
       spdlog::level::level_enum popupLevel)
       : _popupLevel(popupLevel)
     {
-      _logWindow = LogWindow::createWindow(parentWindow, parentInstance, L"xlOil Log");
+      LogWindow::createWindow(parentWindow, parentInstance, L"xlOil Log");
       set_pattern_(""); // Just calls set_formatter_
     }
 
@@ -218,7 +222,7 @@ namespace xloil
       
       setWindowText();
 
-      LogWindow::showWindow(_logWindow);
+      LogWindow::showWindow();
     }
 
     void appendToWindow(const string& msg)
@@ -238,19 +242,25 @@ namespace xloil
 
     void setWindowText()
     {
-      LogWindow::setTextBoxContents(_windowText.c_str(), _messages.size());
+      // Just scroll to the end, word-wrap seems to confuse the
+      // line count, so we just specify a big number
+      LogWindow::setTextBoxContents(_windowText.c_str(), 66666666);
     }
 
     std::list<string> _messages;
     wstring _windowText;
     size_t _maxSize = 100;
     level_enum _popupLevel = spdlog::level::err;
-    HWND _logWindow;
   };
 
   std::shared_ptr<spdlog::sinks::sink>
     makeLogWindowSink(HWND parentWindow, HINSTANCE parentInstance, spdlog::level::level_enum popupLevel)
   {
     return std::make_shared<LogWindowSink>(parentWindow, parentInstance, popupLevel);
+  }
+
+  void openLogWindow()
+  {
+    LogWindow::showWindow();
   }
 }
