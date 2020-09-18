@@ -38,7 +38,7 @@ namespace xloil
         0,           // Window style
         // Size and position (4 args)
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-        NULL, NULL,  // Parent window, Menu 
+        HWND_MESSAGE, NULL,  // Parent window, Menu 
         wc.hInstance,
         NULL);
 
