@@ -109,7 +109,7 @@
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xloil\xlOil.h" />
-    <ClInclude Include="LogWindow.h" />
+    <ClInclude Include="LogWindowSink.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="State.h" />
     <ClInclude Include="Loaders\EntryPoint.h" />
@@ -120,7 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Async.cpp" />
-    <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="RtdServer.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="Date.cpp" />

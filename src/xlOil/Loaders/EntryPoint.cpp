@@ -75,6 +75,8 @@ namespace xloil
 #endif
         State::initAppContext(theCoreModuleHandle);
         
+        detail::loggerInitPopupWindow();
+
         createCoreContext();
 
         excelApiCall(RetryAtStartup{ theCoreContext() });

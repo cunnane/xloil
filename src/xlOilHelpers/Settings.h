@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <unordered_map>
 
 namespace toml {
   class node; class table;

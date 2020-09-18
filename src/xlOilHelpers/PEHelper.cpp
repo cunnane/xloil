@@ -1,6 +1,8 @@
 #include "PEHelper.h"
-#include <xloil/Throw.h>
+
 #include <algorithm>
+
+using xloil::Helpers::Exception;
 
 xloil::DllExportTable::DllExportTable(HMODULE hInstance)
 {
@@ -10,11 +12,11 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
 
   auto* pDosHeader = (PIMAGE_DOS_HEADER)imageBase;
   if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-    throw std::runtime_error("Dll export table: fatal error - bad DOS image");
+    throw Exception("Dll export table: fatal error - bad DOS image");
 
   auto* pNTHeader = (PIMAGE_NT_HEADERS)(imageBase + pDosHeader->e_lfanew);
   if (pNTHeader->Signature != IMAGE_NT_SIGNATURE)
-    throw std::runtime_error("Dll export table: fatal error - bad NT image");
+    throw Exception("Dll export table: fatal error - bad NT image");
     
   auto opt_hdr = pNTHeader->OptionalHeader;
   auto& exp_entry = opt_hdr.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
@@ -48,7 +50,7 @@ int xloil::DllExportTable::findOffset(const char* funcName)
 bool xloil::DllExportTable::hook(size_t offset, void * hook)
 {
   if (offset >= numberOfNames)
-    throw std::runtime_error("Function offset out of bounds of export table during hook");
+    throw Exception("Function offset beyond export table bounds during hook");
   auto target = func_table + ord_table[offset];
   DWORD oldProtect;
   if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) return false;

@@ -5,7 +5,8 @@
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xloil/State.h>
 #include <xlOil/Throw.h>
-#include "LogWindow.h"
+#include <xlOilHelpers/Exception.h>
+#include "LogWindowSink.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <filesystem>
@@ -37,22 +38,7 @@ namespace xloil
 
   std::wstring writeWindowsError()
   {
-    wchar_t* lpMsgBuf = nullptr;
-    auto dw = GetLastError();
-
-    auto size = FormatMessage(
-      FORMAT_MESSAGE_ALLOCATE_BUFFER |
-      FORMAT_MESSAGE_FROM_SYSTEM |
-      FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL,
-      dw,
-      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      (LPTSTR)&lpMsgBuf,
-      0, NULL);
-
-    auto msgBuf = std::shared_ptr<wchar_t>(lpMsgBuf, LocalFree);
-
-    return wstring(msgBuf.get(), size);
+    return Helpers::writeWindowsError();
   }
 
   namespace detail
@@ -75,13 +61,12 @@ namespace xloil
       static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
     }
 
-    void loggerInitPopupWindow(const char* popupLevel)
+    void loggerInitPopupWindow()
     {
       auto& state = State::excelState();
       auto logWindow = makeLogWindowSink(
         (HWND)state.hWnd,
-        (HINSTANCE)State::coreModuleHandle(), 
-        spdlog::level::from_str(popupLevel));
+        (HINSTANCE)State::coreModuleHandle());
 
       auto logger = spdlog::default_logger();
       logger->sinks().push_back(logWindow);

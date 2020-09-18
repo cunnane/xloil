@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include "Exception.h"
 #include <xlOil/StringUtils.h>
 #include <xloilHelpers/Environment.h>
 #include <tomlplusplus/toml.hpp>
@@ -6,7 +7,7 @@
 #include <fstream>
 
 namespace fs = std::filesystem;
-
+using xloil::Helpers::Exception;
 using std::vector;
 using std::string;
 using std::wstring;
@@ -111,9 +112,16 @@ namespace xloil
     // Then check the same directory as the dll itself
     if (!fs::exists(path))
       path = fs::path(dllPath).remove_filename() / settingsFileName;
-
-    return fs::exists(path) 
-      ? make_shared<toml::table>(toml::parse_file(path.string())) 
-      : shared_ptr<const toml::table>();
+    try
+    {
+      return fs::exists(path)
+        ? make_shared<toml::table>(toml::parse_file(path.string()))
+        : shared_ptr<const toml::table>();
+    }
+    catch (const toml::parse_error& e)
+    {
+      throw Exception("Error parsing '%s' at line %d:\n %s",
+        path.string().c_str(), e.source().begin.line, e.what());
+    }
   }
 }

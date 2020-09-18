@@ -9,6 +9,7 @@
 #include <xlOil/Events.h>
 #include <xloil/State.h>
 #include <xloil/RtdServer.h>
+#include <xloil/LogWindowSink.h>
 #include <COMInterface/Connect.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
@@ -92,10 +93,10 @@ namespace xloil
   void createCoreContext() 
   {
     ourCoreContext = openXll(State::corePath());
-
     // Can only do this once not per-addin
-    detail::loggerInitPopupWindow(
-      Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str());
+    setLogWindowPopupLevel(
+      spdlog::level::from_str(
+        Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str()));
 
     ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
   }

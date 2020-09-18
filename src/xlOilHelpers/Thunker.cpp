@@ -1,12 +1,13 @@
 #include "Thunker.h"
 #include <xlOil/Register.h>
-#include <xlOil/Throw.h>
+#include "Exception.h"
 #include <xlOil/Log.h>
 #define ASMJIT_STATIC
 #include <asmjit/src/asmjit/asmjit.h>
 #include <string>
 #include <algorithm>
 using std::string;
+using xloil::Helpers::Exception;
 
 class xloper12;
 
@@ -250,17 +251,17 @@ namespace xloil
   {
     // TODO: run compactThunks first?
     if (codeHolder.codeSize() > bufferSize)
-      XLO_THROW("Cannot write thunk: buffer exhausted");
+      throw Exception("Cannot write thunk: buffer exhausted");
 
     auto err = asmJitWriteCode((uint8_t*)codeBuffer, &codeHolder, codeSize);
     if (err != kErrorOk)
-      XLO_THROW("Thunk write failed: {0}", DebugUtils::errorAsString(err));
+      throw Exception("Thunk write failed: %s", DebugUtils::errorAsString(err));
 
     // We need to get permissions to write to the code cave, since it's in the
     // executable part of the program it won't be writeable by default.
     DWORD dummy;
     if (!VirtualProtect(codeBuffer, codeSize, PAGE_EXECUTE_READWRITE, &dummy))
-      XLO_THROW(writeWindowsError());
+      throw Exception(Helpers::writeWindowsError());
   }
 
   template <class TCallback>
@@ -311,7 +312,7 @@ namespace xloil
 
     auto err = cc.finalize();
     if (err)
-      XLO_THROW("Thunk compilation failed: {0}", DebugUtils::errorAsString(err));
+      throw Exception("Thunk compilation failed: %s", DebugUtils::errorAsString(err));
 
     writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
 

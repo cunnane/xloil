@@ -3,7 +3,7 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/Preprocessor.h>
 #include <xloil/Log.h>
-#include "LogWindow.h"
+#include "LogWindowSink.h"
 #include <spdlog/sinks/basic_file_sink.h>
 
 namespace xloil
@@ -28,5 +28,5 @@ namespace xloil
   }
   XLO_FUNC_END(xloLog).threadsafe()
     .help(L"Flushes the log and returns the location of the log file")
-    .arg(L"showWindow", L"");
+    .arg(L"showWindow", L"Opens the log window");
 }

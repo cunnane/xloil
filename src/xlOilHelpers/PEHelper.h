@@ -1,6 +1,6 @@
 #pragma once
+#include "Exception.h"
 #include <xloil/WindowsSlim.h>
-#include <stdexcept>
 
 namespace xloil
 {
@@ -28,7 +28,7 @@ namespace xloil
     const char* getName(size_t offset) const
     {
       if (offset >= numberOfNames)
-        throw std::runtime_error("Function offset out of bounds of export table");
+        throw Helpers::Exception("Function offset out of bounds of export table");
       return (const char*)(imageBase + name_table[offset]);
     }
   };

@@ -5,7 +5,6 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 using namespace xloil;
 using std::wstring;
-
 namespace Tests
 {
   TEST_CLASS(Environment)

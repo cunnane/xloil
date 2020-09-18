@@ -36,7 +36,7 @@
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="xloVersion.cpp" />
     <ClCompile Include="xloLog.cpp" />
-    <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="LogWindowSink.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -148,7 +148,7 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
-    <ClInclude Include="LogWindow.h" />
+    <ClInclude Include="LogWindowSink.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">

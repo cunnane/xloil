@@ -1,4 +1,3 @@
-
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
@@ -6,11 +5,13 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
+#include <xlOilHelpers/LogWindow.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 #define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #include <delayimp.h>
 #include <fstream>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -20,11 +21,11 @@ using namespace xloil;
 using std::vector;
 using std::shared_ptr;
 using namespace std::string_literals;
+using namespace xloil::Helpers;
 
 namespace
 {
   static HMODULE theModuleHandle = nullptr;
-
   static wstring ourXllPath;
   static wstring ourLogFilePath;
 
@@ -64,38 +65,23 @@ namespace
   }
 
   /// <summary>
-  /// Very cheap log file to catch startup errors before
-  /// the core dll can initialise spdlog.
+  /// Very cheap log to catch startup errors before the core dll can initialise
+  /// spdlog.
   /// </summary>
   template <class T>
   void writeLog(const T& msg)
   {
-    //OutputDebugStringA(msg);
     auto t = std::time(nullptr);
     tm tm;
     localtime_s(&tm, &t);
-    getLogFile() << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << ": " << msg << "\n";
-    getLogFile().flush();
+    static auto logWindow = createLogWindow(
+      0, theModuleHandle, L"xlOil Load Failure", 0, 0, 100);
+    std::stringstream str;
+    str << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << ": " << msg << "\n";
+    logWindow->appendMessage(str.str());
+    logWindow->openWindow();
   }
 
-  // Avoids using xloil so we can call before the dll is found
-  int getExcelVersion()
-  {
-    using namespace msxll;
-
-    // https://github.com/MicrosoftDocs/office-developer-client-docs/blob/...
-    // master/docs/excel/calling-into-excel-from-the-dll-or-xll.md
-    XLOPER arg, result;
-    arg.xltype = xltypeInt;
-    arg.val.w = 2;
-
-    auto ret = Excel4(xlfGetWorkspace, &result, 1, &arg);
-    if (ret != xlretSuccess || result.xltype != xltypeStr)
-      return 0;
-    auto pStr = result.val.str;
-    auto versionStr = std::string(pStr + 1, pStr + 1 + pStr[0]);
-    return std::stoi(versionStr);
-  }
 }
 
 /// <summary>
