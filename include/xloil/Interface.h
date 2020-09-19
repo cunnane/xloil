@@ -6,39 +6,10 @@
 #include <map>
 
 namespace toml { class table; }
-namespace Excel { struct _Application; }
 namespace xloil { class RegisteredFunc; class AddinContext; }
 
 namespace xloil
 {
-  // TODO: remove / move to State
-  namespace Core
-  {
-    /// <summary>
-    /// Returns the full path to the xloil Core dll, including the filename
-    /// </summary>
-    /// <returns></returns>
-    XLOIL_EXPORT const wchar_t* theCorePath();
-
-    /// <summary>
-    /// Returns just the filename of the xloil Core dll
-    /// </summary>
-    /// <returns></returns>
-    XLOIL_EXPORT const wchar_t* theCoreName();
-
-    /// <summary>
-    /// Returns true if the function wizard dialogue box is being used.
-    /// Quite an expensive check.
-    /// </summary>
-    XLOIL_EXPORT bool inFunctionWizard();
-
-    /// <summary>
-    /// Throws '#WIZARD!' if the function wizard dialogue box is being used.
-    /// Quite an expensive check.
-    /// </summary>
-    XLOIL_EXPORT void throwInFunctionWizard();
-  }
-
   struct RibbonControl
   {
     const wchar_t* Id;

@@ -1,6 +1,6 @@
 
 #include <xlOil/StaticRegister.h>
-#include <xloil/Interface.h>
+#include <xloil/Caller.h>
 #include <xlOil/ExcelArray.h>
 #include "Common.h"
 #include "Cache.h"
@@ -19,8 +19,7 @@ namespace xloil
       )
     )
     {
-      if (Core::inFunctionWizard())
-        XLO_THROW("In wizard");
+      throwInFunctionWizard();
 
       shared_ptr<const CacheObj> dbObj;
       if (!cacheFetch(database.toString(), dbObj))

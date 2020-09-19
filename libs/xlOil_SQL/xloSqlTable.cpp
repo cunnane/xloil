@@ -1,5 +1,5 @@
 #include <xlOil/StaticRegister.h>
-#include <xloil/Interface.h>
+#include <xloil/Caller.h>
 #include <xlOil/ExcelArray.h>
 #include "Common.h"
 #include "Cache.h"
@@ -21,7 +21,7 @@ namespace xloil
       const ExcelObj& query)
     )
     {
-      Core::throwInFunctionWizard();
+      throwInFunctionWizard();
 
       vector<wstring> headingsVec;
       if (headings.isNonEmpty())

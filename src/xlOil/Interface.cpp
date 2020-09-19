@@ -18,26 +18,6 @@ using std::shared_ptr;
 
 namespace xloil
 {
-  const wchar_t* Core::theCorePath()
-  {
-    return State::corePath();
-  }
-  const wchar_t* Core::theCoreName()
-  {
-    return State::coreName();
-  }
-
-  bool Core::inFunctionWizard()
-  {
-    return xloil::inFunctionWizard();
-  }
-
-  void Core::throwInFunctionWizard()
-  {
-    if (xloil::inFunctionWizard())
-      XLO_THROW("#WIZARD!");
-  }
-
   AddinContext::AddinContext(
     const wchar_t* pathName, std::shared_ptr<const toml::table> settings)
     : _settings(settings)

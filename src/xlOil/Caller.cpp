@@ -90,7 +90,6 @@ namespace
 
   bool called_from_paste_fn_dlg()
   {
-    short hwnd = 0;
     DWORD pid = 0;
     const char* windowName;
     auto& state = xloil::State::excelState();
@@ -103,7 +102,7 @@ namespace
     }
 
     // Search for bosa_sdm_xl* dialog box with no title string.
-    xldlg_enum_struct es = { FALSE, (HWND)state.hWnd, windowName, pid };
+    xldlg_enum_struct es = { false, (HWND)state.hWnd, windowName, pid };
     EnumWindows((WNDENUMPROC)xldlg_enum_proc, (LPARAM)&es);
     return es.is_dlg;
   }

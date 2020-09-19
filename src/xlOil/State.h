@@ -25,7 +25,7 @@ namespace xloil
     {
       int version;
       void* hInstance;
-      int hWnd;
+      long long hWnd;
       size_t mainThreadId;
     };
 

@@ -39,7 +39,7 @@ namespace xloil
     HWND getExcelHWnd()
     {
       auto hwnd = callExcel(msxll::xlGetHwnd);
-      return (HWND)hwnd.val.w;
+      return (HWND)IntToPtr(hwnd.val.w);
     }
   }
 
@@ -53,7 +53,7 @@ namespace xloil
       {
         getExcelVersion(),
         getExcelHInstance(),
-        (int)getExcelHWnd(),
+        (long long)getExcelHWnd(),
         GetCurrentThreadId()
       };
     }

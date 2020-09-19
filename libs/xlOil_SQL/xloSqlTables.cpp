@@ -1,6 +1,6 @@
 
 #include <xlOil/StaticRegister.h>
-#include <xloil/Interface.h>
+#include <xloil/Caller.h>
 #include <xlOil/ExcelArray.h>
 #include "Common.h"
 #include "Cache.h"
@@ -17,7 +17,7 @@ namespace xloil
       const ExcelObj& database)
     )
     {
-      Core::throwInFunctionWizard();
+      throwInFunctionWizard();
 
       std::shared_ptr<const CacheObj> dbObj;
       if (!cacheFetch(database.toString(), dbObj) || !dbObj)

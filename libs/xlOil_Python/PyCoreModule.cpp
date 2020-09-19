@@ -4,6 +4,7 @@
 #include "BasicTypes.h"
 #include <xloil/ApiMessage.h>
 #include <xloil/Log.h>
+#include <xloil/Caller.h>
 #include <map>
 
 using std::shared_ptr;
@@ -96,7 +97,7 @@ namespace xloil {
             });
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
 
-        mod.def("in_wizard", &Core::inFunctionWizard);
+        mod.def("in_wizard", &inFunctionWizard);
         mod.def("log", &writeToLog, py::arg("msg"), py::arg("level") = "info");
         mod.def("run_later",
           &runLater,

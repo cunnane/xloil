@@ -78,5 +78,19 @@ namespace xloil
   /// Quite an expensive check as Excel does not provide a built-in 
   /// way to check this.
   /// </summary>
-  bool inFunctionWizard();
+  XLOIL_EXPORT bool inFunctionWizard();
+
+  /// <summary>
+  /// Throws "#WIZARD!" true if the user is currently in the function 
+  /// wizard.  The idea being that this string will be returned to Excel
+  /// by the surrounding try...catch.
+  /// 
+  /// Quite an expensive check as Excel does not provide a built-in 
+  /// way to check this.
+  /// </summary>
+  inline void throwInFunctionWizard()
+  {
+    if (xloil::inFunctionWizard())
+      throw std::runtime_error("#WIZARD!");
+  }
 }

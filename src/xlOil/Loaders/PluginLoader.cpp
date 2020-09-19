@@ -2,9 +2,9 @@
 #include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
 #include <COMInterface/RtdManager.h>
-#include <xlOil/Interface.h>
 #include <xlOil/Log.h>
 #include <xlOil/Throw.h>
+#include <xlOil/State.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Register/FuncRegistry.h>
@@ -53,7 +53,7 @@ namespace xloil
     auto plugins = std::set<wstring>(names.cbegin(), names.cend());
 
     const auto xllDir = fs::path(context->pathName()).remove_filename();
-    const auto coreDir = fs::path(Core::theCorePath()).remove_filename();
+    const auto coreDir = fs::path(State::corePath()).remove_filename();
 
     // If the settings specify a search pattern for plugins, 
     // find the DLLs and add them to our plugins collection
@@ -69,7 +69,7 @@ namespace xloil
       {
         do
         {
-          if (_wcsicmp(fileData.cFileName, Core::theCoreName()) == 0)
+          if (_wcsicmp(fileData.cFileName, State::coreName()) == 0)
             continue;
 
           plugins.emplace(fs::path(fileData.cFileName).stem()); // TODO: remove extn?

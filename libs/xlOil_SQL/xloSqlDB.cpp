@@ -29,8 +29,7 @@ namespace xloil
 
     XLO_FUNC_START(xloSqlDB())
     {
-      if (Core::inFunctionWizard())
-        XLO_THROW("In wizard");
+      throwInFunctionWizard();
 
       return returnValue(
         cacheAdd(
