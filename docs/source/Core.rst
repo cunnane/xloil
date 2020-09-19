@@ -30,9 +30,12 @@ To configure the plugins being loaded, see :any:`core-edit-settings-files`.
 Troubleshooting
 ~~~~~~~~~~~~~~~
 
-If the addin fails to load or something else goes wrong, look for errors in 
-`xloil.log` created in the same directory as `xloil.xll`. You may need to 
-:any:`core-edit-settings-files`
+If xlOil detects a serious load error, it pops up a log window to alert you (this can
+be turned off). If it succesfully loaded the core DLL a log file will also be created
+in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `xloLog` will tell 
+you where this file is.
+
+You may need to tweak your settings file: :any:`core-edit-settings-files`
 
 .. _core-example-sheets:
 

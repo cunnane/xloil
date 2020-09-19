@@ -43,12 +43,16 @@ xloHelp: returns help on an xlOil registered function
 xloLog: flushes the log file and returns its location
 -----------------------------------------------------
 
-.. function:: xloLog()
+.. function:: xloLog(ShowWindow=FALSE)
 
     The xlOil log is only flushed (written to file) occasionally or when an error 
     or warning occurs. Executing this function flushes the log and returns the 
     location of the log file (by default this is the same directory as the settings
     file).
+
+    Setting the *ShowWindow* parameter causes xlOil's log window to appear. This 
+    doesn't display the content of the log file but only the most recent log 
+    messages.
 
 
 xloVersion: returns information on the xlOil version

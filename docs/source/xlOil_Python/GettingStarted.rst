@@ -118,9 +118,10 @@ For more on this packaging addins, see :ref:`core-distributing-addins`.
 Troubleshooting
 ~~~~~~~~~~~~~~~
 
-Check the `xlOil.log` file for errors. By default, the log file is created in the
-same directory as `xlOil.ini` in your `%APPDATA%/xlOil` directory.  If xlOil core has 
-succesfully loaded, the worksheet function `xloLog` will tell you where this file is.
+If xlOil detects a serious load error, it pops up a log window to alert you (this can
+be turned off). If it succesfully loaded the core DLL a log file will also be created
+in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `xloLog` will tell 
+you where this file is.
 
-You may need to set the python paths in the `xlOil.ini` file for xlOil to find 
-your python distribution.
+You may need to set the python paths, i.e. the `PATH` and `PYTHONPATH` values, in 
+the `xlOil.ini` file for xlOil to find your python distribution.
