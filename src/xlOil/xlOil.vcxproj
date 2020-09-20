@@ -110,7 +110,6 @@
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xloil\xlOil.h" />
     <ClInclude Include="LogWindowSink.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="State.h" />
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
@@ -162,9 +161,6 @@
     <ProjectReference Include="..\xlOilHelpers\xlOilHelpers.vcxproj">
       <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

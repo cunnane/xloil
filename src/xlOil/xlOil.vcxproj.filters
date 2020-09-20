@@ -147,7 +147,6 @@
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h" />
     <ClInclude Include="LogWindowSink.h" />
   </ItemGroup>
   <ItemGroup>
@@ -160,8 +159,5 @@
     <Filter Include="Include">
       <UniqueIdentifier>{28b63a3a-8cbf-47cb-adb4-a08c46149d07}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
 </Project>

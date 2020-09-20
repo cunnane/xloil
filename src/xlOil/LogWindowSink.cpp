@@ -7,13 +7,19 @@
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/pattern_formatter.h>
 #include <mutex>
-#include "resource.h"
 #include <regex>
 
 using std::wstring;
 using std::string;
 using std::shared_ptr;
 
+namespace {
+  constexpr unsigned ID_CAPTURELEVEL_ERROR = 40001;
+  constexpr unsigned ID_CAPTURELEVEL_WARNING = 40002;
+  constexpr unsigned ID_CAPTURELEVEL_INFO = 40003;
+  constexpr unsigned ID_CAPTURELEVEL_DEBUG = 40004;
+  constexpr unsigned ID_CAPTURELEVEL_TRACE = 40005;
+}
 namespace xloil
 {
   namespace MainLogWindow
@@ -73,8 +79,17 @@ namespace xloil
       HWND parentWindow, 
       HINSTANCE parentInstance)
     {
-      MainLogWindow::theMenuBar = LoadMenu(
-        parentInstance, MAKEINTRESOURCE(IDR_LOG_WINDOW_MENU));
+      auto hMenubar = CreateMenu();
+      auto hMenu = CreateMenu();
+
+      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_ERROR,   L"Error");
+      AppendMenu(hMenu, MF_STRING | MF_CHECKED, ID_CAPTURELEVEL_WARNING, L"Warning");
+      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_INFO,    L"Info");
+      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_DEBUG,   L"Debug");
+      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_TRACE,   L"Trace");
+      AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)hMenu, L"Capture Level");
+
+      MainLogWindow::theMenuBar = hMenubar;
 
       set_pattern_(""); // Just calls set_formatter_
       _window = Helpers::createLogWindow(
