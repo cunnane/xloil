@@ -5,7 +5,7 @@
 #include "Date.h"
 #include "Main.h"
 #include "Tuple.h"
-#include "ExcelErrors.h"
+#include "ExcelErrorType.h"
 #include "PyHelpers.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
