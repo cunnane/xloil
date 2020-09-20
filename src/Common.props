@@ -6,10 +6,10 @@
   </PropertyGroup>
   <PropertyGroup>
     <LibraryPath>$(SolutionDir)build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-	<OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(ProjectRoot)external\boost-1.67;$(ProjectRoot)\external\spdlog\include;$(ProjectRoot)\external;$(ProjectRoot)\include;$(ProjectRoot)\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectRoot)external\boost-1.67;$(ProjectRoot)\external\Excel2013SDK\INCLUDE;$(ProjectRoot)\external\spdlog\include;$(ProjectRoot)\external;$(ProjectRoot)\include;$(ProjectRoot)\src;$(IncludePath)</IncludePath>
     <IntDir>$(ProjectRoot)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -17,10 +17,10 @@
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;SPDLOG_COMPILED_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
-	  <ConformanceMode>false</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
     </ClCompile>
-	<Link>
-	  <AdditionalDependencies>spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <Link>
+      <AdditionalDependencies>spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
