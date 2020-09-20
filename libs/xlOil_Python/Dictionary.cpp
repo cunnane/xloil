@@ -70,10 +70,10 @@ namespace xloil
           accumulateObjectStringLength(value, stringLength);
         }
 
-        ExcelArrayBuilder builder(size, 2, stringLength);
+        ExcelArrayBuilder builder((ExcelObj::row_t)size, 2, stringLength);
 
         pos = 0;
-        size_t row = 0; // Cannot use pos - it is an internal pointer only
+        ExcelObj::row_t row = 0; // Cannot use pos - it is an internal pointer only
         while (PyDict_Next(p, &pos, &key, &value))
         {
           builder(row, 0).emplace(FromPyObj()(key, true, builder.charAllocator()));

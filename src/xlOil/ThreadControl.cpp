@@ -102,7 +102,7 @@ namespace xloil
 
   private:
     static void CALLBACK TimerCallback(
-      HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+      HWND hwnd, UINT /*uMsg*/, UINT_PTR idEvent, DWORD /*dwTime*/)
     {
       auto& self = instance();
       auto retKill = KillTimer(hwnd, idEvent);

@@ -29,6 +29,17 @@ namespace xloil
   ///   call        xloil::callback(07FFD47DAA89Ch)
   ///   add         rsp, 38h
   ///   ret
+  /// 
+  /// In x86 it will be like:
+  ///   sub         esp,0Ch  
+  ///   mov         eax,dword ptr [esp+10h]  
+  ///   mov         dword ptr [esp+8],eax  
+  ///   lea         eax,[esp+8]  
+  ///   mov         dword ptr [esp],1C565A70h  
+  ///   mov         dword ptr [esp+4],eax  
+  ///   call        xloil::callback(210FF8E9h)
+  ///   add         esp,0Ch  
+  ///   ret         4  
   /// </summary>
   template <class TCallback>
   void* buildThunk(
@@ -43,7 +54,7 @@ namespace xloil
   /// <summary>
   /// A hand optimised version of buildThunk which runs faster and reduces final binary
   /// size by ~80kb by avoiding the use of asmjit's compiler. The resulting ASM code is
-  /// faster, avoiding spills, particuarly for async functions and when number of args
+  /// faster by avoiding spills, particuarly for async functions and when number of args
   /// exceeds 5.
   /// (Currently only available under 64-bit)
   /// </summary>
