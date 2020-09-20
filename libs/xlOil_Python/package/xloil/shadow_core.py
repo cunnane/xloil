@@ -45,6 +45,17 @@ def run_later(func,
     """
     pass
 
+def get_excel_state():
+    """
+    Gives information about the Excel application, in particular the handles required 
+    to interact with Excel via the Win32 API. The function returns a class with the 
+    following members:
+       *version*:   Excel major version
+       *hinstance*: Excel HINSTANCE
+       *hwnd*:      Excel main window handle (as an int)
+       *main_thread_id*: Excel's main thread ID
+    """
+    pass
 
 class Range:
     """

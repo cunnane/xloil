@@ -5,6 +5,7 @@
 #include <xloil/ApiMessage.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
+#include <xloil/State.h>
 #include <map>
 
 using std::shared_ptr;
@@ -77,6 +78,7 @@ namespace xloil {
           retryPause,
           delay);
       }
+
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         // Bind the two base classes for python converters
@@ -105,6 +107,14 @@ namespace xloil {
           py::arg("num_retries") = 10,
           py::arg("retry_delay") = 500,
           py::arg("wait_time") = 0);
+
+        py::class_<State::ExcelState>(mod, "ExcelState")
+          .def_readonly("version", &State::ExcelState::version)
+          .def_readonly("hinstance", &State::ExcelState::hInstance)
+          .def_readonly("hwnd", &State::ExcelState::hWnd)
+          .def_readonly("main_thread_id", &State::ExcelState::mainThreadId);
+
+        mod.def("get_excel_state", State::excelState);
       }, 1000);
     }
 } }
