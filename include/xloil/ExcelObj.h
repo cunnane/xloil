@@ -10,10 +10,25 @@
 
 namespace xloil
 {
+  /// <summary>
+  /// Max string length for an A1-style cell address
+  /// </summary>
   constexpr uint16_t XL_CELL_ADDRESS_A1_MAX_LEN = 3 + 7 + 1 + 3 + 7 + 1;
+  /// <summary>
+  /// Max string length for an RC-style cell address
+  /// </summary>
   constexpr uint16_t XL_CELL_ADDRESS_RC_MAX_LEN = 29;
+  /// <summary>
+  /// Max string length for a sheet name
+  /// </summary>
   constexpr uint16_t XL_SHEET_NAME_MAX_LEN      = 31;
+  /// <summary>
+  /// Max string length for a (pascal) string in an ExcelObj
+  /// </summary>
   constexpr uint16_t XL_STRING_MAX_LEN          = 32767;
+  /// <summary>
+  /// Max number of rows on a sheet
+  /// </summary>
   constexpr uint32_t XL_MAX_ROWS                = 1048576;
   constexpr uint16_t XL_MAX_COLS                = 16384;
   constexpr uint16_t XL_MAX_UDF_ARGS            = 255;
@@ -23,26 +38,26 @@ namespace xloil
   /// </summary>
   enum class ExcelType
   {
-    Num = 0x0001,
-    Str = 0x0002,
-    Bool = 0x0004,
-    Ref = 0x0008,
-    Err = 0x0010,
-    Flow = 0x0020,
-    Multi = 0x0040,
-    Missing = 0x0080,
-    Nil = 0x0100,
-    SRef = 0x0400,
-    Int = 0x0800,
+    Num = msxll::xltypeNum,  /// Double precision numeric data
+    Str = msxll::xltypeStr,  /// Wide character string (max length 32767)
+    Bool = msxll::xltypeBool, /// Boolean
+    Ref = msxll::xltypeRef,  /// Range reference to one or more parts of the spreadsheet
+    Err = msxll::xltypeErr,  /// Error type, <see cref="CellError"/>
+    Flow = msxll::xltypeFlow, /// Legacy. Unused by xlOil.
+    Multi = msxll::xltypeMulti, /// An array
+    Missing = msxll::xltypeMissing, /// An omitted parameter in a function call
+    Nil = msxll::xltypeNil,   /// An empty ExcelObj
+    SRef = msxll::xltypeSRef,  /// Range reference to one part of the current worksheet
+    Int = msxll::xltypeInt,   /// Integer type. Excel usually passes all numbers as type Num.
     BigData = msxll::xltypeStr | msxll::xltypeInt,
 
-    // Types that can be elements of an array
+    /// Type group: Types that can be elements of an array
     ArrayValue = Num | Str | Bool | Err | Int | Nil,
 
-    // Types which refer to ranges
+    /// Type group: Types which refer to ranges
     RangeRef = SRef | Ref,
 
-    // Types which do not have external memory allocation
+    /// Type group: Types which do not have external memory allocation
     Simple = Num | Bool | SRef | Missing | Nil | Int | Err
   };
 
@@ -51,14 +66,14 @@ namespace xloil
   /// </summary>
   enum class CellError
   {
-    Null = msxll::xlerrNull,
-    Div0 = msxll::xlerrDiv0,
-    Value = msxll::xlerrValue,
-    Ref = msxll::xlerrRef,
-    Name = msxll::xlerrName,
-    Num = msxll::xlerrNum,
-    NA = msxll::xlerrNA,
-    GettingData = msxll::xlerrGettingData
+    Null = msxll::xlerrNull,   /// \#NULL!
+    Div0 = msxll::xlerrDiv0,   /// \#DIV0!
+    Value = msxll::xlerrValue, /// \#VALUE!
+    Ref = msxll::xlerrRef,     /// \#REF!
+    Name = msxll::xlerrName,   /// \#NAME!
+    Num = msxll::xlerrNum,     /// \#NUM!
+    NA = msxll::xlerrNA,       /// \#NA!
+    GettingData = msxll::xlerrGettingData /// #GETTING_DATA
   };
 
   /// <summary>
@@ -188,7 +203,11 @@ namespace xloil
       : ExcelObj(s.c_str())
     {}
 
-    /// Move ctor from owned Pascal string buffer.
+    /// <summary>
+    /// Move ctor from owned Pascal string buffer. This takes ownership
+    /// of the string buffer in the provided PString.
+    /// </summary>
+    /// <param name="pstr"></param>
     explicit ExcelObj(PString<Char>&& pstr)
     {
       val.str = pstr.release();
@@ -197,11 +216,19 @@ namespace xloil
       xltype = msxll::xltypeStr;
     }
 
+    /// <summary>
+    /// Construct from nullptr - creates an ExcelType::Missing
+    /// </summary>
+    /// <param name=""></param>
     ExcelObj(nullptr_t)
     {
       xltype = msxll::xltypeMissing;
     }
 
+    /// <summary>
+    /// Construct from a specified CellError 
+    /// </summary>
+    /// <param name="err"></param>
     ExcelObj(CellError err)
     {
       val.err = (int)err;
@@ -223,6 +250,10 @@ namespace xloil
       xltype = msxll::xltypeMulti;
     }
 
+    /// <summary>
+    /// Construct from iterable. The value_type of the iterable must be
+    /// convertible to an ExcelObj using one of the other constructors
+    /// </summary>
     template <class TIter>
     ExcelObj(TIter begin, TIter end);
 
@@ -256,7 +287,7 @@ namespace xloil
     }
 
     /// <summary>
-    /// Assignment from ExcelObj
+    /// Assignment from ExcelObj - performs a copy
     /// </summary>
     ExcelObj& operator=(const ExcelObj& that)
     {
@@ -267,7 +298,8 @@ namespace xloil
     }
 
     /// <summary>
-    /// Move assignment
+    /// Move assignment - takes ownership of donor object's data
+    /// and sets it to ExcelType::Nil.
     /// </summary>
     template <class TDonor>
     ExcelObj& operator=(TDonor&& that)
@@ -286,7 +318,7 @@ namespace xloil
     }
 
     /// <summary>
-    /// Deletes object content and sets it to \#N/A
+    /// Deletes object content and sets it to ExcelType::Nil
     /// </summary>
     void reset();
 
@@ -347,7 +379,7 @@ namespace xloil
     const Base* xloper() { return this; }
 
     /// <summary>
-    /// Returns true if this ExcelObj has Missing type.
+    /// Returns true if this ExcelObj has ExcelType::Missing type.
     /// </summary>
     bool ExcelObj::isMissing() const
     {
@@ -540,7 +572,7 @@ namespace xloil
 
     /// <summary>
     /// Attempts to convert the ExcelObj to a Date. This will only
-    /// succeed for numeric types.
+    /// succeed for numeric types. All function parameters are overwritten.
     /// </summary>
     /// <param name="nDay"></param>
     /// <param name="nMonth"></param>
@@ -550,7 +582,7 @@ namespace xloil
 
     /// <summary>
     /// Attempts to convert the ExcelObj to a Date/Time.  This will only
-    /// succeed for numeric types.
+    /// succeed for numeric types. All function parameters are overwritten.
     /// </summary>
     /// <param name="nDay"></param>
     /// <param name="nMonth"></param>
@@ -559,7 +591,7 @@ namespace xloil
     /// <param name="nMins"></param>
     /// <param name="nSecs"></param>
     /// <param name="uSecs"></param>
-    /// <returns></returns>
+    /// <returns>true if conversion suceeds, else false</returns>
     bool toYMDHMS(int &nYear, int &nMonth, int &nDay, int& nHours,
       int& nMins, int& nSecs, int& uSecs) const noexcept;
 
@@ -624,7 +656,7 @@ namespace xloil
     }
   
     /// The xloper type made safe for use in switch statements by zeroing
-    /// the memory control flags blanked.
+    /// the memory control flags. Generally, prefer the type() function.
     int xtype() const
     {
       return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);

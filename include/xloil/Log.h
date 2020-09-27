@@ -1,8 +1,18 @@
 #pragma once
 
+#ifdef XLOIL_NO_SPDLOG
+
+#define XLO_TRACE(...) 
+#define XLO_DEBUG(...) 
+#define XLO_INFO(...) 
+#define XLO_WARN(...) 
+#define XLO_ERROR(...) 
+
+#else
+
 #include <xloil/ExportMacro.h>
-#include <xlOil/StringUtils.h>
 #include <xloil/Interface.h>
+#include <string>
 
 #ifdef _DEBUG
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
@@ -13,7 +23,7 @@
 #define SPDLOG_WCHAR_TO_UTF8_SUPPORT
 #include <xlOil/WindowsSlim.h>
 #include <spdlog/spdlog.h> 
-#include <string>
+
 
 #define XLO_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
 #define XLO_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
@@ -36,9 +46,17 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT spdlog::details::registry& loggerRegistry();
 
+  /// <summary>
+  /// Links a plug-in's *spdlog* instance to the main xlOil log output. 
+  /// You don't have to do this if you're organising your own logging.
+  /// </summary>
+  /// <param name=""></param>
+  /// <param name="plugin"></param>
   inline void linkLogger(AddinContext*, const PluginContext& plugin)
   {
     if (plugin.action == PluginContext::Load)
       spdlog::set_default_logger(loggerRegistry().default_logger());
   }
 }
+
+#endif

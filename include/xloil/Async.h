@@ -6,6 +6,10 @@
 namespace xloil { class ExcelObj; }
 namespace xloil
 {
+  /// <summary>
+  /// Wrapper for xlAsyncReturn which takes ExcelObj arguments. Used
+  /// to return values from native async functions.
+  /// </summary>
   XLOIL_EXPORT void 
     asyncReturn(
       const ExcelObj& asyncHandle, const ExcelObj& value);

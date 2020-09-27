@@ -1,5 +1,6 @@
-#include <xloil/Events.h>
+#include <xlOil/Events.h>
 #include <xlOil/Log.h>
+#include <xlOil/StringUtils.h>
 #include <map>
 #include <vector>
 #include <unordered_map>
