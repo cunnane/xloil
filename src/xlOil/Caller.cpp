@@ -10,7 +10,6 @@ using namespace msxll;
 
 namespace
 {
-
   // Gross code to detect if being called by function wiz. Verbatim from:
   // https://docs.microsoft.com/en-us/office/client-developer/excel/how-to-call-xll-functions-from-the-function-wizard-or-replace-dialog-boxes?redirectedfrom=MSDN#Y241
 
@@ -125,14 +124,48 @@ namespace xloil
     // Any value in more precise guess?
     return s.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
   }
-
+  PString<> CallerInfo::sheetName() const
+  {
+    return _SheetName->asPascalStr();
+  }
+  bool CallerInfo::calledFromSheet() const
+  {
+    return _Address->isType(ExcelType::RangeRef);
+  }
+  namespace
+  {
+    template<size_t N>
+    constexpr size_t wcslength(wchar_t const (&)[N])
+    {
+      return N - 1;
+    }
+  }
   uint16_t CallerInfo::writeAddress(
     wchar_t* buf, 
     size_t bufLen,
     bool A1Style) const
   {
+    // TODO: handle other caller cases?
+    const msxll::XLREF12* sheetRef = nullptr;
+    switch (_Address->type())
+    {
+    case ExcelType::SRef:
+      sheetRef = &_Address->val.sref.ref;
+      break;
+    case ExcelType::Ref:
+      sheetRef = &_Address->val.mref.lpmref->reftbl[0];
+      break;
+    default: // Not a worksheet caller - return here
+      constexpr wchar_t nonWorksheetCaller[] = L"[:None:]None";
+      if (bufLen < _countof(nonWorksheetCaller))
+        return 0;
+      wcscpy_s(buf, bufLen, nonWorksheetCaller);
+      return _countof(nonWorksheetCaller);
+    }
+
     const auto wsName = _SheetName->asPascalStr();
     const auto wsLength = wsName.length();
+    uint16_t nWritten = 0;
 
     if (wsLength > 0)
     {
@@ -143,38 +176,21 @@ namespace xloil
       // Separator character
       *(buf++) = L'!';
 
-      bufLen -= wsName.length() + 1;
+      nWritten += wsLength + 1;
+      bufLen -= nWritten;
     }
 
-    // TODO: handle other caller cases?
-    uint16_t addressLen = 0;
-    const msxll::XLREF12* sheetRef = nullptr;
-    switch (_Address->type())
-    {
-    case ExcelType::SRef:
-      sheetRef = &_Address->val.sref.ref;
-      break;
-    case ExcelType::Ref:
-      sheetRef = &_Address->val.mref.lpmref->reftbl[0];
-      break;
-    default:
-      wmemcpy(buf, L"[Mystery]Caller", 13);
-      addressLen = 13;
-      break;
-    }
+    nWritten += A1Style
+      ? xlrefToLocalA1(*sheetRef, buf, bufLen)
+      : xlrefToLocalRC(*sheetRef, buf, bufLen);
 
-    if (sheetRef)
-      addressLen = A1Style
-        ? xlrefToLocalA1(*sheetRef, buf, bufLen)
-        : xlrefToLocalRC(*sheetRef, buf, bufLen);
-
-    return addressLen + wsLength + 1;
+    return nWritten;
   }
 
   std::wstring CallerInfo::writeAddress(bool A1Style) const
   {
     std::wstring result;
-    result.resize(addressRCLength());
+    result.resize(addressRCLength()); // RC-length > A1-length
     const auto nChars = writeAddress(result.data(), result.size(), A1Style);
     result.resize(nChars);
     return result;
@@ -265,19 +281,20 @@ namespace xloil
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    auto wsName = sheetNm.asPascalStr();
-    assert(bufSize > wsName.length());
-    wmemcpy(buf, wsName.pstr(), wsName.length());
-    buf += wsName.length();
+    const auto wsName = sheetNm.asPascalStr();
+    const auto wsLength = wsName.length();
+    assert(bufSize > wsLength);
+    wmemcpy(buf, wsName.pstr(), wsLength);
+    buf += wsLength;
 
     // Separator character
     *(buf++) = L'!';
 
     auto addressLen = A1Style
-      ? xlrefToLocalA1(ref, buf, bufSize - wsName.length() - 1)
-      : xlrefToLocalRC(ref, buf, bufSize - wsName.length() - 1);
+      ? xlrefToLocalA1(ref, buf, bufSize - wsLength - 1)
+      : xlrefToLocalRC(ref, buf, bufSize - wsLength - 1);
 
-    return addressLen + wsName.length() + 1;
+    return addressLen + wsLength + 1;
   }
 
   XLOIL_EXPORT std::wstring xlrefSheetAddress(
@@ -311,7 +328,7 @@ namespace xloil
     int ret;
     // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
-      ret =  _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
+      ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
     else
       ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d",
         ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
