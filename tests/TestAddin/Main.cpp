@@ -20,7 +20,7 @@ namespace xloil
       {
         theComAddin = makeComAddin(L"TestXlOil");
 
-        std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers;
+        IComAddin::Handlers handlers;
         handlers[L"conBoldSub"] = ribbonHandler;
         handlers[L"conItalicSub"] = ribbonHandler;
         handlers[L"conUnderlineSub"] = ribbonHandler;
@@ -44,6 +44,9 @@ namespace xloil
         )", handlers);
 
         theComAddin->connect();
+
+        theComAddin->ribbonInvalidate();
+        theComAddin->ribbonActivate(L"customTab");
       } 
       else if (plugin.action == PluginContext::Unload)
       {

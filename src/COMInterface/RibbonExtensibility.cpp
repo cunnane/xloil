@@ -1,4 +1,5 @@
 #pragma once
+#include "RibbonExtensibility.h"
 #include "ExcelTypeLib.h"
 #include "ClassFactory.h"
 #include <xlOil/Log.h>
@@ -10,6 +11,7 @@
 using std::wstring;
 using std::map;
 using std::vector;
+using std::shared_ptr;
 
 namespace xloil
 {
@@ -25,16 +27,19 @@ namespace xloil
       vector<std::function<void(const RibbonControl&)>> _functions;
       map<wstring, DISPID> _idsOfNames;
       wstring _xml;
-      CComPtr<IRibbonUI> _ribbonUI;
 
       // First two functions are raw_GetCustomUI and onLoadHandler
       static constexpr DISPID theFirstDispid = 3;
 
     public:
+      CComPtr<IRibbonUI> ribbonUI;
+
       RibbonImpl()
       {
         _idsOfNames[L"onLoadHandler"] = 2;
       }
+      ~RibbonImpl()
+      {}
 
       virtual HRESULT __stdcall raw_GetCustomUI(
         /*[in]*/ BSTR RibbonID,
@@ -45,11 +50,11 @@ namespace xloil
         return S_OK;
       }
 
-      HRESULT onLoadHandler(IDispatch* ribbonUI)
+      HRESULT onLoadHandler(IDispatch* disp)
       {
         IRibbonUI* ptr;
-        if (ribbonUI->QueryInterface(&ptr) == S_OK)
-          _ribbonUI.Attach(ptr);
+        if (disp->QueryInterface(&ptr) == S_OK)
+          ribbonUI.Attach(ptr);
         else
           XLO_ERROR("Ribbon load didn't work");
         return S_OK;
@@ -59,7 +64,7 @@ namespace xloil
         const wchar_t* xml,
         const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers)
       {
-        if (_ribbonUI)
+        if (!_xml.empty())
           XLO_THROW("Already set"); // TODO: reload addin?
         std::wregex find(L"(<customUI[^>]*)>");
         _xml = std::regex_replace(xml, find, L"$1 onLoad=\"onLoadHandler\">");
@@ -163,13 +168,44 @@ namespace xloil
 
     };
 
-    Office::IRibbonExtensibility* createRibbon(
-      const wchar_t* xml,
-      const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers) 
+    class Ribbon : public IRibbon
     {
-      auto ribbon = std::make_unique<CComObject<RibbonImpl>>();
-      ribbon->setRibbon(xml, handlers);
-      return ribbon.release();
+    public:
+      Ribbon(const wchar_t* xml, const IComAddin::Handlers& handlers)
+      {
+        _ribbon = new CComObject<RibbonImpl>();
+        _ribbon->setRibbon(xml, handlers);
+      }
+      void invalidate(const wchar_t* controlId) const override
+      {
+        if ((*_ribbon).ribbonUI)
+        {
+          if (controlId)
+            (*_ribbon).ribbonUI->InvalidateControl(controlId);
+          else
+            (*_ribbon).ribbonUI->Invalidate();
+        }
+      }
+
+      bool activateTab(const wchar_t* controlId) const override
+      {
+        return (*_ribbon).ribbonUI
+          ? (*_ribbon).ribbonUI->ActivateTab(controlId)
+          : false;
+      }
+
+      Office::IRibbonExtensibility* getRibbon() override
+      {
+        return _ribbon;
+      }
+
+      CComPtr<CComObject<RibbonImpl>> _ribbon;
+    };
+    shared_ptr<IRibbon> createRibbon(
+      const wchar_t* xml,
+      const IComAddin::Handlers& handlers)
+    {
+      return std::make_shared<Ribbon>(xml, handlers);
     }
   }
 }

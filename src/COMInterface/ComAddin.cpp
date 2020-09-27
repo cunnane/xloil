@@ -12,6 +12,7 @@
 using std::wstring;
 using std::map;
 using std::vector;
+using std::shared_ptr;
 
 namespace xloil
 {
@@ -73,16 +74,17 @@ namespace xloil
           return S_OK;
         }
        
-        IRibbonExtensibilityPtr ribbon;
+        IRibbonExtensibility* ribbon;
       };
-
-      RegisterCom<ComAddinImpl> _registrar;
-      bool _connected = false;
 
       auto& comAddinImpl()
       {
         return _registrar.server();
       }
+
+      RegisterCom<ComAddinImpl> _registrar;
+      bool _connected = false;
+      shared_ptr<IRibbon> _ribbon;
 
     public:
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
@@ -138,11 +140,12 @@ namespace xloil
 
       virtual void setRibbon(
         const wchar_t* xml,
-        const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers)
+        const Handlers& handlers)
       {
         if (_connected)
           XLO_THROW("Can only set Ribbon when add-in is disconnected");
-        comAddinImpl().ribbon = createRibbon(xml, handlers);
+        _ribbon = createRibbon(xml, handlers);
+        comAddinImpl().ribbon = _ribbon->getRibbon();
       }
 
       ~ComAddinCreator()
@@ -160,6 +163,17 @@ namespace xloil
       const wchar_t* progid() const override
       {
         return _registrar.progid();
+      }
+      void ribbonInvalidate(const wchar_t* controlId = 0) const override
+      {
+        if (_ribbon)
+          _ribbon->invalidate(controlId);
+      }
+      bool ribbonActivate(const wchar_t* controlId) const override
+      {
+        return _ribbon
+          ? _ribbon->activateTab(controlId)
+          : false;
       }
     };
 

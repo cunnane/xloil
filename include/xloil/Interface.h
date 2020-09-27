@@ -19,13 +19,16 @@ namespace xloil
   class IComAddin
   {
   public:
+    using Handlers = std::map<std::wstring, std::function<void(const RibbonControl&)>>;
     virtual ~IComAddin() {}
     virtual const wchar_t* progid() const = 0;
     virtual void connect() = 0;
     virtual void disconnect() = 0;
     virtual void setRibbon(
       const wchar_t* xml,
-      const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers) = 0;
+      const Handlers& handlers) = 0;
+    virtual void ribbonInvalidate(const wchar_t* controlId = 0) const = 0;
+    virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
   };
 
   XLOIL_EXPORT std::shared_ptr<IComAddin> 
