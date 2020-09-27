@@ -554,6 +554,23 @@ class RibbonUI:
         is disconnected.
         """
         pass
+    def invalidate(id=None):
+        """
+        Invalidates the specified control: this clears the caches of the
+        responses to all callbacks associated with the control. For example,
+        this can be used to hide a control by forcing its getVisible callback
+        to be invoked.
+
+        If no control ID is specified, all controls are invalidated.
+        """
+        pass
+    def activate(id):
+        """
+        Activatives the ribbon tab with the specified id.  Returns False if
+        there is no Ribbon or the Ribbon is collapsed.
+        """
+        pass
+
 
 def create_ribbon(xml:str, handlers:dict) -> RibbonUI:
     """
