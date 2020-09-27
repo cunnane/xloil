@@ -345,7 +345,7 @@ namespace xloil
         scanModule(
           _module != Py_None
             ? PyBorrow<py::module>(_module)
-            : py::wstr(sourceName()),
+            : py::wstr(sourcePath()),
           linkedWorkbook().c_str());
 
         // Set the addin context back. TODO: Not exception safe clearly.
