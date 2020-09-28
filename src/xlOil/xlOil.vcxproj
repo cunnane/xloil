@@ -119,6 +119,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Async.cpp" />
+    <ClCompile Include="DynamicRegistration.cpp" />
     <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="RtdServer.cpp" />
     <ClCompile Include="State.cpp" />

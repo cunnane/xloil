@@ -37,6 +37,9 @@
     <ClCompile Include="xloVersion.cpp" />
     <ClCompile Include="xloLog.cpp" />
     <ClCompile Include="LogWindowSink.cpp" />
+    <ClCompile Include="DynamicRegistration.cpp">
+      <Filter>Register</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
