@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="ClassFactory.h" />
+    <ClInclude Include="ComAddin.h" />
+    <ClInclude Include="ComEventSink.h" />
+    <ClInclude Include="ComRange.h" />
+    <ClInclude Include="ComVariant.h" />
+    <ClInclude Include="Connect.h" />
+    <ClInclude Include="ExcelTypeLib.h" />
+    <ClInclude Include="RibbonExtensibility.h" />
+    <ClInclude Include="RtdManager.h" />
+    <ClInclude Include="RtdServer.h" />
+    <ClInclude Include="WorkbookScopeFunctions.h" />
+    <ClInclude Include="XllContextInvoke.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ComAddin.cpp" />
+    <ClCompile Include="ComEventSink.cpp" />
+    <ClCompile Include="ComRange.cpp" />
+    <ClCompile Include="ComVariant.cpp" />
+    <ClCompile Include="Connect.cpp" />
+    <ClCompile Include="RibbonExtensibility.cpp" />
+    <ClCompile Include="RtdManager.cpp" />
+    <ClCompile Include="WorkbookScopeFunctions.cpp" />
+    <ClCompile Include="XllContextInvoke.cpp" />
+    <ClCompile Include="API\Events.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\ExcelRange.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\RtdServer.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="API\ApiCall.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="API">
+      <UniqueIdentifier>{f381d3b3-32c5-430f-ace5-8dff780c44cf}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

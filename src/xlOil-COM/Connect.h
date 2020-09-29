@@ -3,7 +3,8 @@
 
 namespace Excel { struct _Application; }
 
-namespace xloil {
+namespace xloil 
+{
   namespace COM
   {
     // We don't inherit from our own Exception class as that writes to the log in its ctor

@@ -1,12 +1,12 @@
 #include "ReadSource.h"
 
-#include <COMInterface/ExcelTypeLib.h>
+#include <xlOil-COM/ExcelTypeLib.h>
 #include "PyHelpers.h"
 #include "FunctionRegister.h"
 #include "Main.h"
 
 #include <xloil/Log.h>
-#include <xloil/State.h>
+#include <xloil/ApiCall.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -113,7 +113,7 @@ namespace xloil
     {
       try
       {
-        auto& workbooks = State::excelApp().Workbooks;
+        auto& workbooks = excelApp().Workbooks;
         auto nWorkbooks = workbooks->Count;
         for (auto i = 0; i < nWorkbooks; ++i)
         {

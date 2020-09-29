@@ -1,6 +1,5 @@
 #pragma once
 #include <xloil/ExportMacro.h>
-namespace Excel { struct _Application; }
 
 namespace xloil
 {
@@ -33,8 +32,6 @@ namespace xloil
     /// Returns the Excel major version number
     /// </summary>
     XLOIL_EXPORT ExcelState& excelState() noexcept;
-
-    XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
 
     void initAppContext(void* coreHInstance);
   }

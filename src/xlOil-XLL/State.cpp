@@ -2,7 +2,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
-#include <COMInterface/Connect.h>
+
 
 namespace xloil
 {
@@ -74,10 +74,6 @@ namespace xloil
     XLOIL_EXPORT ExcelState& excelState() noexcept
     {
       return ourExcelState;
-    }
-    Excel::_Application& excelApp() noexcept
-    {
-      return COM::excelApp();
     }
   }
 }

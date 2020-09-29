@@ -1,5 +1,4 @@
 #include <xloil/Async.h>
-#include <xlOil/Events.h>
 #include <xloil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
 

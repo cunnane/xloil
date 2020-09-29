@@ -1,7 +1,7 @@
 #include "ComVariant.h"
 #include "ClassFactory.h"
 
-#include <xloil/ApiMessage.h>
+#include <xloil/ApiCall.h>
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>
@@ -466,6 +466,8 @@ namespace xloil
         //if (res != S_OK)
         //  XLO_ERROR(L"Failed to create com object '{0}'", _progId);
 #endif
+        // TODO: why doesn't this work?
+        //_registrar.cleanRegistry();
       }
 
       ~RtdServer()

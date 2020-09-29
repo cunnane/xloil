@@ -1,5 +1,5 @@
 #include <xlOil/StaticRegister.h>
-#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/FuncSpec.h>
 #include <xlOil/Throw.h>
@@ -44,7 +44,8 @@ namespace xloil
     return theQueue;
   }
 
-  XLOIL_EXPORT FuncRegistrationMemo& createRegistrationMemo(const char* entryPoint_, size_t nArgs)
+  XLOIL_EXPORT FuncRegistrationMemo& createRegistrationMemo(
+    const char* entryPoint_, size_t nArgs)
   {
     getFuncRegistryQueue().emplace_back(entryPoint_, nArgs);
     return getFuncRegistryQueue().back();

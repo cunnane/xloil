@@ -4,7 +4,7 @@
 #include "ComRange.h"
 #include "XllContextInvoke.h"
 #include <xlOil/Events.h>
-#include <xlOil/ApiMessage.h>
+#include <xlOil/ApiCall.h>
 #include <set>
 
 using std::set;

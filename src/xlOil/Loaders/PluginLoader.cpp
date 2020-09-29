@@ -1,13 +1,13 @@
 #include "PluginLoader.h"
 #include <xlOil/WindowsSlim.h>
 #include <xlOilHelpers/Environment.h>
-#include <COMInterface/RtdManager.h>
+#include <xlOil-COM/RtdManager.h>
 #include <xlOil/Log.h>
 #include <xlOil/Throw.h>
 #include <xlOil/State.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
-#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <tomlplusplus/toml.hpp>
 #include <vector>

@@ -2,7 +2,7 @@
 #include "PyHelpers.h"
 #include "PyExcelArray.h"
 #include "BasicTypes.h"
-#include <xloil/ApiMessage.h>
+#include <xloil/ApiCall.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
 #include <xloil/State.h>

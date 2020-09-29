@@ -5,8 +5,8 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Log.h>
-#include <COMInterface/ComVariant.h>
-#include <COMInterface/WorkbookScopeFunctions.h>
+#include <xlOil-COM/ComVariant.h>
+#include <xlOil-COM/WorkbookScopeFunctions.h>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include <map>
@@ -20,8 +20,7 @@ using std::make_shared;
 namespace xloil
 {
   // ensure this is cleaned before things close.
-
-  map < wstring, map<wstring, shared_ptr<const LambdaFuncSpec>>> theRegistry;
+  map<wstring, map<wstring, shared_ptr<const LambdaFuncSpec>>> theRegistry;
 
   const LambdaFuncSpec& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
   {

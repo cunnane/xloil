@@ -1,8 +1,9 @@
 #pragma once
-#include <xloil/ApiMessage.h>
+#include <xloil/ApiCall.h>
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Loaders/EntryPoint.h>
-#include <COMInterface/XllContextInvoke.h>
+#include <xlOil-COM/XllContextInvoke.h>
+#include <xlOil-COM/Connect.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
@@ -17,6 +18,11 @@ using std::make_shared;
 
 namespace xloil
 {
+  Excel::_Application& excelApp() noexcept
+  {
+    return COM::excelApp();
+  }
+
   class Messenger
   {
   public:

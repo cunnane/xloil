@@ -5,7 +5,6 @@
 #include <xlOil/Register.h>
 #include <xlOilHelpers/Environment.h>
 #include <xloil/Interface.h>
-#include <xloil/Register/FuncRegistry.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
 #include <vector>

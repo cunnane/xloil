@@ -1,6 +1,6 @@
 #include "AddinLoader.h"
 #include <xlOil/Interface.h>
-#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil-XLL/FuncRegistry.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Date.h>
 #include <xlOil/Loaders/EntryPoint.h>
@@ -10,7 +10,7 @@
 #include <xloil/State.h>
 #include <xloil/RtdServer.h>
 #include <xloil/LogWindowSink.h>
-#include <COMInterface/Connect.h>
+#include <xlOil-COM/Connect.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 

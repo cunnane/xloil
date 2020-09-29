@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Caller.cpp" />
+    <ClCompile Include="Date.cpp" />
+    <ClCompile Include="ExcelArray.cpp" />
+    <ClCompile Include="ExcelCall.cpp" />
+    <ClCompile Include="ExcelObj.cpp" />
+    <ClCompile Include="ExcelRef.cpp" />
+    <ClCompile Include="StaticRegister.cpp" />
+    <ClCompile Include="XlCall.cpp" />
+    <ClCompile Include="State.cpp" />
+    <ClCompile Include="FuncRegistry.cpp" />
+    <ClCompile Include="Async.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FuncRegistry.h" />
+  </ItemGroup>
+</Project>

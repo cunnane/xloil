@@ -10,7 +10,7 @@ namespace xloil
   /// Wraps a reference to a range on an Excel sheet, i.e. an XLL 
   /// ref or sref (local reference) type ExcelObj.
   /// </summary>
-  class ExcelRef
+  class XLOIL_EXPORT ExcelRef
   {
   public:
     using row_t = Range::row_t;
@@ -20,16 +20,16 @@ namespace xloil
     /// Constructs an ExcelRange from an ExcelObj. Will throw if
     /// the object is not of type Ref or SRef.
     /// </summary>
-    XLOIL_EXPORT ExcelRef(const ExcelObj& from);
+   ExcelRef(const ExcelObj& from);
 
     /// <summary>
     /// Constructs an ExcelRange from a sheet address. If the 
     /// address does not contain a sheet name, the current
     /// Active sheet is used.
     /// </summary>
-    XLOIL_EXPORT explicit ExcelRef(const wchar_t* address);
+    explicit ExcelRef(const wchar_t* address);
 
-    XLOIL_EXPORT ExcelRef(msxll::IDSHEET sheetId,
+    ExcelRef(msxll::IDSHEET sheetId,
       int fromRow, int fromCol, int toRow, int toCol);
 
     /// <summary>
@@ -47,6 +47,7 @@ namespace xloil
     ExcelRef& operator=(const ExcelObj& value)
     {
       set(value);
+      return *this;
     }
 
     ExcelObj operator()(int i, int j) const

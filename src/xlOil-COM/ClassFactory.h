@@ -254,35 +254,35 @@ namespace xloil
     {
     public:
       // IDispatch
-      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* pctinfo)
+      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* /*pctinfo*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(GetTypeInfo)(
-        UINT itinfo,
-        LCID lcid,
-        _Outptr_result_maybenull_ ITypeInfo** pptinfo)
+        UINT /*itinfo*/,
+        LCID /*lcid*/,
+        _Outptr_result_maybenull_ ITypeInfo** /*pptinfo*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(GetIDsOfNames)(
-        _In_ REFIID riid,
-        _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* rgszNames,
-        _In_range_(0, 16384) UINT cNames,
-        LCID lcid,
-        _Out_ DISPID* rgdispid)
+        _In_ REFIID /*riid*/,
+        _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* /*rgszNames*/,
+        _In_range_(0, 16384) UINT /*cNames*/,
+        LCID /*lcid*/,
+        _Out_ DISPID* /*rgdispid*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(Invoke)(
-        _In_ DISPID dispidMember,
-        _In_ REFIID riid,
-        _In_ LCID lcid,
-        _In_ WORD wFlags,
-        _In_ DISPPARAMS* pdispparams,
-        _Out_opt_ VARIANT* pvarResult,
-        _Out_opt_ EXCEPINFO* pexcepinfo,
-        _Out_opt_ UINT* puArgErr)
+        _In_ DISPID /*dispidMember*/,
+        _In_ REFIID /*riid*/,
+        _In_ LCID /*lcid*/,
+        _In_ WORD /*wFlags*/,
+        _In_ DISPPARAMS* /*pdispparams*/,
+        _Out_opt_ VARIANT* /*pvarResult*/,
+        _Out_opt_ EXCEPINFO* /*pexcepinfo*/,
+        _Out_opt_ UINT* /*puArgErr*/)
       {
         return E_NOTIMPL;
       }

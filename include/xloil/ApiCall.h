@@ -2,8 +2,14 @@
 #include "ExportMacro.h"
 #include <functional>
 #include <future>
+
+namespace Excel { struct _Application; }
+
+
 namespace xloil
 {
+  XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
+
   /// <summary>
   /// Internal use: called during Core DLL startup.
   /// </summary>

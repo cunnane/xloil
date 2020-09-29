@@ -32,4 +32,18 @@ namespace xloil
       return (const char*)(imageBase + name_table[offset]);
     }
   };
+
+
+  // With Win32 function C function names are decorated. It no longer 
+  // seemed like a good idea with x64.
+  inline std::string 
+    decorateCFunction(const char* name, const size_t numPtrArgs)
+  {
+#ifdef _WIN64
+    (void)numPtrArgs;
+    return std::string(name);
+#else
+    return formatStr("_%s@%d", name, sizeof(void*) * numPtrArgs);
+#endif // _WIN64
+  }
 }

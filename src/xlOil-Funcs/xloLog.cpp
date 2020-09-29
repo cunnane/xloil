@@ -1,9 +1,8 @@
-#include <xloil/Register/FuncRegistry.h>
 #include <xloil/StaticRegister.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/Preprocessor.h>
 #include <xloil/Log.h>
-#include "LogWindowSink.h"
+#include <xloil/LogWindowSink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 namespace xloil

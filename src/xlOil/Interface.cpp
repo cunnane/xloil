@@ -1,15 +1,15 @@
 #include <xlOil/Interface.h>
-#include <xlOil/Register/FuncRegistry.h>
+#include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Register/LocalFunctions.h>
 #include <xlOil/ObjectCache.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
-#include <xlOil/ApiMessage.h>
+#include <xlOil/ApiCall.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
-#include <COMInterface/Connect.h>
-#include <COMInterface/ComAddin.h>
+#include <xlOil-COM/Connect.h>
+#include <xlOil-COM/ComAddin.h>
 
 using std::make_pair;
 using std::wstring;

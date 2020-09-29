@@ -10,9 +10,9 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/State.h>
-#include <xloil/ApiMessage.h>
-#include <COMInterface/Connect.h>
-#include <COMInterface/XllContextInvoke.h>
+#include <xloil/ApiCall.h>
+#include <xlOil-COM/Connect.h>
+#include <xlOil-COM/XllContextInvoke.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;

@@ -1,4 +1,4 @@
-#include <xloil/Register/FuncRegistry.h>
+
 #include <xloil/StaticRegister.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/Preprocessor.h>

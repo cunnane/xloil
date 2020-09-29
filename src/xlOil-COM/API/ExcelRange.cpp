@@ -1,14 +1,10 @@
 #include <xloil/ExcelRange.h>
 #include <xlOil/ExcelRef.h>
-#include <Cominterface/ComRange.h>
-#include <Cominterface/XllContextInvoke.h>
+#include <xlOil-COM/ComRange.h>
+#include <xlOil-COM/XllContextInvoke.h>
 
 namespace xloil
 {
-  Range* newXllRange(const ExcelObj& xlRef)
-  {
-    return new XllRange(xlRef);
-  }
   Range* newRange(const wchar_t* address)
   {
     if (InXllContext::check())

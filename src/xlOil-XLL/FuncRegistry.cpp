@@ -1,7 +1,6 @@
 #include "FuncRegistry.h"
 #include <xlOil/Register.h>
 #include <xlOil/ExcelCall.h>
-#include <xlOil/Events.h>
 
 #include <xlOil/ExcelObj.h>
 #include <xlOil/StaticRegister.h>
@@ -12,7 +11,6 @@
 #include <xlOilHelpers/PEHelper.h>
 
 #include <codecvt>
-#include <future>
 #include <map>
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -335,17 +333,5 @@ namespace xloil
     // current plugin
     auto specs = processRegistryQueue(pluginPath);
     registerFuncs(specs);
-  }
-
-  namespace
-  {
-    struct RegisterMe
-    {
-      RegisterMe()
-      {
-        // TODO: all funcs *should* be removed by this point - check this
-        static auto handler = Event::AutoClose() += []() { FunctionRegistry::get().clear(); };
-      }
-    } theInstance;
   }
 }

@@ -98,4 +98,9 @@ namespace xloil
   {
     _ref.clear();
   }
+
+  Range* newXllRange(const ExcelObj& xlRef)
+  {
+    return new XllRange(xlRef);
+  }
 }

@@ -11,11 +11,12 @@ namespace xloil
   // TODO: why a shared-ptr?
   static ObjectCache<shared_ptr<const ExcelObj>, detail::theObjectCacheUnquifier, false> theExcelObjCache;
   
-  ExcelObj objectCacheAdd(shared_ptr<const ExcelObj>&& obj)
+  XLOIL_EXPORT ExcelObj objectCacheAdd(shared_ptr<const ExcelObj>&& obj)
   {
     return theExcelObjCache.add(std::forward<shared_ptr<const ExcelObj>>(obj));
   }
-  bool objectCacheFetch(const std::wstring_view& cacheString, shared_ptr<const ExcelObj>& obj)
+  XLOIL_EXPORT bool objectCacheFetch(
+    const std::wstring_view& cacheString, shared_ptr<const ExcelObj>& obj)
   {
     return theExcelObjCache.fetch(cacheString, obj);
   }
