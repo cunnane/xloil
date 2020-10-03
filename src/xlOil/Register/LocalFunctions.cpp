@@ -5,6 +5,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Log.h>
+#include <xloil/FuncSpec.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xlOil-COM/WorkbookScopeFunctions.h>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>

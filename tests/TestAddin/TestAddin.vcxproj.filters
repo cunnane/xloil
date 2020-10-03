@@ -4,7 +4,4 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="RtdServerTest.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="TestXlOil.ini" />
-  </ItemGroup>
 </Project>

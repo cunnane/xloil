@@ -19,9 +19,6 @@
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <ConformanceMode>false</ConformanceMode>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>spdlog.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

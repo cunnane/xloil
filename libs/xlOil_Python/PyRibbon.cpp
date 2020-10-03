@@ -1,6 +1,7 @@
 #include "Main.h"
 #include "BasicTypes.h"
 #include "PyCoreModule.h"
+#include <xloil/Ribbon.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
 namespace py = pybind11;

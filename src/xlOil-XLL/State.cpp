@@ -47,6 +47,9 @@ namespace xloil
   {
     void initAppContext(void* coreHInstance)
     {
+      if (theCoreModuleHandle)
+        return;
+
       theCoreModuleHandle = (HMODULE)coreHInstance;
       setDllPath(theCoreModuleHandle);
       ourExcelState = ExcelState

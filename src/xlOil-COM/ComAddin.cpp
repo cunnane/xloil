@@ -5,7 +5,7 @@
 #include "RibbonExtensibility.h"
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
-#include <xlOil/Interface.h>
+#include <xlOil/Ribbon.h>
 #include <map>
 #include <functional>
 

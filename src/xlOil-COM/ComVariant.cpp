@@ -113,7 +113,7 @@ namespace xloil
     ExcelObj elementConvert(const VARIANT& val) { return variantToExcelObj(val, false); }
 
     template<class T>
-    size_t stringLength(T* arr, size_t nRows, size_t nCols)
+    size_t stringLength(T* /*arr*/, size_t /*nRows*/, size_t /*nCols*/)
     {
       return 0;
     }

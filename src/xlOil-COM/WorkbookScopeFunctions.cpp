@@ -4,7 +4,7 @@
 #include <xlOil/ExcelRange.h>
 #include <xlOil/Register.h>
 #include <xlOilHelpers/Environment.h>
-#include <xloil/Interface.h>
+#include <xloil/FuncSpec.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
 #include <vector>

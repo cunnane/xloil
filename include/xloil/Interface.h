@@ -10,30 +10,7 @@ namespace xloil { class RegisteredFunc; class AddinContext; }
 
 namespace xloil
 {
-  struct RibbonControl
-  {
-    const wchar_t* Id;
-    const wchar_t* Tag;
-  };
-
-  class IComAddin
-  {
-  public:
-    using Handlers = std::map<std::wstring, std::function<void(const RibbonControl&)>>;
-    virtual ~IComAddin() {}
-    virtual const wchar_t* progid() const = 0;
-    virtual void connect() = 0;
-    virtual void disconnect() = 0;
-    virtual void setRibbon(
-      const wchar_t* xml,
-      const Handlers& handlers) = 0;
-    virtual void ribbonInvalidate(const wchar_t* controlId = 0) const = 0;
-    virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
-  };
-
-  XLOIL_EXPORT std::shared_ptr<IComAddin> 
-    makeComAddin(const wchar_t* name, const wchar_t* description = nullptr);
-
+ 
   /// <summary>
   /// A file source collects Excel UDFs created from a single file.
   /// The file could be a plugin DLL or source file. You can inherit
@@ -190,7 +167,7 @@ namespace xloil
 
     void addSource(const std::shared_ptr<FileSource>& source)
     {
-      _files[source->sourcePath()] = source;
+      _files.emplace(std::make_pair(source->sourcePath(), source));
     }
 
     void removeSource(ContextMap::const_iterator which);
@@ -249,4 +226,12 @@ namespace xloil
   /// A plugin must declare an extern C function with this signature
   /// </summary>
   typedef int(*PluginInitFunc)(AddinContext*, const PluginContext&);
+
+  /// <summary>
+  /// Links a plug-in's *spdlog* instance to the main xlOil log output. 
+  /// You don't have to do this if you're organising your own logging.
+  /// </summary>
+  /// <param name=""></param>
+  /// <param name="plugin"></param>
+  XLOIL_EXPORT void linkLogger(AddinContext*, const PluginContext& plugin);
 }

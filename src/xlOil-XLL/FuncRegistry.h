@@ -1,7 +1,6 @@
 #pragma once
 #include <xlOil/Register.h>
 #include <xlOil/FuncSpec.h>
-#include <xlOil/Interface.h>
 #include <memory>
 
 namespace xloil
@@ -55,14 +54,4 @@ namespace xloil
 
   RegisteredFuncPtr
     findRegisteredFunc(const wchar_t* name);
-
-  /// <summary>
-  /// File source which collects and registers any declared
-  /// static functions
-  /// </summary>
-  class StaticFunctionSource : public FileSource
-  {
-  public:
-    StaticFunctionSource(const wchar_t* pluginPath);
-  };
 }

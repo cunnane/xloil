@@ -1,4 +1,5 @@
 #pragma once
+#include <xloil/Interface.h>
 #include <vector>
 #include <string>
 
@@ -15,4 +16,14 @@ namespace xloil
 
   std::vector<std::wstring> listPluginNames();
 
+
+  /// <summary>
+  /// File source which collects and registers any declared
+  /// static functions
+  /// </summary>
+  class StaticFunctionSource : public FileSource
+  {
+  public:
+    StaticFunctionSource(const wchar_t* pluginPath);
+  };
 }

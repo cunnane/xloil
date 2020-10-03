@@ -4,4 +4,4 @@ EXPORTS
 	xlAutoOpen
 	xlAutoClose
 	xlAutoFree12
-	xloHandleCalculationCancelled
+	xlHandleCalculationCancelled

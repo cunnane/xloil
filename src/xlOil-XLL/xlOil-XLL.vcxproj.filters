@@ -12,6 +12,9 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="FuncRegistry.cpp" />
     <ClCompile Include="Async.cpp" />
+    <ClCompile Include="XllEvents.cpp" />
+    <ClCompile Include="XllEntryPoint.cpp" />
+    <ClCompile Include="Throw.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />

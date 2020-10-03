@@ -2,7 +2,7 @@
 #include "Register.h"
 #include "ExcelObj.h"
 
-namespace xloil { class FuncSpec; }
+namespace xloil { class FuncSpec; class RegisteredFunc; }
 
 // In XLO_FUNC_START a separate declaration is needed to the function implementation
 // to work around this quite serious MSVC compiler bug:
@@ -156,4 +156,7 @@ namespace xloil
 
   std::vector<std::shared_ptr<const FuncSpec>>
     processRegistryQueue(const wchar_t* moduleName);
+
+  XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredFunc>>
+    registerStaticFuncs(const wchar_t* moduleName = 0);
 }

@@ -265,7 +265,6 @@ namespace xloil
     /// </summary>
 #define XLOIL_STATIC_EVENTS \
     (AfterCalculate)\
-    (CalcCancelled)\
     (WorkbookOpen)\
     (NewWorkbook)\
     (SheetSelectionChange)\

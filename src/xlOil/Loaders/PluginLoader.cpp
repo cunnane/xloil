@@ -7,6 +7,7 @@
 #include <xlOil/State.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/StaticRegister.h>
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <tomlplusplus/toml.hpp>
@@ -209,5 +210,16 @@ namespace xloil
       std::back_inserter(result),
       [](auto it) { return it.first; });
     return std::move(result);
+  }
+
+  StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
+    : FileSource(pluginPath)
+  {
+    // This collects all statically declared Excel functions, i.e. raw C functions
+    // It assumes that this ctor and hence processRegistryQueue is run after each
+    // plugin has been loaded, so that all functions on the queue belong to the 
+    // current plugin
+    auto specs = processRegistryQueue(pluginPath);
+    registerFuncs(specs);
   }
 }

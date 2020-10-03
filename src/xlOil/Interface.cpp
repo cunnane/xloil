@@ -9,7 +9,6 @@
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <xlOil-COM/Connect.h>
-#include <xlOil-COM/ComAddin.h>
 
 using std::make_pair;
 using std::wstring;
@@ -177,9 +176,9 @@ namespace xloil
     _files.erase(which);
   }
 
-  std::shared_ptr<IComAddin> xloil::makeComAddin(
-    const wchar_t * name, const wchar_t * description)
+  void linkLogger(AddinContext*, const PluginContext& plugin)
   {
-    return COM::createComAddin(name, description);
+    if (plugin.action == PluginContext::Load)
+      spdlog::set_default_logger(loggerRegistry().default_logger());
   }
 }

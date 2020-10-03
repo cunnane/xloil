@@ -121,6 +121,9 @@
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <PostBuildEvent>
+      <Command Condition="'$(Configuration)|$(Platform)'=='DebugStatic|x64'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Debug\spdlog.lib $(OutDir)..\Debug\SimpleFileWatcher.lib</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='ReleaseStatic'">
     <ClCompile>

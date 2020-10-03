@@ -5,6 +5,7 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
+#include <xlOil/Events.h>
 #include <xlOilHelpers/LogWindow.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
@@ -28,14 +29,6 @@ namespace
   static HMODULE theModuleHandle = nullptr;
   static wstring ourXllPath;
   static wstring ourLogFilePath;
-
-  // This bool is required due to apparent bugs in the XLL interface:
-  // Excel may call XLL event handlers after calling xlAutoClose,
-  // and it may call xlAutoClose without ever having called xlAutoOpen
-  // This former to happen when Excel is closing and asks the user 
-  // to save the workbook, the latter when removing an addin using COM
-  // automation
-  static bool theXllIsOpen = false;
 
   bool setDllPath(HMODULE handle)
   {
@@ -81,7 +74,6 @@ namespace
     logWindow->appendMessage(str.str());
     logWindow->openWindow();
   }
-
 }
 
 /// <summary>
@@ -104,21 +96,6 @@ FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
 
 extern "C" PfnDliHook __pfnDliFailureHook2 = nullptr;
 
-XLO_ENTRY_POINT(int) DllMain(
-  _In_ HINSTANCE hinstDLL,
-  _In_ DWORD     fdwReason,
-  _In_ LPVOID    lpvReserved
-)
-{
-  if (fdwReason == DLL_PROCESS_ATTACH)
-  {
-    theModuleHandle = hinstDLL;
-    if (!setDllPath(hinstDLL))
-      return FALSE;
-  }
-  return TRUE;
-}
-
 // Name of core dll. Not sure if there's an automatic way to get this
 constexpr wchar_t* const xloil_dll = L"XLOIL.DLL";
 
@@ -137,6 +114,7 @@ void loadEnvironmentBlock(const toml::table& settings)
 
 int loadCore(const wchar_t* xllPath)
 {
+
   // If the delay load fails, it will throw a SEH exception, so we must use
   // __try/__except to avoid this crashing Excel.
   int ret = -1;
@@ -155,16 +133,12 @@ int loadCore(const wchar_t* xllPath)
   return ret;
 }
 
-/// <summary>
-/// xlAutoOpen is how Microsoft Excel loads XLL files.
-/// When you open an XLL, Microsoft Excel calls the xlAutoOpen
-/// function, and nothing more.
-/// </summary>
-/// <returns>Must return 1</returns>
-XLO_ENTRY_POINT(int) xlAutoOpen(void)
+void xllOpen(void* hInstance)
 {
   try
   {
+    setDllPath((HMODULE)hInstance);
+
     // We need to find xloil.dll. 
     const auto ourXllDir = fs::path(ourXllPath).remove_filename();
 
@@ -214,21 +188,64 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
     auto ret = loadCore(ourXllPath.c_str());
 
     SetDllDirectory(NULL);
-
-    theXllIsOpen = true;
-
-    // We don't bother to hook xlEventCalculationEnded as this XLL event is not triggered
-    // by programmatic recalc, but the COM event is hence is much more useful.
-    // TODO: could this be called by xlOil.dll? I seem to remember not.
-    if (ret == 1)
-    {
-      xloil::tryCallExcel(msxll::xlEventRegister,
-        "xloHandleCalculationCancelled", msxll::xleventCalculationCanceled);
-    }
   }
   catch (const std::exception& e)
   {
     writeLog(e.what());
+  }
+}
+
+void xllClose()
+{
+  xloil::autoCloseHandler(ourXllPath.c_str());
+}
+
+
+namespace
+{
+  // This bool is required due to apparent bugs in the XLL interface:
+  // Excel may call XLL event handlers after calling xlAutoClose,
+  // and it may call xlAutoClose without ever having called xlAutoOpen
+  // This former to happen when Excel is closing and asks the user 
+  // to save the workbook, the latter when removing an addin using COM
+  // automation
+  bool theXllIsOpen = false;
+}
+
+void xllOpen(void* hInstance);
+void xllClose();
+
+XLO_ENTRY_POINT(int) DllMain(
+  _In_ HINSTANCE hinstDLL,
+  _In_ DWORD     fdwReason,
+  _In_ LPVOID    lpvReserved
+)
+{
+  if (fdwReason == DLL_PROCESS_ATTACH)
+    theModuleHandle = hinstDLL;
+
+  return TRUE;
+}
+
+/// <summary>
+/// xlAutoOpen is how Microsoft Excel loads XLL files.
+/// When you open an XLL, Microsoft Excel calls the xlAutoOpen
+/// function, and nothing more.
+/// </summary>
+/// <returns>Must return 1</returns>
+XLO_ENTRY_POINT(int) xlAutoOpen(void)
+{
+  try
+  {
+    xllOpen(theModuleHandle);
+    
+    xloil::tryCallExcel(msxll::xlEventRegister,
+      "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+
+    theXllIsOpen = true;
+  }
+  catch (...)
+  {
   }
   return 1; // We alway return 1, even on failure.
 }
@@ -238,48 +255,15 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   try
   {
     if (theXllIsOpen)
-      xloil::autoCloseHandler(ourXllPath.c_str());
-    theXllIsOpen = true;
+      xllClose();
+
+    theXllIsOpen = false;
   }
   catch (...)
   {
   }
   return 1;
 }
-
-// Temporarily removed as it's not adding value at the moment
-/*
-XLO_ENTRY_POINT(msxll::xloper12*) xlAddInManagerInfo12(msxll::xloper12* xAction)
-{
-  // This function can be called without the add-in loaded, so we avoid using
-  // any xlOil functionality
-
-  int action = 0;
-  switch (xAction->xltype)
-  {
-  case msxll::xltypeNum:
-    action = (int)xAction->val.num;
-    break;
-  case msxll::xltypeInt:
-    action = xAction->val.w;
-    break;
-  }
-
-  static msxll::xloper12 xInfo;
-  if (action == 1)
-  {
-    xInfo.xltype = msxll::xltypeStr;
-    xInfo.val.str = L"\011xlOil Addin";
-  }
-  else
-  {
-    xInfo.xltype = msxll::xltypeErr;
-    xInfo.val.err = msxll::xlerrValue;
-  }
-
-  return &xInfo;
-}
-*/
 
 XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
 {
@@ -292,9 +276,15 @@ XLO_ENTRY_POINT(void) xlAutoFree12(msxll::xloper12* pxFree)
   }
 }
 
-XLO_ENTRY_POINT(int) xloHandleCalculationCancelled()
+XLO_ENTRY_POINT(int) xlHandleCalculationCancelled()
 {
-  if (theXllIsOpen)
-    onCalculationCancelled();
+  try
+  {
+    if (theXllIsOpen)
+      xloil::Event::CalcCancelled().fire();
+  }
+  catch (...)
+  {
+  }
   return 1;
 }

@@ -114,9 +114,6 @@
     <ClInclude Include="..\..\include\xloil\Version.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ApiMessage.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\StringUtils.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -125,6 +122,12 @@
     </ClInclude>
     <ClInclude Include="LogWindowSink.h" />
     <ClInclude Include="..\..\include\xloil\State.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Ribbon.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ApiCall.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

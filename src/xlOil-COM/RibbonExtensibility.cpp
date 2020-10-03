@@ -3,7 +3,7 @@
 #include "ExcelTypeLib.h"
 #include "ClassFactory.h"
 #include <xlOil/Log.h>
-#include <xlOil/Interface.h>
+#include <xlOil/Ribbon.h>
 #include <map>
 #include <functional>
 #include <regex>

@@ -70,4 +70,7 @@ namespace xloil
       int nRetries = 10, 
       unsigned waitBetweenRetries = 200,
       unsigned waitBeforeCall = 0);
+
+  
+  void xllOpenComCall(const std::function<void()>& func);
 }

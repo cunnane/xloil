@@ -10,6 +10,7 @@
 #include <xloil/State.h>
 #include <xloil/RtdServer.h>
 #include <xloil/LogWindowSink.h>
+#include <xloil/StaticRegister.h>
 #include <xlOil-COM/Connect.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
@@ -89,6 +90,7 @@ namespace xloil
 
     return settings;
   }
+
 
   void createCoreContext() 
   {

@@ -30,31 +30,7 @@ namespace
 
 namespace xloil
 {
-  struct RetryAtStartup
-  {
-    void operator()()
-    {
-      try
-      {
-        COM::connectCom();
-        excelApiCall([=]() 
-        {  
-          loadPluginsForAddin(addinContext);
-        }, QueueType::XLL_API);
-      }
-      catch (const COM::ComConnectException&)
-      {
-        excelApiCall(
-          RetryAtStartup{ addinContext },
-          QueueType::WINDOW, 
-          0, // no retry
-          0,
-          1000 // wait 1 second before call
-        ); 
-      }
-    }
-    AddinContext* addinContext;
-  };
+  
 
   XLOIL_EXPORT int autoOpenHandler(const wchar_t* xllPath) noexcept
   {
@@ -79,18 +55,19 @@ namespace xloil
 
         createCoreContext();
 
-        excelApiCall(RetryAtStartup{ theCoreContext() });
+        xllOpenComCall([&]() { loadPluginsForAddin(theCoreContext()); });
 
         theCoreIsLoaded = true;
         retVal = 1;
 
+        // TODO: no need to call this
         initMessageQueue();
       }
 
       if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
       {
         auto addinContext = openXll(xllPath);
-        excelApiCall(RetryAtStartup{ addinContext });
+        xllOpenComCall([&]() { loadPluginsForAddin(addinContext); });
       }
 
       return retVal;
@@ -116,17 +93,6 @@ namespace xloil
       XLO_ERROR("Finalisation error: {0}", e.what());
     }
     return 0;
-  }
-  XLOIL_EXPORT void onCalculationCancelled() noexcept
-  {
-    try
-    {
-      InXllContext xllContext;
-      xloil::Event::CalcCancelled().fire();
-    }
-    catch (...)
-    {
-    }
   }
 }
 

@@ -3,6 +3,8 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/FuncSpec.h>
 #include <xlOil/Throw.h>
+#include <xlOil/ExcelCall.h>
+#include <filesystem>
 
 using std::vector;
 using std::make_shared;
@@ -57,9 +59,20 @@ namespace xloil
     std::vector<std::shared_ptr<const FuncSpec>> result;
     auto& queue = getFuncRegistryQueue();
     for (auto f : queue)
-      result.emplace_back(make_shared<const StaticSpec>(f.getInfo(), moduleName, f.entryPoint));
+      result.emplace_back(make_shared<const StaticSpec>(
+        f.getInfo(), moduleName, f.entryPoint));
     
     queue.clear();
+    return result;
+  }
+
+  std::vector<std::shared_ptr<const RegisteredFunc>>
+    registerStaticFuncs(const wchar_t* moduleName)
+  {
+    const auto specs = processRegistryQueue(moduleName);
+    std::vector<std::shared_ptr<const RegisteredFunc>> result;
+    for (auto& spec : specs)
+      result.emplace_back(spec->registerFunc());
     return result;
   }
 }

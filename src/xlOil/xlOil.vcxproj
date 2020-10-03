@@ -83,6 +83,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\include\xloil\ApiCall.h" />
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
     <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />
@@ -103,10 +104,10 @@
     <ClInclude Include="..\..\include\xloil\Preprocessor.h" />
     <ClInclude Include="..\..\include\xloil\PString.h" />
     <ClInclude Include="..\..\include\xloil\Register.h" />
+    <ClInclude Include="..\..\include\xloil\Ribbon.h" />
     <ClInclude Include="..\..\include\xloil\RtdServer.h" />
     <ClInclude Include="..\..\include\xloil\State.h" />
     <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
-    <ClInclude Include="..\..\include\xloil\ApiMessage.h" />
     <ClInclude Include="..\..\include\xloil\StringUtils.h" />
     <ClInclude Include="..\..\include\xloil\Throw.h" />
     <ClInclude Include="..\..\include\xloil\TypeConverters.h" />
