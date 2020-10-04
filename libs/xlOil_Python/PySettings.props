@@ -2,16 +2,12 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup>
-    <IncludePath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(ProjectRoot)external\python\numpy\include;$(ProjectRoot)external\pybind11\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectRoot)external\python\$(PyMajorVer).$(PyMinorVer)\$(Platform);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(xlOilRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(xlOilRoot)external\python\numpy\include;$(xlOilRoot)external\pybind11\include;$(xlOilRoot)src;$(IncludePath)</IncludePath>
+    <LibraryPath>$(xlOilRoot)external\python\$(PyMajorVer).$(PyMinorVer)\$(Platform);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>PYTHON_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PYTHON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>spdlog.lib;xloil.lib;xloilHelpers.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
 </Project>

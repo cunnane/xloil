@@ -36,26 +36,14 @@ namespace
   }
 
   // TODO: surely should use utf8 conversion here?
-  wchar_t* pascalWStringFromC(const char* s)
+  wchar_t* pascalWStringFromC(const char* s, size_t len)
   {
     assert(s);
-
-    size_t len = strlen(s);
-    auto wideStr = makeStringBuffer(len);
-
+    auto pstr = makeStringBuffer(len);
     size_t nChars = 0;
-    mbstowcs_s(&nChars, wideStr, len + 1, s, len);
-
-    return wideStr - 1;
-  }
-  wchar_t* pascalWStringFromC(const wchar_t* s)
-  {
-    assert(s);
-    auto len = wcslen(s);
-    auto wideStr = makeStringBuffer(len);
-    // no need to copy null-terminator as makeStringBuffer creates it
-    wmemcpy_s(wideStr, len, s, len); 
-    return wideStr - 1;
+    mbstowcs_s(&nChars, pstr, len + 1, s, len);
+    //MultiByteToWideChar()
+    return pstr - 1;
   }
 
   size_t totalStringLength(const xloper12* arr, size_t nRows, size_t nCols)
@@ -67,7 +55,6 @@ namespace
         total += arr->val.str[0];
     return total;
   }
-  
 }
 
   // TODO: https://stackoverflow.com/questions/52737760/how-to-define-string-literal-with-character-type-that-depends-on-template-parame
@@ -127,18 +114,11 @@ namespace
     xltype = int(t);
   }
 
-  ExcelObj::ExcelObj(const char* s)
+  void ExcelObj::createFromChars(const char* chars, size_t len)
   {
-    val.str = pascalWStringFromC(s);
-    xltype = xltypeStr;
-  }
-
-  ExcelObj::ExcelObj(const wchar_t* s)
-  {
-    if (s == nullptr)
-      val.str = Const::EmptyStr().val.str;
-    else
-      val.str = pascalWStringFromC(s);
+    val.str = len == 0
+      ? Const::EmptyStr().val.str
+      : pascalWStringFromC(chars, len);
     xltype = xltypeStr;
   }
 
