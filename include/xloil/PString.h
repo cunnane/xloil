@@ -24,6 +24,9 @@ namespace xloil
   public:
     using size_type = TChar;
     static constexpr size_type npos = size_type(-1);
+    static constexpr size_t max_length = (TChar)-1 - 1;
+    using traits = std::char_traits<TChar>;
+    
 
     /// <summary>
     /// Returns true if the string is empty
@@ -66,12 +69,8 @@ namespace xloil
     /// </summary>
     PStringImpl& operator=(const PStringImpl& that)
     {
-      if (this == &that)
-        return *this;
-      if(!write(that.pstr(), that.length()))
-        throw std::out_of_range(
-          formatStr("PString buffer too short: %u required, %u available", 
-            that.length(), length()));
+      if (this != &that)
+        writeOrThrow(that.pstr(), that.length());
       return *this;
     }
 
@@ -81,11 +80,37 @@ namespace xloil
     /// </summary>
     PStringImpl& operator=(const TChar* str)
     {
-      if(!write(str))
-        throw std::out_of_range(
-          formatStr("PString buffer too short: %u required, %u available",
-            wcslen(str), length()));
+      writeOrThrow(str, traits::length(str));
       return *this;
+    }
+    /// <summary>
+    /// Writes the given string_view into the buffer, raising an error
+    /// if the buffer is too short.
+    /// </summary>
+    PStringImpl& operator=(const std::basic_string_view<TChar>& str)
+    {
+      writeOrThrow(str, str.length());
+      return *this;
+    }
+
+    bool operator==(const PStringImpl& that) const
+    {
+      return view() == that;
+    }
+    template<class TChar>
+    bool operator==(const std::basic_string_view<TChar>& that) const
+    {
+      return view() == that;
+    }
+    bool operator==(const TChar* that) const
+    {
+      return view() == that;
+    }
+
+    template <class T>
+    bool operator!=(const T& that)
+    {
+      return !(*this == that);
     }
 
     wchar_t& operator[](const size_type i)
@@ -97,6 +122,7 @@ namespace xloil
       return _data[i + 1];
     }
 
+    // TODO: traits
     operator std::wstring_view() const
     {
       return view();
@@ -108,15 +134,14 @@ namespace xloil
     /// If len is omitted, writes all characters in str up to (but not 
     /// including) the null terminator.
     /// </summary>
-    bool write(const TChar* str, int len = -1)
+    bool write(const TChar* str, size_t len)
     {
-      if (len < 0)
-        len = (int)wcslen(str);
+
       if (len > length())
         return false;
       if (len > 0)
-        wmemcpy_s(_data + 1, _data[0], str, len);
-      _data[0] = (TChar)len;
+        traits::copy(_data + 1, str, len);
+      _data[0] = bound(len);
       return true;
     }
 
@@ -135,7 +160,7 @@ namespace xloil
     /// </summary>
     size_type chr(TChar needle) const
     {
-      auto p = wmemchr(pstr(), needle, length());
+      auto p = traits::find(pstr(), length(), needle);
       return p ? p - pstr() : npos;
     }
 
@@ -159,12 +184,30 @@ namespace xloil
         pstr() + from, count != npos ? count : length() - from);
     }
     
+    TChar bound(size_t len) const
+    {
+      return (TChar)(max_length < len ? max_length : len);
+    }
+    
   protected:
     TChar* _data;
 
     PStringImpl(TChar* data)
       : _data(data)
     {}
+
+    void writeOrThrow(const TChar* str, size_t len)
+    {
+      if (!write(str, len))
+        throw std::out_of_range(
+          formatStr("PString buffer too short: %u required, %u available",
+            len, length()));
+    }
+
+    void overwrite(const TChar* source, TChar len)
+    {
+      traits::copy(_data + 1, source, len);
+    }
   };
 
   template<class T>
@@ -204,24 +247,41 @@ namespace xloil
     /// </summary>
     explicit PString(size_type length, TAlloc allocator = TAlloc())
       : PStringImpl(length == 0 
-        ? nullptr 
-        : allocator.allocate(length + 1))
+          ? nullptr 
+          : allocator.allocate(length + 1))
       , _alloc(allocator)
     {
       if (length > 0)
         _data[0] = length;
     }
 
-  
     /// <summary>
     /// Construct from an STL string
     /// </summary>
     /// <param name="str"></param>
-    explicit PString(const std::basic_string<TChar>& str, TAlloc allocator = TAlloc())
+    explicit PString(const std::basic_string_view<TChar>& str, TAlloc allocator = TAlloc())
       : PString((TChar)str.length(), allocator)
     {
-      const auto nBytes = length() * sizeof(TChar);
-      memcpy_s(_data + 1, nBytes, str.data(), nBytes);
+      overwrite(str.data(), (TChar)str.length());
+    }
+
+    /// <summary>
+    /// Construct from C-string 
+    /// </summary>
+    PString(const TChar* str, TAlloc allocator = TAlloc())
+      : PString((TChar)traits::length(str), allocator)
+    {
+      overwrite(str, length());
+    }
+
+    /// <summary>
+    /// Construct from string literal
+    /// </summary>
+    template<size_t N>
+    PString(const TChar(*str)[N], TAlloc allocator = TAlloc())
+      : PString((TChar)N, allocator)
+    {
+      overwrite(str, (TChar)N);
     }
 
     /// <summary>
@@ -231,7 +291,7 @@ namespace xloil
     PString(const PStringImpl& that, TAlloc allocator = TAlloc())
       : PString(that.length(), allocator)
     {
-      wmemcpy_s(_data + 1, _data[0], that.pstr(), that.length());
+      traits::copy(_data + 1, that.pstr(), length());
     }
 
     /// <summary>
@@ -267,6 +327,30 @@ namespace xloil
       _alloc = that._alloc;
       return *this;
     }
+
+    /// <summary>
+  /// Writes the given null-terminated string into the buffer, raising an error
+  /// if the buffer is too short.
+  /// </summary>
+    PStringImpl& operator=(const TChar* str)
+    {
+      const auto len = bound(traits::length(str));
+      resize(len);
+      overwrite(str, len);
+      return *this;
+    }
+    /// <summary>
+    /// Writes the given string_view into the buffer, raising an error
+    /// if the buffer is too short.
+    /// </summary>
+    PStringImpl& operator=(const std::basic_string_view<TChar>& str)
+    {
+      const auto len = bound(str.length());
+      resize(len);
+      overwrite(str.data(), len);
+      return *this;
+    }
+
     using PStringImpl::operator=;
 
     /// <summary>
@@ -291,7 +375,7 @@ namespace xloil
       else
       {
         PString copy(sz);
-        wmemcpy_s(copy._data + 1, sz, _data, length());
+        traits::copy(copy._data + 1, _data, sz);
         *this = std::move(copy);
       }
     }
@@ -300,6 +384,7 @@ namespace xloil
       : PStringImpl(data)
       , _alloc(allocator)
     {}
+    
   };
 
   /// <summary>
@@ -361,6 +446,8 @@ namespace xloil
     /// <returns></returns>
     PStringView strtok(const TChar* delims)
     {
+      const auto nDelims = traits::length(delims);
+
       // If a previous PString is passed in, we will have tokenised the string
       // into [n]token[m]remaining, so the end() iterator should point to [m].
       // Otherwise we start with our own _data buffer.
@@ -375,7 +462,7 @@ namespace xloil
       // p points to the first char in the string, step until we are not
       // pointing at a delimiter. If we hit the end of the string, there
       // are no more tokens, so return a null PString.
-      while (wcschr(delims, *p))
+      while (traits::find(delims, nDelims, *p))
         if (++p == pEnd)
           return PStringView();
 
@@ -383,7 +470,7 @@ namespace xloil
       auto* token = p;
 
       // Find the next delimiter
-      while (p < pEnd && !wcschr(delims, *p)) ++p;
+      while (p < pEnd && !traits::find(delims, nDelims, *p)) ++p;
       const auto tokenLen = (TChar)(p - token);
 
       // We know token[-1] must point to a delimiter or a length count,

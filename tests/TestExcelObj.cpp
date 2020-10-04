@@ -18,7 +18,7 @@ namespace Tests
   {
   public:
 
-    TEST_METHOD(Comparison)
+    TEST_METHOD(TestComparison)
     {
       Assert::IsFalse(ExcelObj(L"Hello") < ExcelObj(L"hello"));
       Assert::IsTrue(ExcelObj(1.5) < ExcelObj(2));
@@ -36,6 +36,18 @@ namespace Tests
         smaller1,
         ExcelObj(largerValues.begin(), largerValues.end()),
         true, true));
+    }
+
+    TEST_METHOD(TestStrings)
+    {
+      {
+        Assert::IsTrue(ExcelObj(L"Foo") == L"Foo");
+        Assert::IsTrue(ExcelObj(L"Foo") == wstring(L"Foo"));
+        Assert::IsTrue(ExcelObj("Foo") == L"Foo");
+        Assert::IsTrue(ExcelObj("Foo") == wstring(L"Foo"));
+        Assert::IsTrue(ExcelObj("") == L"");
+        Assert::IsFalse(ExcelObj(3) == L"Foo");
+      }
     }
   };
 }

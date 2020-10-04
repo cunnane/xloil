@@ -11,10 +11,31 @@ namespace Tests
   TEST_CLASS(PStringTests)
   {
   public:
-
+    TEST_METHOD(Test_Create)
+    {
+      {
+        PString str(L"Foo");
+        Assert::IsTrue(str == L"Foo");
+        str.resize(6);
+        str = L"Foobar";
+        Assert::IsTrue(str == L"Foobar");
+      }
+      {
+        PString<> str(wstring(L"Foo"));
+        Assert::IsTrue(str == L"Foo");
+      }
+      {
+        PString<> str(3);
+        str = wstring(L"Foo");
+        Assert::IsTrue(str == L"Foo");
+        // Check resize is automatic
+        str = L"Foobar";
+        Assert::IsTrue(str == L"Foobar");
+      }
+    }
     TEST_METHOD(Test_Strtok)
     {
-      PString address(wstring(L"['My Book']'My Sheet'!A1"));
+      PString address(L"['My Book']'My Sheet'!A1");
       PStringView view(address);
 
       const auto delims = L"[]'!";

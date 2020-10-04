@@ -186,22 +186,51 @@ namespace xloil
     /// <summary>
     /// Construct from char string
     /// </summary>
-    explicit ExcelObj(const char*);
+    explicit ExcelObj(const char* str)
+    {
+      createFromChars(str, strlen(str));
+    }
     explicit ExcelObj(char* str) : ExcelObj(const_cast<const char*>(str)) {}
 
     /// <summary>
     /// Construct from wide-char string
     /// </summary>
-    explicit ExcelObj(const wchar_t*);
+    explicit ExcelObj(const wchar_t* str)
+      : ExcelObj(std::move(PString<>(str)))
+    {}
     explicit ExcelObj(wchar_t* str) : ExcelObj(const_cast<const wchar_t*>(str)) {}
+
+    /// <summary>
+    /// Construct from STL wstring
+    /// </summary>
+    explicit ExcelObj(const std::wstring& s)
+      : ExcelObj(std::move(PString<>(s)))
+    {}
 
     /// <summary>
     /// Construct from STL string
     /// </summary>
-    template <class T>
-    explicit ExcelObj(const std::basic_string<T>& s)
-      : ExcelObj(s.c_str())
+    explicit ExcelObj(const std::string& s)
+    {
+      createFromChars(s.c_str(), s.length());
+    }    
+    
+    /// <summary>
+    /// Construct from string literal
+    /// </summary>
+    template<size_t N>
+    explicit ExcelObj(const wchar_t(*str)[N])
+      : ExcelObj(std::move(PString<>(str)))
     {}
+
+    /// <summary>
+    /// Construct from char-string literal
+    /// </summary>
+    template<size_t N>
+    explicit ExcelObj(const char(*str)[N])
+    {
+      createFromChars(str, N);
+    }
 
     /// <summary>
     /// Move ctor from owned Pascal string buffer. This takes ownership
@@ -256,6 +285,14 @@ namespace xloil
     /// </summary>
     template <class TIter>
     ExcelObj(TIter begin, TIter end);
+
+    /// <summary>
+    /// Construct from initialiser list
+    /// </summary>
+    template <class TIter>
+    ExcelObj(std::initializer_list<TIter> vals)
+      : ExcelObj(vals.begin(), vals.end())
+    {}
 
     /// <summary>
     /// Catch constructor: purpose is to avoid pointers
@@ -352,6 +389,25 @@ namespace xloil
     {
       return this->xtype() == msxll::xltypeErr && val.err == (int)that;
     }
+
+    /// <summary>
+    /// Compare to string (will return false if the ExcelObj is not of 
+    /// string type
+    /// </summary>
+    bool operator==(const std::wstring_view& that) const
+    {
+      return asPascalStr() == that;
+    }
+
+    /// <summary>
+    /// Compare to string (will return false if the ExcelObj is not of 
+    /// string type
+    /// </summary>
+    bool operator==(const wchar_t* that) const
+    {
+      return asPascalStr() == that;
+    }
+
     /// <summary>
     /// Returns -1 if left < right, 0 if left == right, else 1.
     /// 
@@ -649,7 +705,7 @@ namespace xloil
         overwriteComplex(to, from);
     }
 
-    ExcelObj * toExcel()
+    ExcelObj* toExcel()
     {
       xltype |= msxll::xlbitDLLFree;
       return this;
@@ -663,6 +719,7 @@ namespace xloil
     }
    private:
     static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
+    void createFromChars(const char* chars, size_t len);
   };
 }
 
