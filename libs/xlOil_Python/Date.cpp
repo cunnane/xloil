@@ -50,51 +50,62 @@ namespace xloil
       }
     }
 
-    template<class TSuper=nullptr_t>
-    class PyFromDate : public PyFromCache<NullCoerce<TSuper, PyFromDate<>>>
+    class PyFromDate : public FromExcelBase<PyObject*>
     {
     public:
-      // TODO: string->date conversion, slow but useful
-      PyObject* fromInt(int x) const 
+      using FromExcelBase::operator();
+
+      PyObject* operator()(int x) const 
       {
         int day, month, year;
         excelSerialDateToYMD(x, year, month, day);
         return PyDate_FromDate(year, month, day);
       }
-      PyObject* fromDouble(double x) const
+      PyObject* operator()(double x) const
       {
-        return fromInt(int(x));
+        return operator()(int(x));
       }
-      PyObject* fromString(const PStringView<>& pstr) const
+      PyObject* operator()(const PStringView<>& pstr) const
       {
         std::tm tm;
         if (stringToDateTime(pstr.view(), tm))
           return PyDate_FromDate(tm.tm_year, tm.tm_mon, tm.tm_yday);
-        return PyFromCache::fromString(pstr);
+        return nullptr;
       }
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
-    class PyFromDateTime : public PyFromDate<PyFromDateTime>
+
+    class PyFromDateTime : public FromExcelBase<PyObject*>
     {
     public:
-      PyObject* fromDouble(double x) const
+      using FromExcelBase::operator();
+
+      PyObject* operator()(int x) const
+      {
+        return PyFromDate()(x);
+      }
+
+      PyObject* operator()(double x) const
       {
         int day, month, year, hours, mins, secs, usecs;
         excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
         return PyDateTime_FromDateAndTime(year, month, day, hours, mins, secs, usecs);
       }
-      PyObject* fromString(const PStringView<>& pstr) const
+
+      PyObject* operator()(const PStringView<>& pstr) const
       {
         std::tm tm;
         if (stringToDateTime(pstr.view(), tm))
           return PyDateTime_FromDateAndTime(
             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
             tm.tm_hour, tm.tm_min, tm.tm_sec, 0);
-        return PyFromCache::fromString(pstr);
+        return nullptr;
       }
+
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
-    class XlFromDate : public IPyToExcel
+
+    class PyDateToExcel : public IPyToExcel
     {
     public:
       ExcelObj operator()(const PyObject& obj) const override
@@ -104,7 +115,7 @@ namespace xloil
           : ExcelObj();
       }
     };
-    class XlFromDateTime : public IPyToExcel
+    class PyDateTimeToExcel : public IPyToExcel
     {
     public:
       ExcelObj operator()(const PyObject& obj) const override
@@ -124,10 +135,10 @@ namespace xloil
       }
       static int theBinder = addBinder([](py::module& mod)
       {
-        bindPyConverter<PyFromExcel<PyFromDateTime>>(mod, "datetime").def(py::init<>());
-        bindPyConverter<PyFromExcel<PyFromDate<>>>(mod, "date").def(py::init<>());
-        bindXlConverter<XlFromDateTime>(mod, "datetime").def(py::init<>());
-        bindXlConverter<XlFromDate>(mod, "date").def(py::init<>());
+        bindPyConverter<PyExcelConverter<PyFromDateTime>>(mod, "datetime").def(py::init<>());
+        bindPyConverter<PyExcelConverter<PyFromDate>>(mod, "date").def(py::init<>());
+        bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
+        bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
       });
     }
   }

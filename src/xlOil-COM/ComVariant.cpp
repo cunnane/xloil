@@ -14,27 +14,31 @@ namespace xloil
 {
   namespace COM
   {
-    class ToVariant : public FromExcelBase<VARIANT, ToVariant>
+    class ToVariant : public FromExcelBase<VARIANT>
     {
     public:
       using result_t = VARIANT;
-      result_t fromInt(int x) const
+
+      using FromExcelBase::operator();
+
+      result_t operator()(int x) const
       {
         return _variant_t(x).Detach();
       }
-      result_t fromBool(bool x) const
+      result_t operator()(bool x) const
       {
         return _variant_t(x).Detach();
       }
-      result_t fromDouble(double x) const
+      result_t operator()(double x) const
       {
         return _variant_t(x).Detach();
       }
-      result_t fromArray(const ExcelObj& obj) const
+      result_t operator()(ArrayVal obj) const
       {
-        return fromArrayObj(ExcelArray(obj, false));
+        // No array trimming, for some good reason
+        return operator()(ExcelArray(obj.obj, false));
       }
-      result_t fromArrayObj(const ExcelArray& arr) const
+      result_t operator()(const ExcelArray& arr) const
       {
         const auto nRows = arr.nRows();
         const auto nCols = arr.nCols();
@@ -71,7 +75,7 @@ namespace xloil
 
         return result;
       }
-      result_t fromString(const PStringView<>& pstr) const
+      result_t operator()(const PStringView<>& pstr) const
       {
         VARIANT result;
         VariantInit(&result);
@@ -79,33 +83,27 @@ namespace xloil
         V_BSTR(&result) = SysAllocStringLen(pstr.pstr(), (UINT)pstr.length());
         return result;
       }
-      result_t fromError(CellError x) const
+      result_t operator()(CellError x) const
       {
         // Magical constant from: 
         // https://docs.microsoft.com/en-us/office/client-developer/excel/how-to-access-dlls-in-excel
         return _variant_t((long)x + (long)0x800A07D0, VT_ERROR).Detach();
       }
-      result_t fromEmpty(const result_t*) const
+      result_t operator()(RefVal ref) const
       {
-        return _variant_t().Detach();
+        return operator()(ExcelRef(ref.obj).value());
       }
-      result_t fromMissing(const result_t*) const
+
+      // Not part of the usual FromExcel interface, just to aid cascading
+      result_t operator()(const ExcelObj& obj) const
       {
-        return _variant_t().Detach();
-      }
-      result_t fromRef(const ExcelObj& obj) const
-      {
-        return fromRef(ExcelRef(obj));
-      }
-      result_t fromRef(const ExcelRef& r) const
-      {
-        return (*this)(r.value());
+        return FromExcel<ToVariant>()(obj);
       }
     };
 
     VARIANT excelObjToVariant(const ExcelObj& obj)
     {
-      return ToVariant()(obj);
+      return FromExcel<ToVariant>()(obj, &vtMissing);
     }
 
     // Small helper function for array conversion

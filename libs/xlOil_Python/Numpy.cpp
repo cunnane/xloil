@@ -43,23 +43,16 @@ namespace xloil
       return PyArray_Check(p);
     }
 
-    PyObject* excelToNumpyArray(const ExcelObj& obj, PyTypeObject* type)
-    {
-      auto descr = PyArray_DescrFromTypeObject((PyObject*)type);
-      PyTypeNum_ISINTEGER(descr->type_num);
-      return nullptr;
-    }
-
-
     /**********************
      * Numpy helper types *
      **********************/
 
     // We need to override the nan returned here as numpy's nan is not
-    // the same as defined in numeric_limits for some reason.
-    struct ToDoubleNPYNan : ToDouble
+    // the same as the one defined in numeric_limits for some reason.
+    struct ToDoubleNPYNan : ToDouble<double>
     {
-      double fromError(CellError err) const
+      using ToDouble::operator();
+      double operator()(CellError err) const
       {
         switch (err)
         {
@@ -70,13 +63,14 @@ namespace xloil
         case CellError::NA:
           return NPY_NAN;
         }
-        return ToDouble::fromError(err);
+        return ToDouble::operator()(err);
       }
     };
 
-    struct ToFloatNPYNan
+    struct ToFloatNPYNan : public FromExcelBase<float>
     {
-      float operator()(const ExcelObj& x) const
+      template<class T>
+      float operator()(T x) const
       {
         return static_cast<float>(ToDoubleNPYNan()(x));
       }
@@ -85,30 +79,32 @@ namespace xloil
     class NumpyDateFromDate : public FromExcelBase<npy_datetime>
     {
     public:
-      npy_datetime fromInt(int x) const
+      using FromExcelBase::operator();
+
+      npy_datetime operator()(int x) const
       {
         int day, month, year;
         excelSerialDateToYMD(x, year, month, day);
         npy_datetimestruct dt = { year, month, day };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
-      npy_datetime fromDouble(double x) const
+      npy_datetime operator()(double x) const
       {
         int day, month, year, hours, mins, secs, usecs;
         excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
         npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
-      npy_datetime fromString(const PStringView<>& str) const
+      npy_datetime operator()(const PStringView<>& str) const
       {
         std::tm tm;
         if (stringToDateTime(str.view(), tm))
         {
-          npy_datetimestruct dt = { tm.tm_year + 1900, tm.tm_mon + 1, 
+          npy_datetimestruct dt = { tm.tm_year + 1900, tm.tm_mon + 1,
             tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0 };
           return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
         }
-        return FromExcelBase::fromString(str);
+        XLO_THROW("Cannot read '{0}' as a date");
       }
     };
    
@@ -149,10 +145,24 @@ namespace xloil
       }
     };
 
+    /// <summary>
+    /// Helper class which assigns the value of an ExcelObj conversion 
+    /// to an numpy array element.  The size_t param is only used for
+    /// strings
+    /// </summary>
     template<class TExcelObjConverter, class TResultValue>
     struct NPToT
     {
       void operator()(TResultValue* d, size_t, const ExcelObj& x) const
+      {
+        *d = FromExcel<TExcelObjConverter>()(x);
+      }
+    };
+
+    template<class TExcelObjConverter>
+    struct NPToT<TExcelObjConverter, PyObject*>
+    {
+      void operator()(PyObject** d, size_t, const ExcelObj& x) const
       {
         *d = TExcelObjConverter()(x);
       }
@@ -161,13 +171,13 @@ namespace xloil
     template <class T> struct TypeTraitsBase { };
 
     template <int> struct TypeTraits {};
-    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<ToBool, storage>;  };
-    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<ToInt, storage>;  };
-    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<ToInt, storage>;  };
-    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<ToInt, storage>; };
-    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<ToInt, storage>; };
-    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<ToInt, storage>; };
-    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<ToInt, storage>; };
+    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<ToBool<>, storage>;  };
+    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<ToInt<>, storage>;  };
+    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<ToInt<>, storage>;  };
+    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<ToInt<>, storage>; };
     template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToFloatNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DOUBLE> { using storage = double; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
@@ -188,9 +198,13 @@ namespace xloil
     template<> struct TypeTraits<NPY_OBJECT> 
     { 
       using storage = PyObject * ;
-      using from_excel = NPToT<PyFromExcel<PyFromAny<>>, storage>;
+      using from_excel = NPToT<PyFromAny, PyObject*>;
     };
 
+    /// <summary>
+    /// Returns the storage size required to write the given array as
+    /// a numpy array
+    /// </summary>
     template<int TNpType>
     size_t getItemSize(const ExcelArray& arr)
     {
@@ -200,16 +214,17 @@ namespace xloil
     template<>
     size_t getItemSize<NPY_STRING>(const ExcelArray& arr)
     {
-      uint16_t strLength = 0;
+      size_t strLength = 0;
       for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
-        strLength = std::max(strLength, arr.at(i).maxStringLength());
+        strLength = std::max<size_t>(strLength, arr.at(i).maxStringLength());
       return strLength * sizeof(TypeTraits<NPY_STRING>::storage);
     }
 
     template<>
     size_t getItemSize<NPY_UNICODE>(const ExcelArray& arr)
     {
-      return getItemSize<NPY_STRING>(arr) * sizeof(TypeTraits<NPY_UNICODE>::storage);
+      return getItemSize<NPY_STRING>(arr) 
+        * sizeof(TypeTraits<NPY_UNICODE>::storage);
     }
 
     template <template <int> class TThing, class... Args>
@@ -236,20 +251,24 @@ namespace xloil
     }
 
     template <int TNpType>
-    class PyFromArray1d : public PyFromCache<PyFromArray1d<TNpType>>
+    class PyFromArray1d : public FromExcelBase<PyObject*>
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
       using data_type = typename TypeTraits<TNpType>::storage;
     public:
-      PyFromArray1d(bool trim) : _trim(trim) {}
+      PyFromArray1d(bool trim = true) : _trim(trim) 
+      {}
 
-      PyObject* fromArray(const ExcelObj& obj) const
+      using FromExcelBase::operator();
+
+      PyObject* operator()(ArrayVal obj) const
       {
-        ExcelArray arr(obj, _trim);
-        return fromArrayObj(arr);
+        ExcelArray arr(obj.obj, _trim);
+        return (*this)(arr);
       }
-      PyObject* fromArrayObj(const ExcelArray& arr) const
+
+      PyObject* operator()(const ExcelArray& arr) const
       {
         if (arr.size() == 0)
           Py_RETURN_NONE;
@@ -278,22 +297,25 @@ namespace xloil
     };
 
     template <int TNpType>
-    class PyFromArray2d : public PyFromCache<PyFromArray2d<TNpType>>
+    class PyFromArray2d : public FromExcelBase<PyObject*>
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
       using TDataType = typename TypeTraits<TNpType>::storage;
 
     public:
-      PyFromArray2d(bool trim) : _trim(trim) {}
+      PyFromArray2d(bool trim = true) : _trim(trim) 
+      {}
 
-      PyObject* fromArray(const ExcelObj& obj) const
+      using FromExcelBase::operator();
+
+      PyObject* operator()(ArrayVal obj) const
       {
-        ExcelArray arr(obj, _trim);
-        return fromArrayObj(arr);
+        ExcelArray arr(obj.obj, _trim);
+        return (*this)(arr);
       }
 
-      PyObject* fromArrayObj(const ExcelArray& arr) const
+      PyObject* operator()(const ExcelArray& arr) const
       {
         if (arr.size() == 0)
           Py_RETURN_NONE;
@@ -389,7 +411,6 @@ namespace xloil
           XLO_THROW("Incorrect array type");
 
         stringLength = 0;
-        auto p = *(PyObject**)pArr;
         auto dims = PyArray_DIMS(pArr);
         auto nDims = PyArray_NDIM(pArr);
 
@@ -495,13 +516,6 @@ namespace xloil
       default: return NPY_OBJECT;
       }
     }
-    template<int Dtype, template<int> class TWhat>
-    struct ThingyImpl
-    {
-      auto operator()(const ExcelArray& arr) const { return TWhat<Dtype>(true).fromArrayObj(arr); }
-    };
-    template<int Dtype> using Thingy1 = ThingyImpl<Dtype, PyFromArray1d>;
-    template<int Dtype> using Thingy2 = ThingyImpl<Dtype, PyFromArray2d>;
 
     PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims, int dtype)
     {
@@ -510,9 +524,9 @@ namespace xloil
       switch (dims)
       {
       case 1:
-        return switchDataType<Thingy1>(dtype, arr);
+        return switchDataType<PyFromArray1d>(dtype, arr);
       case 2:
-        return switchDataType<Thingy2>(dtype, arr);
+        return switchDataType<PyFromArray2d>(dtype, arr);
       default:
         XLO_THROW("Dimensions must be 1 or 2");
       };
@@ -540,10 +554,10 @@ namespace xloil
     namespace
     {
       template <int TNpType>
-      using Array1dFromXL = PyFromExcel<PyFromArray1d<TNpType>>;
+      using Array1dFromXL = PyExcelConverter<PyFromArray1d<TNpType>>;
 
       template <int TNpType>
-      using Array2dFromXL = PyFromExcel<PyFromArray2d<TNpType>>;
+      using Array2dFromXL = PyExcelConverter<PyFromArray2d<TNpType>>;
 
       template<class T>
       void declare(pybind11::module& mod, const char* type)
@@ -553,12 +567,6 @@ namespace xloil
           .def(py::init<bool>(), py::arg("trim")=true);
       }
 
-      //template<class T>
-      //void declare2(pybind11::module& mod, const char* name)
-      //{
-      //  py::class_<T, IPyToExcel, shared_ptr<T>>(mod, name)
-      //    .def(py::init<bool>(), py::arg("cache") = false);
-      //}
       static int theBinder = addBinder([](py::module& mod)
       {
         declare<Array1dFromXL<NPY_INT>      >(mod, "int_1d");

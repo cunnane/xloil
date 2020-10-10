@@ -21,174 +21,215 @@ namespace xloil
 {
   namespace Python
   {
-    class IPyFromExcel : public IConvertFromExcel<PyObject*>
-    {
-    public:
-      virtual PyObject* fromArray(const ExcelArray& arr) const = 0;
-    };
+    using IPyFromExcel = IConvertFromExcel<PyObject*>;
     using IPyToExcel = IConvertToExcel<PyObject>;
 
-    template<class TSuper=nullptr_t>
-    class PyFromCache : public CacheConverter<PyObject*, NullCoerce<TSuper, PyFromCache<>>>
+    namespace detail
     {
-    public:
-      using base_type = CacheConverter;
-      PyObject* fromString(const PStringView<>& pstr) const
+      /// <summary>
+      /// Wraps a type conversion functor, interepting the string conversion to
+      /// look for a python cache reference.  If found, returns the cache object,
+      /// otherwise passes the string through.
+      /// </summary>
+      template<class TBase>
+      struct PyFromCache : public TBase
       {
-        pybind11::object cached;
-        if (pyCacheGet(pstr.view(), cached))
-          return cached.release().ptr();
-        return base_type::fromString(pstr);
-      }
-    };
+        template <class...Args>
+        PyFromCache(Args&&...args) 
+          : TBase(std::forward<Args>(args)...)
+        {}
 
-    class PyFromDouble : public PyFromCache<PyFromDouble>
-    {
-    public:
-      PyObject * fromDouble(double x) const { return PyFloat_FromDouble(x); }
-      constexpr wchar_t* failMessage() const { return L"Expected float"; }
-    };
+        using TBase::operator();
+        PyObject* operator()(const PStringView<>& str) const
+        {
+          pybind11::object cached;
+          if (pyCacheGet(str.view(), cached))
+            return cached.release().ptr();
+          return TBase::operator()(str);
+        }
+      };
 
-    class PyFromBool : public PyFromCache<PyFromBool>
-    {
-    public:
-      PyObject * fromBool(bool x) const { if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE; }
-      constexpr wchar_t* failMessage() const { return L"Expected bool"; }
-    };
-
-    class PyFromString : public CacheConverter<PyObject*, PyFromString>
-    {
-    public:
-      PyObject * fromString(const PStringView<>& pstr) const
+      struct PyFromDouble : public FromExcelBase<PyObject*>
       {
-        return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
-      }
-      PyObject* fromEmpty(const PyObject*) const { return PyUnicode_New(0, 127); }
-      PyObject* fromInt(int x) const { return PyUnicode_FromFormat("%i", x); }
-      PyObject* fromBool(bool x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
-      PyObject* fromDouble(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        using FromExcelBase::operator();
+        PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
+        constexpr wchar_t* failMessage() const { return L"Expected float"; }
+      };
 
-      constexpr wchar_t* failMessage() const { return L"Expected string"; }
-    };
-
-    class PyFromInt : public PyFromCache<PyFromInt>
-    {
-    public:
-      PyObject* fromInt(int x) const { return PyLong_FromLong(long(x)); }
-      PyObject* fromDouble(double x) const
+      struct PyFromBool : public FromExcelBase<PyObject*>
       {
-        long i;
-        if (floatingToInt(x, i))
-          return PyLong_FromLong(i);
-        return nullptr;
-      }
-      constexpr wchar_t* failMessage() const { return L"Expected int"; }
-    };
+        using FromExcelBase::operator();
+        PyObject* operator()(bool x) const
+        {
+          if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
+        }
+        constexpr wchar_t* failMessage() const { return L"Expected bool"; }
+      };
 
-    template<class TSuper = nullptr_t>
-    class PyFromAny : public PyFromCache<NullCoerce<TSuper, PyFromAny<>>>
-    {
-    public:
-      PyObject* fromInt(int x) const { return PyFromInt().fromInt(x); }
-      PyObject* fromBool(bool x) const { return PyFromBool().fromBool(x); }
-      PyObject* fromDouble(double x) const { return PyFromDouble().fromDouble(x); }
-      PyObject* fromArray(const ExcelObj& obj) const { return excelArrayToNumpyArray(ExcelArray(obj)); }
-      
-      PyObject* fromEmpty(const PyObject*) const { Py_RETURN_NONE; }
-
-      PyObject* fromString(const PStringView<>& pstr) const 
-      { 
-        auto result = PyFromCache<PyFromAny>::fromString(pstr);
-        if (result)
-          return result;
-        return PyFromString().fromString(pstr);
-      }
-
-      PyObject * fromError(CellError err) const
+      struct PyFromString : public FromExcelBase<PyObject*>
       {
-        auto pyObj = pybind11::cast(err);
-        return pyObj.release().ptr();
-      }
-      PyObject * fromRef(const ExcelObj& obj) const
-      {
-        return pybind11::cast(newXllRange(obj)).release().ptr();
-      }
+        using FromExcelBase::operator();
+        PyObject* operator()(const PStringView<>& pstr) const
+        {
+          return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
+        }
+        // Return empty string for Excel Nil value
+        PyObject* operator()(nullptr_t) const { return PyUnicode_New(0, 127); }
+        PyObject* operator()(int x) const { return PyUnicode_FromFormat("%i", x); }
+        PyObject* operator()(bool x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        PyObject* operator()(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
 
-      constexpr wchar_t* failMessage() const { return L"Unknown type"; }
-    };
+        constexpr wchar_t* failMessage() const { return L"Expected string"; }
+      };
+
+      struct PyFromInt : public FromExcelBase<PyObject*>
+      {
+        using FromExcelBase::operator();
+        PyObject* operator()(int x) const { return PyLong_FromLong(long(x)); }
+        PyObject* operator()(double x) const
+        {
+          long i;
+          if (floatingToInt(x, i))
+            return PyLong_FromLong(i);
+          return nullptr;
+        }
+        constexpr wchar_t* failMessage() const { return L"Expected int"; }
+      };
+
+      struct PyFromAny : public FromExcelBase<PyObject*>
+      {
+        using FromExcelBase::operator();
+
+        PyObject* operator()(int x) const { return PyFromInt()(x); }
+        PyObject* operator()(bool x) const { return PyFromBool()(x); }
+        PyObject* operator()(double x) const { return PyFromDouble()(x); }
+        PyObject* operator()(ArrayVal arr) const
+        {
+          return excelArrayToNumpyArray(ExcelArray(arr));
+        }
+
+        // Return python None for Excel nil value
+        PyObject* operator()(nullptr_t) const { Py_RETURN_NONE; }
+
+        PyObject* operator()(const PStringView<>& pstr) const
+        {
+          return PyFromString()(pstr);
+        }
+
+        PyObject* operator()(CellError err) const
+        {
+          auto pyObj = pybind11::cast(err);
+          return pyObj.release().ptr();
+        }
+        PyObject* operator()(RefVal ref) const
+        {
+          return pybind11::cast(newXllRange(ref)).release().ptr();
+        }
+
+        constexpr wchar_t* failMessage() const { return L"Unknown type"; }
+      };
+
+      /// <summary>
+      /// Type converter which expects a cache reference string and rejects
+      /// all other types.
+      /// </summary>
+      class PyCacheObject : public FromExcelBase<PyObject*>
+      {
+      public:
+        using FromExcelBase::operator();
+
+        PyObject* operator()(const PStringView<>& pstr) const
+        {
+          PyObject* _typeCheck = nullptr;
+
+          pybind11::object cached;
+          if (pyCacheGet(pstr.view(), cached))
+          {
+            // Type checking seems nice, but it's unpythonic to raise an error here
+            if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
+              XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
+            return cached.release().ptr();
+          }
+          return nullptr;
+        }
+
+        constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
+      };
+    }
     
     /// <summary>
-    /// TODO: Not currently used but seems like a nice idea some time
+    /// Wraps a type conversion implementation, similarly to <see cref="xloil::FromExcel"/>
+    /// Checks all ExcelObj strings for both python and ExcelObj cache references.
+    /// Throws an error if conversion fails. 
     /// </summary>
-    class PyCacheObject : public CacheConverter<PyObject*, PyCacheObject>
+    template<class TImpl>
+    struct PyFromExcel
     {
-      PyObject* _typeCheck = nullptr;
-    public:
-     // PyCacheObject(PyObject* typeCheck) : _typeCheck(typeCheck) {}
+      detail::PyFromCache<CacheConverter<TImpl>> _impl;
 
-      PyObject* fromString(const PStringView<>& pstr) const
-      {
-        pybind11::object cached;
-        if (pyCacheGet(pstr.view(), cached))
-        {
-          // Type checking seems nice, but it's unpythonic to raise an error here
-          if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
-            XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
-          return cached.release().ptr();
-        }
-        return nullptr;
-      }
-
-      constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
-    };
-
-    template <class TImpl>
-    class FromExcel
-    {
-      TImpl _impl;
-
-    public:
       template <class...Args>
-      FromExcel(Args&&...args) : _impl(std::forward<Args>(args)...) 
-      {}
-
-      PyObject* operator()(const ExcelObj& xl, const PyObject* defaultVal = nullptr) const
-      {
-        auto ret = _impl(xl, defaultVal);
-        if (!ret)
-          XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(), 
-            PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
-        
-        return ret;
-      }
-      PyObject* fromArray(const ExcelArray& arr) const
-      {
-        auto ret = _impl.fromArrayObj(arr);
-        if (!ret)
-          XLO_THROW(L"Cannot convert to array: {0}", 
-            PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
-        
-        return ret;
-      }
-      TImpl& impl() const { return _impl._impl; }
-    };
-
-    template <class TImpl>
-    class PyFromExcel : public IPyFromExcel
-    {
-      FromExcel<TImpl> _impl;
-    public:
-      template <class...Args>
-      PyFromExcel(Args&&...args) 
+      PyFromExcel(Args&&...args)
         : _impl(std::forward<Args>(args)...)
       {}
-      virtual PyObject* fromArray(const ExcelArray& arr) const override
+
+      auto operator()(
+        const ExcelObj& xl,
+        const PyObject* defaultVal) const
       {
-        return _impl.fromArray(arr);
+        return operator()(xl, const_cast<PyObject*>(defaultVal));
       }
-      virtual PyObject* operator()(const ExcelObj& xl, const PyObject* defaultVal = nullptr) const override
+
+      auto operator()(
+        const ExcelObj& xl,
+        PyObject* defaultVal = nullptr) const
       {
-        return _impl(xl, defaultVal);
+        auto ret = visitExcelObj(xl, _impl, &defaultVal);
+        if (!ret)
+          XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(),
+            PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
+        return ret;
+      }
+    };
+
+    using PyFromInt = PyFromExcel<detail::PyFromInt>;
+    using PyFromBool = PyFromExcel<detail::PyFromBool>;
+    using PyFromDouble = PyFromExcel<detail::PyFromDouble>;
+    using PyFromString = PyFromExcel<detail::PyFromString>;
+    using PyFromAny = PyFromExcel<detail::PyFromAny>;
+    using PyCacheObject = PyFromExcel<detail::PyCacheObject>;
+
+    namespace detail
+    {
+      /// <summary>
+      /// Used by PyExcelConverter
+      /// </summary>
+      template <class T>
+      struct MakePyFromExcel { using type = PyFromExcel<T>; };
+      template <class T>
+      struct MakePyFromExcel<PyFromExcel<T>> { using type = PyFromExcel<T>; };
+    }
+
+    /// <summary>
+    /// Wraps a <see cref="PyFromExcel"/> to inherit from <see cref="IPyFromExcel"/>
+    /// and create a type converter object with a virtual call.
+    /// </summary>
+    template <class TImpl>
+    class PyExcelConverter : public IPyFromExcel
+    {
+      typename detail::MakePyFromExcel<TImpl>::type _impl;
+
+    public:
+      template <class...Args>
+      PyExcelConverter(Args&&...args) 
+        : _impl(std::forward<Args>(args)...)
+      {}
+
+      virtual PyObject* operator()(
+        const ExcelObj& xl, const PyObject* defaultVal = nullptr) const override
+      {
+        // Because ref-counting there's no notion of a const PyObject*
+        // for a default value
+        return _impl(xl, const_cast<PyObject*>(defaultVal));
       }
     };
 

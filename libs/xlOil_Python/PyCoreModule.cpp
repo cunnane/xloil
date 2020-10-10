@@ -84,17 +84,8 @@ namespace xloil {
         // Bind the two base classes for python converters
         py::class_<IPyFromExcel, shared_ptr<IPyFromExcel>>(mod, "IPyFromExcel")
           .def("__call__",
-            [](const IPyFromExcel& self, const py::object& arg)
+            [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
             {
-              if (Py_TYPE(arg.ptr()) == ExcelArrayType)
-              {
-                auto arr = arg.cast<PyExcelArray>();
-                return self.fromArray(arr.base());
-              }
-              else if (PyLong_Check(arg.ptr()))
-              {
-                return self(ExcelObj(arg.cast<long>()));
-              }
               XLO_THROW("Not implemented");
             });
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");

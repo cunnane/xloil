@@ -7,47 +7,50 @@
 namespace py = pybind11;
 using std::shared_ptr;
 
-// TODO: py dict output to Excel?
-
 namespace xloil
 {
   namespace Python
   {
-    template <class TKeyConv, class TValConv>
-    class PyDictFromArray : public PyFromCache<PyDictFromArray<TKeyConv, TValConv>>
+    namespace detail
     {
-      TKeyConv _keyConv;
-      TValConv _valConv;
-    public:
-      PyObject* fromArray(const ExcelObj& obj) const
+      template <class TKeyConv, class TValConv>
+      class PyDictFromArray : public FromExcelBase<PyObject*>
       {
-        return fromArrayObj(ExcelArray(obj, true));
-      }
-      PyObject* fromArrayObj(const ExcelArray& arr) const
-      {
-        if (arr.nCols() != 2)
-          XLO_THROW("Need a 2 column array to convert to dictionary");
+        TKeyConv _keyConv;
+        TValConv _valConv;
+      public:
+        using FromExcelBase::operator();
 
-        auto dict = py::dict();
-        ExcelArray::row_t i = 0;
-
-        for (; i < arr.nRows(); ++i)
+        PyObject* operator()(ArrayVal obj) const
         {
-          auto key = PySteal<py::object>(_keyConv(arr.at(i, 0)));
-          auto val = PySteal<py::object>(_valConv(arr.at(i, 1)));
-          if (!key || !val || PyDict_SetItem(dict.ptr(), key.ptr(), val.ptr()) != 0)
-            XLO_THROW("Failed to add row " + std::to_string(i) + " to dict");
-        }
+          ExcelArray arr(obj);
 
-        return dict.release().ptr();
-      }
-      constexpr wchar_t* failMessage() const { return L"Expected array"; }
-    };
-    using PyDictFromExcel = PyFromExcel<PyDictFromArray<PyFromExcel<PyFromAny<>>, PyFromExcel<PyFromAny<>>>>;
+          if (arr.nCols() != 2)
+            XLO_THROW("Need a 2 column array to convert to dictionary");
+
+          auto dict = py::dict();
+          ExcelArray::row_t i = 0;
+
+          for (; i < arr.nRows(); ++i)
+          {
+            auto key = PySteal(_keyConv(arr.at(i, 0)));
+            auto val = PySteal(_valConv(arr.at(i, 1)));
+            if (!key || !val || PyDict_SetItem(dict.ptr(), key.ptr(), val.ptr()) != 0)
+              XLO_THROW("Failed to add row " + std::to_string(i) + " to dict");
+          }
+
+          return dict.release().ptr();
+        }
+        constexpr wchar_t* failMessage() const { return L"Expected array"; }
+      };
+    }
+    using PyDictFromExcel = PyExcelConverter<
+      detail::PyDictFromArray<PyFromAny, PyFromAny>>;
 
     PyObject* readKeywordArgs(const ExcelObj& obj)
     {
-      return PyFromExcel<PyDictFromArray<FromExcel<PyFromString>, FromExcel<PyFromAny<>>>>()(obj);
+      return PyFromExcel<
+        detail::PyDictFromArray<PyFromString, PyFromAny>>()(obj);
     }
    
     class XlFromDict: public IPyToExcel

@@ -46,10 +46,10 @@ namespace xloil {
           // a prefix if a custom tag is specified. Note the forward slash
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
-          return PySteal(PyFromString()(
-            _cache.add(py::object(obj), tag 
+          const auto cacheKey = _cache.add(py::object(obj), tag 
               ? (wstring(L"[/Py]") + tag).c_str()
-              : nullptr)));
+              : nullptr);
+          return PySteal(detail::PyFromString()(cacheKey.asPascalStr()));
         }
         py::object get(const std::wstring_view& str)
         {
@@ -58,7 +58,7 @@ namespace xloil {
           {
             std::shared_ptr<const ExcelObj> xlObj;
             if (xloil::objectCacheFetch(str, xlObj))
-              return PySteal(PyFromAny<>()(*xlObj));
+              return PySteal(PyFromAny()(*xlObj));
           }
           else
             _cache.fetch(str, obj);

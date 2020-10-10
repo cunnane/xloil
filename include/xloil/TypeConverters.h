@@ -3,7 +3,7 @@
 #include <xloil/ExcelObjCache.h>
 #include <xlOil/Throw.h>
 
-namespace xloil { class ExcelRef; class ExcelObj; class ExcelArray; }
+namespace xloil { class ExcelRef; class ExcelObj; }
 namespace xloil
 {
   /// <summary>
@@ -16,7 +16,9 @@ namespace xloil
   public:
     using result_type = TResult;
     using const_result_ptr = const typename std::remove_pointer<TResult>::type*;
-    virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal = nullptr) const = 0;
+    virtual result_type operator()(
+      const ExcelObj& xl, 
+      const_result_ptr defaultVal = nullptr) const = 0;
   };
 
   /// <summary>
@@ -31,126 +33,161 @@ namespace xloil
   };
 
   /// <summary>
-  /// Wrapper around an Excel->Language type converter which handles the 
-  /// switch on the type of the ExcelObj.
+  /// Holder class which allows the type converter implementation to select
+  /// objects which represent arrays
   /// </summary>
-  template <class TResult, class TImpl>
-  struct FromExcelDispatcher
+  struct ArrayVal
   {
-    using result_type = TResult;
-    using const_return_ptr = const typename std::remove_pointer<TResult>::type*;
+    const ExcelObj& obj;
+    operator const ExcelObj& () const { return obj; }
+  };
 
-    const TImpl& _impl() const { return static_cast<const TImpl&>(*this); }
+  /// <summary>
+  /// Holder class which allows the type converter implementation to select
+  /// objects which represent range references
+  /// </summary>
+  struct RefVal
+  {
+    const ExcelObj& obj;
+    operator const ExcelObj& () const { return obj; }
+  };
 
-    TResult operator()(const ExcelObj& xl, const_return_ptr defaultVal = nullptr) const
+  /// <summary>
+  /// Indicates a missing value to a type converter implementation
+  /// </summary>
+  struct MissingVal
+  {};
+
+  /// <summary>
+  /// Handles the switch on the type of the ExcelObj and dispatches to an
+  /// overload of the functor's operator(). Called via <see cref="FromExcel"/>.
+  /// If provided, the default value is returned if the ExcelObj is of
+  /// type Missing.
+  /// </summary>
+  template<class TFunc>
+  auto visitExcelObj(
+    const ExcelObj& xl, 
+    TFunc functor, 
+    typename const decltype(functor(nullptr))* defaultVal = nullptr)
+  {
+    try
     {
-      try
+      switch (xl.type())
       {
-        switch (xl.type())
-        {
-        case ExcelType::Int: return _impl().fromInt(xl.val.w);
-        case ExcelType::Bool: return _impl().fromBool(xl.val.xbool != 0);
-        case ExcelType::Num: return _impl().fromDouble(xl.val.num);
-        case ExcelType::Str: return _impl().fromString(xl.asPascalStr());
-        case ExcelType::Multi: return _impl().fromArray(xl);
-        case ExcelType::Missing: return _impl().fromMissing(defaultVal);
-        case ExcelType::Err: return _impl().fromError(CellError(xl.val.err));
-        case ExcelType::Nil: return _impl().fromEmpty(defaultVal);
-        case ExcelType::SRef:
-        case ExcelType::Ref:
-          return _impl().fromRef(xl);
-        default:
-          XLO_THROW("Unexpected XL type");
-        }
-      }
-      catch (const std::exception& e)
-      {
-        XLO_THROW(L"Failed reading {0}: {1}", 
-          xl.toStringRepresentation(), 
-          utf8ToUtf16(e.what()));
+      case ExcelType::Int: return functor(xl.val.w);
+      case ExcelType::Bool: return functor(xl.val.xbool != 0);
+      case ExcelType::Num: return functor(xl.val.num);
+      case ExcelType::Str: return functor(xl.asPascalStr());
+      case ExcelType::Multi: return functor(ArrayVal{ xl });
+      case ExcelType::Missing: return defaultVal ? *defaultVal : functor(MissingVal());
+      case ExcelType::Err: return functor(CellError(xl.val.err));
+      case ExcelType::Nil: return functor(nullptr);
+      case ExcelType::SRef:
+      case ExcelType::Ref:
+        return functor(RefVal{ xl });
+      default:
+        XLO_THROW("Unexpected XL type");
       }
     }
-  };
-
-  template<class Super, class This>
-  using NullCoerce = typename std::conditional<std::is_same<Super, nullptr_t>::value, 
-      This, 
-      Super>::type;
+    catch (const std::exception& e)
+    {
+      XLO_THROW(L"Failed reading {0}: {1}", 
+        xl.toStringRepresentation(), 
+        utf8ToUtf16(e.what()));
+    }
+  }
 
   /// <summary>
-  /// Does the actual work of conversion from Excel to a language 
-  /// type.  The fromXXX methods should be overriden for as many
-  /// ExcelObj data types as make sense for the conversion being performed.
+  /// Provides the default implementation (which is generally an error)
+  /// for conversion functors to be used in <see cref="FromExcel"/> or 
+  /// <see cref="visitExcelObj"/>
   /// </summary>
-  template <class TResult, class TSuper=nullptr_t>
-  class FromExcelBase : public FromExcelDispatcher<
-    TResult, 
-    NullCoerce<TSuper, FromExcelBase<TResult, nullptr_t>>>
+  template <class TResult>
+  class FromExcelBase
   {
   public:
-    TResult fromInt(int x) const { return error(); }
-    TResult fromBool(bool x) const { return error(); }
-    TResult fromDouble(double x) const { return error(); }
-    TResult fromArray(const ExcelObj&) const { return error(); }
-    TResult fromArrayObj(const ExcelArray&) const { return error(); }
-    TResult fromString(const PStringView<>&) const { return error(); }
-    TResult fromError(CellError) const { return error(); }
-    TResult fromEmpty(const TResult* /*defaultVal*/) const { return error(); }
-    TResult fromMissing(const TResult* defaultVal) const 
+    template <class T>
+    TResult operator()(T) const 
     { 
-      if (defaultVal)
-        return *defaultVal;
-      XLO_THROW("Missing argument");
+      throw std::runtime_error("Cannot convert to required type");
     }
-    TResult fromRef(const ExcelObj&) const { return error(); }
-    TResult fromRef(const ExcelRef&) const { return error(); }
+  };
 
-    TResult error() const { XLO_THROW("Cannot convert to required type"); }
+  template <class TResult>
+  class FromExcelBase<std::optional<TResult>>
+  {
+  public:
+    template <class T>
+    auto operator()(T x) const
+    {
+      return std::optional<TResult>();
+    }
+  };
+
+  template <class TResult>
+  class FromExcelBase<TResult*>
+  {
+  public:
+    template <class T>
+    TResult* operator()(T x) const
+    {
+      return nullptr;
+    }
   };
 
   /// <summary>
-  /// Specialised ConverterImpl which returns nullptr instead of throwing an
-  /// error when a type conversion cannot be performed, i.e. the fromXXX 
-  /// function has not be overriden for the supplied ExcelObj type
+  /// Wraps a type conversion functor, interepting the string conversion to
+  /// look for a cache reference.  If found, calls the wrapped functor on the
+  /// cache object, otherwise passes the string through.
   /// </summary>
-  template <class TResult, class TSuper>
-  class FromExcelBase<TResult*, TSuper>
-    : public FromExcelDispatcher<TResult*, NullCoerce<TSuper, FromExcelBase<TResult*, nullptr_t>>>
+  template<class TBase>
+  struct CacheConverter : public TBase
   {
-  public:
-    TResult* fromInt(int) const { return nullptr; }
-    TResult* fromBool(bool) const { return nullptr; }
-    TResult* fromDouble(double) const { return nullptr; }
-    // Need to give this a different name or it seems to break C++ overload 
-    // resolution. Unless the rules change for some reason in templates.
-    TResult* fromArrayObj(const ExcelArray&) const { return nullptr; }
-    TResult* fromArray(const ExcelObj&) const { return nullptr; }
-    TResult* fromString(const PStringView<>&) const { return nullptr; }
-    TResult* fromError(CellError) const { return nullptr; }
-    TResult* fromEmpty(const TResult* defaultVal) const { return const_cast<TResult*>(defaultVal); }
-    TResult* fromMissing(const TResult* defaultVal) const 
-    { 
-      if (defaultVal)
-        return const_cast<TResult*>(defaultVal);
-      XLO_THROW("Missing argument");
-    }
-    TResult* fromRef(const ExcelObj& obj) const { return nullptr; }
-    TResult* fromRefObj(const ExcelRef& rng) const { return nullptr; }
-  };
+    template <class...Args>
+    CacheConverter(Args&&...args) 
+      : TBase(std::forward<Args>(args)...)
+    {}
 
-
-  template <class TResult, class TSuper=nullptr_t>
-  struct CacheConverter : public FromExcelBase<TResult, NullCoerce<TSuper, CacheConverter<TResult, nullptr_t>>>
-  {
-    auto fromString(const PStringView<>& str) const
+    using TBase::operator();
+    auto operator()(const PStringView<>& str) const
     {
       if (objectCacheCheckReference(str))
       {
         std::shared_ptr<const ExcelObj> obj;
         if (xloil::objectCacheFetch(str.view(), obj))
-          return _impl()(*obj);
+          return visitExcelObj(*obj, (TBase&)(*this));
       }
-      return FromExcelBase::fromString(str);
+      return TBase::operator()(str);
+    }
+  };
+
+  /// <summary>
+  /// Creates a functor which applies a type conversion implementation 
+  /// functor to an ExcelObj
+  /// </summary>
+  template<class TImpl>
+  class FromExcel
+  {
+    TImpl _impl;
+  public:
+
+    template <class...Args>
+    FromExcel(Args&&...args)
+      : _impl(std::forward<Args>(args)...)
+    {}
+
+    using return_type = decltype(_impl(nullptr));
+
+    /// <summary>
+    /// Applies the type conversion implementation functor to the ExcelObj.
+    /// If provided, the default value is returned if the ExcelObj is of
+    /// type Missing.
+    /// </summary>
+    auto operator()(
+      const ExcelObj& xl, 
+      const return_type* defaultVal = nullptr) const
+    {
+      return visitExcelObj(xl, _impl, defaultVal);
     }
   };
 }

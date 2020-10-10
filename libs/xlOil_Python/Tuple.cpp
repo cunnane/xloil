@@ -29,14 +29,14 @@ namespace xloil
       PyObject *item, *innerItem;
 
       // First loop to establish array size and length of strings
-      while (item = PyIter_Next(iter)) 
+      while ((item = PyIter_Next(iter)) != 0) 
       {
         ++nRows;
         if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           decltype(nCols) j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while (innerItem = PyIter_Next(innerIter))
+          while ((innerItem = PyIter_Next(innerIter)) != 0)
           {
             ++j;
             accumulateObjectStringLength(innerItem, stringLength);
@@ -64,13 +64,13 @@ namespace xloil
       // Second loop to fill in array values
       iter = PyObject_GetIter(p);
       size_t i = 0, j = 0;
-      while (item = PyIter_Next(iter))
+      while ((item = PyIter_Next(iter)) != 0)
       {
         j = 0;
         if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while (innerItem = PyIter_Next(innerIter))
+          while ((innerItem = PyIter_Next(innerIter)) != 0)
           {
             builder(i, j++).emplace(FromPyObj()(innerItem, true, builder.charAllocator()));
             Py_DECREF(innerItem);
@@ -98,11 +98,13 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public PyFromCache<PyTupleFromArray<TValConv>>
+    class PyTupleFromArray : public FromExcelBase<PyObject*>
     {
       TValConv _valConv;
     public:
-      PyObject* fromArray(const ExcelObj& obj) const
+      using FromExcelBase::operator();
+
+      PyObject* operator()(ArrayVal obj) const
       {
         ExcelArray arr(obj);
         auto nRows = arr.nRows();
@@ -126,7 +128,7 @@ namespace xloil
 
     PyObject* excelArrayToNestedTuple(const ExcelObj & obj)
     {
-      return PyTupleFromArray<PyFromExcel<PyFromAny<>>>().fromArray(obj);
+      return PyTupleFromArray<PyFromAny>()(ArrayVal{ obj });
     }
 
     namespace
@@ -140,7 +142,7 @@ namespace xloil
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        declare<PyFromExcel<PyTupleFromArray<PyFromExcel<PyFromAny<>>>>>(mod, "tuple_object_from_Excel");
+        declare<PyExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple_object_from_Excel");
       });
     }
   }

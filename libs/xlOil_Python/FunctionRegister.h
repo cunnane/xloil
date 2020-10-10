@@ -5,15 +5,18 @@
 #include <pybind11/pybind11.h>
 
 namespace xloil {
-  class AddinContext; struct FuncInfo;  class ExcelObj; 
+  class AddinContext; 
+  struct FuncInfo; 
+  class ExcelObj; 
+  template <class T> class IConvertFromExcel;
 }
 namespace xloil 
 {
   namespace Python
   {
     class RegisteredModule;
-    class IPyFromExcel;
- 
+    using IPyFromExcel = IConvertFromExcel<PyObject*>;
+
     namespace FunctionRegistry
     {
       /// <summary>

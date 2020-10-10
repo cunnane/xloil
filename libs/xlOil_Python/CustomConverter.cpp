@@ -11,21 +11,19 @@ namespace xloil
 {
   namespace Python
   {
-    class UserImpl : public PyFromAny<UserImpl>
+    class UserImpl : public detail::PyFromAny
     {
     public:
-      PyObject* fromArray(const ExcelObj& obj) const
-      {
-        return py::cast(PyExcelArray(ExcelArray(obj))).release().ptr();
-      }
-      PyObject* fromArrayObj(const ExcelArray& arr) const
+      using detail::PyFromAny::operator();
+
+      PyObject* operator()(ArrayVal arr) const
       {
         return py::cast(PyExcelArray(arr)).release().ptr();
       }
       // Override cache ref lookup?
-      PyObject* fromString(const PStringView<>& pstr) const
+      PyObject* operator()(const PStringView<>& pstr) const
       {
-        return PyFromString().fromString(pstr);
+        return detail::PyFromString()(pstr);
       }
       constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
     };
@@ -40,7 +38,7 @@ namespace xloil
       {}
       virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const
       {
-        auto arg = PySteal<>(PyFromExcel<UserImpl>()(xl, defaultVal));
+        auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
         return _callable(arg).release().ptr();
       }
       virtual PyObject* fromArray(const ExcelArray& arr) const

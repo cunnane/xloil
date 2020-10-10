@@ -32,7 +32,7 @@ namespace xloil
       }
       auto convertExcelObj(ExcelObj&& val)
       {
-        return PySteal<>(PyFromExcel<PyFromAny<>>()(val));
+        return PySteal(PyFromAny()(val));
       }
       auto rangeGetValue(const Range& r)
       {
@@ -65,10 +65,12 @@ namespace xloil
           : py::cast(range.range(fromRow, fromCol, toRow, toCol));
       }
 
-      class PyFromRange : public FromExcelBase<PyObject*, PyFromRange>
+      class PyFromRange : public FromExcelBase<PyObject*>
       {
       public:
-        PyObject* fromRef(const ExcelObj& obj) const 
+        using FromExcelBase::operator();
+
+        PyObject* operator()(RefVal obj) const 
         {
           return pybind11::cast(newXllRange(obj)).release().ptr();
         }
@@ -107,7 +109,7 @@ namespace xloil
               return r.shape();
             });
 
-        bindPyConverter<PyFromExcel<PyFromRange>>(mod, "Range").def(py::init<>());
+        bindPyConverter<PyExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
 
       }, 99);
     }

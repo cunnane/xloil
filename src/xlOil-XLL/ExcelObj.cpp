@@ -124,17 +124,17 @@ namespace
 
   double ExcelObj::toDouble(const std::optional<double> default) const
   {
-    return ToDouble()(*this, default.has_value() ? &default.value() : nullptr);
+    return FromExcel<ToDouble<>>()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   int ExcelObj::toInt(const std::optional<int> default) const
   {
-    return ToInt()(*this, default.has_value() ? &default.value() : nullptr);
+    return FromExcel<ToInt<>>()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   bool ExcelObj::toBool(const std::optional<bool> default) const
   {
-    return ToBool()(*this, default.has_value() ? &default.value() : nullptr);
+    return FromExcel<ToBool<>>()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   void ExcelObj::reset()

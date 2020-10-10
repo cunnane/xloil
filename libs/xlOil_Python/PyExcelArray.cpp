@@ -39,6 +39,10 @@ namespace xloil
       , _refCount(new size_t(1))
     {}
 
+    PyExcelArray::PyExcelArray(const ExcelObj & arr)
+      : PyExcelArray(ExcelArray(arr))
+    {}
+
     PyExcelArray::~PyExcelArray()
     {
       *_refCount -= 1;
@@ -59,14 +63,14 @@ namespace xloil
     py::object PyExcelArray::operator()(size_t row, size_t col) const
     {
       return PySteal<>(
-        PyFromExcel<PyFromAny<>>()(
+        PyFromAny()(
           _base((ExcelArray::row_t)row, (ExcelArray::col_t)col)));
     }
 
     py::object PyExcelArray::operator()(size_t row) const
     {
       return PySteal<>(
-        PyFromExcel<PyFromAny<>>()(
+        PyFromAny()(
           _base((ExcelArray::row_t)row)));
     }
 

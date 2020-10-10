@@ -13,7 +13,7 @@ namespace xloil
     template <class T>
     void convertPy(pybind11::module& mod, const char* type)
     {
-      bindPyConverter<PyFromExcel<T>>(mod, type).def(py::init<>());
+      bindPyConverter<PyExcelConverter<T>>(mod, type).def(py::init<>());
     }
     
     template<class TFunc>
@@ -46,7 +46,7 @@ namespace xloil
       convertPy<PyFromDouble>(mod, "float");
       convertPy<PyFromBool>(mod, "bool");
       convertPy<PyFromString>(mod, "str");
-      convertPy<PyFromAny<>>(mod, "object");
+      convertPy<PyFromAny>(mod, "object");
       convertPy<PyCacheObject>(mod, "cache");
 
       convertXl<FromPyLong>(mod, "int");
