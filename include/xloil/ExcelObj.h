@@ -341,7 +341,7 @@ namespace xloil
     template <class TDonor>
     ExcelObj& operator=(TDonor&& that)
     {
-      *this = ExcelObj(std::forward<TDonor>(that));
+      *this = std::move(ExcelObj(std::forward<TDonor>(that)));
       return *this;
     }
 
@@ -400,7 +400,7 @@ namespace xloil
     }
 
     /// <summary>
-    /// Compare to string (will return false if the ExcelObj is not of 
+    /// Compare to C-string (will return false if the ExcelObj is not of 
     /// string type
     /// </summary>
     bool operator==(const wchar_t* that) const
@@ -409,7 +409,32 @@ namespace xloil
     }
 
     /// <summary>
-    /// Returns -1 if left < right, 0 if left == right, else 1.
+    /// Compare to string literal (will return false if the ExcelObj is not of 
+    /// string type
+    /// </summary>
+    template<size_t N>
+    bool operator==(const wchar_t(*that)[N]) const
+    {
+      return asPascalStr() == that;
+    }
+
+    /// <summary>
+    /// Compare to double (returns false is ExcelObj is not convertible to double)
+    /// </summary>
+    bool operator==(double that) const;
+
+    /// <summary>
+    /// Compare to int (returns false is ExcelObj is not convertible to int)
+    /// </summary>
+    bool operator==(int that) const;
+
+    /// <summary>
+    /// Compare to bool (returns false is ExcelObj is not convertible to bool)
+    /// </summary>
+    bool operator==(bool that) const;
+
+    /// <summary>
+    /// Compares two ExcelObjs. Returns -1 if left < right, 0 if left == right, else 1.
     /// 
     /// When the types of <paramref name="left"/> and <paramref name="right"/> are 
     /// the same, numeric and string types are compared in the expected way. Arrays
@@ -737,6 +762,7 @@ namespace std {
 }
 
 #include <xloil/ArrayBuilder.h>
+#include <xloil/NumericTypeConverters.h>
 
 namespace xloil
 {
@@ -751,7 +777,7 @@ namespace xloil
     inline size_t stringLength(const char* s) { return strlen(s); }
     inline size_t stringLength(const wchar_t* s) { return wcslen(s); }
   }
-  template<class TIter>
+  template<class TIter> inline
   ExcelObj::ExcelObj(TIter begin, TIter end)
   {
     size_t stringLen = 0;
@@ -766,5 +792,36 @@ namespace xloil
 
     xltype = msxll::xltypeNil;
     *this = builder.toExcelObj();
+  }
+
+  inline double ExcelObj::toDouble(const std::optional<double> default) const
+  {
+    return FromExcel<ToDouble<>>()(*this, default.has_value() ? &default.value() : nullptr);
+  }
+
+  inline int ExcelObj::toInt(const std::optional<int> default) const
+  {
+    return FromExcel<ToInt<>>()(*this, default.has_value() ? &default.value() : nullptr);
+  }
+
+  inline bool ExcelObj::toBool(const std::optional<bool> default) const
+  {
+    return FromExcel<ToBool<>>()(*this, default.has_value() ? &default.value() : nullptr);
+  }
+
+  inline bool ExcelObj::operator==(double that) const
+  {
+    auto value = FromExcel<ToDouble<std::optional<double>>>()(*this);
+    return value == that;
+  }
+  inline bool ExcelObj::operator==(int that) const
+  {
+    auto value = FromExcel<ToInt<std::optional<int>>>()(*this);
+    return value == that;
+  }
+  inline bool ExcelObj::operator==(bool that) const
+  {
+    auto value = FromExcel<ToBool<std::optional<bool>>>()(*this);
+    return value == that;
   }
 }

@@ -118,7 +118,7 @@ namespace xloil
   {
   public:
     template <class T>
-    auto operator()(T x) const
+    auto operator()(T) const
     {
       return std::optional<TResult>();
     }
@@ -129,7 +129,7 @@ namespace xloil
   {
   public:
     template <class T>
-    TResult* operator()(T x) const
+    TResult* operator()(T) const
     {
       return nullptr;
     }

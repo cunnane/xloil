@@ -49,5 +49,14 @@ namespace Tests
         Assert::IsFalse(ExcelObj(3) == L"Foo");
       }
     }
+
+    TEST_METHOD(TestArray)
+    {
+      ExcelObj obj = { 1, 2, 3, 4, 5 };
+      ExcelArray arr(obj);
+      Assert::IsTrue(arr(0) == 1);
+      Assert::IsTrue(arr(2) == 3);
+      Assert::IsTrue(arr(4) == 5);
+    }
   };
 }
