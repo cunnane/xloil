@@ -113,7 +113,7 @@ namespace xloil
     {
       try
       {
-        auto& workbooks = excelApp().Workbooks;
+        auto workbooks = excelApp().Workbooks;
         auto nWorkbooks = workbooks->Count;
         for (auto i = 0; i < nWorkbooks; ++i)
         {

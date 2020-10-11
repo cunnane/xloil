@@ -54,10 +54,10 @@ namespace xloil
     template<class T>
     static int xConnect(
       sqlite3 *db,
-      void *pAux,
-      int argc, const char *const* argv,
+      void* /*pAux*/,
+      int /*argc*/, const char *const* argv,
       sqlite3_vtab **ppVtab,
-      char **pzErr)
+      char** /*pzErr*/)
     {
       auto input = (const typename T::InputType*)atoll(argv[3]);
       auto schema = argv[4];
@@ -89,7 +89,7 @@ namespace xloil
     }
 
     static int xBestIndex(
-      sqlite3_vtab *tab,
+      sqlite3_vtab*,
       sqlite3_index_info *pIdxInfo)
     {
       pIdxInfo->estimatedCost = 1000000;
@@ -106,7 +106,7 @@ namespace xloil
       return SQLITE_OK;
     }
 
-    static int xOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor) {
+    static int xOpen(sqlite3_vtab*, sqlite3_vtab_cursor **ppCursor) {
       auto *pCur = new XlTableCursor();
       *ppCursor = &pCur->base;
       return SQLITE_OK;
@@ -127,8 +127,8 @@ namespace xloil
     */
     static int xFilter(
       sqlite3_vtab_cursor *pVtabCursor,
-      int idxNum, const char *idxStr,
-      int argc, sqlite3_value **argv)
+      int /*idxNum*/, const char* /*idxStr*/,
+      int /*argc*/, sqlite3_value** /*argv*/)
     {
       auto *pCur = (XlTableCursor*)pVtabCursor;
       pCur->iRowid = 0;
@@ -158,6 +158,11 @@ namespace xloil
       return pCur->iRowid < 0;
     }
 
+    
+    template<class T> struct TableReturn {};
+    template<> struct TableReturn<XlRangeTable> { using type = ExcelObj; };
+    template<> struct TableReturn<XlArrayTable> { using type = const ExcelObj&; };
+
     /*
     ** Return values of columns for the row at which the cursor
     ** is currently pointing.
@@ -170,7 +175,7 @@ namespace xloil
     {
       auto *pCur = (XlTableCursor*)cur;
       auto *pTab = (const T*)cur->pVtab;
-      auto& val = pTab->data(pCur->iRowid, i);
+      TableReturn<T>::type val = pTab->data(pCur->iRowid, i);
 
       switch (val.type())
       {

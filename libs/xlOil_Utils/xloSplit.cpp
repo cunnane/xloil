@@ -22,11 +22,11 @@ namespace xloil
       auto pstr = input.data();
       const auto length = pstr[0];
 
-      wchar_t prev = 0, next;
-      while ((next = view.find(sep.c_str(), prev)) != (wchar_t)wstring::npos)
+      size_t prev = 0, next;
+      while ((next = view.find(sep.c_str(), prev)) != wstring::npos)
       {
-        *pstr = next - prev;
-        found.push_back(prev);
+        *pstr = (wchar_t)(next - prev);
+        found.push_back((wchar_t)prev);
 
         if (consecutiveAsOne)
         {
@@ -41,8 +41,8 @@ namespace xloil
       }
 
       // Add suffix
-      *pstr = length - prev;
-      found.push_back(prev);
+      *pstr = length - (wchar_t)prev;
+      found.push_back((wchar_t)prev);
     }
   }
 

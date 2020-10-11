@@ -112,8 +112,6 @@ namespace xloil
       int rc = SQLITE_OK;
       while (rc == SQLITE_OK && pSql != pSqlEnd)
       {
-        int nCol = 0;
-
         const wchar_t* pLeftover;
         sqlite3_stmt *stmt;
         

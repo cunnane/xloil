@@ -19,8 +19,6 @@ namespace xloil
   )
   {
     wstring result;
-    wstring sep;
-    auto pSeparator = nullptr;
      
     if (separator.isMissing())
     {

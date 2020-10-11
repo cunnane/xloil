@@ -96,7 +96,7 @@ namespace xloil
   }
 
   template<class TFunc, class... Args>
-  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName, Args&&... args)
+  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* /*argName*/, Args&&... args)
     -> decltype(func(argVal))
   {
     func(argVal);
@@ -104,7 +104,7 @@ namespace xloil
   }
 
   template<class TFunc>
-  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* argName)
+  auto ProcessArgs(TFunc func, const ExcelObj& argVal, const wchar_t* /*argName*/)
     -> decltype(func(argVal))
   {
     func(argVal);

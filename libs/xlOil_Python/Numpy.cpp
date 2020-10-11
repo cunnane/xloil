@@ -155,7 +155,7 @@ namespace xloil
     {
       void operator()(TResultValue* d, size_t, const ExcelObj& x) const
       {
-        *d = FromExcel<TExcelObjConverter>()(x);
+        *d = (TResultValue)FromExcel<TExcelObjConverter>()(x);
       }
     };
 

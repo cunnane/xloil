@@ -158,8 +158,8 @@ namespace xloil
         {
           auto pstr = _alloc.newString(len);
           wmemcpy_s(pstr.pstr(), len, str, len);
-          // This object's dtor will never be called, so the allocated
-          // pstr will only be freed as part of the entire array block
+          // This object's dtor will never be called, as it is an array element
+          // so the allocated pstr will be freed when the entire array block is
           xlObj->val.str = pstr.data();
         }
       }

@@ -28,8 +28,8 @@ namespace xloil
     constexpr size_t nArgs = XLOBLOCK_NARGS - 1;
     const ExcelObj* args[] = { XLO_ARG_PTRS(XLOBLOCK_NARGS, XLOBLOCK_ARG_NAME) };
 
-    constexpr int NEW_ROW = -1;
-    constexpr int PADDING = 0;
+    constexpr short NEW_ROW = -1;
+    constexpr short PADDING = 0;
 
     const auto parse = layout->toString();
 

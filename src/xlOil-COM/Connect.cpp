@@ -13,9 +13,8 @@ Excel::_ApplicationPtr getExcelObjFromWindow(HWND xlmainHandle)
 {
   // Based on discussion here:
   // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
-  HWND hwnd = nullptr, hwnd2, hwnd3;
-  hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
-  hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
+  auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
+  auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
   Excel::Window* pWindow = NULL;
   if (AccessibleObjectFromWindow(hwnd3, OBJID_NATIVEOM, __uuidof(IDispatch), (void**)&pWindow) == S_OK)
     return pWindow->Application;
