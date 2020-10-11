@@ -26,7 +26,7 @@ namespace xloil
       // the same pointer each time.
       for (auto i = 0; i < nRowsVal; ++i)
         for (auto j = 0; j < nColsVal; ++j)
-          builder(i, j).emplace_pstr(pstr.data());
+          builder(i, j).emplace_pstr(pstr.release());
     }
     else
     {

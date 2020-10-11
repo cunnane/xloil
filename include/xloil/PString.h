@@ -9,13 +9,33 @@ namespace xloil
   /// to its last occurence or null if not found. Essentialy it is
   /// wmemchr backwards.
   /// </summary>
-  inline const wchar_t* 
+  inline const wchar_t*
     wmemrchr(const wchar_t* ptr, wchar_t wc, size_t num)
   {
     for (; num; --ptr, --num)
       if (*ptr == wc)
         return ptr;
     return nullptr;
+  }
+
+  template<class T>
+  struct PStringAllocator
+  {
+    constexpr T* allocate(size_t n)
+    {
+      return new T[n];
+    }
+    constexpr void deallocate(T* p, size_t /*n*/)
+    {
+      delete[] p;
+    }
+  };
+
+  template <class TChar = wchar_t, class TAlloc = PStringAllocator<TChar>> class PString;
+  template <class TChar = wchar_t> class PStringView;
+  namespace detail
+  {
+    template<class T> struct StringTraits {};
   }
 
   template <class TChar = wchar_t>
@@ -26,7 +46,7 @@ namespace xloil
     static constexpr size_type npos = size_type(-1);
     static constexpr size_t max_length = (TChar)-1 - 1;
     using traits = std::char_traits<TChar>;
-    
+
 
     /// <summary>
     /// Returns true if the string is empty
@@ -38,18 +58,14 @@ namespace xloil
     /// sizeof(TChar).
     /// </summary>
     size_type length() const { return _data ? _data[0] : 0; }
-    
+
     /// <summary>
-    /// Returns a pointer to the start of the string data. The string
-    /// data is not guaranteed to be null-terminated.
+    /// Returns a pointer to the start of the string data similar to 
+    /// string::c_str, however, the string data is not guaranteed to be
+    /// null-terminated.
     /// </summary>
     const TChar* pstr() const { return _data + 1; }
     TChar* pstr() { return _data + 1; }
-
-    /// <summary>
-    /// Returns a pointer to the raw pascal string buffer.
-    /// </summary>
-    TChar* data() { return _data; }
 
     /// <summary>
     /// Returns an iterator (really a pointer) to the beginning of the 
@@ -78,31 +94,17 @@ namespace xloil
     /// Writes the given null-terminated string into the buffer, raising an error
     /// if the buffer is too short.
     /// </summary>
-    PStringImpl& operator=(const TChar* str)
+    template <class T>
+    PStringImpl& operator=(T str)
     {
-      writeOrThrow(str, traits::length(str));
-      return *this;
-    }
-    /// <summary>
-    /// Writes the given string_view into the buffer, raising an error
-    /// if the buffer is too short.
-    /// </summary>
-    PStringImpl& operator=(const std::basic_string_view<TChar>& str)
-    {
-      writeOrThrow(str, str.length());
+      writeOrThrow(
+        detail::StringTraits<T>::data(str),
+        detail::StringTraits<T>::length(str));
       return *this;
     }
 
-    bool operator==(const PStringImpl& that) const
-    {
-      return view() == that;
-    }
-    template<class TChar>
-    bool operator==(const std::basic_string_view<TChar>& that) const
-    {
-      return view() == that;
-    }
-    bool operator==(const TChar* that) const
+    template <class T>
+    bool operator==(T that) const
     {
       return view() == that;
     }
@@ -122,8 +124,7 @@ namespace xloil
       return _data[i + 1];
     }
 
-    // TODO: traits
-    operator std::wstring_view() const
+    operator std::basic_string_view<TChar>() const
     {
       return view();
     }
@@ -149,9 +150,9 @@ namespace xloil
     /// Returns an STL string representation of the pascal string. This
     /// copies the string data.
     /// </summary>
-    std::basic_string<TChar> string() const 
-    { 
-      return std::basic_string<TChar>(pstr(), pstr() + length()); 
+    std::basic_string<TChar> string() const
+    {
+      return std::basic_string<TChar>(pstr(), pstr() + length());
     }
 
     /// <summary>
@@ -183,12 +184,12 @@ namespace xloil
       return std::basic_string_view<TChar>(
         pstr() + from, count != npos ? count : length() - from);
     }
-    
+
     TChar bound(size_t len) const
     {
       return (TChar)(max_length < len ? max_length : len);
     }
-    
+
   protected:
     TChar* _data;
 
@@ -210,18 +211,6 @@ namespace xloil
     }
   };
 
-  template<class T>
-  struct PStringAllocator
-  {
-    constexpr T* allocate(size_t n)
-    {
-      return new T[n];
-    }
-    constexpr void deallocate(T* p, size_t /*n*/) 
-    {
-      delete[] p; 
-    }
-  };
   /// <summary>
   /// A Pascal string is a length-counted, rather than null-terminated string
   /// The first character in the string buffer contains its length, and the 
@@ -232,7 +221,7 @@ namespace xloil
   ///  
   /// PString owns its data buffer, <see cref="PStringView"/> does not.
   /// </summary>
-  template <class TChar = wchar_t, class TAlloc=PStringAllocator<TChar>>
+  template <class TChar, class TAlloc>
   class PString : public PStringImpl<TChar>
   {
   private:
@@ -242,13 +231,15 @@ namespace xloil
     using size_type = PStringImpl::size_type;
     using allocator_type = TAlloc;
 
+    friend PStringView;
+
     /// <summary>
     /// Create a PString of the specified length
     /// </summary>
     explicit PString(size_type length, TAlloc allocator = TAlloc())
-      : PStringImpl(length == 0 
-          ? nullptr 
-          : allocator.allocate(length + 1))
+      : PStringImpl(length == 0
+        ? nullptr
+        : allocator.allocate(length + 1))
       , _alloc(allocator)
     {
       if (length > 0)
@@ -384,7 +375,6 @@ namespace xloil
       : PStringImpl(data)
       , _alloc(allocator)
     {}
-    
   };
 
   /// <summary>
@@ -395,7 +385,7 @@ namespace xloil
   /// calling the <see cref="PStringView::view"/> method returns
   /// a std::string_view class which can.
   /// </summary>
-  template <class TChar=wchar_t>
+  template <class TChar>
   class PStringView : public PStringImpl<TChar>
   {
   public:
@@ -412,7 +402,7 @@ namespace xloil
     /// </summary>
     /// <param name="str"></param>
     PStringView(PString<TChar>& str)
-      : PStringImpl(str.data())
+      : PStringImpl(str._data)
     {}
 
     PStringImpl& operator=(const PStringView& that)
@@ -425,6 +415,12 @@ namespace xloil
       else
         return *(PStringImpl*)(this) = that;
     }
+
+    /// <summary>
+    /// Returns a pointer to the raw pascal string buffer.  Use with caution
+    /// to ensure buffer lifetime is managed correctly
+    /// </summary>
+    TChar* data() const { return _data; }
 
     /// <summary>
     /// Resize the string buffer to the specified length. Increasing
@@ -489,4 +485,99 @@ namespace xloil
       return PStringView(token - 1);
     }
   };
+
+  namespace detail
+  {
+    template <class TChar>
+    PString<TChar> copyRight(const TChar* that, size_t len, const PStringImpl<TChar>& right)
+    {
+      auto* data = PString<TChar>(right.bound(right.length() + len)).release();
+      std::char_traits<TChar>::copy(data + 1, that, len);
+      std::char_traits<TChar>::copy(data + 1 + len, right.pstr(), right.length());
+      return PString<TChar>::steal(data);
+    }
+    template<class T> struct StringTraits<std::basic_string_view<T>>
+    {
+      static const T* data(const std::basic_string_view<T>& str) {
+        return str.data();
+      }
+      static size_t length(const std::basic_string_view<T>& str) {
+        return str.length();
+      }
+    };
+    template<class T> struct StringTraits<std::basic_string<T>>
+    {
+      static const T* data(const std::basic_string<T>& str) {
+        return str.c_str();
+      }
+      static size_t length(const std::basic_string<T>& str) {
+        return str.length();
+      }
+    };
+    template<class T> struct StringTraits<T*>
+    {
+      static const T* data(const T* str) {
+        return str;
+      }
+      static size_t length(const T* str) {
+        return std::char_traits<T>::length(str);
+      }
+    };
+    template<class T, size_t N> struct StringTraits<T(*)[N]>
+    {
+      static const T* data(const T(*str)[N]) {
+        return str;
+      }
+      static size_t length(const T(*str)[N]) {
+        return N;
+      }
+    };
+    template<class T> struct StringTraits<PStringView<T>>
+    {
+      static const T* data(const PStringImpl<T>& str) {
+        return str.pstr();
+      }
+      static size_t length(const PStringImpl<T>& str) {
+        return str.length();
+      }
+    };
+    template<class T> struct StringTraits<PString<T>>
+    {
+      static const T* data(const PStringImpl<T>& str) {
+        return str.pstr();
+      }
+      static size_t length(const PStringImpl<T>& str) {
+        return str.length();
+      }
+    };
+  }
+
+  template <class TChar, class TRight>
+  inline PString<TChar> operator+(const PStringImpl<TChar>& left, TRight right)
+  {
+    const auto* r = detail::StringTraits<TRight>::data(right);
+    const auto len = detail::StringTraits<TRight>::length(right);
+    auto* data = PString<TChar>(left.bound(left.length() + len)).release();
+    std::char_traits<TChar>::copy(data + 1, left.pstr(), left.length());
+    std::char_traits<TChar>::copy(data + 1 + left.length(), r, len);
+    return PString<TChar>::steal(data);
+  }
+
+  template <class TChar>
+  inline PString<TChar> operator+(const TChar* left, const PStringImpl<TChar>& right)
+  {
+    return detail::copyRight(left, std::char_traits<TChar>::length(left), right);
+  }
+
+  template<class TChar, class _Traits, class _Alloc>
+  inline std::basic_string<TChar, _Traits, _Alloc> operator+(
+    const std::basic_string<TChar, _Traits, _Alloc>& left,
+    const PStringImpl<TChar>& right)
+  {
+    std::basic_string<TChar, _Traits, _Alloc> result;
+    result.reserve(left.size() + right.length());
+    result += left;
+    result.append(right.begin(), right.end());
+    return result;
+  }
 }

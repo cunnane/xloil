@@ -54,7 +54,7 @@ namespace xloil
       for (auto i = 0u; i < nRows; ++i)
         for (auto j = 0u; j < nCols; ++j)
           if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
-            builder(i, j).emplace_pstr(arrayStr.data());
+            builder(i, j).emplace_pstr(arrayStr.release());
 
       return returnValue(std::move(newArray));
     }   

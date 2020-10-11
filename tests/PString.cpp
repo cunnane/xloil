@@ -52,5 +52,33 @@ namespace Tests
       Assert::IsFalse(cell.empty());
       Assert::IsTrue(cell.view() == L"A1");
     }
+    TEST_METHOD(Test_Append)
+    {
+      {
+        PString str(L"Foo");
+        auto sum = str + L"bar";
+        Assert::IsTrue(sum == L"Foobar");
+      }
+      {
+        PString str(L"Foo");
+        auto sum = str + wstring(L"bar");
+        Assert::IsTrue(sum == L"Foobar");
+      }
+      {
+        PString str(L"Foo");
+        auto sum = str + PString(L"bar");
+        Assert::IsTrue(sum == L"Foobar");
+      }
+      {
+        PString str(L"Foo");
+        auto sum = wstring(L"Bar") + str;
+        Assert::IsTrue(sum == L"BarFoo");
+      }
+      {
+        PString str(L"Foo");
+        auto sum = L"Bar" + str;
+        Assert::IsTrue(sum == L"BarFoo");
+      }
+    }
   };
 }
