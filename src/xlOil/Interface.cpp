@@ -175,10 +175,4 @@ namespace xloil
   {
     _files.erase(which);
   }
-
-  void linkLogger(AddinContext*, const PluginContext& plugin)
-  {
-    if (plugin.action == PluginContext::Load)
-      spdlog::set_default_logger(loggerRegistry().default_logger());
-  }
 }

@@ -78,6 +78,7 @@
     <ClInclude Include="..\..\include\xloil\Log.h" />
     <ClInclude Include="..\..\include\xloil\NumericTypeConverters.h" />
     <ClInclude Include="..\..\include\xloil\ObjectCache.h" />
+    <ClInclude Include="..\..\include\xloil\Plugin.h" />
     <ClInclude Include="..\..\include\xloil\Preprocessor.h" />
     <ClInclude Include="..\..\include\xloil\PString.h" />
     <ClInclude Include="..\..\include\xloil\Register.h" />

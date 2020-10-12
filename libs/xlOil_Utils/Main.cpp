@@ -1,5 +1,4 @@
-#include <xloil/Interface.h>
-#include <xlOil/Log.h>
+#include <xlOil/Plugin.h>
 
 namespace xloil
 {

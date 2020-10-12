@@ -1,7 +1,6 @@
-#include <xloil/Interface.h>
+#include <xloil/Plugin.h>
 #include <xloil/StringUtils.h>
 #include <xloil/Throw.h>
-#include <xloil/Log.h>
 #include <xloil/WindowsSlim.h>
 #include <cstdlib>
 #include <tomlplusplus/toml.hpp>

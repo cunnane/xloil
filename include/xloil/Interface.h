@@ -226,12 +226,4 @@ namespace xloil
   /// A plugin must declare an extern C function with this signature
   /// </summary>
   typedef int(*PluginInitFunc)(AddinContext*, const PluginContext&);
-
-  /// <summary>
-  /// Links a plug-in's *spdlog* instance to the main xlOil log output. 
-  /// You don't have to do this if you're organising your own logging.
-  /// </summary>
-  /// <param name=""></param>
-  /// <param name="plugin"></param>
-  XLOIL_EXPORT void linkLogger(AddinContext*, const PluginContext& plugin);
 }
