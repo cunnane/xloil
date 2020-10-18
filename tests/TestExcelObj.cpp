@@ -57,6 +57,9 @@ namespace Tests
       Assert::IsTrue(arr(0) == 1);
       Assert::IsTrue(arr(2) == 3);
       Assert::IsTrue(arr(4) == 5);
+      vector<double> values;
+      arr.toColMajor(std::back_inserter(values), ToDouble());
+      Assert::IsTrue(values == vector<double>{ 1, 2, 3, 4, 5 });
     }
   };
 }

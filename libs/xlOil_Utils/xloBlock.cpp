@@ -159,7 +159,7 @@ namespace xloil
         {
         case ExcelType::Multi:
         {
-          ExcelArray arr(*obj, nRows, nCols);
+          auto arr = ExcelArray(*obj, false).slice(0, 0, nRows, nCols);
 
           for (row_t i = 0; i < nRows; ++i)
             for (col_t j = 0; j < nCols; ++j)

@@ -30,7 +30,7 @@ namespace xloil
       XLO_THROW(L"Type {0} not allowed as an array element", enumAsWCString(obj.type()));
   }
 
-  ExcelObj ExcelArray::toExcelObj(const bool alwaysCopy) const
+  ExcelObj ExcelArray::toExcelObj() const
   {
     // Single value return
     if (nCols() == 1 && nRows() == 1)
@@ -39,10 +39,6 @@ namespace xloil
     // Empty array
     if (dims() == 0)
       return ExcelObj();
-
-    // Point to source data if possible, avoid copy
-    if (!alwaysCopy && _columns == _baseCols)
-      return ExcelObj(_data, _rows, _columns);
 
     size_t strLen = 0;
     for (auto& v : (*this))

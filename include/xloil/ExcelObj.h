@@ -51,7 +51,8 @@ namespace xloil
     Int = msxll::xltypeInt,   /// Integer type. Excel usually passes all numbers as type Num.
     BigData = msxll::xltypeStr | msxll::xltypeInt,
 
-    /// Type group: Types that can be elements of an array
+    /// Type group: Types that can be elements of an array. In theory nested arrays
+    /// are possible by Excel will never pass one.
     ArrayValue = Num | Str | Bool | Err | Int | Nil,
 
     /// Type group: Types which refer to ranges
@@ -796,32 +797,32 @@ namespace xloil
 
   inline double ExcelObj::toDouble(const std::optional<double> default) const
   {
-    return FromExcel<ToDouble<>>()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToDouble()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   inline int ExcelObj::toInt(const std::optional<int> default) const
   {
-    return FromExcel<ToInt<>>()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToInt()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   inline bool ExcelObj::toBool(const std::optional<bool> default) const
   {
-    return FromExcel<ToBool<>>()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToBool()(*this, default.has_value() ? &default.value() : nullptr);
   }
 
   inline bool ExcelObj::operator==(double that) const
   {
-    auto value = FromExcel<ToDouble<std::optional<double>>>()(*this);
+    auto value = FromExcel<conv::ToDouble<std::optional<double>>>()(*this);
     return value == that;
   }
   inline bool ExcelObj::operator==(int that) const
   {
-    auto value = FromExcel<ToInt<std::optional<int>>>()(*this);
+    auto value = FromExcel<conv::ToInt<std::optional<int>>>()(*this);
     return value == that;
   }
   inline bool ExcelObj::operator==(bool that) const
   {
-    auto value = FromExcel<ToBool<std::optional<bool>>>()(*this);
+    auto value = FromExcel<conv::ToBool<std::optional<bool>>>()(*this);
     return value == that;
   }
 }

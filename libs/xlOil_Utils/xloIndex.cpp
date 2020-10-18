@@ -47,7 +47,9 @@ namespace xloil
       toRow == 0 ? array.nRows() : toRow,
       toCol == 0 ? array.nCols() : toCol);
 
-    return returnValue(slice.toExcelObj(false));
+    // TODO: under certain circumstances the input array may
+    // not need to be copied
+    return returnValue(slice.toExcelObj());
   }
   XLO_FUNC_END(xloIndex).threadsafe()
     .help(L"Extends the INDEX function to xlOil refs and sub-arrays. Indices are 1-based. "

@@ -73,7 +73,7 @@ namespace xloil
 {
   /// <summary>
   /// Creates a view of an array contained in an ExcelObj. It does not 
-  /// copy the array data.
+  /// copy or own the array data.
   /// </summary>
   class ExcelArray
   {
@@ -92,23 +92,6 @@ namespace xloil
     /// <param name="obj"></param>
     /// <param name="trim">If true, trim the array to the last non-empty row and columns</param>
     XLOIL_EXPORT explicit ExcelArray(const ExcelObj& obj, bool trim = true);
-
-    ExcelArray::ExcelArray(const ExcelObj& obj, row_t nRows, col_t nCols)
-      : _rows(nRows)
-      , _columns(nCols)
-    {
-      if (obj.type() != ExcelType::Multi)
-        XLO_THROW("Expected array");
-
-      auto arr = obj.val.array;
-
-      if (nRows > (row_t)arr.rows || nCols > (col_t)arr.columns)
-        XLO_THROW("Array size ({}, {}) out of range ({}, {})",
-          nRows, nCols, arr.rows, arr.columns);
-
-      _data = (const ExcelObj*)arr.lparray;
-      _baseCols = (col_t)arr.columns;
-    }
 
     /// <summary>
     /// Creates an ExcelArray which is a subarry of a given one.
@@ -131,9 +114,7 @@ namespace xloil
         XLO_THROW("ExcelArray column indices out of range");
       _data = arr._data + fromRow * _baseCols + fromCol;
     }
-
-   
-    
+ 
     /// <summary>
     /// Retieves the i,j-th element from the array
     /// </summary>
@@ -226,7 +207,9 @@ namespace xloil
     /// <returns></returns>
     uint8_t dims() const 
     {
-      return _rows > 1 && _columns > 1 ? 2 : (_rows == 0 || _columns == 0 ? 0 : 1);
+      return _rows > 1 && _columns > 1 
+        ? 2 
+        : (_rows == 0 || _columns == 0 ? 0 : 1);
     }
 
     /// <summary>
@@ -308,7 +291,26 @@ namespace xloil
       }
     }
 
-    XLOIL_EXPORT ExcelObj toExcelObj(const bool alwaysCopy = true) const;
+    /// <summary>
+    /// Returns an ExcelObj of Array type which contains the array data
+    /// viewed by this ExcelArray. The data is copied. 
+    /// you
+    /// </summary>
+    /// <param name="alwaysCopy"></param>
+    /// <returns></returns>
+    XLOIL_EXPORT ExcelObj toExcelObj() const;
+
+    /// <summary>
+    /// Uses the given type convertor to write the array in column major
+    /// form. The provided iterator must have the same value_type as the
+    /// converter outputs and it must be valid for at least size() elements.
+    /// </summary>
+    template<class TConv, class TIter>
+    void toColMajor(TIter begin, TConv conv = TConv()) const
+    {
+      for (size_type i = 0; i < size(); ++i, ++begin)
+        *begin = conv(at(i));
+    }
 
   private:
     const ExcelObj* _data;

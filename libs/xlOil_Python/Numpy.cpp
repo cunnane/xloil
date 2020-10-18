@@ -49,7 +49,7 @@ namespace xloil
 
     // We need to override the nan returned here as numpy's nan is not
     // the same as the one defined in numeric_limits for some reason.
-    struct ToDoubleNPYNan : ToDouble<double>
+    struct ToDoubleNPYNan : conv::ToDouble<double>
     {
       using ToDouble::operator();
       double operator()(CellError err) const
@@ -171,13 +171,13 @@ namespace xloil
     template <class T> struct TypeTraitsBase { };
 
     template <int> struct TypeTraits {};
-    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<ToBool<>, storage>;  };
-    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<ToInt<>, storage>;  };
-    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<ToInt<>, storage>;  };
-    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<conv::ToBool<>, storage>;  };
+    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<conv::ToInt<>, storage>;  };
+    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<conv::ToInt<>, storage>;  };
+    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<conv::ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<conv::ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<conv::ToInt<>, storage>; };
+    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<conv::ToInt<>, storage>; };
     template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToFloatNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DOUBLE> { using storage = double; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
