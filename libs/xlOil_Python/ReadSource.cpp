@@ -87,9 +87,10 @@ namespace xloil
       void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
       {
         // Subtitute in to find target module name, removing extension
+        auto fileExtn = wcsrchr(wbName, L'.');
         auto modulePath = fmt::format(_workbookPattern,
           wbPath,
-          wstring(wbName, wcsrchr(wbName, L'.')));
+          fileExtn ? wstring(wbName, fileExtn) : wstring(wbName));
 
         if (!fs::exists(modulePath))
           return;
