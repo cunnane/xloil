@@ -501,7 +501,7 @@ _ribbon = xlo.create_ribbon(r'''
         </ribbon>
     </customUI>
     ''', 
-    handlers={
+    mapper={
         'press1': press1
     })
     

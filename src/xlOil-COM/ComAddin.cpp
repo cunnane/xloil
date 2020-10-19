@@ -140,11 +140,11 @@ namespace xloil
 
       virtual void setRibbon(
         const wchar_t* xml,
-        const Handlers& handlers)
+        const RibbonMap& mapper)
       {
         if (_connected)
           XLO_THROW("Can only set Ribbon when add-in is disconnected");
-        _ribbon = createRibbon(xml, handlers);
+        _ribbon = createRibbon(xml, mapper);
         comAddinImpl().ribbon = _ribbon->getRibbon();
       }
 

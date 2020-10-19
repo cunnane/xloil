@@ -3,16 +3,17 @@
 #include <xloil/ApiCall.h>
 
 using namespace xloil;
+using std::wstring;
 
-  namespace
+namespace
+{
+  void ribbonHandler(const RibbonControl& ctrl)
   {
-    void ribbonHandler(const RibbonControl& ctrl)
-    {
-      XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
-    };
+    XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
+  };
 
-    std::shared_ptr<IComAddin> theComAddin;
-  }
+  std::shared_ptr<IComAddin> theComAddin;
+}
 
   void xllOpen(void* hInstance)
   {
@@ -20,10 +21,11 @@ using namespace xloil;
     {
       theComAddin = makeComAddin(L"TestXlOil");
 
-      IComAddin::Handlers handlers;
+      std::map<wstring, IComAddin::RibbonCallback> handlers;
       handlers[L"conBoldSub"] = ribbonHandler;
       handlers[L"conItalicSub"] = ribbonHandler;
       handlers[L"conUnderlineSub"] = ribbonHandler;
+      auto mapper = [=](const wchar_t* name) mutable { return handlers[name]; };
 
       theComAddin->setRibbon(LR"(
       <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
@@ -41,7 +43,7 @@ using namespace xloil;
 		      </tabs>
 	      </ribbon>
       </customUI>
-      )", handlers);
+      )", mapper);
 
       theComAddin->connect();
 

@@ -12,24 +12,27 @@ namespace xloil
 {
   namespace Python
   {
-    auto setRibbon(IComAddin* addin, const wchar_t* xml, const py::dict& handlers)
+    auto setRibbon(IComAddin* addin, const wchar_t* xml, py::object mapper)
     {
-      std::map<std::wstring, std::function<void(const RibbonControl&)>> funcs;
-      for (auto[name, fn] : handlers)
+      if (PyDict_Check(mapper.ptr()))
+        mapper = mapper.attr("__getitem__");
+
+      auto cmapper = [mapper](const wchar_t* name)
       {
-        funcs[py::cast<std::wstring>(name)] =
-          [callable = PyBorrow<py::function>(fn.ptr())](const RibbonControl&)
+        py::gil_scoped_acquire getGil;
+        auto callback = mapper.call(name);
+        return [callback](const RibbonControl& ctrl)
         {
           py::gil_scoped_acquire getGil;
-          callable.call();
+          callback.call(ctrl);
         };
-      }
-      addin->setRibbon(xml, funcs);
+      };
+      addin->setRibbon(xml, cmapper);
     }
-    auto createRibbon(const wchar_t* xml, const py::dict& handlers)
+    auto createRibbon(const wchar_t* xml, const py::object& mapper)
     {
       auto addin = makeComAddin(theCurrentContext->fileName());
-      setRibbon(addin.get(), xml, handlers);
+      setRibbon(addin.get(), xml, mapper);
       addin->connect();
       return addin;
     }
@@ -43,10 +46,10 @@ namespace xloil
         py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "RibbonUI")
           .def("connect", &IComAddin::connect)
           .def("disconnect", &IComAddin::disconnect)
-          .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("handlers"))
+          .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("mapper"))
           .def("invalidate", &IComAddin::ribbonInvalidate, py::arg("id") = nullptr)
           .def("activate", &IComAddin::ribbonActivate, py::arg("id"));
-        mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("handlers"));
+        mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("mapper"));
       });
     }
   }

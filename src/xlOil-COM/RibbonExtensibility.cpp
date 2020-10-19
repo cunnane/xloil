@@ -24,9 +24,10 @@ namespace xloil
     {
     private:
 
-      vector<std::function<void(const RibbonControl&)>> _functions;
+      vector<RibbonCallback> _functions;
       map<wstring, DISPID> _idsOfNames;
       wstring _xml;
+      std::function<RibbonCallback(const wchar_t*)> _handler;
 
       // First two functions are raw_GetCustomUI and onLoadHandler
       static constexpr DISPID theFirstDispid = 3;
@@ -62,18 +63,20 @@ namespace xloil
 
       void setRibbon(
         const wchar_t* xml,
-        const std::map<std::wstring, std::function<void(const RibbonControl&)>> handlers)
+        const std::function<RibbonCallback(const wchar_t*)>& handler)
       {
         if (!_xml.empty())
           XLO_THROW("Already set"); // TODO: reload addin?
         std::wregex find(L"(<customUI[^>]*)>");
         _xml = std::regex_replace(xml, find, L"$1 onLoad=\"onLoadHandler\">");
+      }
 
-        for (auto[name, fn] : handlers)
-        {
-          _functions.push_back(fn);
-          _idsOfNames[name] = theFirstDispid - 1 + (DISPID)_functions.size();
-        }
+      int addCallback(const wchar_t* name, RibbonCallback&& fn)
+      {
+        _functions.emplace_back(fn);
+        auto dispid = theFirstDispid - 1 + (DISPID)_functions.size();
+        _idsOfNames[name] = dispid;
+        return dispid;
       }
 
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
@@ -110,12 +113,21 @@ namespace xloil
         LCID lcid,
         _Out_ DISPID* rgdispid)
       {
+        auto* fnName = rgszNames[0];
         if (cNames != 1)
           return DISP_E_UNKNOWNNAME;
-        auto found = _idsOfNames.find(rgszNames[0]);
+        auto found = _idsOfNames.find(fnName);
         if (found == _idsOfNames.end())
         {
-          XLO_ERROR(L"Unknown handler '{0}' called by Ribbon", rgszNames[0]);
+          try
+          {
+            auto func = _handler(fnName);
+            if (func)
+              return addCallback(fnName, std::move(func));
+          }
+          catch (...)
+          {}
+          XLO_ERROR(L"Unknown handler '{0}' called by Ribbon", fnName);
           return DISP_E_UNKNOWNNAME;
         }
         *rgdispid = found->second;
@@ -171,10 +183,12 @@ namespace xloil
     class Ribbon : public IRibbon
     {
     public:
-      Ribbon(const wchar_t* xml, const IComAddin::Handlers& handlers)
+      Ribbon(
+        const wchar_t* xml, 
+        const std::function<RibbonCallback(const wchar_t*)>& handler)
       {
         _ribbon = new CComObject<RibbonImpl>();
-        _ribbon->setRibbon(xml, handlers);
+        _ribbon->setRibbon(xml, handler);
       }
       void invalidate(const wchar_t* controlId) const override
       {
@@ -203,9 +217,9 @@ namespace xloil
     };
     shared_ptr<IRibbon> createRibbon(
       const wchar_t* xml,
-      const IComAddin::Handlers& handlers)
+      const std::function<RibbonCallback(const wchar_t*)>& handler)
     {
-      return std::make_shared<Ribbon>(xml, handlers);
+      return std::make_shared<Ribbon>(xml, handler);
     }
   }
 }
