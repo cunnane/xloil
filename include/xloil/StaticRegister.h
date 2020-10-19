@@ -210,5 +210,5 @@ namespace xloil
     processRegistryQueue(const wchar_t* moduleName);
 
   XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredFunc>>
-    registerStaticFuncs(const wchar_t* moduleName);
+    registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors);
 }

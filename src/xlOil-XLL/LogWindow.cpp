@@ -62,6 +62,7 @@ namespace xloil
           this
         );
 
+        // TODO: does throwing make much sense here?
         if (!hwnd)
           throw Exception(L"Failed to create LogWindow: %s",
             writeWindowsError().c_str());
@@ -255,6 +256,28 @@ namespace xloil
     {
       return std::make_shared<LogWindow>(
         parentWindow, parentInstance, winTitle, menuBar, menuHandler, historySize);
+    }
+
+    void writeLogWindow(const wchar_t* msg)
+    {
+      writeLogWindow(utf16ToUtf8(msg).c_str());
+    }
+
+    void writeLogWindow(const char* msg)
+    {
+      // TODO: mutex!
+      static auto logWindow = createLogWindow(
+        0, (HINSTANCE)State::coreModuleHandle(), L"xlOil Load Failure", 0, 0, 100);
+
+      if (!msg)
+        return;
+
+      auto t = std::time(nullptr);
+      tm tm;
+      localtime_s(&tm, &t);
+      logWindow->appendMessage(
+        formatStr("%d-%d-%d: %s", tm.tm_hour, tm.tm_min, tm.tm_sec, msg));
+      logWindow->openWindow();
     }
   }
 }

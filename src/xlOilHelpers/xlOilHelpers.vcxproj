@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Environment.cpp" />
-    <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="PEHelper.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="Thunker.cpp" />
@@ -28,7 +27,6 @@
   <ItemGroup>
     <ClInclude Include="Environment.h" />
     <ClInclude Include="Exception.h" />
-    <ClInclude Include="LogWIndow.h" />
     <ClInclude Include="PEHelper.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="Thunker.h" />
@@ -43,9 +41,9 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset> 
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>  
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -72,7 +70,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>  
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>

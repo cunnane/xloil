@@ -5,12 +5,16 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil/Events.h>
 #include <xlOil/State.h>
+#include <xlOil/StringUtils.h>
+#include "LogWindow.h"
 #include <filesystem>
+
+using xloil::Helpers::writeLogWindow;
 
 namespace
 {
   static HMODULE theModuleHandle = nullptr;
-  std::vector<std::shared_ptr<const xloil::RegisteredFunc>> theFunctions;
+  static std::vector<std::shared_ptr<const xloil::RegisteredFunc>> theFunctions;
   // This bool is required due to apparent bugs in the XLL interface:
   // Excel may call XLL event handlers after calling xlAutoClose,
   // and it may call xlAutoClose without ever having called xlAutoOpen
@@ -26,7 +30,7 @@ void xllClose();
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
   _In_ DWORD     fdwReason,
-  _In_ LPVOID    lpvReserved
+  _In_ LPVOID    /*lpvReserved*/
 )
 {
   if (fdwReason == DLL_PROCESS_ATTACH)
@@ -47,17 +51,25 @@ XLO_ENTRY_POINT(int) xlAutoOpen(void)
   {
     xloil::State::initAppContext(theModuleHandle);
 
+    // TODO: check if we have registered async functions
+    xloil::tryCallExcel(msxll::xlEventRegister,
+      "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+
     xllOpen(theModuleHandle);
 
     auto xllName = std::filesystem::path(
       xloil::callExcel(msxll::xlGetName).toString()).filename();
-    theFunctions = xloil::registerStaticFuncs(xllName.c_str());
 
-    // If you don't use native async functions, you don't need this
-    xloil::tryCallExcel(msxll::xlEventRegister,
-      "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    std::wstring errorMessages;
+    theFunctions = xloil::registerStaticFuncs(xllName.c_str(), errorMessages);
+    if (!errorMessages.empty())
+      writeLogWindow(errorMessages.c_str());
 
     theXllIsOpen = true;
+  }
+  catch (const std::exception& e)
+  {
+    writeLogWindow(e.what());
   }
   catch (...)
   {}

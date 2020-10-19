@@ -65,11 +65,11 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
-   <ImportGroup Label="PropertySheets">
+  <ImportGroup Label="PropertySheets">
     <Import Project="..\BuildPaths.props" />
     <Import Project="..\Common.props" />
-	<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>   
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
     <Import Project="..\Debug.props" />
   </ImportGroup>
@@ -111,13 +111,8 @@
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Throw.cpp" />
-    <ClCompile Include="XllEntryPoint.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)'=='DebugStatic'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)'=='ReleaseStatic'">false</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
     <ClCompile Include="ExcelObj.cpp" />
@@ -126,10 +121,17 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StaticRegister.cpp" />
     <ClCompile Include="XlCall.cpp" />
+    <ClCompile Include="XllEntryPoint.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="XllEvents.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
+    <ClInclude Include="LogWIndow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

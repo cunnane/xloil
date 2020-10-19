@@ -13,10 +13,12 @@
     <ClCompile Include="FuncRegistry.cpp" />
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="XllEvents.cpp" />
-    <ClCompile Include="XllEntryPoint.cpp" />
     <ClCompile Include="Throw.cpp" />
+    <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="XllEntryPoint.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
+    <ClInclude Include="LogWIndow.h" />
   </ItemGroup>
 </Project>

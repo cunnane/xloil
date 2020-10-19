@@ -3,7 +3,7 @@
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
 #include <xlOilHelpers/Exception.h>
-#include <xlOilHelpers/LogWindow.h>
+#include <xlOil-XLL/LogWindow.h>
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/pattern_formatter.h>
 #include <mutex>

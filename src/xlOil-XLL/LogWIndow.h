@@ -1,5 +1,6 @@
 #pragma once
 #include <xloil/WindowsSlim.h>
+#include <xloil/State.h>
 #include <string>
 #include <memory>
 namespace xloil
@@ -20,5 +21,9 @@ namespace xloil
       HMENU menuBar,
       WNDPROC menuHandler,
       size_t historySize);
+
+    void writeLogWindow(const wchar_t* msg);
+
+    void writeLogWindow(const char* msg);
   }
 }

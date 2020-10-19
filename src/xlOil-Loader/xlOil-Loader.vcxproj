@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{F7E97195-7624-4E54-AA15-A1F85C96C609}</ProjectGuid>
-	<Keyword>Win32Proj</Keyword>
+    <Keyword>Win32Proj</Keyword>
     <RootNamespace>xlOil</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil-Loader</ProjectName>
@@ -38,12 +38,12 @@
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup> 
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="..\BuildPaths.props" />
     <Import Project="..\Common.props" />
-  </ImportGroup>  
+  </ImportGroup>
   <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
     <Import Project="..\Debug.props" />
@@ -67,6 +67,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\xlOil-XLL\LogWindow.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -84,6 +85,9 @@
     <ProjectReference Include="..\xlOil\xlOil.vcxproj">
       <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\xlOil-XLL\LogWIndow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

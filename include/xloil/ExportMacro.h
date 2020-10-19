@@ -11,3 +11,12 @@
 #endif
 
 #define XLO_ENTRY_POINT(ret) extern "C" __declspec(dllexport) ret __stdcall 
+
+// Ensure entry points from XllEntryPoint are exposed
+#ifdef XLOIL_STATIC_LIB
+#pragma comment(linker, "/include:DllMain")
+#pragma comment(linker, "/include:xlAutoOpen")
+#pragma comment(linker, "/include:xlAutoClose")
+#pragma comment(linker, "/include:xlAutoFree12")
+#pragma comment(linker, "/include:xlHandleCalculationCancelled")
+#endif

@@ -6,6 +6,6 @@
   </PropertyGroup>
   <PropertyGroup>
     <OutDir>$(SolutionDir)build\$(Platform)\$(Configuration)\</OutDir>
-	<IntDir>$(ProjectRoot)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
+	<IntDir>$(xlOilRoot)build\obj\$(ProjectName)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
 </Project>

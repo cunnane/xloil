@@ -6,7 +6,7 @@
 #include <xlOil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/Events.h>
-#include <xlOilHelpers/LogWindow.h>
+#include <xlOil-XLL/LogWindow.h>
 #include <tomlplusplus/toml.hpp>
 #include <filesystem>
 #define DELAYIMP_INSECURE_WRITABLE_HOOKS
@@ -51,28 +51,9 @@ namespace
     }
   }
 
-  auto& getLogFile()
+  void writeLog(const std::string& msg)
   {
-    static std::fstream logFile(ourLogFilePath, std::ios::app);
-    return logFile;
-  }
-
-  /// <summary>
-  /// Very cheap log to catch startup errors before the core dll can initialise
-  /// spdlog.
-  /// </summary>
-  template <class T>
-  void writeLog(const T& msg)
-  {
-    auto t = std::time(nullptr);
-    tm tm;
-    localtime_s(&tm, &t);
-    static auto logWindow = createLogWindow(
-      0, theModuleHandle, L"xlOil Load Failure", 0, 0, 100);
-    std::stringstream str;
-    str << std::put_time(&tm, "%d-%m-%Y %H-%M-%S") << ": " << msg << "\n";
-    logWindow->appendMessage(str.str());
-    logWindow->openWindow();
+    writeLogWindow(msg.c_str());
   }
 }
 
@@ -114,7 +95,6 @@ void loadEnvironmentBlock(const toml::table& settings)
 
 int loadCore(const wchar_t* xllPath)
 {
-
   // If the delay load fails, it will throw a SEH exception, so we must use
   // __try/__except to avoid this crashing Excel.
   int ret = -1;
@@ -127,7 +107,7 @@ int loadCore(const wchar_t* xllPath)
   __except (EXCEPTION_EXECUTE_HANDLER)
   {
     // TODO: add GetExceptionCode(), without using string
-    writeLog("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
+    writeLogWindow("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
   }
   __pfnDliFailureHook2 = previousHook;
   return ret;
@@ -218,7 +198,7 @@ void xllClose();
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
   _In_ DWORD     fdwReason,
-  _In_ LPVOID    lpvReserved
+  _In_ LPVOID    /*lpvReserved*/
 )
 {
   if (fdwReason == DLL_PROCESS_ATTACH)

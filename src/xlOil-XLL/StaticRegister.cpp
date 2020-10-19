@@ -63,12 +63,19 @@ namespace xloil
   }
 
   std::vector<std::shared_ptr<const RegisteredFunc>>
-    registerStaticFuncs(const wchar_t* moduleName)
+    registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors)
   {
     const auto specs = processRegistryQueue(moduleName);
     std::vector<std::shared_ptr<const RegisteredFunc>> result;
     for (auto& spec : specs)
+      try
+    {
       result.emplace_back(spec->registerFunc());
+    }
+    catch (const std::exception& e)
+    {
+      errors += fmt::format(L"{0}: {1}\n", spec->name(), utf8ToUtf16(e.what()));
+    }
     return result;
   }
 }
