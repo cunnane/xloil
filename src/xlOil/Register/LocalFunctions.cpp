@@ -122,7 +122,8 @@ int __stdcall localFunctionEntryPoint(
 
       for (auto i = 0u; i < arrSize; ++i)
       {
-        xllArgs.emplace_back(COM::variantToExcelObj(pData[i], func.info()->args[i].allowRange));
+        xllArgs.emplace_back(
+          COM::variantToExcelObj(pData[i], func.info()->args[i].type == FuncArg::Range));
         argPtrs.emplace_back(&xllArgs.back());
       }
 

@@ -86,8 +86,8 @@ namespace xloil
       bool byRow = inputArray.nCols() == 1;
 
       ExcelArrayBuilder builder(
-        byRow ? inputArray.size() : maxTokens, 
-        byRow ? maxTokens : inputArray.size(),
+        byRow ? inputArray.size() : (int)maxTokens, 
+        byRow ? (int)maxTokens : inputArray.size(),
         totalStrLength);
 
       // We don't intend to write to every cell, so need to initialise

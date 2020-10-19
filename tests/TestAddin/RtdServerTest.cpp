@@ -60,7 +60,7 @@ namespace xloil
     }
 
     XLO_FUNC_START(
-      xloRtdSet(ExcelObj& tag, ExcelObj& val)
+      xloRtdSet(const ExcelObj& tag, const ExcelObj& val)
     )
     {
       auto topic = tag.toString();
@@ -74,7 +74,7 @@ namespace xloil
     XLO_FUNC_END(xloRtdSet);
 
     XLO_FUNC_START(
-      xloRtdGet(ExcelObj& tag)
+      xloRtdGet(const ExcelObj& tag)
     )
     {
       auto value = getAnotherRtdServer()->subscribe(tag.toString().c_str());

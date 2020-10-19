@@ -319,6 +319,24 @@ namespace xloil
       donor.xltype = msxll::xltypeNil;
     }
 
+    /// <summary>
+    /// Construct local range reference (will refer to active sheet)
+    /// </summary>
+    /// <param name="ref"></param>
+    ExcelObj(const msxll::xlref12& ref)
+    {
+      val.sref.ref = ref;
+      xltype = msxll::xltypeSRef;
+    }
+
+    /// <summary>
+    /// Construct global range reference. Sheet ID can be obtained from
+    /// Excel's xlSheetId function.
+    /// </summary>
+    /// <param name="sheet"></param>
+    /// <param name="ref"></param>
+    ExcelObj(msxll::IDSHEET sheet, const msxll::xlref12& ref);
+
     ExcelObj::~ExcelObj()
     {
       reset();

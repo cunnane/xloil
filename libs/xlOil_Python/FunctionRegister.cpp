@@ -169,7 +169,6 @@ namespace xloil
       {
         if (funcInfo->isRtdAsync)
           XLO_THROW("Cannot specify async registration with Rtd async");
-
         spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
       }
       else if (funcInfo->isRtdAsync)
@@ -421,14 +420,30 @@ namespace xloil
 
     namespace
     {
+      void bitSet(int& x, int mask, bool val)
+      {
+        if (val)
+          x |= mask;
+        else
+          x &= ~mask;
+      }
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<FuncArg>(mod, "FuncArg")
           .def(py::init<const wchar_t*, const wchar_t*>())
           .def_readwrite("name", &FuncArg::name)
           .def_readwrite("help", &FuncArg::help)
-          .def_readwrite("allow_range", &FuncArg::allowRange)
-          .def_readwrite("optional", &FuncArg::optional);
+          .def_property("allow_range",
+            [](FuncArg& x) { return (x.type & FuncArg::Range) != 0; },
+            [](FuncArg& x, bool v) 
+        { 
+          bitSet(x.type, FuncArg::Range, v); 
+        }
+          )
+          .def_property("optional",
+            [](FuncArg& x) { return (x.type & FuncArg::Optional) != 0; },
+            [](FuncArg& x, bool v) { bitSet(x.type, FuncArg::Optional, v);  }
+          );
 
         py::class_<FuncInfo, shared_ptr<FuncInfo>>(mod, "FuncInfo")
           .def(py::init())

@@ -16,10 +16,23 @@ namespace xloil
   /// </summary>
   struct FuncArg
   {
-    FuncArg(const wchar_t* name_, const wchar_t* help_ = nullptr)
-      : name(name_ ? name_ : L"")
-      , help(help_ ? help_ : L"")
-      , allowRange(false)
+    enum ArgType
+    {
+      Obj         = 1 << 0,
+      Range       = 1 << 1,
+      Array       = 1 << 2,
+      AsyncHandle = 1 << 3,
+      ReturnVal   = 1 << 4,
+      Optional    = 1 << 5 /// Just affects the auto generated help string
+    };
+
+    FuncArg(
+      const wchar_t* argName = nullptr, 
+      const wchar_t* argHelp = nullptr,
+      const int argType = Obj)
+      : name(argName ? argName : L"")
+      , help(argHelp ? argHelp : L"")
+      , type(argType)
     {}
     /// <summary>
     /// The name of the argument shown in the function wizard.
@@ -30,18 +43,11 @@ namespace xloil
     /// </summary>
     std::wstring help;
 
-    /// <summary>
-    /// If true, when the user specifies a cell reference in a function argument,
-    /// Excel will pass a range, which xloil converts to an ExcelRange object.
-    /// If false, cell references are converted to arrays or primitive types.
-    /// </summary>
-    bool allowRange;
-
-    bool optional = false;
+    int type;
 
     bool operator==(const FuncArg& that) const
     {
-      return name == that.name && help == that.help;
+      return name == that.name && help == that.help && type == that.type;
     }
   };
 

@@ -43,22 +43,16 @@ namespace xloil
     row_t fromRow, col_t fromCol, 
     row_t toRow, col_t toCol)
   {
-    _obj.xltype = msxll::xltypeRef | msxll::xlbitDLLFree;
-    _obj.val.mref.idSheet = sheetId;
-    _obj.val.mref.lpmref = new msxll::XLMREF12[1];
-    _obj.val.mref.lpmref->count = 1;
-    ref().rwFirst = fromRow;
-    ref().colFirst = fromCol;
-    ref().rwLast = toRow;
-    ref().colLast = toCol;
-    if (toRow >= XL_MAX_ROWS || fromRow > toRow)
-      XLO_THROW("ExcelRef out of range fromRow={0}, toRow={1}", fromRow, toRow);
-    if (toCol >= XL_MAX_COLS || fromCol > toCol)
-      XLO_THROW("ExcelRef out of range fromCol={0}, toCol={1}", fromCol, toCol);
+    _obj = ExcelObj(sheetId, msxll::xlref12{ fromRow,  toRow, fromCol, toCol });
   }
+
   XllRange::XllRange(const ExcelRef& ref)
     : _ref(ref)
   {}
+  XllRange::XllRange(const ExcelObj& ref)
+    : _ref(ExcelRef(ref))
+  {}
+
   Range* XllRange::range(int fromRow, int fromCol, int toRow, int toCol) const
   {
     return new XllRange(_ref.range(fromRow, fromCol, toRow, toCol));

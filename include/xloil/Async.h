@@ -14,6 +14,19 @@ namespace xloil
     asyncReturn(
       const ExcelObj& asyncHandle, const ExcelObj& value);
 
+  struct AsyncHandle : public ExcelObj
+  {
+    template<class... Args>
+    void returnValue(Args&&... args) const
+    {
+      asyncReturn(*this, ExcelObj(std::forward<Args>(args)...));
+    }
+    void returnValue(const ExcelObj& value)
+    {
+      asyncReturn(*this, value);
+    }
+  };
+
   XLOIL_EXPORT bool yieldAndCheckIfEscPressed();
 
   class AsyncHelper

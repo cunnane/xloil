@@ -8,7 +8,7 @@ namespace xloil
   XLO_FUNC_START(
     xloFillNA(
       const ExcelObj* value,
-      ExcelObj* array,
+      const ExcelObj* array,
       const ExcelObj* trim
     )
   )
@@ -67,7 +67,7 @@ namespace xloil
           if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
             const_cast<ExcelObj&>(arr(i, j)) = *value;
 
-      return array;
+      return const_cast<ExcelObj*>(array);
     }
   }
   XLO_FUNC_END(xloFillNA).threadsafe()

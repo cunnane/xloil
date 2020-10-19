@@ -2,13 +2,22 @@
 #include "Register.h"
 #include "ExcelObj.h"
 
-namespace xloil { class FuncSpec; class RegisteredFunc; }
+namespace xloil {
+  class FuncSpec; 
+  class RegisteredFunc; 
+  class FPArray; 
+  class RangeArg; 
+  struct AsyncHandle;
+}
 
 // In XLO_FUNC_START a separate declaration is needed to the function implementation
 // to work around this quite serious MSVC compiler bug:
 // https://stackoverflow.com/questions/45590594/generic-lambda-in-extern-c-function
 
-/// Marks the start of an function regsistered in Excel
+
+/// <summary>
+/// Marks the start of an function registered in Excel
+/// </summary>
 #define XLO_FUNC_START(func) \
   XLO_ENTRY_POINT(XLOIL_XLOPER*) func; \
   XLOIL_XLOPER* __stdcall func \
@@ -60,7 +69,8 @@ namespace xloil
   struct FuncRegistrationMemo
   {
     typedef FuncRegistrationMemo self;
-    FuncRegistrationMemo(const char* entryPoint_, size_t nArgs);
+    FuncRegistrationMemo(
+      const char* entryPoint_, size_t nArgs, const int* type);
 
     self& name(const wchar_t* txt)
     {
@@ -77,17 +87,24 @@ namespace xloil
       _info->category = txt;
       return *this;
     }
-    self& optArg(const wchar_t* name, const wchar_t* help = nullptr, bool allowRange = false)
+    /// <summary>
+    /// Specifies an arg as optional. This just effects the auto generated
+    /// help string
+    /// </summary>
+    self& optArg(const wchar_t* name, const wchar_t* help = nullptr)
     {
-      arg(name, help, allowRange);
-      _info->args.back().optional = true;
+      arg(name, help);
+      _info->args[_iArg - 1].type |= FuncArg::Optional;
       return *this;
     }
-    self& arg(const wchar_t* name, const wchar_t* help = nullptr, bool allowRange = false)
+    self& arg(const wchar_t* name, const wchar_t* help = nullptr)
     {
-      _info->args.emplace_back(FuncArg(name, help));
-      if (_allowRangeAll || allowRange)
-        _info->args.back().allowRange = true;
+      if (_iArg >= _info->args.size())
+        XLO_THROW("Too many args for function");
+      auto& arg = _info->args[_iArg++];
+      arg.name = name;
+      if (help)
+        arg.help = help;
       return *this;
     }
     self& async()
@@ -115,48 +132,83 @@ namespace xloil
       _info->options |= FuncInfo::THREAD_SAFE;
       return *this;
     }
-    self& allowRange()
-    {
-      _allowRangeAll = true;
-      return *this;
-    }
     // TODO: public but not exported...can we hide this?
-    std::shared_ptr<const FuncInfo> getInfo();
+    std::shared_ptr<FuncInfo> getInfo();
 
     std::string entryPoint;
 
   private:
     std::shared_ptr<FuncInfo> _info;
-    bool _allowRangeAll;
-    size_t _nArgs;
+    size_t _iArg;
   };
 
   XLOIL_EXPORT FuncRegistrationMemo& 
-    createRegistrationMemo(const char* entryPoint_, size_t nArgs);
+    createRegistrationMemo(
+      const char* entryPoint_, size_t nArgs, const int* types);
 
-  template <class R, class... Args> constexpr size_t
-    countArguments(R(*)(Args...))
-  {
-    return sizeof...(Args);
-  }
-
-#ifndef _WIN64
-  template <class R, class... Args> constexpr size_t
-    countArguments(R(__stdcall *)(Args...))
-  {
-    return sizeof...(Args);
-  }
+#if DOXYGEN
+/// <summary>
+/// Returning ExcelObj in-place is disabled by default. In the words of the XLL SDK:
+/// 
+/// "Excel permits the registration of functions that return an XLOPER by modifying 
+/// an argument in place. However, if an XLOPER argument points to memory, and the 
+/// pointer is then overwritten by the return value of the DLL function, Excel can 
+/// leak memory. If the DLL allocated memory for the return value, Excel might try 
+/// to free that memory, which could cause an immediate crash.  Therefore, you should 
+/// not modify XLOPER/XLOPER12 arguments in place."
+/// 
+/// In practice, is can be safe to modify an ExcelObj in place, for instance xloSort
+/// does this by changing the row order in the array, but without changing memory 
+/// allocation.
+/// </summary>
+#define XLOIL_UNSAFE_INPLACE_RETURN
 #endif
 
-  template <class TFunc> inline FuncRegistrationMemo&
-    registrationMemo(const char* name, TFunc func)
+  namespace detail
   {
-    return createRegistrationMemo(name, countArguments(func));
+    template<class T> struct ArgType {};
+    template<> struct ArgType<const ExcelObj&> { static constexpr auto value = FuncArg::Obj; };
+    template<> struct ArgType<const ExcelObj*> { static constexpr auto value = FuncArg::Obj; };
+#ifdef XLOIL_UNSAFE_INPLACE_RETURN
+    template<> struct ArgType<ExcelObj&> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
+    template<> struct ArgType<ExcelObj*> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
+#endif
+    template<> struct ArgType<const FPArray&> { static constexpr auto value = FuncArg::Array; };
+    template<> struct ArgType<FPArray&> { static constexpr auto value = FuncArg::Array | FuncArg::ReturnVal; };
+    template<> struct ArgType<const AsyncHandle&> { static constexpr auto value = FuncArg::AsyncHandle; };
+    template<> struct ArgType<const RangeArg&> { static constexpr auto value = FuncArg::Range; };
+    
+#ifndef _WIN64
+#define XLOIL_STDCALL __stdcall
+#else
+#define XLOIL_STDCALL
+#endif
+
+    template<class T> struct ArgTypes;
+    template <class Ret, class... Args>
+    struct ArgTypes<Ret(XLOIL_STDCALL *)(Args...)>
+    {
+      static constexpr int types[sizeof...(Args)] = { ArgType<Args>::value ... };
+      static constexpr size_t nArgs = sizeof...(Args);
+
+     /* template <class... A>
+      ArgTypes(Ret(*)(A...))
+        : types{ ArgType<A>::value ... }
+      { }*/
+    };
+  }
+
+  template <class TFunc> inline FuncRegistrationMemo&
+    registrationMemo(const char* name, TFunc)
+  {
+    auto argTypes = detail::ArgTypes<TFunc>();
+    return createRegistrationMemo(
+      name, argTypes.nArgs, argTypes.types);
   }
 
   std::vector<std::shared_ptr<const FuncSpec>>
     processRegistryQueue(const wchar_t* moduleName);
 
   XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredFunc>>
-    registerStaticFuncs(const wchar_t* moduleName = 0);
+    registerStaticFuncs(const wchar_t* moduleName);
 }

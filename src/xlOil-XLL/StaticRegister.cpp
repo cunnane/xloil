@@ -8,34 +8,30 @@
 
 using std::vector;
 using std::make_shared;
+using std::wstring;
 
 namespace xloil
 {
-  FuncRegistrationMemo::FuncRegistrationMemo(const char* entryPoint_, size_t nArgs)
-    : _nArgs(nArgs)
-    , entryPoint(entryPoint_)
+  FuncRegistrationMemo::FuncRegistrationMemo(
+    const char* entryPoint_, size_t nArgs, const int* types)
+    : entryPoint(entryPoint_)
     , _info(new FuncInfo())
-    , _allowRangeAll(false)
+    , _iArg(0)
   {
     _info->name = utf8ToUtf16(entryPoint_);
+    _info->args.resize(nArgs);
+    for (auto i = 0; i < nArgs; ++i)
+      _info->args[i].type = types[i];
   }
 
-  std::shared_ptr<const FuncInfo> FuncRegistrationMemo::getInfo()
+  std::shared_ptr<FuncInfo> FuncRegistrationMemo::getInfo()
   {
     using namespace std::string_literals;
 
-    while (_info->args.size() < _nArgs)
-      _info->args.emplace_back(FuncArg(fmt::format(L"Arg_{}", _info->args.size()).c_str()));
+    auto nArgs = _info->args.size();
 
-    if (_allowRangeAll)
-      for (auto& arg : _info->args)
-        arg.allowRange = true;
-
-    if (_info->args.size() > _nArgs)
-      XLO_THROW("Too many args for function");
-
-    if ((_info->options & FuncInfo::ASYNC) != 0)
-      _info->args.pop_back(); // TODO: hack!!
+    for (;_iArg < nArgs; ++_iArg)
+      _info->args[_iArg].name = fmt::format(L"Arg_{}", _iArg);
 
     return _info;
   }
@@ -47,9 +43,9 @@ namespace xloil
   }
 
   XLOIL_EXPORT FuncRegistrationMemo& createRegistrationMemo(
-    const char* entryPoint_, size_t nArgs)
+    const char* entryPoint_, size_t nArgs, const int* types)
   {
-    getFuncRegistryQueue().emplace_back(entryPoint_, nArgs);
+    getFuncRegistryQueue().emplace_back(entryPoint_, nArgs, types);
     return getFuncRegistryQueue().back();
   }
 

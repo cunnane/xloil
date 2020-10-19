@@ -69,7 +69,7 @@ namespace xloil
 
   XLO_FUNC_START(
     xloSort(
-      ExcelObj* array,
+      const ExcelObj* array,
       const ExcelObj* order,
       XLO_DECLARE_ARGS(XLOSORT_NARGS, XLOSORT_ARG_NAME)
     )
@@ -86,7 +86,7 @@ namespace xloil
 
     // Anything to do?
     if (nRows < 2 || nCols == 0)
-      return array;
+      return const_cast<ExcelObj*>(array);
 
     MyArray directions, columns;
 
@@ -193,7 +193,7 @@ namespace xloil
         k = r;
       }
     }
-    return array;
+    return const_cast<ExcelObj*>(array);
   }
   XLO_FUNC_END(xloSort).threadsafe()
     .help(L"Sorts an array by one or more columns. If column headings are specified the first row is "

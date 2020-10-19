@@ -122,6 +122,21 @@ namespace
     xltype = xltypeStr;
   }
 
+  ExcelObj::ExcelObj(msxll::IDSHEET sheet, const msxll::xlref12 & ref)
+  {
+    if (ref.rwFirst >= XL_MAX_ROWS || ref.rwFirst > ref.rwLast)
+      XLO_THROW("ExcelRef out of range fromRow={0}, toRow={1}", ref.rwFirst, ref.rwLast);
+    if (ref.colFirst >= XL_MAX_COLS || ref.colFirst > ref.colLast)
+      XLO_THROW("ExcelRef out of range fromCol={0}, toCol={1}", ref.colFirst, ref.colLast);
+
+    val.mref.idSheet = sheet;
+    val.mref.lpmref = new msxll::XLMREF12[1];
+    val.mref.lpmref->count = 1;
+    val.mref.lpmref->reftbl[0] = ref;
+    xltype = msxll::xltypeRef | msxll::xlbitDLLFree;
+  }
+
+
   void ExcelObj::reset()
   {
     if ((xltype & xlbitXLFree) != 0)

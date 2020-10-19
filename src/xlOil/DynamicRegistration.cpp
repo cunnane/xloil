@@ -19,7 +19,7 @@ using std::string;
 using std::wstring;
 using std::make_shared;
 using namespace msxll;
-
+using std::static_pointer_cast;
 
 namespace xloil
 {
@@ -86,10 +86,10 @@ namespace xloil
     /// <param name="info"></param>
     /// <param name="thunk"></param>
     /// <returns>The name of the entry point selected</returns>
-    auto hookEntryPoint(const FuncInfo& info, const void* thunk)
+    auto hookEntryPoint(const wchar_t* name, const void* thunk)
     {
       // Hook the thunk by modifying the export address table
-      XLO_DEBUG(L"Hooking thunk for {0}", info.name);
+      XLO_DEBUG(L"Hooking thunk for {0}", name);
 
       theExportTable->hook(theFirstStub, (void*)thunk);
 
@@ -109,12 +109,12 @@ namespace xloil
   char* ThunkHolder::theCodePtr = theCodeCave;
 
 
-  template <class TCallback>
+  template <class TCallback, bool TisAsync>
   class RegisteredCallback : public RegisteredFunc
   {
   public:
     RegisteredCallback(
-      const std::shared_ptr<const GenericCallbackSpec<TCallback>>& spec)
+      const shared_ptr<const GenericCallbackSpec<TCallback>>& spec)
       : RegisteredFunc(spec)
     {
       auto& registry = ThunkHolder::get();
@@ -128,8 +128,21 @@ namespace xloil
     int doRegister() const
     {
       auto& registry = ThunkHolder::get();
-      auto entryPoint = registry.hookEntryPoint(*info(), _thunk);
-      return registerFuncRaw(info(), entryPoint.c_str(), registry.theCoreDllName);
+      auto entryPoint = registry.hookEntryPoint(info()->name.c_str(), _thunk);
+      // Little bit of a hack - only for async callbacks, we need to change
+      // the argument list in FuncInfo to include an async handle
+      auto regInfo = info();
+      if constexpr (TisAsync)
+      {
+        auto args = info()->args;
+        args.insert(
+          args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
+        auto patchedInfo = make_shared<FuncInfo>(*info());
+        patchedInfo->args = args;
+        regInfo = patchedInfo;
+      }
+
+      return registerFuncRaw(regInfo, entryPoint.c_str(), registry.theCoreDllName);
     }
 
     virtual bool reregister(const std::shared_ptr<const FuncSpec>& other)
@@ -143,7 +156,9 @@ namespace xloil
       auto& context = spec()._context;
 
       XLO_ASSERT(info()->name == newInfo->name);
-      if (_thunk && info()->numArgs() == newInfo->numArgs() && info()->options == newInfo->options)
+      if (_thunk 
+        && info()->numArgs() == newInfo->numArgs() 
+        && info()->options == newInfo->options)
       {
         bool infoMatches = *info() == *newInfo;
         bool contextMatches = context != newContext;
@@ -163,7 +178,8 @@ namespace xloil
           return true;
 
         // Rewrite spec
-        _spec = make_shared<GenericCallbackSpec<TCallback>>(newInfo, spec()._callback, newContext);
+        _spec = make_shared<GenericCallbackSpec<TCallback>>(
+          newInfo, spec()._callback, newContext);
 
         // Otherwise re-use the possibly patched thunk
         XLO_DEBUG(L"Reregistering function '{0}'", newInfo->name);
@@ -185,16 +201,18 @@ namespace xloil
     size_t _thunkSize;
   };
 
-  std::shared_ptr<RegisteredFunc> GenericCallbackSpec<RegisterCallback>::registerFunc() const
+  shared_ptr<RegisteredFunc> GenericCallbackSpec<RegisterCallback>::registerFunc() const
   {
-    return make_shared<RegisteredCallback<RegisterCallback>>(
-      std::static_pointer_cast<const GenericCallbackSpec<RegisterCallback>>(this->shared_from_this()));
+    return make_shared<RegisteredCallback<RegisterCallback, false>>(
+      static_pointer_cast<const GenericCallbackSpec<RegisterCallback>>(
+        this->shared_from_this()));
   }
 
-  std::shared_ptr<RegisteredFunc> GenericCallbackSpec<AsyncCallback>::registerFunc() const
+  shared_ptr<RegisteredFunc> GenericCallbackSpec<AsyncCallback>::registerFunc() const
   {
-    return make_shared<RegisteredCallback<AsyncCallback>>(
-      std::static_pointer_cast<const GenericCallbackSpec<AsyncCallback>>(this->shared_from_this()));
+    return make_shared<RegisteredCallback<AsyncCallback, true>>(
+      static_pointer_cast<const GenericCallbackSpec<AsyncCallback>>(
+        this->shared_from_this()));
   }
 
   namespace

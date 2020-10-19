@@ -73,6 +73,7 @@
     <ClInclude Include="..\..\include\xloil\ExcelRef.h" />
     <ClInclude Include="..\..\include\xloil\Caller.h" />
     <ClInclude Include="..\..\include\xloil\ExportMacro.h" />
+    <ClInclude Include="..\..\include\xloil\FPArray.h" />
     <ClInclude Include="..\..\include\xloil\FuncSpec.h" />
     <ClInclude Include="..\..\include\xloil\Interface.h" />
     <ClInclude Include="..\..\include\xloil\Log.h" />
