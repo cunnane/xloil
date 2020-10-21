@@ -165,15 +165,19 @@ namespace xloil
     template<> struct ArgType<const ExcelObj&> { static constexpr auto value = FuncArg::Obj; };
     template<> struct ArgType<const ExcelObj*> { static constexpr auto value = FuncArg::Obj; };
     template<> struct ArgType<const FPArray&> { static constexpr auto value = FuncArg::Array; };
-    template<> struct ArgType<FPArray&> { static constexpr auto value = FuncArg::Array | FuncArg::ReturnVal; };
     template<> struct ArgType<const RangeArg&> { static constexpr auto value = FuncArg::Range; };
 
+    /// <summary>
+    /// In-place and async return argument types are only valid when the function 
+    /// returns void
+    /// </summary>
     template<class T> struct VoidArgType : public ArgType<T>
     {};
 #ifdef XLOIL_UNSAFE_INPLACE_RETURN
     template<> struct VoidArgType<ExcelObj&> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
     template<> struct VoidArgType<ExcelObj*> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
 #endif
+    template<> struct VoidArgType<FPArray&> { static constexpr auto value = FuncArg::Array | FuncArg::ReturnVal; };
     template<> struct VoidArgType<const AsyncHandle&> { static constexpr auto value = FuncArg::AsyncHandle; };
 
 #ifndef _WIN64
