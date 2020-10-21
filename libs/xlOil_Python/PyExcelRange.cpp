@@ -62,7 +62,7 @@ namespace xloil
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
-          : py::cast(range.range(fromRow, fromCol, toRow, toCol));
+          : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow, (int)toCol));
       }
 
       class PyFromRange : public FromExcelBase<PyObject*>

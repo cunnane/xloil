@@ -32,7 +32,7 @@ namespace xloil
         return ret;
       }
 
-      HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock) override
+      HRESULT STDMETHODCALLTYPE LockServer(BOOL /*fLock*/) override
       {
         return E_NOTIMPL;
       }

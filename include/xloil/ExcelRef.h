@@ -39,7 +39,6 @@ namespace xloil
 
       std::tuple<row_t, col_t> shape() const
       {
-        auto& r = up().ref();
         return { nRows(), nCols() };
       }
 

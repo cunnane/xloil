@@ -45,31 +45,31 @@ namespace xloil
           return E_NOINTERFACE;
         }
         virtual HRESULT __stdcall raw_OnConnection(
-          /*[in]*/ IDispatch * Application,
-          /*[in]*/ enum AddInDesignerObjects::ext_ConnectMode ConnectMode,
-          /*[in]*/ IDispatch * AddInInst,
-          /*[in]*/ SAFEARRAY * * custom) override
+          /*[in]*/ IDispatch * /*Application*/,
+          /*[in]*/ enum AddInDesignerObjects::ext_ConnectMode /*ConnectMode*/,
+          /*[in]*/ IDispatch * /*AddInInst*/,
+          /*[in]*/ SAFEARRAY * * /*custom*/) override
         {
           return S_OK;
         }
         virtual HRESULT __stdcall raw_OnDisconnection(
-          /*[in]*/ enum AddInDesignerObjects::ext_DisconnectMode RemoveMode,
-          /*[in]*/ SAFEARRAY * * custom) override
+          /*[in]*/ enum AddInDesignerObjects::ext_DisconnectMode /*RemoveMode*/,
+          /*[in]*/ SAFEARRAY * * /*custom*/) override
         {
           return S_OK;
         }
         virtual HRESULT __stdcall raw_OnAddInsUpdate(
-          /*[in]*/ SAFEARRAY * * custom) override
+          /*[in]*/ SAFEARRAY * * /*custom*/) override
         {
           return S_OK;
         }
         virtual HRESULT __stdcall raw_OnStartupComplete(
-          /*[in]*/ SAFEARRAY * * custom) override
+          /*[in]*/ SAFEARRAY * * /*custom*/) override
         {
           return S_OK;
         }
         virtual HRESULT __stdcall raw_OnBeginShutdown(
-          /*[in]*/ SAFEARRAY * * custom) override
+          /*[in]*/ SAFEARRAY * * /*custom*/) override
         {
           return S_OK;
         }
