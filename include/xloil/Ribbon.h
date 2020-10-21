@@ -75,4 +75,14 @@ namespace xloil
   ///   the add-in.</returns>
   XLOIL_EXPORT std::shared_ptr<IComAddin>
     makeComAddin(const wchar_t* name, const wchar_t* description = nullptr);
+
+  std::shared_ptr<IComAddin> xloil::makeAddinWithRibbon(
+    const wchar_t* name,
+    const wchar_t* xml,
+    const IComAddin::RibbonMap& mapper)
+  {
+    auto addin = makeComAddin(name, nullptr);
+    addin->setRibbon(xml, mapper);
+    addin->connect();
+  }
 }
