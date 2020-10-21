@@ -57,10 +57,14 @@ namespace xloil
       auto numArgs = info->args.size();
       int opts = info->options;
 
-      // Build the argument type descriptor - return type is currently '?';
-      string argTypes = "?";
+      // Build the argument type descriptor
+      string argTypes;
+      if (opts & FuncInfo::COMMAND)
+        argTypes += '>';  // Commands always return void - sensible?
+      else
+        argTypes += 'Q';  // Otherwise return an XLOPER12 unless overridden below
 
-      int iReturnArg = -1, iArg = 0;
+      int iArg = 0;
       for (auto& arg : info->args)
       {
         if (arg.type & FuncArg::Range)
@@ -70,34 +74,22 @@ namespace xloil
         else if (arg.type & FuncArg::Array)
           argTypes += "K%"; // FP12 struct
         else if (arg.type & FuncArg::AsyncHandle)
-          argTypes += "X";  // Async return handle
+        {
+          argTypes += "X";   // Async return handle
+          argTypes[0] = '>'; // Async returns void
+        }
         else
           XLO_THROW("Internal: Unknown function argtype");
 
-        if (arg.type & (FuncArg::ReturnVal | FuncArg::AsyncHandle))
-          if (iReturnArg >= 0)
+        if (arg.type & FuncArg::ReturnVal)
+          if (argTypes[0] != 'Q')
             XLO_THROW("Only one argument can be specified as a return value");
+          else if (iArg > 8)
+            XLO_THROW("Return in-place arg must be in the first 9");
           else
-            iReturnArg = iArg;
+            argTypes[0] = ('1' + (char)iArg); // Return numbered arg in place
         ++iArg;
       }
-
-      //
-      // Now set the return type specifed by argTypes[0]
-      //
-      if (opts & FuncInfo::ASYNC)
-        if (iReturnArg < 0)
-          XLO_THROW("For async functions an AsyncHandle argument must be given");
-        else
-          argTypes[0] = '>'; // Async returns void
-      else if (iReturnArg > 8)
-        XLO_THROW("Return in-place arg must be in the first 9");
-      else if (iReturnArg >= 0)
-        argTypes[0] = ('1' + (char)iReturnArg); // Return numbered arg in place
-      else if (opts & FuncInfo::COMMAND)
-        argTypes += '>';  // Commands always return void - sensible?
-      else
-        argTypes += 'Q';  // Other functions return an XLOPER
 
       // Set function option suffixes
       // TODO: check for invalid combinations
@@ -108,7 +100,7 @@ namespace xloil
       else if (opts & FuncInfo::THREAD_SAFE)
         argTypes += '$';
 
-      // Concatenate argument names, adding optional indicator if required
+      // Concatenate argument names, adding optional indicator if requested
       wstring argNames;
       for (auto x : info->args)
         if (x.type & FuncArg::Optional)

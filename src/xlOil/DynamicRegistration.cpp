@@ -253,48 +253,12 @@ namespace xloil
     std::function<ExcelObj*()> _call;
     ExcelObj _asyncHandle;
   };
-
-  void launchFunctionObjAsync(
-    LambdaFuncSpec* data,
-    const ExcelObj* asyncHandle,
-    const ExcelObj** args) noexcept
-  {
-    try
-    {
-      auto nArgs = data->info()->numArgs();
-
-      // Make a shared_ptr so the lambda below can capture it without a copy
-      auto argsCopy = make_shared<vector<ExcelObj>>();
-      argsCopy->reserve(nArgs);
-      std::transform(args, args + nArgs, std::back_inserter(*argsCopy), [](auto* p) {return ExcelObj(*p); });
-
-      auto functor = AsyncHolder(
-        [argsCopy, data]()
-      {
-        std::vector<const ExcelObj*> argsPtr;
-        argsPtr.reserve(argsCopy->size());
-        std::transform(argsCopy->begin(), argsCopy->end(), std::back_inserter(argsPtr), [](ExcelObj& x) { return &x; });
-        return data->_function(*data->info(), &argsPtr[0]);
-      },
-        asyncHandle);
-
-      //Very simple with no cancellation
-      std::thread go(functor, 0);
-      go.detach();
-    }
-    catch (...)
-    {
-    }
-  }
 }
 
 std::shared_ptr<RegisteredFunc> LambdaFuncSpec::registerFunc() const
 {
   auto copyThis = make_shared<LambdaFuncSpec>(*this);
-  if ((info()->options & FuncInfo::ASYNC) != 0)
-    return AsyncCallbackSpec(info(), &launchFunctionObjAsync, copyThis).registerFunc();
-  else
-    return CallbackSpec(info(), &launchFunctionObj, copyThis).registerFunc();
+  return CallbackSpec(info(), &launchFunctionObj, copyThis).registerFunc();
 }
 
 }

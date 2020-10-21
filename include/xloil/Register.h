@@ -77,14 +77,9 @@ namespace xloil
       /// </summary>
       COMMAND     = 1 << 3,
       /// <summary>
-      /// Marks the function as asynchronous. Async functions do not return 
-      /// directly but through a special handle which is passed as an argument
-      /// </summary>
-      ASYNC       = 1 << 4,
-      /// <summary>
       /// Stops the function appearing in the function wizard or autocomplete
       /// </summary>
-      HIDDEN      = 1 << 5
+      HIDDEN      = 1 << 4
     };
 
     XLOIL_EXPORT virtual ~FuncInfo();

@@ -63,6 +63,7 @@ namespace xloil
       std::shared_ptr<FuncInfo> info;
       std::shared_ptr<IPyToExcel> returnConverter;
       bool isLocalFunc;
+      bool isAsync;
       bool isRtdAsync;
 
     private:

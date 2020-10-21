@@ -165,10 +165,8 @@ namespace xloil
     shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
       shared_ptr<const FuncSpec> spec;
-      if (funcInfo->info->options & FuncInfo::ASYNC)
+      if (funcInfo->isAsync)
       {
-        if (funcInfo->isRtdAsync)
-          XLO_THROW("Cannot specify async registration with Rtd async");
         spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
       }
       else if (funcInfo->isRtdAsync)
@@ -453,7 +451,6 @@ namespace xloil
           .def_readwrite("args", &FuncInfo::args);
 
         py::enum_<FuncInfo::FuncOpts>(mod, "FuncOpts", py::arithmetic())
-          .value("Async", FuncInfo::ASYNC)
           .value("Macro", FuncInfo::MACRO_TYPE)
           .value("ThreadSafe", FuncInfo::THREAD_SAFE)
           .value("Volatile", FuncInfo::VOLATILE)
@@ -467,7 +464,8 @@ namespace xloil
           .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
           .def_readwrite("return_converter", &PyFuncInfo::returnConverter)
           .def_readwrite("local", &PyFuncInfo::isLocalFunc)
-          .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync);
+          .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync)
+          .def_readwrite("native_async", &PyFuncInfo::isAsync);
 
         mod.def("register_functions", &registerFunctions);
         mod.def("deregister_functions", &deregisterFunctions);

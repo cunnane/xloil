@@ -47,7 +47,7 @@ namespace xloil
       handle.returnValue(e.what());
     }
   }
-  XLO_REGISTER_FUNC(testAsync).async();
+  XLO_REGISTER_FUNC(testAsync);
 
   XLO_FUNC_START(testFP(const FPArray& array))
   {

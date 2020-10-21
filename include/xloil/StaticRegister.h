@@ -107,11 +107,6 @@ namespace xloil
         arg.help = help;
       return *this;
     }
-    self& async()
-    {
-      _info->options |= FuncInfo::ASYNC;
-      return *this;
-    }
     self& command()
     {
       _info->options |= FuncInfo::COMMAND;
@@ -157,7 +152,7 @@ namespace xloil
 /// to free that memory, which could cause an immediate crash.  Therefore, you should 
 /// not modify XLOPER/XLOPER12 arguments in place."
 /// 
-/// In practice, is can be safe to modify an ExcelObj in place, for instance xloSort
+/// In practice, it can be safe to modify an ExcelObj in place, for instance xloSort
 /// does this by changing the row order in the array, but without changing memory 
 /// allocation.
 /// </summary>
@@ -169,15 +164,18 @@ namespace xloil
     template<class T> struct ArgType {};
     template<> struct ArgType<const ExcelObj&> { static constexpr auto value = FuncArg::Obj; };
     template<> struct ArgType<const ExcelObj*> { static constexpr auto value = FuncArg::Obj; };
-#ifdef XLOIL_UNSAFE_INPLACE_RETURN
-    template<> struct ArgType<ExcelObj&> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
-    template<> struct ArgType<ExcelObj*> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
-#endif
     template<> struct ArgType<const FPArray&> { static constexpr auto value = FuncArg::Array; };
     template<> struct ArgType<FPArray&> { static constexpr auto value = FuncArg::Array | FuncArg::ReturnVal; };
-    template<> struct ArgType<const AsyncHandle&> { static constexpr auto value = FuncArg::AsyncHandle; };
     template<> struct ArgType<const RangeArg&> { static constexpr auto value = FuncArg::Range; };
-    
+
+    template<class T> struct VoidArgType : public ArgType<T>
+    {};
+#ifdef XLOIL_UNSAFE_INPLACE_RETURN
+    template<> struct VoidArgType<ExcelObj&> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
+    template<> struct VoidArgType<ExcelObj*> { static constexpr auto value = FuncArg::Obj | FuncArg::ReturnVal; };
+#endif
+    template<> struct VoidArgType<const AsyncHandle&> { static constexpr auto value = FuncArg::AsyncHandle; };
+
 #ifndef _WIN64
 #define XLOIL_STDCALL __stdcall
 #else
@@ -190,11 +188,12 @@ namespace xloil
     {
       static constexpr int types[sizeof...(Args)] = { ArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
-
-     /* template <class... A>
-      ArgTypes(Ret(*)(A...))
-        : types{ ArgType<A>::value ... }
-      { }*/
+    };
+    template <class... Args>
+    struct ArgTypes<void(XLOIL_STDCALL *)(Args...)>
+    {
+      static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value ... };
+      static constexpr size_t nArgs = sizeof...(Args);
     };
   }
 
