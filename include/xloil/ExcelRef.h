@@ -37,6 +37,12 @@ namespace xloil
         return (col_t)(r.colLast - r.colFirst);
       }
 
+      std::tuple<row_t, col_t> shape() const
+      {
+        auto& r = up().ref();
+        return { nRows(), nCols() };
+      }
+
       std::tuple<row_t, col_t, row_t, col_t> bounds() const
       {
         auto& r = up().ref();
@@ -85,6 +91,94 @@ namespace xloil
     };
   }
 
+
+  /// <summary>
+  /// Normalises a reference to a range on an Excel sheet, i.e. taken XLL 
+  /// ref or sref (local reference, i.e. to the active sheet) type ExcelObj 
+  /// and turns it into a global reference
+  /// </summary>
+  class XLOIL_EXPORT ExcelRef : public detail::ExcelRefFn<ExcelRef>
+  {
+  public:
+    using row_t = int;
+    using col_t = int;
+    friend class detail::ExcelRefFn<ExcelRef>;
+
+    /// <summary>
+    /// Constructs an ExcelRange from an ExcelObj. Will throw if
+    /// the object is not of type Ref or SRef.
+    /// </summary>
+    ExcelRef(const ExcelObj& from);
+
+    /// <summary>
+    /// Constructs an ExcelRange from a sheet address. If the 
+    /// address does not contain a sheet name, the current
+    /// Active sheet is used.
+    /// </summary>
+    explicit ExcelRef(const wchar_t* address);
+
+    ExcelRef(msxll::IDSHEET sheetId,
+      int fromRow, int fromCol, int toRow, int toCol);
+
+    /// <summary>
+    /// Copy constructor
+    /// </summary>
+    ExcelRef(const ExcelRef& from)
+      : _obj(from._obj)
+    {}
+
+    ~ExcelRef()
+    {
+      reset();
+    }
+
+    ExcelRef range(
+      int fromRow, int fromCol,
+      int toRow = Range::TO_END, int toCol = Range::TO_END) const
+    {
+      return ExcelRef(sheetId(),
+        ref().rwFirst + fromRow,
+        ref().colFirst + fromCol,
+        toRow == Range::TO_END ? ref().rwLast : ref().rwFirst + toRow,
+        toCol == Range::TO_END ? ref().colLast : ref().colFirst + toCol);
+    }
+
+    operator const ExcelObj& () const { return _obj; }
+
+
+  protected:
+    msxll::IDSHEET  sheetId() const { return _obj.val.mref.idSheet; }
+    msxll::IDSHEET& sheetId() { return _obj.val.mref.idSheet; }
+
+    const msxll::XLREF12& ref() const
+    {
+      return _obj.val.mref.lpmref->reftbl[0];
+    }
+    msxll::XLREF12& ref()
+    {
+      return _obj.val.mref.lpmref->reftbl[0];
+    }
+
+    const ExcelObj& obj() const { return _obj; }
+    ExcelObj&       obj() { return _obj; }
+
+  private:
+    ExcelObj _obj;
+    void create(
+      msxll::IDSHEET sheetId,
+      row_t fromRow, col_t fromCol,
+      row_t toRow, col_t toCol);
+    void reset()
+    {
+      if (_obj.xltype & msxll::xlbitDLLFree)
+      {
+        delete[] _obj.val.mref.lpmref;
+        _obj.xltype = msxll::xltypeNil;
+      }
+    }
+  };
+
+
   /// <summary>
   /// Contains argument passed to a user-defined function which may be an
   /// ref or sref (local ref) argument. Using this class instead of ExcelObj
@@ -93,9 +187,14 @@ namespace xloil
   /// </summary>
   class RangeArg : public ExcelObj, public detail::ExcelRefFn<RangeArg>
   {
-  public:
     friend class detail::ExcelRefFn<RangeArg>;
 
+    /// <summary>
+    /// Not externally constructable. Prefer to store or pass a ExcelRef: 
+    /// this avoids inadvertent use of the local range (SRef) type which doesn't
+    /// link to a specific sheet.
+    /// </summary>
+    /// <param name="ref"></param>
     RangeArg(const msxll::xlref12& ref)
       : ExcelObj(ref)
     {}
@@ -103,6 +202,12 @@ namespace xloil
     RangeArg(msxll::IDSHEET sheet, const msxll::xlref12& ref)
       : ExcelObj(sheet, ref)
     {}
+
+  public:
+    ExcelRef toExcelRef()
+    {
+      return ExcelRef(*this);
+    }
 
     RangeArg range( // TODO: rangearg?
       int fromRow, int fromCol,
@@ -180,92 +285,6 @@ namespace xloil
     ExcelObj&       obj()       { return *this; }
   };
 
-
-  /// <summary>
-  /// Normalises a reference to a range on an Excel sheet, i.e. taken XLL 
-  /// ref or sref (local reference, i.e. to the active sheet) type ExcelObj 
-  /// and turns it into a global reference
-  /// </summary>
-  class XLOIL_EXPORT ExcelRef : public detail::ExcelRefFn<ExcelRef>
-  {
-  public:
-    using row_t = int;
-    using col_t = int;
-    friend class detail::ExcelRefFn<ExcelRef>;
-
-    /// <summary>
-    /// Constructs an ExcelRange from an ExcelObj. Will throw if
-    /// the object is not of type Ref or SRef.
-    /// </summary>
-   ExcelRef(const ExcelObj& from);
-
-    /// <summary>
-    /// Constructs an ExcelRange from a sheet address. If the 
-    /// address does not contain a sheet name, the current
-    /// Active sheet is used.
-    /// </summary>
-    explicit ExcelRef(const wchar_t* address);
-
-    ExcelRef(msxll::IDSHEET sheetId,
-      int fromRow, int fromCol, int toRow, int toCol);
-
-    /// <summary>
-    /// Copy constructor
-    /// </summary>
-    ExcelRef(const ExcelRef& from)
-      : _obj(from._obj)
-    {}
-
-    ~ExcelRef()
-    {
-      reset();
-    }
-
-    ExcelRef range(
-      int fromRow, int fromCol,
-      int toRow = Range::TO_END, int toCol = Range::TO_END) const
-    {
-      return ExcelRef(sheetId(),
-        ref().rwFirst + fromRow,
-        ref().colFirst + fromCol,
-        toRow == Range::TO_END ? ref().rwLast : ref().rwFirst + toRow,
-        toCol == Range::TO_END ? ref().colLast : ref().colFirst + toCol);
-    }
-
-    operator const ExcelObj& () const { return _obj; }
-    
-
-  protected:
-    msxll::IDSHEET  sheetId() const { return _obj.val.mref.idSheet; }
-    msxll::IDSHEET& sheetId()       { return _obj.val.mref.idSheet; }
-
-    const msxll::XLREF12& ref() const
-    {
-      return _obj.val.mref.lpmref->reftbl[0];
-    }
-    msxll::XLREF12& ref()
-    {
-      return _obj.val.mref.lpmref->reftbl[0];
-    }
-    
-    const ExcelObj& obj() const { return _obj; }
-    ExcelObj&       obj()       { return _obj; }
-
-  private:
-    ExcelObj _obj;
-    void create(
-      msxll::IDSHEET sheetId,
-      row_t fromRow, col_t fromCol,
-      row_t toRow, col_t toCol);
-    void reset()
-    {
-      if (_obj.xltype & msxll::xlbitDLLFree)
-      {
-        delete[] _obj.val.mref.lpmref;
-        _obj.xltype = msxll::xltypeNil;
-      }
-    }
-  };
 
   /// <summary>
   /// An implementation of Range which uses an ExcelRef, i.e. an Xll sheet 
