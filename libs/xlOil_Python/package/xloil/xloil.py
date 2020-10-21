@@ -285,12 +285,11 @@ class FuncDescription:
 
         # RTD-async is default unless rtd=False was explicitly specified.
         holder.rtd_async = self.is_async and (self.rtd is not False)
-        native_async = self.is_async and not holder.rtd_async
+        holder.native_async = self.is_async and not holder.rtd_async
 
-        holder.local = True if (self.local is None and not native_async) else self.local
+        holder.local = True if (self.local is None and not holder.native_async) else self.local
 
-        func_options = ((FuncOpts.Async if native_async else 0)
-                        | (FuncOpts.Macro if self.macro else 0)
+        func_options = ((FuncOpts.Macro if self.macro else 0)
                         | (FuncOpts.ThreadSafe if self.threaded else 0)
                         | (FuncOpts.Volatile if self.volatile else 0))
 
