@@ -18,13 +18,22 @@ namespace
   // This bool is required due to apparent bugs in the XLL interface:
   // Excel may call XLL event handlers after calling xlAutoClose,
   // and it may call xlAutoClose without ever having called xlAutoOpen
-  // This former to happen when Excel is closing and asks the user 
+  // The former can happen when Excel is closing and asks the user 
   // to save the workbook, the latter when removing an addin using COM
   // automation
   bool theXllIsOpen = false;
 }
 
+/// <summary>
+/// This function must be defined in a static XLL. It is invoked by xlAutoOpen
+/// before the XLL's functions are registered. It passes the HINSTANCE of the XLL.
+/// </summary>
 void xllOpen(void* hInstance);
+
+/// <summary>
+/// This function must be defined in a static XLL. It is invoked by xlAutoClose
+/// before the XLL's functions are de-registered.
+/// </summary>
 void xllClose();
 
 XLO_ENTRY_POINT(int) DllMain(
