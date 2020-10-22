@@ -2,17 +2,11 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup>
-    <LibraryPath>$(SolutionDir)build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(xlOilRoot)\external\Excel2013SDK\LIB\$(Platform);$(SolutionDir)build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup>
     <IncludePath>$(xlOilRoot)external\boost-1.67;$(xlOilRoot)\external\Excel2013SDK\INCLUDE;$(xlOilRoot)\external\spdlog\include;$(xlOilRoot)\external;$(xlOilRoot)\include;$(xlOilRoot)\src;$(IncludePath)</IncludePath>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <LibraryPath>$(xlOilRoot)\external\Excel2013SDK\LIB\x64;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='Win32'">
-    <LibraryPath>$(xlOilRoot)\external\Excel2013SDK\LIB;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>  
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;SPDLOG_COMPILED_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
