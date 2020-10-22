@@ -48,8 +48,19 @@ def _remove_xloil():
 def _create_addin(args):
     if len(args) != 1:
         raise Exception("'create' should have one argument, the target filename")
+
+    filename = args[0]
+
     target_script = os.path.join(_script_dir(), "xloil_NewAddin.ps1")
-    _runPowerShell(f'{target_script} {args[0]}')
+    _runPowerShell(f'{target_script} {filename}')
+
+    ini_path = Path(filename.replace('xll', 'ini'))
+    ini_txt = ini_path.read_text()
+
+    ini_txt, count = re.subn(r'^(\s*Plugins\s*=).*', r'\g<1>["xlOil_Python"]', ini_txt, flags=re.M)
+
+    ini_path.write_text(ini_txt)
+
 
 def main():
     command = sys.argv[1].lower() if len(sys.argv) > 1 else ""
