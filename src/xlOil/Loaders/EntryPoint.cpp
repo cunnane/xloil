@@ -67,7 +67,7 @@ namespace xloil
       if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
       {
         auto addinContext = openXll(xllPath);
-        xllOpenComCall([&]() { loadPluginsForAddin(addinContext); });
+        xllOpenComCall([=]() { loadPluginsForAddin(addinContext); });
       }
 
       return retVal;

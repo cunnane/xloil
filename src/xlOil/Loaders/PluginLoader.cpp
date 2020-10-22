@@ -33,6 +33,10 @@ using std::map;
 
 namespace xloil
 {
+  namespace
+  {
+    static auto emptyTomlTable = toml::table();
+  }
   struct LoadedPlugin
   {
     AddinContext* Context;
@@ -80,7 +84,7 @@ namespace xloil
 
     
     auto& loadedPlugins = getLoadedPlugins();
-
+    
     for (const auto& pluginName : plugins)
     {
       // Look for the plugin in the same directory as xloil.dll, 
@@ -141,7 +145,7 @@ namespace xloil
           {
             PluginContext::Load,
             pluginName.c_str(),
-            loadSettings.as_table()
+            loadSettings ? *loadSettings.as_table() : emptyTomlTable
           };
           if (initFunc(theCoreContext(), pluginLoadContext) < 0)
           {
@@ -163,11 +167,11 @@ namespace xloil
         }
 
         // Now "attach" the current XLL, passing in its associated settings
-        PluginContext pluginAttach = 
-        { 
-          PluginContext::Attach, 
-          pluginName.c_str(), 
-          pluginSettings.as_table()
+        PluginContext pluginAttach =
+        {
+          PluginContext::Attach,
+          pluginName.c_str(),
+          pluginSettings ? *pluginSettings.as_table() : emptyTomlTable
         };
         if (pluginData->second.Init(context, pluginAttach) < 0)
           XLO_ERROR(L"Failed to attach addin {0} to plugin {1}", 
@@ -187,7 +191,7 @@ namespace xloil
   bool unloadPluginImpl(const wchar_t* name, LoadedPlugin& plugin) noexcept
   {
     XLO_DEBUG(L"Unloading plugin {0}", name);
-    PluginContext context = { PluginContext::Unload, name, nullptr };
+    PluginContext context = { PluginContext::Unload, name, emptyTomlTable };
     plugin.Init(0, context);
     if (!FreeLibrary(plugin.Handle))
       XLO_WARN(L"FreeLibrary failed for {0}: {1}", name, writeWindowsError());

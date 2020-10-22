@@ -106,6 +106,7 @@ By default, the XLL will try to load `myaddin.py`, so let's create it:
 
     import xloil as xlo
 
+    @xlo.func
     def MySum(x, y, z):
         '''Adds up numbers'''
         return x + y + z

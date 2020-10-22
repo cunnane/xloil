@@ -118,7 +118,8 @@ namespace xloil
       theAddinContexts.erase(xllPath);
     
     auto ctx = createAddinContext(xllPath, settings);
-    assert(ctx);
+    if (!ctx)
+      XLO_THROW(L"Failed to create add-in context for {0}", xllPath);
     return ctx;
   }
 

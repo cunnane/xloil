@@ -219,7 +219,7 @@ namespace xloil
     };
     Action action;
     const wchar_t* pluginName;
-    const toml::table* settings;
+    const toml::table& settings;
   };
 
   /// <summary>

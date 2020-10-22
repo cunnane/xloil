@@ -24,10 +24,10 @@ namespace xloil
         if (plugin.action == PluginContext::Load)
         {
           linkLogger(context, plugin);
-          if (!plugin.settings)
+          if (plugin.settings.empty())
             XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
 
-          auto pyEnv = (*plugin.settings)["Environment"].as_array();
+          auto pyEnv = plugin.settings["Environment"].as_array();
           string pyVer;
           if (pyEnv)
             for (auto& table : *pyEnv)
