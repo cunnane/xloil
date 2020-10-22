@@ -30,7 +30,7 @@ python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
 build_files['x64'] = {
-    'Core' : ["xlOil.xll", "xlOil.dll", "xloil.ini"],
+    'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib", "xlOil.ini"],
     'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python38.dll", "xlOil_Python.dll"],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
@@ -62,7 +62,12 @@ lib_files = [
         'from': '.',
         'files': ['README.md'],
         'to': 'pypackage'
-    }
+    },
+    {
+        'from': "include",
+        'files': '.',
+        'to': 'include'
+    },
 ]
 
 
@@ -84,7 +89,7 @@ for arch in architectures:
     subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir)
 
 # Write the combined include file
-subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir} {include_dir}", cwd=tools_dir)
+subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", cwd=tools_dir)
 
 # Write the version file
 subprocess.run(f"powershell ./tools/WriteVersion.ps1", cwd=soln_dir)
@@ -138,11 +143,14 @@ import tarfile
 xloil_version =  (soln_dir / 'Version.txt').read_text().replace('\n','')
 
 for arch in architectures:
-    with tarfile.open(staging_dir / f"xlOil-{xloil_version}-{arch}.tar.bz2", "w:bz2") as tar:
+    with tarfile.open(staging_dir / f"xlOil-{xloil_version}-{arch}-bin.tar.bz2", "w:bz2") as tar:
         tar.add(staging_dir / arch, arcname=arch)
 
 with tarfile.open(staging_dir / f"xlOil-{xloil_version}-docs.tar.bz2", "w:bz2") as tar:
     tar.add(staging_dir / "docs", arcname='docs')
+
+with tarfile.open(staging_dir / f"xlOil-{xloil_version}-include.tar.bz2", "w:bz2") as tar:
+    tar.add(staging_dir / "include", arcname='include')
 
 #
 # Build python wheels
