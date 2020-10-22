@@ -1,6 +1,8 @@
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
+#include <xlOil-COM/ExcelTypeLib.h>
+#include <xlOil-COM/Connect.h>
 #include <map>
 #include <vector>
 #include <unordered_map>
@@ -79,6 +81,11 @@ namespace xloil
       auto[it, ins] = theDirectoryListeners.emplace(
         pathStr, new DirectoryListener(pathStr, [pathStr]() { theDirectoryListeners.erase(pathStr); }));
       return it->second->event();
+    }
+
+    XLOIL_EXPORT void allowEvents(bool value)
+    {
+      COM::excelApp().EnableEvents = _variant_t(value);
     }
   }
 }

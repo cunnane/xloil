@@ -167,9 +167,16 @@ namespace xloil
             [](RefType& self, T val) { self.value = val; });
       }
 
+      void setAllowEvents(bool value)
+      {
+        Event::allowEvents(value);
+      }
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         auto eventMod = mod.def_submodule("event");
+        eventMod.def("allow", []() {setAllowEvents(true); });
+        eventMod.def("pause", []() {setAllowEvents(false); });
+
         bindArithmeticRef<bool>(eventMod);
 
 #define XLO_PY_EVENT(r, _, NAME) \

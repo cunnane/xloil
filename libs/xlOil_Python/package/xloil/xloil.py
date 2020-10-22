@@ -596,6 +596,17 @@ class _ArrayType:
 # Cheat to avoid needing Py 3.7+ for __class_getitem__
 Array = _ArrayType() 
 
+class EventsPaused():
+    """
+    A context manager which stops Excel events from firing whilst
+    the context is in scope
+    """
+    def __enter__(self):
+        xloil_core.event.pause()
+        return self
+    def __exit__(self, type, value, traceback):
+        xloil_core.event.allow()
+
 class _ModuleFinder(importlib.abc.MetaPathFinder):
 
     path_map = dict()
@@ -624,46 +635,48 @@ def scan_module(module, workbook_name=None):
         Called by the xlOil C layer to import modules specified in the config.
     """
 
-    if type(module) is str:
-        mod_directory, filename = os.path.split(module)
-        filename = filename.replace('.py', '')
+    with EventsPaused() as paused:
 
-        # avoid name collisions when loading workbook modules
-        mod_name = filename if workbook_name is None else "xloil_wb_" + filename
+        if type(module) is str:
+            mod_directory, filename = os.path.split(module)
+            filename = filename.replace('.py', '')
 
-        if workbook_name is not None:
-            _module_finder.path_map[mod_name] = module
+            # avoid name collisions when loading workbook modules
+            mod_name = filename if workbook_name is None else "xloil_wb_" + filename
+
+            if workbook_name is not None:
+                _module_finder.path_map[mod_name] = module
    
-        handle = importlib.import_module(mod_name)
+            handle = importlib.import_module(mod_name)
 
-    elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
-        # We can only reload modules with a __file__ attribute, e.g. not
-        # xloil_core
-        handle = importlib.reload(module)
-    else:
-        raise Exception(f"scan_module: could not process {str(module)}")
+        elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
+            # We can only reload modules with a __file__ attribute, e.g. not
+            # xloil_core
+            handle = importlib.reload(module)
+        else:
+            raise Exception(f"scan_module: could not process {str(module)}")
 
-    # Allows 'local' modules to know which workbook they link to
-    if workbook_name is not None:
-        handle._xloil_workbook = workbook_name
+        # Allows 'local' modules to know which workbook they link to
+        if workbook_name is not None:
+            handle._xloil_workbook = workbook_name
     
-    # Look for functions with an xloil decorator (_META_TAG) and create
-    # a function holder object for each of them
-    xloil_funcs = inspect.getmembers(handle, 
-        lambda obj: inspect.isfunction(obj) and hasattr(obj, _META_TAG))
+        # Look for functions with an xloil decorator (_META_TAG) and create
+        # a function holder object for each of them
+        xloil_funcs = inspect.getmembers(handle, 
+            lambda obj: inspect.isfunction(obj) and hasattr(obj, _META_TAG))
 
-    to_register = []
-    for f_name, f in xloil_funcs:
-        import traceback
-        try:
-            to_register.append(_get_meta(f).create_holder())
-        except Exception as e:
-            log(f"Register failed for {f_name}: {traceback.format_exc()}", level='error')
+        to_register = []
+        for f_name, f in xloil_funcs:
+            import traceback
+            try:
+                to_register.append(_get_meta(f).create_holder())
+            except Exception as e:
+                log(f"Register failed for {f_name}: {traceback.format_exc()}", level='error')
 
-    if any(to_register):
-        xloil_core.register_functions(handle, to_register)
+        if any(to_register):
+            xloil_core.register_functions(handle, to_register)
 
-    return handle
+        return handle
 
 class _ReturnConverters:
 

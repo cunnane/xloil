@@ -256,13 +256,17 @@ namespace xloil
       void(const wchar_t* directory, const wchar_t* filename, FileAction)> &
       DirectoryChange(const std::wstring& path);
 
+    XLOIL_EXPORT void allowEvents(bool value);
+
   }
 
-    /// <summary>
-    /// All the singleton xlOil events as a sequence. Use BOOST_PP_SEQ functions
-    /// to iterate over this sequence to create bindings. Non singleton/static
-    /// events such as DirectoryChange as not included here.
-    /// </summary>
+ 
+
+  /// <summary>
+  /// All the singleton xlOil events as a sequence. Use BOOST_PP_SEQ functions
+  /// to iterate over this sequence to create bindings. Non singleton/static
+  /// events such as DirectoryChange as not included here.
+  /// </summary>
 #define XLOIL_STATIC_EVENTS \
     (AfterCalculate)\
     (WorkbookOpen)\
