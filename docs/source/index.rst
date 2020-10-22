@@ -9,8 +9,9 @@ xlOil documentation
 
 	Introduction
 	Core
+	Concepts
 	xlOil_Core_Functions
-	xlOil_Cpp
+	xlOil_Cpp/index
 	xlOil_Python/index
 	xlOil_SQL/index
 	xlOil_Utils

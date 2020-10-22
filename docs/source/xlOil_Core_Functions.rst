@@ -51,7 +51,7 @@ xloLog: flushes the log file and returns its location
     file).
 
     Setting the *ShowWindow* parameter causes xlOil's log window to appear. This 
-    doesn't display the content of the log file but only the most recent log 
+    doesn't display the contents of the entire log file but only the most recent log 
     messages.
 
 

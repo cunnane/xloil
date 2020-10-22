@@ -53,6 +53,7 @@ xlOil features
     - Object cache allows returning opaque objects to Excel and passing them back to other functions
     - Async functions
     - RTD functions and on-the-fly RTD server creation
+    - On-the-fly creation/destruction of COM addin objects and Ribbon UI
 
 * SQL
     - Create tables from Excel ranges and arrays
@@ -110,14 +111,15 @@ The following, likely incomplete, list includes some of the most
 prominent Excel addin software. 
 
 - Addin express: (commercial) fully-featured with nice GUI and the support
-  seems good as well. Limited to .Net languages.
+  seems good as well. Limited to .Net languages, but covers the entire Office
+  suite (not just Excel)
 - ExcelDNA: (free) mature, well-regarded and widely used, covers 
   almost all Excel API features, but only for .Net languages.  I strongly
   recommend this software if you are using .Net languages.
 - XLL Plus: (commercial) seems to be fully-featured with GUI wizards
   to help developers, but only for C++ and the most expensive sofware 
   here.
-- PyXLL: (commercial) Python-only but supports the full range of Excel
+- PyXLL: (commercial) Python-only.  Supports the full range of Excel
   API features and some functionality to run on remote servers.
 - XlWings: (mostly free) Python-only. More mature sofware, but considerably
   slower (2000x in my test case) than xlOil due to use of slower APIs.

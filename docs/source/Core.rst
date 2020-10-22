@@ -10,7 +10,8 @@ features which are not language specific.
 Getting Started
 ---------------
 
-Currently you need **Excel 2010** or later.
+You need **Excel 2010** or later. xlOil will not work with online versions of 
+Office.
 
 If you have python available, you can install xlOil via pip. See 
 :doc:`xlOil_Python/GettingStarted`, otherwise follow the below instructions.
@@ -19,7 +20,7 @@ Download the binary package (e.g. from gitlab) and unzip to a directory of
 your choice. 
 
 You can run the `xlOil_Install.ps1` script to install the addin for every
-Excel session, or just drop `xloil.xll` into any running Excel session
+Excel session, or just drop `xlOil.xll` into any running Excel session
 to load xlOil temporarily.
 
 xlOil should now load when you open Excel, try following 
@@ -50,7 +51,7 @@ To check your setup and see some of the capabilities of xlOil, try:
 Editing the settings file
 -------------------------
 
-There is an `xlOil.ini` file linked to the main `xloil.xll` addin. (This ini file 
+There is an `xlOil.ini` file linked to the main `xlOil.xll` addin. (This ini file 
 is actually parsed as TOML, an extension of the ini format). xlOil searches for
 this file first in `%APPDATA%/xlOil` then in the directory containing the `xlOil.xll` 
 addin. 
@@ -165,74 +166,3 @@ a pattern match:
 xlOil won't complain if this methods attempt to load the same plugin as specified
 in the ``Plugins`` key.
 
-Excel Functions (UDFs)
-----------------------
-
-Excel supports several classes of user-defined functions:
-
-- Macros: run at user request, have write access to workbook
-- Worksheet functions: run by Excel's calculation cycle. Several sub-types:
-  - Vanilla
-  - Thread-safe: can be run concurrently
-  - Macro-type: can read from sheet addresses and invoke a wider variety of Excel interface functions
-  - Async: can run asynchronously during the calc cycle, but not in the background
-  - RTD: (real time data) background threads which push data onto the sheet when it becomes available
-  - Cluster: can be packaged to run on a remote Excel compute cluster
-
-xlOil currently supports all but Cluster functions.
-
-Excel can pass functions / macros data in one of these types:
-
-- Integer
-- Boolean
-- Floating point
-- String
-- Error, e.g. #NUM!, #VALUE!
-- Empty
-- Array of any of the above
-- Range refering to a worksheet address
-
-There is no date type. Excel's builtin date functions interpret numbers as days since 1900. 
-Excel does not support timezones.
-
-.. _core-cached-objects:
-
-Cached Objects
---------------
-
-xlOil has an internal store for Excel values, which is a convenient way of 
-passing arrays around a sheet and as arguments to other xlOil functions.
-
-The function ``=xloRef(A1:B2)`` returns a cache string of the form:
-``<UniqueChar>[WorkbookName]SheetName!CellRef,#``
-
-This string can then be passed instead of the source range. The data can be 
-recovered using ``=xloVal(<CacheString>)``
-
-An example use case is where you would otherwise use a named range.
-
-**Problem**
-
-You have large set of data on `Sheet1` which is processed in several other 
-sheets and you want to ensure that when data is added to the set, all 
-functions that reference are updated.
-
-**Solution**
-
-- You are disciplined and only add rows to the middle, then carefully 
-  cut / paste.
-- You create a named range pointing at the data and manually update it in the 
-  GUI when you add data.
-- You use `xloRef` on the data, extending the target range far beyond these
-  existing data. xlOil will automatically trim the range back to the last
-  non-blank row as it reads it.  All dependent functions can use `xloVal`
-  to retrieve the data.
-
-However, there is a disadvantage to using `xloRef`: the cache is cleared when
-a workbook is closed, but Excel does not know to recalculate the `xloRef` 
-functions when the workbook is reopened. Hence you need to force a sheet
-recalculation using *Ctrl-Alt-F9*.
-
-In addition to caching arrays, xlOil plugins use the cache to opaquely return
-referencs to in-memory structures.  Although the strings look similar, they 
-cannot be written to the sheet using `xloVal`.
