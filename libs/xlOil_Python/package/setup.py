@@ -108,7 +108,7 @@ setup(
     
     python_requires=f'>={target_py_ver}',
     install_requires=[
-        'numpy'
+        'numpy>=1.18'
     ],
     
     classifiers=[
