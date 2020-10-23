@@ -44,7 +44,7 @@ namespace xloil
     {
       return utf8ToUtf16(findStr(root, "PluginSearchPattern", ""));
     }
-    std::wstring logFilePath(const toml::table& root, bool useDefault)
+    std::wstring logFilePath(const toml::table& root)
     {
       auto found = findStr(root["Addin"], "LogFile", "");
       return !found.empty()
@@ -109,12 +109,13 @@ namespace xloil
     // Look in the user's appdata
     path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
 
+    std::error_code fsErr;
     // Then check the same directory as the dll itself
-    if (!fs::exists(path))
+    if (!fs::exists(path, fsErr))
       path = fs::path(dllPath).remove_filename() / settingsFileName;
     try
     {
-      return fs::exists(path)
+      return fs::exists(path, fsErr)
         ? make_shared<toml::table>(toml::parse_file(path.string()))
         : shared_ptr<const toml::table>();
     }

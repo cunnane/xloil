@@ -124,6 +124,7 @@ void xllOpen(void* hInstance)
 
     const auto settings = findSettingsFile(ourXllPath.c_str());
     auto traceLoad = false;
+    std::error_code fsErr;
     if (settings)
     {
       traceLoad = (*settings)["Addin"]["StartupTrace"].value_or(false);
@@ -136,7 +137,7 @@ void xllOpen(void* hInstance)
       if (traceLoad)
         writeLog("xlOil.dll already loaded!");
     }
-    else if (fs::exists(ourXllDir / xloil_dll)) // Check same directory as XLL
+    else if (fs::exists(ourXllDir / xloil_dll, fsErr)) // Check same directory as XLL
     {
       if (traceLoad)
         writeLog(formatStr("Found xlOil.dll, using SetDllDirectory = '%s'", ourXllDir.string().c_str()));

@@ -92,7 +92,8 @@ namespace xloil
           wbPath,
           fileExtn ? wstring(wbName, fileExtn) : wstring(wbName));
 
-        if (!fs::exists(modulePath))
+        std::error_code err;
+        if (!fs::exists(modulePath, err))
           return;
 
         try

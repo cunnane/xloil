@@ -89,7 +89,8 @@ namespace xloil
     {
       // Look for the plugin in the same directory as xloil.dll, 
       // otherwise check the directory of the XLL
-      const auto pluginDir = fs::exists(coreDir / (pluginName + L".dll"))
+      std::error_code fsErr;
+      const auto pluginDir = fs::exists(coreDir / (pluginName + L".dll"), fsErr)
         ? coreDir
         : xllDir;
 
