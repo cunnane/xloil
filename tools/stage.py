@@ -156,7 +156,7 @@ with tarfile.open(staging_dir / f"xlOil-{xloil_version}-include.tar.bz2", "w:bz2
 # Build python wheels
 #
 for arch in architectures:
-    platform_tags = { 'Win32': 'win32_foo', 'x64': 'win_amd64_foo'}
+    platform_tags = { 'Win32': 'win32', 'x64': 'win_amd64'}
     plat_name = platform_tags[arch]
 
     our_pytag = f'cp{sys.version_info.major}{sys.version_info.minor}'
@@ -166,20 +166,13 @@ for arch in architectures:
         pypi_version += f'.post{cmd_args.post_ver}'
        
     for pyver in python_versions:
-        #
-        # We need the foo suffix because setup ignores the --python-tag specification so we have
-        # to manually rename the files. Glorious automation.
-        #
-        
-        cmd = f"python setup.py bdist_wheel --arch {arch} --pyver {pyver} --version {pypi_version} --plat-name {plat_name}"
+        # It's important to run the setup using the targetted python version
+        # If you get errors building win32 on an x64 version of python,
+        # just comment out the assert in get_tag() in bdist_wheel.py.
+        # Guido probably wouldn't approve but it seems to work.
+        cmd = f"py -{pyver} setup.py bdist_wheel --arch {arch} --pyver {pyver} --version {pypi_version} --plat-name {plat_name}"
         print(f"Running: {cmd}.")
         subprocess.run(cmd, cwd=f"{python_package_dir}")
-
-        wheel = Path(latest_file(python_package_dir / "dist"))
-        verXY = pyver.replace('.','')
-        ### TODO: the cp37 depends on the current py version in use
-        correct_name = wheel.name.replace(our_pytag, f'cp{verXY}').replace('_foo','')
-        os.rename(wheel, python_package_dir / "dist" / correct_name)
 
 #
 # Next steps
