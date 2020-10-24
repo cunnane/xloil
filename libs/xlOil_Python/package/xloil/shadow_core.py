@@ -597,3 +597,20 @@ def create_ribbon(xml:str, handlers:dict) -> RibbonUI:
 
     """
     pass
+
+class Caller:
+    """
+    Captures the caller information for a worksheet function. On construction
+    the class queries Excel via the xlfCaller function.
+    """
+    @property
+    def sheet(self):
+        """
+        Gives the sheet name of the caller or None if not called from a sheet
+        """
+        pass
+    def address(self, a1style=False):
+        """
+        Gives the sheet address either in A1 form: 'Sheet!A1' or RC form: 'Sheet!R1C1'
+        """
+        pass

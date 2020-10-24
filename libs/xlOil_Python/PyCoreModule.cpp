@@ -106,6 +106,19 @@ namespace xloil {
           .def_readonly("main_thread_id", &State::ExcelState::mainThreadId);
 
         mod.def("get_excel_state", State::excelState);
+
+        py::class_<CallerInfo>(mod, "Caller")
+          .def_property_readonly("sheet",
+            [](const CallerInfo& self) 
+            { 
+              auto name = self.sheetName();
+              return name.empty() ? py::none() : py::wstr(name.string());
+            })
+          .def("address", [](const CallerInfo& self, bool x)
+            {
+              return self.writeAddress(x);
+            }, py::arg("a1style") = false);
+
       }, 1000);
     }
 } }
