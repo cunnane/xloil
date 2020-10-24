@@ -69,6 +69,7 @@ namespace xloil
           XLO_THROW("Already set"); // TODO: reload addin?
         std::wregex find(L"(<customUI[^>]*)>");
         _xml = std::regex_replace(xml, find, L"$1 onLoad=\"onLoadHandler\">");
+        _handler = handler;
       }
 
       int addCallback(const wchar_t* name, RibbonCallback&& fn)
@@ -123,7 +124,10 @@ namespace xloil
           {
             auto func = _handler(fnName);
             if (func)
-              return addCallback(fnName, std::move(func));
+            {
+              *rgdispid = addCallback(fnName, std::move(func));
+              return S_OK;
+            }
           }
           catch (...)
           {}
