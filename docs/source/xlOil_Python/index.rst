@@ -13,5 +13,6 @@ xlOil Python
     Pandas
     Jupyter
     Rtd
+    Debugging
     Example
     ModuleReference

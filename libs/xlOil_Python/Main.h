@@ -17,11 +17,5 @@ namespace xloil
     /// to the core context.
     /// </summary>
     extern AddinContext* theCurrentContext;
-
-    /// <summary>
-    /// An event triggered when the Python plugin is about to close
-    /// but before the Python interpreter is stopped.
-    /// </summary>
-    Event::Event<void(void)>& Event_PyBye();
   }
 }

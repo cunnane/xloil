@@ -3,6 +3,7 @@
 #include "PyCoreModule.h"
 #include "BasicTypes.h"
 #include "PyHelpers.h"
+#include "PyEvents.h"
 #include <xloil/ExcelObj.h>
 #include <xloil/Async.h>
 #include <xloil/RtdServer.h>
@@ -89,6 +90,7 @@ namespace xloil
             try
             {
               py::gil_scoped_acquire gilAcquired;
+              // TODO: this is a bit of a busy-wait can we signal when there are tasks?
               while (!_stop)
               {
                 constexpr double timeout = 0.5; // seconds 
@@ -254,6 +256,11 @@ namespace xloil
           py::return_value_policy::take_ownership);
 
         info->invoke(args.ptr(), kwargs.ptr());
+      }
+      catch (const py::error_already_set& e) 
+      {
+        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        asyncReturn(*asyncHandle, ExcelObj(e.what()));
       }
       catch (const std::exception& e)
       {
@@ -460,6 +467,11 @@ namespace xloil
           std::make_shared<RtdAsyncTask>(info, argsP, kwargsP));
 
         return returnValue(value ? *value : CellError::NA);
+      }
+      catch (const py::error_already_set& e)
+      {
+        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        return returnValue(e.what());
       }
       catch (const std::exception& e)
       {

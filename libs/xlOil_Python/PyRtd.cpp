@@ -1,5 +1,6 @@
 #include "PyCoreModule.h"
 #include "BasicTypes.h"
+#include "PyEvents.h"
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
 #include <future>

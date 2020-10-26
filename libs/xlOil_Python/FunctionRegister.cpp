@@ -6,6 +6,7 @@
 #include "ReadSource.h"
 #include "FunctionRegister.h"
 #include "AsyncFunctions.h"
+#include "PyEvents.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
@@ -122,6 +123,11 @@ namespace xloil
           ? (*returnConverter)(*ret.ptr())
           : FromPyObj()(ret.ptr());
       }
+      catch (const py::error_already_set& e)
+      {
+        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        result = e.what();
+      }
       catch (const std::exception& e)
       {
         result = e.what();
@@ -150,6 +156,11 @@ namespace xloil
           return returnValue(result);
         else
           return &result;
+      }
+      catch (const py::error_already_set& e)
+      {
+        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        return returnValue(e.what());
       }
       catch (const std::exception& e)
       {
@@ -329,7 +340,7 @@ namespace xloil
       void reload()
       {
         // TODO: can we be sure about this context setting?
-       // 
+        // 
         auto[source, addin] = FileSource::findFileContext(sourcePath().c_str());
         if (source.get() != this)
           XLO_THROW(L"Error reloading '{0}': source ptr mismatch", sourcePath());

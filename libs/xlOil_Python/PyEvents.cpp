@@ -17,6 +17,9 @@ namespace xloil
 {
   namespace Python 
   {
+    XLOIL_DEFINE_EVENT(Event_PyBye);
+    XLOIL_DEFINE_EVENT(Event_PyUserException);
+
     namespace
     {
       /// <summary>
@@ -52,11 +55,11 @@ namespace xloil
       };
     }
 
-    template<class TEvent, class F> class PyEvent {};
+    template<class TEvent, bool, class F> class PyEvent {};
 
     // Specialisation to allow capture of the arguments to the event handler
-    template<class TEvent, class R, class... Args>
-    class PyEvent<TEvent, std::function<R(Args...)>>
+    template<class TEvent, bool TUserException, class R, class... Args>
+    class PyEvent<TEvent, TUserException, std::function<R(Args...)>>
     {
     public:
       PyEvent(TEvent& event) 
@@ -114,10 +117,22 @@ namespace xloil
               py::cast<py::function>(handler)(ReplaceArithmeticRef<Args>()(args)...);
           }
         }
+        catch (const py::error_already_set& e)
+        {
+          // Avoid recursion if we actually are Event_PyUserException!
+          if constexpr(TUserException)
+            Event_PyUserException().fire(e.type(), e.value(), e.trace());
+          XLO_ERROR("During Event: {0}", e.what());
+        }
         catch (const std::exception& e)
         {
           XLO_ERROR("During Event: {0}", e.what());
         }
+      }
+
+      void clear()
+      {
+        _event.clear();
       }
 
     private:
@@ -132,7 +147,13 @@ namespace xloil
       template<class TEvent>
       auto makeEvent(TEvent& event)
       {
-        return new PyEvent<TEvent, typename TEvent::handler>(event);
+        return new PyEvent<TEvent, true, typename TEvent::handler>(event);
+      }
+
+      template<class TEvent>
+      auto makeEvent2(TEvent& event)
+      {
+        return new PyEvent<TEvent, false, typename TEvent::handler>(event);
       }
 
       template<class T>
@@ -145,7 +166,8 @@ namespace xloil
           py::class_<T>(mod, (string(name) + "_Type").c_str())
             .def("__iadd__", &T::add)
             .def("__isub__", &T::remove)
-            .def("handlers", &T::handlers);
+            .def("handlers", &T::handlers)
+            .def("clear", &T::clear);
         }
         mod.add_object(name, py::cast(event, py::return_value_policy::take_ownership));
       }
@@ -184,6 +206,8 @@ namespace xloil
 
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
+
+        bindEvent(eventMod, makeEvent2(Event_PyUserException()), "UserException");
       });
     }
   }

@@ -134,8 +134,17 @@ namespace xloil
         return _collector(copy, std::forward<Args>(args)...);
       }
 
-      const std::list<handler>& handlers() const {
+      const std::list<handler>& handlers() const 
+      {
         return _handlers;
+      }
+
+      /// <summary>
+      /// Removes all existing handlers
+      /// </summary>
+      void clear()
+      {
+        _handlers.clear();
       }
 
     private:
