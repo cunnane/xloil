@@ -2,6 +2,7 @@
 #include <xlOil/ExportMacro.h>
 #include <xlOil/XlCallSlim.h>
 #include <xlOil/PString.h>
+#include <xlOil/ExcelObj.h>
 #include <memory>
 #include <string>
 
@@ -16,7 +17,9 @@ namespace xloil
   class XLOIL_EXPORT CallerInfo
   {
   private:
-    std::shared_ptr<const ExcelObj> _Address, _SheetName;
+    ExcelObj _address;
+    ExcelObj _fullSheetName;
+
   public:
     /// <summary>
     /// Constructs the object and makes calls to xlfCaller and xlfSheetName to
@@ -51,13 +54,41 @@ namespace xloil
     /// if it could not be determined.
     /// </summary>
     /// <returns></returns>
-    PString<> sheetName() const;
+    PStringView<> fullSheetName() const
+    {
+      return _fullSheetName.asPascalStr();
+    }
     /// <summary>
     /// Returns true if the function was called from a worksheet. For other
     /// possible caller types see the xlfCaller documentation.
     /// </summary>
-    /// <returns></returns>
-    bool calledFromSheet() const;
+    bool calledFromSheet() const
+    {
+      return _address.isType(ExcelType::RangeRef);
+    }
+
+    /// <summary>
+    /// Returns a view containing only the sheet name.
+    /// </summary>
+    std::wstring_view sheetName() const
+    {
+      auto sName = fullSheetName();
+      if (sName.empty())
+        return std::wstring_view();
+      auto begin = sName.begin() + sName.find(L']') + 1;
+      return std::wstring_view(begin, sName.end() - begin);
+    }
+    /// <summary>
+    /// Returns a view containing only the workbook name. If the workbook has
+    /// been saved, this includes a file extension.
+    /// </summary>
+    std::wstring_view workbook() const
+    {
+      auto sName = fullSheetName();
+      if (sName.empty())
+        return std::wstring_view();
+      return std::wstring_view(sName.begin() + 1, sName.rfind(L']') - 1);
+    }
   };
 
   /// <summary>

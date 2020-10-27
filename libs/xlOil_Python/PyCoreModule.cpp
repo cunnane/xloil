@@ -10,6 +10,7 @@
 
 using std::shared_ptr;
 using std::vector;
+using std::wstring;
 namespace py = pybind11;
 using std::make_pair;
 
@@ -108,11 +109,18 @@ namespace xloil {
         mod.def("get_excel_state", State::excelState);
 
         py::class_<CallerInfo>(mod, "Caller")
+          .def(py::init<>())
           .def_property_readonly("sheet",
             [](const CallerInfo& self) 
             { 
-              auto name = self.sheetName();
-              return name.empty() ? py::none() : py::wstr(name.string());
+              const auto name = self.sheetName();
+              return name.empty() ? py::none() : py::wstr(wstring(name));
+            })
+          .def_property_readonly("workbook",
+            [](const CallerInfo& self)
+            {
+              const auto name = self.workbook();
+              return name.empty() ? py::none() : py::wstr(wstring(name));
             })
           .def("address", [](const CallerInfo& self, bool x)
             {

@@ -159,19 +159,22 @@ namespace xloil
     /// Searches forward for the specified char returning its the offset
     /// of its first occurence or npos if not found.
     /// </summary>
-    size_type chr(TChar needle) const
+    size_type find(TChar needle, size_type pos = 0) const
     {
-      auto p = traits::find(pstr(), length(), needle);
-      return p ? p - pstr() : npos;
+      auto p = traits::find(pstr() + pos, length(), needle);
+      return p ? (size_type)(p - pstr()) : npos;
     }
 
     /// <summary>
     /// Searches backward for the specified char returning its the offset
     /// of its last occurence or npos if not found.
     /// </summary>
-    size_type rchr(TChar needle) const
+    size_type rfind(TChar needle, size_type pos = npos) const
     {
-      auto p = wmemrchr(pstr() + length(), needle, length());
+      auto p = wmemrchr(
+        pstr() + (pos == npos ? length() : pos), 
+        needle, 
+        length() - (pos == npos ? 0 : pos));
       return p ? (size_type)(p - pstr()) : npos;
     }
 
@@ -236,7 +239,7 @@ namespace xloil
     /// <summary>
     /// Create a PString of the specified length
     /// </summary>
-    explicit PString(size_type length, TAlloc allocator = TAlloc())
+    explicit PString(size_type length = 0, TAlloc allocator = TAlloc())
       : PStringImpl(length == 0
         ? nullptr
         : allocator.allocate(length + 1))

@@ -110,28 +110,18 @@ namespace
 namespace xloil
 {
   CallerInfo::CallerInfo()
-    : _Address(new ExcelObj())
-    , _SheetName(new ExcelObj())
   {
-    callExcelRaw(xlfCaller, const_cast<ExcelObj*>(_Address.get()));
-    if (_Address->isType(ExcelType::RangeRef))
-      callExcelRaw(xlSheetNm, const_cast<ExcelObj*>(_SheetName.get()), _Address.get());
+    callExcelRaw(xlfCaller, &_address);
+    if (_address.isType(ExcelType::RangeRef))
+      callExcelRaw(xlSheetNm, &_fullSheetName, &_address);
   }
 
   uint16_t CallerInfo::addressRCLength() const
   {
-    auto s = _SheetName->asPascalStr();
     // Any value in more precise guess?
-    return s.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
+    return fullSheetName().length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
   }
-  PString<> CallerInfo::sheetName() const
-  {
-    return _SheetName->asPascalStr();
-  }
-  bool CallerInfo::calledFromSheet() const
-  {
-    return _Address->isType(ExcelType::RangeRef);
-  }
+
   namespace
   {
     template<size_t N>
@@ -147,13 +137,13 @@ namespace xloil
   {
     // TODO: handle other caller cases?
     const msxll::XLREF12* sheetRef = nullptr;
-    switch (_Address->type())
+    switch (_address.type())
     {
     case ExcelType::SRef:
-      sheetRef = &_Address->val.sref.ref;
+      sheetRef = &_address.val.sref.ref;
       break;
     case ExcelType::Ref:
-      sheetRef = &_Address->val.mref.lpmref->reftbl[0];
+      sheetRef = &_address.val.mref.lpmref->reftbl[0];
       break;
     default: // Not a worksheet caller - return here
       constexpr wchar_t nonWorksheetCaller[] = L"[:None:]None";
@@ -163,7 +153,7 @@ namespace xloil
       return _countof(nonWorksheetCaller);
     }
 
-    const auto wsName = _SheetName->asPascalStr();
+    const auto wsName = fullSheetName();
     const auto wsLength = wsName.length();
     uint16_t nWritten = 0;
 

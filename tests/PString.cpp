@@ -80,5 +80,15 @@ namespace Tests
         Assert::IsTrue(sum == L"BarFoo");
       }
     }
+    TEST_METHOD(Test_Find)
+    {
+      {
+        PString str(L"Foo");
+        Assert::IsTrue(str.find('o') == 1);
+        Assert::IsTrue(str.find('X') == str.npos);
+        Assert::IsTrue(str.rfind('o') == 2);
+        Assert::IsTrue(str.rfind('X') == str.npos);
+      }
+    }
   };
 }

@@ -233,7 +233,7 @@ namespace xloil
 
       // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
       // Search backwards because wbName may contain ']'
-      auto lastBracket = key.rchr(L']');
+      auto lastBracket = key.rfind(L']');
       if (lastBracket == PString<>::npos)
         XLO_THROW("ObjectCache::add: caller must be worksheet address");
       auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
