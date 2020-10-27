@@ -479,7 +479,7 @@ xlo.event.WorkbookBeforePrint += event_stopPrinting
 # unloaded.  To create the ribbon XML use an editor such as Office RibbonX Editor:
 # https://github.com/fernandreu/office-ribbonx-editor
 #
-def press1():
+def press1(ctrl):
     xlo.log("1 Pressed")
     pass
     
@@ -515,3 +515,10 @@ _ribbon = xlo.create_ribbon(r'''
 def _xloil_unload():
     pass
 
+
+import xloil.debug
+xloil.debug.exception_debug('pdb')
+
+@xlo.func
+def pyTestDebug(x):
+    return (2 * x) ^ (x + 1)
