@@ -24,8 +24,16 @@ def xloPyLoad(ModuleName:str = ""):
     return str(xlo.scan_module(ModuleName, workbook_name))
 
 @xlo.func(macro=True, 
-          help="Imports the specifed python module and scans it for xloil functions")
-
+          help=("Sets the user-code exception debugger. Pdb opens in a new window."
+               "For VS Code, connect on localhost:5678"),
+          args={
+              'Debugger': "Choose from 'pdb', 'vs' (VS Code), or empty string to disable"
+              })
 def xloPyDebug(Debugger:str = ""):
     import xloil.debug
-    xloil.debug.exception_debug(Debugger if len(Debugger) > 0 else None)
+    if len(Debugger) > 0:
+        xloil.debug.exception_debug(Debugger)
+        return Debugger
+    else:
+        xloil.debug.exception_debug(None)
+        return "OFF"

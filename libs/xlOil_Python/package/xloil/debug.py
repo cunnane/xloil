@@ -135,6 +135,7 @@ def exception_debug(debugger):
     if debugger is None:
         _exception_handler = None
         xloil.event.UserException.clear()
+        return
 
     handlers = {
         'pdb': _Handler_pdb_window,
