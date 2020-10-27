@@ -2,7 +2,7 @@
 xlOil C++ GUI Customisation
 ==============================
 
-xlOil allows dynamic creation of Excel Ribbon components. See :any:`concepts-ribbon:` for 
+xlOil allows dynamic creation of Excel Ribbon components. See :any:`concepts-ribbon` for 
 background. The code differs slightly depending on whether you are writing a static XLL or
 an xlOil plugin.
 

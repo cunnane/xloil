@@ -56,10 +56,12 @@ def get_excel_state() -> _ExcelState:
     Gives information about the Excel application, in particular the handles required 
     to interact with Excel via the Win32 API. The function returns a class with the 
     following members:
+
         *version*:   Excel major version
         *hinstance*: Excel HINSTANCE
         *hwnd*:      Excel main window handle (as an int)
         *main_thread_id*: Excel's main thread ID
+
     """
     pass
 
@@ -606,7 +608,14 @@ class Caller:
     @property
     def sheet(self):
         """
-        Gives the sheet name of the caller or None if not called from a sheet
+        Gives the sheet name of the caller or None if not called from a sheet.
+        """
+        pass
+    @property
+    def workbook(self):
+        """
+        Gives the workbook name of the caller or None if not called from a sheet.
+        If the workbook has been saved, the name will contain a file extension.
         """
         pass
     def address(self, a1style=False):

@@ -9,10 +9,10 @@ xlOil Python Module Reference
 	Cache
 	CannotConvert
 	CellError
-	ComAddin
 	Event
 	ExcelArray
 	Range
+	RibbonUI
 	RibbonControl
 	RtdPublisher
 	RtdServer
@@ -28,6 +28,7 @@ xlOil Python Module Reference
 	register_functions
 	deregister_functions
 	get_excel_state
+	xloil.debug.exception_debug
 
 	
 .. automodule:: xloil

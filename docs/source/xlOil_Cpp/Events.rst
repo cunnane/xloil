@@ -36,3 +36,4 @@ which are not part of the Application object.
           [self = this]() { self->cancel(); }));
 
           static auto handler = Event::AfterCalculate() += [logger]() { logger->flush(); };
+
