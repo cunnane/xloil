@@ -99,9 +99,6 @@
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\xlOil.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\RtdServer.h">
       <Filter>Include</Filter>
     </ClInclude>

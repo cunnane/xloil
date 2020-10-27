@@ -93,7 +93,6 @@
     <ClInclude Include="..\..\include\xloil\Version.h" />
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
-    <ClInclude Include="..\..\include\xloil\xlOil.h" />
     <ClInclude Include="LogWindowSink.h" />
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />

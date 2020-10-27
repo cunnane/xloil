@@ -610,7 +610,7 @@ namespace xloil
     /// Returns the value in the ExcelObj assuming it is a double.
     /// If it isn't, will return nonsense (UB)
     /// </summary>
-    double ExcelObj::asDouble() const
+    double asDouble() const
     {
       assert(xtype() == msxll::xltypeNum);
       return val.num;
@@ -620,7 +620,7 @@ namespace xloil
     /// Returns the value in the ExcelObj assuming it is an int.
     /// If it isn't, will return nonsense (UB)
     /// </summary>
-    int ExcelObj::asInt() const
+    int asInt() const
     {
       assert(xtype() == msxll::xltypeInt);
       return val.w;
@@ -630,7 +630,7 @@ namespace xloil
     /// Returns the value in the ExcelObj assuming it is a bool.
     /// If it isn't, will return nonsense (UB)
     /// </summary>
-    bool ExcelObj::asBool() const
+    bool asBool() const
     {
       assert(xtype() == msxll::xltypeBool);
       return val.xbool;
@@ -641,7 +641,7 @@ namespace xloil
     /// If it isn't, will return nonsense (UB)
     /// </summary>
     /// 
-    const ExcelObj* ExcelObj::asArray() const
+    const ExcelObj* asArray() const
     {
       assert(xtype() == msxll::xltypeMulti);
       return (const ExcelObj*)val.array.lparray;
@@ -652,7 +652,7 @@ namespace xloil
     /// If the object is not of string type, the resulting view 
     /// will be empty.
     /// </summary>
-    PStringView<> ExcelObj::asPascalStr() const
+    PStringView<> asPascalStr() const
     {
       return PStringView<>((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
     }

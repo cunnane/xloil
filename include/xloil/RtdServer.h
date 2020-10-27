@@ -1,5 +1,5 @@
 #pragma once
-#include <xloil/ExcelObj.h>
+#include <xlOil/ExcelObj.h>
 #include <xlOil/ExportMacro.h>
 #include <memory>
 #include <future>

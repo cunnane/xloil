@@ -9,7 +9,7 @@ namespace xloil
   /// argument type for user-defined functions. It is very fast and lightweight
   /// but is less flexible and user-friendly: if any value in the array passed
   /// to the function is not a number, Excel will return VALUE! without invoking
-  /// the function.
+  /// the function.  See for example Excel's MINVERSE function.
   /// </summary>
   class FPArray : public msxll::_FP12
   {

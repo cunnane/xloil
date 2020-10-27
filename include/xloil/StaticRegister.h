@@ -1,6 +1,6 @@
 #pragma once
-#include "Register.h"
-#include "ExcelObj.h"
+#include <xlOil/Register.h>
+#include <xlOil/ExcelObj.h>
 
 namespace xloil {
   class FuncSpec; 

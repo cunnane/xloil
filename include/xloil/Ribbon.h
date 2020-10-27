@@ -1,8 +1,7 @@
 #pragma once
-#include "ExportMacro.h"
+#include <xloil/ExportMacro.h>
 #include <functional>
 #include <memory>
-#include <map>
 
 namespace xloil
 {

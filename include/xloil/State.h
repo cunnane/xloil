@@ -1,5 +1,5 @@
 #pragma once
-#include <xloil/ExportMacro.h>
+#include <xlOil/ExportMacro.h>
 
 namespace xloil
 {

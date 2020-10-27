@@ -1,7 +1,7 @@
 #pragma once
-#include "ExportMacro.h"
-#include "Register.h"
-#include "FuncSpec.h"
+#include <xloil/ExportMacro.h>
+#include <xloil/Register.h>
+#include <xloil/FuncSpec.h>
 #include <memory>
 #include <map>
 
