@@ -1,6 +1,6 @@
 #pragma once
-#include "RibbonExtensibility.h"
 #include "ExcelTypeLib.h"
+#include "RibbonExtensibility.h"
 #include "ClassFactory.h"
 #include <xlOil/Log.h>
 #include <xlOil/Ribbon.h>
@@ -129,8 +129,13 @@ namespace xloil
               return S_OK;
             }
           }
+          catch (const std::exception& e)
+          {
+            XLO_ERROR(L"Error finding handler '{0}': {1}", fnName, utf8ToUtf16(e.what()));
+          }
           catch (...)
-          {}
+          {
+          }
           XLO_ERROR(L"Unknown handler '{0}' called by Ribbon", fnName);
           return DISP_E_UNKNOWNNAME;
         }
@@ -148,9 +153,9 @@ namespace xloil
         _Out_opt_ EXCEPINFO* pexcepinfo,
         _Out_opt_ UINT* puArgErr)
       {
+        // Remember the args are in reverse order
         auto* rgvarg = pdispparams->rgvarg;
 
-        // TODO: handle pvarResult?
         if (dispidMember == 1)
         {
           return raw_GetCustomUI(rgvarg[1].bstrVal, rgvarg[0].pbstrVal);
@@ -161,15 +166,34 @@ namespace xloil
         }
         else if (dispidMember - theFirstDispid < _functions.size())
         {
-          auto ctrl = (IRibbonControl*)rgvarg[0].pdispVal;
+          const auto nArgs = pdispparams->cArgs;
+
+          // Assign enough space: no Ribbon callback has this many args
+          VARIANT* args[4];
+
+          // First arg is the ribbon control
+          auto ctrl = (IRibbonControl*)rgvarg[nArgs - 1].pdispVal;
+
+          // Reverse order the other args
+          for (auto i = 1; i < nArgs; ++i)
+            args[i - 1] = &rgvarg[nArgs - 1 - i];
+          
           try
           {
-            (_functions[dispidMember - theFirstDispid])(RibbonControl{ ctrl->Id, ctrl->Tag });
+            _functions[dispidMember - theFirstDispid](
+              RibbonControl{ ctrl->Id, ctrl->Tag },
+              pvarResult,
+              nArgs - 1,
+              args);
           }
           catch (const std::exception& e)
           {
             XLO_ERROR("Error during ribbon callback: {0}", e.what());
-            // set exception?
+            // TODO: set exception?
+          }
+          catch (...)
+          {
+            return E_FAIL;
           }
         }
         else

@@ -1,6 +1,7 @@
 #include "Main.h"
 #include "BasicTypes.h"
 #include "PyCoreModule.h"
+#include "PyEvents.h"
 #include <xloil/Ribbon.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
@@ -19,13 +20,39 @@ namespace xloil
 
       auto cmapper = [mapper](const wchar_t* name)
       {
-        py::gil_scoped_acquire getGil;
-        auto callback = mapper.call(name);
-        return [callback](const RibbonControl& ctrl)
+        try
         {
           py::gil_scoped_acquire getGil;
-          callback.call(ctrl);
-        };
+          auto callback = mapper.call(name);
+          return [callback](
+            const RibbonControl& ctrl, VARIANT* vRet, int nArgs, VARIANT** vArgs)
+          {
+            try
+            {
+              // Converting via an ExcelObj is not optimal, but avoids building
+              // a VARIANT converter. Since very few VARIANT types can appear in
+              // callbacks this might be a feasible approach when IPictureDisp
+              // support is introduced.
+              py::gil_scoped_acquire getGil;
+              py::tuple args(nArgs);
+              for (auto i = 0; i < nArgs; ++i)
+                args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
+              auto pyRet = callback.call(ctrl, *args);
+              if (!pyRet.is_none())
+                *vRet = excelObjToVariant(FromPyObj()(pyRet.ptr(), false));
+            }
+            catch (const py::error_already_set& e)
+            {
+              Event_PyUserException().fire(e.type(), e.value(), e.trace());
+              throw;
+            }
+          };
+        }
+        catch (const py::error_already_set& e)
+        {
+          Event_PyUserException().fire(e.type(), e.value(), e.trace());
+          throw;
+        }
       };
       addin->setRibbon(xml, cmapper);
     }

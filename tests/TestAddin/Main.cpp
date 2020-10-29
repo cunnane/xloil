@@ -1,13 +1,13 @@
 #include <xloil/Ribbon.h>
 #include <xloil/Log.h>
 #include <xloil/ApiCall.h>
-
+#include <map>
 using namespace xloil;
 using std::wstring;
 
 namespace
 {
-  void ribbonHandler(const RibbonControl& ctrl)
+  void ribbonHandler(const RibbonControl& ctrl, VARIANT* ret, int nArgs, tagVARIANT** args)
   {
     XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
   };
@@ -24,7 +24,7 @@ namespace
       std::map<wstring, IComAddin::RibbonCallback> handlers;
       handlers[L"conBoldSub"] = ribbonHandler;
       handlers[L"conItalicSub"] = ribbonHandler;
-      handlers[L"conUnderlineSub"] = ribbonHandler;
+      handlers[L"comboChange"] = ribbonHandler;
       auto mapper = [=](const wchar_t* name) mutable { return handlers[name]; };
 
       theComAddin->setRibbon(LR"(
@@ -37,7 +37,11 @@ namespace
 				      <group id="customGroup" label="MyButtons">
 					      <button id="customButton1" label="ConBold" size="large" onAction="conBoldSub" imageMso="Bold" />
 					      <button id="customButton2" label="ConItalic" size="large" onAction="conItalicSub" imageMso="Italic" />
-					      <button id="customButton3" label="ConUnderline" size="large" onAction="conUnderlineSub" imageMso="Underline" />
+					      <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
+                 <item id="item1" label="Item 1" />
+                 <item id="item2" label="Item 2" />
+                 <item id="item3" label="Item 3" />
+               </comboBox>
 				      </group>
 			      </tab>
 		      </tabs>

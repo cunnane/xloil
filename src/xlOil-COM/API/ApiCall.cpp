@@ -5,6 +5,7 @@
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComAddin.h>
+#include <xlOil-COM/ComVariant.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
@@ -31,6 +32,14 @@ namespace xloil
     return COM::createComAddin(name, description);
   }
 
+  ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange)
+  {
+    return COM::variantToExcelObj(variant, allowRange);
+  }
+  VARIANT excelObjToVariant(const ExcelObj& obj)
+  {
+    return COM::excelObjToVariant(obj);
+  }
   class Messenger
   {
   public:

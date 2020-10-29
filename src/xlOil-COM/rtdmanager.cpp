@@ -1,3 +1,4 @@
+#include "ExcelTypeLib.h"
 #include "ComVariant.h"
 #include "ClassFactory.h"
 
@@ -16,8 +17,6 @@
 #include <atlcom.h>
 #include <atlwin.h>
 #include <Objbase.h>
-
-#include "ExcelTypeLib.h"
 
 #include <unordered_map>
 #include <unordered_set>

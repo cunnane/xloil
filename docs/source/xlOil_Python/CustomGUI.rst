@@ -21,11 +21,27 @@ background.  To customise the ribbon, simply run the following:
         })
 
 The ``mapper`` dictionary links callbacks named in the ribbon XML to python functions. Each
-handler should take a single ``RibbonControl`` argument which describes the control which raised 
-the callback.  
+handler should have a signature like the following:
+
+::
+
+    def ribbon_callback(ctrl: RibbonControl)
+        ...
+    def ribbon_callback(ctrl: RibbonControl, arg1, arg2)
+        ...
+    def ribbon_callback(ctrl: RibbonControl, *args)
+        ...    
+
+
+The ``RibbonControl`` describes the control which raised the callback. The number of further
+arguments is callback dependent.  In addition, the callback may be expected 
+to return a value. See the *Resources* in :any:`concepts-ribbon` for a description of the 
+appropriate callback signature.
+
+Currently callbacks which use images (IPictureDisp) are not supported.
 
 Alteratively, the `mapper` can be a function which takes any string and returns a callback
-handler which takes a ``RibbonControl`` argument.
+handler.
 
 The ``ribbon`` object returned above is actually a handle to the COM addin created to support
 the ribbon customisation.  If the object goes out of scope and is deleted by python or if you call 

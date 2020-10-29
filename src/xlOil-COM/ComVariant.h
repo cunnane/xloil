@@ -1,7 +1,7 @@
 #pragma once
-#include <oleacc.h>
 #include <xloil/ExcelObj.h>
 
+typedef struct tagVARIANT VARIANT;
 
 namespace xloil
 {

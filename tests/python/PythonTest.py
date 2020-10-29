@@ -483,6 +483,13 @@ def press1(ctrl):
     xlo.log("1 Pressed")
     pass
     
+def button_label(ctrl, *args):
+    return "PyButton"
+    
+def combo_change(ctrl, value):
+    xlo.log(f"Combo: {value} selected")
+    pass
+    
 _ribbon = xlo.create_ribbon(r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
@@ -491,10 +498,14 @@ _ribbon = xlo.create_ribbon(r'''
                     <group idMso="GroupClipboard" />
                     <group idMso="GroupFont" />
                     <group id="customGroup" label="MyButtons">
-                        <button id="pyButt1" label="Button1" size="large" onAction="press1" imageMso="Bold" />
+                        <button id="pyButt1" getLabel="buttonLabel" size="large" onAction="press1" imageMso="Bold" />
+                        <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
+                         <item id="item1" label="Item 1" />
+                         <item id="item2" label="Item 2" />
+                         <item id="item3" label="Item 3" />
+                       </comboBox>
                     </group>
                     <group idMso="GroupEnterDataAlignment" />
-                    <group idMso="GroupEnterDataNumber" />
                     <group idMso="GroupQuickFormatting" />
                 </tab>
             </tabs>
@@ -502,7 +513,9 @@ _ribbon = xlo.create_ribbon(r'''
     </customUI>
     ''', 
     mapper={
-        'press1': press1
+        'press1': press1,
+        'comboChange': combo_change,
+        'buttonLabel': button_label,
     })
     
 

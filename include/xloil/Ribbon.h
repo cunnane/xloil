@@ -1,5 +1,8 @@
 #pragma once
 #include <xloil/ExportMacro.h>
+#include <xloil/ExcelObj.h>
+#include <xloil/WindowsSlim.h>
+#include <oleacc.h>
 #include <functional>
 #include <memory>
 
@@ -18,7 +21,8 @@ namespace xloil
   class IComAddin
   {
   public:
-    using RibbonCallback = std::function<void(const RibbonControl&)>;
+    using RibbonCallback = std::function<
+      void(const RibbonControl&, VARIANT*, int, VARIANT**)>;
     using RibbonMap = std::function<RibbonCallback(const wchar_t*)>;
 
     virtual ~IComAddin() {}
@@ -85,4 +89,7 @@ namespace xloil
     addin->connect();
     return addin;
   }
+
+  XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
+  XLOIL_EXPORT VARIANT excelObjToVariant(const ExcelObj& obj);
 }

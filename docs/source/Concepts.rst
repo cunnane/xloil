@@ -107,7 +107,9 @@ Custom UI: The Fluent Ribbon
 
 xlOil allows dynamic creation of Excel Ribbon components. The ribbon is defined by XML
 (surrounded with <customUI> tags) which should be created with a specialised editor, see the 
-*Resources* below. Controls in the ribbon interact with user code via callback handlers. 
+*Resources* below. Controls in the ribbon interact with user code via callback handlers.  
+These callbacks pass a variety of arguments and may expect a return value; it is important 
+to check that the any callback behaves as per the callback specifications in the *Resources*.
 
 To pass ribbon XML into Excel, xlOil creates a COM-based add-in in addition to the XLL-based 
 add-in which loads the xlOil core - you can see this appearing in Excel's add-in list in the 
@@ -118,5 +120,7 @@ Resources:
    * `Microsoft: Overview of the Office Fluent Ribbon <https://docs.microsoft.com/en-us/office/vba/library-reference/concepts/overview-of-the-office-fluent-ribbon>`_
    * `Microsoft: Customizing the Office Fluent Ribbon for Developers <https://docs.microsoft.com/en-us/previous-versions/office/developer/office-2007/aa338202(v=office.12)>`_
    * `Microsoft: Custom UI XML Markup Specification <https://docs.microsoft.com/en-us/openspecs/office_standards/ms-customui/31f152d6-2a5d-4b50-a867-9dbc6d01aa43>`_
+   * `Microsoft: Ribbon Callback Specifications <https://docs.microsoft.com/en-us/previous-versions/office/developer/office-2010/ee691833(v=office.14)>`_
    * `Office RibbonX Editor <https://github.com/fernandreu/office-ribbonx-editor>`_
    * `Ron de Bruin: Ribbon Examples files and Tips <https://www.rondebruin.nl/win/s2/win003.htm>`_
+   

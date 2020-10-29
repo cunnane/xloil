@@ -1,10 +1,11 @@
 #pragma once
-#include <map>
+
 #include <functional>
 #include <memory>
 
 namespace Office { struct IRibbonExtensibility; }
 namespace xloil { struct RibbonControl;  }
+typedef struct tagVARIANT VARIANT;
 
 namespace xloil
 {
@@ -18,7 +19,8 @@ namespace xloil
       virtual bool activateTab(const wchar_t* controlId) const = 0;
     };
 
-    using RibbonCallback = std::function<void(const RibbonControl&)>;
+    using RibbonCallback = std::function<
+      void(const RibbonControl&, VARIANT*, int, VARIANT**)>;
 
     std::shared_ptr<IRibbon> createRibbon(
       const wchar_t* xml,
