@@ -38,7 +38,7 @@ namespace xloil
               for (auto i = 0; i < nArgs; ++i)
                 args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
               auto pyRet = callback.call(ctrl, *args);
-              if (!pyRet.is_none())
+              if (vRet && !pyRet.is_none())
                 *vRet = excelObjToVariant(FromPyObj()(pyRet.ptr(), false));
             }
             catch (const py::error_already_set& e)
