@@ -20,16 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Environment.cpp" />
-    <ClCompile Include="PEHelper.cpp" />
     <ClCompile Include="Settings.cpp" />
-    <ClCompile Include="Thunker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Environment.h" />
     <ClInclude Include="Exception.h" />
-    <ClInclude Include="PEHelper.h" />
     <ClInclude Include="Settings.h" />
-    <ClInclude Include="Thunker.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

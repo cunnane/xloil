@@ -97,17 +97,14 @@
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
-    <ClInclude Include="Register\LocalFunctions.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DynamicRegistration.cpp" />
     <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="Interface.cpp" />
     <ClCompile Include="Loaders\EntryPoint.cpp" />
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />
-    <ClCompile Include="Register\LocalFunctions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\external\asmjit\asmjit.vcxproj">
@@ -121,6 +118,9 @@
     </ProjectReference>
     <ProjectReference Include="..\xlOil-COM\xlOil-COM.vcxproj">
       <Project>{2c85c326-07ea-4d9c-91c2-f79baec64f70}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\xlOil-Dynamic\xlOil-Dynamic.vcxproj">
+      <Project>{1102f4da-8b5a-4b01-a8ba-432a4c14a1ab}</Project>
     </ProjectReference>
     <ProjectReference Include="..\xlOil-Funcs\xlOil-Funcs.vcxproj">
       <Project>{a310c8c5-ce14-4dd3-8a0d-61491741558a}</Project>

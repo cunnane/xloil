@@ -8,7 +8,7 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/State.h>
 #include <xlOil/Loaders/EntryPoint.h>
-#include <xlOilHelpers/PEHelper.h>
+#include <xlOil-Dynamic/PEHelper.h>
 
 #include <codecvt>
 #include <map>

@@ -7,8 +7,8 @@
 #include <xlOil/StaticRegister.h>
 #include <xloil/Loaders/EntryPoint.h>
 #include <xlOil-XLL/FuncRegistry.h>
-#include <xlOilHelpers/PEHelper.h>
-#include <xlOilHelpers/Thunker.h>
+#include <xlOil-Dynamic/PEHelper.h>
+#include <xlOil-Dynamic/Thunker.h>
 #include <xlOil/Preprocessor.h>
 #include <xlOil/Async.h>
 

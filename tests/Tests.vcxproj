@@ -82,6 +82,9 @@
     <ProjectReference Include="..\src\external\spdlog\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\src\xlOil-Dynamic\xlOil-Dynamic.vcxproj">
+      <Project>{1102f4da-8b5a-4b01-a8ba-432a4c14a1ab}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\src\xlOilHelpers\xlOilHelpers.vcxproj">
       <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
     </ProjectReference>

@@ -1,6 +1,6 @@
 #include "Thunker.h"
 #include <xlOil/Register.h>
-#include "Exception.h"
+#include <xlOilHelpers/Exception.h>
 #include <xlOil/Log.h>
 #define ASMJIT_STATIC
 #include <asmjit/src/asmjit/asmjit.h>

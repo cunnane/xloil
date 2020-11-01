@@ -9,16 +9,10 @@
     <ClCompile Include="Loaders\PluginLoader.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
-    <ClCompile Include="Register\LocalFunctions.cpp">
-      <Filter>Register</Filter>
-    </ClCompile>
     <ClCompile Include="Loaders\EntryPoint.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
     <ClCompile Include="LogWindowSink.cpp" />
-    <ClCompile Include="DynamicRegistration.cpp">
-      <Filter>Register</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -26,9 +20,6 @@
     </ClInclude>
     <ClInclude Include="Loaders\PluginLoader.h">
       <Filter>Loaders</Filter>
-    </ClInclude>
-    <ClInclude Include="Register\LocalFunctions.h">
-      <Filter>Register</Filter>
     </ClInclude>
     <ClInclude Include="Loaders\EntryPoint.h">
       <Filter>Loaders</Filter>
@@ -137,9 +128,6 @@
   <ItemGroup>
     <Filter Include="Loaders">
       <UniqueIdentifier>{d269fbda-6fa4-4a7f-a1c5-bd84599de0da}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Register">
-      <UniqueIdentifier>{ebcfa09e-f6e7-475e-8ac0-3049401bab0e}</UniqueIdentifier>
     </Filter>
     <Filter Include="Include">
       <UniqueIdentifier>{28b63a3a-8cbf-47cb-adb4-a08c46149d07}</UniqueIdentifier>

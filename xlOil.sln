@@ -91,6 +91,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil-COM", "src\xlOil-COM\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil-Loader", "src\xlOil-Loader\xlOil-Loader.vcxproj", "{F7E97195-7624-4E54-AA15-A1F85C96C609}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil-Dynamic", "src\xlOil-Dynamic\xlOil-Dynamic.vcxproj", "{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -330,6 +332,22 @@ Global
 		{F7E97195-7624-4E54-AA15-A1F85C96C609}.Release|x64.Build.0 = Release|x64
 		{F7E97195-7624-4E54-AA15-A1F85C96C609}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
 		{F7E97195-7624-4E54-AA15-A1F85C96C609}.ReleaseStatic|x64.ActiveCfg = Release|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Debug|Win32.Build.0 = Debug|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Debug|x64.ActiveCfg = Debug|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Debug|x64.Build.0 = Debug|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.DebugStatic|Win32.ActiveCfg = DebugStatic|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.DebugStatic|Win32.Build.0 = DebugStatic|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.DebugStatic|x64.ActiveCfg = DebugStatic|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.DebugStatic|x64.Build.0 = DebugStatic|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Release|Win32.ActiveCfg = Release|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Release|Win32.Build.0 = Release|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Release|x64.ActiveCfg = Release|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.Release|x64.Build.0 = Release|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.ReleaseStatic|Win32.ActiveCfg = ReleaseStatic|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.ReleaseStatic|Win32.Build.0 = ReleaseStatic|Win32
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.ReleaseStatic|x64.ActiveCfg = ReleaseStatic|x64
+		{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}.ReleaseStatic|x64.Build.0 = ReleaseStatic|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

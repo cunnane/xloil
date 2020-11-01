@@ -1,6 +1,6 @@
 #pragma once
-#include "Exception.h"
-#include <xloil/WindowsSlim.h>
+#include <xlOilHelpers/Exception.h>
+#include <xlOil/WindowsSlim.h>
 
 namespace xloil
 {

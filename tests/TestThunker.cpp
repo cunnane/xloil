@@ -1,5 +1,5 @@
 #include "CppUnitTest.h"
-#include <xloilHelpers/Thunker.h>
+#include <xloil-Dynamic/Thunker.h>
 #include <xloil/Register.h>
 #include <xloil/ExcelObj.h>
 
