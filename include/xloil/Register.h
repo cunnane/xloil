@@ -121,7 +121,7 @@ namespace xloil
   typedef RegisterCallbackT<void> RegisterCallback;
 
   template<class TData> using AsyncCallbackT 
-    = void (*)(TData* data, const ExcelObj*, const ExcelObj**) noexcept;
+    = void (*)(TData* data, const ExcelObj**) noexcept;
   typedef AsyncCallbackT<void> AsyncCallback;
 
   using ExcelFuncObject = std::function<ExcelObj*(const FuncInfo& info, const ExcelObj**)>;

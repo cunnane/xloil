@@ -15,10 +15,11 @@ namespace Tests
     auto n = *(int*)data;
     return (ExcelObj*)p[n];
   }
-  void asyncCallback(void* data, const ExcelObj* r, const ExcelObj** p) noexcept
+  void asyncCallback(void* data, const ExcelObj** p) noexcept
   {
     auto n = *(int*)data;
-    *(ExcelObj*)r = *p[n];
+    const ExcelObj* r = p[0];
+    *(ExcelObj*)r = *p[n + 1];
   }
   TEST_CLASS(ThunkerTests)
   {

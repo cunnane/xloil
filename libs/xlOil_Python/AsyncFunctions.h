@@ -10,7 +10,6 @@ namespace xloil
 
     void pythonAsyncCallback(
       PyFuncInfo* info,
-      const ExcelObj* asyncHandle,
       const ExcelObj** xlArgs) noexcept;
 
     ExcelObj* pythonRtdCallback(

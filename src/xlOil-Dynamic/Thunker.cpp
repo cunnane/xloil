@@ -65,13 +65,9 @@ namespace xloil
     void* callback,
     const void* data,
     size_t numArgs,
-    bool async)
+    bool hasReturnVal)
   {
     asmjit::x86::Assembler asmb(code);
-
-    // For async, we had additional arg for return handle
-    if (async)
-      ++numArgs;
 
     // Build the signature of the function we are creating
     FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
@@ -81,7 +77,7 @@ namespace xloil
       signature.addArg(ptrType);
 
     // Normal callbacks should return, async ones will not
-    signature.setRet(async ? Type::kIdVoid : ptrType);
+    signature.setRet(hasReturnVal ? ptrType : Type::kIdVoid);
     
     FuncDetail func;
     func.init(signature);
@@ -111,9 +107,7 @@ namespace xloil
     x86::Mem localStack(x86::rsp, frame.localStackOffset());
     x86::Mem stackArgs(x86::rsp, frame.saOffsetFromSP() + frame.spillZoneSize());
 
-    // For an async callback, the first arg in rcx will be the handle. We don't 
-    // add this to the argument array
-    const auto startArg = async ? 1 : 0;
+    const auto startArg = 0;
     
     // Under x64 Microsoft calling convention the args will be in rcx, rdx, r8, r9
     // with the remainder on the stack. rax is considered volatile and we clobber it
@@ -139,13 +133,7 @@ namespace xloil
     }
 
     // Setup arguments for callback
-    if (async)
-    {
-      asmb.mov(x86::rdx, x86::rcx);  // Set the async return handle
-      asmb.lea(x86::r8, localStack);
-    }
-    else
-      asmb.lea(x86::rdx, localStack);
+    asmb.lea(x86::rdx, localStack);
     asmb.mov(x86::rcx, imm(data));
 
     asmb.call(imm((void*)callback));
@@ -179,9 +167,10 @@ namespace xloil
 
   void writeFunctionBody(
     asmjit::x86::Compiler& cc,
-    RegisterCallback callback,
+    void* callback,
     const void* data,
-    size_t numArgs)
+    size_t numArgs,
+    bool retVal)
   {
     // Take args passed to thunk and put them into an array on the stack
     // This should give us an xloper12** which we load into argsPtr
@@ -192,60 +181,29 @@ namespace xloil
     cc.lea(args, argsPtr);
 
     // Setup the signature to call the target callback, this is not a stdcall
-    // that was only for the call from Excel to xlOil
-    FuncCallNode* call(
-      cc.call(imm((void*)callback), 
-        FuncSignatureT<ExcelObj*, const void*, const ExcelObj**>(CallConv::kIdHost)));
+    // that was only required for the call from Excel to xlOil
+    auto sig = FuncSignatureT<void, const void*, const ExcelObj**>(CallConv::kIdHost);
+    if (retVal)
+      sig._ret = Type::IdOfT<ExcelObj*>::kTypeId;
+
+    FuncCallNode* call(cc.call(imm(callback), sig));
 
     call->setArg(0, imm(data));
     call->setArg(1, args);
 
-    // Allocate a register for the return value, in fact 
-    // this is a no-op as we just return the callback value
-    x86::Gp ret = cc.newUIntPtr("ret");
+    if (retVal)
+    {
+      // Allocate a register for the return value, in fact 
+      // this is a no-op as we just return the callback value
+      x86::Gp ret = cc.newUIntPtr("ret");
 
-    // TODO: any chance of setting xl-free bit here?
-    call->setRet(0, ret);
+      // TODO: any chance of setting xl-free bit here?
+      call->setRet(0, ret);
 
-    // Pass callback return as our return
-    cc.ret(ret);
+      // Pass callback return as our return
+      cc.ret(ret);
+    }
   }
-
-  void writeFunctionBody(
-    asmjit::x86::Compiler& cc,
-    AsyncCallback callback,
-    const void* data,
-    size_t numArgs)
-  {
-    // Take args passed to thunk and put them into an array on the stack
-    // This should give us an xloper12** which we load into argsPtr.
-    // We separate out the first argument as this will contain the async handle
-    // which needs to be returned to Excel.
-    x86::Mem argsPtr;
-    x86::Gp handle = cc.newUIntPtr("handle");
-
-    cc.setArg(0, handle);
-    createArrayOfArgsOnStack(cc, argsPtr, 1, numArgs + 1);
-
-#pragma warning(disable: 4189) // "Local variable is initialized but not referenced"
-
-    x86::Gp args = cc.newUIntPtr("args");
-    cc.lea(args, argsPtr);
-    
-    // Setup the signature to call the target callback. Note the void return type
-    // as the function will return it's value by invoking xlAsyncReturn.
-    FuncCallNode* call(
-      cc.call(imm((void*)callback),
-        FuncSignatureT<void, const void*, const ExcelObj*, const ExcelObj**>(CallConv::kIdHost)));
-
-    call->setArg(0, imm(data));
-    call->setArg(1, handle);
-    call->setArg(2, args);
-
-    // No return from async, this is a no-op.
-    cc.ret();
-  }
-
 
   void writeToBuffer(CodeHolder& codeHolder, char* codeBuffer, size_t bufferSize, size_t& codeSize)
   {
@@ -286,6 +244,8 @@ namespace xloil
 
     // Begin code
 
+    constexpr bool isAsync = std::is_same<TCallback, AsyncCallback>::value;
+
     // Declare thunk function signature: need stdcall for Excel functions.
     // We assume all arguments are xloper12*.
     auto ptrType = Type::IdOfT<xloper12*>::kTypeId;
@@ -295,18 +255,15 @@ namespace xloil
 
     // Normal callbacks should return, async ones will not, so set return
     // type appropriately.
-    if (!std::is_same<TCallback, AsyncCallback>::value)
+    if constexpr (!isAsync)
       signature.setRet(ptrType);
     else
-    {
-      signature.addArg(ptrType);
       signature.setRet(Type::kIdVoid);
-    }
 
     cc.addFunc(signature);
 
     // Write the appropriate function body for the callback type
-    writeFunctionBody(cc, callback, data, numArgs);
+    writeFunctionBody(cc, callback, data, numArgs, !isAsync);
 
     cc.endFunc();
 
@@ -335,8 +292,8 @@ namespace xloil
     // Initialise place to hold code before compilation
     CodeHolder codeHolder;
     codeHolder.init(theRunTime.codeInfo());
-
-    handRoll64(&codeHolder, (void*)callback, data, numArgs, std::is_same<TCallback, AsyncCallback>::value);
+    constexpr bool isAsync = std::is_same<TCallback, AsyncCallback>::value;
+    handRoll64(&codeHolder, (void*)callback, data, numArgs, !isAsync);
 
     writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
 

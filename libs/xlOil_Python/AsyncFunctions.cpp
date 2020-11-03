@@ -230,9 +230,10 @@ namespace xloil
 
     void pythonAsyncCallback(
       PyFuncInfo* info,
-      const ExcelObj* asyncHandle,
       const ExcelObj** xlArgs) noexcept
     {
+      const ExcelObj* asyncHandle = xlArgs[0];
+
       try
       {
         py::gil_scoped_acquire gilAcquired;
@@ -242,7 +243,7 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        auto[args, kwargs] = info->convertArgs(xlArgs);
+        auto[args, kwargs] = info->convertArgs(xlArgs + 1);
         if (kwargs.is_none())
           kwargs = py::dict();
 

@@ -127,7 +127,7 @@ namespace xloil
     {
       auto& registry = ThunkHolder::get();
       auto[thunk, thunkSize] = registry.callBuildThunk(
-        spec->_callback, spec->_context.get(), spec->info()->numArgs());
+        spec->_callback, spec->_context.get(), spec->info()->numArgs() + (TisAsync ? 1 : 0));
       _thunk = thunk;
       _thunkSize = thunkSize;
       _registerId = doRegister();
