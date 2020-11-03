@@ -56,8 +56,14 @@
     <ClCompile Include="RtdServerTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\external\asmjit\asmjit.vcxproj">
+      <Project>{164af267-092e-441d-8bf0-2acf18e9adfd}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\xlOil-COM\xlOil-COM.vcxproj">
       <Project>{2c85c326-07ea-4d9c-91c2-f79baec64f70}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\xlOil-Dynamic\xlOil-Dynamic.vcxproj">
+      <Project>{1102f4da-8b5a-4b01-a8ba-432a4c14a1ab}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\src\xlOil-XLL\xlOil-XLL.vcxproj">
       <Project>{fd89f79e-fad6-4bdf-b8b3-2028e8482abf}</Project>

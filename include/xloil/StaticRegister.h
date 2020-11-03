@@ -65,27 +65,39 @@ namespace xloil
   {
     return &obj;
   }
-
-  struct FuncRegistrationMemo
+  namespace detail
   {
-    typedef FuncRegistrationMemo self;
-    FuncRegistrationMemo(
-      const char* entryPoint_, size_t nArgs, const int* type);
+    struct FuncInfoBuilderBase
+    {
+      FuncInfoBuilderBase(size_t nArgs, const int* types);
 
-    self& name(const wchar_t* txt)
+      // TODO: public but not exported...can we hide this?
+      std::shared_ptr<FuncInfo> getInfo();
+      std::shared_ptr<FuncInfo> _info;
+      size_t _iArg;
+    };
+  }
+
+  template<class TSuper>
+  struct FuncInfoBuilder : public detail::FuncInfoBuilderBase
+  {
+    using self = TSuper;
+    using detail::FuncInfoBuilderBase::FuncInfoBuilderBase;
+
+    template<class T> self& name(T txt)
     {
       _info->name = txt;
-      return *this;
+      return cast();
     }
-    self& help(const wchar_t* txt)
+    template<class T> self& help(T txt)
     {
       _info->help = txt;
-      return *this;
+      return cast();
     }
-    self& category(const wchar_t* txt)
+    template<class T>self& category(T txt)
     {
       _info->category = txt;
-      return *this;
+      return cast();
     }
     /// <summary>
     /// Specifies an arg as optional. This just effects the auto generated
@@ -95,7 +107,7 @@ namespace xloil
     {
       arg(name, help);
       _info->args[_iArg - 1].type |= FuncArg::Optional;
-      return *this;
+      return cast();
     }
     self& arg(const wchar_t* name, const wchar_t* help = nullptr)
     {
@@ -105,36 +117,44 @@ namespace xloil
       arg.name = name;
       if (help)
         arg.help = help;
-      return *this;
+      return cast();
     }
     self& command()
     {
       _info->options |= FuncInfo::COMMAND;
-      return *this;
+      return cast();
     }
     self& hidden()
     {
       _info->options |= FuncInfo::HIDDEN;
-      return *this;
+      return cast();
     }
     self& macro()
     {
       _info->options |= FuncInfo::MACRO_TYPE;
-      return *this;
+      return cast();
     }
     self& threadsafe()
     {
       _info->options |= FuncInfo::THREAD_SAFE;
-      return *this;
+      return cast();
     }
-    // TODO: public but not exported...can we hide this?
-    std::shared_ptr<FuncInfo> getInfo();
+
+
+    self& cast() { return static_cast<self&>(*this); }
+  };
+
+  struct FuncRegistrationMemo : public FuncInfoBuilder<FuncRegistrationMemo>
+  {
+    FuncRegistrationMemo(
+      const char* entryPoint_, size_t nArgs, const int* type)
+      : FuncInfoBuilder(nArgs, type)
+    {
+      entryPoint = entryPoint_;
+      name(utf8ToUtf16(entryPoint_));
+    }
 
     std::string entryPoint;
-
-  private:
-    std::shared_ptr<FuncInfo> _info;
-    size_t _iArg;
   };
 
   XLOIL_EXPORT FuncRegistrationMemo& 
@@ -186,19 +206,57 @@ namespace xloil
 #define XLOIL_STDCALL
 #endif
 
-    template<class T> struct ArgTypes;
-    template <class Ret, class... Args>
-    struct ArgTypes<Ret(XLOIL_STDCALL *)(Args...)>
+    /// <summary>
+    /// Ultimately inherits from Defs<ReturnType, Args...> but due to the myriad
+    /// ways which a callable can be expressed in C++, has a lot of specialisations
+    /// </summary>
+    template <template<typename, typename...> typename Defs, typename T>
+    struct FunctionTraitsFilter;
+
+    template <template<typename, typename...> typename Defs,
+      typename ReturnType, typename... Args>
+      struct FunctionTraitsFilter<Defs, ReturnType(Args...)>
+      : Defs<ReturnType, Args...> {};
+
+    template <template<typename, typename...> typename Defs,
+      typename ReturnType, typename... Args>
+      struct FunctionTraitsFilter<Defs, ReturnType(XLOIL_STDCALL *)(Args...)>
+      : Defs<ReturnType, Args...> {};
+
+    template <template<typename, typename...> typename Defs,
+      typename ReturnType, typename ClassType, typename... Args>
+      struct FunctionTraitsFilter<Defs, ReturnType(ClassType::*)(Args...)>
+      : Defs<ReturnType, Args...> {};
+
+    template <template<typename, typename...> typename Defs,
+      typename ReturnType, typename ClassType, typename... Args>
+      struct FunctionTraitsFilter<Defs, ReturnType(ClassType::*)(Args...) const>
+      : Defs<ReturnType, Args...> {};
+
+    template <template<typename, typename...> typename Defs, typename T, typename SFINAE = void>
+    struct FunctionTraits
+      : FunctionTraitsFilter<Defs, T> {};
+
+    template <template<typename, typename...> typename Defs, typename T>
+    struct FunctionTraits<Defs, T, decltype((void)&T::operator())>
+      : FunctionTraitsFilter<Defs, decltype(&T::operator())> {};
+
+    template <typename ReturnType, typename... Args>
+    struct ArgTypesDefs
     {
       static constexpr int types[sizeof...(Args)] = { ArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
     };
-    template <class... Args>
-    struct ArgTypes<void(XLOIL_STDCALL *)(Args...)>
+    template <typename... Args>
+    struct ArgTypesDefs<void, Args...>
     {
       static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
     };
+
+    template<class T> struct ArgTypes
+      : FunctionTraits<ArgTypesDefs, T>
+    {};
   }
 
   template <class TFunc> inline FuncRegistrationMemo&

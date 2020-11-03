@@ -1,9 +1,11 @@
 #include <xloil/Ribbon.h>
 #include <xloil/Log.h>
 #include <xloil/ApiCall.h>
+#include <xloil/DynamicRegister.h>
 #include <map>
 using namespace xloil;
 using std::wstring;
+using std::shared_ptr;
 
 namespace
 {
@@ -12,11 +14,21 @@ namespace
     XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
   };
 
-  std::shared_ptr<IComAddin> theComAddin;
+  shared_ptr<IComAddin> theComAddin;
+  std::list<shared_ptr<RegisteredFunc>> theFuncs;
 }
 
   void xllOpen(void* hInstance)
   {
+    theFuncs.push_back(RegisterLambda(
+      [](const FuncInfo& info, const ExcelObj& arg1, const ExcelObj& arg2)
+      {
+          return returnValue(7);
+      })
+      .name(L"testDynamic")
+      .arg(L"Arg1")
+      .registerFunc());
+
     xllOpenComCall([]()
     {
       theComAddin = makeComAddin(L"TestXlOil");
@@ -55,7 +67,9 @@ namespace
       theComAddin->ribbonActivate(L"customTab");
     });
   }
+
   void xllClose()
   {
     theComAddin.reset();
+    theFuncs.clear();
   }

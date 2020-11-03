@@ -1,6 +1,6 @@
 #include <xlOil/Interface.h>
 #include <xlOil-XLL/FuncRegistry.h>
-#include <xlOil/Register/LocalFunctions.h>
+#include <xlOil-Dynamic/LocalFunctions.h>
 #include <xlOil/ObjectCache.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>

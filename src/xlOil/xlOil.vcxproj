@@ -64,6 +64,7 @@
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
     <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />
+    <ClInclude Include="..\..\include\xloil\DynamicRegister.h" />
     <ClInclude Include="..\..\include\xloil\Events.h" />
     <ClInclude Include="..\..\include\xloil\ExcelArray.h" />
     <ClInclude Include="..\..\include\xloil\ExcelCall.h" />

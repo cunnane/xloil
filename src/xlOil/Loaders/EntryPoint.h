@@ -1,7 +1,6 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 
-#define XLOIL_STUB_NAME xloil_stub
 
 namespace xloil
 {

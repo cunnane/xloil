@@ -124,6 +124,9 @@
     <ClInclude Include="..\..\include\xloil\FPArray.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\xloil\DynamicRegister.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">

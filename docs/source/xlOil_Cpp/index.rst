@@ -16,6 +16,7 @@ The xlOil C++ interface has a `doxygen API description <doxygen/index.html>`_.
     SpecialArgs
     Events
     CustomGUI
+    DynamicRegistration
 
 
 Quick Tour of the Key Classes

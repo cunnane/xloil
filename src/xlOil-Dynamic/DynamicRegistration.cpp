@@ -1,3 +1,4 @@
+#include <xloil/DynamicRegister.h>
 #include <xloil/ExcelObj.h>
 #include <xlOil/Register.h>
 #include <xlOil/FuncSpec.h>
@@ -20,6 +21,13 @@ using std::wstring;
 using std::make_shared;
 using namespace msxll;
 using std::static_pointer_cast;
+
+#define XLOIL_STUB_NAME xloil_stub
+
+extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB_NAME()
+{
+  return nullptr;
+}
 
 namespace xloil
 {
@@ -217,7 +225,7 @@ namespace xloil
 
   namespace
   {
-    ExcelObj* launchFunctionObj(
+    ExcelObj* invokeLambda(
       LambdaFuncSpec* data,
       const ExcelObj** args) noexcept
     {
@@ -257,8 +265,11 @@ namespace xloil
 
 std::shared_ptr<RegisteredFunc> LambdaFuncSpec::registerFunc() const
 {
-  auto copyThis = make_shared<LambdaFuncSpec>(*this);
-  return CallbackSpec(info(), &launchFunctionObj, copyThis).registerFunc();
+  // Not too proud of this const cast
+  auto thisPtr = std::const_pointer_cast<LambdaFuncSpec>( 
+    std::static_pointer_cast<const LambdaFuncSpec>(this->shared_from_this()));
+  auto thatPtr = make_shared<CallbackSpec>(info(), &invokeLambda, thisPtr);
+  return thatPtr->registerFunc();
 }
 
 }

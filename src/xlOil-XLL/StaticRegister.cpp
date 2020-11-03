@@ -12,19 +12,16 @@ using std::wstring;
 
 namespace xloil
 {
-  FuncRegistrationMemo::FuncRegistrationMemo(
-    const char* entryPoint_, size_t nArgs, const int* types)
-    : entryPoint(entryPoint_)
-    , _info(new FuncInfo())
+  detail::FuncInfoBuilderBase::FuncInfoBuilderBase(size_t nArgs, const int* types)
+    : _info(new FuncInfo())
     , _iArg(0)
   {
-    _info->name = utf8ToUtf16(entryPoint_);
     _info->args.resize(nArgs);
     for (auto i = 0; i < nArgs; ++i)
       _info->args[i].type = types[i];
   }
 
-  std::shared_ptr<FuncInfo> FuncRegistrationMemo::getInfo()
+  std::shared_ptr<FuncInfo> detail::FuncInfoBuilderBase::getInfo()
   {
     using namespace std::string_literals;
 

@@ -8,6 +8,7 @@
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
 #include <xloil/StaticRegister.h>
+#include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
 #include <xloil/RtdServer.h>

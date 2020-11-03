@@ -109,7 +109,3 @@ XLO_ENTRY_POINT(int) DllMain(
   return TRUE;
 }
 
-extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB_NAME() 
-{ 
-  return nullptr; 
-}
