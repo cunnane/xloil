@@ -69,7 +69,7 @@ namespace xloil
       info->options = val;
     }
 
-    pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs)
+    pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
     {
       auto nArgs = argConverters.size();
       auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
@@ -99,7 +99,7 @@ namespace xloil
         return make_pair(pyArgs, py::none());
     }
 
-    void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs)
+    void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs) const
     {
       PyObject* ret;
       if (kwargs != Py_None)
@@ -110,7 +110,10 @@ namespace xloil
         throw py::error_already_set();
     }
 
-    void PyFuncInfo::invoke(ExcelObj& result, PyObject* args, PyObject* kwargs) noexcept
+    void PyFuncInfo::invoke(
+      ExcelObj& result, 
+      PyObject* args, 
+      PyObject* kwargs) const noexcept
     {
       try
       {
@@ -136,7 +139,7 @@ namespace xloil
     }
 
     ExcelObj* pythonCallback(
-      PyFuncInfo* info,
+      const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
       try
@@ -177,18 +180,20 @@ namespace xloil
     shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
       shared_ptr<const FuncSpec> spec;
+      shared_ptr<const PyFuncInfo> cFuncInfo = funcInfo;
+
       if (funcInfo->isAsync)
       {
         funcInfo->info->args.insert(
           funcInfo->info->args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
-        spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
+        spec.reset(new DynamicSpec(funcInfo->info, &pythonAsyncCallback, cFuncInfo));
       }
       else if (funcInfo->isRtdAsync)
       {
-        spec.reset(new CallbackSpec(funcInfo->info, &pythonRtdCallback, funcInfo));
+        spec.reset(new DynamicSpec(funcInfo->info, &pythonRtdCallback, cFuncInfo));
       }
       else
-        spec.reset(new CallbackSpec(funcInfo->info, &pythonCallback, funcInfo));
+        spec.reset(new DynamicSpec(funcInfo->info, &pythonCallback, cFuncInfo));
 
       return spec;
     }
@@ -302,7 +307,7 @@ namespace xloil
         _module = pyModule;
         vector<shared_ptr<const FuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
-        vector<ExcelFuncObject> funcs;
+        vector<DynamicExcelFunc<>> funcs;
 
         for (auto& f : functions)
         {

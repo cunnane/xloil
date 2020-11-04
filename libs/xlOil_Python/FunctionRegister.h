@@ -52,13 +52,13 @@ namespace xloil
         int val);
 
       std::pair<pybind11::tuple, pybind11::object> convertArgs(
-        const ExcelObj** xlArgs);
+        const ExcelObj** xlArgs) const;
 
       void invoke(
-        ExcelObj& result, PyObject* args, PyObject* kwargs) noexcept;
+        ExcelObj& result, PyObject* args, PyObject* kwargs) const noexcept;
 
       void invoke(
-        PyObject* args, PyObject* kwargs);
+        PyObject* args, PyObject* kwargs) const;
 
       std::shared_ptr<FuncInfo> info;
       std::shared_ptr<IPyToExcel> returnConverter;

@@ -66,21 +66,21 @@ namespace xloil
       return instance;
     }
 
-    template <class TCallback>
     auto callBuildThunk(
-      TCallback callback,
+      const void* callback,
       const void* contextData,
-      const size_t numArgs)
+      const size_t numArgs,
+      const bool hasReturnVal)
     {
       // TODO: cache thunks with same number of args and callback?
 
       const size_t codeBufferSize = sizeof(theCodeCave) + theCodeCave - theCodePtr;
       size_t codeBytesWritten;
 #ifdef _WIN64
-      auto* thunk = buildThunkLite(callback, contextData, numArgs,
+      auto* thunk = buildThunkLite(callback, contextData, numArgs, hasReturnVal,
         theCodePtr, codeBufferSize, codeBytesWritten);
 #else
-      auto* thunk = buildThunk(callback, contextData, numArgs,
+      auto* thunk = buildThunk(callback, contextData, numArgs, hasReturnVal,
         theCodePtr, codeBufferSize, codeBytesWritten);
 #endif
       XLO_ASSERT(thunk == (void*)theCodePtr);
@@ -113,17 +113,16 @@ namespace xloil
   char* ThunkHolder::theCodePtr = theCodeCave;
 
 
-  template <class TCallback, bool TisAsync>
   class RegisteredCallback : public RegisteredFunc
   {
   public:
     RegisteredCallback(
-      const shared_ptr<const GenericCallbackSpec<TCallback>>& spec)
+      const shared_ptr<const DynamicSpec>& spec)
       : RegisteredFunc(spec)
     {
       auto& registry = ThunkHolder::get();
       auto[thunk, thunkSize] = registry.callBuildThunk(
-        spec->_callback, spec->_context.get(), spec->info()->numArgs());
+        spec->_callback, spec->_context.get(), spec->info()->numArgs(), spec->_hasReturn);
       _thunk = thunk;
       _thunkSize = thunkSize;
       _registerId = doRegister();
@@ -142,7 +141,7 @@ namespace xloil
 
     virtual bool reregister(const std::shared_ptr<const FuncSpec>& other)
     {
-      auto* thisType = dynamic_cast<const GenericCallbackSpec<TCallback>*>(other.get());
+      auto* thisType = dynamic_cast<const DynamicSpec*>(other.get());
       if (!thisType)
         return false;
 
@@ -172,9 +171,11 @@ namespace xloil
         if (infoMatches)
           return true;
 
+        auto callback = spec()._callback;
         // Rewrite spec
-        _spec = make_shared<GenericCallbackSpec<TCallback>>(
-          newInfo, spec()._callback, newContext);
+        _spec = spec()._hasReturn 
+          ? make_shared<DynamicSpec>(newInfo, (DynamicCallback<ExcelObj*, void>)callback, newContext)
+          : make_shared<DynamicSpec>(newInfo, (DynamicCallback<void, void>)callback, newContext);
 
         // Otherwise re-use the possibly patched thunk
         XLO_DEBUG(L"Reregistering function '{0}'", newInfo->name);
@@ -186,9 +187,9 @@ namespace xloil
       return false;
     }
 
-    const GenericCallbackSpec<TCallback>& spec() const
+    const DynamicSpec& spec() const
     {
-      return static_cast<const GenericCallbackSpec<TCallback>&>(*_spec);
+      return static_cast<const DynamicSpec&>(*_spec);
     }
 
   private:
@@ -196,29 +197,22 @@ namespace xloil
     size_t _thunkSize;
   };
 
-  shared_ptr<RegisteredFunc> GenericCallbackSpec<RegisterCallback>::registerFunc() const
+  shared_ptr<RegisteredFunc> DynamicSpec::registerFunc() const
   {
-    return make_shared<RegisteredCallback<RegisterCallback, false>>(
-      static_pointer_cast<const GenericCallbackSpec<RegisterCallback>>(
-        this->shared_from_this()));
-  }
-
-  shared_ptr<RegisteredFunc> GenericCallbackSpec<AsyncCallback>::registerFunc() const
-  {
-    return make_shared<RegisteredCallback<AsyncCallback, true>>(
-      static_pointer_cast<const GenericCallbackSpec<AsyncCallback>>(
+    return make_shared<RegisteredCallback>(
+      static_pointer_cast<const DynamicSpec>(
         this->shared_from_this()));
   }
 
   namespace
   {
     ExcelObj* invokeLambda(
-      LambdaFuncSpec* data,
+      const LambdaSpec<ExcelObj*>* data,
       const ExcelObj** args) noexcept
     {
       try
       {
-        return data->_function(*data->info(), args);
+        return data->function(*data->info(), args);
       }
       catch (const std::exception& e)
       {
@@ -226,37 +220,30 @@ namespace xloil
       }
     }
 
-  // TODO: this is not used and maybe not that useful!
-  class AsyncHolder
+    void invokeVoidLambda(
+      const LambdaSpec<void>* data,
+      const ExcelObj** args) noexcept
+    {
+      try
+      {
+        data->function(*data->info(), args);
+      }
+      catch (...)
+      {
+      }
+    }
+  }
+
+  std::shared_ptr<RegisteredFunc> LambdaSpec<ExcelObj*>::registerFunc() const
   {
-  public:
-    // No need to copy the data as FuncRegistry will keep this alive
-    // Async handle is destroyed by Excel return, so must copy that
-    AsyncHolder(std::function<ExcelObj*()> func, const ExcelObj* asyncHandle)
-      : _call(func)
-      , _asyncHandle(*asyncHandle)
-    {
-    }
-    void operator()(int /*threadId*/) const
-    {
-      auto* result = _call();
-      asyncReturn(_asyncHandle, ExcelObj(*result));
-      if (result->xltype & msxll::xlbitDLLFree)
-        delete result;
-    }
-  private:
-    std::function<ExcelObj*()> _call;
-    ExcelObj _asyncHandle;
-  };
-}
-
-std::shared_ptr<RegisteredFunc> LambdaFuncSpec::registerFunc() const
-{
-  // Not too proud of this const cast
-  auto thisPtr = std::const_pointer_cast<LambdaFuncSpec>( 
-    std::static_pointer_cast<const LambdaFuncSpec>(this->shared_from_this()));
-  auto thatPtr = make_shared<CallbackSpec>(info(), &invokeLambda, thisPtr);
-  return thatPtr->registerFunc();
-}
-
+    auto thisPtr = std::static_pointer_cast<const LambdaSpec<ExcelObj*>>(this->shared_from_this());
+    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda, thisPtr);
+    return thatPtr->registerFunc();
+  }
+  std::shared_ptr<RegisteredFunc> LambdaSpec<void>::registerFunc() const
+  {
+    auto thisPtr = std::static_pointer_cast<const LambdaSpec<void>>(this->shared_from_this());
+    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeVoidLambda, thisPtr);
+    return thatPtr->registerFunc();
+  }
 }

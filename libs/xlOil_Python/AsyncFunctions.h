@@ -9,11 +9,11 @@ namespace xloil
     class PyFuncInfo;
 
     void pythonAsyncCallback(
-      PyFuncInfo* info,
+      const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept;
 
     ExcelObj* pythonRtdCallback(
-      PyFuncInfo* info,
+      const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept;
   }
 }

@@ -116,13 +116,6 @@ namespace xloil
     size_t numArgs() const { return args.size(); }
   };
 
-  template<class TData> using RegisterCallbackT 
-    = ExcelObj* (*)(TData* data, const ExcelObj**) noexcept;
-  typedef RegisterCallbackT<void> RegisterCallback;
-
-  template<class TData> using AsyncCallbackT 
-    = void (*)(TData* data, const ExcelObj**) noexcept;
-  typedef AsyncCallbackT<void> AsyncCallback;
-
-  using ExcelFuncObject = std::function<ExcelObj*(const FuncInfo& info, const ExcelObj**)>;
+  template<class TRet = ExcelObj*> using DynamicExcelFunc
+    = std::function<TRet(const FuncInfo& info, const ExcelObj**)>;
 }

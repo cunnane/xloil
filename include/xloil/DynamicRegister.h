@@ -1,58 +1,57 @@
+#pragma once
 #include <xloil/FuncSpec.h>
 #include <xloil/StaticRegister.h>
 
 namespace xloil
 {
-  namespace detail
-  {
-    template<class> struct callback_traits;
-  }
+  template<typename TRet, typename TData> using DynamicCallback
+    = TRet(*)(const TData* data, const ExcelObj**) noexcept;
 
-  template <class TCallback>
-  class GenericCallbackSpec : public FuncSpec
+  class DynamicSpec : public FuncSpec
   {
   public:
-    template <class TData>
-    GenericCallbackSpec(
+    template <class TRet, class TData>
+    DynamicSpec(
       const std::shared_ptr<const FuncInfo>& info,
-      typename detail::callback_traits<TCallback>::template type<TData> callback,
-      std::shared_ptr<TData> context)
-      : GenericCallbackSpec(
-        info,
-        (TCallback)callback,
-        std::static_pointer_cast<void>(context))
+      DynamicCallback<TRet, TData> callback,
+      const std::shared_ptr<const TData>& context)
+      : DynamicSpec(
+          info,
+          (DynamicCallback<TRet, void>) callback,
+          std::static_pointer_cast<const void>(context))
     {}
 
-    GenericCallbackSpec(
+    DynamicSpec(
       const std::shared_ptr<const FuncInfo>& info,
-      TCallback callback,
-      std::shared_ptr<void> context)
+      DynamicCallback<void, void> callback,
+      const std::shared_ptr<const void>& context)
       : FuncSpec(info)
       , _callback(callback)
       , _context(context)
+      , _hasReturn(false)
+    {}
+
+    DynamicSpec(
+      const std::shared_ptr<const FuncInfo>& info,
+      DynamicCallback<ExcelObj*, void> callback,
+      const std::shared_ptr<const void>& context)
+      : FuncSpec(info)
+      , _callback(callback)
+      , _context(context)
+      , _hasReturn(true)
     {}
 
     XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
 
     //TODO: private:
-    std::shared_ptr<void> _context;
-    TCallback _callback;
+    std::shared_ptr<const void> _context;
+    void* _callback;
+    bool _hasReturn;
   };
 
-  using CallbackSpec = GenericCallbackSpec<RegisterCallback>;
-  using AsyncCallbackSpec = GenericCallbackSpec<AsyncCallback>;
 
   namespace detail
   {
-    template<> struct callback_traits<RegisterCallback>
-    {
-      template<class T> using type = RegisterCallbackT<T>;
-    };
-    template<> struct callback_traits<AsyncCallback>
-    {
-      template<class T> using type = AsyncCallbackT<T>;
-    };
-
     /// <summary>
     /// We want to skip the first argument as it will be of type FuncInfo.
     /// </summary>
@@ -61,35 +60,97 @@ namespace xloil
     {
       static constexpr int types[sizeof...(Args)] =  { ArgType<Args>::value... };
       static constexpr size_t nArgs = sizeof...(Args);
+      
+      template <size_t i> struct arg
+      {
+        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+      };
     };
+    template <typename FirstArg, typename... Args>
+    struct DropFirstArgTypes<void, FirstArg, Args...>
+    {
+      static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value... };
+      static constexpr size_t nArgs = sizeof...(Args);
 
+      template <size_t i> struct arg
+      {
+        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+      };
+    };
     template<class T> struct LambdaArgTypes
       : FunctionTraits<DropFirstArgTypes, T>
     {};
+
+    template<typename TRet>
+    struct DynamicCallbackFromLambda
+    {
+      template<typename TFunc, size_t... ArgIndices>
+      auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
+      {
+        return [func](const FuncInfo& info, const ExcelObj** args)
+        {
+          try
+          {
+            return func(info, (LambdaArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+          }
+          catch (const std::exception& e)
+          {
+            return returnValue(e);
+          }
+        };
+      }
+    };
+
+    template<>
+    struct DynamicCallbackFromLambda<void>
+    {
+      template<typename TFunc, size_t... ArgIndices >
+      auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
+      {
+        return [func](const FuncInfo& info, const ExcelObj** args)
+        {
+          try
+          {
+            func(info, (LambdaArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+          }
+          catch (...)
+          {
+          }
+        };
+      }
+    };
+
+    template<typename TRet, typename TFunc>
+    auto dynamicCallbackFromLambda(TFunc func)
+    {
+      return DynamicCallbackFromLambda<TRet>()(
+        func,
+        std::make_index_sequence<LambdaArgTypes<TFunc>::nArgs>{});
+    }
   }
 
   /// <summary>
   /// Constructs a FuncSpec from an std::function object which 
   /// takes <see cref="ExcelObj"/> arguments
   /// </summary>
-  class LambdaFuncSpec : public FuncSpec
+  template<class TRet=ExcelObj*>
+  class LambdaSpec : public FuncSpec
   {
   public:
-    LambdaFuncSpec(
+    LambdaSpec(
       const std::shared_ptr<const FuncInfo>& info,
-      const ExcelFuncObject& function)
+      const DynamicExcelFunc<TRet>& function)
       : FuncSpec(info)
-      , _function(function)
+      , function(function)
     {}
 
     XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
 
-    ExcelObj* call(const ExcelObj** args) const
+    auto call(const ExcelObj** args) const
     {
-      return _function(*info(), args);
+      return function(*info(), args);
     }
-
-    ExcelFuncObject _function;
+    DynamicExcelFunc<TRet> function;
   };
 
   /// <summary>
@@ -98,36 +159,20 @@ namespace xloil
   /// info.  Call <see cref="RegisterLambda::registerFunc"/> on this object to
   /// register the function.
   /// </summary>
-  class RegisterLambda : public FuncInfoBuilder<RegisterLambda>
+  template<class TRet = ExcelObj*>
+  class RegisterLambda : public FuncInfoBuilder<RegisterLambda<TRet>>
   {
-    ExcelFuncObject _function;
-
-    template<class TFunc, class TFirst, class TArray, size_t... Ints>
-    static auto unpackArgs(
-      TFunc func,
-      TFirst firstArg,
-      TArray args,
-      std::index_sequence<Ints...>)
-    {
-      return func(firstArg, *args[Ints]...);
-    }
+    DynamicExcelFunc<TRet> _registerFunction;
 
   public:
+
     template <class TFunc>
     RegisterLambda(TFunc func)
       : FuncInfoBuilder(
           detail::LambdaArgTypes<TFunc>::nArgs,
           detail::LambdaArgTypes<TFunc>::types)
     {
-      // TODO: check func is noexcept
-      _function = [func](const FuncInfo& info, const ExcelObj** args)
-      {
-        return unpackArgs(
-          func,
-          info, 
-          args,
-          std::make_index_sequence<detail::LambdaArgTypes<TFunc>::nArgs>{});
-      };
+      _registerFunction = detail::dynamicCallbackFromLambda<TRet, TFunc>(func);
     }
 
     /// <summary>
@@ -137,8 +182,8 @@ namespace xloil
     /// </summary>
     std::shared_ptr<RegisteredFunc> registerFunc()
     {
-      // TODO: some things e.g. async not supported...check?
-      return std::make_shared<LambdaFuncSpec>(getInfo(), _function)->registerFunc();
+      return std::make_shared<LambdaSpec<TRet>>(
+        getInfo(), _registerFunction)->registerFunc();
     }
   };
 }

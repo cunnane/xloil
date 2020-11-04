@@ -167,7 +167,7 @@ namespace xloil
 
   void writeFunctionBody(
     asmjit::x86::Compiler& cc,
-    void* callback,
+    const void* callback,
     const void* data,
     size_t numArgs,
     bool retVal)
@@ -222,11 +222,11 @@ namespace xloil
       throw Exception(Helpers::writeWindowsError());
   }
 
-  template <class TCallback>
   void* buildThunk(
-    TCallback callback,
+    const void* callback,
     const void* data,
     const size_t numArgs,
+    const bool hasReturnVal,
     char* codeBuffer,
     size_t bufferSize,
     size_t& codeSize)
@@ -244,8 +244,6 @@ namespace xloil
 
     // Begin code
 
-    constexpr bool isAsync = std::is_same<TCallback, AsyncCallback>::value;
-
     // Declare thunk function signature: need stdcall for Excel functions.
     // We assume all arguments are xloper12*.
     auto ptrType = Type::IdOfT<xloper12*>::kTypeId;
@@ -255,15 +253,12 @@ namespace xloil
 
     // Normal callbacks should return, async ones will not, so set return
     // type appropriately.
-    if constexpr (!isAsync)
-      signature.setRet(ptrType);
-    else
-      signature.setRet(Type::kIdVoid);
+    signature.setRet(hasReturnVal ? ptrType : Type::kIdVoid);
 
     cc.addFunc(signature);
 
     // Write the appropriate function body for the callback type
-    writeFunctionBody(cc, callback, data, numArgs, !isAsync);
+    writeFunctionBody(cc, callback, data, numArgs, hasReturnVal);
 
     cc.endFunc();
 
@@ -276,11 +271,11 @@ namespace xloil
     return codeBuffer;
   }
 
-  template <class TCallback>
   void* buildThunkLite(
-    TCallback callback,
+    const void* callback,
     const void* data,
     const size_t numArgs,
+    const bool hasReturnVal,
     char* codeBuffer,
     size_t bufferSize,
     size_t& codeSize)
@@ -292,20 +287,12 @@ namespace xloil
     // Initialise place to hold code before compilation
     CodeHolder codeHolder;
     codeHolder.init(theRunTime.codeInfo());
-    constexpr bool isAsync = std::is_same<TCallback, AsyncCallback>::value;
-    handRoll64(&codeHolder, (void*)callback, data, numArgs, !isAsync);
+    handRoll64(&codeHolder, (void*)callback, data, numArgs, hasReturnVal);
 
     writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
 
     return codeBuffer;
   }
-
-  // Explicitly instantiate buildThunk;
-  template void* buildThunk<RegisterCallback>(RegisterCallback, const void*, const size_t, char*, size_t, size_t&);
-  template void* buildThunk<AsyncCallback>(AsyncCallback, const void*, const size_t, char*, size_t, size_t&);
-  template void* buildThunkLite<RegisterCallback>(RegisterCallback, const void*, const size_t, char*, size_t, size_t&);
-  template void* buildThunkLite<AsyncCallback>(AsyncCallback, const void*, const size_t, char*, size_t, size_t&);
-
 
   bool patchThunkData(char* thunk, size_t thunkSize, const void* fromData, const void* toData)
   {

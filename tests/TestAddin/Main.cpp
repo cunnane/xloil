@@ -2,6 +2,8 @@
 #include <xloil/Log.h>
 #include <xloil/ApiCall.h>
 #include <xloil/DynamicRegister.h>
+#include <xloil/Async.h>
+
 #include <map>
 using namespace xloil;
 using std::wstring;
@@ -20,12 +22,20 @@ namespace
 
   void xllOpen(void* hInstance)
   {
-    theFuncs.push_back(RegisterLambda(
+    theFuncs.push_back(RegisterLambda<>(
       [](const FuncInfo& info, const ExcelObj& arg1, const ExcelObj& arg2)
       {
           return returnValue(7);
       })
       .name(L"testDynamic")
+      .arg(L"Arg1")
+      .registerFunc());
+    theFuncs.push_back(RegisterLambda<void>(
+      [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
+      {
+        handle.returnValue(8);
+      })
+      .name(L"testDynamicAsync")
       .arg(L"Arg1")
       .registerFunc());
 

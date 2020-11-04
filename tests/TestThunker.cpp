@@ -36,8 +36,8 @@ namespace Tests
       char buffer2[bufSize]; // Used for hand rolled thunk
       size_t codeSize;
       
-      buildThunk    (callback, pContext, 2, buffer1, bufSize, codeSize);
-      buildThunkLite(callback, pContext, 2, buffer2, bufSize, codeSize);
+      buildThunk    (callback, pContext, 2, false, buffer1, bufSize, codeSize);
+      buildThunkLite(callback, pContext, 2, false, buffer2, bufSize, codeSize);
 
       ExcelObj arg1(7);
       ExcelObj arg2(3);
@@ -53,8 +53,8 @@ namespace Tests
         Assert::IsTrue(*result2 == arg1);
       }
 
-      buildThunk    (callback, pContext, 7, buffer1, bufSize, codeSize);
-      buildThunkLite(callback, pContext, 7, buffer2, bufSize, codeSize);
+      buildThunk    (callback, pContext, 7, true, buffer1, bufSize, codeSize);
+      buildThunkLite(callback, pContext, 7, true, buffer2, bufSize, codeSize);
 
       {
         context = 5;
@@ -67,8 +67,8 @@ namespace Tests
         Assert::IsTrue(*result2 == arg2);
       }
 
-      buildThunk    (asyncCallback, pContext, 3, buffer1, bufSize, codeSize);
-      buildThunkLite(asyncCallback, pContext, 3, buffer2, bufSize, codeSize);
+      buildThunk    (asyncCallback, pContext, 3, false, buffer1, bufSize, codeSize);
+      buildThunkLite(asyncCallback, pContext, 3, false, buffer2, bufSize, codeSize);
 
       {
         context = 1;

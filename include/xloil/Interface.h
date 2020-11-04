@@ -66,7 +66,7 @@ namespace xloil
     void 
       registerLocal(
         const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
-        const std::vector<ExcelFuncObject> funcs);
+        const std::vector<DynamicExcelFunc<>> funcs);
 
     /// <summary>
     /// Looks for a FileSource corresponding the specified pathname.

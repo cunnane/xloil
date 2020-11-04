@@ -41,11 +41,11 @@ namespace xloil
   ///   add         esp,0Ch  
   ///   ret         4  
   /// </summary>
-  template <class TCallback>
   void* buildThunk(
-    TCallback callback,
+    const void* callback,
     const void* contextData,
     const size_t numArgs,
+    const bool hasReturnVal,
     char* codeBuffer,
     size_t bufferSize,
     size_t& codeSize);
@@ -58,11 +58,11 @@ namespace xloil
   /// exceeds 5.
   /// (Currently only available under 64-bit)
   /// </summary>
-  template <class TCallback>
   void* buildThunkLite(
-    TCallback callback,
+    const void* callback,
     const void* data,
     const size_t numArgs,
+    const bool hasReturnVal,
     char* codeBuffer,
     size_t bufferSize,
     size_t& codeSize);

@@ -23,9 +23,9 @@ using std::make_shared;
 namespace xloil
 {
   // ensure this is cleaned before things close.
-  map<wstring, map<wstring, shared_ptr<const LambdaFuncSpec>>> theRegistry;
+  map<wstring, map<wstring, shared_ptr<const LambdaSpec<>>>> theRegistry;
 
-  const LambdaFuncSpec& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
+  const LambdaSpec<>& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
   {
     auto wb = theRegistry.find(wbName);
     if (wb == theRegistry.end())
@@ -47,7 +47,7 @@ namespace xloil
   void registerLocalFuncs(
     const wchar_t* workbookName,
     const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
-    const std::vector<ExcelFuncObject> funcs)
+    const std::vector<DynamicExcelFunc<>> funcs)
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
@@ -55,7 +55,7 @@ namespace xloil
     for (size_t i = 0; i < funcInfo.size(); ++i)
     {
       auto& info = funcInfo[i];
-      auto spec = make_shared<LambdaFuncSpec>(info, funcs[i]);
+      auto spec = make_shared<LambdaSpec<>>(info, funcs[i]);
       funcSpecs.push_back(spec);
       wbFuncs[info->name] = spec;
     }

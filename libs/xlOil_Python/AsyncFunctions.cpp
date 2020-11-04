@@ -229,7 +229,7 @@ namespace xloil
     };
 
     void pythonAsyncCallback(
-      PyFuncInfo* info,
+      const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
       const ExcelObj* asyncHandle = xlArgs[0];
@@ -356,7 +356,7 @@ namespace xloil
     /// </summary>
     struct RtdAsyncTask : public IRtdAsyncTask
     {
-      PyFuncInfo* _info;
+      const PyFuncInfo* _info;
       PyObject *_args, *_kwargs;
       shared_ptr<RtdReturn> _returnObj;
       wstring _caller;
@@ -364,7 +364,7 @@ namespace xloil
       /// <summary>
       /// Steals references to PyObjects
       /// </summary>
-      RtdAsyncTask(PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+      RtdAsyncTask(const PyFuncInfo* info, PyObject* args, PyObject* kwargs)
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
@@ -440,7 +440,7 @@ namespace xloil
     };
 
     ExcelObj* pythonRtdCallback(
-      PyFuncInfo* info,
+      const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
       try

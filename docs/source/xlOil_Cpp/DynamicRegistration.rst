@@ -8,7 +8,7 @@ you want to register using xlOil macros which end up calling `Excel12(xlfRegiste
 
 ::
 
-    auto regId = RegisterLambda(
+    auto regId = RegisterLambda<>(
         [](const FuncInfo& info, const ExcelObj& arg1, const ExcelObj& arg2)
         {
             ...
@@ -19,5 +19,20 @@ you want to register using xlOil macros which end up calling `Excel12(xlfRegiste
         .arg("Arg1")
         .registerFunc();
 
-The Lambda's first argument must be `const FuncInfo&` and then as many `const ExcelObj&` args as
-required; it must return a `ExcelObj*`. It must not throw.
+The lambda's first argument must be `const FuncInfo&` and then as many `const ExcelObj&` args as
+required; it must return `ExcelObj*`, but it may throw: xlOil will return the error string.
+
+You can dynamically register any function you could register statically, so :any:`SpecialArgs` 
+arguments are valid, as well as a void return, for example:
+
+::
+
+    auto regId = RegisterLambda<void>(
+        [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
+        {
+            handle.returnValue(...);
+        })
+        .name("AsyncFoobar").registerFunc();
+
+The returned register Id is a `shared_ptr` whose destructor unregisters the function, so this must be
+kept in scope.
