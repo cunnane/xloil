@@ -91,14 +91,10 @@ namespace xloil
     /// <summary>
     /// Locates a suitable entry point in our DLL and hooks the specifed thunk to it
     /// </summary>
-    /// <param name="info"></param>
-    /// <param name="thunk"></param>
     /// <returns>The name of the entry point selected</returns>
-    auto hookEntryPoint(const wchar_t* name, const void* thunk)
+    auto hookEntryPoint(const void* thunk)
     {
       // Hook the thunk by modifying the export address table
-      XLO_DEBUG(L"Hooking thunk for {0}", name);
-
       theExportTable->hook(theFirstStub, (void*)thunk);
 
       const auto entryPoint = decorateCFunction(XLOIL_STUB_NAME_STR, 0);
@@ -127,7 +123,7 @@ namespace xloil
     {
       auto& registry = ThunkHolder::get();
       auto[thunk, thunkSize] = registry.callBuildThunk(
-        spec->_callback, spec->_context.get(), spec->info()->numArgs() + (TisAsync ? 1 : 0));
+        spec->_callback, spec->_context.get(), spec->info()->numArgs());
       _thunk = thunk;
       _thunkSize = thunkSize;
       _registerId = doRegister();
@@ -136,21 +132,12 @@ namespace xloil
     int doRegister() const
     {
       auto& registry = ThunkHolder::get();
-      auto entryPoint = registry.hookEntryPoint(info()->name.c_str(), _thunk);
-      // Little bit of a hack - only for async callbacks, we need to change
-      // the argument list in FuncInfo to include an async handle
-      auto regInfo = info();
-      if constexpr (TisAsync)
-      {
-        auto args = info()->args;
-        args.insert(
-          args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
-        auto patchedInfo = make_shared<FuncInfo>(*info());
-        patchedInfo->args = args;
-        regInfo = patchedInfo;
-      }
 
-      return registerFuncRaw(regInfo, entryPoint.c_str(), registry.theCoreDllName);
+      // Point a suitable entry point at our thunk and get its name
+      XLO_DEBUG(L"Hooking thunk for {0}", info()->name);
+      auto entryPoint = registry.hookEntryPoint(_thunk);
+      
+      return registerFuncRaw(info(), entryPoint.c_str(), registry.theCoreDllName);
     }
 
     virtual bool reregister(const std::shared_ptr<const FuncSpec>& other)

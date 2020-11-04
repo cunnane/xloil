@@ -179,6 +179,8 @@ namespace xloil
       shared_ptr<const FuncSpec> spec;
       if (funcInfo->isAsync)
       {
+        funcInfo->info->args.insert(
+          funcInfo->info->args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
         spec.reset(new AsyncCallbackSpec(funcInfo->info, &pythonAsyncCallback, funcInfo));
       }
       else if (funcInfo->isRtdAsync)
