@@ -52,17 +52,32 @@ namespace xloil
 
   namespace detail
   {
+    template <typename ReturnType, typename... Args>
+    struct ArgTypesDefs<ReturnType, const FuncInfo&, Args...> 
+      : public ArgTypesDefs<ReturnType, Args...>
+    {
+      static constexpr bool hasInfo = true;
+    };
+
+    template<typename TFunc>
+    auto hasInfo(int) -> decltype(ArgTypes<TFunc>::hasInfo, std::true_type());
+    template<typename TFunc>
+    auto hasInfo(long) -> std::false_type;
+
     template<typename TRet>
     struct DynamicCallbackFromLambda
     {
       template<typename TFunc, size_t... ArgIndices>
       auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
       {
-        return [func](const FuncInfo&, const ExcelObj** args)
+        return [func](const FuncInfo& info, const ExcelObj** args)
         {
           try
           {
-            return func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            if constexpr (decltype(hasInfo<TFunc>(0))::value)
+              return func(info, (ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            else
+              return func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
           }
           catch (const std::exception& e)
           {
@@ -78,11 +93,14 @@ namespace xloil
       template<typename TFunc, size_t... ArgIndices >
       auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
       {
-        return [func](const FuncInfo&, const ExcelObj** args)
+        return [func](const FuncInfo& info, const ExcelObj** args)
         {
           try
           {
-            func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            if constexpr (decltype(hasInfo<TFunc>(0))::value)
+              func(info, (ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            else
+              func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
           }
           catch (...)
           {

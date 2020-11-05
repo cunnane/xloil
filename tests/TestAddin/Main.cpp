@@ -31,7 +31,7 @@ namespace
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<void>(
-      [](const ExcelObj& arg1, const AsyncHandle& handle)
+      [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
       {
         handle.returnValue(8);
       })
