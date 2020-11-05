@@ -239,8 +239,8 @@ namespace xloil
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
-        LCID lcid, WORD wFlags, DISPPARAMS* pdispparams, VARIANT* pvarResult,
-        EXCEPINFO* pexcepinfo, UINT* puArgErr)
+        LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
+        EXCEPINFO* /*pexcepinfo*/, UINT* /*puArgErr*/)
       {
         // TODO: TRY CATCH
         auto* rgvarg = pdispparams->rgvarg;
