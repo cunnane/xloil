@@ -71,84 +71,139 @@ namespace xloil
     {
       FuncInfoBuilderBase(size_t nArgs, const int* types);
 
-      // TODO: public but not exported...can we hide this?
       std::shared_ptr<FuncInfo> getInfo();
+
+    protected:
       std::shared_ptr<FuncInfo> _info;
       size_t _iArg;
     };
   }
 
   template<class TSuper>
-  struct FuncInfoBuilder : public detail::FuncInfoBuilderBase
+  struct FuncInfoBuilderT : public detail::FuncInfoBuilderBase
   {
     using self = TSuper;
     using detail::FuncInfoBuilderBase::FuncInfoBuilderBase;
 
+    /// <summary>
+    /// Sets the name for the function registration
+    /// </summary>
+    /// <param name="txt"></param>
     template<class T> self& name(T txt)
     {
       _info->name = txt;
       return cast();
     }
+    /// <summary>
+    /// Sets the function wizard help (max 255 chars)
+    /// </summary>
+    /// <param name="txt"></param>
     template<class T> self& help(T txt)
     {
       _info->help = txt;
       return cast();
     }
-    template<class T>self& category(T txt)
+    /// <summary>
+    /// Sets the category the function will be placed under in the wizard
+    /// </summary>
+    /// <param name="txt"></param>
+    template<class T> self& category(T txt)
     {
       _info->category = txt;
       return cast();
     }
     /// <summary>
-    /// Specifies an arg as optional. This just effects the auto generated
+    /// Sets the name and optionally help for the next parameter and
+    /// marks the arg as optional. This just effects the auto generated
     /// help string
     /// </summary>
     self& optArg(const wchar_t* name, const wchar_t* help = nullptr)
     {
-      arg(name, help);
-      _info->args[_iArg - 1].type |= FuncArg::Optional;
-      return cast();
+      return optArg(_iArg++, name, help);
     }
+    /// <summary>
+    /// Sets the name and optionally help for the next parameter, incrementing
+    /// the internal counter
+    /// </summary>
+    /// <param name="name"></param>
+    /// <param name="help"></param>
     self& arg(const wchar_t* name, const wchar_t* help = nullptr)
     {
-      if (_iArg >= _info->args.size())
+      return arg(_iArg++, name, help);
+    }
+    /// <summary>
+    /// Sets the name and optionally help for the i-th parameter
+    /// </summary>
+    /// <param name="i"></param>
+    /// <param name="name"></param>
+    /// <param name="help">optional, may be null</param>
+    self& arg(size_t i, const wchar_t* name, const wchar_t* help = nullptr)
+    {
+      if (i >= _info->args.size())
         XLO_THROW("Too many args for function");
-      auto& arg = _info->args[_iArg++];
+      auto& arg = _info->args[i];
       arg.name = name;
       if (help)
         arg.help = help;
       return cast();
     }
+    /// <summary>
+    /// Sets the name and optionally help for the i-th parameter and
+    /// marks the arg as optional. This just effects the auto generated
+    /// help string
+    /// </summary>
+    /// <param name="i"></param>
+    /// <param name="name"></param>
+    /// <param name="help">optional, may be null</param>
+    self& optArg(size_t i, const wchar_t* name, const wchar_t* help = nullptr)
+    {
+      arg(i, name, help);
+      _info->args[i].type |= FuncArg::Optional;
+      return cast();
+    }
+
     self& command()
     {
       _info->options |= FuncInfo::COMMAND;
       return cast();
     }
+    /// <summary>
+    /// Hides the function in the function wizard
+    /// </summary>
     self& hidden()
     {
       _info->options |= FuncInfo::HIDDEN;
       return cast();
     }
+    /// <summary>
+    /// Gives the function macro-sheet access rights to the API
+    /// </summary>
     self& macro()
     {
       _info->options |= FuncInfo::MACRO_TYPE;
       return cast();
     }
+    /// <summary>
+    /// Tells Excel that the function is re-entrant and can safely be 
+    /// called on multiple threads simultaneously
+    /// </summary>
     self& threadsafe()
     {
       _info->options |= FuncInfo::THREAD_SAFE;
       return cast();
     }
 
-
+  protected:
     self& cast() { return static_cast<self&>(*this); }
   };
 
-  struct FuncRegistrationMemo : public FuncInfoBuilder<FuncRegistrationMemo>
+  struct FuncInfoBuilder : public FuncInfoBuilderT<FuncInfoBuilder> {};
+
+  struct StaticRegistrationBuilder : public FuncInfoBuilderT<StaticRegistrationBuilder>
   {
-    FuncRegistrationMemo(
+    StaticRegistrationBuilder(
       const char* entryPoint_, size_t nArgs, const int* type)
-      : FuncInfoBuilder(nArgs, type)
+      : FuncInfoBuilderT(nArgs, type)
     {
       entryPoint = entryPoint_;
       name(utf8ToUtf16(entryPoint_));
@@ -157,7 +212,7 @@ namespace xloil
     std::string entryPoint;
   };
 
-  XLOIL_EXPORT FuncRegistrationMemo& 
+  XLOIL_EXPORT StaticRegistrationBuilder& 
     createRegistrationMemo(
       const char* entryPoint_, size_t nArgs, const int* types);
 
@@ -246,12 +301,20 @@ namespace xloil
     {
       static constexpr int types[sizeof...(Args)] = { ArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
+      template <size_t i> struct arg
+      {
+        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+      };
     };
     template <typename... Args>
     struct ArgTypesDefs<void, Args...>
     {
       static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
+      template <size_t i> struct arg
+      {
+        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+      };
     };
 
     template<class T> struct ArgTypes
@@ -259,7 +322,7 @@ namespace xloil
     {};
   }
 
-  template <class TFunc> inline FuncRegistrationMemo&
+  template <class TFunc> inline StaticRegistrationBuilder&
     registrationMemo(const char* name, TFunc)
   {
     auto argTypes = detail::ArgTypes<TFunc>();

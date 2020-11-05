@@ -52,46 +52,17 @@ namespace xloil
 
   namespace detail
   {
-    /// <summary>
-    /// We want to skip the first argument as it will be of type FuncInfo.
-    /// </summary>
-    template <typename ReturnType, typename FirstArg, typename... Args>
-    struct DropFirstArgTypes
-    {
-      static constexpr int types[sizeof...(Args)] =  { ArgType<Args>::value... };
-      static constexpr size_t nArgs = sizeof...(Args);
-      
-      template <size_t i> struct arg
-      {
-        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
-      };
-    };
-    template <typename FirstArg, typename... Args>
-    struct DropFirstArgTypes<void, FirstArg, Args...>
-    {
-      static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value... };
-      static constexpr size_t nArgs = sizeof...(Args);
-
-      template <size_t i> struct arg
-      {
-        using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
-      };
-    };
-    template<class T> struct LambdaArgTypes
-      : FunctionTraits<DropFirstArgTypes, T>
-    {};
-
     template<typename TRet>
     struct DynamicCallbackFromLambda
     {
       template<typename TFunc, size_t... ArgIndices>
       auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
       {
-        return [func](const FuncInfo& info, const ExcelObj** args)
+        return [func](const FuncInfo&, const ExcelObj** args)
         {
           try
           {
-            return func(info, (LambdaArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            return func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
           }
           catch (const std::exception& e)
           {
@@ -107,11 +78,11 @@ namespace xloil
       template<typename TFunc, size_t... ArgIndices >
       auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
       {
-        return [func](const FuncInfo& info, const ExcelObj** args)
+        return [func](const FuncInfo&, const ExcelObj** args)
         {
           try
           {
-            func(info, (LambdaArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
           }
           catch (...)
           {
@@ -125,7 +96,7 @@ namespace xloil
     {
       return DynamicCallbackFromLambda<TRet>()(
         func,
-        std::make_index_sequence<LambdaArgTypes<TFunc>::nArgs>{});
+        std::make_index_sequence<ArgTypes<TFunc>::nArgs>{});
     }
   }
 
@@ -160,19 +131,29 @@ namespace xloil
   /// register the function.
   /// </summary>
   template<class TRet = ExcelObj*>
-  class RegisterLambda : public FuncInfoBuilder<RegisterLambda<TRet>>
+  class RegisterLambda : public FuncInfoBuilderT<RegisterLambda<TRet>>
   {
     DynamicExcelFunc<TRet> _registerFunction;
 
   public:
-
+    /// <summary>
+    /// Creates a lambda registration builder from a callable and optionally
+    /// a FuncInfo. If a FuncInfo is not provided, it can be built up using the 
+    /// FuncInfoBuilder methods on this class
+    /// </summary>
     template <class TFunc>
-    RegisterLambda(TFunc func)
-      : FuncInfoBuilder(
-          detail::LambdaArgTypes<TFunc>::nArgs,
-          detail::LambdaArgTypes<TFunc>::types)
+    RegisterLambda(TFunc func, std::shared_ptr<FuncInfo> info = nullptr)
+      : FuncInfoBuilderT(
+          detail::ArgTypes<TFunc>::nArgs,
+          detail::ArgTypes<TFunc>::types)
     {
       _registerFunction = detail::dynamicCallbackFromLambda<TRet, TFunc>(func);
+      if (info)
+      {
+        if (info->numArgs() != _info->numArgs())
+          XLO_THROW("RegisterLambda: if FuncInfo is provided, number of args must match");
+        _info = info;
+      }
     }
 
     /// <summary>

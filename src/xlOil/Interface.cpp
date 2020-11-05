@@ -136,7 +136,7 @@ namespace xloil
 
   void FileSource::registerLocal(
     const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
-    const std::vector<ExcelFuncObject> funcs)
+    const std::vector<DynamicExcelFunc<>> funcs)
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");

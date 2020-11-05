@@ -23,23 +23,22 @@ namespace xloil
 
   std::shared_ptr<FuncInfo> detail::FuncInfoBuilderBase::getInfo()
   {
-    using namespace std::string_literals;
-
     auto nArgs = _info->args.size();
 
-    for (;_iArg < nArgs; ++_iArg)
-      _info->args[_iArg].name = fmt::format(L"Arg_{}", _iArg);
+    for (auto i = 0; i < nArgs; ++i)
+      if (_info->args[i].name.empty())
+        _info->args[i].name = fmt::format(L"Arg_{}", i);
 
     return _info;
   }
 
-  std::list<FuncRegistrationMemo>& getFuncRegistryQueue()
+  std::list<StaticRegistrationBuilder>& getFuncRegistryQueue()
   {
-    static std::list<FuncRegistrationMemo> theQueue;
+    static std::list<StaticRegistrationBuilder> theQueue;
     return theQueue;
   }
 
-  XLOIL_EXPORT FuncRegistrationMemo& createRegistrationMemo(
+  XLOIL_EXPORT StaticRegistrationBuilder& createRegistrationMemo(
     const char* entryPoint_, size_t nArgs, const int* types)
   {
     getFuncRegistryQueue().emplace_back(entryPoint_, nArgs, types);

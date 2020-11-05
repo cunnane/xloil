@@ -23,7 +23,7 @@ namespace
   void xllOpen(void* hInstance)
   {
     theFuncs.push_back(RegisterLambda<>(
-      [](const FuncInfo& info, const ExcelObj& arg1, const ExcelObj& arg2)
+      [](const ExcelObj& arg1, const ExcelObj& arg2)
       {
           return returnValue(7);
       })
@@ -31,7 +31,7 @@ namespace
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<void>(
-      [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
+      [](const ExcelObj& arg1, const AsyncHandle& handle)
       {
         handle.returnValue(8);
       })
