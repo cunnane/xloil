@@ -72,12 +72,14 @@ namespace xloil
     /// string data.
     /// </summary>
     const TChar* begin() const { return _data + 1; }
+    TChar* begin() { return _data + 1; }
 
     /// <summary>
     /// Returns an iterator (really a pointer) to the end of the 
     /// string data (just past the last character).
     /// </summary>
     const TChar* end() const { return _data + 1 + length(); }
+    TChar* end() { return _data + 1 + length(); }
 
     /// <summary>
     /// Copy the contents of another Pascal string into this one. Throws
@@ -130,20 +132,27 @@ namespace xloil
     }
 
     /// <summary>
-    /// Writes len chars from given string into the buffer, returning true
-    /// if successful and false if the internal buffer is too short.
-    /// If len is omitted, writes all characters in str up to (but not 
-    /// including) the null terminator.
+    /// Overwrites <paramref name="len"/> chars from given string into the buffer,  
+    /// starting at <paramref name="start"/>. Returns true if successful or false
+    /// if the internal buffer is too short.
     /// </summary>
-    bool write(const TChar* str, size_t len)
+    bool replace(TChar start, size_t len, const TChar* str)
     {
-
-      if (len > length())
+      if (start + len > length())
         return false;
       if (len > 0)
-        traits::copy(_data + 1, str, len);
-      _data[0] = bound(len);
+        traits::copy(_data + 1 + start, str, len);
       return true;
+    }
+
+    /// <summary>
+    /// Overwrites <paramref name="len"/> chars from given string into the buffer,  
+    /// starting at the beginning. Returns true if successful or false if the
+    /// internal buffer is too short.
+    /// </summary>
+    bool replace(size_t len, const TChar* str)
+    {
+      return replace(0, len, str);
     }
 
     /// <summary>
@@ -188,7 +197,7 @@ namespace xloil
         pstr() + from, count != npos ? count : length() - from);
     }
 
-    TChar bound(size_t len) const
+    static TChar bound(size_t len)
     {
       return (TChar)(max_length < len ? max_length : len);
     }
@@ -202,10 +211,11 @@ namespace xloil
 
     void writeOrThrow(const TChar* str, size_t len)
     {
-      if (!write(str, len))
+      if (!replace(len, str))
         throw std::out_of_range(
           formatStr("PString buffer too short: %u required, %u available",
             len, length()));
+      _data[0] = (TChar)len;
     }
 
     void overwrite(const TChar* source, TChar len)

@@ -29,21 +29,10 @@ namespace xloil
 
     inline PString<> writeCacheId(const wchar_t* caller, uint16_t padding)
     {
-      const auto lenCaller = std::min<wchar_t>(
-        (wchar_t)wcslen(caller), UINT16_MAX - padding - 1);
-
+      const auto lenCaller = (wchar_t)std::min<size_t>(
+        wcslen(caller), UINT16_MAX - padding - 1);
       PString<> pascalStr(lenCaller + padding + 1);
-      auto* buf = pascalStr.pstr() + 1;
-
-      wchar_t nWritten = 1; // Leave space for uniquifier
-
-      // Full cell address: eg. [wbName]wsName!RxCy
-      nWritten += lenCaller;
-      wcscpy_s(buf, pascalStr.length() - 1, caller);
-
-      // Fix up length
-      pascalStr.resize(nWritten + padding);
-
+      pascalStr.replace(1, lenCaller, caller);
       return pascalStr;
     }
 
@@ -105,17 +94,22 @@ namespace xloil
     {
     private:
       size_t _calcId;
-      std::vector<TObj> objects;
+      std::vector<TObj> _objects;
 
     public:
       CellCache() : _calcId(0) {}
+
+      const std::vector<TObj>& objects() const
+      {
+        return _objects;
+      }
 
       bool getStaleObjects(size_t calcId, std::vector<TObj>& stale)
       {
         if (_calcId != calcId)
         {
           _calcId = calcId;
-          objects.swap(stale);
+          _objects.swap(stale);
           return true;
         }
         return false;
@@ -123,18 +117,17 @@ namespace xloil
 
       size_t add(TObj&& obj)
       {
-        objects.emplace_back(std::forward<TObj>(obj));
-        return objects.size() - 1;
+        _objects.emplace_back(std::forward<TObj>(obj));
+        return _objects.size() - 1;
       }
 
       bool tryFetch(size_t i, TObj& obj)
       {
-        if (i >= objects.size())
+        if (i >= _objects.size())
           return false;
-        obj = objects[i];
+        obj = _objects[i];
         return true;
       }
-
     };
 
   private:
@@ -189,6 +182,8 @@ namespace xloil
       return found->second.get();
     }
 
+    static constexpr uint8_t PADDING = 5;
+
   public:
     ObjectCache(bool reapOnWorkbookClose = true)
       : _calcId(1)
@@ -223,11 +218,10 @@ namespace xloil
     ExcelObj add(TObj&& obj, const wchar_t* caller = nullptr)
     {
       CallerInfo callerInfo;
-      constexpr uint8_t padding = 5;
-
+      
       auto key = caller
-        ? detail::writeCacheId(caller, padding)
-        : detail::writeCacheId(callerInfo, padding);
+        ? detail::writeCacheId(caller, PADDING)
+        : detail::writeCacheId(callerInfo, PADDING);
 
       key[0] = TUniquifier;
 
@@ -241,7 +235,7 @@ namespace xloil
       // Capture sheet ref, i.e. wsName!cellRef
       // Can use wcslen here because of the null padding
       auto wsRef = std::wstring_view(key.pstr() + lastBracket + 1,
-        key.length() - padding - lastBracket - 1);
+        key.length() - PADDING - lastBracket - 1);
 
       std::vector<TObj> staleObjects;
       uint8_t iPos = 0;
@@ -255,14 +249,9 @@ namespace xloil
       uint8_t nPaddingUsed = 0;
       // Add cell object count in form ",XXX"
       if (iPos > 0)
-      {
-        auto buf = const_cast<wchar_t*>(key.end()) - padding;
-        *(buf++) = L',';
-        _itow_s(iPos, buf, padding - 1, 10);
-        nPaddingUsed = 1 + (uint8_t)wcsnlen(buf, padding - 1);
-      }
+        nPaddingUsed = (uint8_t)writeCount(key.end() - PADDING, iPos);
         
-      key.resize(key.length() - padding + nPaddingUsed);
+      key.resize(key.length() - PADDING + nPaddingUsed);
 
       if constexpr (TReverseLookup)
       {
@@ -316,8 +305,42 @@ namespace xloil
       _cache.erase(wbName);
     }
 
+    auto begin() const
+    {
+      return _cache.cbegin();
+    }
+
+    auto end() const
+    {
+      return _cache.cend();
+    }
+
+    std::wstring writeKey(
+      const std::wstring_view& workbook,
+      const std::wstring_view& address,
+      size_t count) const
+    {
+      const auto wbLength = workbook.length();
+      const auto addrLength = address.length();
+      std::wstring key;
+      key.resize(wbLength + addrLength + PADDING + 3);
+      key[0] = TUniquifier;
+      key[1] = L'[';
+      key.replace(2, wbLength, workbook);
+      key[wbLength + 2] = L']';
+      key.replace(wbLength + 3, addrLength, address);
+      if (count > 0)
+      {
+        auto n = writeCount(key.data(), count);
+        // Trim any unused padding chars
+        key.resize(key.length() - (PADDING - n));
+      }
+      return key;
+    }
+
   private:
-    CellCache& fetchOrAddCell(const std::wstring_view& wbName, const std::wstring_view& wsRef)
+    CellCache& fetchOrAddCell(
+      const std::wstring_view& wbName, const std::wstring_view& wsRef)
     {
       auto& wbCache = findOrAdd(_cache, wbName);
       return findOrAdd(wbCache, wsRef);
@@ -328,7 +351,9 @@ namespace xloil
       std::wstring_view& sheetRef,
       int& iResult)
     {
-      if (cacheString.size() < 4 || cacheString[0] != TUniquifier || cacheString[1] != L'[')
+      if (cacheString.size() < 4 
+        || cacheString[0] != TUniquifier 
+        || cacheString[1] != L'[')
         return nullptr;
 
       constexpr auto npos = std::wstring_view::npos;
@@ -356,6 +381,14 @@ namespace xloil
 
       std::scoped_lock lock(_cacheLock);
       return find(_cache, workbook);
+    }
+
+    /// Add cell object count in form ",XXX"
+    auto writeCount(wchar_t* key, size_t iPos) const
+    {
+      *(key++) = L',';
+      _itow_s((int)iPos, key, PADDING - 1, 10);
+      return 1 + (uint8_t)wcsnlen(key, PADDING - 1);
     }
   };
 }

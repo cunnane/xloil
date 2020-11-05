@@ -106,7 +106,11 @@ def pyTestCache(cachedObj=None):
     if type(cachedObj) is CustomObj:
         return cachedObj.greeting
     return CustomObj()
-   
+ 
+@xlo.func
+def pyCacheKeys():
+    return xlo.cache.keys()
+
 #------------------
 # Dates
 #------------------
@@ -481,7 +485,7 @@ xlo.event.WorkbookBeforePrint += event_stopPrinting
 #
 def press1(ctrl):
     xlo.log("1 Pressed")
-    pass
+    return "NotSupposedToReturnHere"
     
 def button_label(ctrl, *args):
     return "PyButton"
