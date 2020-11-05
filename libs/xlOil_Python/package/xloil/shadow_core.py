@@ -363,6 +363,12 @@ class Cache:
         """
         pass
 
+    def keys(self):
+        """
+        Returns all cache keys as a list of strings
+        """
+        pass
+
     __contains__ = contains
     __getitem__ = get
     __call__ = add

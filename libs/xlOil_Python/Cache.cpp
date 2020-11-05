@@ -47,7 +47,7 @@ namespace xloil {
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
           const auto cacheKey = _cache.add(py::object(obj), tag 
-              ? (wstring(L"[/Py]") + tag).c_str()
+              ? (wstring(L"[/Py/]") + tag).c_str()
               : nullptr);
           return PySteal(detail::PyFromString()(cacheKey.asPascalStr()));
         }
@@ -74,6 +74,16 @@ namespace xloil {
           return _cache.fetch(str, obj);
         }
 
+        py::list keys() const
+        {
+          py::list out;
+          for (auto&[wbName, wbCache] : _cache)
+            for (auto&[address, cellCache] : *wbCache)
+              for (auto i = 0; i < cellCache->objects().size(); ++i)
+                out.append(py::wstr(_cache.writeKey(wbName, address, i)));
+          return out;
+        }
+
         ObjectCache<py::object, thePyCacheUniquifier> _cache;
         std::shared_ptr<const void> _workbookCloseHandler;
       };
@@ -96,6 +106,7 @@ namespace xloil {
           .def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"))
           .def("contains", &PyCache::contains, py::arg("ref"))
+          .def("keys", &PyCache::keys)
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::get)
           .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr);
