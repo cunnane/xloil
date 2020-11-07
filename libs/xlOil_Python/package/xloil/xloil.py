@@ -458,9 +458,8 @@ def func(fn=None,
 
         descr = FuncDescription(fn)
 
-        del arguments['fn']
         for arg, val in arguments.items():
-            if not arg in ['fn', 'args', 'name']:
+            if not arg in ['fn', 'args', 'name', 'help']:
                 descr.__dict__[arg] = val
         if name is not None:
             descr.name = name
@@ -603,10 +602,10 @@ class EventsPaused():
     the context is in scope
     """
     def __enter__(self):
-        xloil_core.event.pause()
+        event.pause()
         return self
     def __exit__(self, type, value, traceback):
-        xloil_core.event.allow()
+        event.allow()
 
 class _ModuleFinder(importlib.abc.MetaPathFinder):
 
@@ -645,7 +644,7 @@ def scan_module(module, workbook_name=None):
             # avoid name collisions when loading workbook modules
             mod_name = filename if workbook_name is None else "xloil_wb_" + filename
 
-            if workbook_name is not None:
+            if len(mod_directory) > 0 or workbook_name is not None:
                 _module_finder.path_map[mod_name] = module
    
             handle = importlib.import_module(mod_name)
