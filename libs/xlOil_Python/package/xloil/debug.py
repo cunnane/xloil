@@ -7,15 +7,23 @@ class _Handler_ptvsd:
         ptvsd.enable_attach()
     def call(self, type, value, trace):
         import ptvsd
-        # Probably don't want this as it pauses Excel whilst waiting!
+        # Probably don't want to do this as it pauses Excel whilst waiting!
         #ptvsd.wait_for_attach()
         ptvsd.break_into_debugger()
+
+_tkinter_root = None
 
 class _Handler_pdb_window:
 
     def __init__(self):
         import tkinter as tk
-        pass
+
+        global _tkinter_root
+
+        # Only create Tk once - doing this multiple times will coredump tcl
+        if _tkinter_root is None:
+            _tkinter_root = tk.Tk(baseName="xlOil")
+            _tkinter_root.withdraw()
 
     def call(self, type, value, trace):
         import pdb
@@ -24,19 +32,14 @@ class _Handler_pdb_window:
         from threading import Thread
         import queue
 
-
-        root = tk.Tk(baseName="xlOil")
-
         #
         # Borrowed from
         # https://stackoverflow.com/questions/21811464/how-can-i-embed-a-python-interpreter-frame-in-python-using-tkinter
         #
         class Console(tk.Frame):
-            def __init__(self, parent, exit_callback, console_invoke):
+            def __init__(self, parent, console_invoke):
                 tk.Frame.__init__(self, parent)
                 self.parent = parent
-                self.exit_callback = exit_callback
-                self.destroyed = False
 
                 self.real_std_in_out = (sys.stdin, sys.stdout, sys.stderr)
 
@@ -54,14 +57,16 @@ class _Handler_pdb_window:
             def run_console(self, func):
                 try:
                     func()
-                except SystemExit:
-                    if not self.destroyed:
-                        self.after(0, self.exit_callback)
+                except:
+                    pass
+                self._root().quit() # break out of mainloop
 
             def destroy(self):
+                self.exit = True
                 self.stdin_buffer.put("\n\nexit()\n")
-                self.destroyed = True
                 sys.stdin, sys.stdout, sys.stderr = self.real_std_in_out
+                if self.consoleThread.is_alive():
+                    self.consoleThread.join()
                 super().destroy()
 
             def enter(self, event):
@@ -89,8 +94,11 @@ class _Handler_pdb_window:
                 line = self.stdin_buffer.get()
                 return line
 
-        main_window = Console(root, root.destroy, lambda: pdb.post_mortem(trace))
+        top_level = tk.Toplevel(_tkinter_root)
+        main_window = Console(top_level, lambda: pdb.post_mortem(trace))
         main_window.mainloop()
+        top_level.destroy()
+
 
 _exception_handler = None
 
