@@ -233,9 +233,17 @@ namespace xloil
       }
       void AfterCalculate()
       {
-        excelApp().EnableEvents = false;
+        // Although we disable events, Excel turns them back on again
+        // after calculation, so we can easily trigger a recursion by 
+        // doing something in AfterCalculate which triggers a calculation.
+        // We use this bool to protect against this.
+        if (!_enableAfterCalculate)
+          return;
+        excelApp().EnableEvents = VARIANT_FALSE;
+        _enableAfterCalculate = false;
         Event::AfterCalculate().fire();
-        excelApp().EnableEvents = true;
+        excelApp().EnableEvents = VARIANT_TRUE;
+        _enableAfterCalculate = true;
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
@@ -365,6 +373,7 @@ namespace xloil
       IConnectionPoint* _pIConnectionPoint;
       DWORD	_dwEventCookie;
       LONG _cRef;
+      bool _enableAfterCalculate = true;
     };
 
     std::shared_ptr<Excel::AppEvents> createEventSink(Excel::_Application* source)
