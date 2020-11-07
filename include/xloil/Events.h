@@ -147,6 +147,8 @@ namespace xloil
         _handlers.clear();
       }
 
+      const std::string& name() const { return _name; }
+
     private:
       std::list<handler> _handlers;
       mutable std::mutex _lock;

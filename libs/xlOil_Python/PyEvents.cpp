@@ -58,8 +58,8 @@ namespace xloil
     template<class TEvent, bool, class F> class PyEvent {};
 
     // Specialisation to allow capture of the arguments to the event handler
-    template<class TEvent, bool TUserException, class R, class... Args>
-    class PyEvent<TEvent, TUserException, std::function<R(Args...)>>
+    template<class TEvent, bool TAllowUserException, class R, class... Args>
+    class PyEvent<TEvent, TAllowUserException, std::function<R(Args...)>>
     {
     public:
       PyEvent(TEvent& event) 
@@ -120,13 +120,13 @@ namespace xloil
         catch (const py::error_already_set& e)
         {
           // Avoid recursion if we actually are Event_PyUserException!
-          if constexpr(TUserException)
+          if constexpr(TAllowUserException)
             Event_PyUserException().fire(e.type(), e.value(), e.trace());
-          XLO_ERROR("During Event: {0}", e.what());
+          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("During Event: {0}", e.what());
+          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
         }
       }
 
