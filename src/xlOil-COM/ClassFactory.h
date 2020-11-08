@@ -145,16 +145,19 @@ namespace xloil
         GUID clsid;
         if (progId)
         {
+          // Check if ProgId is already registered by trying to find its CLSID
           auto clsidKey = fmt::format(L"Software\\Classes\\{0}\\CLSID", progId);
           if (getWindowsRegistryValue(L"HKCU", clsidKey.c_str(), _clsid))
           {
             if (fixedClsid && _wcsicmp(_clsid.c_str(), fixedClsid) != 0)
-              XLO_THROW(L"COM Server progId={0} already in registry with clsid={1}, but clsid={2} was requested",
+              XLO_THROW(L"COM Server progId={0} already in registry with clsid={1}, "
+                         "but clsid={2} was requested",
                 progId, _clsid, fixedClsid);
             CLSIDFromString(_clsid.c_str(), &clsid);
           }
         }
 
+        // If no CLSID, generate one 
         if (_clsid.empty())
         {
           HRESULT res = fixedClsid
@@ -170,8 +173,7 @@ namespace xloil
           CoTaskMemFree(clsidStr);
         }
 
-        // COM ProgIds must have 39 or fewer chars and no punctuation
-        // other than '.'
+        // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
         _progId = progId ? progId :
           wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
         std::replace(_progId.begin(), _progId.end(), L'-', L'.');
@@ -190,7 +192,7 @@ namespace xloil
           0,
           _clsid.c_str());
 
-        // Ensure outer key is deleted
+        // Add to our list of added keys, to ensure outer key is deleted
         _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\{0}", _progId));
 
         // This registry entry is not needed to call CLSIDFromProgID, nor
