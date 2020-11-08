@@ -7,6 +7,7 @@
 #include <xloil/FuncSpec.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
+#include <xlOil/ApiCall.h>
 #include <vector>
 #include <memory>
 
@@ -85,10 +86,11 @@ namespace xloil
 
         for (size_t i = 0; i < registeredFuncs.size(); ++i)
         {
+          auto& func = *registeredFuncs[i];
           // We declare all args as optional variant and let the called 
           // function handle things.
           wstring args, optionalArgs;
-          for (auto& arg : registeredFuncs[i]->info()->args)
+          for (auto& arg : func.info()->args)
           {
             args += arg.name + L',';
             optionalArgs += L"Optional " + arg.name + L",";
@@ -100,14 +102,15 @@ namespace xloil
 
           // We write:
           // Public Function name(Optional arg0, Optional arg1,...)
-          // Dim args: args = Array(arg0, arg1, ...)
-          // localFunctionEntryPoint workbook, name, name, args
+          //   Dim args: args = Array(arg0, arg1, ...)
+          //   localFunctionEntryPoint workbook, name, name, args
           // End Function
-          auto& name = registeredFuncs[i]->name();
+
+          auto& name = func.name();
 
           writer.write(fmt::format(L"Public Function {0}({1})", name, optionalArgs).c_str());
-          writer.write(fmt::format(L"Dim args: args=Array({0})", args));
-          writer.write(fmt::format(L"localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
+          writer.write(fmt::format(L"  Dim args: args=Array({0})", args));
+          writer.write(fmt::format(L"  localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
             name, workbookName, name));
           writer.write(L"End Function");
         }

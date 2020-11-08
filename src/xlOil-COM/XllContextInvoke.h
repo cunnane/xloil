@@ -6,8 +6,6 @@ namespace xloil { class ExcelObj; }
 
 namespace xloil
 {
-  
-
   /// <summary>
   /// Having this class in scope declares that you are on the main thread 
   /// and are in an XLL function called by Excel.

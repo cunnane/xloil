@@ -42,8 +42,17 @@ extern "C" const GUID __declspec(selectany) LIBID_AddInDesigner =
 //#import "C:\\Program Files\\Common Files\\Designer\\MSADDNDR.OLB"
 #import "libid:AC0714F2-3D04-11D1-AE7D-00A0C90F26F4"
 
+
+// See https://social.msdn.microsoft.com/Forums/vstudio/en-US/9168f9f2-e5bc-4535-8d7d-4e374ab8ff09/hresult-800ac472-from-set-operations-in-excel?forum=vsto
+constexpr HRESULT VBA_E_IGNORE = 0x800ac472;
+
+
 #define XLO_RETHROW_COM_ERROR \
-  catch (_com_error& error)\
-  {\
-    XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());\
+  catch (_com_error& error) \
+  { \
+    if (error.Error() == VBA_E_IGNORE) \
+      throw ComBusyException(); \
+    else \
+      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage()); \
   }
+  

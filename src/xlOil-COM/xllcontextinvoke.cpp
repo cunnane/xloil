@@ -9,9 +9,6 @@
 
 namespace xloil
 {
-  // See https://social.msdn.microsoft.com/Forums/vstudio/en-US/9168f9f2-e5bc-4535-8d7d-4e374ab8ff09/hresult-800ac472-from-set-operations-in-excel?forum=vsto
-  constexpr HRESULT VBA_E_IGNORE = 0x800ac472;
-
   template <class TFunc>
   auto tryComCall(TFunc fn) -> typename std::invoke_result<TFunc>::type
   {
@@ -19,13 +16,7 @@ namespace xloil
     {
       return fn();
     }
-    catch (_com_error& error)
-    {
-      if (error.Error() == VBA_E_IGNORE)
-        throw ComBusyException("Excel COM is busy. A dialog box may be open. If this error persists, restart Excel.");
-      else
-        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   static const std::function<void()>* theVoidFunc = nullptr;

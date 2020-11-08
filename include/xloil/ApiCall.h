@@ -35,7 +35,7 @@ namespace xloil
 
   /// <summary>
   /// Excel will sometimes reject COM calls with the error VBA_E_IGNORE. This is
-  /// against standard COM practice, but the COM interface, unlike the GUI icons
+  /// against standard COM practice, but the COM interface, unlike the GUI,
   /// has been abandoned and does not receive updates. xlOil with throw the
   /// ComBusyException in this case. Use of <see cref="excelApiCall"> catches
   /// this exception and retries, but with sufficent failures it make be passed
@@ -44,8 +44,10 @@ namespace xloil
   class ComBusyException : public std::runtime_error
   {
   public:
-    ComBusyException(const char* message)
-      : std::runtime_error(message)
+    ComBusyException(const char* message = nullptr)
+      : std::runtime_error(message 
+        ? message 
+        : "Excel COM is busy; a dialog box may be open. Retry the action and if this error persists, restart Excel.")
     {}
   };
 

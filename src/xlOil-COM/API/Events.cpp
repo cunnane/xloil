@@ -1,5 +1,6 @@
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
+#include <xlOil/ApiCall.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil-COM/ExcelTypeLib.h>
 #include <xlOil-COM/Connect.h>
@@ -85,7 +86,11 @@ namespace xloil
 
     XLOIL_EXPORT void allowEvents(bool value)
     {
-      COM::excelApp().EnableEvents = _variant_t(value);
+      try
+      {
+        COM::excelApp().EnableEvents = _variant_t(value);
+      }
+      XLO_RETHROW_COM_ERROR;
     }
   }
 }
