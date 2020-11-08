@@ -5,6 +5,7 @@
 #include "RibbonExtensibility.h"
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
+#include <xlOil/ApiCall.h>
 #include <xlOil/Ribbon.h>
 #include <map>
 #include <functional>
@@ -89,35 +90,65 @@ namespace xloil
     public:
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
         : _registrar(
-            new CComObject<ComAddinImpl>(),
-            formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
+          new CComObject<ComAddinImpl>(),
+          formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         if (!name)
           XLO_THROW("Com add-in name must be provided");
-        auto addinPath = fmt::format(
-          L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
-        _registrar.writeRegistry(
-          HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", name);
-        _registrar.writeRegistry(
-          HKEY_CURRENT_USER, addinPath.c_str(), L"LoadBehavior", (DWORD)0);
-        if (description)
-          _registrar.writeRegistry(
-            HKEY_CURRENT_USER, addinPath.c_str(), L"Description", description);
-      }
 
+        // It's possible the addin has already been registered and loaded and 
+        // is just being reinitialised.
+        if (isConnected())
+        {
+          disconnect();
+        }
+        else
+        {
+          auto addinPath = fmt::format(
+            L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
+          _registrar.writeRegistry(
+            HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", name);
+          _registrar.writeRegistry(
+            HKEY_CURRENT_USER, addinPath.c_str(), L"LoadBehavior", (DWORD)0);
+          if (description)
+            _registrar.writeRegistry(
+              HKEY_CURRENT_USER, addinPath.c_str(), L"Description", description);
+          // TODO: set this guy back!
+          excelApp().AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
+          excelApp().GetCOMAddIns()->Update();
+        }
+      }
+      COMAddIn* getAddin() const
+      {
+        auto& app = excelApp();
+        // TODO: set this guy back!
+        app.AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
+        auto ourProgid = _variant_t(progid());
+        COMAddIn* ourAddin = 0;
+        app.GetCOMAddIns()->raw_Item(&ourProgid, &ourAddin);
+        return ourAddin;
+      }
+      bool isConnected() const
+      {
+        try
+        {
+          auto addin = getAddin();
+          return addin
+            ? (addin->Connect == VARIANT_TRUE)
+            : false;
+        }
+        XLO_RETHROW_COM_ERROR;
+      }
       void connect() override
       {
         if (_connected)
           return;
         try
         {
-          auto& app = excelApp();
-          // TODO: set this guy back!
-          app.AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
-          app.GetCOMAddIns()->Update();
-          auto ourProgid = _variant_t(progid());
-          auto ourAddin = app.GetCOMAddIns()->Item(&ourProgid);
-          ourAddin->Connect = VARIANT_TRUE;
+          auto addin = getAddin();
+          if (!addin)
+            XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
+          addin->Connect = VARIANT_TRUE;
           _connected = true;
         }
         XLO_RETHROW_COM_ERROR;
@@ -129,10 +160,10 @@ namespace xloil
           return;
         try
         {
-          auto& app = excelApp();
-          auto ourProgid = _variant_t(progid());
-          auto ourAddin = app.GetCOMAddIns()->Item(&ourProgid);
-          ourAddin->Connect = VARIANT_FALSE;
+          auto addin = getAddin();
+          if (!addin)
+            XLO_THROW(L"Add-in disconnect: could not find addin '{0}'", progid());
+          addin->Connect = VARIANT_FALSE;
           _connected = false;
         }
         XLO_RETHROW_COM_ERROR;
