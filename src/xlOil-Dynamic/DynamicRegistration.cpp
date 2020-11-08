@@ -154,8 +154,8 @@ namespace xloil
         && info()->numArgs() == newInfo->numArgs() 
         && info()->options == newInfo->options)
       {
-        bool infoMatches = *info() == *newInfo;
-        bool contextMatches = context != newContext;
+        const bool infoMatches = *info() == *newInfo;
+        const bool contextMatches = context == newContext;
 
         if (!contextMatches)
         {
@@ -166,22 +166,19 @@ namespace xloil
             return false;
           }
         }
-        // If the FuncInfo is identical, no need to re-register, note this
-        // discards the new funcinfo.
+        
+        // Rewrite spec so new context and info pointers are kept alive
+        _spec = other;
+    
+        // If the FuncInfo is identical, no need to re-register
         if (infoMatches)
           return true;
 
-        auto callback = spec()._callback;
-        // Rewrite spec
-        _spec = spec()._hasReturn 
-          ? make_shared<DynamicSpec>(newInfo, (DynamicCallback<ExcelObj*, void>)callback, newContext)
-          : make_shared<DynamicSpec>(newInfo, (DynamicCallback<void, void>)callback, newContext);
-
-        // Otherwise re-use the possibly patched thunk
+        // Otherwise do full re-registration
         XLO_DEBUG(L"Reregistering function '{0}'", newInfo->name);
         deregister();
         _registerId = doRegister();
-        _spec = other;
+        
         return true;
       }
       return false;
