@@ -95,10 +95,18 @@ class _Handler_pdb_window:
                 return line
 
         top_level = tk.Toplevel(_tkinter_root)
+
+        def disable_debugging():
+            xloil.event.UserException.clear()
+
+        menu = tk.Menu(top_level)
+        menu.add_command(label="Disable Debugger", command=disable_debugging)
+        top_level.config(menu=menu)
+
         main_window = Console(top_level, lambda: pdb.post_mortem(trace))
         main_window.mainloop()
+        
         top_level.destroy()
-
 
 _exception_handler = None
 
