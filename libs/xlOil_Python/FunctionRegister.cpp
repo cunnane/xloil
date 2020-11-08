@@ -179,23 +179,20 @@ namespace xloil
 
     shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
-      shared_ptr<const FuncSpec> spec;
       shared_ptr<const PyFuncInfo> cFuncInfo = funcInfo;
-
+ 
       if (funcInfo->isAsync)
       {
         funcInfo->info->args.insert(
           funcInfo->info->args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
-        spec.reset(new DynamicSpec(funcInfo->info, &pythonAsyncCallback, cFuncInfo));
+        return make_shared<DynamicSpec>(funcInfo->info, &pythonAsyncCallback, cFuncInfo);
       }
       else if (funcInfo->isRtdAsync)
       {
-        spec.reset(new DynamicSpec(funcInfo->info, &pythonRtdCallback, cFuncInfo));
+        return make_shared<DynamicSpec>(funcInfo->info, &pythonRtdCallback, cFuncInfo);
       }
       else
-        spec.reset(new DynamicSpec(funcInfo->info, &pythonCallback, cFuncInfo));
-
-      return spec;
+        return make_shared<DynamicSpec>(funcInfo->info, &pythonCallback, cFuncInfo);
     }
 
     class WatchedSource : public FileSource
@@ -209,7 +206,10 @@ namespace xloil
         auto path = fs::path(sourceName);
         _fileWatcher = std::static_pointer_cast<const void>(
           Event::DirectoryChange(path.remove_filename()).bind(
-            [this](auto dir, auto file, auto act) { handleDirChange(dir, file, act); }));
+            [this](auto dir, auto file, auto act) 
+            { 
+              handleDirChange(dir, file, act);
+            }));
 
         if (linkedWorkbook)
           _workbookWatcher = std::static_pointer_cast<const void>(
@@ -236,28 +236,35 @@ namespace xloil
       {
         if (_wcsicmp(fileName, sourceName()) != 0)
           return;
+        
+        excelApiCall([
+            this,
+            dirStr = wstring(dirName),
+            fileStr = wstring(fileName),
+            action]()
+          {
+            const auto filePath = (fs::path(dirStr) / fileStr).wstring();
 
-        const auto filePath = (fs::path(dirName) / fileName).wstring();
+            // Directories should match as our directory watch listener only checks
+            // the specified directory
+            assert(_wcsicmp(filePath.c_str(), sourcePath().c_str()) == 0);
 
-        // Directories should match as our directory watch listener only checks
-        // the specified directory
-        assert(_wcsicmp(filePath.c_str(), sourcePath().c_str()) == 0);
-
-        switch (action)
-        {
-        case Event::FileAction::Modified:
-        {
-          XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
-          reload();
-          break;
-        }
-        case Event::FileAction::Delete:
-        {
-          XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
-          FileSource::deleteFileContext(shared_from_this());
-          break;
-        }
-        }
+            switch (action)
+            {
+            case Event::FileAction::Modified:
+            {
+              XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
+              reload();
+              break;
+            }
+            case Event::FileAction::Delete:
+            {
+              XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
+              FileSource::deleteFileContext(shared_from_this());
+              break;
+            }
+            }
+          }, QueueType::ENQUEUE);
       }
     };
 
