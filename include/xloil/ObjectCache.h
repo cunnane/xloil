@@ -104,15 +104,13 @@ namespace xloil
         return _objects;
       }
 
-      bool getStaleObjects(size_t calcId, std::vector<TObj>& stale)
+      void getStaleObjects(size_t calcId, std::vector<TObj>& stale)
       {
         if (_calcId != calcId)
         {
           _calcId = calcId;
           _objects.swap(stale);
-          return true;
         }
-        return false;
       }
 
       size_t add(TObj&& obj)
@@ -182,7 +180,7 @@ namespace xloil
       return found->second.get();
     }
 
-    static constexpr uint8_t PADDING = 5;
+    static constexpr uint8_t PADDING = 2;
 
   public:
     ObjectCache(bool reapOnWorkbookClose = true)
@@ -200,7 +198,7 @@ namespace xloil
 
     bool fetch(const std::wstring_view& cacheString, TObj& obj)
     {
-      int iResult;
+      size_t iResult;
       std::wstring_view sheetRef;
       auto* wbCache = fetchImpl(cacheString, sheetRef, iResult);
       if (!wbCache)
@@ -227,15 +225,15 @@ namespace xloil
 
       // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
       // Search backwards because wbName may contain ']'
-      auto lastBracket = key.rfind(L']');
+      const auto lastBracket = key.rfind(L']');
       if (lastBracket == PString<>::npos)
         XLO_THROW("ObjectCache::add: caller must be worksheet address");
-      auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
+      const auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
 
       // Capture sheet ref, i.e. wsName!cellRef
       // Can use wcslen here because of the null padding
-      auto wsRef = std::wstring_view(key.pstr() + lastBracket + 1,
-        key.length() - PADDING - lastBracket - 1);
+      const auto wsStart = key.begin() + lastBracket + 1;
+      const auto wsRef = std::wstring_view(wsStart, key.end() - PADDING - wsStart);
 
       std::vector<TObj> staleObjects;
       uint8_t iPos = 0;
@@ -246,12 +244,7 @@ namespace xloil
         iPos = (uint8_t)addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
       }
 
-      uint8_t nPaddingUsed = 0;
-      // Add cell object count in form ",XXX"
-      if (iPos > 0)
-        nPaddingUsed = (uint8_t)writeCount(key.end() - PADDING, iPos);
-        
-      key.resize(key.length() - PADDING + nPaddingUsed);
+      writeCount(key.end() - PADDING, iPos);
 
       if constexpr (TReverseLookup)
       {
@@ -274,7 +267,7 @@ namespace xloil
     /// <returns>true if removal succeeded, otherwise false</returns>
     bool remove(const std::wstring_view& cacheRef)
     {
-      int iResult;
+      size_t iResult;
       std::wstring_view sheetRef;
       auto* wbCache = fetchImpl(cacheRef, sheetRef, iResult);
       if (!wbCache)
@@ -329,12 +322,7 @@ namespace xloil
       key.replace(2, wbLength, workbook);
       key[wbLength + 2] = L']';
       key.replace(wbLength + 3, addrLength, address);
-      if (count > 0)
-      {
-        auto n = writeCount(key.data(), count);
-        // Trim any unused padding chars
-        key.resize(key.length() - (PADDING - n));
-      }
+      writeCount(key.data(), count);
       return key;
     }
 
@@ -349,7 +337,7 @@ namespace xloil
     WorkbookCache* fetchImpl(
       const std::wstring_view& cacheString,
       std::wstring_view& sheetRef,
-      int& iResult)
+      size_t& iResult)
     {
       if (cacheString.size() < 4 
         || cacheString[0] != TUniquifier 
@@ -358,37 +346,35 @@ namespace xloil
 
       constexpr auto npos = std::wstring_view::npos;
 
+      const auto comma = cacheString.size() - 2;
+      if (cacheString[comma] != L',')
+        return nullptr;
+
       const auto firstBracket = 1;
       const auto lastBracket = cacheString.find_last_of(']');
       if (lastBracket == npos)
         return nullptr;
-      const auto comma = cacheString.find_first_of(',', lastBracket);
 
       auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
-      sheetRef = cacheString.substr(lastBracket + 1,
-        comma == npos ? npos : comma - lastBracket - 1);
+      sheetRef = cacheString.substr(lastBracket + 1, comma - lastBracket - 1);
 
-      iResult = 0;
-      if (comma != npos)
-      {
-        // Oh dear, there's no std::from_chars for wchar_t
-        wchar_t tmp[4];
-        wcsncpy_s(tmp, 4,
-          cacheString.data() + comma + 1,
-          cacheString.length() - comma - 1);
-        iResult = _wtoi(tmp);
-      }
+      iResult = readCount(cacheString[comma + 1]);
 
       std::scoped_lock lock(_cacheLock);
       return find(_cache, workbook);
     }
 
-    /// Add cell object count in form ",XXX"
-    auto writeCount(wchar_t* key, size_t iPos) const
+    size_t readCount(wchar_t count) const
     {
-      *(key++) = L',';
-      _itow_s((int)iPos, key, PADDING - 1, 10);
-      return 1 + (uint8_t)wcsnlen(key, PADDING - 1);
+      return (size_t)(count - 65);
+    }
+
+    /// Add cell object count in form ",X"
+    void writeCount(wchar_t* key, size_t iPos) const
+    {
+      key[0] = L',';
+      // An offset of 65 means we start with 'A'
+      key[1] = (wchar_t)(iPos + 65);
     }
   };
 }
