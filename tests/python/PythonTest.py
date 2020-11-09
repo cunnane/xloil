@@ -538,4 +538,18 @@ xloil.debug.exception_debug('pdb')
 
 @xlo.func
 def pyTestDebug(x):
+    """ Running this function should trigger pdb """
     return (2 * x) ^ (x + 1)
+
+@xlo.func(macro=True)
+def pyWbPath():
+
+    """Returns the full workbook path"""
+
+    caller = xlo.Caller()
+    full_path = xlo.app().Workbooks(caller.workbook).FullName
+    
+    return full_path.replace(caller.workbook,"")
+
+    
+    
