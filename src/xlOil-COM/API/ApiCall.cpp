@@ -255,7 +255,7 @@ namespace xloil
     auto& messenger = Messenger::instance();
     if (waitBeforeCall > 0)
       messenger.queueWindowTimer(queueItem, waitBeforeCall);
-    else if ((flags & (int)QueueType::ENQUEUE) == 0 && isMainThread())
+    else if ((flags & QueueType::ENQUEUE) == 0 && isMainThread())
       (*queueItem)(messenger);
     else if (queueItem->_isAPC)
       messenger.QueueAPC(queueItem);
