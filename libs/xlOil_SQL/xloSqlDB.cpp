@@ -8,7 +8,7 @@
 
 using std::shared_ptr;
 using std::vector;
-using std::make_shared;
+using std::make_unique;
 
 namespace xloil
 {
@@ -33,7 +33,7 @@ namespace xloil
 
       return returnValue(
         cacheAdd(
-          make_shared<DataBaseRef>(
+          make_unique<DataBaseRef>(
             newDatabase())));
     }
     XLO_FUNC_END(xloSqlDB).threadsafe();

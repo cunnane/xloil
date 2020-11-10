@@ -153,7 +153,7 @@ namespace xloil
     {
       if (objectCacheCheckReference(str))
       {
-        std::shared_ptr<const ExcelObj> obj;
+        const ExcelObj* obj;
         if (xloil::objectCacheFetch(str.view(), obj))
           return visitExcelObj(*obj, (TBase&)(*this));
       }

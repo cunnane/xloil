@@ -33,23 +33,23 @@ namespace xloil
   /// (as an ExcelObj) based on the currently executing cell
   /// </summary>
   XLOIL_EXPORT ExcelObj 
-    objectCacheAdd(std::shared_ptr<const ExcelObj>&& obj);
+    objectCacheAdd(std::unique_ptr<const ExcelObj>&& obj);
 
   // TODO: Could consider non const fetch in case we want to implement something like sort in-place
   // but only if we are in the same cell as object was created in
   XLOIL_EXPORT bool objectCacheFetch(
-    const std::wstring_view& cacheString, std::shared_ptr<const ExcelObj>& obj);
+    const std::wstring_view& cacheString, const ExcelObj*& obj);
 
   inline ExcelObj objectCacheAdd(ExcelObj&& obj)
   {
-    return objectCacheAdd(std::make_shared<const ExcelObj>(obj));
+    return objectCacheAdd(std::make_unique<const ExcelObj>(obj));
   }
 
   inline const ExcelObj& objectCacheExpand(const ExcelObj& obj)
   {
     if (obj.isType(ExcelType::Str) && objectCacheCheckReference(obj))
     {
-      std::shared_ptr<const ExcelObj> cacheVal;
+      const ExcelObj* cacheVal;
       if (xloil::objectCacheFetch(obj.asPascalStr().view(), cacheVal))
         return *cacheVal;
     }

@@ -59,6 +59,18 @@ namespace xloil
 
       if (meta.isNonEmpty())
       {
+        if (meta.isType(ExcelType::Str))
+        {
+         /* vector<PStringView<>> names;
+          auto pstr = meta.asPascalStr();
+          const auto length = pstr.length();
+
+          while (!(pstr = pstr.strtok(L",")).empty())
+            names.push_back(pstr);
+          ExcelArrayBuilder builder(names.size(), 1, length);
+          for (auto i = 0; i < names.size(); ++i)
+            builder(i, 0) = names[i];*/
+        }
         ExcelArray metaData(meta);
         ProcessArgs([db, metaData](auto iArg, auto& argVal, auto& argName)
         {

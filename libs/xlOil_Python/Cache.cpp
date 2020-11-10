@@ -53,16 +53,17 @@ namespace xloil {
         }
         py::object get(const std::wstring_view& str)
         {
-          py::object obj;
+          py::object* obj = nullptr;
           if (objectCacheCheckReference(str))
           {
-            std::shared_ptr<const ExcelObj> xlObj;
+            const ExcelObj* xlObj;
             if (xloil::objectCacheFetch(str, xlObj))
               return PySteal(PyFromAny()(*xlObj));
           }
+          else if (_cache.fetch(str, obj))
+            return *obj;
           else
-            _cache.fetch(str, obj);
-          return obj;
+            return py::none(); // TODO: More pythonic to throw?
         }
         bool remove(const std::wstring& cacheRef)
         {
@@ -70,7 +71,7 @@ namespace xloil {
         }
         bool contains(const std::wstring_view& str)
         {
-          py::object obj;
+          py::object* obj;
           return _cache.fetch(str, obj);
         }
 
@@ -94,7 +95,13 @@ namespace xloil {
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
-      return thePythonObjCache->_cache.fetch(str, obj);
+      py::object* p;
+      if (thePythonObjCache->_cache.fetch(str, p))
+      {
+        obj = *p;
+        return true;
+      }
+      return false;
     }
 
     namespace

@@ -19,7 +19,7 @@ namespace xloil
     {
       throwInFunctionWizard();
 
-      std::shared_ptr<const CacheObj> dbObj;
+      const CacheObj* dbObj;
       if (!cacheFetch(database.toString(), dbObj) || !dbObj)
         XLO_THROW("No database provided");
         

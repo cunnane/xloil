@@ -33,7 +33,7 @@ namespace xloil
           [](const ExcelObj& x) { return x.toString(); });
       }
 
-      std::shared_ptr<const CacheObj> dbObj;
+      const CacheObj* dbObj;
       if (!cacheFetch(database.toString(), dbObj))
         XLO_THROW("No database provided");
         

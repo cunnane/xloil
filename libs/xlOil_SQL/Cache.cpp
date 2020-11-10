@@ -1,13 +1,13 @@
 #include <xloil/ObjectCache.h>
 #include "Cache.h"
 
-using std::shared_ptr;
+using std::unique_ptr;
 namespace xloil 
 {
   namespace SQL 
   {
     constexpr wchar_t theSqlCacheUniquifier = L'\x8449';
-    typedef ObjectCache<shared_ptr<const CacheObj>, theSqlCacheUniquifier> CacheType;
+    typedef ObjectCache<unique_ptr<const CacheObj>, theSqlCacheUniquifier> CacheType;
     static std::unique_ptr<CacheType> theObjCache;
 
     void createCache()
@@ -15,26 +15,18 @@ namespace xloil
       theObjCache.reset(new CacheType());
     }
 
-    ExcelObj cacheAdd(shared_ptr<const CacheObj>&& obj)
+    ExcelObj cacheAdd(unique_ptr<const CacheObj>&& obj)
     {
       if (!obj)
         return Const::Error(CellError::Value);
-      return theObjCache->add(std::forward<shared_ptr<const CacheObj>>(obj));
+      return theObjCache->add(std::forward<unique_ptr<const CacheObj>>(obj));
     }
-    bool cacheFetch(const std::wstring_view& cacheString, shared_ptr<const CacheObj>& obj)
+    bool cacheFetch(const std::wstring_view& cacheString, const CacheObj*& obj)
     {
-      return theObjCache->fetch(cacheString, obj);
+      unique_ptr<const CacheObj>* cacheObj = nullptr;
+      auto ret = theObjCache->fetch(cacheString, cacheObj);
+      obj = cacheObj->get();
+      return ret;
     }
-
-    // TODO: another possible cache object?
-    //
-    //class ArrayTable : public CacheObj
-    //{
-    //public:
-    //  virtual void addTable(std::shared_ptr<sqlite3> db, std::string name);
-    //  std::shared_ptr<ExcelObj> arr;
-    //  std::string schema;
-    //  ;
-    //};
   }
 }

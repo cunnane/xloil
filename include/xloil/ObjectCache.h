@@ -119,11 +119,11 @@ namespace xloil
         return _objects.size() - 1;
       }
 
-      bool tryFetch(size_t i, TObj& obj)
+      bool tryFetch(size_t i, TObj*& obj)
       {
         if (i >= _objects.size())
           return false;
-        obj = _objects[i];
+        obj = &_objects[i];
         return true;
       }
     };
@@ -196,7 +196,7 @@ namespace xloil
           xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
     }
 
-    bool fetch(const std::wstring_view& cacheString, TObj& obj)
+    bool fetch(const std::wstring_view& cacheString, TObj*& obj)
     {
       size_t iResult;
       std::wstring_view sheetRef;
