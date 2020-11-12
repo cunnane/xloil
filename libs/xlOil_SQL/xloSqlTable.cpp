@@ -33,8 +33,8 @@ namespace xloil
           [](const ExcelObj& x) { return x.toString(); });
       }
 
-      const CacheObj* dbObj;
-      if (!cacheFetch(database.toString(), dbObj))
+      const CacheObj* dbObj = cacheFetch(database.toString());
+      if (!dbObj)
         XLO_THROW("No database provided");
         
       auto tableName = name.toString();

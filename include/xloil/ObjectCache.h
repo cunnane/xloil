@@ -1,5 +1,6 @@
 #pragma once
 #include <xloil/ExcelObj.h>
+#include <xloil/PString.h>
 #include <xloil/Events.h>
 #include <xloil/Caller.h>
 #include <xloil/Throw.h>
@@ -9,9 +10,20 @@
 
 namespace xloil
 {
+  template<class T>
+  struct CacheUniquifier
+  {
+    CacheUniquifier()
+    {
+      static wchar_t chr = L'\xC38';
+      value = chr++;
+    }
+    wchar_t value;
+  };
+
   namespace detail
   {
-    inline PString<> writeCacheId(const CallerInfo& caller, uint16_t padding)
+    inline auto writeCacheId(const CallerInfo& caller, wchar_t padding)
     {
       PString<> pascalStr(caller.addressRCLength() + padding + 1);
       auto* buf = pascalStr.pstr() + 1;
@@ -27,7 +39,7 @@ namespace xloil
       return pascalStr;
     }
 
-    inline PString<> writeCacheId(const wchar_t* caller, uint16_t padding)
+    inline PString<> writeCacheId(const wchar_t* caller, wchar_t padding)
     {
       const auto lenCaller = (wchar_t)std::min<size_t>(
         wcslen(caller), UINT16_MAX - padding - 1);
@@ -85,7 +97,7 @@ namespace xloil
   /// PyObject* obj = theCache.fetch(refStr);
   /// </code>
   /// </summary>
-  template<class TObj, wchar_t TUniquifier, bool TReverseLookup = false>
+  template<class TObj, class TUniquifier, bool TReverseLookup = false>
   class ObjectCache
   {
   private:
@@ -145,6 +157,7 @@ namespace xloil
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
+    
 
     void expireObjects()
     {
@@ -183,6 +196,8 @@ namespace xloil
     static constexpr uint8_t PADDING = 2;
 
   public:
+    TUniquifier _uniquifier;
+
     ObjectCache(bool reapOnWorkbookClose = true)
       : _calcId(1)
     {
@@ -196,11 +211,19 @@ namespace xloil
           xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
     }
 
+    bool fetchIfValid(const std::wstring_view& cacheString, TObj*& obj)
+    {
+      if (!checkValid(cacheString))
+        return false;
+
+      return fetch(const std::wstring_view& cacheString, TObj*& obj)
+    }
+
     bool fetch(const std::wstring_view& cacheString, TObj*& obj)
     {
       size_t iResult;
       std::wstring_view sheetRef;
-      auto* wbCache = fetchImpl(cacheString, sheetRef, iResult);
+      auto* wbCache = fetchWbCache(cacheString, sheetRef, iResult);
       if (!wbCache)
         return false;
 
@@ -221,7 +244,7 @@ namespace xloil
         ? detail::writeCacheId(caller, PADDING)
         : detail::writeCacheId(callerInfo, PADDING);
 
-      key[0] = TUniquifier;
+      key[0] = _uniquifier.value;
 
       // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
       // Search backwards because wbName may contain ']'
@@ -269,7 +292,7 @@ namespace xloil
     {
       size_t iResult;
       std::wstring_view sheetRef;
-      auto* wbCache = fetchImpl(cacheRef, sheetRef, iResult);
+      auto* wbCache = fetchWbCache(cacheRef, sheetRef, iResult);
       if (!wbCache)
         return false;
 
@@ -317,13 +340,20 @@ namespace xloil
       const auto addrLength = address.length();
       std::wstring key;
       key.resize(wbLength + addrLength + PADDING + 3);
-      key[0] = TUniquifier;
+      key[0] = _uniquifier.value;
       key[1] = L'[';
       key.replace(2, wbLength, workbook);
       key[wbLength + 2] = L']';
       key.replace(wbLength + 3, addrLength, address);
       writeCount(key.data(), count);
       return key;
+    }
+
+    bool checkValid(const std::wstring_view& cacheString)
+    {
+      return (cacheString.size() > 4
+        && cacheString[0] == _uniquifier.value
+        && cacheString[1] == L'[');
     }
 
   private:
@@ -334,16 +364,11 @@ namespace xloil
       return findOrAdd(wbCache, wsRef);
     }
 
-    WorkbookCache* fetchImpl(
+    WorkbookCache* fetchWbCache(
       const std::wstring_view& cacheString,
       std::wstring_view& sheetRef,
       size_t& iResult)
     {
-      if (cacheString.size() < 4 
-        || cacheString[0] != TUniquifier 
-        || cacheString[1] != L'[')
-        return nullptr;
-
       constexpr auto npos = std::wstring_view::npos;
 
       const auto comma = cacheString.size() - 2;
@@ -377,4 +402,37 @@ namespace xloil
       key[1] = (wchar_t)(iPos + 65);
     }
   };
+
+  template<typename T>
+  struct ObjectCacheFactory
+  {
+    static auto& cache() {
+      static ObjectCache<T, CacheUniquifier<T>, false> theInstance;
+      return theInstance;
+    }
+  };
+
+  template<typename T, typename... Args>
+  inline auto make_cached(Args&&... args)
+  {
+    return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
+      std::make_unique<T>(std::forward<Args>(args)...));
+  }
+  template<typename T>
+  inline auto make_cached(const T* ptr)
+  {
+    return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
+      std::unique_ptr<const T>(ptr));
+  }
+
+  template<typename T>
+  inline const T* get_cached(const std::wstring_view& key)
+  {
+    if (!ObjectCacheFactory<std::unique_ptr<const T>>::cache().checkValid(key))
+      return nullptr;
+
+    std::unique_ptr<const T>* obj = nullptr;
+    auto ret = ObjectCacheFactory<std::unique_ptr<const T>>::cache().fetch(key, obj);
+    return ret ? obj->get() : nullptr;
+  }
 }

@@ -1,5 +1,5 @@
-#include <xloil/ObjectCache.h>
 #include <xlOil/ExcelObjCache.h>
+#include <xlOil/ObjectCache.h>
 #include "PyCoreModule.h"
 #include "BasicTypes.h"
 #include "Cache.h"
@@ -7,9 +7,16 @@
 namespace py = pybind11;
 using std::wstring;
 
-namespace xloil {
+namespace xloil 
+{
+  template<>
+  struct CacheUniquifier<py::object>
+  {
+    static constexpr wchar_t value = L'\x6B23';
+  };
+  using pyCacheUnquifier = CacheUniquifier<py::object>;
+
   namespace Python {
-    constexpr wchar_t thePyCacheUniquifier = L'\x6B23';
 
     namespace
     {
@@ -53,14 +60,12 @@ namespace xloil {
         }
         py::object get(const std::wstring_view& str)
         {
+          const ExcelObj* xlObj = get_cached<ExcelObj>(str);
+          if (xlObj)
+            return PySteal(PyFromAny()(*xlObj));
+
           py::object* obj = nullptr;
-          if (objectCacheCheckReference(str))
-          {
-            const ExcelObj* xlObj;
-            if (xloil::objectCacheFetch(str, xlObj))
-              return PySteal(PyFromAny()(*xlObj));
-          }
-          else if (_cache.fetch(str, obj))
+          if (_cache.fetch(str, obj))
             return *obj;
           else
             return py::none(); // TODO: More pythonic to throw?
@@ -85,7 +90,7 @@ namespace xloil {
           return out;
         }
 
-        ObjectCache<py::object, thePyCacheUniquifier> _cache;
+        ObjectCache<py::object, CacheUniquifier<py::object>> _cache;
         std::shared_ptr<const void> _workbookCloseHandler;
       };
     }

@@ -16,13 +16,10 @@ namespace xloil
       }
     };
 
-    void 
-      createCache();
-
     ExcelObj 
       cacheAdd(std::unique_ptr<const CacheObj>&& obj);
 
-    bool
-      cacheFetch(const std::wstring_view& cacheString, const CacheObj*& obj);
+    const CacheObj*
+      cacheFetch(const std::wstring_view& key);
   }
 }

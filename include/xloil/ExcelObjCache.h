@@ -1,59 +1,60 @@
 #pragma once
-#include "ExcelObj.h"
+#include <xloil/ExcelObj.h>
+#include <xloil/ObjectCache.h>
+#include <memory>
 
 namespace xloil
 {
-  namespace detail
+  template<>
+  struct CacheUniquifier<std::unique_ptr<const ExcelObj>>
   {
-    constexpr const wchar_t theObjectCacheUnquifier = L'\x6C38';
-  }
+    static constexpr wchar_t value = L'\x6C38';
+  };
 
-  /// <summary>
-  /// Returns true if the provided string contains the magic chars
-  /// for the ExcelObj cache. Expects a counted string.
-  /// </summary>
-  /// <param name="str">The string to check</param>
-  inline bool objectCacheCheckReference(const std::wstring_view& str)
-  {
-    if (str.length() < 7 || str[0] != detail::theObjectCacheUnquifier || str[1] != L'[')
-      return false;
-    return true;
-  }
-  inline bool objectCacheCheckReference(const PStringView<>& pstr)
-  {
-    return objectCacheCheckReference(pstr.view());
-  }
-  inline bool objectCacheCheckReference(const ExcelObj& obj)
-  {
-    return objectCacheCheckReference(obj.asPascalStr());
-  }
+  template struct XLOIL_EXPORT ObjectCacheFactory<std::unique_ptr<const ExcelObj>>;
+
+  using objectCacheUnquifier = CacheUniquifier<std::unique_ptr<const ExcelObj>>;
  
   /// <summary>
   /// Adds an ExcelObj to the object cache and returns an reference string
   /// (as an ExcelObj) based on the currently executing cell
   /// </summary>
-  XLOIL_EXPORT ExcelObj 
-    objectCacheAdd(std::unique_ptr<const ExcelObj>&& obj);
 
-  // TODO: Could consider non const fetch in case we want to implement something like sort in-place
-  // but only if we are in the same cell as object was created in
-  XLOIL_EXPORT bool objectCacheFetch(
-    const std::wstring_view& cacheString, const ExcelObj*& obj);
-
-  inline ExcelObj objectCacheAdd(ExcelObj&& obj)
-  {
-    return objectCacheAdd(std::make_unique<const ExcelObj>(obj));
-  }
 
   inline const ExcelObj& objectCacheExpand(const ExcelObj& obj)
   {
-    if (obj.isType(ExcelType::Str) && objectCacheCheckReference(obj))
+    if (obj.isType(ExcelType::Str))
     {
-      const ExcelObj* cacheVal;
-      if (xloil::objectCacheFetch(obj.asPascalStr().view(), cacheVal))
+      auto cacheVal = get_cached<ExcelObj>(obj.asPascalStr().view());
+      if (cacheVal)
         return *cacheVal;
     }
     return obj;
   }
-  // TODO: registry of caches to avoid two uniquifiers
+
+
+  /// <summary>
+  /// Wraps a type conversion functor, interepting the string conversion to
+  /// look for a cache reference.  If found, calls the wrapped functor on the
+  /// cache object, otherwise passes the string through.
+  /// </summary>
+  template<class TBase>
+  struct CacheConverter : public TBase
+  {
+    template <class...Args>
+    CacheConverter(Args&&...args)
+      : TBase(std::forward<Args>(args)...)
+    {}
+
+    using TBase::operator();
+    auto operator()(const PStringView<>& str) const
+    {
+      const ExcelObj* obj = get_cached<ExcelObj>(str.view());
+      if (obj)
+        return visitExcelObj(*obj, (TBase&)(*this));
+      
+      return TBase::operator()(str);
+    }
+  };
+
 }

@@ -21,8 +21,8 @@ namespace xloil
     {
       throwInFunctionWizard();
 
-      const CacheObj* dbObj;
-      if (!cacheFetch(database.toString(), dbObj))
+      const CacheObj* dbObj = cacheFetch(database.asPascalStr());
+      if (!dbObj)
         XLO_THROW("No database provided");
 
       auto sql = query.toString();

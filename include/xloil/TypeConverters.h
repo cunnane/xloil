@@ -1,9 +1,8 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
-#include <xloil/ExcelObjCache.h>
 #include <xlOil/Throw.h>
 
-namespace xloil { class ExcelRef; class ExcelObj; }
+namespace xloil { class ExcelRef; }
 namespace xloil
 {
   /// <summary>
@@ -132,32 +131,6 @@ namespace xloil
     TResult* operator()(T) const
     {
       return nullptr;
-    }
-  };
-
-  /// <summary>
-  /// Wraps a type conversion functor, interepting the string conversion to
-  /// look for a cache reference.  If found, calls the wrapped functor on the
-  /// cache object, otherwise passes the string through.
-  /// </summary>
-  template<class TBase>
-  struct CacheConverter : public TBase
-  {
-    template <class...Args>
-    CacheConverter(Args&&...args) 
-      : TBase(std::forward<Args>(args)...)
-    {}
-
-    using TBase::operator();
-    auto operator()(const PStringView<>& str) const
-    {
-      if (objectCacheCheckReference(str))
-      {
-        const ExcelObj* obj;
-        if (xloil::objectCacheFetch(str.view(), obj))
-          return visitExcelObj(*obj, (TBase&)(*this));
-      }
-      return TBase::operator()(str);
     }
   };
 

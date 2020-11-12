@@ -1,32 +1,26 @@
-#include <xloil/ObjectCache.h>
+#include <xloil/ExcelObjCache.h>
 #include "Cache.h"
 
 using std::unique_ptr;
 namespace xloil 
 {
+  template<>
+  struct CacheUniquifier<std::unique_ptr<const SQL::CacheObj>>
+  {
+    static constexpr wchar_t value = L'\x8449';
+  };
+
   namespace SQL 
   {
-    constexpr wchar_t theSqlCacheUniquifier = L'\x8449';
-    typedef ObjectCache<unique_ptr<const CacheObj>, theSqlCacheUniquifier> CacheType;
-    static std::unique_ptr<CacheType> theObjCache;
-
-    void createCache()
-    {
-      theObjCache.reset(new CacheType());
-    }
-
     ExcelObj cacheAdd(unique_ptr<const CacheObj>&& obj)
     {
       if (!obj)
         return Const::Error(CellError::Value);
-      return theObjCache->add(std::forward<unique_ptr<const CacheObj>>(obj));
+      return make_cached<CacheObj>(obj.release());
     }
-    bool cacheFetch(const std::wstring_view& cacheString, const CacheObj*& obj)
+    const CacheObj* cacheFetch(const std::wstring_view& key)
     {
-      unique_ptr<const CacheObj>* cacheObj = nullptr;
-      auto ret = theObjCache->fetch(cacheString, cacheObj);
-      obj = cacheObj->get();
-      return ret;
+      return get_cached<CacheObj>(key);
     }
   }
 }

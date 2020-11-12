@@ -10,6 +10,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/TypeConverters.h>
+#include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
 #include <xloil/StringUtils.h>
 #include <xlOil/ExcelRange.h>

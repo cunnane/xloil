@@ -51,6 +51,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CacheTest.cpp" />
+    <ClCompile Include="CacheTest2.cpp" />
     <ClCompile Include="ExoticArgTest.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="RtdServerTest.cpp" />
