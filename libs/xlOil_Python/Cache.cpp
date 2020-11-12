@@ -64,7 +64,7 @@ namespace xloil
           if (xlObj)
             return PySteal(PyFromAny()(*xlObj));
 
-          py::object* obj = nullptr;
+          const py::object* obj = nullptr;
           if (_cache.fetch(str, obj))
             return *obj;
           else
@@ -76,17 +76,16 @@ namespace xloil
         }
         bool contains(const std::wstring_view& str)
         {
-          py::object* obj;
+          const py::object* obj;
           return _cache.fetch(str, obj);
         }
 
         py::list keys() const
         {
           py::list out;
-          for (auto&[wbName, wbCache] : _cache)
-            for (auto&[address, cellCache] : *wbCache)
-              for (auto i = 0; i < cellCache->objects().size(); ++i)
-                out.append(py::wstr(_cache.writeKey(wbName, address, i)));
+          for (auto&[key, cellCache] : _cache)
+            for (auto i = 0; i < cellCache->objects().size(); ++i)
+              out.append(py::wstr(_cache.writeKey(key, i)));
           return out;
         }
 
@@ -100,7 +99,7 @@ namespace xloil
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
-      py::object* p;
+      const py::object* p;
       if (thePythonObjCache->_cache.fetch(str, p))
       {
         obj = *p;

@@ -54,13 +54,13 @@ namespace xloil
     template<class Val>
     struct Lookup : public std::unordered_map<
       std::wstring,
-      std::shared_ptr<Val>>
+      std::unique_ptr<Val>>
     {
       // I thought this repeating of base template parameters was fixed in C++17
       // ... but what would C++ be without verbosity.
       using const_iterator = typename std::unordered_map<
         std::wstring,
-        std::shared_ptr<Val>>::const_iterator;
+        std::unique_ptr<Val>>::const_iterator;
 
       template <class T>
       _NODISCARD const_iterator search(const T& _Keyval) const
@@ -131,7 +131,7 @@ namespace xloil
         return _objects.size() - 1;
       }
 
-      bool tryFetch(size_t i, TObj*& obj)
+      bool tryFetch(size_t i, const TObj*& obj) const
       {
         if (i >= _objects.size())
           return false;
@@ -141,9 +141,7 @@ namespace xloil
     };
 
   private:
-    using WorkbookCache = detail::Lookup<CellCache>;
-
-    detail::Lookup<WorkbookCache> _cache;
+    detail::Lookup<CellCache> _cache;
     mutable std::mutex _cacheLock;
 
     size_t _calcId;
@@ -157,7 +155,6 @@ namespace xloil
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
-    
 
     void expireObjects()
     {
@@ -176,9 +173,8 @@ namespace xloil
       auto found = m.search(key);
       if (found == m.end())
       {
-        auto p = std::make_shared<V>();
-        m.insert(std::make_pair(std::wstring(key), p));
-        return *p;
+        auto it = m.emplace(std::make_pair(std::wstring(key), std::make_unique<V>()));
+        return *it.first->second;
       }
       return *found->second;
     }
@@ -188,9 +184,9 @@ namespace xloil
       const std::wstring_view& key)
     {
       auto found = m.search(key);
-      if (found == m.end())
-        return nullptr;
-      return found->second.get();
+      return found == m.end() 
+        ? nullptr 
+        : found->second.get();
     }
 
     static constexpr uint8_t PADDING = 2;
@@ -213,23 +209,18 @@ namespace xloil
 
     bool fetchIfValid(const std::wstring_view& cacheString, TObj*& obj)
     {
-      if (!checkValid(cacheString))
-        return false;
-
-      return fetch(const std::wstring_view& cacheString, TObj*& obj)
+      return !checkValid(cacheString)
+        ? false
+        : fetch(const std::wstring_view& cacheString, TObj*& obj)
     }
 
-    bool fetch(const std::wstring_view& cacheString, TObj*& obj)
+    bool fetch(const std::wstring_view& key, const TObj*& obj)
     {
-      size_t iResult;
-      std::wstring_view sheetRef;
-      auto* wbCache = fetchWbCache(cacheString, sheetRef, iResult);
-      if (!wbCache)
-        return false;
+      const auto iResult = readCount(key[key.size() - 1]);
+      const auto cacheKey = key.substr(0, key.size() - PADDING);
 
       std::scoped_lock lock(_cacheLock);
- 
-      auto* cellCache = find(*wbCache, sheetRef);
+      const auto* cellCache = find(_cache, cacheKey);
       if (!cellCache)
         return false;
 
@@ -240,44 +231,34 @@ namespace xloil
     {
       CallerInfo callerInfo;
       
-      auto key = caller
+      auto fullKey = caller
         ? detail::writeCacheId(caller, PADDING)
         : detail::writeCacheId(callerInfo, PADDING);
 
-      key[0] = _uniquifier.value;
+      fullKey[0] = _uniquifier.value;
 
-      // Capture workbook name. pascalStr should have X[wbName]wsName!cellRef.
-      // Search backwards because wbName may contain ']'
-      const auto lastBracket = key.rfind(L']');
-      if (lastBracket == PString<>::npos)
-        XLO_THROW("ObjectCache::add: caller must be worksheet address");
-      const auto wbName = std::wstring_view(key.pstr() + 2, lastBracket - 2);
-
-      // Capture sheet ref, i.e. wsName!cellRef
-      // Can use wcslen here because of the null padding
-      const auto wsStart = key.begin() + lastBracket + 1;
-      const auto wsRef = std::wstring_view(wsStart, key.end() - PADDING - wsStart);
+      auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
 
       std::vector<TObj> staleObjects;
       uint8_t iPos = 0;
       {
         std::scoped_lock lock(_cacheLock);
 
-        auto& cellCache = fetchOrAddCell(wbName, wsRef);
+        auto& cellCache = findOrAdd(_cache, cacheKey);
         iPos = (uint8_t)addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
       }
 
-      writeCount(key.end() - PADDING, iPos);
+      writeCount(fullKey.end() - PADDING, iPos);
 
       if constexpr (TReverseLookup)
       {
         std::scoped_lock lock(_reverseLookupLock);
         for (auto& x : staleObjects)
           _reverseLookup.erase(x);
-        _reverseLookup.insert(std::make_pair(obj, key.string()));
+        _reverseLookup.insert(std::make_pair(obj, fullKey.string()));
       }
 
-      return ExcelObj(std::move(key));
+      return ExcelObj(std::move(fullKey));
     }
 
     /// <summary>
@@ -288,37 +269,37 @@ namespace xloil
     /// </summary>
     /// <param name="cacheRef">cache reference to remove</param>
     /// <returns>true if removal succeeded, otherwise false</returns>
-    bool remove(const std::wstring_view& cacheRef)
+    bool remove(const std::wstring_view& key)
     {
-      size_t iResult;
-      std::wstring_view sheetRef;
-      auto* wbCache = fetchWbCache(cacheRef, sheetRef, iResult);
-      if (!wbCache)
-        return false;
+      auto cacheKey = key.substr(0, key.length() - PADDING);
 
       std::scoped_lock lock(_cacheLock);
-
-      auto found = wbCache->search(sheetRef);
-      if (found == wbCache->end())
+      auto found = _cache.search(cacheKey);
+      if (found == _cache.end())
         return false;
-      wbCache->erase(found);
+      _cache.erase(found);
       return true;
     }
 
     void onWorkbookClose(const wchar_t* wbName)
     {
       // Called by Excel Event so will always be synchonised
-      if constexpr (TReverseLookup)
-      {
-        auto found = _cache.find(wbName);
-        if (found != _cache.end())
+      const auto len = wcslen(wbName);
+      auto i = _cache.begin();
+      while (i != _cache.end()) {
+        // Key looks like [WbName]BlahBlah - check for match
+        if (wcsncmp(wbName, i->first.c_str() + 1, len) == 0)
         {
-          for (auto& cell : *found->second)
-            for (auto& obj : cell.second->objects)
+          if constexpr (TReverseLookup)
+          {
+            for (auto& obj : i->second->objects)
               _reverseLookup.erase(obj);
+          }
+          i = _cache.erase(i);
         }
+        else
+          ++i;
       }
-      _cache.erase(wbName);
     }
 
     auto begin() const
@@ -332,62 +313,26 @@ namespace xloil
     }
 
     std::wstring writeKey(
-      const std::wstring_view& workbook,
-      const std::wstring_view& address,
+      const std::wstring_view& cacheKey,
       size_t count) const
     {
-      const auto wbLength = workbook.length();
-      const auto addrLength = address.length();
+      const auto keyLen = cacheKey.length();
       std::wstring key;
-      key.resize(wbLength + addrLength + PADDING + 3);
-      key[0] = _uniquifier.value;
-      key[1] = L'[';
-      key.replace(2, wbLength, workbook);
-      key[wbLength + 2] = L']';
-      key.replace(wbLength + 3, addrLength, address);
-      writeCount(key.data(), count);
+      key.resize(keyLen + PADDING);
+      key.replace(0, keyLen, cacheKey);
+      writeCount(key.data() + keyLen, count);
       return key;
     }
 
     bool checkValid(const std::wstring_view& cacheString)
     {
-      return (cacheString.size() > 4
+      return cacheString.size() > 4
         && cacheString[0] == _uniquifier.value
-        && cacheString[1] == L'[');
+        && cacheString[1] == L'['
+        && cacheString[cacheString.length() - PADDING] == L',';
     }
 
   private:
-    CellCache& fetchOrAddCell(
-      const std::wstring_view& wbName, const std::wstring_view& wsRef)
-    {
-      auto& wbCache = findOrAdd(_cache, wbName);
-      return findOrAdd(wbCache, wsRef);
-    }
-
-    WorkbookCache* fetchWbCache(
-      const std::wstring_view& cacheString,
-      std::wstring_view& sheetRef,
-      size_t& iResult)
-    {
-      constexpr auto npos = std::wstring_view::npos;
-
-      const auto comma = cacheString.size() - 2;
-      if (cacheString[comma] != L',')
-        return nullptr;
-
-      const auto firstBracket = 1;
-      const auto lastBracket = cacheString.find_last_of(']');
-      if (lastBracket == npos)
-        return nullptr;
-
-      auto workbook = cacheString.substr(firstBracket + 1, lastBracket - firstBracket - 1);
-      sheetRef = cacheString.substr(lastBracket + 1, comma - lastBracket - 1);
-
-      iResult = readCount(cacheString[comma + 1]);
-
-      std::scoped_lock lock(_cacheLock);
-      return find(_cache, workbook);
-    }
 
     size_t readCount(wchar_t count) const
     {
@@ -431,7 +376,7 @@ namespace xloil
     if (!ObjectCacheFactory<std::unique_ptr<const T>>::cache().checkValid(key))
       return nullptr;
 
-    std::unique_ptr<const T>* obj = nullptr;
+    const std::unique_ptr<const T>* obj = nullptr;
     auto ret = ObjectCacheFactory<std::unique_ptr<const T>>::cache().fetch(key, obj);
     return ret ? obj->get() : nullptr;
   }
