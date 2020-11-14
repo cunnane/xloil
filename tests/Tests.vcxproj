@@ -74,6 +74,7 @@
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="CodePageConversion.cpp" />
     <ClCompile Include="PString.cpp" />
+    <ClCompile Include="TestCache.cpp" />
     <ClCompile Include="TestExcelObj.cpp" />
     <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestThunker.cpp" />
@@ -91,6 +92,9 @@
     <ProjectReference Include="..\src\xlOil\xlOil.vcxproj">
       <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PreviousCache.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

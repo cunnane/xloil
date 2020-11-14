@@ -54,8 +54,8 @@ namespace xloil
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
           const auto cacheKey = _cache.add(py::object(obj), tag 
-              ? (wstring(L"[/Py/]") + tag).c_str()
-              : nullptr);
+              ? CallerInfo(ExcelObj(tag))
+              : CallerInfo());
           return PySteal(detail::PyFromString()(cacheKey.asPascalStr()));
         }
         py::object get(const std::wstring_view& str)
@@ -64,27 +64,23 @@ namespace xloil
           if (xlObj)
             return PySteal(PyFromAny()(*xlObj));
 
-          const py::object* obj = nullptr;
-          if (_cache.fetch(str, obj))
-            return *obj;
-          else
-            return py::none(); // TODO: More pythonic to throw?
+          auto* obj = _cache.fetch(str);
+          return obj ? *obj : py::none(); // TODO: More pythonic to throw?
         }
         bool remove(const std::wstring& cacheRef)
         {
-          return _cache.remove(cacheRef);
+          return _cache.erase(cacheRef);
         }
         bool contains(const std::wstring_view& str)
         {
-          const py::object* obj;
-          return _cache.fetch(str, obj);
+          return _cache.fetch(str);
         }
 
         py::list keys() const
         {
           py::list out;
           for (auto&[key, cellCache] : _cache)
-            for (auto i = 0; i < cellCache->objects().size(); ++i)
+            for (auto i = 0; i < cellCache.count(); ++i)
               out.append(py::wstr(_cache.writeKey(key, i)));
           return out;
         }
@@ -95,17 +91,16 @@ namespace xloil
     }
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
     {
-      return thePythonObjCache->_cache.add(py::object(obj), caller);
+      return thePythonObjCache->_cache.add(py::object(obj), caller 
+        ? CallerInfo(ExcelObj(caller))
+        : CallerInfo());
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
-      const py::object* p;
-      if (thePythonObjCache->_cache.fetch(str, p))
-      {
+      const auto* p = thePythonObjCache->_cache.fetch(str);
+      if (p)
         obj = *p;
-        return true;
-      }
-      return false;
+      return p;
     }
 
     namespace

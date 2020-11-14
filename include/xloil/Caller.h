@@ -6,7 +6,6 @@
 #include <memory>
 #include <string>
 
-namespace xloil { class ExcelObj; }
 namespace xloil
 {
   /// <summary>
@@ -22,10 +21,22 @@ namespace xloil
 
   public:
     /// <summary>
-    /// Constructs the object and makes calls to xlfCaller and xlfSheetName to
+    /// Constructor which makes calls to xlfCaller and xlfSheetName to
     /// determine the caller.
     /// </summary>
     CallerInfo();
+
+    /// <summary>
+    /// Provide custom caller information. The <paramref name="address"/> is
+    /// interpreted as per the return from xlfCaller.  In particular, a string
+    /// address will be returned by <see cref="writeAddress"/> unmodified. The 
+    /// <paramref name="fullSheetName"/> is prepended when the address is of type
+    /// ref or sref.
+    /// </summary>
+    /// <param name="address"></param>
+    /// <param name="fullSheetName"></param>
+    CallerInfo(const ExcelObj& address, const wchar_t* fullSheetName=nullptr);
+
     /// <summary>
     /// Returns the upper bound on the string length required to write the
     /// caller as an RC style reference

@@ -39,37 +39,76 @@ namespace xloil
       return pascalStr;
     }
 
-    inline PString<> writeCacheId(const wchar_t* caller, wchar_t padding)
-    {
-      const auto lenCaller = (wchar_t)std::min<size_t>(
-        wcslen(caller), UINT16_MAX - padding - 1);
-      PString<> pascalStr(lenCaller + padding + 1);
-      pascalStr.replace(1, lenCaller, caller);
-      return pascalStr;
-    }
-
     // We need to explicitly define our own hash and compare so we can lookup
     // string_view objects without first writing them to string. If that sounds
     // like premature optimisation, it's because it is!
     template<class Val>
-    struct Lookup : public std::unordered_map<
-      std::wstring,
-      std::unique_ptr<Val>>
+    struct Lookup : public std::unordered_map<std::wstring, Val>
     {
-      // I thought this repeating of base template parameters was fixed in C++17
-      // ... but what would C++ be without verbosity.
-      using const_iterator = typename std::unordered_map<
-        std::wstring,
-        std::unique_ptr<Val>>::const_iterator;
+      using base = typename std::unordered_map<std::wstring, Val>;
 
       template <class T>
-      _NODISCARD const_iterator search(const T& _Keyval) const
+      _NODISCARD typename base::const_iterator search(const T& _Keyval) const
       {
         size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
         for (_Unchecked_const_iterator _Where = _Begin(_Bucket); _Where != _End(_Bucket); ++_Where)
           if (_Where->first == _Keyval)
               return _Make_iter(_Where);
         return (end());
+      }
+      template <class T>
+      _NODISCARD typename base::iterator search(const T& _Keyval)
+      {
+        return _Make_iter(const_cast<const Lookup*>(this)->search(_Keyval));
+      }
+    };
+
+    template<typename TObj>
+    class CellCache
+    {
+    private:
+      size_t _calcId;
+      std::vector<TObj> _objects;
+      TObj _obj;
+
+    public:
+      CellCache(TObj&& obj) 
+        : _calcId(0)
+        , _obj(std::move(obj))
+      {}
+
+      void getStaleObjects(size_t calcId, std::vector<TObj>& stale)
+      {
+        if (_calcId != calcId)
+        {
+          _objects.swap(stale);
+          stale.emplace_back(std::move(_obj));
+        }
+      }
+
+      size_t count() const { return _objects.size() + 1; }
+
+      size_t add(TObj&& obj, size_t calcId)
+      {
+        if (_calcId != calcId)
+        {
+          std::swap(_obj, obj);
+          _calcId = calcId;
+          _objects.clear();
+        }
+        else
+          _objects.emplace_back(std::forward<TObj>(obj));
+        return _objects.size();
+      }
+
+      const TObj* fetch(size_t i) const
+      {
+        if (i == 0)
+          return &_obj;
+        else if (i <= _objects.size())
+          return &_objects[i - 1];
+        else
+          return nullptr;
       }
     };
   }
@@ -102,91 +141,27 @@ namespace xloil
   {
   private:
     typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
-    class CellCache
-    {
-    private:
-      size_t _calcId;
-      std::vector<TObj> _objects;
+    typedef detail::CellCache<TObj> CellCache;
 
-    public:
-      CellCache() : _calcId(0) {}
-
-      const std::vector<TObj>& objects() const
-      {
-        return _objects;
-      }
-
-      void getStaleObjects(size_t calcId, std::vector<TObj>& stale)
-      {
-        if (_calcId != calcId)
-        {
-          _calcId = calcId;
-          _objects.swap(stale);
-        }
-      }
-
-      size_t add(TObj&& obj)
-      {
-        _objects.emplace_back(std::forward<TObj>(obj));
-        return _objects.size() - 1;
-      }
-
-      bool tryFetch(size_t i, const TObj*& obj) const
-      {
-        if (i >= _objects.size())
-          return false;
-        obj = &_objects[i];
-        return true;
-      }
-    };
-
-  private:
     detail::Lookup<CellCache> _cache;
     mutable std::mutex _cacheLock;
 
     size_t _calcId;
 
-    typename std::conditional<TReverseLookup, 
-      std::unordered_map<TObj, std::wstring>,
-      char>::type _reverseLookup;
-    typename std::conditional<TReverseLookup,
-      std::mutex, 
-      char>::type _reverseLookupLock;
+    struct Reverse
+    {
+      std::unordered_map<const TObj*, std::wstring> map;
+      mutable std::mutex lock;
+    };
+    typename std::conditional<TReverseLookup, Reverse, char>::type _reverseLookup;
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
 
-    void expireObjects()
+    void onAfterCalculate()
     {
       // Called by Excel event so will always be synchonised
       ++_calcId; // Wraps at MAX_UINT - but this doesn't matter
-    }
-
-    size_t addToCell(TObj&& obj, CellCache& cacheVal, std::vector<TObj>& staleObjects)
-    {
-      cacheVal.getStaleObjects(_calcId, staleObjects);
-      return cacheVal.add(std::forward<TObj>(obj));
-    }
-
-    template<class V> V& findOrAdd(detail::Lookup<V>& m, const std::wstring_view& key)
-    {
-      auto found = m.search(key);
-      if (found == m.end())
-      {
-        auto it = m.emplace(std::make_pair(std::wstring(key), std::make_unique<V>()));
-        return *it.first->second;
-      }
-      return *found->second;
-    }
-
-    template<class V> V* find(
-      detail::Lookup<V>& m, 
-      const std::wstring_view& key)
-    {
-      auto found = m.search(key);
-      return found == m.end() 
-        ? nullptr 
-        : found->second.get();
     }
 
     static constexpr uint8_t PADDING = 2;
@@ -200,62 +175,71 @@ namespace xloil
       using namespace std::placeholders;
 
       _calcEndHandler = std::static_pointer_cast<const void>(
-        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::expireObjects), this)));
+        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::onAfterCalculate), this)));
       
       if (reapOnWorkbookClose)
         _workbookCloseHandler = std::static_pointer_cast<const void>(
           xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
     }
 
-    bool fetchIfValid(const std::wstring_view& cacheString, TObj*& obj)
+    const TObj* fetchValid(const std::wstring_view& cacheString, TObj*& obj)
     {
-      return !checkValid(cacheString)
-        ? false
+      return !valid(cacheString)
+        ? nullptr
         : fetch(const std::wstring_view& cacheString, TObj*& obj)
     }
 
-    bool fetch(const std::wstring_view& key, const TObj*& obj)
+    const TObj* fetch(const std::wstring_view& key) const
     {
       const auto iResult = readCount(key[key.size() - 1]);
       const auto cacheKey = key.substr(0, key.size() - PADDING);
-
+      
       std::scoped_lock lock(_cacheLock);
-      const auto* cellCache = find(_cache, cacheKey);
-      if (!cellCache)
-        return false;
+      const auto found = _cache.search(cacheKey);
 
-      return cellCache->tryFetch(iResult, obj);
+      return found == _cache.end()
+        ? nullptr
+        : found->second.fetch(iResult);
     }
 
-    ExcelObj add(TObj&& obj, const wchar_t* caller = nullptr)
+    ExcelObj add(TObj&& obj, const CallerInfo& caller = CallerInfo())
     {
-      CallerInfo callerInfo;
-      
-      auto fullKey = caller
-        ? detail::writeCacheId(caller, PADDING)
-        : detail::writeCacheId(callerInfo, PADDING);
-
+      auto fullKey = detail::writeCacheId(caller, PADDING);
       fullKey[0] = _uniquifier.value;
 
       auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
 
+      // These are only used for TReverseLookup
       std::vector<TObj> staleObjects;
+      decltype(_cache)::iterator found;
+
       uint8_t iPos = 0;
       {
         std::scoped_lock lock(_cacheLock);
 
-        auto& cellCache = findOrAdd(_cache, cacheKey);
-        iPos = (uint8_t)addToCell(std::forward<TObj>(obj), cellCache, staleObjects);
+        found = _cache.search(cacheKey);
+        if (found == _cache.end())
+          found = _cache.emplace(
+            std::make_pair(
+              std::wstring(cacheKey), CellCache(std::forward<TObj>(obj)))).first;
+        else
+        {
+          if constexpr (TReverseLookup)
+            found->second.getStaleObjects(_calcId, staleObjects);
+          iPos = (uint8_t)found->second.add(std::forward<TObj>(obj), _calcId);
+        }      
       }
 
       writeCount(fullKey.end() - PADDING, iPos);
 
       if constexpr (TReverseLookup)
       {
-        std::scoped_lock lock(_reverseLookupLock);
+        std::scoped_lock lock(_reverseLookup.lock);
         for (auto& x : staleObjects)
-          _reverseLookup.erase(x);
-        _reverseLookup.insert(std::make_pair(obj, fullKey.string()));
+          _reverseLookup.map.erase(&x);
+        _reverseLookup.map.insert(std::make_pair(
+          found->second.fetch(iPos), 
+          fullKey.string()));
       }
 
       return ExcelObj(std::move(fullKey));
@@ -269,7 +253,7 @@ namespace xloil
     /// </summary>
     /// <param name="cacheRef">cache reference to remove</param>
     /// <returns>true if removal succeeded, otherwise false</returns>
-    bool remove(const std::wstring_view& key)
+    bool erase(const std::wstring_view& key)
     {
       auto cacheKey = key.substr(0, key.length() - PADDING);
 
@@ -280,20 +264,22 @@ namespace xloil
       _cache.erase(found);
       return true;
     }
-
+    
     void onWorkbookClose(const wchar_t* wbName)
     {
       // Called by Excel Event so will always be synchonised
       const auto len = wcslen(wbName);
       auto i = _cache.begin();
-      while (i != _cache.end()) {
+      while (i != _cache.end()) 
+      {
         // Key looks like [WbName]BlahBlah - check for match
         if (wcsncmp(wbName, i->first.c_str() + 1, len) == 0)
         {
           if constexpr (TReverseLookup)
           {
-            for (auto& obj : i->second->objects)
-              _reverseLookup.erase(obj);
+            auto& cellCache = i->second;
+            for (auto k = 0; k < cellCache.count(); ++k)
+              _reverseLookup.map.erase(cellCache.fetch(k));
           }
           i = _cache.erase(i);
         }
@@ -316,20 +302,30 @@ namespace xloil
       const std::wstring_view& cacheKey,
       size_t count) const
     {
-      const auto keyLen = cacheKey.length();
       std::wstring key;
-      key.resize(keyLen + PADDING);
-      key.replace(0, keyLen, cacheKey);
-      writeCount(key.data() + keyLen, count);
+      key.resize(cacheKey.length() + PADDING);
+      key = cacheKey;
+      writeCount(key.data() + cacheKey.length(), count);
       return key;
     }
 
-    bool checkValid(const std::wstring_view& cacheString)
+    bool valid(const std::wstring_view& cacheString)
     {
       return cacheString.size() > 4
         && cacheString[0] == _uniquifier.value
         && cacheString[1] == L'['
         && cacheString[cacheString.length() - PADDING] == L',';
+    }
+
+    template<bool B = TReverseLookup>
+    std::enable_if_t<B, const std::wstring*>
+      findKey(const TObj* obj) const
+    {
+      if constexpr (TReverseLookup)
+      {
+        auto found = _reverseLookup.map.find(obj);
+        return found == _reverseLookup.map.end() ? nullptr : &found->second;
+      }
     }
 
   private:
@@ -373,11 +369,10 @@ namespace xloil
   template<typename T>
   inline const T* get_cached(const std::wstring_view& key)
   {
-    if (!ObjectCacheFactory<std::unique_ptr<const T>>::cache().checkValid(key))
+    if (!ObjectCacheFactory<std::unique_ptr<const T>>::cache().valid(key))
       return nullptr;
 
-    const std::unique_ptr<const T>* obj = nullptr;
-    auto ret = ObjectCacheFactory<std::unique_ptr<const T>>::cache().fetch(key, obj);
-    return ret ? obj->get() : nullptr;
+    const auto* found = ObjectCacheFactory<std::unique_ptr<const T>>::cache().fetch(key);
+    return found ? found->get() : nullptr;
   }
 }

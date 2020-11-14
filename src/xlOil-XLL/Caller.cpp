@@ -1,8 +1,9 @@
 #include <xloil/Caller.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
-#include <xloil/Loaders/EntryPoint.h>
+#include <xloil/ExcelArray.h>
 #include <xlOil/WindowsSlim.h>
+#include <xlOil/XlCallSlim.h>
 #include <xlOilHelpers/Environment.h>
 #include <array>
 
@@ -115,7 +116,13 @@ namespace xloil
     if (_address.isType(ExcelType::RangeRef))
       callExcelRaw(xlSheetNm, &_fullSheetName, &_address);
   }
-
+  CallerInfo::CallerInfo(
+    const ExcelObj& address, const wchar_t* fullSheetName)
+    : _address(address)
+  {
+    if (fullSheetName)
+      _fullSheetName = fullSheetName;
+  }
   uint16_t CallerInfo::addressRCLength() const
   {
     // Any value in more precise guess?
@@ -130,51 +137,86 @@ namespace xloil
       return N - 1;
     }
   }
+  namespace
+  {
+    uint16_t writeSheetRef(
+      wchar_t* buf,
+      size_t bufLen,
+      const msxll::XLREF12& sheetRef, 
+      const PString<>& sheetName,
+      const bool A1Style)
+    {
+      uint16_t nWritten = 0;
+      const auto wsName = sheetName.pstr();
+      const auto wsLength = sheetName.length();
+      if (wsLength > 0)
+      {
+        if (bufLen <= wsLength + 1)
+          return 0;
+        wmemcpy(buf, wsName, wsLength);
+        buf += wsLength;
+        // Separator character
+        *(buf++) = L'!';
+
+        nWritten += wsLength + 1;
+        bufLen -= nWritten;
+      }
+
+      nWritten += A1Style
+        ? xlrefToLocalA1(sheetRef, buf, bufLen)
+        : xlrefToLocalRC(sheetRef, buf, bufLen);
+
+      return nWritten;
+    }
+  }
   uint16_t CallerInfo::writeAddress(
     wchar_t* buf, 
     size_t bufLen,
     bool A1Style) const
   {
-    // TODO: handle other caller cases?
     const msxll::XLREF12* sheetRef = nullptr;
     switch (_address.type())
     {
     case ExcelType::SRef:
-      sheetRef = &_address.val.sref.ref;
-      break;
+    {
+      return writeSheetRef(buf, bufLen, _address.val.sref.ref,
+        _fullSheetName.asPascalStr(), A1Style);
+    }
     case ExcelType::Ref:
-      sheetRef = &_address.val.mref.lpmref->reftbl[0];
-      break;
-    default: // Not a worksheet caller - return here
-      constexpr wchar_t nonWorksheetCaller[] = L"[:None:]None";
+    {
+      return writeSheetRef(buf, bufLen, _address.val.mref.lpmref->reftbl[0],
+        _fullSheetName.asPascalStr(), A1Style);
+    }
+    case ExcelType::Str: // Graphic object or Auto_XXX macro caller
+    {
+      auto str = _address.asPascalStr();
+      wcsncpy_s(buf, bufLen, str.pstr(), str.length());
+      return wcslen(buf);
+    }
+    case ExcelType::Num: // DLL caller
+    {
+      return _snwprintf_s(buf, bufLen, bufLen, L"DLL(%d)", _address.asInt());
+    }
+    case ExcelType::Multi:
+    {
+      ExcelArray arr(_address, false);
+      switch (arr.size())
+      {
+      case 2:
+        return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).asInt());
+      case 4:
+        return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).asInt());
+      default:
+        XLO_THROW("Caller: address is badly formed array");
+      }
+    }
+    default: // Other callers
+      constexpr wchar_t nonWorksheetCaller[] = L"Unknown";
       if (bufLen < _countof(nonWorksheetCaller))
         return 0;
       wcscpy_s(buf, bufLen, nonWorksheetCaller);
       return _countof(nonWorksheetCaller);
     }
-
-    const auto wsName = fullSheetName();
-    const auto wsLength = wsName.length();
-    uint16_t nWritten = 0;
-
-    if (wsLength > 0)
-    {
-      if (bufLen <= wsLength + 1)
-        return 0;
-      wmemcpy(buf, wsName.pstr(), wsLength);
-      buf += wsLength;
-      // Separator character
-      *(buf++) = L'!';
-
-      nWritten += wsLength + 1;
-      bufLen -= nWritten;
-    }
-
-    nWritten += A1Style
-      ? xlrefToLocalA1(*sheetRef, buf, bufLen)
-      : xlrefToLocalRC(*sheetRef, buf, bufLen);
-
-    return nWritten;
   }
 
   std::wstring CallerInfo::writeAddress(bool A1Style) const
@@ -271,20 +313,7 @@ namespace xloil
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    const auto wsName = sheetNm.asPascalStr();
-    const auto wsLength = wsName.length();
-    assert(bufSize > wsLength);
-    wmemcpy(buf, wsName.pstr(), wsLength);
-    buf += wsLength;
-
-    // Separator character
-    *(buf++) = L'!';
-
-    auto addressLen = A1Style
-      ? xlrefToLocalA1(ref, buf, bufSize - wsLength - 1)
-      : xlrefToLocalRC(ref, buf, bufSize - wsLength - 1);
-
-    return addressLen + wsLength + 1;
+    return writeSheetRef(buf, bufSize, ref, sheetNm.asPascalStr(), A1Style);
   }
 
   XLOIL_EXPORT std::wstring xlrefSheetAddress(

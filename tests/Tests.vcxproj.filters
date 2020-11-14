@@ -9,5 +9,9 @@
     <ClCompile Include="TestExcelObj.cpp" />
     <ClCompile Include="TestThunker.cpp" />
     <ClCompile Include="TestRange.cpp" />
+    <ClCompile Include="TestCache.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="PreviousCache.h" />
   </ItemGroup>
 </Project>
