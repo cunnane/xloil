@@ -220,7 +220,7 @@ namespace xloil
         auto wmsg = utf8ToUtf16(msg);
 
         // Fix any unix line endings (e.g. from python)
-        size_t pos = -1;
+        auto pos = (size_t) -1;
         while ((pos = wmsg.find(L'\n', pos + 1)) != string::npos)
         {
           if (wmsg[pos - 1] != L'\r')

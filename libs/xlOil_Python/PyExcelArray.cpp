@@ -99,7 +99,9 @@ namespace xloil
           ? operator()(fromRow, fromCol)
           : py::cast<PyExcelArray>(
               PyExcelArray(*this, 
-              ExcelArray(_base, (ExcelObj::row_t)fromRow, fromCol, (ExcelObj::row_t)toRow, toCol)));
+              ExcelArray(_base, 
+                (ExcelObj::row_t)fromRow, (ExcelObj::col_t)fromCol,
+                (ExcelObj::row_t)toRow,   (ExcelObj::col_t)toCol)));
       }
     }
 
