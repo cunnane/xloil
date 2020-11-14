@@ -1,6 +1,6 @@
 #pragma once
-#include "ExcelObj.h"
-#include "Throw.h"
+#include <xlOil/ExcelObj.h>
+#include <xlOil/Throw.h>
 #include <vector>
 #include <memory>
 #include <list>

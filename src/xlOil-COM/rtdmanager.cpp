@@ -10,7 +10,6 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Events.h>
 #include <xloil/Log.h>
-#include <xloil/ExcelObjCache.h>
 #include <xlOil/StringUtils.h>
 
 #include <atlbase.h>

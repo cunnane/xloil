@@ -1,6 +1,5 @@
 #pragma once
 #include <xloil/Interface.h>
-#include <xlOil/Events.h>
 
 namespace xloil
 {
