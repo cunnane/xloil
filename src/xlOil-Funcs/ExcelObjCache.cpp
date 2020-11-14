@@ -14,7 +14,7 @@ XLO_FUNC_START(
   xloRef(const ExcelObj& pxOper)
 )
 {
-  return returnValue(make_cached<ExcelObj>(pxOper));
+  return returnValue(makeCached<ExcelObj>(pxOper));
 }
 XLO_FUNC_END(xloRef).threadsafe()
   .help(L"Adds the specified value or range or array to the object cache and "
@@ -28,7 +28,7 @@ XLO_FUNC_START(
 {
   // We return a pointer to the stored object directly without setting
   // the flag which tells Excel to free it.
-  auto result = get_cached<ExcelObj>(pxOper.asPString().view());
+  auto result = getCached<ExcelObj>(pxOper.asPString().view());
   if (result)
     return returnReference(*result);
   return returnValue(CellError::Value);

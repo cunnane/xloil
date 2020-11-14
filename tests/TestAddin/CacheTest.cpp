@@ -7,7 +7,7 @@ namespace xloil
     testCacheOut(const ExcelObj& inArray)
   )
   {
-    auto key = make_cached<int>(7);
+    auto key = makeCached<int>(7);
     return returnValue(key);
   }
   XLO_FUNC_END(testCacheOut);

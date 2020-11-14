@@ -16,11 +16,11 @@ namespace xloil
     {
       if (!obj)
         return Const::Error(CellError::Value);
-      return make_cached<CacheObj>(obj.release());
+      return makeCached<CacheObj>(obj.release());
     }
     const CacheObj* cacheFetch(const std::wstring_view& key)
     {
-      return get_cached<CacheObj>(key);
+      return getCached<CacheObj>(key);
     }
   }
 }

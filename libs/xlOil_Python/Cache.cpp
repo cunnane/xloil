@@ -60,7 +60,7 @@ namespace xloil
         }
         py::object get(const std::wstring_view& str)
         {
-          const ExcelObj* xlObj = get_cached<ExcelObj>(str);
+          const ExcelObj* xlObj = getCached<ExcelObj>(str);
           if (xlObj)
             return PySteal(PyFromAny()(*xlObj));
 

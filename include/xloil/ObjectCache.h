@@ -353,21 +353,33 @@ namespace xloil
     }
   };
 
+  /// <summary>
+  /// Constructs an object of type <typeparamref name="T"/> and adds
+  /// it to a cache of identically typed objects. Returns the key
+  /// string as an <see cref="ExcelObj"/>.  Essentially a wrapper
+  /// around <code><![CDATA[cache.add(make_unique<T>(...))]]></code>.
+  /// The cache is automatically constructed if it doesn't already
+  /// exist.
+  /// </summary>
   template<typename T, typename... Args>
-  inline auto make_cached(Args&&... args)
+  inline auto makeCached(Args&&... args)
   {
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
       std::make_unique<T>(std::forward<Args>(args)...));
   }
   template<typename T>
-  inline auto make_cached(const T* ptr)
+  inline auto makeCached(const T* ptr)
   {
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
       std::unique_ptr<const T>(ptr));
   }
 
+  /// <summary>
+  /// Retrieves an object of type <typeparamref name="T"/> given its key.
+  /// Returns nullptr if not found.
+  /// </summary>
   template<typename T>
-  inline const T* get_cached(const std::wstring_view& key)
+  inline const T* getCached(const std::wstring_view& key)
   {
     if (!ObjectCacheFactory<std::unique_ptr<const T>>::cache().valid(key))
       return nullptr;
