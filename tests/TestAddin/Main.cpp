@@ -1,6 +1,6 @@
 #include <xloil/Ribbon.h>
 #include <xloil/Log.h>
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/Async.h>
 

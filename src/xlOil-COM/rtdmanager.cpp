@@ -2,7 +2,7 @@
 #include "ComVariant.h"
 #include "ClassFactory.h"
 
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>
@@ -398,7 +398,7 @@ namespace xloil
         // only callback RefreshData approximately every 2 seconds
         if (_newValues.size() == 1)
         {
-          excelApiCall([this]()
+          excelPost([this]()
           {
             if (isServerRunning())
               (*_updateCallback).raw_UpdateNotify();

@@ -7,7 +7,7 @@
 #include <xloil/FuncSpec.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
-#include <xlOil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <vector>
 #include <memory>
 

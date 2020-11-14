@@ -10,7 +10,7 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/State.h>
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <filesystem>

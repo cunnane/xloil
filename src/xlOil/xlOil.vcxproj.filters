@@ -115,9 +115,6 @@
     <ClInclude Include="..\..\include\xloil\Ribbon.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ApiCall.h">
-      <Filter>Include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\xloil\Plugin.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -125,6 +122,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\DynamicRegister.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelApp.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

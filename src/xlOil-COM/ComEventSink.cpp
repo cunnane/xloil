@@ -4,7 +4,7 @@
 #include "ComRange.h"
 #include "XllContextInvoke.h"
 #include <xlOil/Events.h>
-#include <xlOil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <set>
 
 using std::set;
@@ -197,7 +197,7 @@ namespace xloil
           // Wait 2s, then check if the workbook was actually closed. If the 
           // user still has the save/close dialog open, the COM call will fail
           // so we retry 10 times every two seconds.
-          excelApiCall([]() { WorkbookMonitor::check(); }, QueueType::WINDOW, 10, 2000, 2000);
+          excelPost([]() { WorkbookMonitor::check(); }, QueueType::WINDOW, 10, 2000, 2000);
         }
       }
       void WorkbookBeforeSave(
@@ -246,7 +246,7 @@ namespace xloil
         _enableAfterCalculate = true;
       }
 
-      STDMETHOD(Invoke)(DISPID dispidMember, REFIID riid,
+      STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
         EXCEPINFO* /*pexcepinfo*/, UINT* /*puArgErr*/)
       {
@@ -353,18 +353,18 @@ namespace xloil
         return E_NOINTERFACE;
       }
 
-      STDMETHOD(GetTypeInfoCount)(UINT* pctinfo)
+      STDMETHOD(GetTypeInfoCount)(UINT* /*pctinfo*/)
       {
         return E_NOTIMPL;
       }
 
-      STDMETHOD(GetTypeInfo)(UINT itinfo, LCID lcid, ITypeInfo** pptinfo)
+      STDMETHOD(GetTypeInfo)(UINT /*itinfo*/, LCID /*lcid*/, ITypeInfo** /*pptinfo*/)
       {
         return E_NOTIMPL;
       }
 
-      STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR* rgszNames, UINT cNames,
-        LCID lcid, DISPID* rgdispid)
+      STDMETHOD(GetIDsOfNames)(REFIID /*riid*/, LPOLESTR* /*rgszNames*/, 
+        UINT /*cNames*/, LCID /*lcid*/, DISPID* /*rgdispid*/)
       {
         return E_NOTIMPL;
       }

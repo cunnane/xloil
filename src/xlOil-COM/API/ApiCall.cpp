@@ -1,5 +1,5 @@
 #pragma once
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Loaders/EntryPoint.h>
 #include <xlOil-COM/XllContextInvoke.h>
@@ -232,7 +232,7 @@ namespace xloil
     return State::excelState().mainThreadId == GetCurrentThreadId();
   }
 
-  std::future<void> excelApiCall(
+  std::future<void> excelPost(
     const std::function<void()>& func, 
     int flags, 
     int nRetries, 
@@ -272,11 +272,11 @@ namespace xloil
       try
       {
         COM::connectCom();
-        excelApiCall(func, QueueType::XLL_API);
+        excelPost(func, QueueType::XLL_API);
       }
       catch (const COM::ComConnectException&)
       {
-        excelApiCall(
+        excelPost(
           RetryAtStartup{ func },
           QueueType::WINDOW | QueueType::ENQUEUE,
           0, // no retry
@@ -294,6 +294,6 @@ namespace xloil
 
   void xllOpenComCall(const std::function<void()>& func)
   {
-    excelApiCall(RetryAtStartup{ func }, QueueType::ENQUEUE);
+    excelPost(RetryAtStartup{ func }, QueueType::ENQUEUE);
   }
 }

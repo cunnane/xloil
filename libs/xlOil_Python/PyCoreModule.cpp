@@ -2,7 +2,7 @@
 #include "PyHelpers.h"
 #include "PyExcelArray.h"
 #include "BasicTypes.h"
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
 #include <xloil/State.h>
@@ -69,7 +69,7 @@ namespace xloil {
 
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
-        excelApiCall([callable]()
+        excelPost([callable]()
           {
             py::gil_scoped_acquire getGil;
             callable.call();

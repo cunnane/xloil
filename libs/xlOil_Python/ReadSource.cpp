@@ -6,7 +6,7 @@
 #include "Main.h"
 
 #include <xloil/Log.h>
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;

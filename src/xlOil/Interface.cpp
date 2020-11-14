@@ -5,7 +5,7 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
-#include <xlOil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <xlOil-COM/Connect.h>
@@ -43,7 +43,7 @@ namespace xloil
 
   FileSource::~FileSource()
   {
-    excelApiCall([this]()
+    excelPost([this]()
     {
       XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
       forgetLocalFunctions(_workbookName.c_str());
@@ -56,7 +56,7 @@ namespace xloil
   void FileSource::registerFuncs(
     const std::vector<std::shared_ptr<const FuncSpec> >& funcSpecs)
   {
-    excelApiCall([specs = funcSpecs, self = this]() mutable
+    excelPost([specs = funcSpecs, self = this]() mutable
     {
       decltype(self->_functions) newFuncs;
 
@@ -124,7 +124,7 @@ namespace xloil
     auto iFunc = _functions.find(name);
     if (iFunc != _functions.end())
     {
-      excelApiCall([iFunc, self = this]()
+      excelPost([iFunc, self = this]()
       {
         if (xloil::deregisterFunc(iFunc->second))
           self->_functions.erase(iFunc);
@@ -140,7 +140,7 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    excelApiCall([=, self = this]()
+    excelPost([=, self = this]()
     {
       xloil::registerLocalFuncs(self->_workbookName.c_str(), funcInfo, funcs);
     });

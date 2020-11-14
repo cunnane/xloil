@@ -12,7 +12,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
 #include <xloil/RtdServer.h>
-#include <xloil/ApiCall.h>
+#include <xlOil/ExcelApp.h>
 #include <pybind11/stl.h>
 
 #include <map>
@@ -237,7 +237,7 @@ namespace xloil
         if (_wcsicmp(fileName, sourceName()) != 0)
           return;
         
-        excelApiCall([
+        excelPost([
             this,
             dirStr = wstring(dirName),
             fileStr = wstring(fileName),

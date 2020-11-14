@@ -60,7 +60,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\xloil\ApiCall.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelApp.h" />
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
     <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />

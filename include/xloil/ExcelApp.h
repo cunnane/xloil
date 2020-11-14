@@ -8,6 +8,9 @@ namespace Excel { struct _Application; }
 
 namespace xloil
 {
+  /// <summary>
+  /// Gets the Excel.Application object which is the root of the COM API 
+  /// </summary>
   XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
 
   /// <summary>
@@ -37,7 +40,7 @@ namespace xloil
   /// Excel will sometimes reject COM calls with the error VBA_E_IGNORE. This is
   /// against standard COM practice, but the COM interface, unlike the GUI,
   /// has been abandoned and does not receive updates. xlOil with throw the
-  /// ComBusyException in this case. Use of <see cref="excelApiCall"> catches
+  /// ComBusyException in this case. Use of <see cref="excelPost"> catches
   /// this exception and retries, but with sufficent failures it make be passed
   /// to the user.
   /// </summary>
@@ -66,7 +69,7 @@ namespace xloil
   /// </summary>
 
   XLOIL_EXPORT std::future<void> 
-    excelApiCall(
+    excelPost(
       const std::function<void()>& func, 
       int flags = QueueType::WINDOW, 
       int nRetries = 10, 
