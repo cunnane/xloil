@@ -67,7 +67,7 @@ namespace xloil
     /// <returns></returns>
     PStringView<> fullSheetName() const
     {
-      return _fullSheetName.asPascalStr();
+      return _fullSheetName.asPString();
     }
     /// <summary>
     /// Returns true if the function was called from a worksheet. For other

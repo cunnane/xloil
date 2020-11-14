@@ -19,7 +19,7 @@ namespace xloil
     {
       throwInFunctionWizard();
 
-      const CacheObj* dbObj = cacheFetch(database.asPascalStr());
+      const CacheObj* dbObj = cacheFetch(database.asPString());
       if (!dbObj)
         XLO_THROW("No database provided");
         

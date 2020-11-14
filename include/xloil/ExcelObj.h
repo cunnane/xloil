@@ -415,7 +415,7 @@ namespace xloil
     /// </summary>
     bool operator==(const std::wstring_view& that) const
     {
-      return asPascalStr() == that;
+      return asPString() == that;
     }
 
     /// <summary>
@@ -424,7 +424,7 @@ namespace xloil
     /// </summary>
     bool operator==(const wchar_t* that) const
     {
-      return asPascalStr() == that;
+      return asPString() == that;
     }
 
     /// <summary>
@@ -434,7 +434,7 @@ namespace xloil
     template<size_t N>
     bool operator==(const wchar_t(*that)[N]) const
     {
-      return asPascalStr() == that;
+      return asPString() == that;
     }
 
     /// <summary>
@@ -652,7 +652,7 @@ namespace xloil
     /// If the object is not of string type, the resulting view 
     /// will be empty.
     /// </summary>
-    PStringView<> asPascalStr() const
+    PStringView<> asPString() const
     {
       return PStringView<>((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
     }
@@ -664,7 +664,7 @@ namespace xloil
     /// directly.
     /// </summary>
     /// <returns></returns>
-    ExcelObj & fromExcel()
+    ExcelObj& fromExcel()
     {
       xltype |= msxll::xlbitXLFree;
       return *this;

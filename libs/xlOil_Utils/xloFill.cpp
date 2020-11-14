@@ -21,7 +21,7 @@ namespace xloil
     if (value->type() == ExcelType::Str)
     {
       auto pstr = builder.string(strLen);
-      pstr = value->asPascalStr();
+      pstr = value->asPString();
       // Rather than copy the string for each array entry, we just pass
       // the same pointer each time.
       for (auto i = 0; i < nRowsVal; ++i)

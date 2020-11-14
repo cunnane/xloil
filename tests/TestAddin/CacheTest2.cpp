@@ -7,7 +7,7 @@ namespace xloil
     testCacheIn(const ExcelObj& cacheKey)
   )
   {
-    auto val = get_cached<int>(cacheKey.asPascalStr());
+    auto val = get_cached<int>(cacheKey.asPString());
     return returnValue(*val);
   }
   XLO_FUNC_END(testCacheIn);

@@ -109,7 +109,7 @@ namespace xloil
         assert(x.isType(ExcelType::ArrayValue));
         if (x.isType(ExcelType::Str))
         {
-          auto pstr = x.asPascalStr();
+          auto pstr = x.asPString();
           copy_string(pstr.begin(), pstr.length());
         }
         else

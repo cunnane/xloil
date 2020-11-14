@@ -27,7 +27,7 @@ namespace xloil
     // Need to check that this behaviour is guaranteed....
     if (value->type() == ExcelType::Str)
     {
-      auto valueStr = value->asPascalStr();
+      auto valueStr = value->asPString();
 
       // Rather than copy the string for each array entry, we just pass
       // the same pointer each time, so the total string length is 

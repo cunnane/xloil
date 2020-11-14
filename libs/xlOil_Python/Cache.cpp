@@ -56,7 +56,7 @@ namespace xloil
           const auto cacheKey = _cache.add(py::object(obj), tag 
               ? CallerInfo(ExcelObj(tag))
               : CallerInfo());
-          return PySteal(detail::PyFromString()(cacheKey.asPascalStr()));
+          return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object get(const std::wstring_view& str)
         {

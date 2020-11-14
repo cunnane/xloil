@@ -442,7 +442,7 @@ namespace
       if (!coerce)
         return false;
       return stringToDateTime(
-        asPascalStr().view(),
+        asPString().view(),
         result, format);
     }
     default:
@@ -523,7 +523,7 @@ namespace
           case xltypeStr:
           {
             const auto len = pSrc->val.str[0];
-            arr(i, j) = pSrc->asPascalStr();
+            arr(i, j) = pSrc->asPString();
             break;
           }
           default:
@@ -645,7 +645,7 @@ namespace std
     case xltypeInt: return hash<int>()(value.val.w);
     case xltypeNum: return hash<double>()(value.val.w);
     case xltypeBool: return hash<bool>()(value.val.xbool);
-    case xltypeStr: return hash<wstring_view>()(value.asPascalStr().view());
+    case xltypeStr: return hash<wstring_view>()(value.asPString().view());
     case xltypeMissing:
     case xltypeNil: return 0;
     case xltypeErr: return hash<int>()(value.val.err);

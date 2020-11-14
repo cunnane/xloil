@@ -76,7 +76,7 @@ namespace xloil
       case ExcelType::Int: return functor(xl.val.w);
       case ExcelType::Bool: return functor(xl.val.xbool != 0);
       case ExcelType::Num: return functor(xl.val.num);
-      case ExcelType::Str: return functor(xl.asPascalStr());
+      case ExcelType::Str: return functor(xl.asPString());
       case ExcelType::Multi: return functor(ArrayVal{ xl });
       case ExcelType::Missing: return defaultVal ? *defaultVal : functor(MissingVal());
       case ExcelType::Err: return functor(CellError(xl.val.err));

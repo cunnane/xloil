@@ -28,7 +28,7 @@ XLO_FUNC_START(
 {
   // We return a pointer to the stored object directly without setting
   // the flag which tells Excel to free it.
-  auto result = get_cached<ExcelObj>(pxOper.asPascalStr().view());
+  auto result = get_cached<ExcelObj>(pxOper.asPString().view());
   if (result)
     return returnReference(*result);
   return returnValue(CellError::Value);

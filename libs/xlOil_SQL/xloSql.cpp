@@ -62,7 +62,7 @@ namespace xloil
         if (meta.isType(ExcelType::Str))
         {
          /* vector<PStringView<>> names;
-          auto pstr = meta.asPascalStr();
+          auto pstr = meta.asPString();
           const auto length = pstr.length();
 
           while (!(pstr = pstr.strtok(L",")).empty())

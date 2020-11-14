@@ -180,16 +180,16 @@ namespace xloil
     case ExcelType::SRef:
     {
       return writeSheetRef(buf, bufLen, _address.val.sref.ref,
-        _fullSheetName.asPascalStr(), A1Style);
+        _fullSheetName.asPString(), A1Style);
     }
     case ExcelType::Ref:
     {
       return writeSheetRef(buf, bufLen, _address.val.mref.lpmref->reftbl[0],
-        _fullSheetName.asPascalStr(), A1Style);
+        _fullSheetName.asPString(), A1Style);
     }
     case ExcelType::Str: // Graphic object or Auto_XXX macro caller
     {
-      auto str = _address.asPascalStr();
+      auto str = _address.asPString();
       wcsncpy_s(buf, bufLen, str.pstr(), str.length());
       return wcslen(buf);
     }
@@ -313,7 +313,7 @@ namespace xloil
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    return writeSheetRef(buf, bufSize, ref, sheetNm.asPascalStr(), A1Style);
+    return writeSheetRef(buf, bufSize, ref, sheetNm.asPString(), A1Style);
   }
 
   XLOIL_EXPORT std::wstring xlrefSheetAddress(

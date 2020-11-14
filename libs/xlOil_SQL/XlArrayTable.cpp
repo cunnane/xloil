@@ -190,7 +190,7 @@ namespace xloil
         break;
       case ExcelType::Str:
       {
-        auto pstr = val.asPascalStr();
+        auto pstr = val.asPString();
         sqlite3_result_text16(ctx, pstr.pstr(), 
           pstr.length() * sizeof(wchar_t), SQLITE_STATIC);
         break;

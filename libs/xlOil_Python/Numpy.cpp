@@ -133,7 +133,7 @@ namespace xloil
         auto destLength = destSize / sizeof(TChar);
         if (obj.type() == ExcelType::Str)
         {
-          auto pstr = obj.asPascalStr();
+          auto pstr = obj.asPString();
           nWritten = _conv(dest, destLength, pstr.begin(), pstr.end());
         }
         else
