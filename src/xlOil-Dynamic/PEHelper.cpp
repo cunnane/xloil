@@ -1,11 +1,14 @@
 #include "PEHelper.h"
-
+#include <cassert>
 #include <algorithm>
 
 using xloil::Helpers::Exception;
 
 xloil::DllExportTable::DllExportTable(HMODULE hInstance)
 {
+  if (!hInstance)
+    throw std::runtime_error("DllExportTable: null HINSTANCE");
+
   // Express image as BYTE pointer as offsets in the PE format
   // are usually in number of bytes
   imageBase = (BYTE*)hInstance;
