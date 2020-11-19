@@ -25,7 +25,8 @@ if importlib.util.find_spec("xloil_core") is not None:
         get_excel_state, Caller,
         CannotConvert, set_return_converter,
         CustomConverter as _CustomConverter,
-        CustomReturn as _CustomReturn)
+        CustomReturn as _CustomReturn,
+        from_excel_date)
 
 else:
     from .shadow_core import *

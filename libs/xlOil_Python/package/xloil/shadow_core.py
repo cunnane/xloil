@@ -629,3 +629,11 @@ class Caller:
         Gives the sheet address either in A1 form: 'Sheet!A1' or RC form: 'Sheet!R1C1'
         """
         pass
+
+def from_excel_date(value):
+    """
+    Tries to the convert a given number to a dt.date or dt.datetime assuming it as an 
+    Excel date serial number.  Strings are parsed using the current default conversion 
+    settings. If dt.datetime is provided, it is simply returned as is.
+    """
+    pass

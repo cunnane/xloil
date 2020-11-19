@@ -127,6 +127,22 @@ namespace xloil
     };
     namespace
     {
+      py::object fromExcelDate(const py::object& obj)
+      {
+        auto p = obj.ptr();
+        if (p == Py_None)
+          return py::none();
+        else if (PyLong_Check(p))
+          return PySteal(PyFromDate()(PyLong_AsLong(p)));
+        else if (PyFloat_Check(p))
+          return PySteal(PyFromDateTime()(PyFloat_AS_DOUBLE(p)));
+        else if (PyUnicode_Check(p))
+          return PySteal(PyFromDateTime()(FromPyString()(p).asPString()));
+        else if (PyDateTime_Check(p))
+          return obj;
+        else
+          throw std::invalid_argument("No conversion to date");
+      }
       template<class T>
       void declare2(pybind11::module& mod, const char* name)
       {
@@ -139,6 +155,8 @@ namespace xloil
         bindPyConverter<PyExcelConverter<PyFromDate>>(mod, "date").def(py::init<>());
         bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
         bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
+
+        mod.def("from_excel_date", fromExcelDate);
       });
     }
   }
