@@ -115,4 +115,5 @@ xloPyLoad: import and scan a python module (worksheet function)
 .. function:: xloPyLoad(ModuleName)
 
     Imports the specifed python module and scans it for xloil functions by calling
-    ``xloil.scan_module(name)``
+    ``xloil.scan_module(name)``.  Leaving the argument blank loads or reloads the
+    workbook module for the caller, i.e. the file `WorkbookName.py`.

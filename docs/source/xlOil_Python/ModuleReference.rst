@@ -23,6 +23,7 @@ xlOil Python Module Reference
 	log
 	run_later
 	get_event_loop
+	from_excel_date
 	scan_module
 	FuncDescription
 	register_functions

@@ -9,6 +9,7 @@ xlOil Python
     GettingStarted
     Concepts
     TypeConversion
+    ExcelApplication
     CustomGUI
     Pandas
     Jupyter
