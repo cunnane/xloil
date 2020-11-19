@@ -169,7 +169,7 @@ namespace xloil
       return nWritten;
     }
   }
-  uint16_t CallerInfo::writeAddress(
+  int CallerInfo::writeAddress(
     wchar_t* buf, 
     size_t bufLen,
     bool A1Style) const

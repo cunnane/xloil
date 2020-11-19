@@ -45,14 +45,14 @@ namespace xloil
     uint16_t addressRCLength() const;
     /// <summary>
     /// Writes the caller address to the provided buffer, returning the number
-    /// of characters written on success or zero on failure. Caller address will
-    /// be in the form [Book]Sheet!A1.
+    /// of characters written on success or a negative number or on failure. 
+    /// Caller address will be in the form [Book]Sheet!A1 for a worksheet caller.
     /// </summary>
     /// <param name="buf"></param>
     /// <param name="bufLen"></param>
     /// <param name="A1Style">If true, returns A1-type addresses else returns RC-type</param>
     /// <returns></returns>
-    uint16_t writeAddress(wchar_t* buf, size_t bufLen, bool A1Style = false) const;
+    int writeAddress(wchar_t* buf, size_t bufLen, bool A1Style = false) const;
     /// <summary>
     /// As per <see cref="writeAddress"/>, but returns a string rather than writing
     /// to a buffer
