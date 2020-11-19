@@ -3,6 +3,7 @@
 #include <xlOil/ExcelApp.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/Async.h>
+#include <xloil/XllEntryPoint.h>
 
 #include <map>
 using namespace xloil;
@@ -15,17 +16,19 @@ namespace
   {
     XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
   };
-
-  shared_ptr<IComAddin> theComAddin;
-  std::list<shared_ptr<RegisteredFunc>> theFuncs;
 }
 
-  void xllOpen(void* hInstance)
+struct MyAddin
+{
+  shared_ptr<IComAddin> theComAddin;
+  std::list<shared_ptr<RegisteredFunc>> theFuncs;
+
+  MyAddin()
   {
     theFuncs.push_back(RegisterLambda<>(
       [](const ExcelObj& arg1, const ExcelObj& arg2)
       {
-          return returnValue(7);
+        return returnValue(7);
       })
       .name(L"testDynamic")
       .arg(L"Arg1")
@@ -39,7 +42,7 @@ namespace
       .arg(L"Arg1")
       .registerFunc());
 
-    xllOpenComCall([]()
+    xllOpenComCall([this]()
     {
       theComAddin = makeComAddin(L"TestXlOil");
 
@@ -78,8 +81,16 @@ namespace
     });
   }
 
-  void xllClose()
+  ~MyAddin()
   {
     theComAddin.reset();
     theFuncs.clear();
   }
+
+  static wstring addInManagerInfo()
+  {
+    return wstring(L"xlOil Static Test");
+  }
+};
+
+XLO_DECLARE_ADDIN(MyAddin);
