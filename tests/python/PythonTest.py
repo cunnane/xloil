@@ -552,4 +552,19 @@ def pyWbPath():
     return full_path.replace(caller.workbook,"")
 
     
-    
+@xlo.converter(list)
+def date_row(x):
+    if isinstance(x, float):
+        return [xlo.from_excel_date(x)]
+    elif isinstance(x, xlo.ExcelArray):
+        r, c = x.shape
+        dates = []
+        for i in range(r):
+            for j in range(c):
+                dates.append(xlo.from_excel_date(x[i, j]))
+        return dates
+    return None
+
+@xlo.func
+def pyTestDateConv(dates: date_row):
+    return [d + dt.timedelta(days=1) for d in dates]
