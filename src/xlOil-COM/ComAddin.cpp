@@ -7,6 +7,7 @@
 #include <xlOil/Log.h>
 #include <xlOil/ExcelApp.h>
 #include <xlOil/Ribbon.h>
+#include <xlOil/Events.h>
 #include <map>
 #include <functional>
 
@@ -19,65 +20,75 @@ namespace xloil
 {
   namespace COM
   {
+    struct ComAddinEvents
+    {
+      void OnDisconnection(bool excelClosing) {}
+      void OnAddInsUpdate() { Event::ComAddinsUpdate().fire(); }
+      void OnBeginShutdown() {}
+    };
+
+    // This class does not need a disp-interface
+    class __declspec(novtable)
+      ComAddinImpl :
+      public CComObjectRootEx<CComSingleThreadModel>,
+      public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
+    {
+    public:
+      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
+      {
+        *ppv = NULL;
+        if (riid == IID_IUnknown 
+          || riid == __uuidof(AddInDesignerObjects::IDTExtensibility2))
+        {
+          auto p = (AddInDesignerObjects::IDTExtensibility2*)this;
+          *ppv = p;
+          p->AddRef();
+          return S_OK;
+        }
+        else if (riid == __uuidof(IRibbonExtensibility))
+        {
+          if (ribbon)
+            return ribbon->QueryInterface(riid, ppv);
+        }
+        return E_NOINTERFACE;
+      }
+      virtual HRESULT __stdcall raw_OnConnection(
+        /*[in]*/ IDispatch * /*Application*/,
+        /*[in]*/ enum AddInDesignerObjects::ext_ConnectMode /*ConnectMode*/,
+        /*[in]*/ IDispatch * /*AddInInst*/,
+        /*[in]*/ SAFEARRAY**) override
+      {
+        return S_OK;
+      }
+      virtual HRESULT __stdcall raw_OnDisconnection(
+        /*[in]*/ enum AddInDesignerObjects::ext_DisconnectMode RemoveMode,
+        /*[in]*/ SAFEARRAY**) override
+      {
+        events->OnDisconnection(
+          RemoveMode == AddInDesignerObjects::ext_DisconnectMode::ext_dm_HostShutdown);
+        return S_OK;
+      }
+      virtual HRESULT __stdcall raw_OnAddInsUpdate(SAFEARRAY**) override
+      {
+        events->OnAddInsUpdate();
+        return S_OK;
+      }
+      virtual HRESULT __stdcall raw_OnStartupComplete(SAFEARRAY**) override
+      {
+        return S_OK;
+      }
+      virtual HRESULT __stdcall raw_OnBeginShutdown(SAFEARRAY**) override
+      {
+        events->OnBeginShutdown();
+        return S_OK;
+      }
+
+      IRibbonExtensibility* ribbon;
+      shared_ptr<ComAddinEvents> events;
+    };
+
     class ComAddinCreator : public IComAddin
     {
-      // This class does not need a disp-interface
-      class __declspec(novtable)
-        ComAddinImpl :
-          public CComObjectRootEx<CComSingleThreadModel>,
-          public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
-      {
-      public:
-        HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
-        {
-          *ppv = NULL;
-          if (riid == IID_IUnknown || riid == __uuidof(AddInDesignerObjects::IDTExtensibility2))
-          {
-            auto p = (AddInDesignerObjects::IDTExtensibility2*)this;
-            *ppv = p;
-            p->AddRef();
-            return S_OK;
-          }
-          else if (riid == __uuidof(IRibbonExtensibility))
-          {
-            if (ribbon)
-              return ribbon->QueryInterface(riid, ppv);
-          }
-          return E_NOINTERFACE;
-        }
-        virtual HRESULT __stdcall raw_OnConnection(
-          /*[in]*/ IDispatch * /*Application*/,
-          /*[in]*/ enum AddInDesignerObjects::ext_ConnectMode /*ConnectMode*/,
-          /*[in]*/ IDispatch * /*AddInInst*/,
-          /*[in]*/ SAFEARRAY * * /*custom*/) override
-        {
-          return S_OK;
-        }
-        virtual HRESULT __stdcall raw_OnDisconnection(
-          /*[in]*/ enum AddInDesignerObjects::ext_DisconnectMode /*RemoveMode*/,
-          /*[in]*/ SAFEARRAY * * /*custom*/) override
-        {
-          return S_OK;
-        }
-        virtual HRESULT __stdcall raw_OnAddInsUpdate(
-          /*[in]*/ SAFEARRAY * * /*custom*/) override
-        {
-          return S_OK;
-        }
-        virtual HRESULT __stdcall raw_OnStartupComplete(
-          /*[in]*/ SAFEARRAY * * /*custom*/) override
-        {
-          return S_OK;
-        }
-        virtual HRESULT __stdcall raw_OnBeginShutdown(
-          /*[in]*/ SAFEARRAY * * /*custom*/) override
-        {
-          return S_OK;
-        }
-       
-        IRibbonExtensibility* ribbon;
-      };
-
       auto& comAddinImpl()
       {
         return _registrar.server();
@@ -86,6 +97,7 @@ namespace xloil
       RegisterCom<ComAddinImpl> _registrar;
       bool _connected = false;
       shared_ptr<IRibbon> _ribbon;
+      COMAddIn* _comAddin = nullptr;
 
     public:
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
@@ -93,18 +105,22 @@ namespace xloil
           new CComObject<ComAddinImpl>(),
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
+        // TODO: hook OnDisconnect to stop user from disabling COM stub.
+        comAddinImpl().events.reset(new ComAddinEvents());
+
         if (!name)
           XLO_THROW("Com add-in name must be provided");
 
         // It's possible the addin has already been registered and loaded and 
         // is just being reinitialised.
+        findAddin();
         if (isConnected())
         {
           disconnect();
         }
         else
         {
-          auto addinPath = fmt::format(
+          const auto addinPath = fmt::format(
             L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
           _registrar.writeRegistry(
             HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", name);
@@ -116,25 +132,28 @@ namespace xloil
           // TODO: set this guy back!
           excelApp().AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
           excelApp().GetCOMAddIns()->Update();
+
+          findAddin();
+          if (!_comAddin)
+            XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
       }
-      COMAddIn* getAddin() const
+
+      void findAddin()
       {
         auto& app = excelApp();
         // TODO: set this guy back!
         app.AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
         auto ourProgid = _variant_t(progid());
-        COMAddIn* ourAddin = 0;
-        app.GetCOMAddIns()->raw_Item(&ourProgid, &ourAddin);
-        return ourAddin;
+        app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin);
       }
+
       bool isConnected() const
       {
         try
         {
-          auto addin = getAddin();
-          return addin
-            ? (addin->Connect == VARIANT_TRUE)
+          return _comAddin
+            ? (_comAddin->Connect == VARIANT_TRUE)
             : false;
         }
         XLO_RETHROW_COM_ERROR;
@@ -145,10 +164,7 @@ namespace xloil
           return;
         try
         {
-          auto addin = getAddin();
-          if (!addin)
-            XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
-          addin->Connect = VARIANT_TRUE;
+          _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
         }
         XLO_RETHROW_COM_ERROR;
@@ -160,10 +176,7 @@ namespace xloil
           return;
         try
         {
-          auto addin = getAddin();
-          if (!addin)
-            XLO_THROW(L"Add-in disconnect: could not find addin '{0}'", progid());
-          addin->Connect = VARIANT_FALSE;
+          _comAddin->Connect = VARIANT_FALSE;
           _connected = false;
         }
         XLO_RETHROW_COM_ERROR;

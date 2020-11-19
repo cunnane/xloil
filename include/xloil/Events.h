@@ -156,7 +156,7 @@ namespace xloil
       std::string _name;
     };
 
-    using EventXll = Event<void(void), detail::VoidCollector>;
+    using EventNoParam = Event<void(void), detail::VoidCollector>;
     using EventNameParam = Event<void(const wchar_t*), detail::VoidCollector>;
 
     /// <summary>
@@ -164,21 +164,21 @@ namespace xloil
     /// Purposely not exported as plugins should unload when requested
     /// by xlOil Core, hence have not need to hook this event.
     /// </summary>
-    EventXll&
+    EventNoParam&
       AutoClose();
 
     /// <summary>
     /// Event triggered at the end of an Excel calc cycle. Equivalent to
     /// Excel's Application.AfterCalculate event.
     /// </summary>
-    XLOIL_EXPORT EventXll&
+    XLOIL_EXPORT EventNoParam&
       AfterCalculate();
 
     /// <summary>
     /// Event triggered when calculation is cancelled by user interaction
     /// with Excel.
     /// </summary>
-    XLOIL_EXPORT EventXll&
+    XLOIL_EXPORT EventNoParam&
       CalcCancelled();
 
     /// <summary>
@@ -269,6 +269,13 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       XllRemove();
 
+    /// <summary>
+    /// Triggered when the COM add-in list is refreshed. xlOil must have 
+    /// registered a COM add-in to be notified of this event.
+    /// </summary>
+    XLOIL_EXPORT EventNoParam&
+      ComAddinsUpdate();
+
     enum class FileAction
     {
       /// Sent when a file is created or renamed
@@ -315,7 +322,8 @@ namespace xloil
     (WorkbookAddinInstall)\
     (WorkbookAddinUninstall)\
     (XllAdd)\
-    (XllRemove)
+    (XllRemove)\
+    (ComAddinsUpdate)
     
 
     /// <summary>
