@@ -13,14 +13,13 @@ namespace xloil
 
   template struct XLOIL_EXPORT ObjectCacheFactory<std::unique_ptr<const ExcelObj>>;
 
-  using objectCacheUnquifier = CacheUniquifier<std::unique_ptr<const ExcelObj>>;
- 
   /// <summary>
-  /// Adds an ExcelObj to the object cache and returns an reference string
-  /// (as an ExcelObj) based on the currently executing cell
+  /// If the argument is a string referencing an <see cref="ExcelObj"/>
+  /// in the cache, the cached object is returned, otherwise the argument
+  /// object is returned.
   /// </summary>
-
-
+  /// <param name="obj"></param>
+  /// <returns></returns>
   inline const ExcelObj& objectCacheExpand(const ExcelObj& obj)
   {
     if (obj.isType(ExcelType::Str))
@@ -56,5 +55,4 @@ namespace xloil
       return TBase::operator()(str);
     }
   };
-
 }
