@@ -253,6 +253,22 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       WorkbookAddinUninstall();
 
+    /// <summary>
+    /// Triggered when an XLL related to this instance of xlOil is added by
+    /// the user using the Addin settings window. The parameter is the XLL
+    /// filename.
+    /// </summary>
+    XLOIL_EXPORT EventNameParam&
+      XllAdd();
+
+    /// <summary>
+    /// Triggered when an XLL related to this instance of xlOil is removed by
+    /// the user using the Addin settings window.  The parameter is the XLL
+    /// filename
+    /// </summary>
+    XLOIL_EXPORT EventNameParam&
+      XllRemove();
+
     enum class FileAction
     {
       /// Sent when a file is created or renamed
@@ -297,8 +313,10 @@ namespace xloil
     (WorkbookBeforePrint)\
     (WorkbookNewSheet)\
     (WorkbookAddinInstall)\
-    (WorkbookAddinUninstall)
-
+    (WorkbookAddinUninstall)\
+    (XllAdd)\
+    (XllRemove)
+    
 
     /// <summary>
     /// Creates a function body for a event declaration such as

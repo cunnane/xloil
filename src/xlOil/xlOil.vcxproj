@@ -78,6 +78,7 @@
     <ClInclude Include="..\..\include\xloil\FuncSpec.h" />
     <ClInclude Include="..\..\include\xloil\Interface.h" />
     <ClInclude Include="..\..\include\xloil\Log.h" />
+    <ClInclude Include="..\..\include\xlOil\LogWindow.h" />
     <ClInclude Include="..\..\include\xloil\NumericTypeConverters.h" />
     <ClInclude Include="..\..\include\xloil\ObjectCache.h" />
     <ClInclude Include="..\..\include\xloil\Plugin.h" />
@@ -94,6 +95,7 @@
     <ClInclude Include="..\..\include\xloil\Version.h" />
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h" />
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
+    <ClInclude Include="..\..\include\xlOil\XllEntryPoint.h" />
     <ClInclude Include="LogWindowSink.h" />
     <ClInclude Include="Loaders\EntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />

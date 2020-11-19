@@ -45,13 +45,8 @@ namespace xloil
 
   namespace State
   {
-    void initAppContext(void* coreHInstance)
+    XLOIL_EXPORT void initAppContext()
     {
-      if (theCoreModuleHandle)
-        return;
-
-      theCoreModuleHandle = (HMODULE)coreHInstance;
-      setDllPath(theCoreModuleHandle);
       ourExcelState = ExcelState
       {
         getExcelVersion(),
@@ -60,7 +55,14 @@ namespace xloil
         GetCurrentThreadId()
       };
     }
+    void initCoreContext(void* coreHInstance)
+    {
+      if (theCoreModuleHandle)
+        return;
 
+      theCoreModuleHandle = (HMODULE)coreHInstance;
+      setDllPath(theCoreModuleHandle);
+    }
     void* coreModuleHandle() noexcept
     {
       return theCoreModuleHandle;

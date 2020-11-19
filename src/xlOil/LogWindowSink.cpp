@@ -3,7 +3,7 @@
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
 #include <xlOilHelpers/Exception.h>
-#include <xlOil-XLL/LogWindow.h>
+#include <xlOil/LogWindow.h>
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/pattern_formatter.h>
 #include <mutex>
@@ -92,7 +92,7 @@ namespace xloil
       MainLogWindow::theMenuBar = hMenubar;
 
       set_pattern_(""); // Just calls set_formatter_
-      _window = Helpers::createLogWindow(
+      _window = createLogWindow(
         parentWindow, 
         parentInstance, 
         L"xlOil Log", 
@@ -129,7 +129,7 @@ namespace xloil
     }
 
   private:
-    shared_ptr<Helpers::ILogWindow> _window;
+    shared_ptr<ILogWindow> _window;
   };
 
   namespace

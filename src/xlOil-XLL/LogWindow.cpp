@@ -2,7 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#include "LogWindow.h"
+#include <xloil/LogWindow.h>
 
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
@@ -14,8 +14,6 @@ using std::string;
 
 namespace xloil 
 {
-  namespace Helpers
-  {
     class LogWindow : public ILogWindow
     {
       HMENU theMenuBar;
@@ -40,32 +38,31 @@ namespace xloil
         : _maxSize(maxSize)
       {
         static auto win = createWindowClass(hInstance, theWindowClass);
-
+        
         // If we try to create a window from our class during xlAutoOpen, we will get
         // the cryptic "ntdll.dll (EXCEL.EXE) RangeChecks instrumentation code detected 
         // an out of range array access".  Whatever Excel gets up to during start-up
         // seems to screw around with the Win32 API.  We use the existence or 
         // otherwise of a parentHwnd to determine if we are in this perilous state
-
-        auto hwnd = CreateWindowEx(
-          0,
-          parentWnd ? MAKEINTATOM(win) : L"EDIT",
-          winTitle,
-          parentWnd 
-            ? WS_OVERLAPPEDWINDOW  // Title bar, minimimise, close and resize controls
-            : WS_OVERLAPPEDWINDOW | WS_VSCROLL | ES_LEFT | ES_MULTILINE,
-          CW_USEDEFAULT, CW_USEDEFAULT, // (x, y)-position
-          CW_USEDEFAULT, CW_USEDEFAULT, // width, height
-          HWND_DESKTOP,
-          menuBar,
-          hInstance,
-          this
-        );
-
-        // TODO: does throwing make much sense here?
+        auto hwnd = FindWindow(theWindowClass, winTitle);
         if (!hwnd)
-          throw Exception(L"Failed to create LogWindow: %s",
-            writeWindowsError().c_str());
+          hwnd = CreateWindowEx(
+            0,
+            parentWnd ? theWindowClass : L"EDIT",
+            winTitle,
+            parentWnd 
+              ? WS_OVERLAPPEDWINDOW  // Title bar, minimimise, close and resize controls
+              : WS_OVERLAPPEDWINDOW | WS_VSCROLL | ES_LEFT | ES_MULTILINE,
+            CW_USEDEFAULT, CW_USEDEFAULT, // (x, y)-position
+            CW_USEDEFAULT, CW_USEDEFAULT, // width, height
+            HWND_DESKTOP,
+            menuBar,
+            hInstance,
+            this);
+
+        if (!hwnd)
+          throw Helpers::Exception(L"Failed to create LogWindow: %s",
+            Helpers::writeWindowsError().c_str());
 
         if (!parentWnd)
           theTextControl = hwnd;
@@ -176,20 +173,16 @@ namespace xloil
         win.hbrBackground = GetSysColorBrush(COLOR_3DFACE); // Use default colour
 
         auto res = RegisterClassEx(&win);
-        if (!res)
-          throw Exception(L"Failed to create LogWindow: %s", 
-            writeWindowsError().c_str());
-
         return res;
       }
 
-      void showWindow()
+      void showWindow() noexcept
       {
         ShowWindow(theMainWindow, SW_SHOWNORMAL);
         theWindowIsOpen = true;
       }
 
-      void setWindowText()
+      void setWindowText() noexcept
       {
         // Just scroll to the end, word-wrap seems to confuse the
         // line count, so we just specify a big number
@@ -201,7 +194,7 @@ namespace xloil
         return theWindowIsOpen;
       }
 
-      void openWindow() override
+      void openWindow() noexcept override
       {
         if (isOpen())
           return;
@@ -215,7 +208,7 @@ namespace xloil
         showWindow();
       }
 
-      void appendToWindow(const string& msg)
+      void appendToWindow(const string& msg) 
       {
         auto wmsg = utf8ToUtf16(msg);
 
@@ -230,7 +223,7 @@ namespace xloil
         _windowText.append(wmsg).append(L"\r\n");
       }
 
-      void appendMessage(const string& msg) override
+      void appendMessage(const string& msg) noexcept override
       {
         _messages.push_back(msg);
 
@@ -252,24 +245,31 @@ namespace xloil
       const wchar_t* winTitle,
       HMENU menuBar,
       WNDPROC menuHandler,
-      size_t historySize)
+      size_t historySize) noexcept
     {
-      return std::make_shared<LogWindow>(
-        parentWindow, parentInstance, winTitle, menuBar, menuHandler, historySize);
+      try
+      {
+        return std::make_shared<LogWindow>(
+          parentWindow, parentInstance, winTitle, menuBar, menuHandler, historySize);
+      }
+      catch (...)
+      {
+        return std::shared_ptr<ILogWindow>();
+      }
     }
 
-    void writeLogWindow(const wchar_t* msg)
+    void writeLogWindow(const wchar_t* msg) noexcept
     {
       writeLogWindow(utf16ToUtf8(msg).c_str());
     }
 
-    void writeLogWindow(const char* msg)
+    void writeLogWindow(const char* msg) noexcept
     {
       // TODO: mutex!
       static auto logWindow = createLogWindow(
         0, (HINSTANCE)State::coreModuleHandle(), L"xlOil Load Failure", 0, 0, 100);
 
-      if (!msg)
+      if (!msg || !logWindow)
         return;
 
       auto t = std::time(nullptr);
@@ -279,5 +279,4 @@ namespace xloil
         formatStr("%d-%d-%d: %s", tm.tm_hour, tm.tm_min, tm.tm_sec, msg));
       logWindow->openWindow();
     }
-  }
 }

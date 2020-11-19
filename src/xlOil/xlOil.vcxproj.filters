@@ -127,6 +127,12 @@
     <ClInclude Include="..\..\include\xloil\ExcelApp.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\xlOil\XllEntryPoint.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xlOil\LogWindow.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">

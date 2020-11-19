@@ -30,8 +30,6 @@ namespace
 
 namespace xloil
 {
-  
-
   XLOIL_EXPORT int autoOpenHandler(const wchar_t* xllPath) noexcept
   {
     try
@@ -49,8 +47,8 @@ namespace xloil
 #else
         detail::loggerInitialise(spdlog::level::err);
 #endif
-        State::initAppContext(theCoreModuleHandle);
-        
+        State::initCoreContext(theCoreModuleHandle);
+
         detail::loggerInitPopupWindow();
 
         createCoreContext();

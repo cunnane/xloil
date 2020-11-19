@@ -33,6 +33,7 @@ namespace xloil
     /// </summary>
     XLOIL_EXPORT ExcelState& excelState() noexcept;
 
-    void initAppContext(void* coreHInstance);
+    void initCoreContext(void* coreHInstance);
+    XLOIL_EXPORT void initAppContext();
   }
 }
