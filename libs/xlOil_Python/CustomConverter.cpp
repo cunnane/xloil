@@ -3,6 +3,7 @@
 #include "BasicTypes.h"
 #include "PyCoreModule.h"
 #include "PyExcelArray.h"
+#include "PyEvents.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -38,17 +39,16 @@ namespace xloil
       {}
       virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const
       {
-        auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
-        return _callable(arg).release().ptr();
-      }
-      virtual PyObject* fromArray(const ExcelArray& arr) const
-      {
-        auto pyArr = PyExcelArray(arr);
-        auto arg = py::cast(PyExcelArray(arr));
-        auto ret = _callable(arg);
-        if (pyArr.refCount() > 1)
-          XLO_THROW("You cannot keep references to ExcelArray objects");
-        return ret.release().ptr();
+        try
+        {
+          auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
+          return _callable(arg).release().ptr();
+        }
+        catch (const py::error_already_set& e)
+        {
+          Event_PyUserException().fire(e.type(), e.value(), e.trace());
+          throw;
+        }
       }
     };
 
