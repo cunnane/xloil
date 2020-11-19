@@ -14,6 +14,7 @@
 #include <queue>
 #include <mutex>
 #include <future>
+#include <comdef.h>
 
 using std::scoped_lock;
 using std::shared_ptr;
@@ -222,6 +223,17 @@ namespace xloil
     catch (const std::exception& e) // What about SEH?
     {
       _promise->set_exception(make_exception_ptr(e));
+    }
+    catch (_com_error& error)
+    { 
+      _promise->set_exception(
+        make_exception_ptr(std::runtime_error(fmt::format(
+          "COM Error {0:#x}", (size_t)error.Error()
+        ))));
+    }
+    catch (...)
+    {
+      _promise->set_exception(make_exception_ptr(std::runtime_error("Unknown exception")));
     }
   }
 
