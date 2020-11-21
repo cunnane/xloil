@@ -562,7 +562,8 @@ def date_row(x):
     if isinstance(x, float):
         return [xlo.from_excel_date(x)]
     elif isinstance(x, xlo.ExcelArray):
-        r, c = x.shape
+        r = x.nrows
+        c = x.ncols
         dates = []
         for i in range(r):
             for j in range(c):
