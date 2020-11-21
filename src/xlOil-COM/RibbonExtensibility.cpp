@@ -175,7 +175,7 @@ namespace xloil
           auto ctrl = (IRibbonControl*)rgvarg[nArgs - 1].pdispVal;
 
           // Reverse order the other args
-          for (auto i = 1; i < nArgs; ++i)
+          for (auto i = 1u; i < nArgs; ++i)
             args[i - 1] = &rgvarg[nArgs - 1 - i];
           
           try
