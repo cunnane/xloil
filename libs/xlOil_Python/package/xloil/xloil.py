@@ -650,6 +650,11 @@ def scan_module(module, workbook_name=None):
    
             handle = importlib.import_module(mod_name)
 
+            # Allows 'local' modules to know which workbook they link to
+            if workbook_name is not None:
+                handle._xloil_workbook = workbook_name
+                handle._xloil_workbook_path = os.path.join(mod_directory, workbook_name)
+
         elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
             # We can only reload modules with a __file__ attribute, e.g. not
             # xloil_core
@@ -657,9 +662,6 @@ def scan_module(module, workbook_name=None):
         else:
             raise Exception(f"scan_module: could not process {str(module)}")
 
-        # Allows 'local' modules to know which workbook they link to
-        if workbook_name is not None:
-            handle._xloil_workbook = workbook_name
     
         # Look for functions with an xloil decorator (_META_TAG) and create
         # a function holder object for each of them

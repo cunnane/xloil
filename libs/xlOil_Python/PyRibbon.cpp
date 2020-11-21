@@ -2,6 +2,7 @@
 #include "BasicTypes.h"
 #include "PyCoreModule.h"
 #include "PyEvents.h"
+#include "PyImage.h"
 #include <xloil/Ribbon.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
@@ -39,7 +40,17 @@ namespace xloil
                 args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
               auto pyRet = callback.call(ctrl, *args);
               if (vRet && !pyRet.is_none())
-                *vRet = excelObjToVariant(FromPyObj()(pyRet.ptr(), false));
+              {
+                auto picture = pictureFromPilImage(pyRet);
+                if (picture)
+                {
+                  VariantInit(vRet);
+                  vRet->pdispVal = (IDispatch*)picture;
+                  vRet->vt = VT_DISPATCH;
+                }
+                else
+                  *vRet = excelObjToVariant(FromPyObj()(pyRet.ptr(), false));
+              }
             }
             catch (const py::error_already_set& e)
             {

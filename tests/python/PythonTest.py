@@ -489,6 +489,12 @@ def press1(ctrl):
     
 def button_label(ctrl, *args):
     return "PyButton"
+
+def button_image(ctrl):
+    from PIL import Image
+    import os
+    im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+    return im
     
 def combo_change(ctrl, value):
     xlo.log(f"Combo: {value} selected")
@@ -502,15 +508,13 @@ _ribbon = xlo.create_ribbon(r'''
                     <group idMso="GroupClipboard" />
                     <group idMso="GroupFont" />
                     <group id="customGroup" label="MyButtons">
-                        <button id="pyButt1" getLabel="buttonLabel" size="large" onAction="press1" imageMso="Bold" />
+                        <button id="pyButt1" getLabel="buttonLabel" getImage="buttonImg" size="large" onAction="press1" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
                          <item id="item1" label="Item 1" />
                          <item id="item2" label="Item 2" />
                          <item id="item3" label="Item 3" />
                        </comboBox>
                     </group>
-                    <group idMso="GroupEnterDataAlignment" />
-                    <group idMso="GroupQuickFormatting" />
                 </tab>
             </tabs>
         </ribbon>
@@ -520,6 +524,7 @@ _ribbon = xlo.create_ribbon(r'''
         'press1': press1,
         'comboChange': combo_change,
         'buttonLabel': button_label,
+        'buttonImg': button_image
     })
     
 

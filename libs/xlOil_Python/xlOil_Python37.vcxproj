@@ -47,11 +47,11 @@
   <ImportGroup Label="Shared">
   </ImportGroup>
   <ImportGroup Label="PropertySheets">
-	<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-	<Import Project="..\..\src\BuildPaths.props" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\src\BuildPaths.props" />
     <Import Project="..\..\libs\xlOilPlugin.props" />
     <Import Project="PySettings37.props" />
-    <Import Project="PySettings.props" />	
+    <Import Project="PySettings.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
@@ -59,7 +59,7 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\src\Release.props" />
-  </ImportGroup>  
+  </ImportGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -74,6 +74,7 @@
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="ExcelErrorType.cpp" />
     <ClCompile Include="PyExcelRange.cpp" />
+    <ClCompile Include="PyImage.cpp" />
     <ClCompile Include="PyRibbon.cpp" />
     <ClCompile Include="ReadSource.cpp">
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
@@ -93,6 +94,7 @@
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="Cache.h" />
     <ClInclude Include="ExcelErrorType.h" />
+    <ClInclude Include="PyImage.h" />
     <ClInclude Include="ReadSource.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="Date.h" />
