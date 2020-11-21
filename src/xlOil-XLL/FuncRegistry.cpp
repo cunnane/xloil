@@ -62,7 +62,7 @@ namespace xloil
       if (opts & FuncInfo::COMMAND)
         argTypes += '>';  // Commands always return void - sensible?
       else
-        argTypes += 'Q';  // Otherwise return an XLOPER12 unless overridden below
+        argTypes += 'U';  // Otherwise return an XLOPER12 unless overridden below
 
       int iArg = 0;
       for (auto& arg : info->args)
@@ -82,7 +82,7 @@ namespace xloil
           XLO_THROW("Internal: Unknown function argtype");
 
         if (arg.type & FuncArg::ReturnVal)
-          if (argTypes[0] != 'Q')
+          if (argTypes[0] != 'U')
             XLO_THROW("Only one argument can be specified as a return value");
           else if (iArg > 8)
             XLO_THROW("Return in-place arg must be in the first 9");
