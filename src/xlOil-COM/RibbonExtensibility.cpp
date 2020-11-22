@@ -43,7 +43,7 @@ namespace xloil
       {}
 
       virtual HRESULT __stdcall raw_GetCustomUI(
-        /*[in]*/ BSTR RibbonID,
+        /*[in]*/ BSTR /*RibbonID*/,
         /*[out,retval]*/ BSTR * RibbonXml) override
       {
         if (!_xml.empty())
@@ -94,24 +94,24 @@ namespace xloil
       }
 #pragma region IDispatch
 
-      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* pctinfo)
+      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* /*pctinfo*/)
       {
         return 0;
       }
 
       STDMETHOD(GetTypeInfo)(
-        UINT itinfo,
-        LCID lcid,
-        _Outptr_result_maybenull_ ITypeInfo** pptinfo)
+        UINT /*itinfo*/,
+        LCID /*lcid*/,
+        _Outptr_result_maybenull_ ITypeInfo** /*pptinfo*/)
       {
         return E_NOTIMPL;
       }
 
       STDMETHOD(GetIDsOfNames)(
-        _In_ REFIID riid,
+        _In_ REFIID /*riid*/,
         _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* rgszNames,
         _In_range_(0, 16384) UINT cNames,
-        LCID lcid,
+        LCID /*lcid*/,
         _Out_ DISPID* rgdispid)
       {
         auto* fnName = rgszNames[0];
@@ -145,13 +145,13 @@ namespace xloil
 
       STDMETHOD(Invoke)(
         _In_ DISPID dispidMember,
-        _In_ REFIID riid,
-        _In_ LCID lcid,
-        _In_ WORD wFlags,
+        _In_ REFIID /*riid*/,
+        _In_ LCID /*lcid*/,
+        _In_ WORD /*wFlags*/,
         _In_ DISPPARAMS* pdispparams,
         _Out_opt_ VARIANT* pvarResult,
-        _Out_opt_ EXCEPINFO* pexcepinfo,
-        _Out_opt_ UINT* puArgErr)
+        _Out_opt_ EXCEPINFO* /*pexcepinfo*/,
+        _Out_opt_ UINT* /*puArgErr*/)
       {
         // Remember the args are in reverse order
         auto* rgvarg = pdispparams->rgvarg;
