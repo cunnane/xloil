@@ -8,7 +8,7 @@ namespace xloil
   )
   {
     auto val = getCached<int>(cacheKey.asPString());
-    return returnValue(*val);
+    return returnValue(val ? *val : 0);
   }
   XLO_FUNC_END(testCacheIn);
 }
