@@ -37,9 +37,9 @@ namespace xloil
   {
     return COM::variantToExcelObj(variant, allowRange);
   }
-  VARIANT excelObjToVariant(const ExcelObj& obj)
+  void excelObjToVariant(VARIANT* v, const ExcelObj& obj)
   {
-    return COM::excelObjToVariant(obj);
+    COM::excelObjToVariant(v, obj);
   }
   class Messenger
   {

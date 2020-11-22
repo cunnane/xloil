@@ -1,10 +1,10 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
-#include <xloil/WindowsSlim.h>
-#include <oleacc.h>
 #include <functional>
 #include <memory>
+
+typedef struct tagVARIANT VARIANT;
 
 namespace xloil
 {
@@ -91,5 +91,5 @@ namespace xloil
   }
 
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
-  XLOIL_EXPORT VARIANT excelObjToVariant(const ExcelObj& obj);
+  XLOIL_EXPORT void excelObjToVariant(VARIANT* v, const ExcelObj& obj);
 }

@@ -134,7 +134,7 @@ int __stdcall localFunctionEntryPoint(
 
     auto* result = func.call(xllArgPtr);
 
-    *returnVal = COM::excelObjToVariant(*result);
+    COM::excelObjToVariant(returnVal, *result);
 
     if ((result->xltype & msxll::xlbitDLLFree) != 0)
       delete result;

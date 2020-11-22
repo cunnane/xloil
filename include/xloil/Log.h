@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: slim down this header!
+
 #ifdef XLOIL_NO_SPDLOG
 
 #define XLO_TRACE(...) 

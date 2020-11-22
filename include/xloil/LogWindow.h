@@ -1,8 +1,20 @@
 #pragma once
-#include <xloil/WindowsSlim.h>
 #include <xloil/State.h>
 #include <string>
 #include <memory>
+
+#ifndef _WINDOWS_
+#include <basetsd.h>
+#define DECLARE_HANDLE(name) struct name##__{int unused;}; typedef struct name##__ *name
+DECLARE_HANDLE(HWND);
+DECLARE_HANDLE(HINSTANCE);
+DECLARE_HANDLE(HMENU);
+
+typedef UINT_PTR WPARAM;
+typedef LONG_PTR LPARAM;
+typedef LONG_PTR LRESULT;
+typedef LRESULT(CALLBACK* WNDPROC)(HWND, unsigned int, WPARAM, LPARAM);
+#endif
 
 namespace xloil
 {

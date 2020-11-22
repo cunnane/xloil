@@ -1,6 +1,6 @@
 #pragma once
 #include "ExportMacro.h"
-#include <xlOil/Log.h> // TODO: slim down this header!
+#include <xlOil/Log.h> 
 #include <functional>
 #include <memory>
 #include <list>

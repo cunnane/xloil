@@ -116,7 +116,9 @@ namespace xloil
     {
       try
       {
-        _range->Value2 = excelObjToVariant(value);
+        VARIANT v;
+        excelObjToVariant(&v, value);
+        _range->PutValue2(_variant_t(v, false)); // Move variant
       }
       catch (_com_error& error)
       {
