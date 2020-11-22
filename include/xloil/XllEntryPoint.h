@@ -66,6 +66,9 @@ namespace xloil
           if (!errorMessages.empty())
             writeLogWindow(errorMessages.c_str());
 
+          // Do now this safely in single-thread mode
+          initMessageQueue();
+
           theXllIsOpen = true;
         }
         catch (const std::exception& e)
@@ -94,7 +97,6 @@ namespace xloil
     {
       XllInfo::moduleHandle = hinstDLL;
       detail::setDllPath(hinstDLL);
-      detail::dllLoad();
     }
     return TRUE;
   }
@@ -210,17 +212,32 @@ namespace xloil
     // painfully awkward.
 
     template<class T>
-    auto callDllLoad(T*, void*) 
+    auto callAutoOpen(T*, void*) 
     {
-      State::initCoreContext(XllInfo::moduleHandle);
+      Reg<T>::autoOpen();
     }
-    template<class T, std::enable_if_t<std::is_void<decltype(T::dllLoad())>::value, bool> = true>
-    auto callDllLoad(T*, T*)
+    template<class T, std::enable_if_t<std::is_void<decltype(T::autoOpen())>::value, bool> = true>
+    auto callAutoOpen(T*, T*)
     {
-      T::dllLoad();
+      T::autoOpen();
     }
 
-    auto callAddInManagerInfo(void*) { return std::wstring(); }
+    template<class T>
+    auto callAutoClose(T*, void*)
+    {
+      Reg<T>::autoClose();
+    }
+    template<class T, std::enable_if_t<std::is_void<decltype(T::autoClose())>::value, bool> = true>
+    auto callAutoClose(T*, T*)
+    {
+      T::autoClose();
+    }
+
+    auto callAddInManagerInfo(void*) 
+    { 
+      return std::wstring(); 
+    }
+
     template<class T, std::enable_if_t<std::is_constructible_v<decltype(T::addInManagerInfo())>, bool> = true>
     auto callAddInManagerInfo(T*)
     {
@@ -229,8 +246,7 @@ namespace xloil
   }
 
 #define XLO_DECLARE_ADDIN(T) \
-  void detail::dllLoad()   { detail::callDllLoad((T*)nullptr, (T*)nullptr); } \
-  void detail::autoOpen()  { Reg<T>::autoOpen(); } \
-  void detail::autoClose() { Reg<T>::autoClose(); } \
+  void detail::autoOpen()  { detail::callAutoOpen((T*)nullptr, (T*)nullptr); } \
+  void detail::autoClose() { detail::callAutoClose((T*)nullptr, (T*)nullptr); } \
   std::wstring detail::addInManagerInfo() { return detail::callAddInManagerInfo((T*)nullptr); }
 }

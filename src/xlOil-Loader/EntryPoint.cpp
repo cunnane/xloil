@@ -90,7 +90,7 @@ namespace
 
 struct xlOilAddin
 {
-  static void dllLoad()
+  static void autoOpen()
   {
     try
     {
@@ -145,16 +145,25 @@ struct xlOilAddin
       loadCore();
 
       SetDllDirectory(NULL);
+
+      State::initAppContext();
+
+      detail::Reg<xlOilAddin>::theAddin.reset(new xlOilAddin());
+
+      auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
+
+      if (ret == 1)
+        tryCallExcel(msxll::xlEventRegister,
+          "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+
+      detail::theXllIsOpen = true;
     }
     catch (const std::exception& e)
     {
       writeLog(e.what());
     }
   }
-  xlOilAddin()
-  {
-    auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
-  }
+  xlOilAddin() {}
   ~xlOilAddin()
   {
     xloil::autoCloseHandler(XllInfo::xllPath.c_str());
