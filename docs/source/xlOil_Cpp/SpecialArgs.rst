@@ -26,7 +26,7 @@ async type to Excel. Such a function does not return a value directly but invoke
 ExcelObj pointer
 ----------------
 
-You may opt to receive an `const ExcelObj*` instead of a reference. This is purely preference
+You may opt to receive a `const ExcelObj*` instead of a reference. This is purely preference
 and has no other impact.
 
 FPArray
@@ -46,18 +46,20 @@ FPArray type.  To declare inplace return, simply make the argument a non-const r
 It is also possible to returning an `ExcelObj` in-place but this is disabled 
 by default. In the words of the XLL SDK:
 
+
     "Excel permits the registration of functions that return an XLOPER by modifying 
     an argument in place. However, if an XLOPER argument points to memory, and the 
     pointer is then overwritten by the return value of the DLL function, Excel can 
     leak memory. If the DLL allocated memory for the return value, Excel might try 
     to free that memory, which could cause an immediate crash.  Therefore, you should 
     not modify XLOPER/XLOPER12 arguments in place."
- 
- In practice, it can be safe to modify an ExcelObj in place, for instance *xloSort*
- modifies its input by changing the row order in the array, but without changing memory 
- allocation.  However it does not use inplace return becasue the general difficulty with 
- this technique is that you cannot return a type different to the one passed, in particular
- you cannot return an error message or error type. 
- 
- To enable inplace `ExcelObj` returns, define the macro 
- `XLOIL_UNSAFE_INPLACE_RETURN` before including any xlOil headers.
+
+
+In practice, it can be safe to modify an ExcelObj in place, for instance *xloSort*
+modifies its input by changing the row order in the array, but without changing memory 
+allocation.  However it does not use inplace return becasue the general difficulty with 
+this technique is that you cannot return a type different to the one passed, in particular
+you cannot return an error message or error type. 
+
+To enable inplace `ExcelObj` returns, define the macro 
+`XLOIL_UNSAFE_INPLACE_RETURN` before including any xlOil headers.

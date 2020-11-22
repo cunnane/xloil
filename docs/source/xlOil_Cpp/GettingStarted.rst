@@ -48,7 +48,7 @@ Now add the following source file:
 
 :: 
 
-    #incude <xloil/xloil.h>
+    #include <xloil/xloil.h>
 
     XLO_PLUGIN_INIT(xloil::AddinContext* ctx, const xloil::PluginContext& plugin)
     {
@@ -100,21 +100,19 @@ points to the xlOil directory. Then include `./libs/xlOilStaticLib.props`.
 Alternatively, you can copy and modify the `TestAddin` project, though you will still need to ensure
 *xlOilRoot* is set correctly.
 
-
 Create a `Main.cpp` file with the following contents:
 
 .. highlight:: c++
 
 ::
 
-    #incude <xloil/xloil.h>
+    #include <xloil/xlOil.h>
+    #include <xloil/XllEntryPoint.h>
     using namespace xloil;
     
-    void xllOpen(void* hInstance)  // Invoked by xlAutoOpen
-    {}
-
-    void xllClose()  // Invoked by xlAutoClose
-    {}
+    struct MyAddin
+    {};
+    XLO_DECLARE_ADDIN(MyAddin);
 
     XLO_FUNC_START( 
         MyFunc(const ExcelObj* arg1, const ExcelObj* arg2)
@@ -127,6 +125,7 @@ Create a `Main.cpp` file with the following contents:
         .help(L"Joins two strings")
         .arg(L"Val1", L"First String")
         .arg(L"Val2", L"Second String");
+
 
 Debugging your addin
 ~~~~~~~~~~~~~~~~~~~~

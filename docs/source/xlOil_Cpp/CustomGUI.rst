@@ -14,25 +14,30 @@ Creating a ribbon in a static XLL
 ::
     
     void ribbonHandler(const RibbonControl& ctrl) {}
-    std::shared_ptr<IComAddin> theComAddin;
+    
 
-    void xllOpen(void* hInstance)
+    struct MyAddin
     {
-        // We need this call so that xlOil defers execution of the ribbon creation
-        // until Excel's COM interface is ready
-        xllOpenComCall([]()
+        std::shared_ptr<IComAddin> theComAddin;
+        MyAddin()
         {
-            auto mapper = [=](const wchar_t* name) mutable { return ribbonHandler; };
-            theComAddin = makeAddinWithRibbon(
-                L"TestXlOil",
-                LR"(
-                    <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
-                    ...
-                    </customUI>
-                )", 
-                mapper);
-        });
-    }
+            // We need this call so that xlOil defers execution of the ribbon creation
+            // until Excel's COM interface is ready
+            xllOpenComCall([this]()
+            {
+                auto mapper = [=](const wchar_t* name) mutable { return ribbonHandler; };
+                theComAddin = makeAddinWithRibbon(
+                    L"TestXlOil",
+                    LR"(
+                        <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+                        ...
+                        </customUI>
+                    )", 
+                    mapper);
+            });
+        }
+    };
+    XLO_DECLARE_ADDIN(MyAddin);
 
 
 Creating a ribbon in an xlOil plugin

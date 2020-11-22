@@ -41,8 +41,8 @@ Excel does not support timezones.
 
 .. _core-cached-objects:
 
-Cached Objects
---------------
+Cached Excel Objects
+--------------------
 
 xlOil has an internal lookup for Excel values, which is a convenient way of 
 passing arrays around a sheet and as arguments to other xlOil functions.

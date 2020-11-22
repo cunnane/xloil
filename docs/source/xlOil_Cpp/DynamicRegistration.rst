@@ -4,7 +4,14 @@ xlOil C++ Dynamic Registration
 
 To support registration of functions in other languages, xlOil has the ability to register worksheet
 functions generated at runtime.  In C++, you usually can create a static entry point for each function
-you want to register using xlOil macros which end up calling `Excel12(xlfRegister, ...)`.  To
+you want to register using xlOil macros.  These macros end up calling `Excel12(xlfRegister, ...)` and 
+pass the name of your function.  Dynamic registration is a little trickier since `xlfRegister` requires
+the name of an entry point into your XLL rather than a function pointer.  xlOil arranges for such a 
+suitable entry point to exist by generating a small trampoline function in assembler which redirects
+to your function.  However, this creates a tiny performance overhead (typically around 8-16 instructions
+increasing with the number of arguments).
+
+.. highlight:: c++
 
 ::
 

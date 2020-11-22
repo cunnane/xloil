@@ -20,8 +20,8 @@ background.  To customise the ribbon, simply run the following:
             'onUpdate': update_text,
         })
 
-The ``mapper`` dictionary links callbacks named in the ribbon XML to python functions. Each
-handler should have a signature like the following:
+The ``mapper`` dictionary (or function) links callbacks named in the ribbon XML to python functions. 
+Each handler should have a signature like the following:
 
 ::
 
@@ -33,15 +33,24 @@ handler should have a signature like the following:
         ...    
 
 
-The ``RibbonControl`` describes the control which raised the callback. The number of further
-arguments is callback dependent.  In addition, the callback may be expected 
-to return a value. See the *Resources* in :any:`concepts-ribbon` for a description of the 
-appropriate callback signature.
+The ``RibbonControl`` describes the control which raised the callback. The number of additional
+arguments is callback dependent.  In addition, the callback may be expected to return a value. 
+See the *Resources* in :any:`concepts-ribbon` for a description of the appropriate callback signature.
 
-Currently callbacks which use images (IPictureDisp) are not supported.
+The `getImage` callbacks must return a `PIL Image <https://pillow.readthedocs.io/en/stable/reference/Image.html>`_.
+Instead of using a `getImage` per control, a single `loadImage` attribute can be added:
 
-Alteratively, the `mapper` can be a function which takes any string and returns a callback
-handler.
+::
+
+    <customUI loadImage="MyImageLoader" xmlns=...>
+        ...
+        <button id="AButton" image="icon.jpg" />
+
+The `MyImageLoader` function will be called with the argument `icon.jpg` as be expected to return a 
+*PIL Image*.
+
+Instead of a dictionary, the `mapper` object can be a function which takes any string and returns a 
+callback handler.
 
 The ``ribbon`` object returned above is actually a handle to the COM addin created to support
 the ribbon customisation.  If the object goes out of scope and is deleted by python or if you call 

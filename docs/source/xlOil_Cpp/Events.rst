@@ -28,8 +28,8 @@ xlOil allows code to hook into Excel events. The events supported are:
 
 These are mostly documented under `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
 
-The exceptions are  The `CalcCancelled` and `WorkbookAfterClose` Events
-which are not part of the Application object.
+The exceptions are the `CalcCancelled`, `WorkbookAfterClose`, `XllAdd` and `XllRemove` events
+which are not part of the Application object and are documented below.
        
 WorkbookAfterClose
 ------------------

@@ -6,7 +6,7 @@ xlOil C++ provides a layer above the `XLL API <https://docs.microsoft.com/en-us/
 and includes features not available via the XLL API, such as RTD Servers, Ribbon customisation
 and event handling.
 
-The xlOil C++ interface has a `doxygen API description <doxygen/index.html>`_.
+The xlOil C++ interface has a `doxygen API description <../doxygen/index.html>`_.
 
 .. toctree::
     :maxdepth: 4
@@ -15,8 +15,11 @@ The xlOil C++ interface has a `doxygen API description <doxygen/index.html>`_.
     GettingStarted
     SpecialArgs
     Events
+    ObjectHandles
     CustomGUI
+    CppRtd
     DynamicRegistration
+    StaticXLLs
 
 
 Quick Tour of the Key Classes
@@ -96,3 +99,24 @@ The XLL SDK docs describe a number of API calls beginning with `xl` such as `xlC
 All arguments are automatically converted to `ExcelObj` type where a conversion is possible
 before being passed to Excel.  The type of the return value is given in the documentation.
 
+excelPost - calling blocked API functions 
+-----------------------------------------
+
+Excel's COM API must be called on the main thread, since it's single-threaded apartment.
+Breaking this rule may lead to undefined behaviour. In addition, the COM interface must be 'ready'
+which means no dialog boxes are open or other tasks which busy the COM interface.
+
+Calls to the XLL API generally also require the main thread (with a few exceptions) and being in 
+the correct 'context', that is being in a function invoked by Excel.
+
+The `excelPost` function queues a message to a hidden window or an asynchronous procedure call 
+(APC) callback which will be executed on the main thread when Excel passes control to windows 
+or pumps its message loop respectively (a window message is the default, most responsive choice).
+
+The `excelPost` function can retry calls, trying to wait until the COM interface is ready (sadly 
+there is no mechanism to allow Excel to inform applications when it is ready to work, you just 
+have to keep trying).
+ 
+In addition, setting the `XLL_API` flag runs the callback in the XLL context.
+
+ 
