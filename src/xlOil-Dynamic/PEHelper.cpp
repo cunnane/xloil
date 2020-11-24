@@ -11,54 +11,77 @@ xloil::DllExportTable::DllExportTable(HMODULE hInstance)
 
   // Express image as BYTE pointer as offsets in the PE format
   // are usually in number of bytes
-  imageBase = (BYTE*)hInstance;
+  _imageBase = (BYTE*)hInstance;
 
-  auto* pDosHeader = (PIMAGE_DOS_HEADER)imageBase;
+  auto* pDosHeader = (PIMAGE_DOS_HEADER)_imageBase;
   if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
     throw Exception("Dll export table: fatal error - bad DOS image");
 
-  auto* pNTHeader = (PIMAGE_NT_HEADERS)(imageBase + pDosHeader->e_lfanew);
+  auto* pNTHeader = (PIMAGE_NT_HEADERS)(_imageBase + pDosHeader->e_lfanew);
   if (pNTHeader->Signature != IMAGE_NT_SIGNATURE)
     throw Exception("Dll export table: fatal error - bad NT image");
     
-  auto opt_hdr = pNTHeader->OptionalHeader;
-  auto& exp_entry = opt_hdr.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-  auto* pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(imageBase + exp_entry.VirtualAddress);
+  auto optHdr = pNTHeader->OptionalHeader;
+  auto& exportEntry = optHdr.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+  auto* pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(_imageBase + exportEntry.VirtualAddress);
  
+  _funcAddresses   = (DWORD*)(_imageBase + pExportDirectory->AddressOfFunctions);
+  _namesToOrdinals = (WORD* )(_imageBase + pExportDirectory->AddressOfNameOrdinals);
+  _funcNames       = (DWORD*)(_imageBase + pExportDirectory->AddressOfNames);
 
-  func_table = (DWORD*)(imageBase + pExportDirectory->AddressOfFunctions);
-  ord_table = (WORD*)(imageBase + pExportDirectory->AddressOfNameOrdinals);
-  name_table = (DWORD*)(imageBase + pExportDirectory->AddressOfNames);
-  numberOfNames = pExportDirectory->NumberOfNames;
-
-  if (pExportDirectory->NumberOfFunctions != pExportDirectory->NumberOfNames)
-    throw std::runtime_error("Dll export table: ordinal export detected - not currently supported");
+  _numNames = pExportDirectory->NumberOfNames;
+  _numFuncs = pExportDirectory->NumberOfFunctions;
 }
 
-int xloil::DllExportTable::findOffset(const char* funcName)
+int xloil::DllExportTable::findOrdinal(const char* funcName)
 {
-  // TODO: lowerBound - the name table is sorted!
-  /*auto found = std::lower_bound(name_table, name_table + numberOfNames, funcName,
-    [this](DWORD a, const char* b) { return strcmp() < 0; }
-  );*/
-  for (size_t i = 0; i < numberOfNames; ++i)
-  {
-    if (strcmp((char*)imageBase + name_table[i], funcName) == 0)
-      return (int)i;
-  }
+  // The table function names is lexically ordered. We do need to 
+  // to a trick with the comparison functor since the table actually
+  // contains offsets from ImageBase rather than strings
+  auto found = std::lower_bound(_funcNames, _funcNames + _numNames, 0,
+    [base = _imageBase, funcName](DWORD a, DWORD b)
+    { 
+      return strcmp(
+        a > 0 ? (const char*)(base + a) : funcName,
+        b > 0 ? (const char*)(base + b) : funcName) < 0;
+    }
+  );
+  if (found != _funcNames + _numNames)
+    return (int)_namesToOrdinals[found - _funcNames];
   return -1;
 }
 
 #pragma warning(disable: 4302 4311)
-bool xloil::DllExportTable::hook(size_t offset, void * hook)
+bool xloil::DllExportTable::hook(size_t ordinal, void* hook)
 {
-  if (offset >= numberOfNames)
-    throw Exception("Function offset beyond export table bounds during hook");
-  auto target = func_table + ord_table[offset];
+  if (ordinal >= _numFuncs)
+    throw Exception("Function ordinal beyond export table bounds during hook");
+  if (hook < _imageBase)
+    throw Exception("Hook function must be beyond ImageBase");
+
+  auto* target = _funcAddresses + ordinal;
+
   DWORD oldProtect;
-  if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) return false;
-  *target = (DWORD)hook - DWORD(imageBase);
-  if (!VirtualProtect(target, sizeof(DWORD), oldProtect, &oldProtect)) return false;;
+  if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) 
+    return false;
+
+  *target = (DWORD)hook - DWORD(_imageBase);
+
+  if (!VirtualProtect(target, sizeof(DWORD), oldProtect, &oldProtect)) 
+    return false;
+
   return true;
 }
 
+const char* xloil::DllExportTable::getName(size_t ordinal) const
+{
+  for (auto i = 0; i < _numNames; ++i)
+    if (_namesToOrdinals[i] == ordinal)
+      return (const char*)(size_t)_funcNames[i];
+  return nullptr;
+}
+
+void* xloil::DllExportTable::functionPointer(size_t ordinal) const
+{
+  return (void*)(size_t)(_funcAddresses[ordinal] + DWORD(_imageBase));
+}

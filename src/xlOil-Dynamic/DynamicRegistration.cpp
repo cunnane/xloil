@@ -47,7 +47,7 @@ namespace xloil
     {
       theCoreDllName = State::coreName();
       theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
-      theFirstStub = theExportTable->findOffset(
+      theFirstStub = theExportTable->findOrdinal(
         decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
       if (theFirstStub < 0)
         XLO_THROW("Could not find xlOil stub");

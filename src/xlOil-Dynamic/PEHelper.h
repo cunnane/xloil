@@ -4,33 +4,53 @@
 
 namespace xloil
 {
-  /// Hides the casting around inspecting and hooking the DLL's export address table (EAT)
+  
+  /// <summary>
+  /// Manages hooking into the DLL export table
+  /// </summary>
   class DllExportTable
   {
   private:
-    DWORD* func_table;
-    WORD* ord_table;
-    DWORD * name_table;
-    size_t numberOfNames;
-    BYTE* imageBase;
+    DWORD* _funcAddresses;
+    WORD* _namesToOrdinals;
+    DWORD* _funcNames;
+    size_t _numNames;
+    size_t _numFuncs;
+    BYTE* _imageBase;
 
   public:
     DllExportTable(HMODULE image);
 
-    int findOffset(const char* funcName);
+    /// <summary>
+    /// Finds a function's ordinal given its name
+    /// </summary>
+    /// <param name="funcName"></param>
+    /// <returns>The ordinal or -1 if not found</returns>
+    int findOrdinal(const char* funcName);
 
-    DWORD* getAddress(size_t offset) const;
+    /// <summary>
+    /// Hooks a function at the specified function ordinal, that is, points the the 
+    /// export table entry for that function to the hook address. It does not change
+    /// the exported function name. The hook function address must be greater than 
+    /// the DLL's imagebase.
+    /// </summary>
+    /// <param name="offset"></param>
+    /// <param name="hook"></param>
+    /// <returns>true if hook succeeded, else false</returns>
+    bool hook(size_t ordinal, void* hook);
 
-    /// Hooks a function at the specified function number.  Currently the function address must be 
-    /// greater than the DLL's imagebase.
-    bool hook(size_t offset, void* hook);
+    /// <summary>
+    /// Returns the exported function name given an ordinal or null pointer if the 
+    /// ordinal is out of range or not exported by name
+    /// </summary>
+    const char* getName(size_t ordinal) const;
 
-    const char* getName(size_t offset) const
-    {
-      if (offset >= numberOfNames)
-        throw Helpers::Exception("Function offset out of bounds of export table");
-      return (const char*)(imageBase + name_table[offset]);
-    }
+    /// <summary>
+    /// Returns a pointer to an exported function given its ordinal
+    /// </summary>
+    /// <param name="ordinal"></param>
+    /// <returns></returns>
+    void* functionPointer(size_t ordinal) const;
   };
 
 
