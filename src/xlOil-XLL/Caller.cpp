@@ -126,7 +126,16 @@ namespace xloil
   uint16_t CallerInfo::addressRCLength() const
   {
     // Any value in more precise guess?
-    return fullSheetName().length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
+    const auto sheetName = fullSheetName();
+    if (!sheetName.empty())
+      return sheetName.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
+
+    // Not a worksheet caller
+    auto addressStr = _address.asPString();
+    if (!addressStr.empty())
+      return addressStr.length();
+
+    return 19; // Max is "Toolbar(<some int id>)"
   }
 
   namespace
@@ -174,7 +183,6 @@ namespace xloil
     size_t bufLen,
     bool A1Style) const
   {
-    const msxll::XLREF12* sheetRef = nullptr;
     switch (_address.type())
     {
     case ExcelType::SRef:
@@ -191,7 +199,7 @@ namespace xloil
     {
       auto str = _address.asPString();
       wcsncpy_s(buf, bufLen, str.pstr(), str.length());
-      return wcslen(buf);
+      return std::min<int>((int)bufLen, str.length());
     }
     case ExcelType::Num: // DLL caller
     {
