@@ -70,12 +70,18 @@ namespace xloil
       return _fullSheetName.asPString();
     }
     /// <summary>
-    /// Returns true if the function was called from a worksheet. For other
-    /// possible caller types see the xlfCaller documentation.
+    /// Returns a pointer to al XLREF12 sheet reference if caller was a 
+    /// worksheet, else returns nullptr.
     /// </summary>
-    bool calledFromSheet() const
+    const msxll::XLREF12* sheetRef() const
     {
-      return _address.isType(ExcelType::RangeRef);
+      switch (_address.type())
+      {
+      case ExcelType::SRef: return &_address.val.sref.ref;
+      case ExcelType::Ref: return &_address.val.mref.lpmref->reftbl[0];
+      default:
+        return nullptr;
+      }
     }
 
     /// <summary>

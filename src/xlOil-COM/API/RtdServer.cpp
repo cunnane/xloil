@@ -54,14 +54,21 @@ namespace xloil
 
   class RtdAsyncManager
   {
+    struct CellTaskHolder
+    {
+      CellTasks tasks;
+      int arrayCount = 0; // see comment in 'getValue()'
+    };
+
     shared_ptr<IRtdServer> _mgr;
-    std::unordered_map<wstring, CellTasks> _tasksPerCell;
+    std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
     {
       GUID guid;
       CoCreateGuid(&guid);
 
+      // TODO: make exception safe
       LPOLESTR guidStr;
       StringFromCLSID(guid, &guidStr);
 
@@ -80,9 +87,34 @@ namespace xloil
     shared_ptr<const ExcelObj> getValue(
       shared_ptr<IRtdAsyncTask> task)
     {
-      const auto address = CallerInfo().writeAddress(false);
+      // If the caller is an array formula, when RTD is called in the subscribe()
+      // method, it will return xlretUncalced, but will trigger the calling
+      // function to be called again for each cell in the array. The caller
+      // will remain as the top left-cell except for the first call which will 
+      // be an array.
+      // 
+      // We want to start the task only once for the first call, with subsequent
+      // calls ignored until the last one which must call subscribe (and hence 
+      // RTD) for Excel to make the RTD connection.
+      //
+      const auto ref = CallerInfo().sheetRef();
+      const auto arraySize = (ref->colLast - ref->colFirst + 1) 
+        * (ref->rwLast - ref->rwFirst + 1);
+      auto address = CallerInfo().writeAddress(false);
+
+      // Turn array address into top left cell
+      if (arraySize > 1)
+        address.erase(address.rfind(':'));
+  
       auto& tasksInCell = _tasksPerCell[address];
-      for (auto& t: tasksInCell)
+      
+      if (tasksInCell.arrayCount > 1)
+      {
+        --tasksInCell.arrayCount;
+        return shared_ptr<const ExcelObj>();
+      }
+
+      for (auto& t: tasksInCell.tasks)
         if (*task == (const IRtdAsyncTask&)*t->task())
         {
           auto value = _mgr->peek(t->topic());
@@ -92,8 +124,9 @@ namespace xloil
         }
 
       // Couldn't find matching task so start it up
-      start(tasksInCell, task);
-      return _mgr->subscribe(tasksInCell.back()->topic());
+      start(tasksInCell.tasks, task);
+      tasksInCell.arrayCount = arraySize;
+      return _mgr->subscribe(tasksInCell.tasks.back()->topic());
     }
 
     void clear()

@@ -33,6 +33,7 @@ using std::future_status;
 using std::unordered_set;
 using std::unordered_map;
 using std::pair;
+using std::list;
 
 namespace
 {
@@ -180,16 +181,25 @@ namespace xloil
 
           const auto topic = topicAsVariant.bstrVal;
 
-          std::scoped_lock lock(_lockSubscribers);
+          // We need these values after we release the lock
+          shared_ptr<IRtdPublisher> publisher;
+          size_t numSubscribers;
+          {
+            scoped_lock lock(_lockSubscribers);
 
-          // Find subscribers for this topic and link to the topic ID
-          _activeTopicIds[topicId] = topic;
-          auto& record = _records[topic];
-          record.subscribers.insert(topicId);
+            // Find subscribers for this topic and link to the topic ID
+            _activeTopicIds[topicId] = topic;
+            auto& record = _records[topic];
+            record.subscribers.insert(topicId);
+            publisher = record.publisher;
+            numSubscribers = record.subscribers.size();
+          }
 
-          // Let the publisher know how many subscribers they now have
-          if (record.publisher)
-            record.publisher->connect(record.subscribers.size());
+          // Let the publisher know how many subscribers they now have.
+          // We must not hold the lock when calling functions on the publisher
+          // as they may try to call other functions on the RTD server. 
+          if (publisher)
+            publisher->connect(numSubscribers);
 
           XLO_DEBUG(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
         }
@@ -213,21 +223,29 @@ namespace xloil
           newValues.splice(newValues.begin(), _newValues);
         }
 
-        scoped_lock lock(_lockSubscribers);
         unordered_set<long> readyTopicIds;
-        for (auto&[topic, value] : newValues)
         {
-          auto& record = _records[topic];
-          record.value = value;
-          readyTopicIds.insert(record.subscribers.begin(), record.subscribers.end());
+          scoped_lock lock(_lockSubscribers);
+          for (auto&[topic, value] : newValues)
+          {
+            auto& record = _records[topic];
+            record.value = value;
+            readyTopicIds.insert(record.subscribers.begin(), record.subscribers.end());
+          }
         }
 
         const auto nReady = readyTopicIds.size();
         *topicCount = (long)nReady;
 
+        // If no subscribers for the producers, we're done
         if (nReady == 0)
-          return S_OK; // There may be no subscribers for the producers
+          return S_OK; 
 
+        // 
+        // All this code just creates a 2 x n safearray which has rows of:
+        //     topicId | empty
+        // With the topicId for each updated topic
+        //
         SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
         *data = SafeArrayCreate(VT_VARIANT, 2, bounds);
 
@@ -255,40 +273,65 @@ namespace xloil
       {
         try
         {
-          std::scoped_lock lock(_lockSubscribers);
+          // We will
+          shared_ptr<IRtdPublisher> publisher;
+          size_t numSubscribers;
+          decltype(_cancelledPublishers) cancelledPublishers;
 
-          XLO_DEBUG("RTD: disconnect topicId {}", topicId);
+          // We must *not* hold the lock when calling methods of the publisher
+          // as they may try to call other functions on the RTD server. So we
+          // first handle the topic lookup and removing subscribers before
+          // releasing the lock and notifying the publisher.
+          {
+            std::scoped_lock lock(_lockSubscribers);
+
+            XLO_DEBUG("RTD: disconnect topicId {}", topicId);
+
+            std::swap(_cancelledPublishers, cancelledPublishers);
+
+            const auto& topic = _activeTopicIds[topicId];
+            if (topic.empty())
+              XLO_THROW("Could not find topic for id {0}", topicId);
+
+            auto& record = _records[topic];
+            record.subscribers.erase(topicId);
+
+            _activeTopicIds.erase(topicId);
+
+            numSubscribers = record.subscribers.size();
+            publisher = record.publisher;
+
+            if (!publisher && numSubscribers == 0)
+              _records.erase(topic);
+          }
 
           // Remove any done objects in the cancellation bucket
-          _cancelledProducers.remove_if([](auto& x) { return x->done(); });
+          cancelledPublishers.remove_if([](auto& x) { return x->done(); });
 
-          const auto& topic = _activeTopicIds[topicId];
-          if (topic.empty())
-            XLO_THROW("Could not find topic for id {0}", topicId);
-
-          auto& record = _records[topic];
-          record.subscribers.erase(topicId);
+          if (!publisher)
+            return S_OK;
 
           // If the disconnect() causes the publisher to cancel its task,
           // it will return true here. We may not be able to just delete it, 
           // we have to wait until any threads it created have exited
-          if (record.publisher)
+          if (publisher->disconnect(numSubscribers))
           {
-            if (record.publisher->disconnect(record.subscribers.size()))
+            const auto topic = publisher->topic();
+            const auto done = publisher->done();
+
+            if (!done)
+              publisher->stop();
             {
-              if (!record.publisher->done())
-                cancelProducer(record.publisher);
+              std::scoped_lock lock(_lockSubscribers);
+
+              if (!done)
+                _cancelledPublishers.emplace_back(publisher);
 
               // Disconnect should only return true when num_subscribers = 0, 
               // so it's safe to erase the entire record
               _records.erase(topic);
             }
           }
-          else if (record.subscribers.empty())
-            _records.erase(topic);
-
-          _activeTopicIds.erase(topicId);
-
         }
         catch (const std::exception& e)
         {
@@ -342,14 +385,14 @@ namespace xloil
       
       unordered_map<wstring, TopicRecord> _records;
 
-      std::list<pair<wstring, shared_ptr<TValue>>> _newValues;
-      std::list<shared_ptr<IRtdPublisher>> _cancelledProducers;
+      list<pair<wstring, shared_ptr<TValue>>> _newValues;
+      list<shared_ptr<IRtdPublisher>> _cancelledPublishers;
 
       std::atomic<Excel::IRTDUpdateEvent*> _updateCallback;
 
-      // We use a separate lock for the newValues to avoid blocking it 
-      // too often: updates will come from other threads and just need to
-      // write into newValues.
+      // We use a separate lock for the newValues to avoid blocking too 
+      // often: value updates are likely to come from other threads and 
+      // just need to write into newValues without accessing pub/sub info
       mutable std::mutex _lockNewValues;
       mutable std::mutex _lockSubscribers;
 
@@ -357,33 +400,38 @@ namespace xloil
       {
         return _updateCallback;
       }
-      void cancelProducer(const shared_ptr<IRtdPublisher>& producer)
-      {
-        producer->stop();
-        _cancelledProducers.push_back(producer);
-      }
 
     public:
       void clear()
       {
-        scoped_lock lock(_lockSubscribers);
+        // We must not hold the lock when calling functions on the publisher
+        // as they may try to call other functions on the RTD server. 
 
-        for (auto& record : _records)
+        list<shared_ptr<IRtdPublisher>> publishers;
+        {
+          scoped_lock lock(_lockSubscribers);
+
+          for (auto& record : _records)
+            if (record.second.publisher)
+              publishers.emplace_back(std::move(record.second.publisher));
+
+          _records.clear();
+          _cancelledPublishers.clear();
+        }
+        
+        for (auto& pub : publishers)
         {
           try
           {
-            if (record.second.publisher)
-              record.second.publisher->stop();
+            pub->stop();
           }
           catch (const std::exception& e)
           {
-            XLO_INFO(L"Failed to stop producer: '{0}': {1}", 
-              record.first, utf8ToUtf16(e.what()));
+            // TODO: topic() may throw
+            XLO_INFO(L"Failed to stop producer: '{0}': {1}",
+              pub->topic(), utf8ToUtf16(e.what()));
           }
         }
-
-        _records.clear();
-        _cancelledProducers.clear();
       }
 
       void update(const wchar_t* topic, const shared_ptr<TValue>& value)
@@ -392,10 +440,12 @@ namespace xloil
           return;
 
         scoped_lock lock(_lockNewValues);
+
         _newValues.push_back(make_pair(wstring(topic), value));
 
         // We only need to notify Excel about new data once. Excel will
-        // only callback RefreshData approximately every 2 seconds
+        // only callback RefreshData every 2 seconds (unless someone fiddled 
+        // with the throttle interval)
         if (_newValues.size() == 1)
         {
           excelPost([this]()
@@ -406,27 +456,37 @@ namespace xloil
         }
       }
 
-      void addProducer(const shared_ptr<IRtdPublisher>& job)
+      void addProducer(shared_ptr<IRtdPublisher> job)
       {
-        std::scoped_lock lock(_lockSubscribers);
-        auto& record = _records[job->topic()];
-        if (record.publisher)
-          cancelProducer(record.publisher);
-        record.publisher = job;
+        {
+          std::scoped_lock lock(_lockSubscribers);
+          auto& record = _records[job->topic()];
+          std::swap(record.publisher, job);
+          if (job)
+            _cancelledPublishers.push_back(job);
+        }
+        if (job)
+          job->stop();
       }
 
       bool dropProducer(const wchar_t* topic)
       {
-        std::scoped_lock lock(_lockSubscribers);
-        auto i = _records.find(topic);
-        if (i == _records.end())
-          return false;
+        // We must not hold the lock when calling functions on the publisher
+        // as they may try to call other functions on the RTD server. 
+        shared_ptr<IRtdPublisher> publisher;
+        {
+          std::scoped_lock lock(_lockSubscribers);
+          auto i = _records.find(topic);
+          if (i == _records.end())
+            return false;
+          std::swap(publisher, i->second.publisher);
+        }
 
         // Signal the publisher to stop
-        i->second.publisher->stop();
+        publisher->stop();
 
         // Destroy producer, the dtor of RtdPublisher waits for completion
-        i->second.publisher.reset();
+        publisher.reset();
 
         // Publish empty value
         update(topic, shared_ptr<TValue>());
@@ -452,7 +512,7 @@ namespace xloil
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
         : _registrar(new CComObject<RtdServerImpl<ExcelObj>>(), progId, fixedClsid)
       {
-        // TODO: no need for member var.
+        // TODO: no need for member var!
         _server = &_registrar.server();
 #ifdef _DEBUG
         //void* testObj;
@@ -481,10 +541,9 @@ namespace xloil
 
       shared_ptr<const ExcelObj> subscribe(const wchar_t * topic) override
       {
-        callRtd(topic);
         shared_ptr<const ExcelObj> value;
         // If there is a producer, but no value yet, put N/A
-        if (_server->value(topic, value) && !value)
+        if (callRtd(topic) && _server->value(topic, value) && !value)
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
@@ -526,15 +585,20 @@ namespace xloil
           XLO_ERROR("RtdServer::clear: {0}", e.what());
         }
       }
-
     
-      // We don't use the value from the Rtd call, but it indicates to
-      // Excel that the current UDF should be treated as an RTD function.
-      // It prompts Excel to connect to the RTD server to link a topicId
-      // to this topic string
-      void callRtd(const wchar_t* topic) const
+      /// <summary>
+      /// We don't use the value from the Rtd call, but it indicates to
+      /// Excel that the current UDF should be treated as an RTD function.
+      /// It prompts Excel to connect to the RTD server to link a topicId
+      /// to this topic string. Returns false if the excel call fails 
+      /// (usually this will be due to xlretUncalced which occurs when the
+      /// calling cell is an array formula).
+      /// </summary>
+      bool callRtd(const wchar_t* topic) const
       {
-        callExcel(msxll::xlfRtd, _registrar.progid(), L"", topic);
+        auto[val, retCode] = 
+          tryCallExcel(msxll::xlfRtd, _registrar.progid(), L"", topic);
+        return retCode == 0;
       }
     };
 
