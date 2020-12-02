@@ -393,7 +393,7 @@ namespace xloil
       }
       bool done() override
       {
-        return !_returnObj || _returnObj->done();
+        return _returnObj ? _returnObj->done() : false;
       }
       void wait() override
       {
