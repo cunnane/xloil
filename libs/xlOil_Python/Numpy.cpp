@@ -438,7 +438,7 @@ namespace xloil
         void* arrayPtr)
       {
         const auto* pyObj = *(PyObject**)arrayPtr;
-        return FromPyObj()(pyObj, true, builder.charAllocator());
+        return FromPyObj()(pyObj, builder.charAllocator());
       }
     };
 

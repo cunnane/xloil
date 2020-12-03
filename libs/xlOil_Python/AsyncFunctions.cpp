@@ -309,7 +309,7 @@ namespace xloil
         // Convert result to ExcelObj
         ExcelObj result = _returnConverter
           ? (*_returnConverter)(*value.ptr())
-          : FromPyObj()(value.ptr(), false);
+          : FromPyObj<false>()(value.ptr());
 
         // If nil, conversion wasn't possible, so use the cache
         if (result.isType(ExcelType::Nil))

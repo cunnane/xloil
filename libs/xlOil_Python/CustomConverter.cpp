@@ -80,7 +80,7 @@ namespace xloil
           return ExcelObj();
         }
         auto converted = PySteal<>(result);
-        return FromPyObj()(converted.ptr(), false);
+        return FromPyObj()(converted.ptr());
       }
     };
 

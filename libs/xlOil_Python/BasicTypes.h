@@ -282,12 +282,12 @@ namespace xloil
 
     extern std::shared_ptr<const IPyToExcel> theCustomReturnConverter;
 
+    template<bool TUseCache = true, CellError TFailure=CellError::Value>
     struct FromPyObj
     {
       template <class TAlloc = PStringAllocator<wchar_t>>
       auto operator()(
         const PyObject* obj, 
-        bool useCache = true, 
         const TAlloc& stringAllocator = PStringAllocator<wchar_t>()) const
       {
         auto p = (PyObject*)obj; // Python API isn't const-aware
@@ -336,12 +336,12 @@ namespace xloil
         {
           return nestedIterableToExcel(p);
         }
-        else if (useCache)
+        else if (TUseCache)
         {
           return pyCacheAdd(PyBorrow<>(p));
         }
         else
-          return ExcelObj(CellError::Value);
+          return ExcelObj(TFailure);
       }
     };
   }

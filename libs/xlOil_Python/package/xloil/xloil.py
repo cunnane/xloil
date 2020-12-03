@@ -121,16 +121,16 @@ def _function_argspec(func):
 
 
 def _get_typeconverter(type_name, from_excel=True):
-    # Attempt to find converter with standardised name like `From_int`
-    try:
-        to_from = 'To' if from_excel else 'From'
-        name = f"{to_from}_{type_name}"
-        #if not hasattr(xloil_core, name):
-        #    name = f"{to_from}_cache"
-        return getattr(xloil_core, name)()
-        
-    except:
-        raise Exception(f"No converter {to_from.lower()} {type_name}. Expected {name}")
+    """
+    Attempt to find converter with standardised name like `From_int`. Falls back
+    to From_cache if none found
+    """
+    to_from = 'To' if from_excel else 'From'
+    name = f"{to_from}_{type_name}"
+    if not hasattr(xloil_core, name):
+        name = f"{to_from}_cache"
+    return getattr(xloil_core, name)()
+
 
 class _Converter:
      _xloil_converter = None
@@ -210,6 +210,14 @@ def converter(typ=typing.Callable, range=False):
 
     return decorate
 
+class Cache:
+    """
+    Allows you to write `-> xloil.Cache` after a function declaration to force
+    the output to be placed in the object cache. The class has no actual
+    functionality.
+    """
+    pass
+
 class FuncDescription:
     """
     Used to create the description of a worksheet function to register. 
@@ -255,20 +263,20 @@ class FuncDescription:
             # out what to return based on the Excel type
             converter = xloil_core.To_object()
             this_arg = info.args[i]
-            atype = x.typeof
-            if atype is not None:
-                if inspect.isclass(atype) and issubclass(atype, _Converter):
-                    converter = atype._xloil_converter
-                    this_arg.allow_range = atype._xloil_allow_range
-                elif atype is AllowRange:
+            argtype = x.typeof
+            if argtype is not None:
+                if inspect.isclass(argtype) and issubclass(argtype, _Converter):
+                    converter = argtype._xloil_converter
+                    this_arg.allow_range = argtype._xloil_allow_range
+                elif argtype is AllowRange:
                     this_arg.allow_range = True
-                elif atype is Range:
+                elif argtype is Range:
                     this_arg.allow_range = True
                     converter = _get_typeconverter("Range", from_excel=True)
-                elif atype is ExcelValue:
+                elif argtype is ExcelValue:
                     pass # This the explicit generic type, so do nothing
-                elif isinstance(atype, type) and atype is not object:
-                    converter = _get_typeconverter(atype.__name__, from_excel=True)
+                elif isinstance(argtype, type) and argtype is not object:
+                    converter = _get_typeconverter(argtype.__name__, from_excel=True)
 
             if x.has_default:
                 this_arg.optional = True
@@ -277,13 +285,17 @@ class FuncDescription:
                 holder.set_arg_type(i, converter)
 
         if self.return_type is not inspect._empty:
-            ret = self.return_type
-            if issubclass(ret, _Converter):
-                holder.return_converter = _CustomReturn(ret._xloil_converter)
-            elif isinstance(ret, type) and ret is not object:
-                holder.return_converter = _get_typeconverter(ret.__name__, from_excel=False)
+            ret_type = self.return_type
+            ret_con = None
+            if issubclass(ret_type, _Converter):
+                ret_con = _CustomReturn(ret_type._xloil_converter)
+            elif isinstance(ret_type, Cache):
+                ret_con = xloil_core.To_cache()
+            elif isinstance(ret_type, type) and ret_type is not object:
+                ret_con = _get_typeconverter(ret_type.__name__, from_excel=False)
             else:
-                pass # TODO: Ignore - warn user?
+                pass # Not sure how we get here
+            holder.return_converter = ret_con
 
         # RTD-async is default unless rtd=False was explicitly specified.
         holder.rtd_async = self.is_async and (self.rtd is not False)

@@ -39,6 +39,17 @@ namespace xloil
       theCustomReturnConverter = conv;
     }
 
+    struct FromPyToCache
+    {
+      auto operator()(const PyObject* obj) const
+      {
+        auto result = FromPyObj<false, CellError::GettingData>()(obj);
+        return makeCached<ExcelObj>(result == CellError::GettingData
+          ? pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)))
+          : std::move(result));;
+      }
+    };
+
     static int theBinder = addBinder([](py::module& mod)
     {
       // Bind converters for standard types
@@ -53,6 +64,7 @@ namespace xloil
       convertXl<FromPyFloat>(mod, "float");
       convertXl<FromPyBool>(mod, "bool");
       convertXl<FromPyString>(mod, "str");
+      convertXl<FromPyToCache>(mod, "cache");
 
       mod.def("set_return_converter", setReturnConverter);
     });

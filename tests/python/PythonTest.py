@@ -111,6 +111,10 @@ def pyTestCache(cachedObj=None):
 def pyCacheKeys():
     return xlo.cache.keys()
 
+@xlo.func
+def pyTestToCache(x) -> xlo.Cache:
+    return x
+
 #------------------
 # Dates
 #------------------
@@ -128,6 +132,9 @@ def pyTestDate(x: dt.datetime) -> dt.datetime:
     return x + dt.timedelta(days=1)
  
 
+#------------------
+# Keyword args
+#------------------
 #
 # Keyword args are supported by passing a two-column array of (string, value)
 # This function also tests the dict return conversion (without specifying the
