@@ -14,6 +14,7 @@ using std::make_pair;
 using std::wstring;
 using std::make_shared;
 using std::shared_ptr;
+using std::vector;
 
 namespace xloil
 {
@@ -43,18 +44,24 @@ namespace xloil
 
   FileSource::~FileSource()
   {
-    excelPost([this]()
+    XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
+
+    decltype(_functions) functions;
+    wstring workbookName;
+    std::swap(_functions, functions);
+    std::swap(_workbookName, workbookName);
+
+    excelPost([=]()
     {
-      XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
-      forgetLocalFunctions(_workbookName.c_str());
-      for (auto& f : _functions)
+      if (!workbookName.empty())
+        forgetLocalFunctions(workbookName.c_str());
+      for (auto& f : functions)
         xloil::deregisterFunc(f.second);
-      _functions.clear();
     }, QueueType::XLL_API);
   }
 
   void FileSource::registerFuncs(
-    const std::vector<std::shared_ptr<const FuncSpec> >& funcSpecs)
+    const vector<shared_ptr<const FuncSpec> >& funcSpecs)
   {
     excelPost([specs = funcSpecs, self = this]() mutable
     {
@@ -93,7 +100,7 @@ namespace xloil
   }
 
   RegisteredFuncPtr FileSource::registerFunc(
-    const std::shared_ptr<const FuncSpec>& spec)
+    const shared_ptr<const FuncSpec>& spec)
   {
     auto& name = spec->name();
     auto iFunc = _functions.find(name);
@@ -135,8 +142,8 @@ namespace xloil
   }
 
   void FileSource::registerLocal(
-    const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo, 
-    const std::vector<DynamicExcelFunc<>> funcs)
+    const vector<shared_ptr<const FuncInfo>>& funcInfo, 
+    const vector<DynamicExcelFunc<>> funcs)
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
@@ -146,7 +153,7 @@ namespace xloil
     });
   }
 
-  std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
+  std::pair<shared_ptr<FileSource>, shared_ptr<AddinContext>>
     FileSource::findFileContext(const wchar_t* source)
   {
     auto found = xloil::findFileSource(source);
@@ -165,7 +172,7 @@ namespace xloil
   }
 
   void
-    FileSource::deleteFileContext(const std::shared_ptr<FileSource>& source)
+    FileSource::deleteFileContext(const shared_ptr<FileSource>& source)
   {
     xloil::deleteFileSource(source);
   }
