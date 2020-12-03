@@ -188,7 +188,7 @@ namespace xloil
             scoped_lock lock(_lockSubscribers);
 
             // Find subscribers for this topic and link to the topic ID
-            _activeTopicIds[topicId] = topic;
+            _activeTopicIds.emplace(topicId, topic);
             auto& record = _records[topic];
             record.subscribers.insert(topicId);
             publisher = record.publisher;
@@ -289,20 +289,20 @@ namespace xloil
 
             std::swap(_cancelledPublishers, cancelledPublishers);
 
-            const auto& topic = _activeTopicIds[topicId];
-            if (topic.empty())
+            const auto topic = _activeTopicIds.find(topicId);
+            if (topic == _activeTopicIds.end())
               XLO_THROW("Could not find topic for id {0}", topicId);
 
-            auto& record = _records[topic];
+            auto& record = _records[topic->second];
             record.subscribers.erase(topicId);
-
-            _activeTopicIds.erase(topicId);
 
             numSubscribers = record.subscribers.size();
             publisher = record.publisher;
 
             if (!publisher && numSubscribers == 0)
-              _records.erase(topic);
+              _records.erase(topic->second);
+
+            _activeTopicIds.erase(topic);
           }
 
           // Remove any done objects in the cancellation bucket
