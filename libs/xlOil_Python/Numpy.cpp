@@ -342,7 +342,9 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
 
-    template <int TNpType, bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>
+    template<
+      int TNpType, 
+      bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>
     struct FromArrayImpl
     {
       using TDataType = typename TypeTraits<TNpType>::storage;
@@ -387,13 +389,14 @@ namespace xloil
         ExcelArrayBuilder& builder, 
         void* arrayPtr)
       {
-        auto x = (char32_t*)arrayPtr;
-        auto pstr = builder.string(stringLength);
+        const auto x = (const char32_t*)arrayPtr;
+        const auto len = strlen32(x, stringLength / charMultiple);
+        auto pstr = builder.string(len);
         auto nChars = ConvertUTF32ToUTF16()(
-          (char16_t*)pstr.pstr(), pstr.length(), x, x + stringLength / charMultiple);
+          (char16_t*)pstr.pstr(), pstr.length(), x, x + len );
 
-        // Because not every UTF-32 char takes two UTF-16 chars, we resize
-        // to the actual number used
+        // Because not every UTF-32 char takes two UTF-16 chars and not
+        // every string takes up the full fixed with, we resize here
         pstr.resize((char16_t)nChars);
         return ExcelObj(std::move(pstr));
       }

@@ -42,12 +42,12 @@ namespace xloil
 
     size_t operator()(
       to_char* target, 
-      const size_t size, 
+      const size_t targetSize,
       const from_char* begin, 
       const from_char* end) const noexcept
     {
       auto* p = target;
-      auto* pEnd = target + size;
+      auto* pEnd = target + targetSize;
       for (; begin < end; ++begin, ++p)
       {
         // If we are past the end of the buffer, carry on so we can
@@ -98,14 +98,22 @@ namespace xloil
       l = (char16_t)(0xDC00 + (codepoint & 0x3FF));
     }
 
+    /// <summary>
+    /// Stops at null character
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="targetSize"></param>
+    /// <param name="begin"></param>
+    /// <param name="end"></param>
+    /// <returns></returns>
     size_t operator()(
       to_char* target, 
-      const size_t size, 
+      const size_t targetSize, 
       const from_char* begin, 
       const from_char* end) const noexcept
     {
       auto* p = target;
-      auto* pEnd = target + size;
+      auto* pEnd = target + targetSize;
       to_char lead, trail;
       for (; begin != end; ++begin, ++p)
       {
@@ -113,7 +121,7 @@ namespace xloil
         // If we are past the end of the buffer, carry on so we can
         // determine the required buffer length, but do not write
         // any characters
-        if (p + 1 >= pEnd)
+        if (p >= pEnd || (trail != 0 && p + 1 >= pEnd))
         {
           if (trail != 0) 
             ++p;
@@ -136,6 +144,24 @@ namespace xloil
       return (*this)((to_char*)target, size, begin, end);
     }
   };
+
+  /// <summary>
+  /// strlen for char32 strings with a maximum length (in case the string
+  /// is not null terminated). If a max is not required, use std::char_traits.
+  /// </summary>
+  /// <param name="str"></param>
+  /// <param name="max"></param>
+  /// <returns></returns>
+  inline size_t strlen32(const char32_t* str, const size_t max)
+  {
+    size_t count = 0;
+    while (*str != 0 && count < max)
+    {
+      ++count;
+      ++str;
+    }
+    return count;
+  }
 
   /// <summary>
   /// Tries to convert the provided floating point double to an integer.
