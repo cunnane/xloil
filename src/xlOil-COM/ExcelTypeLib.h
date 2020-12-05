@@ -25,6 +25,9 @@ using namespace Office;
 
 using namespace VBIDE;
 
+//disable: automatically excluding 'name' while importing type library 'library'
+#pragma warning(disable : 4192) 
+
 // Excel.exe
 #import "libid:00020813-0000-0000-C000-000000000046" \
   rename("DocumentProperties", "DocumentPropertiesXL") \

@@ -22,7 +22,7 @@ namespace xloil
   {
     struct ComAddinEvents
     {
-      void OnDisconnection(bool excelClosing) {}
+      void OnDisconnection(bool /*excelClosing*/) {}
       void OnAddInsUpdate() { Event::ComAddinsUpdate().fire(); }
       void OnBeginShutdown() {}
     };

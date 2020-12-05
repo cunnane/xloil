@@ -16,7 +16,9 @@ Excel::_ApplicationPtr getExcelObjFromWindow(HWND xlmainHandle)
   auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
   auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
   Excel::Window* pWindow = NULL;
-  if (AccessibleObjectFromWindow(hwnd3, OBJID_NATIVEOM, __uuidof(IDispatch), (void**)&pWindow) == S_OK)
+  if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM, 
+                                 __uuidof(IDispatch), 
+                                 (void**)&pWindow) == S_OK)
     return pWindow->Application;
   return nullptr;
 }

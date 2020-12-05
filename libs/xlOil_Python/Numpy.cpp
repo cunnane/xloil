@@ -391,7 +391,7 @@ namespace xloil
       {
         const auto x = (const char32_t*)arrayPtr;
         const auto len = strlen32(x, stringLength / charMultiple);
-        auto pstr = builder.string(len);
+        auto pstr = builder.string((uint16_t)len);
         auto nChars = ConvertUTF32ToUTF16()(
           (char16_t*)pstr.pstr(), pstr.length(), x, x + len );
 
