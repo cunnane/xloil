@@ -100,7 +100,9 @@ namespace xloil
       spdlog::level::from_str(
         Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str()));
 
-    ourCoreContext->tryAdd<StaticFunctionSource>(State::coreName(), State::coreName());
+    auto source = make_shared<StaticFunctionSource>(State::coreName());
+    source->registerQueue();
+    ourCoreContext->addSource(source);
   }
 
   void loadPluginsForAddin(AddinContext* ctx)

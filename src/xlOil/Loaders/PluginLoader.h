@@ -25,5 +25,12 @@ namespace xloil
   {
   public:
     StaticFunctionSource(const wchar_t* pluginPath);
+    /// <summary>
+    /// This collects all statically declared Excel functions, i.e. raw C functions
+    /// It assumes that this function and hence processRegistryQueue is run after each
+    /// plugin has been loaded, so that all functions on the queue belong to the 
+    /// current plugin
+    /// </summary>
+    void registerQueue();
   };
 }

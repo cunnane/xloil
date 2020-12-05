@@ -63,7 +63,7 @@ namespace xloil
   void FileSource::registerFuncs(
     const vector<shared_ptr<const FuncSpec> >& funcSpecs)
   {
-    excelPost([specs = funcSpecs, self = this]() mutable
+    excelPost([specs = funcSpecs, self = shared_from_this()]() mutable
     {
       decltype(self->_functions) newFuncs;
 

@@ -162,7 +162,9 @@ namespace xloil
 
           // Register any static functions in the plugin by adding
           // it as a source.
-          context->tryAdd<StaticFunctionSource>(pluginName.c_str(), pluginName.c_str());
+          auto source = make_shared<StaticFunctionSource>(pluginName.c_str());
+          source->registerQueue();
+          context->addSource(source);
 
           XLO_DEBUG(L"Finished loading plugin {0}", pluginName);
         }
@@ -219,12 +221,11 @@ namespace xloil
 
   StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
     : FileSource(pluginPath)
+  {}
+
+  void StaticFunctionSource::registerQueue()
   {
-    // This collects all statically declared Excel functions, i.e. raw C functions
-    // It assumes that this ctor and hence processRegistryQueue is run after each
-    // plugin has been loaded, so that all functions on the queue belong to the 
-    // current plugin
-    auto specs = processRegistryQueue(pluginPath);
+    auto specs = processRegistryQueue(sourcePath().c_str());
     registerFuncs(specs);
   }
 }
