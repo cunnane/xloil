@@ -476,6 +476,8 @@ def func(fn=None,
                 descr.__dict__[arg] = val
         if name is not None:
             descr.name = name
+        if help is not None:
+            descr.help = help
 
         if args is not None:
             arg_names = [x.name.casefold() for x in descr.args]
