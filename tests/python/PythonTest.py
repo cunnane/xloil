@@ -253,7 +253,7 @@ try:
                             _rtdServer.publish(self._url, data)
                             await asyncio.sleep(4)                     
                     except Exception as e:
-                        _rtdServer.publish(self._url, str(e))
+                        _rtdServer.publish(self._url, e)
                         
                 self._task = xlo.get_event_loop().create_task(run())
                 

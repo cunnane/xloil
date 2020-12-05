@@ -30,17 +30,41 @@ To establish the connection, call the `xloJpyConnect` function. You pass it one 
 
 The `xloJpyConnect` function will return a cache reference.
 
-Now any function created in the kernel and decorated with `xloil.func` will be registed in Excel
-just as if it had been created in the normal way in a python file.  The function will be run 
-in the context of the kernel and the result returned asynchronously to Excel.
+Registering an Excel function from Jupyter
+------------------------------------------
 
-In addition, the function `xloJpyWatch` can dynamically capture the value of any global variable
-in the kernel.
+After the connection is estabilished, any function created in the kernel and decorated with
+`@xloil.func` will be registed in Excel just as if it had been loaded by xlOil in the normal way.
+The function will be run in the context of the kernel and the result returned asynchronously 
+to Excel.
+
+
+Watching a variable in a Jupyter notebook
+-----------------------------------------
+
+The function `=xloJpyWatch(Connection, VarName)` can dynamically capture the value of any 
+global variable in the kernel.  It is an RTD function so automatically updates when the variable
+is changed.
+
+Running code in the kernel
+--------------------------
+
+Calling `xloJpyRun` executes the provided string as python code in the kernel, captures the 
+result and returns it to Excel.  xloJpyRun processes the code string as a `format` string using  
+passing the *repr* of any additional arguments, that is, it executes 
+`code_string.format(repr(arg1), repr(arg2), ...)`
 
 Examples
 --------
 
-After following the steps in the introduction, execute the following in a jupyter cell:
+In an Excel cell enter:
+
+::
+
+    =xloJpyRun(<connection>, "{} + {}", 3, 4)
+
+
+Execute the following in a jupyter cell in a connected notebook:
 
 ::
 
@@ -48,8 +72,8 @@ After following the steps in the introduction, execute the following in a jupyte
     def jptest(x):
         return f"Jupyter says {x}"
 
-When xlOil connects to the kernel it will automatically import xlOil, although we can do 
-this manually if the python package is installed.
+When xlOil connects to the kernel it will automatically import xlOil, although it does 
+not cause a problem if re-imported.
 
 Now try entering `=jptest("hi")` in Excel!
 
@@ -61,8 +85,10 @@ Functions declared in the kernel cannot use the `async` or `rtd` arguments: they
 implictly both!  They also cannot be multithreaded, although xlOil can connect to more than 
 one kernel simultaneously and exection in each will be concurrent.
 
-The kernel-based functions are registered at global scope, so name collisions may occur.
+The kernel-based functions are registered at global scope, so name collisions may occur as
+with loading any non-local python module.
 
-There is considerable overhead in the machinery required to pass the function arguments to jupyter
-and process the result.
+There is reasonable overhead in the machinery required to pass the function arguments to 
+jupyter and process the result: all transport is via strings, so peformance degredation 
+may be noticable for a large number of calls.
 
