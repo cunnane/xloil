@@ -204,12 +204,14 @@ namespace xloil
         : FileSource(sourceName, linkedWorkbook)
       {
         auto path = fs::path(sourceName);
-        _fileWatcher = std::static_pointer_cast<const void>(
-          Event::DirectoryChange(path.remove_filename()).bind(
-            [this](auto dir, auto file, auto act) 
-            { 
-              handleDirChange(dir, file, act);
-            }));
+        auto dir = path.remove_filename();
+        if (!dir.empty())
+          _fileWatcher = std::static_pointer_cast<const void>(
+            Event::DirectoryChange(dir).bind(
+              [this](auto dir, auto file, auto act) 
+              { 
+                handleDirChange(dir, file, act);
+              }));
 
         if (linkedWorkbook)
           _workbookWatcher = std::static_pointer_cast<const void>(
