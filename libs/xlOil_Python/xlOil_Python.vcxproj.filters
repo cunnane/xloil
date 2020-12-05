@@ -13,6 +13,9 @@
       <Filter>package</Filter>
     </None>
     <None Include="package\setup.py" />
+    <None Include="package\xloil\rtd.py">
+      <Filter>package</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\__init__.py">
