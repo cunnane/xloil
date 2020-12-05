@@ -37,6 +37,7 @@ namespace xloil
         size_t maxSize)
         : _maxSize(maxSize)
       {
+        // TODO: remove window class on xloil shutdown?
         static auto win = createWindowClass(hInstance, theWindowClass);
         
         // If we try to create a window from our class during xlAutoOpen, we will get
