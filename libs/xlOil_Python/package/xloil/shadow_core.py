@@ -463,6 +463,9 @@ class RtdServer:
 
         This function does not use any Excel API and is safe to call at any time
         on any thread.
+
+        An Exception object can be passed at the value, this will trigger the debugging
+        hook if it is set. The exception string and it's traceback will be published.
         """
         pass
     def subscribe(self, topic:str):

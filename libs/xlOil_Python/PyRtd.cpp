@@ -135,9 +135,25 @@ namespace xloil
         const py::object& value, 
         IPyToExcel* converter=nullptr)
       {
+        auto ptr = value.ptr();
+        if (PyExceptionInstance_Check(ptr))
+        {
+          auto tb = PySteal(PyException_GetTraceback(ptr));
+
+          // We need to set the python error state so that the error_string 
+          // function works
+          PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.ptr());
+          auto errStr = py::detail::error_string();
+          // Restore the error state to clear before proceeding to avoid 
+          // strange behaviour in the event call.
+          PyErr_Clear();
+
+          Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, tb);
+          return impl().publish(topic, ExcelObj(errStr));
+        }
         return impl().publish(topic, converter
-            ? (*converter)(*value.ptr()) 
-            : FromPyObj()(value.ptr()));
+            ? (*converter)(*ptr)
+            : FromPyObj()(ptr));
       }
       py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
       {
