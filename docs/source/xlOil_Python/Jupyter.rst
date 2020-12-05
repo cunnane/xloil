@@ -8,9 +8,9 @@ xlOil Jupyter Interaction
 Introduction
 ------------
 
-xlOil has the ability to connect to a Jupyter python kernel, allowing interaction between a 
-Jupyter notebook and Excel.  To use this functionality, load the `xloil_jupyter` module by 
-specifying it in the xlOil ini file like this:
+xlOil can connect to a Jupyter python kernel, allowing interaction between a Jupyter notebook 
+and Excel.  To use this functionality, either run `=xloPyLoad("xloil.jupyter")` in a cell or
+load the `xloil_jupyter` module by specifying it in the xlOil ini file like this:
 
 ::
 
@@ -19,22 +19,20 @@ specifying it in the xlOil ini file like this:
     [xlOil_Python]
     LoadModules=["xloil.jupyter"]
 
-To establish the connection, run the magic `%connect_info` in a Jupyter cell.  The output should
-look like:
+To establish the connection, call the `xloJpyConnect` function. You pass it one of the following:
 
-::
+   1. The name of a notebook e.g. `MyBook.ipynb`. In this case all local jupyter instances
+      will be searched to find which one has this notebook open.
+   2. The full URL to the notebook, e.g. 
+      `http://localhost:8888/notebooks/MyBook.ipynb?token=ac3894ab667fa1f3e4f7fe473fa89566a1580cdb49a2649b`
+   3. The `kernel-xxxx-xxx-xxx.json` file which is specified in the output of running 
+      the magic `%connect_info` in a Jupyter cell (no file path is required).
 
-    ...
-    or, if you are local, you can connect with just:
-        $> jupyter <app> --existing kernel-ae871f5f-344a-4f63-9277-60ae72032bd7.json
-    ...
-
-You need to pass the name of the json file (no file path is required) into the `xloJpyConnect`
-function, which will return a cache reference.
+The `xloJpyConnect` function will return a cache reference.
 
 Now any function created in the kernel and decorated with `xloil.func` will be registed in Excel
 just as if it had been created in the normal way in a python file.  The function will be run 
-in the context of the kernel and the result reutrned asynchronously to Excel.
+in the context of the kernel and the result returned asynchronously to Excel.
 
 In addition, the function `xloJpyWatch` can dynamically capture the value of any global variable
 in the kernel.
