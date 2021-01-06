@@ -71,7 +71,7 @@ Now open Excel and call the Greeting function.
 My first workbook module
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create and an Excel workbook called `MyBook`. In the same directory, create 
+Create an Excel workbook called `MyBook`. In the same directory, create
 a file `MyBook.py` containing the following:
 
 ::
