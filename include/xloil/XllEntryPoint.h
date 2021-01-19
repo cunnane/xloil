@@ -54,7 +54,7 @@ namespace xloil
         try
         {
           State::initAppContext();
-
+          State::initCoreContext(XllInfo::moduleHandle);
           // TODO: check if we have registered async functions
           tryCallExcel(msxll::xlEventRegister,
             "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
