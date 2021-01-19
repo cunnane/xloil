@@ -1,5 +1,5 @@
 #pragma once
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "RibbonExtensibility.h"
 #include "ClassFactory.h"
 #include <xlOil/Log.h>

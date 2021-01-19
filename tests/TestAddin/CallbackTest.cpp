@@ -15,10 +15,11 @@ namespace xloil
   XLO_FUNC_START(testToday())
   {
     CallerInfo caller;
-    excelPost([=] 
-    {
-      excelApp().Range[caller.writeAddress().c_str()]->NumberFormat = L"dd-mm-yyyy"; 
-    });
+    if (!caller.fullSheetName().empty())
+      excelPost([=] 
+      {
+        excelApp().Range[caller.writeAddress().c_str()]->NumberFormat = L"dd-mm-yyyy"; 
+      });
     std::tm buf; 
     auto now = std::time(0);
     localtime_s(&buf, &now);

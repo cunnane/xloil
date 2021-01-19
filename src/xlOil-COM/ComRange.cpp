@@ -1,7 +1,7 @@
 #include "COMRange.h"
 #include <xlOil/ExcelObj.h>
 #include "Connect.h"
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "ComVariant.h"
 #include <xlOil/ExcelCall.h>
 #include <xlOil/ExcelRef.h>

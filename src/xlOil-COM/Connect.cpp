@@ -2,7 +2,7 @@
 #include "ComEventSink.h"
 #include <xloil/Events.h>
 #include <xloil/ExcelCall.h>
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include <memory>
 
 using std::make_shared;

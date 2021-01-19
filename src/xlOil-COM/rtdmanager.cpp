@@ -1,4 +1,4 @@
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "ComVariant.h"
 #include "ClassFactory.h"
 

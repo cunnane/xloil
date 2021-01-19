@@ -5,7 +5,7 @@
 #include <xloil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include "COMRange.h"
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 
 using std::shared_ptr;
 using std::unique_ptr;
