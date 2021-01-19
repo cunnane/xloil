@@ -6,5 +6,6 @@
     <ClCompile Include="ExoticArgTest.cpp" />
     <ClCompile Include="CacheTest.cpp" />
     <ClCompile Include="CacheTest2.cpp" />
+    <ClCompile Include="CallbackTest.cpp" />
   </ItemGroup>
 </Project>
