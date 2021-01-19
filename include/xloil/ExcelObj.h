@@ -295,6 +295,8 @@ namespace xloil
       : ExcelObj(vals.begin(), vals.end())
     {}
 
+    explicit ExcelObj(const std::tm& datetime);
+
     /// <summary>
     /// Catch constructor: purpose is to avoid pointers
     /// being auto-cast to integral / bool types

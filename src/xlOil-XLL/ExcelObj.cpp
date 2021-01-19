@@ -1,3 +1,4 @@
+
 #include <xloil/ExcelObj.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/NumericTypeConverters.h>
@@ -121,6 +122,12 @@ namespace
       : pascalWStringFromC(chars, len);
     xltype = xltypeStr;
   }
+
+  ExcelObj::ExcelObj(const std::tm& dt)
+    : ExcelObj(excelSerialDateFromYMDHMS(
+        dt.tm_year + 1900, dt.tm_mon + 1, dt.tm_mday,
+        dt.tm_hour, dt.tm_min, dt.tm_sec, 0))
+  {}
 
   ExcelObj::ExcelObj(msxll::IDSHEET sheet, const msxll::xlref12 & ref)
   {

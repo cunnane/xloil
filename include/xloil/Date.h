@@ -1,6 +1,7 @@
 #pragma once
 #include "ExportMacro.h"
 #include <string_view>
+#include <time.h>
 
 namespace std { struct tm; }
 namespace xloil
@@ -58,6 +59,15 @@ namespace xloil
     const std::wstring_view& str,
     std::tm& result, 
     const wchar_t* format = nullptr);
+
+  inline std::tm stringToDateTime(
+    const std::wstring_view& str,
+    const wchar_t* format)
+  {
+    std::tm result;
+    stringToDateTime(str, result, format);
+    return result;
+  }
 
   XLOIL_EXPORT void dateTimeAddFormat(const wchar_t* f);
 }

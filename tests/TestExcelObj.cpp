@@ -2,6 +2,7 @@
 #include <xlOil/ArrayBuilder.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelObj.h>
+#include <xlOil/Date.h>
 
 #include <vector>
 
@@ -60,6 +61,18 @@ namespace Tests
       vector<double> values;
       arr.toColMajor(std::back_inserter(values), ToDouble());
       Assert::IsTrue(values == vector<double>{ 1, 2, 3, 4, 5 });
+    }
+
+    TEST_METHOD(TestCreateFromDate)
+    {
+      {
+        ExcelObj date(stringToDateTime(L"2017-01-01", L"%Y-%m-%d"));
+        int year, month, day;
+        date.toYMD(year, month, day);
+        Assert::AreEqual(year, 2017);
+        Assert::AreEqual(month, 1);
+        Assert::AreEqual(day, 1);
+      }
     }
   };
 }
