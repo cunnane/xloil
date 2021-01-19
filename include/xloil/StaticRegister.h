@@ -24,15 +24,34 @@ namespace xloil {
   { \
     try 
 
+#ifdef XLO_RETURN_COM_ERROR
 #define XLO_FUNC_END(func) \
+    XLO_RETURN_COM_ERROR \
     catch (const std::exception& err) \
     { \
-      XLO_RETURN_ERROR(err); \
+      return xloil::returnValue(err); \
+    } \
+    catch (...) \
+    { \
+      return xloil::returnValue(xloil::CellError::Value); \
     } \
   } \
   XLO_REGISTER_FUNC(func)
+#else
+#define XLO_FUNC_END(func) \
+    catch (const std::exception& err) \
+    { \
+      return xloil::returnValue(err); \
+    } \
+    catch (...) \
+    { \
+      return xloil::returnValue(xloil::CellError::Value); \
+    } \
+  } \
+  XLO_REGISTER_FUNC(func)
+#endif // XLO_RETURN_COM_ERROR
 
-#define XLO_RETURN_ERROR(err) return xloil::returnValue(err)
+#define XLO_RETURN_ERROR(err) 
 
 #define XLO_REGISTER_FUNC(func) extern auto _xlo_register_##func = xloil::registrationMemo(#func, func)
 
