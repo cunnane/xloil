@@ -31,6 +31,7 @@ if importlib.util.find_spec("xloil_core") is not None:
 else:
     from .shadow_core import *
     from .shadow_core import (_CustomReturn)
+    from .shadow_core import _CustomConverter
     
 
 """
