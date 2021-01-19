@@ -1,5 +1,5 @@
 #include "ComAddin.h"
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "ClassFactory.h"
 #include "Connect.h"
 #include "RibbonExtensibility.h"
@@ -15,6 +15,7 @@ using std::wstring;
 using std::map;
 using std::vector;
 using std::shared_ptr;
+using namespace Office;
 
 namespace xloil
 {

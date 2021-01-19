@@ -12,6 +12,7 @@ using std::wstring;
 using std::map;
 using std::vector;
 using std::shared_ptr;
+using namespace Office;
 
 namespace xloil
 {

@@ -1,5 +1,5 @@
 #include "XllContextInvoke.h"
-#include "ExcelTypeLib.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelApp.h>

@@ -2,7 +2,7 @@
 #include <xlOil/Log.h>
 #include <xlOil/ExcelApp.h>
 #include <xlOil/StringUtils.h>
-#include <xlOil-COM/ExcelTypeLib.h>
+#include <xlOil/ExcelTypeLib.h>
 #include <xlOil-COM/Connect.h>
 #include <map>
 #include <vector>

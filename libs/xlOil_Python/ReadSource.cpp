@@ -1,6 +1,6 @@
 #include "ReadSource.h"
 
-#include <xlOil-COM/ExcelTypeLib.h>
+#include <xlOil/ExcelTypeLib.h>
 #include "PyHelpers.h"
 #include "FunctionRegister.h"
 #include "Main.h"

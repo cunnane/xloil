@@ -7,7 +7,7 @@ $xloilHeader = Join-Path $TargetDir "xlOil.h"
 Set-Content -Path $xloilHeader -Value "#pragma once"
 
 Get-ChildItem -Path $HeaderDir -File -Filter *.h -Name | 
-	where {$_ -NotMatch 'xlOil.h|XllEntryPoint.h|WindowsSlim.h'} |
+	where {$_ -NotMatch 'xlOil.h|XllEntryPoint.h|WindowsSlim.h|ExcelTypeLib.h'} |
     Foreach-Object {
         return "#include `"" + $_ + "`""
     } |

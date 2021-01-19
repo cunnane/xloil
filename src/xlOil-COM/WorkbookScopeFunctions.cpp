@@ -1,4 +1,4 @@
-#include "ExcelTypeLib.h"
+
 #include "Connect.h"
 #include "ComVariant.h"
 #include <xlOil/ExcelRange.h>
@@ -7,6 +7,7 @@
 #include <xloil/FuncSpec.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
+#include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelApp.h>
 #include <vector>
 #include <memory>
@@ -14,6 +15,7 @@
 using std::vector;
 using std::shared_ptr;
 using std::wstring;
+using namespace VBIDE;
 
 namespace xloil
 {

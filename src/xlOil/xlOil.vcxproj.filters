@@ -133,6 +133,9 @@
     <ClInclude Include="..\..\include\xlOil\LogWindow.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\xloil\ExcelTypeLib.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">
