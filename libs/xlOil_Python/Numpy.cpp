@@ -576,6 +576,7 @@ namespace xloil
         declare<Array1dFromXL<NPY_DOUBLE>   >(mod, "float_1d");
         declare<Array1dFromXL<NPY_BOOL>     >(mod, "bool_1d");
         declare<Array1dFromXL<NPY_DATETIME> >(mod, "date_1d");
+        declare<Array1dFromXL<NPY_DATETIME> >(mod, "datetime_1d");
         declare<Array1dFromXL<NPY_STRING>   >(mod, "str_1d");
         declare<Array1dFromXL<NPY_OBJECT>   >(mod, "object_1d");
 
@@ -583,6 +584,7 @@ namespace xloil
         declare<Array2dFromXL<NPY_DOUBLE>   >(mod, "float_2d");
         declare<Array2dFromXL<NPY_BOOL>     >(mod, "bool_2d");
         declare<Array2dFromXL<NPY_DATETIME> >(mod, "date_2d");
+        declare<Array1dFromXL<NPY_DATETIME> >(mod, "datetime_2d");
         declare<Array2dFromXL<NPY_STRING>   >(mod, "str_2d");
         declare<Array2dFromXL<NPY_OBJECT>   >(mod, "object_2d");
 
