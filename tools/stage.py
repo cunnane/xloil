@@ -25,13 +25,13 @@ include_dir = soln_dir / "include"
 
 architectures = ["x64", "Win32"]
 
-python_versions = ["3.6", "3.7", "3.8"]
+python_versions = ["3.6", "3.7", "3.8", "3.9"]
 python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
 build_files['x64'] = {
     'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib", "xlOil.ini"],
-    'xlOil_Python': ["xlOil_Python36.dll", "xlOil_Python37.dll", "xlOil_Python38.dll", "xlOil_Python.dll"],
+    'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.dll" for ver in python_versions],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
 }
