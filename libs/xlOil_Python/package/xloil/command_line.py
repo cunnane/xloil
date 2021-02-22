@@ -23,6 +23,9 @@ def _install_xloil():
     # a regex replace rather than read the file as structured TOML
 
     ini_path = Path(os.getenv('APPDATA')) / "xlOil" / "xlOil.ini"
+    if not ini_path.exists():
+        raise FileNotFoundError(f"Could not find {ini_path}. xloil_Install.ps1 may not have run - check permissions")
+
     ini_txt = ini_path.read_text()
     
     python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
