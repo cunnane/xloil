@@ -207,19 +207,23 @@ namespace xloil
       {
         auto* retVal = visitExcelObj(xl, _impl);
 
+        if (retVal == detail::USE_DEFAULT_VALUE)
+        {
+          // If we return the default value, we need to increment its refcount
+          if (defaultVal)
+          {
+            Py_INCREF(defaultVal);
+            return defaultVal;
+          }
+          // No default provided, set up for failure
+          retVal = nullptr;
+        }
+
         if (!retVal)
         {
           XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(),
             PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
         }
-        else if (retVal == detail::USE_DEFAULT_VALUE)
-        {
-          // If we return the default value, we need to increment its refcount
-          if (defaultVal)
-            Py_INCREF(defaultVal);
-          return defaultVal;
-        }
-        
         return retVal;
       }
     };
