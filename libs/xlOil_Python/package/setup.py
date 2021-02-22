@@ -85,7 +85,7 @@ setup(
     name="xlOil",
     version=args.version,
     author="Steven Cunnane",
-    author_email="my-surname@gmail.com",
+    author_email="replace-this-with-my-surname@gmail.com",
     description="Excel interop for Python and Jupyter",
     long_description=contents_of_readme,
     long_description_content_type="text/markdown",
