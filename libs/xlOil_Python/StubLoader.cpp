@@ -2,9 +2,9 @@
 #include <xloil/StringUtils.h>
 #include <xloil/Throw.h>
 #include <xloil/WindowsSlim.h>
+#include <xloil/Preprocessor.h>
 #include <cstdlib>
 #include <tomlplusplus/toml.hpp>
-#include <boost/preprocessor/stringize.hpp>
 
 using std::vector;
 using std::wstring;
@@ -49,12 +49,13 @@ namespace xloil
           // in the directory this DLL is in.
           thePythonLib = LoadLibrary(dllName.c_str());
           if (!thePythonLib)
-            return -1;
+            XLO_THROW("Failed LoadLibrary for: {}", dllName);
 
           theInitFunc = (PluginInitFunc)GetProcAddress(thePythonLib,
-            BOOST_PP_STRINGIZE(XLO_PLUGIN_INIT_FUNC));
+            XLO_STR(XLO_PLUGIN_INIT_FUNC));
           if (!theInitFunc)
-            return -1;
+            XLO_THROW("Failed to find entry point {} in {}", 
+              XLO_STR(XLO_PLUGIN_INIT_FUNC), dllName);
         }
 
         // Forward the request to the real python plugins 
