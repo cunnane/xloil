@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{A329C5CF-49AA-40AF-A8AF-EB7B4E7C07AC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Python</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>xlOil_Python39</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\src\BuildPaths.props" />
+    <Import Project="..\..\libs\xlOilPlugin.props" />
+    <Import Project="PySettings39.props" />
+    <Import Project="PySettings.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
+    <Import Project="..\..\src\Debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
+    <Import Project="..\..\src\Release.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>python39.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="BasicTypes.cpp" />
+    <ClCompile Include="Cache.cpp" />
+    <ClCompile Include="CustomConverter.cpp" />
+    <ClCompile Include="Date.cpp" />
+    <ClCompile Include="Dictionary.cpp" />
+    <ClCompile Include="ExcelErrorType.cpp" />
+    <ClCompile Include="PyExcelRange.cpp" />
+    <ClCompile Include="PyImage.cpp" />
+    <ClCompile Include="PyRibbon.cpp" />
+    <ClCompile Include="ReadSource.cpp">
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
+    <ClCompile Include="FunctionRegister.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="PyCoreModule.cpp" />
+    <ClCompile Include="Numpy.cpp" />
+    <ClCompile Include="PyEvents.cpp" />
+    <ClCompile Include="PyExcelArray.cpp" />
+    <ClCompile Include="PyHelpers.cpp" />
+    <ClCompile Include="PyRtd.cpp" />
+    <ClCompile Include="Tuple.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ArrayHelpers.h" />
+    <ClInclude Include="AsyncFunctions.h" />
+    <ClInclude Include="Cache.h" />
+    <ClInclude Include="ExcelErrorType.h" />
+    <ClInclude Include="PyImage.h" />
+    <ClInclude Include="ReadSource.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="Date.h" />
+    <ClInclude Include="Dictionary.h" />
+    <ClInclude Include="FunctionRegister.h" />
+    <ClInclude Include="BasicTypes.h" />
+    <ClInclude Include="PyCoreModule.h" />
+    <ClInclude Include="Numpy.h" />
+    <ClInclude Include="PyEvents.h" />
+    <ClInclude Include="PyExcelArray.h" />
+    <ClInclude Include="PyHelpers.h" />
+    <ClInclude Include="Tuple.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
