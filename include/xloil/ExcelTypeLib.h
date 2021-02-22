@@ -22,7 +22,8 @@
 #import "libid:2DF8D04C-5BFA-101B-BDE5-00AA0044DE52" \
   rename("DocumentProperties", "MSODocumentProperties") \
   rename("RGB", "MSORGB") \
-  rename("IAccessible", "MSOIAccessible")
+  rename("IAccessible", "MSOIAccessible") \
+  rename("SearchPath", "MSOSearchPath")
 
 // VBE6EXT.OLB
 #import "libid:0002E157-0000-0000-C000-000000000046" \
