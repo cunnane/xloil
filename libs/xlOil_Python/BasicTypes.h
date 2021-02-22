@@ -27,8 +27,26 @@ namespace xloil
 
     namespace detail
     {
+      // An invalid pointer value that's not null that we can use as a return value
+      static PyObject* USE_DEFAULT_VALUE = (PyObject*)0x01;
+
+      template<class TBase>
+      struct PyFromMissing : public TBase
+      {
+        template <class...Args>
+        PyFromMissing(Args&&...args)
+          : TBase(std::forward<Args>(args)...)
+        {}
+
+        using TBase::operator();
+        PyObject* operator()(MissingVal) const
+        {
+          return USE_DEFAULT_VALUE;
+        }
+      };
+
       /// <summary>
-      /// Wraps a type conversion functor, interepting the string conversion to
+      /// Wraps a type conversion functor, interpreting the string conversion to
       /// look for a python cache reference.  If found, returns the cache object,
       /// otherwise passes the string through.
       /// </summary>
@@ -166,7 +184,7 @@ namespace xloil
     template<class TImpl>
     struct PyFromExcel
     {
-      detail::PyFromCache<CacheConverter<TImpl>> _impl;
+      detail::PyFromMissing<detail::PyFromCache<CacheConverter<TImpl>>> _impl;
 
       template <class...Args>
       PyFromExcel(Args&&...args)
@@ -180,15 +198,29 @@ namespace xloil
         return operator()(xl, const_cast<PyObject*>(defaultVal));
       }
 
+      /// <summary>
+      /// <returns>New/borrowed reference</returns>
+      /// </summary>
       auto operator()(
         const ExcelObj& xl,
         PyObject* defaultVal = nullptr) const
       {
-        auto ret = visitExcelObj(xl, _impl, &defaultVal);
-        if (!ret)
+        auto* retVal = visitExcelObj(xl, _impl);
+
+        if (!retVal)
+        {
           XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(),
             PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
-        return ret;
+        }
+        else if (retVal == detail::USE_DEFAULT_VALUE)
+        {
+          // If we return the default value, we need to increment its refcount
+          if (defaultVal)
+            Py_INCREF(defaultVal);
+          return defaultVal;
+        }
+        
+        return retVal;
       }
     };
 

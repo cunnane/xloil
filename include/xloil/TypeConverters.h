@@ -60,27 +60,24 @@ namespace xloil
   /// <summary>
   /// Handles the switch on the type of the ExcelObj and dispatches to an
   /// overload of the functor's operator(). Called via <see cref="FromExcel"/>.
-  /// If provided, the default value is returned if the ExcelObj is of
-  /// type Missing.
   /// </summary>
   template<class TFunc>
   auto visitExcelObj(
     const ExcelObj& xl, 
-    TFunc functor, 
-    typename const decltype(functor(nullptr))* defaultVal = nullptr)
+    TFunc functor)
   {
     try
     {
       switch (xl.type())
       {
-      case ExcelType::Int: return functor(xl.val.w);
-      case ExcelType::Bool: return functor(xl.val.xbool != 0);
-      case ExcelType::Num: return functor(xl.val.num);
-      case ExcelType::Str: return functor(xl.asPString());
-      case ExcelType::Multi: return functor(ArrayVal{ xl });
-      case ExcelType::Missing: return defaultVal ? *defaultVal : functor(MissingVal());
-      case ExcelType::Err: return functor(CellError(xl.val.err));
-      case ExcelType::Nil: return functor(nullptr);
+      case ExcelType::Int:     return functor(xl.val.w);
+      case ExcelType::Bool:    return functor(xl.val.xbool != 0);
+      case ExcelType::Num:     return functor(xl.val.num);
+      case ExcelType::Str:     return functor(xl.asPString());
+      case ExcelType::Multi:   return functor(ArrayVal{ xl });
+      case ExcelType::Missing: return functor(MissingVal());
+      case ExcelType::Err:     return functor(CellError(xl.val.err));
+      case ExcelType::Nil:     return functor(nullptr);
       case ExcelType::SRef:
       case ExcelType::Ref:
         return functor(RefVal{ xl });
@@ -134,6 +131,28 @@ namespace xloil
     }
   };
 
+  template<class TBase>
+  class FromExcelMissing : public TBase
+  {
+    const typename TBase::result_t* _defaultValue;
+
+  public:
+    FromExcelMissing()
+      : _defaultValue(nullptr)
+    {}
+    template <class...Args>
+    FromExcelMissing(const typename TBase::result_t* defaultVal, Args&&...args)
+      : TBase(std::forward<Args>(args)...)
+      , _defaultValue(defaultVal)
+    {}
+
+    using TBase::operator();
+    auto operator()(MissingVal) const
+    {
+      return *_defaultValue;
+    }
+  };
+
   /// <summary>
   /// Creates a functor which applies a type conversion implementation 
   /// functor to an ExcelObj
@@ -156,11 +175,13 @@ namespace xloil
     /// If provided, the default value is returned if the ExcelObj is of
     /// type Missing.
     /// </summary>
-    auto operator()(
-      const ExcelObj& xl, 
-      const return_type* defaultVal = nullptr) const
+    auto operator()(const ExcelObj& xl) const
     {
-      return visitExcelObj(xl, _impl, defaultVal);
+      return visitExcelObj(xl, _impl);
     }
   };
+
+
+  template<class TImpl>
+  using FromExcelDefaulted = FromExcel<FromExcelMissing<TImpl>>;
 }

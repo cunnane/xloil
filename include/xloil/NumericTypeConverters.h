@@ -10,12 +10,12 @@ namespace xloil
     template<class TResult = double>
     struct ToDouble : public FromExcelBase<TResult>
     {
-      using result = TResult;
+      using result_t = TResult;
       using FromExcelBase::operator();
-      result operator()(int x) const { return double(x); }
-      result operator()(bool x) const { return double(x); }
-      result operator()(double x) const { return x; }
-      result operator()(CellError err) const
+      result_t operator()(int x) const { return double(x); }
+      result_t operator()(bool x) const { return double(x); }
+      result_t operator()(double x) const { return x; }
+      result_t operator()(CellError err) const
       {
         using namespace msxll;
         if (0 != ((int)err & (xlerrNull | xlerrDiv0 | xlerrNum | xlerrNA)))
@@ -26,12 +26,12 @@ namespace xloil
     template<class TResult = int>
     struct ToInt : public FromExcelBase<TResult>
     {
-      using result = TResult;
+      using result_t = TResult;
       using FromExcelBase::operator();
 
-      result operator()(int x) const { return x; }
-      result operator()(bool x) const { return int(x); }
-      result operator()(double x) const
+      result_t operator()(int x) const { return x; }
+      result_t operator()(bool x) const { return int(x); }
+      result_t operator()(double x) const
       {
         int i;
         if (floatingToInt(x, i))
@@ -44,26 +44,26 @@ namespace xloil
     template<class TResult = bool>
     struct ToBool : public FromExcelBase<TResult>
     {
-      using result = TResult;
+      using result_t = TResult;
       using FromExcelBase::operator();
-      result operator()(int x) const { return x != 0; }
-      result operator()(bool x) const { return x; }
-      result operator()(double x) const { return x != 0.0; }
+      result_t operator()(int x) const { return x != 0; }
+      result_t operator()(bool x) const { return x; }
+      result_t operator()(double x) const { return x != 0.0; }
     };
   }
   /// <summary>
   /// Implementation of FromExcel which covnverts an ExcelObj to a double
   /// or throws if this is not possible
   /// </summary>
-  using ToDouble = FromExcel<conv::ToDouble<double>>;
+  using ToDouble = FromExcelDefaulted<conv::ToDouble<double>>;
   /// <summary>
   /// Implementation of FromExcel which covnverts an ExcelObj to an int
   /// or throws if this is not possible
   /// </summary>
-  using ToInt = FromExcel<conv::ToInt<int>>;
+  using ToInt = FromExcelDefaulted<conv::ToInt<int>>;
   /// <summary>
   /// Implementation of FromExcel which covnverts an ExcelObj to a bool
   /// or throws if this is not possible
   /// </summary>
-  using ToBool = FromExcel<conv::ToBool<bool>>;
+  using ToBool = FromExcelDefaulted<conv::ToBool<bool>>;
 }

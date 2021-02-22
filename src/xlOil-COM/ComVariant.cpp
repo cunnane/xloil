@@ -104,7 +104,7 @@ namespace xloil
     void excelObjToVariant(VARIANT* v, const ExcelObj& obj)
     {
       VariantClear(v);
-      *v = FromExcel<ToVariant>()(obj, &vtMissing);
+      *v = FromExcelDefaulted<ToVariant>(&vtMissing)(obj);
     }
 
     // Small helper function for array conversion

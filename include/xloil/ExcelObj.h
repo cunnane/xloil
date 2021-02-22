@@ -817,17 +817,17 @@ namespace xloil
 
   inline double ExcelObj::toDouble(const std::optional<double> default) const
   {
-    return ToDouble()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToDouble(default.has_value() ? &default.value() : nullptr)(*this);
   }
 
   inline int ExcelObj::toInt(const std::optional<int> default) const
   {
-    return ToInt()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToInt(default.has_value() ? &default.value() : nullptr)(*this);
   }
 
   inline bool ExcelObj::toBool(const std::optional<bool> default) const
   {
-    return ToBool()(*this, default.has_value() ? &default.value() : nullptr);
+    return ToBool(default.has_value() ? &default.value() : nullptr)(*this);
   }
 
   inline bool ExcelObj::operator==(double that) const
