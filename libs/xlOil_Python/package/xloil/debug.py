@@ -111,7 +111,10 @@ class _Handler_pdb_window:
 _exception_handler = None
 
 def _handler_func(type, value, trace):
-    _exception_handler.call(type, value, trace)
+    # Don't pop the debugger up whilst the user is trying to enter function
+    # args in the wizard: that's just rude!
+    if not xloil.in_wizard():
+        _exception_handler.call(type, value, trace)
 
 def exception_debug(debugger):
     """
