@@ -563,9 +563,9 @@ namespace xloil
       using Array2dFromXL = PyExcelConverter<PyFromArray2d<TNpType>>;
 
       template<class T>
-      void declare(pybind11::module& mod, const char* type)
+      auto declare(pybind11::module& mod, const char* type)
       {
-        py::class_<T, IPyFromExcel, shared_ptr<T>>
+        return py::class_<T, IPyFromExcel, shared_ptr<T>>
           (mod, ("To_Array_" + std::string(type)).c_str())
           .def(py::init<bool>(), py::arg("trim")=true);
       }
@@ -575,21 +575,22 @@ namespace xloil
         declare<Array1dFromXL<NPY_INT>      >(mod, "int_1d");
         declare<Array1dFromXL<NPY_DOUBLE>   >(mod, "float_1d");
         declare<Array1dFromXL<NPY_BOOL>     >(mod, "bool_1d");
-        declare<Array1dFromXL<NPY_DATETIME> >(mod, "date_1d");
-        declare<Array1dFromXL<NPY_DATETIME> >(mod, "datetime_1d");
+        auto date1d = declare<Array1dFromXL<NPY_DATETIME> >(mod, "date_1d");
+        // Alias so that either date or datetime arrays can be requested.
+        // TODO: strictly should drop time information if it exists
+        mod.add_object("To_Array_datetime_1d", date1d);
         declare<Array1dFromXL<NPY_STRING>   >(mod, "str_1d");
         declare<Array1dFromXL<NPY_OBJECT>   >(mod, "object_1d");
 
         declare<Array2dFromXL<NPY_INT>      >(mod, "int_2d");
         declare<Array2dFromXL<NPY_DOUBLE>   >(mod, "float_2d");
         declare<Array2dFromXL<NPY_BOOL>     >(mod, "bool_2d");
-        declare<Array2dFromXL<NPY_DATETIME> >(mod, "date_2d");
-        declare<Array1dFromXL<NPY_DATETIME> >(mod, "datetime_2d");
+        auto date2d = declare<Array2dFromXL<NPY_DATETIME> >(mod, "date_2d");
+        // Alias so that either date or datetime arrays can be requested.
+        mod.add_object("To_Array_datetime_2d", date2d);
         declare<Array2dFromXL<NPY_STRING>   >(mod, "str_2d");
         declare<Array2dFromXL<NPY_OBJECT>   >(mod, "object_2d");
 
-        //declare2<XlFromArray1d<EmplacePyObj<FromPyObj>, PyObject*, NPY_OBJECT > > (mod, "Array_object_1d_to_Excel");
-        //declare2<XlFromArray1d<EmplaceType<double>, double, NPY_DOUBLE > >(mod, "Array_float_1d_to_Excel");
       });
     }
   }
