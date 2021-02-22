@@ -38,7 +38,9 @@ namespace xloil
   {
     void loggerInitialise(spdlog::level::level_enum level);
     void loggerInitPopupWindow();
-    void loggerAddFile(const wchar_t* logFilePath, const char* logLevel);
+    void loggerAddFile(
+      const wchar_t* logFilePath, const char* logLevel, 
+      size_t maxFileSizeKb, size_t numFiles = 1);
   }
 
   /// <summary>

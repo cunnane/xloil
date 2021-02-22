@@ -9,6 +9,7 @@
 #include "LogWindowSink.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -25,7 +26,7 @@ namespace xloil
     {
       auto dbgWrite = make_shared<spdlog::sinks::msvc_sink_mt>();
       dbgWrite->set_level(level);
-   
+
       auto logger = make_shared<spdlog::logger>("logger",
         spdlog::sinks_init_list{ dbgWrite });
 
@@ -50,11 +51,13 @@ namespace xloil
       logger->sinks().push_back(logWindow);
     }
 
-    void loggerAddFile(const wchar_t* logFilePath, const char* logLevel)
+    void loggerAddFile(
+      const wchar_t* logFilePath, const char* logLevel, 
+      const size_t maxFileSizeKb, const size_t numFiles)
     {
       auto logger = spdlog::default_logger();
-      auto fileWrite = make_shared<spdlog::sinks::basic_file_sink_mt>(
-        utf16ToUtf8(logFilePath), false);
+      auto fileWrite = make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        utf16ToUtf8(logFilePath), maxFileSizeKb * 1024, numFiles);
       fileWrite->set_level(spdlog::level::from_str(logLevel));
       logger->sinks().push_back(fileWrite);
       if (fileWrite->level() < logger->level())

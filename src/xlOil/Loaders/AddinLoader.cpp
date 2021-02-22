@@ -81,7 +81,8 @@ namespace xloil
     // Log file settings
     auto logFile = Settings::logFilePath(*settings);
     auto logLevel = Settings::logLevel(addinRoot);
-    detail::loggerAddFile(logFile.c_str(), logLevel.c_str());
+    auto[logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
+    detail::loggerAddFile(logFile.c_str(), logLevel.c_str(), logMaxSize, logNumFiles);
 
     // Add any requested date formats
     auto dateFormats = Settings::dateFormats(addinRoot);
