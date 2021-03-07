@@ -24,7 +24,7 @@ namespace xloil
         try
         {
           py::gil_scoped_acquire getGil;
-          auto callback = mapper.call(name);
+          auto callback = mapper(name);
           return [callback](
             const RibbonControl& ctrl, VARIANT* vRet, int nArgs, VARIANT** vArgs)
           {
@@ -38,7 +38,7 @@ namespace xloil
               py::tuple args(nArgs);
               for (auto i = 0; i < nArgs; ++i)
                 args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
-              auto pyRet = callback.call(ctrl, *args);
+              auto pyRet = callback(ctrl, *args);
               if (vRet && !pyRet.is_none())
               {
                 auto picture = pictureFromPilImage(pyRet);

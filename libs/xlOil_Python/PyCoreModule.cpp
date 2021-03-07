@@ -72,7 +72,7 @@ namespace xloil {
         excelPost([callable]()
           {
             py::gil_scoped_acquire getGil;
-            callable.call();
+            callable();
           },
           QueueType::WINDOW,
           nRetries,

@@ -244,7 +244,7 @@ namespace xloil
     using size_type = PStringImpl::size_type;
     using allocator_type = TAlloc;
 
-    friend PStringView;
+    friend PStringView<TChar>;
 
     /// <summary>
     /// Create a PString of the specified length

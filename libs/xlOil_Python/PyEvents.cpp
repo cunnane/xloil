@@ -13,6 +13,13 @@ using std::unordered_map;
 using std::shared_ptr;
 using std::string;
 
+namespace std 
+{
+  bool operator==(const py::weakref& lhs, const py::weakref& rhs)
+  {
+    return lhs.is(rhs);
+  }
+}
 namespace xloil 
 {
   namespace Python 

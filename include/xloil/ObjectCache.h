@@ -51,15 +51,19 @@ namespace xloil
       _NODISCARD typename base::const_iterator search(const T& _Keyval) const
       {
         size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
-        for (_Unchecked_const_iterator _Where = _Begin(_Bucket); _Where != _End(_Bucket); ++_Where)
+        for (auto _Where = begin(_Bucket); _Where != end(_Bucket); ++_Where)
           if (_Where->first == _Keyval)
-              return _Make_iter(_Where);
+              return _Where;
         return (end());
       }
       template <class T>
       _NODISCARD typename base::iterator search(const T& _Keyval)
       {
-        return _Make_iter(const_cast<const Lookup*>(this)->search(_Keyval));
+        size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
+        for (auto _Where = begin(_Bucket); _Where != end(_Bucket); ++_Where)
+          if (_Where->first == _Keyval)
+            return _Where;
+        return (end());
       }
     };
 

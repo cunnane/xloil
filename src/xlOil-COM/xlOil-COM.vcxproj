@@ -44,7 +44,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
@@ -69,8 +69,8 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="..\BuildPaths.props" />
     <Import Project="..\Common.props" />
-	<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>   
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
     <Import Project="..\Debug.props" />
   </ImportGroup>
@@ -97,7 +97,7 @@
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-  </ItemDefinitionGroup>  
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='DebugStatic'">
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -110,9 +110,9 @@
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-	<PostBuildEvent>
+    <PostBuildEvent>
       <Command Condition="'$(Configuration)'=='ReleaseStatic'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Release\spdlog.lib $(OutDir)..\Release\SimpleFileWatcher.lib</Command>
-    </PostBuildEvent>	
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ClassFactory.h" />

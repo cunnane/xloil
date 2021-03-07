@@ -293,7 +293,7 @@ namespace xloil
           // Call module cleanup function
           auto thisMod = PyBorrow<py::module>(_module);
           if (py::hasattr(thisMod, XLOPY_CLEANUP_FUNCTION))
-            thisMod.attr(XLOPY_CLEANUP_FUNCTION).call();
+            thisMod.attr(XLOPY_CLEANUP_FUNCTION)();
          
           auto success = unloadModule(thisMod);
 

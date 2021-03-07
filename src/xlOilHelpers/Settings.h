@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 
 namespace toml {
   class node; class table;

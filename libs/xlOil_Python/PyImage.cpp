@@ -60,8 +60,8 @@ namespace xloil
 
       // Create a Device Independent Bitmap in PIL and copy it to the device context
       auto ImageWin = py::module::import("PIL.ImageWin");
-      auto dib = ImageWin.attr("Dib").call(image);
-      dib.attr("expose").call((int)memoryDC.h);
+      auto dib = ImageWin.attr("Dib")(image);
+      dib.attr("expose")((int)memoryDC.h);
      
       // Get the (updated) palette from our device context
       auto palette = (HPALETTE)GetCurrentObject(memoryDC.h, OBJ_PAL);

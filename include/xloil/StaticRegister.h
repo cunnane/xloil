@@ -1,6 +1,7 @@
 #pragma once
 #include <xlOil/Register.h>
 #include <xlOil/ExcelObj.h>
+#include <array>
 
 namespace xloil {
   class FuncSpec; 
@@ -318,7 +319,7 @@ namespace xloil
     template <typename ReturnType, typename... Args>
     struct ArgTypesDefs
     {
-      static constexpr int types[sizeof...(Args)] = { ArgType<Args>::value ... };
+      static constexpr std::array<int, sizeof...(Args)> types = { ArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
       template <size_t i> struct arg
       {
@@ -328,7 +329,7 @@ namespace xloil
     template <typename... Args>
     struct ArgTypesDefs<void, Args...>
     {
-      static constexpr int types[sizeof...(Args)] = { VoidArgType<Args>::value ... };
+      static constexpr std::array<int, sizeof...(Args)> types = { VoidArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
       template <size_t i> struct arg
       {
@@ -346,7 +347,7 @@ namespace xloil
   {
     auto argTypes = detail::ArgTypes<TFunc>();
     return createRegistrationMemo(
-      name, argTypes.nArgs, argTypes.types);
+      name, argTypes.nArgs, argTypes.types.data());
   }
 
   std::vector<std::shared_ptr<const FuncSpec>>

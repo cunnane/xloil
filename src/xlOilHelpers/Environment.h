@@ -15,19 +15,18 @@ namespace xloil
     auto captureStringBufferImpl(F bufWriter, size_t initialSize)
     {
       std::basic_string<TChar> s;
-      s.reserve(initialSize);
+      s.resize(initialSize);
       size_t len;
       // We assume, hopefully correctly, that the bufWriter function on
       // failure returns either -1 or the required buffer length.
-      while ((len = bufWriter(s.data(), s.capacity())) > s.capacity())
-        s.reserve(len == size_t(-1) ? s.size() * 2 : len);
+      while ((len = bufWriter(s.data(), s.length())) > s.length())
+        s.resize(len == size_t(-1) ? s.size() * 2 : len);
 
       // However, some windows functions, e.g. ExpandEnvironmentStrings 
       // include the null-terminator in the returned buffer length whereas
       // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
       // Wonderful.
-      s._Eos(s.data()[len - 1] == '\0' ? len - 1 : len);
-      s.shrink_to_fit();
+      s.resize(s.data()[len - 1] == '\0' ? len - 1 : len);
       return s;
     }
   }

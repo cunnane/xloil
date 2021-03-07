@@ -37,7 +37,7 @@ namespace xloil
       try
       {
         XLO_INFO("Scanning module {0}", modName);
-        scanFunc.call(mod, wbName);
+        scanFunc(mod, wbName);
       }
       catch (const std::exception& e)
       {

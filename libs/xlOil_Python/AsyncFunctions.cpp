@@ -53,7 +53,7 @@ namespace xloil
               py::gil_scoped_acquire acquire;
               acquire.inc_ref();
               const auto xloilMod = py::module::import("xloil.xloil");
-              self->_eventLoop = xloilMod.attr("_create_event_loop").call();
+              self->_eventLoop = xloilMod.attr("_create_event_loop")();
               self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
               self->_callSoonFunction = self->_eventLoop.attr("call_soon_threadsafe");
             }
@@ -94,7 +94,7 @@ namespace xloil
               while (!_stop)
               {
                 constexpr double timeout = 0.5; // seconds 
-                _runLoopFunction.call(this->_eventLoop, timeout);
+                _runLoopFunction(this->_eventLoop, timeout);
               }
             }
             catch (const std::exception& e)
@@ -132,7 +132,7 @@ namespace xloil
       {
         if (!active())
           return;
-        _callSoonFunction.call(func);
+        _callSoonFunction(func);
       }
       static EventLoopController& instance()
       {

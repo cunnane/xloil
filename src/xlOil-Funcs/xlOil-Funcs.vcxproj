@@ -16,7 +16,7 @@
     <ProjectConfiguration Include="ReleaseStatic|x64">
       <Configuration>ReleaseStatic</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>		
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
@@ -42,9 +42,9 @@
     <ProjectName>xlOil-Funcs</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-    <PropertyGroup>
+  <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
@@ -52,7 +52,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='DebugStatic'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
-  </PropertyGroup>  
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -60,13 +60,13 @@
   <PropertyGroup Condition="'$(Configuration)'=='ReleaseStatic'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-  </PropertyGroup>  
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="..\BuildPaths.props" />
     <Import Project="..\Common.props" />
-	<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>  
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
     <Import Project="..\Debug.props" />
   </ImportGroup>
@@ -88,7 +88,7 @@
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-  </ItemDefinitionGroup> 
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -98,7 +98,7 @@
     <ClCompile>
       <PreprocessorDefinitions>XLOIL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-  </ItemDefinitionGroup>  
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ExcelObjCache.cpp" />
     <ClCompile Include="xloHelp.cpp" />
