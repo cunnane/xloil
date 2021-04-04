@@ -45,24 +45,24 @@ namespace xloil
     return getFuncRegistryQueue().back();
   }
 
-  std::vector<std::shared_ptr<const FuncSpec>>
+  std::vector<std::shared_ptr<const WorksheetFuncSpec>>
     processRegistryQueue(const wchar_t* moduleName)
   {
-    std::vector<std::shared_ptr<const FuncSpec>> result;
+    std::vector<std::shared_ptr<const WorksheetFuncSpec>> result;
     auto& queue = getFuncRegistryQueue();
     for (auto f : queue)
-      result.emplace_back(make_shared<const StaticSpec>(
+      result.emplace_back(make_shared<const StaticWorksheetFunction>(
         f.getInfo(), moduleName, f.entryPoint));
     
     queue.clear();
     return result;
   }
 
-  std::vector<std::shared_ptr<const RegisteredFunc>>
+  std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
     registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors)
   {
     const auto specs = processRegistryQueue(moduleName);
-    std::vector<std::shared_ptr<const RegisteredFunc>> result;
+    std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> result;
     for (auto& spec : specs)
       try
     {

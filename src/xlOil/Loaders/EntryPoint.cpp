@@ -53,7 +53,7 @@ namespace xloil
 
         createCoreContext();
 
-        xllOpenComCall([&]() { loadPluginsForAddin(theCoreContext()); });
+        runComSetupOnXllOpen([&]() { loadPluginsForAddin(theCoreContext()); });
 
         theCoreIsLoaded = true;
         retVal = 1;
@@ -65,7 +65,7 @@ namespace xloil
       if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
       {
         auto addinContext = openXll(xllPath);
-        xllOpenComCall([=]() { loadPluginsForAddin(addinContext); });
+        runComSetupOnXllOpen([=]() { loadPluginsForAddin(addinContext); });
       }
 
       return retVal;

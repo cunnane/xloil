@@ -68,11 +68,11 @@ namespace xloil
       return theCoreModuleHandle;
     }
    
-    const wchar_t* corePath() noexcept
+    const wchar_t* coreDllPath() noexcept
     {
       return ourDllPath;
     }
-    const wchar_t* coreName() noexcept
+    const wchar_t* coreDllName() noexcept
     {
       return ourDllName;
     }

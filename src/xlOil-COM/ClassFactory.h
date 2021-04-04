@@ -203,7 +203,7 @@ namespace xloil
           fmt::format(L"Software\\Classes\\CLSID\\{0}\\InProcServer32", _clsid).c_str(),
           0,
           L"xlOil.dll"); // Name of dll isn't actually used.
-        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\CLSID\\{0}", _progId));
+        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\CLSID\\{0}", _clsid));
 
         // Check all is good by looking up the CLISD from our progId
         CLSID foundClsid;

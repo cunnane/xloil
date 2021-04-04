@@ -69,12 +69,12 @@ namespace xloil {
 
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
-        excelPost([callable]()
+        excelRunOnMainThread([callable]()
           {
             py::gil_scoped_acquire getGil;
             callable();
           },
-          QueueType::WINDOW,
+          ExcelRunQueue::WINDOW,
           nRetries,
           retryPause,
           delay);

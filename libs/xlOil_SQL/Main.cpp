@@ -8,7 +8,7 @@ namespace xloil
   {
     XLO_PLUGIN_INIT(AddinContext* context, const PluginContext& plugin)
     {
-      linkLogger(context, plugin);
+      linkPluginToCoreLogger(context, plugin);
       
       return 0;
     }

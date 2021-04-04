@@ -51,7 +51,7 @@ namespace xloil
 
     void writeLocalFunctionsToVBA(
       const wchar_t* workbookName,
-      const vector<shared_ptr<const FuncSpec>>& registeredFuncs)
+      const vector<shared_ptr<const WorksheetFuncSpec>>& registeredFuncs)
     {
       try
       {

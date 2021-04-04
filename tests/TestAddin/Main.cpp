@@ -21,7 +21,7 @@ namespace
 struct MyAddin
 {
   shared_ptr<IComAddin> theComAddin;
-  std::list<shared_ptr<RegisteredFunc>> theFuncs;
+  std::list<shared_ptr<RegisteredWorksheetFunc>> theFuncs;
 
   MyAddin()
   {
@@ -42,7 +42,7 @@ struct MyAddin
       .arg(L"Arg1")
       .registerFunc());
 
-    xllOpenComCall([this]()
+    runComSetupOnXllOpen([this]()
     {
       theComAddin = makeComAddin(L"TestXlOil");
 

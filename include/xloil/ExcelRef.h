@@ -9,7 +9,7 @@ namespace xloil
   namespace detail
   {
     template<class TSuper>
-    class ExcelRefFn
+    class ExcelRefArgBase
     {
     public:
       using row_t = Range::row_t;
@@ -55,8 +55,8 @@ namespace xloil
       std::wstring address(bool local = false) const
       {
         return local
-          ? xlrefLocalAddress(up().ref())
-          : xlrefSheetAddress(up().sheetId(), up().ref());
+          ? xlrefToLocalAddress(up().ref())
+          : xlrefToWorkbookAddress(up().sheetId(), up().ref());
       }
 
       /// <summary>
@@ -96,12 +96,12 @@ namespace xloil
   /// ref or sref (local reference, i.e. to the active sheet) type ExcelObj 
   /// and turns it into a global reference
   /// </summary>
-  class XLOIL_EXPORT ExcelRef : public detail::ExcelRefFn<ExcelRef>
+  class XLOIL_EXPORT ExcelRef : public detail::ExcelRefArgBase<ExcelRef>
   {
   public:
     using row_t = int;
     using col_t = int;
-    friend class detail::ExcelRefFn<ExcelRef>;
+    friend class detail::ExcelRefArgBase<ExcelRef>;
 
     /// <summary>
     /// Constructs an ExcelRange from an ExcelObj. Will throw if
@@ -184,9 +184,9 @@ namespace xloil
   /// in the declaration of a registered function tells xlOil to allow range
   /// references to be passed, otherwise they are converted to arrays.
   /// </summary>
-  class RangeArg : public ExcelObj, public detail::ExcelRefFn<RangeArg>
+  class RangeArg : public ExcelObj, public detail::ExcelRefArgBase<RangeArg>
   {
-    friend class detail::ExcelRefFn<RangeArg>;
+    friend class detail::ExcelRefArgBase<RangeArg>;
 
     /// <summary>
     /// Not externally constructable. Prefer to store or pass a ExcelRef: 

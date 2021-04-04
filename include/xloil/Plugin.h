@@ -10,7 +10,7 @@ namespace xloil
   /// </summary>
   /// <param name=""></param>
   /// <param name="plugin"></param>
-  inline void linkLogger(AddinContext*, const PluginContext& plugin)
+  inline void linkPluginToCoreLogger(AddinContext*, const PluginContext& plugin)
   {
     if (plugin.action == PluginContext::Load)
       spdlog::set_default_logger(loggerRegistry().default_logger());

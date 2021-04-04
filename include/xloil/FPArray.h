@@ -22,7 +22,7 @@ namespace xloil
     /// normal C++ constructor. But, since an FPArray cannot be returned to Excel 
     /// it's unclear when you would need to create one!
     /// </summary>
-    FPArray* create(size_t nRows, size_t nCols)
+    static FPArray* create(size_t nRows, size_t nCols)
     {
       auto n = nRows * nCols;
       auto fp = (FPArray*)new char[sizeof(msxll::_FP12) + n * sizeof(double)];

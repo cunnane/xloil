@@ -244,7 +244,7 @@ namespace xloil
     return State::excelState().mainThreadId == GetCurrentThreadId();
   }
 
-  std::future<void> excelPost(
+  std::future<void> excelRunOnMainThread(
     const std::function<void()>& func, 
     int flags, 
     int nRetries, 
@@ -259,15 +259,15 @@ namespace xloil
           promise->set_value();
       },
       promise, 
-      (flags & (int)QueueType::XLL_API), 
+      (flags & (int)ExcelRunQueue::XLL_API), 
       nRetries,
       waitBetweenRetries,
-      (flags & (int)QueueType::APC));
+      (flags & (int)ExcelRunQueue::APC));
 
     auto& messenger = Messenger::instance();
     if (waitBeforeCall > 0)
       messenger.queueWindowTimer(queueItem, waitBeforeCall);
-    else if ((flags & QueueType::ENQUEUE) == 0 && isMainThread())
+    else if ((flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread())
       (*queueItem)(messenger);
     else if (queueItem->_isAPC)
       messenger.QueueAPC(queueItem);
@@ -284,13 +284,13 @@ namespace xloil
       try
       {
         COM::connectCom();
-        excelPost(func, QueueType::XLL_API);
+        excelRunOnMainThread(func, ExcelRunQueue::XLL_API);
       }
       catch (const COM::ComConnectException&)
       {
-        excelPost(
+        excelRunOnMainThread(
           RetryAtStartup{ func },
-          QueueType::WINDOW | QueueType::ENQUEUE,
+          ExcelRunQueue::WINDOW | ExcelRunQueue::ENQUEUE,
           0, // no retry
           0,
           1000 // wait 1 second before call
@@ -304,8 +304,8 @@ namespace xloil
     std::function<void()> func;
   };
 
-  void xllOpenComCall(const std::function<void()>& func)
+  void runComSetupOnXllOpen(const std::function<void()>& func)
   {
-    excelPost(RetryAtStartup{ func }, QueueType::ENQUEUE);
+    excelRunOnMainThread(RetryAtStartup{ func }, ExcelRunQueue::ENQUEUE);
   }
 }

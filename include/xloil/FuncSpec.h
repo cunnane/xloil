@@ -5,28 +5,30 @@
 
 namespace xloil
 {
-  class RegisteredFunc;
+  class RegisteredWorksheetFunc;
 
   /// <summary>
   /// A base class which encapsulates the specification of a registered 
   /// function. That is, its <see cref="FuncInfo"/> and its call location.
   /// </summary>
-  class FuncSpec : public std::enable_shared_from_this<FuncSpec>
+  class WorksheetFuncSpec : public std::enable_shared_from_this<WorksheetFuncSpec>
   {
   public:
-    FuncSpec(const std::shared_ptr<const FuncInfo>& info) : _info(info) {}
+    WorksheetFuncSpec(const std::shared_ptr<const FuncInfo>& info) 
+      : _info(info)
+    {}
 
     /// <summary>
     /// Registers this function with the registry
     /// </summary>
     /// <returns>
-    /// A <see cref="RegisteredFunc"/> which can be used to deregister 
+    /// A <see cref="RegisteredWorksheetFunc"/> which can be used to deregister 
     /// this function.
     /// </returns>
-    virtual std::shared_ptr<RegisteredFunc> registerFunc() const = 0;
+    virtual std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const = 0;
 
     /// <summary>
-    /// Gets the <see cref="FuncInfo"/> associated with this FuncSpec
+    /// Gets the <see cref="FuncInfo"/> associated with this WorksheetFuncSpec
     /// </summary>
     /// <returns></returns>
     const std::shared_ptr<const FuncInfo>& info() const { return _info; }
@@ -43,24 +45,21 @@ namespace xloil
 
   // This class is used for statically registered functions and should
   // not be constructed directly.
-  class StaticSpec : public FuncSpec
+  class StaticWorksheetFunction : public WorksheetFuncSpec
   {
   public:
-    StaticSpec(
+    StaticWorksheetFunction(
       const std::shared_ptr<const FuncInfo>& info, 
       const std::wstring& dllName,
       const std::string& entryPoint)
-      : FuncSpec(info)
+      : WorksheetFuncSpec(info)
       , _dllName(dllName)
       , _entryPoint(entryPoint)
     {}
 
-    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
+    XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
     std::wstring _dllName;
     std::string _entryPoint;
   };
-
-
-
 }

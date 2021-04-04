@@ -7,7 +7,7 @@ namespace xloil
   template<typename TRet, typename TData> using DynamicCallback
     = TRet(*)(const TData* data, const ExcelObj**) noexcept;
 
-  class DynamicSpec : public FuncSpec
+  class DynamicSpec : public WorksheetFuncSpec
   {
   public:
     template <class TRet, class TData>
@@ -25,7 +25,7 @@ namespace xloil
       const std::shared_ptr<const FuncInfo>& info,
       DynamicCallback<void, void> callback,
       const std::shared_ptr<const void>& context)
-      : FuncSpec(info)
+      : WorksheetFuncSpec(info)
       , _callback(callback)
       , _context(context)
       , _hasReturn(false)
@@ -35,13 +35,13 @@ namespace xloil
       const std::shared_ptr<const FuncInfo>& info,
       DynamicCallback<ExcelObj*, void> callback,
       const std::shared_ptr<const void>& context)
-      : FuncSpec(info)
+      : WorksheetFuncSpec(info)
       , _callback(callback)
       , _context(context)
       , _hasReturn(true)
     {}
 
-    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
+    XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
     //TODO: private:
     std::shared_ptr<const void> _context;
@@ -119,21 +119,21 @@ namespace xloil
   }
 
   /// <summary>
-  /// Constructs a FuncSpec from an std::function object which 
+  /// Constructs a WorksheetFuncSpec from an std::function object which 
   /// takes <see cref="ExcelObj"/> arguments
   /// </summary>
   template<class TRet=ExcelObj*>
-  class LambdaSpec : public FuncSpec
+  class LambdaSpec : public WorksheetFuncSpec
   {
   public:
     LambdaSpec(
       const std::shared_ptr<const FuncInfo>& info,
       const DynamicExcelFunc<TRet>& function)
-      : FuncSpec(info)
+      : WorksheetFuncSpec(info)
       , function(function)
     {}
 
-    XLOIL_EXPORT std::shared_ptr<RegisteredFunc> registerFunc() const override;
+    XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
     auto call(const ExcelObj** args) const
     {
@@ -175,11 +175,11 @@ namespace xloil
     }
 
     /// <summary>
-    /// Registers this function and returns a handle to a <see cref="RegisteredFunc"/>
+    /// Registers this function and returns a handle to a <see cref="RegisteredWorksheetFunc"/>
     /// object. Note that the handle must be kept in scope as its destructor
     /// unregisters the function.
     /// </summary>
-    std::shared_ptr<RegisteredFunc> registerFunc()
+    std::shared_ptr<RegisteredWorksheetFunc> registerFunc()
     {
       return std::make_shared<LambdaSpec<TRet>>(
         getInfo(), _registerFunction)->registerFunc();

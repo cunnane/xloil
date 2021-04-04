@@ -186,7 +186,7 @@ namespace xloil
     }
 
   public:
-    RegisteredFuncPtr add(const shared_ptr<const FuncSpec>& spec)
+    RegisteredFuncPtr add(const shared_ptr<const WorksheetFuncSpec>& spec)
     {
       auto& name = spec->info()->name;
       throwIfPresent(name);
@@ -194,7 +194,7 @@ namespace xloil
       return theRegistry.emplace(name, spec->registerFunc()).first->second;
     }
 
-    bool remove(const shared_ptr<RegisteredFunc>& func)
+    bool remove(const shared_ptr<RegisteredWorksheetFunc>& func)
     {
       if (func->deregister())
       {
@@ -207,7 +207,7 @@ namespace xloil
     void clear()
     {
       for (auto f : theRegistry)
-        const_cast<RegisteredFunc&>(*f.second).deregister();
+        const_cast<RegisteredWorksheetFunc&>(*f.second).deregister();
       theRegistry.clear();
       // theCodePtr = theCodeCave;
     }
@@ -221,22 +221,22 @@ namespace xloil
   private:
     FunctionRegistry()
     {
-      theCoreDllName = State::coreName();
+      theCoreDllName = State::coreDllName();
     }
 
     map<wstring, RegisteredFuncPtr> theRegistry;
   };
 
-  RegisteredFunc::RegisteredFunc(const shared_ptr<const FuncSpec>& spec)
+  RegisteredWorksheetFunc::RegisteredWorksheetFunc(const shared_ptr<const WorksheetFuncSpec>& spec)
     : _spec(spec)
   {}
 
-  RegisteredFunc::~RegisteredFunc()
+  RegisteredWorksheetFunc::~RegisteredWorksheetFunc()
   {
     deregister();
   }
 
-  bool RegisteredFunc::deregister()
+  bool RegisteredWorksheetFunc::deregister()
   {
     if (_registerId == 0)
       return false;
@@ -269,29 +269,29 @@ namespace xloil
     return true;
   }
 
-  int RegisteredFunc::registerId() const
+  int RegisteredWorksheetFunc::registerId() const
   {
     return _registerId;
   }
 
-  const std::shared_ptr<const FuncInfo>& RegisteredFunc::info() const
+  const std::shared_ptr<const FuncInfo>& RegisteredWorksheetFunc::info() const
   {
     return _spec->info();
   }
-  const std::shared_ptr<const FuncSpec>& RegisteredFunc::spec() const
+  const std::shared_ptr<const WorksheetFuncSpec>& RegisteredWorksheetFunc::spec() const
   {
     return _spec;
   }
-  bool RegisteredFunc::reregister(const std::shared_ptr<const FuncSpec>& /*other*/)
+  bool RegisteredWorksheetFunc::reregister(const std::shared_ptr<const WorksheetFuncSpec>& /*other*/)
   {
     return false;
   }
 
-  class RegisteredStatic : public RegisteredFunc
+  class RegisteredStatic : public RegisteredWorksheetFunc
   {
   public:
-    RegisteredStatic(const std::shared_ptr<const StaticSpec>& spec)
-      : RegisteredFunc(spec)
+    RegisteredStatic(const std::shared_ptr<const StaticWorksheetFunction>& spec)
+      : RegisteredWorksheetFunc(spec)
     {
       auto& registry = FunctionRegistry::get();
       _registerId = registry.registerWithExcel(
@@ -301,12 +301,12 @@ namespace xloil
     }
   };
 
-  std::shared_ptr<RegisteredFunc> StaticSpec::registerFunc() const
+  std::shared_ptr<RegisteredWorksheetFunc> StaticWorksheetFunction::registerFunc() const
   {
     try
     {
       return make_shared<RegisteredStatic>(
-        std::static_pointer_cast<const StaticSpec>(this->shared_from_this()));
+        std::static_pointer_cast<const StaticWorksheetFunction>(this->shared_from_this()));
     }
     catch (const std::exception& e)
     {
@@ -314,7 +314,7 @@ namespace xloil
     }
   }
  
-  RegisteredFuncPtr registerFunc(const std::shared_ptr<const FuncSpec>& spec) noexcept
+  RegisteredFuncPtr registerFunc(const std::shared_ptr<const WorksheetFuncSpec>& spec) noexcept
   {
     try
     {
@@ -343,7 +343,7 @@ namespace xloil
     return FunctionRegistry::get().find(name);
   }
  
-  bool deregisterFunc(const shared_ptr<RegisteredFunc>& ptr)
+  bool deregisterFunc(const shared_ptr<RegisteredWorksheetFunc>& ptr)
   {
     return FunctionRegistry::get().remove(ptr);
   }

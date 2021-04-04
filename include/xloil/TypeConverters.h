@@ -132,16 +132,16 @@ namespace xloil
   };
 
   template<class TBase>
-  class FromExcelMissing : public TBase
+  class FromExcelHandleMissing : public TBase
   {
     const typename TBase::result_t* _defaultValue;
 
   public:
-    FromExcelMissing()
+    FromExcelHandleMissing()
       : _defaultValue(nullptr)
     {}
     template <class...Args>
-    FromExcelMissing(const typename TBase::result_t* defaultVal, Args&&...args)
+    FromExcelHandleMissing(const typename TBase::result_t* defaultVal, Args&&...args)
       : TBase(std::forward<Args>(args)...)
       , _defaultValue(defaultVal)
     {}
@@ -183,5 +183,5 @@ namespace xloil
 
 
   template<class TImpl>
-  using FromExcelDefaulted = FromExcel<FromExcelMissing<TImpl>>;
+  using FromExcelDefaulted = FromExcel<FromExcelHandleMissing<TImpl>>;
 }

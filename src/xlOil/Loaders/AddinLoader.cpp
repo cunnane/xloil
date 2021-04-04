@@ -95,13 +95,13 @@ namespace xloil
 
   void createCoreContext() 
   {
-    ourCoreContext = openXll(State::corePath());
+    ourCoreContext = openXll(State::coreDllPath());
     // Can only do this once not per-addin
     setLogWindowPopupLevel(
       spdlog::level::from_str(
         Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str()));
 
-    auto source = make_shared<StaticFunctionSource>(State::coreName());
+    auto source = make_shared<StaticFunctionSource>(State::coreDllName());
     source->registerQueue();
     ourCoreContext->addSource(source);
   }
@@ -133,7 +133,7 @@ namespace xloil
     // Check if only the core left
     if (theAddinContexts.size() == 1)
     {
-      theAddinContexts.erase(State::corePath());
+      theAddinContexts.erase(State::coreDllPath());
       
       // Somewhat cheap trick to ensure any async tasks which may reference plugin
       // code are destroyed in a timely manner prior to teardown.  Better would be

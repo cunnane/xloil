@@ -5,12 +5,12 @@
 
 namespace xloil
 {
-  class RegisteredFunc
+  class RegisteredWorksheetFunc
   {
   public:
-    RegisteredFunc(const std::shared_ptr<const FuncSpec>& spec);
+    RegisteredWorksheetFunc(const std::shared_ptr<const WorksheetFuncSpec>& spec);
 
-    ~RegisteredFunc();
+    ~RegisteredWorksheetFunc();
 
     /// <summary>
     /// De-registers the function in Excel and invalidates this object.
@@ -20,7 +20,7 @@ namespace xloil
 
     int registerId() const;
 
-    const std::shared_ptr<const FuncSpec>& spec() const;
+    const std::shared_ptr<const WorksheetFuncSpec>& spec() const;
     const std::shared_ptr<const FuncInfo>& info() const;
 
     /// <summary>
@@ -29,18 +29,18 @@ namespace xloil
     /// returns false
     /// </summary>
     /// <returns>false if you need to call registerFunc</returns>
-    virtual bool reregister(const std::shared_ptr<const FuncSpec>& other);
+    virtual bool reregister(const std::shared_ptr<const WorksheetFuncSpec>& other);
 
   protected:
     int _registerId;
-    std::shared_ptr<const FuncSpec> _spec;
+    std::shared_ptr<const WorksheetFuncSpec> _spec;
   };
 
-  using RegisteredFuncPtr = std::shared_ptr<RegisteredFunc>;
+  using RegisteredFuncPtr = std::shared_ptr<RegisteredWorksheetFunc>;
 
   RegisteredFuncPtr
     registerFunc(
-      const std::shared_ptr<const FuncSpec>& info) noexcept;
+      const std::shared_ptr<const WorksheetFuncSpec>& info) noexcept;
 
   int 
     registerFuncRaw(

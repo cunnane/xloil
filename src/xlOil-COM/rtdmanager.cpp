@@ -448,11 +448,11 @@ namespace xloil
         // with the throttle interval)
         if (_newValues.size() == 1)
         {
-          excelPost([this]()
+          excelRunOnMainThread([this]()
           {
             if (isServerRunning())
               (*_updateCallback).raw_UpdateNotify();
-          }, QueueType::WINDOW, 100);
+          }, ExcelRunQueue::WINDOW, 100);
         }
       }
 

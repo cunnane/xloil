@@ -51,19 +51,19 @@ namespace xloil
     std::swap(_functions, functions);
     std::swap(_workbookName, workbookName);
 
-    excelPost([=]()
+    excelRunOnMainThread([=]()
     {
       if (!workbookName.empty())
         forgetLocalFunctions(workbookName.c_str());
       for (auto& f : functions)
         xloil::deregisterFunc(f.second);
-    }, QueueType::XLL_API);
+    }, ExcelRunQueue::XLL_API);
   }
 
   void FileSource::registerFuncs(
-    const vector<shared_ptr<const FuncSpec> >& funcSpecs)
+    const vector<shared_ptr<const WorksheetFuncSpec> >& funcSpecs)
   {
-    excelPost([specs = funcSpecs, self = shared_from_this()]() mutable
+    excelRunOnMainThread([specs = funcSpecs, self = shared_from_this()]() mutable
     {
       decltype(self->_functions) newFuncs;
 
@@ -79,7 +79,7 @@ namespace xloil
         }
       }
 
-      // Remove all the null FuncSpec ptrs
+      // Remove all the null WorksheetFuncSpec ptrs
       specs.erase(
         std::remove_if(specs.begin(), specs.end(), [](auto& f) { return !f; }),
         specs.end());
@@ -96,11 +96,11 @@ namespace xloil
       for (auto& f : specs)
         XLO_ERROR(L"Registration failed for: {0}", f->name());
 
-    }, QueueType::XLL_API);
+    }, ExcelRunQueue::XLL_API);
   }
 
   RegisteredFuncPtr FileSource::registerFunc(
-    const shared_ptr<const FuncSpec>& spec)
+    const shared_ptr<const WorksheetFuncSpec>& spec)
   {
     auto& name = spec->name();
     auto iFunc = _functions.find(name);
@@ -131,11 +131,11 @@ namespace xloil
     auto iFunc = _functions.find(name);
     if (iFunc != _functions.end())
     {
-      excelPost([iFunc, self = this]()
+      excelRunOnMainThread([iFunc, self = this]()
       {
         if (xloil::deregisterFunc(iFunc->second))
           self->_functions.erase(iFunc);
-      }, QueueType::XLL_API);
+      }, ExcelRunQueue::XLL_API);
       return true;
     }
     return false;
@@ -147,7 +147,7 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    excelPost([=, self = this]()
+    excelRunOnMainThread([=, self = this]()
     {
       xloil::registerLocalFuncs(self->_workbookName.c_str(), funcInfo, funcs);
     });

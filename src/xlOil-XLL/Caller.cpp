@@ -309,7 +309,7 @@ namespace xloil
     return ret < 0 ? 0 : (uint16_t)ret;
   }
 
-  XLOIL_EXPORT uint16_t xlrefSheetAddress(
+  XLOIL_EXPORT uint16_t xlrefWriteFullAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -324,18 +324,18 @@ namespace xloil
     return writeSheetRef(buf, bufSize, ref, sheetNm.asPString(), A1Style);
   }
 
-  XLOIL_EXPORT std::wstring xlrefSheetAddress(
+  XLOIL_EXPORT std::wstring xlrefWriteFullAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     bool A1Style)
   {
     return captureWStringBuffer([&](auto buf, auto sz)
     {
-      return xlrefSheetAddress(sheet, ref, buf, sz, A1Style);
+      return xlrefWriteFullAddress(sheet, ref, buf, sz, A1Style);
     });
   }
 
-  XLOIL_EXPORT std::wstring xlrefLocalAddress(
+  XLOIL_EXPORT std::wstring xlrefToLocalAddress(
     const msxll::XLREF12& ref,
     bool A1Style)
   {

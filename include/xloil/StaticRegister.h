@@ -4,8 +4,8 @@
 #include <array>
 
 namespace xloil {
-  class FuncSpec; 
-  class RegisteredFunc; 
+  class WorksheetFuncSpec; 
+  class RegisteredWorksheetFunc; 
   class FPArray; 
   class RangeArg; 
   struct AsyncHandle;
@@ -350,9 +350,9 @@ namespace xloil
       name, argTypes.nArgs, argTypes.types.data());
   }
 
-  std::vector<std::shared_ptr<const FuncSpec>>
+  std::vector<std::shared_ptr<const WorksheetFuncSpec>>
     processRegistryQueue(const wchar_t* moduleName);
 
-  XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredFunc>>
+  XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
     registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors);
 }

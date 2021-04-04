@@ -51,7 +51,7 @@ namespace xloil
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
-    vector<shared_ptr<const FuncSpec>> funcSpecs;
+    vector<shared_ptr<const WorksheetFuncSpec>> funcSpecs;
     for (size_t i = 0; i < funcInfo.size(); ++i)
     {
       auto& info = funcInfo[i];

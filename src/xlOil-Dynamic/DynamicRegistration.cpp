@@ -45,7 +45,7 @@ namespace xloil
     
     ThunkHolder()
     {
-      theCoreDllName = State::coreName();
+      theCoreDllName = State::coreDllName();
       theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
       theFirstStub = theExportTable->findOrdinal(
         decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
@@ -113,12 +113,12 @@ namespace xloil
   char* ThunkHolder::theCodePtr = theCodeCave;
 
 
-  class RegisteredCallback : public RegisteredFunc
+  class RegisteredCallback : public RegisteredWorksheetFunc
   {
   public:
     RegisteredCallback(
       const shared_ptr<const DynamicSpec>& spec)
-      : RegisteredFunc(spec)
+      : RegisteredWorksheetFunc(spec)
     {
       auto& registry = ThunkHolder::get();
       auto[thunk, thunkSize] = registry.callBuildThunk(
@@ -139,7 +139,7 @@ namespace xloil
       return registerFuncRaw(info(), entryPoint.c_str(), registry.theCoreDllName);
     }
 
-    virtual bool reregister(const std::shared_ptr<const FuncSpec>& other)
+    virtual bool reregister(const std::shared_ptr<const WorksheetFuncSpec>& other)
     {
       auto* thisType = dynamic_cast<const DynamicSpec*>(other.get());
       if (!thisType)
@@ -194,7 +194,7 @@ namespace xloil
     size_t _thunkSize;
   };
 
-  shared_ptr<RegisteredFunc> DynamicSpec::registerFunc() const
+  shared_ptr<RegisteredWorksheetFunc> DynamicSpec::registerFunc() const
   {
     return make_shared<RegisteredCallback>(
       static_pointer_cast<const DynamicSpec>(
@@ -231,13 +231,13 @@ namespace xloil
     }
   }
 
-  std::shared_ptr<RegisteredFunc> LambdaSpec<ExcelObj*>::registerFunc() const
+  std::shared_ptr<RegisteredWorksheetFunc> LambdaSpec<ExcelObj*>::registerFunc() const
   {
     auto thisPtr = std::static_pointer_cast<const LambdaSpec<ExcelObj*>>(this->shared_from_this());
     auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda, thisPtr);
     return thatPtr->registerFunc();
   }
-  std::shared_ptr<RegisteredFunc> LambdaSpec<void>::registerFunc() const
+  std::shared_ptr<RegisteredWorksheetFunc> LambdaSpec<void>::registerFunc() const
   {
     auto thisPtr = std::static_pointer_cast<const LambdaSpec<void>>(this->shared_from_this());
     auto thatPtr = make_shared<DynamicSpec>(info(), &invokeVoidLambda, thisPtr);

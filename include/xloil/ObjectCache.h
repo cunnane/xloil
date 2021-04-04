@@ -39,9 +39,9 @@ namespace xloil
       return pascalStr;
     }
 
-    // We need to explicitly define our own hash and compare so we can lookup
-    // string_view objects without first writing them to string. If that sounds
-    // like premature optimisation, it's because it is!
+    // We need to explicitly define our own lookup function for undordered_map
+    // to use string_view objects without copying.  In std::map the find function 
+    // is templated on the key type so we're just replicating that behaviour.
     template<class Val>
     struct Lookup : public std::unordered_map<std::wstring, Val>
     {

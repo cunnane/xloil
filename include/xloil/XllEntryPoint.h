@@ -8,7 +8,7 @@
 
 namespace xloil
 {
-  class RegisteredFunc;
+  class RegisteredWorksheetFunc;
 
   namespace XllInfo
   {
@@ -47,7 +47,7 @@ namespace xloil
     struct Reg
     {
       inline static std::unique_ptr<T> theAddin;
-      inline static std::vector<std::shared_ptr<const RegisteredFunc>> theFunctions;
+      inline static std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> theFunctions;
 
       static void autoOpen()
       {

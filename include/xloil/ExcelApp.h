@@ -25,7 +25,7 @@ namespace xloil
 
   // Enum class just doesn't cut it with flags. You can overload all the 
   // operators and use some SFINAE to make it safe... or you can do this.
-  namespace QueueType
+  namespace ExcelRunQueue
   {
     enum QueueTypeValues
     {
@@ -40,7 +40,7 @@ namespace xloil
   /// Excel will sometimes reject COM calls with the error VBA_E_IGNORE. This is
   /// against standard COM practice, but the COM interface, unlike the GUI,
   /// has been abandoned and does not receive updates. xlOil with throw the
-  /// ComBusyException in this case. Use of <see cref="excelPost"> catches
+  /// ComBusyException in this case. Use of <see cref="excelRunOnMainThread"> catches
   /// this exception and retries, but with sufficent failures it make be passed
   /// to the user.
   /// </summary>
@@ -69,13 +69,13 @@ namespace xloil
   /// </summary>
 
   XLOIL_EXPORT std::future<void> 
-    excelPost(
+    excelRunOnMainThread(
       const std::function<void()>& func, 
-      int flags = QueueType::WINDOW, 
+      int flags = ExcelRunQueue::WINDOW, 
       int nRetries = 10, 
       unsigned waitBetweenRetries = 200,
       unsigned waitBeforeCall = 0);
 
   
-  void xllOpenComCall(const std::function<void()>& func);
+  void runComSetupOnXllOpen(const std::function<void()>& func);
 }

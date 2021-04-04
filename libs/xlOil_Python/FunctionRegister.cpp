@@ -177,7 +177,7 @@ namespace xloil
     }
 
 
-    shared_ptr<const FuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
+    shared_ptr<const WorksheetFuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
     {
       shared_ptr<const PyFuncInfo> cFuncInfo = funcInfo;
  
@@ -239,7 +239,7 @@ namespace xloil
         if (_wcsicmp(fileName, sourceName()) != 0)
           return;
         
-        excelPost([
+        excelRunOnMainThread([
             this,
             dirStr = wstring(dirName),
             fileStr = wstring(fileName),
@@ -266,7 +266,7 @@ namespace xloil
               break;
             }
             }
-          }, QueueType::ENQUEUE);
+          }, ExcelRunQueue::ENQUEUE);
       }
     };
 
@@ -314,7 +314,7 @@ namespace xloil
         // Note we don't increment the ref-counter for the module to 
         // simplify our destructor
         _module = pyModule;
-        vector<shared_ptr<const FuncSpec>> nonLocal;
+        vector<shared_ptr<const WorksheetFuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
         vector<DynamicExcelFunc<>> funcs;
 

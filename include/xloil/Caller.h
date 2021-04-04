@@ -28,7 +28,7 @@ namespace xloil
 
     /// <summary>
     /// Provide custom caller information. The <paramref name="address"/> is
-    /// interpreted as per the return from xlfCaller.  In particular, a string
+    /// interpreted as per the return from xlfCaller. In particular, a string
     /// address will be returned by <see cref="writeAddress"/> unmodified. The 
     /// <paramref name="fullSheetName"/> is prepended when the address is of type
     /// ref or sref.
@@ -120,7 +120,7 @@ namespace xloil
   /// That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
   /// Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT uint16_t xlrefSheetAddress(
+  XLOIL_EXPORT uint16_t xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -128,18 +128,18 @@ namespace xloil
     bool A1Style = true);
 
   /// <summary>
-  /// Version of <see cref="xlrefSheetAddress"/> which returns a string rather
+  /// Version of <see cref="xlrefToWorkbookAddress"/> which returns a string rather
   /// than writing to a buffer
   /// </summary>
-  XLOIL_EXPORT std::wstring xlrefSheetAddress(
+  XLOIL_EXPORT std::wstring xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     bool A1Style = true);
 
   /// <summary>
-  /// Similar to <see cref="xlrefSheetAddress"/>, but without the sheet name
+  /// Similar to <see cref="xlrefToWorkbookAddress"/>, but without the sheet name
   /// </summary>
-  XLOIL_EXPORT std::wstring xlrefLocalAddress(
+  XLOIL_EXPORT std::wstring xlrefToLocalAddress(
     const msxll::XLREF12& ref,
     bool A1Style = true);
 

@@ -6,7 +6,7 @@
 #include <map>
 
 namespace toml { class table; }
-namespace xloil { class RegisteredFunc; class AddinContext; }
+namespace xloil { class RegisteredWorksheetFunc; class AddinContext; }
 
 namespace xloil
 {
@@ -46,7 +46,7 @@ namespace xloil
     /// <param name="specs">functions to register</param>
     void 
       registerFuncs(
-        const std::vector<std::shared_ptr<const FuncSpec> >& specs);
+        const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs);
 
     /// <summary>
     /// Removes the specified function from Excel
@@ -89,15 +89,15 @@ namespace xloil
     const wchar_t* sourceName() const { return _sourceName; }
 
   private:
-    std::map<std::wstring, std::shared_ptr<RegisteredFunc>> _functions;
+    std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>> _functions;
     std::wstring _sourcePath;
     const wchar_t* _sourceName;
     std::wstring _workbookName;
 
     // TODO: implement std::string _functionPrefix;
 
-    std::shared_ptr<RegisteredFunc> registerFunc(
-      const std::shared_ptr<const FuncSpec>& spec);
+    std::shared_ptr<RegisteredWorksheetFunc> registerFunc(
+      const std::shared_ptr<const WorksheetFuncSpec>& spec);
   };
 
   /// <summary>
