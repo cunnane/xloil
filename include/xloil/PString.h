@@ -311,7 +311,7 @@ namespace xloil
 
     ~PString()
     {
-      _alloc.deallocate(_data, length() + 1);
+      _alloc.deallocate(_data, length() + (size_type)1);
     }
 
     /// <summary>

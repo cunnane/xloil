@@ -15,6 +15,7 @@ namespace xloil
   public:
     using result_type = TResult;
     using const_result_ptr = const typename std::remove_pointer<TResult>::type*;
+    virtual ~IConvertFromExcel() {}
     virtual result_type operator()(
       const ExcelObj& xl, 
       const_result_ptr defaultVal = nullptr) const = 0;
@@ -28,6 +29,7 @@ namespace xloil
   class IConvertToExcel
   {
   public:
+    virtual ~IConvertToExcel() {}
     virtual ExcelObj operator()(const TSource& obj) const = 0;
   };
 

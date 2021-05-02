@@ -112,7 +112,7 @@ namespace xloil
         XLO_THROW("ExcelArray row indices out of range");
       if (!((arr.nCols() >= toCol) && (toCol > fromCol)))
         XLO_THROW("ExcelArray column indices out of range");
-      _data = arr._data + fromRow * _baseCols + fromCol;
+      _data = arr._data + (int)fromRow * (int)_baseCols + (int)fromCol;
     }
  
     /// <summary>
@@ -337,7 +337,7 @@ namespace xloil
         XLO_THROW("Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
           fromCol, toCol, arr.nCols());
 
-      _data = arr._data + fromRow * _baseCols + fromCol;
+      _data = arr._data + (col_t)fromRow * _baseCols + fromCol;
     }
 
 
