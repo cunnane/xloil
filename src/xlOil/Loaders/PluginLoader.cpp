@@ -126,7 +126,7 @@ namespace xloil
           {
             auto value = expandWindowsRegistryStrings(
               expandEnvironmentStrings(val));
-
+            XLO_DEBUG(L"Setting environment variable: {}='{}'", key, value);
             SetEnvironmentVariable(key.c_str(), value.c_str());
           }
           // Load the plugin
