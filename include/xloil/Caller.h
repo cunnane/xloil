@@ -120,7 +120,7 @@ namespace xloil
   /// That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
   /// Returns the number of characters written
   /// </summary>
-  XLOIL_EXPORT uint16_t xlrefToWorkbookAddress(
+  XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,

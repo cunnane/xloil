@@ -160,7 +160,7 @@ namespace xloil
       const auto wsLength = sheetName.length();
       if (wsLength > 0)
       {
-        if (bufLen <= wsLength + 1)
+        if (bufLen <= wsLength + (wchar_t)1)
           return 0;
         wmemcpy(buf, wsName, wsLength);
         buf += wsLength;
@@ -309,7 +309,7 @@ namespace xloil
     return ret < 0 ? 0 : (uint16_t)ret;
   }
 
-  XLOIL_EXPORT uint16_t xlrefWriteFullAddress(
+  XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
@@ -324,14 +324,14 @@ namespace xloil
     return writeSheetRef(buf, bufSize, ref, sheetNm.asPString(), A1Style);
   }
 
-  XLOIL_EXPORT std::wstring xlrefWriteFullAddress(
+  XLOIL_EXPORT std::wstring xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     bool A1Style)
   {
     return captureWStringBuffer([&](auto buf, auto sz)
     {
-      return xlrefWriteFullAddress(sheet, ref, buf, sz, A1Style);
+      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style);
     });
   }
 
