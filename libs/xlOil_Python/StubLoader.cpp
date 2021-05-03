@@ -27,35 +27,26 @@ namespace xloil
           if (plugin.settings.empty())
             XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
 
-          auto pyEnv = plugin.settings["Environment"].as_array();
-          string pyVer;
-          if (pyEnv)
-            for (auto& table : *pyEnv)
-              if (table.as_table()->contains("xlOilPythonVersion"))
-              {
-                pyVer = table.as_table()->get("xlOilPythonVersion")->value_or("");
-                break;
-              }
-
+          auto pyVer = utf8ToUtf16(plugin.settings["PythonVersion"].value_or(""));
           if (pyVer.empty())
             XLO_THROW("No xlOilPythonVersion specified in Python Environment block");
 
           // Convert X.Y version to XY and form the dll name
-          auto dllName = fmt::format("xloil_Python{0}.dll", 
-            pyVer.replace(pyVer.find('.'), 1, ""));
+          auto dllName = fmt::format(L"xloil_Python{0}.dll", 
+            pyVer.replace(pyVer.find(L'.'), 1, L""));
 
           // Load the library - the xlOil loader should already have set the DLL
           // load directory and we expect to find the versioned python plugins
           // in the directory this DLL is in.
           thePythonLib = LoadLibrary(dllName.c_str());
           if (!thePythonLib)
-            XLO_THROW("Failed LoadLibrary for: {}", dllName);
+            XLO_THROW(L"Failed LoadLibrary for: {}", dllName);
 
           theInitFunc = (PluginInitFunc)GetProcAddress(thePythonLib,
             XLO_STR(XLO_PLUGIN_INIT_FUNC));
           if (!theInitFunc)
-            XLO_THROW("Failed to find entry point {} in {}", 
-              XLO_STR(XLO_PLUGIN_INIT_FUNC), dllName);
+            XLO_THROW(L"Failed to find entry point {} in {}", 
+              XLO_WSTR(XLO_PLUGIN_INIT_FUNC), dllName);
         }
 
         // Forward the request to the real python plugins 
