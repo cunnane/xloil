@@ -23,6 +23,7 @@ def _find_excel_version():
     verstr = reg.QueryValue(reg.HKEY_CLASSES_ROOT, r"Excel.Application\CurVer")
     return int(verstr.replace('Excel.Application.',''))
 
+
 def _check_VBA_access(version):
 
     user_access = 1
@@ -38,6 +39,7 @@ def _check_VBA_access(version):
     if user_access == 0 or lm_access == 0:
         print("To ensure xlOil local functions work, allow access to the VBA Object Model in\n" +
 			"Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings\n")
+
 
 def _remove_from_resiliancy(filename, version):
 
@@ -56,6 +58,7 @@ def _remove_from_resiliancy(filename, version):
             if filename_hex in value:
                 reg.DeleteValue(regkey, name)
 
+
 def _remove_addin(version):
 
     # If we can't find the key or exit the for loop, suppress the error
@@ -70,27 +73,36 @@ def _remove_addin(version):
                 reg.DeleteValue(regkey, name)
 
 
-
 def _toml_lit_string(s):
     # TOML literal strings have a lot of quotes and escapes, this function does the encoding
     return "'''" + s.replace('\\','\\\\') + "'''"
+
 
 def _write_python_path_to_ini(ini_txt):
 
     python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
     python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
     
+    fails = 0
+
+    def do_replace(pat, repl):
+        nonlocal ini_txt, fails
+        ini_txt, count = re.subn(pat, repl, ini_txt, flags=re.M)
+        if count != 1:
+            fails += 1
+    
     # Set PYTHONPATH
-    ini_txt, count1 = re.subn(r'^(\s*PYTHONPATH\s*=).*', r'\g<1>' + _toml_lit_string(python_path), ini_txt, flags=re.M)
-    # Set PYTHON_LIB
-    ini_txt, count2 = re.subn(r'^(\s*PYTHON_LIB\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix), ini_txt, flags=re.M)
+    do_replace(r'^(\s*PYTHONPATH\s*=).*', r'\g<1>' + _toml_lit_string(python_path)
+    # Set xlOil_PythonRoot
+    do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set xlOilPythonVersion
-    ini_txt, count3 = re.subn(r'^(\s*xlOilPythonVersion\s*=).*', rf'\g<1>"{python_ver}"', ini_txt, flags=re.M)
+    do_replace(r'^(\s*PythonVersion\s*=).*', rf'\g<1>"{python_ver}"')
+    # Set xlOil_PythonVersion
+    do_replace(r'^(\s*xlOil_PythonVersion\s*=).*', rf'\g<1>"{python_ver}"')
     # Set XLOIL_PATH
-    ini_txt, count4 = re.subn(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)), ini_txt, flags=re.M)
- 
-    # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times    
-    return ini_txt, count1 == 1 and count2 == 1 and count3 == 1 and count4 == 1
+    do_replace(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)))
+
+    return ini_txt, fails == 0
     
    
 def _install_xloil():
