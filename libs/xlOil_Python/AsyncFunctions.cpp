@@ -162,6 +162,8 @@ namespace xloil
         }).wait();
 
         _thread.stop();
+
+        py::gil_scoped_acquire acquire;
         _eventLoop = py::object();
         _runLoopFunction = py::object();
         _callSoonFunction = py::object();
