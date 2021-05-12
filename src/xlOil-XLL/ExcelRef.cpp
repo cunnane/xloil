@@ -3,6 +3,9 @@
 
 namespace xloil
 {
+  Range::~Range()
+  {}
+
   XLOIL_EXPORT ExcelRef::ExcelRef(const ExcelObj& from)
   {
     switch (from.type())

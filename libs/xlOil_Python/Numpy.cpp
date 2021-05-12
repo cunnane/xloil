@@ -206,7 +206,7 @@ namespace xloil
     /// a numpy array
     /// </summary>
     template<int TNpType>
-    size_t getItemSize(const ExcelArray& arr)
+    size_t getItemSize(const ExcelArray&)
     {
       return sizeof(TypeTraits<TNpType>::storage);
     }
@@ -355,7 +355,7 @@ namespace xloil
       }
       static constexpr size_t stringLength = 0;
       auto toExcelObj(
-        ExcelArrayBuilder& b, 
+        ExcelArrayBuilder&, 
         void* arrayPtr)
       {
         auto x = (TDataType*)arrayPtr;

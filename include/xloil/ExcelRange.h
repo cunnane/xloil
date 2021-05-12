@@ -17,6 +17,7 @@ namespace xloil
     using col_t = ExcelObj::col_t;
 
     static constexpr int TO_END = INT_MAX;
+    virtual ~Range();
 
     /// <summary>
     /// Gives a subrange relative to the current range.  Similar to Excel's function, 

@@ -112,7 +112,7 @@ namespace xloil
         XLO_THROW("ExcelArray row indices out of range");
       if (!((arr.nCols() >= toCol) && (toCol > fromCol)))
         XLO_THROW("ExcelArray column indices out of range");
-      _data = arr._data + (int)fromRow * (int)_baseCols + (int)fromCol;
+      _data = arr._data + fromRow * (row_t)_baseCols + (int)fromCol;
     }
  
     /// <summary>
@@ -218,7 +218,7 @@ namespace xloil
     /// use <see cref="ExcelArray::begin"/> for that functionality.
     /// </summary>
     /// <param name="i"></param>
-    const ExcelObj* row_begin(row_t i) const  { return _data + i * _baseCols; }
+    const ExcelObj* row_begin(row_t i) const  { return _data + i * (row_t)_baseCols; }
 
     /// <summary>
     /// Returns an iterator to the end of the specified row (i.e. one past the last element)
