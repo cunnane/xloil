@@ -1,5 +1,6 @@
 #pragma once
 #include "PyHelpers.h"
+#include "Cache.h"
 
 namespace xloil
 {
@@ -10,7 +11,7 @@ namespace xloil
       if (PyUnicode_Check(p))
         strLength += PyUnicode_GetLength(p);
       else if (!PyFloat_Check(p) && !PyLong_Check(p) && !PyBool_Check(p))
-        strLength += 52; // TODO: max cache ref size?
+        strLength += CACHE_KEY_MAX_LEN;
     }
   }
 }

@@ -9,17 +9,78 @@
 namespace xloil
 {
   /// <summary>
+  /// Captures caller information suitable for when only an internal-style sheet address is required
+  /// </summary>
+  class XLOIL_EXPORT CallerLite
+  {
+  protected:
+    ExcelObj _address;
+    msxll::IDSHEET _sheetId;
+
+  public:
+    /// <summary>
+    /// Max string length for an internal sheet ref
+    /// </summary>
+    static constexpr uint16_t INTERNAL_REF_MAX_LEN = 1 + _MAX_U64TOSTR_BASE16_COUNT + 1 + _MAX_ULTOSTR_BASE16_COUNT * 2 + 1;
+
+    CallerLite();
+    /// <summary>
+    /// Provide custom caller information. The <paramref name="address"/> is
+    /// interpreted as per the return from xlfCaller. In particular, a string
+    /// address will be returned by <see cref="writeAddress"/> unmodified.
+    /// </summary>
+    /// <param name="address"></param>
+    CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId = nullptr);
+    /// <summary>
+    /// Writes the caller address to the provided buffer, returning the number
+    /// of characters written on success or a negative number or on failure. 
+    /// Sheet address will be in the form [000000000]0000:0000,A, non-sheet addresses
+    /// have different forms
+    /// </summary>
+    /// <param name="buf"></param>
+    /// <param name="bufLen"></param>
+    /// <returns></returns>
+    int writeInternalAddress(wchar_t* buf, size_t bufLen) const;
+    /// <summary>
+    /// As per <see cref="writeInternalAddress"/>, but returns a string rather than writing
+    /// to a buffer
+    /// </summary>
+    /// <returns></returns>
+    std::wstring writeInternalAddress() const;
+  };
+
+  /// <summary>
   /// Captures and writes information about the calling cell or context 
   /// provided by xlfCaller. Only returns useful information when the
   /// caller was a worksheet
   /// </summary>
-  class XLOIL_EXPORT CallerInfo
+  class XLOIL_EXPORT CallerInfo : public CallerLite
   {
   private:
-    ExcelObj _address;
     ExcelObj _fullSheetName;
 
   public:
+
+    /// <summary>
+    /// Species the format used to write sheet addresses
+    /// </summary>
+    enum AddressStyle
+    {
+      /// <summary>
+      /// A1 Format: [Book1]Sheet1!A1:B2
+      /// </summary>
+      A1,
+      /// <summary>
+      /// RC Format: [Book1]Sheet1!R1C1:R2C2
+      /// </summary>
+      RC,
+      /// <summary>
+      /// Internal format: [0004A8000A]800A1:91AC
+      /// </summary>
+      INTERNAL
+    };
+
+
     /// <summary>
     /// Constructor which makes calls to xlfCaller and xlfSheetName to
     /// determine the caller.
@@ -30,36 +91,38 @@ namespace xloil
     /// Provide custom caller information. The <paramref name="address"/> is
     /// interpreted as per the return from xlfCaller. In particular, a string
     /// address will be returned by <see cref="writeAddress"/> unmodified. The 
-    /// <paramref name="fullSheetName"/> is prepended when the address is of type
-    /// ref or sref.
+    /// <paramref name="fullSheetName"/> is used when the address is a ref or
+    /// sref. If it corresponds to a valid Excel sheet, the sheetId is looked
+    /// up and can be used in an Internal-style reference.
     /// </summary>
     /// <param name="address"></param>
-    /// <param name="fullSheetName"></param>
+    /// <param name="fullSheetName">If provided, should be of the form [Book]Sheet</param>
     CallerInfo(const ExcelObj& address, const wchar_t* fullSheetName=nullptr);
 
     /// <summary>
-    /// Returns the upper bound on the string length required to write the
-    /// caller as an RC style reference
+    /// Returns the upper bound on the string length required to write the address
     /// </summary>
     /// <returns></returns>
-    uint16_t addressRCLength() const;
+    uint16_t addressLength(AddressStyle style) const;
+
     /// <summary>
     /// Writes the caller address to the provided buffer, returning the number
     /// of characters written on success or a negative number or on failure. 
-    /// Caller address will be in the form [Book]Sheet!A1 for a worksheet caller.
     /// </summary>
     /// <param name="buf"></param>
     /// <param name="bufLen"></param>
-    /// <param name="A1Style">If true, returns A1-type addresses else returns RC-type</param>
+    /// <param name="style">Selects A1-type, RC-type or internal address</param>
     /// <returns></returns>
-    int writeAddress(wchar_t* buf, size_t bufLen, bool A1Style = false) const;
+    int writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style = RC) const;
+
     /// <summary>
     /// As per <see cref="writeAddress"/>, but returns a string rather than writing
     /// to a buffer
     /// </summary>
-    /// <param name="A1Style"></param>
+    /// <param name="style"></param>
     /// <returns></returns>
-    std::wstring writeAddress(bool A1Style = true) const;
+    std::wstring writeAddress(AddressStyle style = RC) const;
+
     /// <summary>
     /// Returns the calling worksheet name as a PString or a null PString
     /// if it could not be determined.
@@ -115,10 +178,9 @@ namespace xloil
   void writeColumnName(size_t colIndex, char buf[4]);
 
   /// <summary>
-  /// Writes a simple Excel ref including sheet name in
-  /// either A1 or RxCy to  the provided string buffer. 
-  /// That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
-  /// Returns the number of characters written
+  /// Writes a simple Excel ref including sheet name in either A1 or RxCy 
+  /// to the provided string buffer. That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
+  /// <returns>The number of characters written</returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
     const msxll::IDSHEET& sheet,
@@ -144,9 +206,9 @@ namespace xloil
     bool A1Style = true);
 
   /// <summary>
-  /// Writes a simple Excel ref (not including sheet name)
-  /// to 'RxCy' or 'RaCy:RxCy' format in the provided string
-  /// buffer. Returns the number of characters written
+  /// Writes a simple Excel ref (not including sheet name) to 'RxCy' or 
+  /// 'RaCy:RxCy' format in the provided string buffer. 
+  /// <returns>The number of characters written</returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefToLocalRC(
     const msxll::XLREF12& ref, 
@@ -154,9 +216,9 @@ namespace xloil
     size_t bufSize);
 
   /// <summary>
-  /// Writes a simple Excel ref (not including sheet name)
-  /// to 'A1' or 'A1:Z9' format in the provided string
-  /// buffer. Returns the number of characters written.
+  /// Writes a simple Excel ref (not including sheet name) to 'A1' or 'A1:Z9' 
+  /// format in the provided string buffer.
+  /// <returns>The number of characters written</returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefToLocalA1(
     const msxll::XLREF12& ref,

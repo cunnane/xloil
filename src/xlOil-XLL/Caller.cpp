@@ -110,48 +110,12 @@ namespace
 
 namespace xloil
 {
-  CallerInfo::CallerInfo()
-  {
-    callExcelRaw(xlfCaller, &_address);
-    if (_address.isType(ExcelType::RangeRef))
-      callExcelRaw(xlSheetNm, &_fullSheetName, &_address);
-  }
-  CallerInfo::CallerInfo(
-    const ExcelObj& address, const wchar_t* fullSheetName)
-    : _address(address)
-  {
-    if (fullSheetName)
-      _fullSheetName = fullSheetName;
-  }
-  uint16_t CallerInfo::addressRCLength() const
-  {
-    // Any value in more precise guess?
-    const auto sheetName = fullSheetName();
-    if (!sheetName.empty())
-      return sheetName.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
-
-    // Not a worksheet caller
-    auto addressStr = _address.asPString();
-    if (!addressStr.empty())
-      return addressStr.length();
-
-    return 19; // Max is "Toolbar(<some int id>)"
-  }
-
-  namespace
-  {
-    template<size_t N>
-    constexpr size_t wcslength(wchar_t const (&)[N])
-    {
-      return N - 1;
-    }
-  }
   namespace
   {
     uint16_t writeSheetRef(
       wchar_t* buf,
       size_t bufLen,
-      const msxll::XLREF12& sheetRef, 
+      const msxll::XLREF12& sheetRef,
       const PString<>& sheetName,
       const bool A1Style)
     {
@@ -177,114 +141,246 @@ namespace xloil
 
       return nWritten;
     }
+
+    uint16_t writeInternal(
+      wchar_t* buf,
+      size_t bufLen,
+      const msxll::XLREF12& sheetRef,
+      const msxll::IDSHEET sheetId)
+    {
+      const auto cellStart = sheetRef.rwFirst * XL_MAX_COLS + sheetRef.colFirst;
+      const auto cellEnd   = sheetRef.rwLast * XL_MAX_COLS + sheetRef.colLast;
+      const auto  nWritten = _snwprintf_s(buf, bufLen, bufLen, L"[%p]%x:%x", sheetId, cellStart, cellEnd);
+      return nWritten < 0 ? 0 : (uint16_t)nWritten;
+    }
+
+    int writeAddressImpl(
+      wchar_t* buf,
+      size_t bufLen,
+      const ExcelObj& address,
+      const PString<>& sheetName,
+      msxll::IDSHEET sheetId,
+      CallerInfo::AddressStyle style)
+    {
+      switch (address.type())
+      {
+      case ExcelType::SRef:
+      {
+        switch (style)
+        {
+        case CallerInfo::RC:
+        case CallerInfo::A1:
+          return writeSheetRef(buf, bufLen, address.val.sref.ref,
+            sheetName, style == CallerInfo::A1);
+        case CallerInfo::INTERNAL:
+          return writeInternal(buf, bufLen, address.val.sref.ref, sheetId);
+        }
+      }
+      case ExcelType::Ref:
+      {
+        switch (style)
+        {
+        case CallerInfo::RC:
+        case CallerInfo::A1:
+          return writeSheetRef(buf, bufLen, address.val.mref.lpmref->reftbl[0],
+            sheetName, style == CallerInfo::A1);
+        case CallerInfo::INTERNAL:
+          return writeInternal(buf, bufLen, address.val.mref.lpmref->reftbl[0], sheetId);
+        }
+      }
+      case ExcelType::Str: // Graphic object or Auto_XXX macro caller
+      {
+        auto str = address.asPString();
+        // Never return a string longer than the advertised max length
+        uint16_t maxLen = str.length();
+        switch (style)
+        {
+        case CallerInfo::RC:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
+        case CallerInfo::A1:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
+        case CallerInfo::INTERNAL: maxLen = std::min(maxLen, CallerInfo::INTERNAL_REF_MAX_LEN); break;
+        }
+        wcsncpy_s(buf, bufLen, str.pstr(), maxLen);
+        return std::min<int>((int)bufLen, str.length());
+      }
+      case ExcelType::Num: // DLL caller
+      {
+        return _snwprintf_s(buf, bufLen, bufLen, L"DLL(%d)", address.asInt());
+      }
+      case ExcelType::Multi:
+      {
+        ExcelArray arr(address, false);
+        switch (arr.size())
+        {
+        case 2:
+          return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).asInt());
+        case 4:
+          return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).asInt());
+        default:
+          XLO_THROW("Caller: address is badly formed array");
+        }
+      }
+      default: // Other callers
+        constexpr wchar_t nonWorksheetCaller[] = L"Unknown";
+        if (bufLen < _countof(nonWorksheetCaller))
+          return 0;
+        wcscpy_s(buf, bufLen, nonWorksheetCaller);
+        return _countof(nonWorksheetCaller);
+      }
+    }
   }
-  int CallerInfo::writeAddress(
-    wchar_t* buf, 
-    size_t bufLen,
-    bool A1Style) const
+
+  CallerLite::CallerLite()
   {
+    callExcelRaw(xlfCaller, &_address);
     switch (_address.type())
     {
     case ExcelType::SRef:
     {
-      return writeSheetRef(buf, bufLen, _address.val.sref.ref,
-        _fullSheetName.asPString(), A1Style);
+      const auto activeSheet = callExcel(xlSheetId);
+      _sheetId = activeSheet.val.mref.idSheet;
+      break;
     }
     case ExcelType::Ref:
-    {
-      return writeSheetRef(buf, bufLen, _address.val.mref.lpmref->reftbl[0],
-        _fullSheetName.asPString(), A1Style);
-    }
-    case ExcelType::Str: // Graphic object or Auto_XXX macro caller
-    {
-      auto str = _address.asPString();
-      wcsncpy_s(buf, bufLen, str.pstr(), str.length());
-      return std::min<int>((int)bufLen, str.length());
-    }
-    case ExcelType::Num: // DLL caller
-    {
-      return _snwprintf_s(buf, bufLen, bufLen, L"DLL(%d)", _address.asInt());
-    }
-    case ExcelType::Multi:
-    {
-      ExcelArray arr(_address, false);
-      switch (arr.size())
-      {
-      case 2:
-        return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).asInt());
-      case 4:
-        return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).asInt());
-      default:
-        XLO_THROW("Caller: address is badly formed array");
-      }
-    }
-    default: // Other callers
-      constexpr wchar_t nonWorksheetCaller[] = L"Unknown";
-      if (bufLen < _countof(nonWorksheetCaller))
-        return 0;
-      wcscpy_s(buf, bufLen, nonWorksheetCaller);
-      return _countof(nonWorksheetCaller);
+      _sheetId = _address.val.mref.idSheet;
+      break;
+    default:
+      _sheetId = nullptr;
+      break;
     }
   }
-
-  std::wstring CallerInfo::writeAddress(bool A1Style) const
+  CallerLite::CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId)
+    : _address(address)
+    , _sheetId(sheetId)
+  {
+  }
+  int CallerLite::writeInternalAddress(wchar_t* buf, size_t bufLen) const
+  {
+    return writeAddressImpl(buf, bufLen, _address, PString<>(), _sheetId, CallerInfo::INTERNAL);
+  }
+  std::wstring CallerLite::writeInternalAddress() const
   {
     std::wstring result;
-    result.resize(addressRCLength()); // RC-length > A1-length
-    const auto nChars = writeAddress(result.data(), result.size(), A1Style);
+    result.resize(INTERNAL_REF_MAX_LEN);
+    const auto nChars = writeInternalAddress(result.data(), result.size());
+    result.resize(nChars);
+    return result;
+  }
+  CallerInfo::CallerInfo()
+    : CallerLite()
+  {
+    if (_address.isType(ExcelType::RangeRef))
+      callExcelRaw(xlSheetNm, &_fullSheetName, &_address);
+  }
+  CallerInfo::CallerInfo(
+    const ExcelObj& address, const wchar_t* fullSheetName)
+    : CallerLite(address)
+  {
+    if (fullSheetName)
+    {
+      if (fullSheetName[0] == L'[')
+      {
+        auto[sheetId, ret] = tryCallExcel(xlSheetId, fullSheetName);
+        if (ret == 0 && sheetId.isType(ExcelType::Ref))
+          _sheetId = sheetId.val.mref.idSheet;
+      }
+      _fullSheetName = fullSheetName;
+    }
+  }
+  uint16_t CallerInfo::addressLength(AddressStyle style) const
+  {
+    // Any value in more precise guess?
+    const auto sheetName = fullSheetName();
+    if (!sheetName.empty())
+    {
+      switch (style)
+      {
+        case RC: return sheetName.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
+        case A1: return sheetName.length() + 1 + XL_CELL_ADDRESS_A1_MAX_LEN;
+        case INTERNAL: return INTERNAL_REF_MAX_LEN;
+      }
+    }
+
+    // Not a worksheet caller
+    auto addressStr = _address.asPString();
+    if (!addressStr.empty())
+      return addressStr.length();
+
+    return 19; // Max is "Toolbar(<some int id>)"
+  }
+
+  namespace
+  {
+    template<size_t N>
+    constexpr size_t wcslength(wchar_t const (&)[N])
+    {
+      return N - 1;
+    }
+  }
+  int CallerInfo::writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style) const
+  {
+    return writeAddressImpl(buf, bufLen, _address, _fullSheetName.asPString(), _sheetId, style);
+  }
+  std::wstring CallerInfo::writeAddress(AddressStyle style) const
+  {
+    std::wstring result;
+    result.resize(addressLength(style));
+    const auto nChars = writeAddress(result.data(), result.size(), style);
     result.resize(nChars);
     return result;
   }
 
-  constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
-
-  auto fillColumnNameCache()
+  namespace
   {
-    static std::array<char, COL_NAME_CACHE_SIZE * 2> cache;
-    auto* pcolumns = cache.data();
+    constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
 
-    for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
+    auto fillColumnNameCache()
     {
-      pcolumns[0] = d;
-      pcolumns[1] = 0;
-    }
+      static std::array<char, COL_NAME_CACHE_SIZE * 2> cache;
+      auto* pcolumns = cache.data();
 
-    for (auto c = 'A'; c <= 'Z'; ++c)
       for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
       {
-        pcolumns[0] = c;
-        pcolumns[1] = d;
+        pcolumns[0] = d;
+        pcolumns[1] = 0;
       }
-    return cache;
-  }
 
-  static auto theColumnNameCache = fillColumnNameCache();
-
-  void writeColumnName(size_t colIndex, char buf[4])
-  {
-    if (colIndex < COL_NAME_CACHE_SIZE)
-    {
-      memcpy_s(buf, 4, &theColumnNameCache[colIndex * 2], 2);
-      buf[2] = '\0';
+      for (auto c = 'A'; c <= 'Z'; ++c)
+        for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
+        {
+          pcolumns[0] = c;
+          pcolumns[1] = d;
+        }
+      return cache;
     }
-    else
+
+    static auto theColumnNameCache = fillColumnNameCache();
+
+    void writeColumnName(size_t colIndex, char buf[4])
     {
-      constexpr short Ato0 = 'A' - '0';
-      constexpr short Atoa = 'A' - 'a' + 10;
+      if (colIndex < COL_NAME_CACHE_SIZE)
+      {
+        memcpy_s(buf, 4, &theColumnNameCache[colIndex * 2], 2);
+        buf[2] = '\0';
+      }
+      else
+      {
+        constexpr short Ato0 = 'A' - '0';
+        constexpr short Atoa = 'A' - 'a' + 10;
 
-      _itoa_s((int)colIndex - 26, buf, 4, 26);
-      buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
-      buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
-      buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
+        _itoa_s((int)colIndex - 26, buf, 4, 26);
+        buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
+        buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
+        buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
+      }
     }
-  }
 
-  void writeColumnNameW(size_t colIndex, wchar_t buf[4])
-  {
-    size_t dummy;
-    char colBuf[4];
-    writeColumnName(colIndex, colBuf);
-    mbstowcs_s(&dummy, buf, 4, colBuf, 4);
+    void writeColumnNameW(size_t colIndex, wchar_t buf[4])
+    {
+      size_t dummy;
+      char colBuf[4];
+      writeColumnName(colIndex, colBuf);
+      mbstowcs_s(&dummy, buf, 4, colBuf, 4);
+    }
   }
 
   XLOIL_EXPORT uint16_t xlrefToLocalA1(

@@ -370,7 +370,7 @@ namespace xloil
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
-        , _caller(CallerInfo().writeAddress(false))
+        , _caller(CallerLite().writeInternalAddress())
       {}
 
       virtual ~RtdAsyncTask()

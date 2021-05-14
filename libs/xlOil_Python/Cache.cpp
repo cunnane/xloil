@@ -29,6 +29,8 @@ namespace xloil
         PyCache()
           : _cache(false)
         {
+          static_assert(CACHE_KEY_MAX_LEN == decltype(PyCache::_cache)::KEY_MAX_LEN);
+
           thePythonObjCache = this;
           _workbookCloseHandler = std::static_pointer_cast<const void>(
             xloil::Event::WorkbookAfterClose().bind(
@@ -54,8 +56,8 @@ namespace xloil
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
           const auto cacheKey = _cache.add(py::object(obj), tag 
-              ? CallerInfo(ExcelObj(tag))
-              : CallerInfo());
+              ? CallerLite(ExcelObj(tag))
+              : CallerLite());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object get(const std::wstring_view& str)
@@ -92,8 +94,8 @@ namespace xloil
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
     {
       return thePythonObjCache->_cache.add(py::object(obj), caller 
-        ? CallerInfo(ExcelObj(caller))
-        : CallerInfo());
+        ? CallerLite(ExcelObj(caller))
+        : CallerLite());
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {

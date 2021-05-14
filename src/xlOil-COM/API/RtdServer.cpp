@@ -100,7 +100,7 @@ namespace xloil
       const auto ref = CallerInfo().sheetRef();
       const auto arraySize = (ref->colLast - ref->colFirst + 1) 
         * (ref->rwLast - ref->rwFirst + 1);
-      auto address = CallerInfo().writeAddress(false);
+      auto address = CallerInfo().writeAddress(CallerInfo::RC);
 
       // Turn array address into top left cell
       if (arraySize > 1)

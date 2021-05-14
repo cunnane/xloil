@@ -23,15 +23,15 @@ namespace xloil
 
   namespace detail
   {
-    inline auto writeCacheId(const CallerInfo& caller, wchar_t padding)
+    inline auto writeCacheId(const CallerLite& caller, wchar_t padding)
     {
-      PString<> pascalStr(caller.addressRCLength() + padding + 1);
+      PString<> pascalStr(CallerLite::INTERNAL_REF_MAX_LEN + padding + 1);
       auto* buf = pascalStr.pstr() + 1;
 
       wchar_t nWritten = 1; // Leave space for uniquifier
 
       // Full cell address: eg. [wbName]wsName!RxCy
-      nWritten += (wchar_t)caller.writeAddress(buf, pascalStr.length() - 1, false);
+      nWritten += (wchar_t)caller.writeInternalAddress(buf, pascalStr.length() - 1);
 
       // Fix up length
       pascalStr.resize(nWritten + padding);
@@ -168,11 +168,20 @@ namespace xloil
       ++_calcId; // Wraps at MAX_UINT - but this doesn't matter
     }
 
+    /// <summary>
+    /// Used to append cell count to end of reference
+    /// </summary>
     static constexpr uint8_t PADDING = 2;
-
+    
   public:
     TUniquifier _uniquifier;
 
+    /// <summary>
+    /// Max length of a cache key. Because keys are derived from CallerLite using internal 
+    /// references or otherwise, this length can be guaranteed
+    /// </summary>
+    static constexpr uint16_t KEY_MAX_LEN = 1 + CallerLite::INTERNAL_REF_MAX_LEN + PADDING;
+    
     ObjectCache(bool reapOnWorkbookClose = true)
       : _calcId(1)
     {
@@ -184,13 +193,6 @@ namespace xloil
       if (reapOnWorkbookClose)
         _workbookCloseHandler = std::static_pointer_cast<const void>(
           xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
-    }
-
-    const TObj* fetchValid(const std::wstring_view& cacheString, TObj*& obj)
-    {
-      return !valid(cacheString)
-        ? nullptr
-        : fetch(const std::wstring_view& cacheString, TObj*& obj)
     }
 
     const TObj* fetch(const std::wstring_view& key) const
@@ -206,7 +208,7 @@ namespace xloil
         : found->second.fetch(iResult);
     }
 
-    ExcelObj add(TObj&& obj, const CallerInfo& caller = CallerInfo())
+    ExcelObj add(TObj&& obj, const CallerLite& caller = CallerLite())
     {
       auto fullKey = detail::writeCacheId(caller, PADDING);
       fullKey[0] = _uniquifier.value;

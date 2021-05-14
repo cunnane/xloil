@@ -124,7 +124,7 @@ namespace xloil {
             })
           .def("address", [](const CallerInfo& self, bool x)
             {
-              return self.writeAddress(x);
+              return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
             }, py::arg("a1style") = false);
 
       }, 1000);
