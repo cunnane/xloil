@@ -57,9 +57,6 @@ namespace xloil
 
         theCoreIsLoaded = true;
         retVal = 1;
-
-        // TODO: no need to call this
-        initMessageQueue();
       }
 
       if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
