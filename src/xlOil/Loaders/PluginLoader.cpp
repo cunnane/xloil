@@ -10,6 +10,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
+#include <xlOil/Version.h>
 #include <tomlplusplus/toml.hpp>
 #include <vector>
 #include <string>
@@ -140,13 +141,15 @@ namespace xloil
           if (!initFunc)
             XLO_THROW("Couldn't find plugin entry point");
 
-          // TODO: check build key xloil_buildId for version control
 
           PluginContext pluginLoadContext =
           {
             PluginContext::Load,
             pluginName.c_str(),
-            loadSettings ? *loadSettings.as_table() : emptyTomlTable
+            loadSettings ? *loadSettings.as_table() : emptyTomlTable,
+            XLOIL_MAJOR_VERSION,
+            XLOIL_MINOR_VERSION,
+            XLOIL_PATCH_VERSION
           };
           if (initFunc(theCoreContext(), pluginLoadContext) < 0)
           {
@@ -174,7 +177,10 @@ namespace xloil
         {
           PluginContext::Attach,
           pluginName.c_str(),
-          pluginSettings ? *pluginSettings.as_table() : emptyTomlTable
+          pluginSettings ? *pluginSettings.as_table() : emptyTomlTable,
+          XLOIL_MAJOR_VERSION,
+          XLOIL_MINOR_VERSION,
+          XLOIL_PATCH_VERSION
         };
         if (pluginData->second.Init(context, pluginAttach) < 0)
           XLO_ERROR(L"Failed to attach addin {0} to plugin {1}", 
@@ -194,7 +200,14 @@ namespace xloil
   bool unloadPluginImpl(const wchar_t* name, LoadedPlugin& plugin) noexcept
   {
     XLO_DEBUG(L"Unloading plugin {0}", name);
-    PluginContext context = { PluginContext::Unload, name, emptyTomlTable };
+    PluginContext context = { 
+      PluginContext::Unload, 
+      name, 
+      emptyTomlTable,          
+      XLOIL_MAJOR_VERSION,
+      XLOIL_MINOR_VERSION,
+      XLOIL_PATCH_VERSION 
+    };
     plugin.Init(0, context);
     if (!FreeLibrary(plugin.Handle))
       XLO_WARN(L"FreeLibrary failed for {0}: {1}", name, writeWindowsError());

@@ -2,6 +2,7 @@
 #include <xloil/ExportMacro.h>
 #include <xloil/Register.h>
 #include <xloil/FuncSpec.h>
+#include <xloil/Version.h>
 #include <memory>
 #include <map>
 
@@ -220,6 +221,16 @@ namespace xloil
     Action action;
     const wchar_t* pluginName;
     const toml::table& settings;
+    uint8_t coreMajorVersion;
+    uint8_t coreMinorVersion;
+    uint8_t corePatchVersion;
+
+    bool checkExactVersion() const
+    {
+      return coreMajorVersion == XLOIL_MAJOR_VERSION 
+        && coreMinorVersion == XLOIL_MINOR_VERSION 
+        && corePatchVersion == XLOIL_PATCH_VERSION;
+    }
   };
 
   /// <summary>

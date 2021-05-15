@@ -6,6 +6,7 @@ namespace xloil
   {
     XLO_PLUGIN_INIT(AddinContext* ctx, const PluginContext& plugin)
     {
+      throwIfNotExactVersion(plugin);
       linkPluginToCoreLogger(ctx, plugin);
       return 0;
     }
