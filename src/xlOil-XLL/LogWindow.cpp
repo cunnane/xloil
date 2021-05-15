@@ -3,7 +3,7 @@
 #include <Windows.h>
 
 #include <xloil/LogWindow.h>
-
+#include <xloil/ExcelApp.h>
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
 #include <xlOilHelpers/Exception.h>
@@ -72,6 +72,7 @@ namespace xloil
         theMainWindow = hwnd;
       }
 
+    private:
       static LRESULT CALLBACK StaticWindowProc(
         HWND hwnd,
         UINT message,
@@ -112,7 +113,7 @@ namespace xloil
             0, 0, 0, 0,  // we will set size in WM_SIZE message 
             hwnd,        // parent window 
             theTextControlId,
-            (HINSTANCE)GetWindowLong(hwnd, GWLP_HINSTANCE),
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
             NULL);       // pointer not needed 
 
           if (!theTextControl)
@@ -195,20 +196,6 @@ namespace xloil
         return theWindowIsOpen;
       }
 
-      void openWindow() noexcept override
-      {
-        if (isOpen())
-          return;
-
-        _windowText.clear();
-        for (auto& msg : _messages)
-          appendToWindow(msg);
-
-        setWindowText();
-
-        showWindow();
-      }
-
       void appendToWindow(const string& msg) 
       {
         auto wmsg = utf8ToUtf16(msg);
@@ -224,6 +211,24 @@ namespace xloil
         _windowText.append(wmsg).append(L"\r\n");
       }
 
+    public:
+      void openWindow() noexcept override
+      {
+        if (isOpen())
+          return;
+
+        _windowText.clear();
+        for (auto& msg : _messages)
+          appendToWindow(msg);
+
+        // Should only call window drawing API functions on the main thread
+        excelRunOnMainThread([this]
+        {
+          setWindowText();
+          showWindow();
+        });
+      }
+
       void appendMessage(const string& msg) noexcept override
       {
         _messages.push_back(msg);
@@ -235,7 +240,11 @@ namespace xloil
         if (isOpen())
         {
           appendToWindow(_messages.back());
-          setWindowText();
+          // Should only call window drawing API functions on the main thread
+          excelRunOnMainThread([this]
+          {
+            setWindowText();
+          });
         }
       }
     };
