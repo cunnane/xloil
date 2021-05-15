@@ -60,14 +60,21 @@ namespace xloil
               : CallerLite());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
-        py::object get(const std::wstring_view& str)
+        py::object getitem(const std::wstring_view& str)
+        {
+          auto result = get(str);
+          if (result.is_none())
+            throw pybind11::key_error(utf16ToUtf8(str));
+          return result;
+        }
+        py::object get(const std::wstring_view& str, py::object default=py::none())
         {
           const ExcelObj* xlObj = getCached<ExcelObj>(str);
           if (xlObj)
             return PySteal(PyFromAny()(*xlObj));
 
           auto* obj = _cache.fetch(str);
-          return obj ? *obj : py::none(); // TODO: More pythonic to throw?
+          return obj ? *obj : default;
         }
         bool remove(const std::wstring& cacheRef)
         {
@@ -112,11 +119,11 @@ namespace xloil
         py::class_<PyCache>(mod, "ObjectCache")
           .def("add", &PyCache::add, py::arg("obj"), py::arg("tag")=nullptr)
           .def("remove", &PyCache::remove, py::arg("ref"))
-          .def("get", &PyCache::get, py::arg("ref"))
+          .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
           .def("__contains__", &PyCache::contains)
-          .def("__getitem__", &PyCache::get)
+          .def("__getitem__", &PyCache::getitem)
           .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr);
         mod.add_object("cache", py::cast(new PyCache()));
       });
