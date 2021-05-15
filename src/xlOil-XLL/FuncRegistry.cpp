@@ -60,7 +60,7 @@ namespace xloil
       // Build the argument type descriptor
       string argTypes;
       if (opts & FuncInfo::COMMAND)
-        argTypes += '>';  // Commands always return void - sensible?
+        argTypes += '>';  // Commands always return void
       else
         argTypes += 'U';  // Otherwise return an XLOPER12 unless overridden below
 
@@ -79,26 +79,31 @@ namespace xloil
           argTypes[0] = '>'; // Async returns void
         }
         else
-          XLO_THROW("Internal: Unknown function argtype");
+          XLO_THROW(L"Internal: Unknown argtype '{}' for arg '{}'", arg.type, arg.name);
 
         if (arg.type & FuncArg::ReturnVal)
           if (argTypes[0] != 'U')
-            XLO_THROW("Only one argument can be specified as a return value");
+            XLO_THROW(L"Only one argument can be specified as a return value for arg '{}'", arg.name);
           else if (iArg > 8)
-            XLO_THROW("Return in-place arg must be in the first 9");
+            XLO_THROW(L"Return in-place arg must be in the first 9 for arg '{}'", arg.name);
           else
             argTypes[0] = ('1' + (char)iArg); // Return numbered arg in place
         ++iArg;
       }
 
       // Set function option suffixes
-      // TODO: check for invalid combinations
       if (opts & FuncInfo::VOLATILE)
         argTypes += '!';
       else if (opts & FuncInfo::MACRO_TYPE)
         argTypes += '#';
       else if (opts & FuncInfo::THREAD_SAFE)
+      {
         argTypes += '$';
+        if (opts & FuncInfo::MACRO_TYPE)
+          XLO_THROW("Cannot declare function thread-safe and macro-type");
+        if (opts & FuncInfo::VOLATILE)
+          XLO_THROW("Cannot declare function thread-safe and volatile");
+      }
 
       // Concatenate argument names, adding optional indicator if requested
       wstring argNames;
