@@ -4,6 +4,7 @@
 #include <xloil/NumericTypeConverters.h>
 #include <xloil/Throw.h>
 #include <xloil/Date.h>
+#include <xloil/Log.h>
 #include <xloil/StringUtils.h>
 #include <xlOil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
@@ -144,7 +145,7 @@ namespace
   }
 
 
-  void ExcelObj::reset()
+  void ExcelObj::reset() noexcept
   {
     if ((xltype & xlbitXLFree) != 0)
     {
@@ -165,8 +166,13 @@ namespace
         delete[] (char*)(val.array.lparray);
         break;
 
-      case xltypeBigData: break;
-        //TODO: Not implemented yet, we don't create our own bigdata
+      case xltypeBigData:
+        // Only delete if count > 0. Excel uses bigdata for async return handles and sets
+        // lpbData to an int handle, but leaves cbData = 0.  We never create a bigdata object
+        // (other than copying async handles) so this delete should not be triggered.
+        if (val.bigdata.cbData > 0)
+          delete[](char*)val.bigdata.h.lpbData;
+        break;
 
       case xltypeRef:
         delete[] (char*)val.mref.lpmref;

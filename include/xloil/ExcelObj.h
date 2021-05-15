@@ -397,7 +397,7 @@ namespace xloil
     /// <summary>
     /// Deletes object content and sets it to ExcelType::Nil
     /// </summary>
-    void reset();
+    void reset() noexcept;
 
     /// <summary>
     /// The equality operator performs a deep comparison, recursing 
