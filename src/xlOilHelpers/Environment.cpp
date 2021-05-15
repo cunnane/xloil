@@ -1,4 +1,5 @@
 #include "Environment.h"
+#include <xloil/StringUtils.h>
 #include <xloil/WindowsSlim.h>
 #include <regex>
 #include <cassert>
@@ -118,7 +119,7 @@ namespace xloil
     bool getWindowsRegistryValue(
       const wchar_t* hive,
       const wchar_t* location,
-      DWORD& result)
+      unsigned long& result)
     {
       assert(hive && location);
       char buffer[sizeof(DWORD)];

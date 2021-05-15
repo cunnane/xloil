@@ -5,43 +5,6 @@
 namespace xloil
 {
   /// <summary>
-  /// Helper function to capture C++ strings from Windows Api functions which have
-  /// signatures like
-  ///    int_charsWritten GetTheString(wchar* buffer, int bufferSize);
-  /// </summary>
-  namespace detail
-  {
-    template<class TChar, class F>
-    auto captureStringBufferImpl(F bufWriter, size_t initialSize)
-    {
-      std::basic_string<TChar> s;
-      s.resize(initialSize);
-      size_t len;
-      // We assume, hopefully correctly, that the bufWriter function on
-      // failure returns either -1 or the required buffer length.
-      while ((len = bufWriter(s.data(), s.length())) > s.length())
-        s.resize(len == size_t(-1) ? s.size() * 2 : len);
-
-      // However, some windows functions, e.g. ExpandEnvironmentStrings 
-      // include the null-terminator in the returned buffer length whereas
-      // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
-      // Wonderful.
-      s.resize(s.data()[len - 1] == '\0' ? len - 1 : len);
-      return s;
-    }
-  }
-  template<class F>
-  auto captureStringBuffer(F bufWriter, size_t initialSize = 1024)
-  {
-    return detail::captureStringBufferImpl<char, F>(bufWriter, initialSize);
-  }
-  template<class F>
-  auto captureWStringBuffer(F bufWriter, size_t initialSize = 1024)
-  {
-    return detail::captureStringBufferImpl<wchar_t, F>(bufWriter, initialSize);
-  }
-
-  /// <summary>
   /// Returns the value of specified environment variable
   /// or an empty string if it does not exist
   /// </summary>

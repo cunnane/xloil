@@ -3,6 +3,7 @@
 #include <xloil/Events.h>
 #include <xloil/LogWindow.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/StringUtils.h>
 #include <functional>
 #include <filesystem>
 
@@ -29,11 +30,14 @@ namespace xloil
     {
       try
       {
-        wchar_t path[4 * MAX_PATH]; // TODO: may not be long enough!!!
-        auto size = GetModuleFileName(handle, path, sizeof(path));
-        if (size > 0)
+        XllInfo::xllPath = captureWStringBuffer(
+          [handle](auto* buf, auto len)
         {
-          XllInfo::xllPath = std::wstring(path, path + size);
+          return GetModuleFileName(handle, buf, (DWORD)len);
+        });
+
+        if (!XllInfo::xllPath.empty())
+        {
           XllInfo::xllName = std::filesystem::path(XllInfo::xllPath).filename();
           return;
         }
