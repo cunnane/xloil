@@ -11,7 +11,4 @@
     <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestCache.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="PreviousCache.h" />
-  </ItemGroup>
 </Project>
