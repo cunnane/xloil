@@ -117,6 +117,7 @@
   <ItemGroup>
     <ClInclude Include="LocalFunctions.h" />
     <ClInclude Include="PEHelper.h" />
+    <ClInclude Include="SimpleAllocator.h" />
     <ClInclude Include="Thunker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

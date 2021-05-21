@@ -2,11 +2,13 @@
 #include <xloil-Dynamic/Thunker.h>
 #include <xloil/Register.h>
 #include <xloil/ExcelObj.h>
+#include <xloil/WindowsSlim.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 using namespace xloil;
 using std::wstring;
+using std::unique_ptr;
 
 namespace Tests
 {
@@ -34,10 +36,13 @@ namespace Tests
       constexpr auto bufSize = 256u;
       char buffer1[bufSize]; // Used for asmjit compiled thunk
       char buffer2[bufSize]; // Used for hand rolled thunk
-      size_t codeSize;
       
-      buildThunk    (callback, pContext, 2, false, buffer1, bufSize, codeSize);
-      buildThunkLite(callback, pContext, 2, false, buffer2, bufSize, codeSize);
+      DWORD dummy;
+      Assert::IsTrue(VirtualProtect(buffer1, bufSize, PAGE_EXECUTE_READWRITE, &dummy));
+      Assert::IsTrue(VirtualProtect(buffer2, bufSize, PAGE_EXECUTE_READWRITE, &dummy));
+
+      ThunkWriter(callback, pContext, 2, false).writeCode(buffer1, bufSize);
+      ThunkWriter(callback, pContext, 2, false, ThunkWriter::SLOW_BUILD).writeCode(buffer2, bufSize);
 
       ExcelObj arg1(7);
       ExcelObj arg2(3);
@@ -53,8 +58,8 @@ namespace Tests
         Assert::IsTrue(*result2 == arg1);
       }
 
-      buildThunk    (callback, pContext, 7, true, buffer1, bufSize, codeSize);
-      buildThunkLite(callback, pContext, 7, true, buffer2, bufSize, codeSize);
+      ThunkWriter(callback, pContext, 7, true).writeCode(buffer1, bufSize);
+      ThunkWriter(callback, pContext, 7, true, ThunkWriter::SLOW_BUILD).writeCode(buffer2, bufSize);
 
       {
         context = 5;
@@ -67,8 +72,8 @@ namespace Tests
         Assert::IsTrue(*result2 == arg2);
       }
 
-      buildThunk    (asyncCallback, pContext, 3, false, buffer1, bufSize, codeSize);
-      buildThunkLite(asyncCallback, pContext, 3, false, buffer2, bufSize, codeSize);
+      ThunkWriter(asyncCallback, pContext, 3, false).writeCode(buffer1, bufSize);
+      ThunkWriter(asyncCallback, pContext, 3, false, ThunkWriter::SLOW_BUILD).writeCode(buffer2, bufSize);
 
       {
         context = 1;

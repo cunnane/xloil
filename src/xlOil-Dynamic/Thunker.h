@@ -1,5 +1,6 @@
 #pragma once
 
+namespace asmjit { class CodeHolder; }
 namespace xloil
 {
   /// <summary>
@@ -41,40 +42,57 @@ namespace xloil
   ///   add         esp,0Ch  
   ///   ret         4  
   /// </summary>
-  void* buildThunk(
-    const void* callback,
-    const void* contextData,
-    const size_t numArgs,
-    const bool hasReturnVal,
-    char* codeBuffer,
-    size_t bufferSize,
-    size_t& codeSize);
+  class ThunkWriter
+  {
+  public:
+    /// <summary>
+    /// In x64, a hand optimised version of buildThunk is used which runs faster
+    /// and reduces  final binary size by ~80kb by avoiding the use of asmjit's 
+    /// compiler. The resulting ASM code is faster by avoiding spills, 
+    /// particuarly for async functions and when number of args exceeds 5.
+    /// This can be disabled with the SLOW_BUILD parameter
+    /// </summary>
+    /// <param name="callback"></param>
+    /// <param name="contextData"></param>
+    /// <param name="numArgs"></param>
+    /// <param name="hasReturnVal"></param>
+    ThunkWriter(
+      const void* callback,
+      const void* contextData,
+      const size_t numArgs,
+      const bool hasReturnVal);
 
-#ifdef _WIN64
-  /// <summary>
-  /// A hand optimised version of buildThunk which runs faster and reduces final binary
-  /// size by ~80kb by avoiding the use of asmjit's compiler. The resulting ASM code is
-  /// faster by avoiding spills, particuarly for async functions and when number of args
-  /// exceeds 5.
-  /// (Currently only available under 64-bit)
-  /// </summary>
-  void* buildThunkLite(
-    const void* callback,
-    const void* data,
-    const size_t numArgs,
-    const bool hasReturnVal,
-    char* codeBuffer,
-    size_t bufferSize,
-    size_t& codeSize);
-#endif
+    enum SlowBuild {SLOW_BUILD};
+    ThunkWriter(
+      const void* callback,
+      const void* contextData,
+      const size_t numArgs,
+      const bool hasReturnVal,
+      SlowBuild);
 
+    ~ThunkWriter();
+    /// <summary>
+    /// Writes code to provided buffer, returning number of bytes written.
+    /// If <param ref="buffer"> is null, returns size of buffer required.
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <param name="bufSize"></param>
+    /// <returns></returns>
+    size_t writeCode(char* buffer, size_t bufSize);
+    size_t codeSize() const;
+    asmjit::CodeHolder* _holder;
+
+  private:
+    ThunkWriter(ThunkWriter&) = delete;
+  };
+  
   /// <summary>
   /// Patches the context data object in a given thunk to a new location.
-  /// @see buildThunk.
+  /// <see ref="ThunkWriter">
   /// </summary>
   bool patchThunkData(
     char* thunk,
     size_t thunkSize,
     const void* fromData,
-    const void* toData);
+    const void* toData) noexcept;
 }

@@ -51,6 +51,11 @@ namespace xloil
     /// <param name="ordinal"></param>
     /// <returns></returns>
     void* functionPointer(size_t ordinal) const;
+    /// <summary>
+    /// Address of imageBase i.e. the start of our executable in memory
+    /// </summary>
+    /// <returns></returns>
+    void* imageBase() const { return _imageBase; }
   };
 
 

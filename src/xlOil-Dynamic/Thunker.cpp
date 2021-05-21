@@ -2,12 +2,25 @@
 #include <xlOil/Register.h>
 #include <xlOilHelpers/Exception.h>
 #include <xlOil/Log.h>
+
+// See asmjit/core/build.h
 #define ASMJIT_STATIC
+#define ASMJIT_NO_LOGGING
+
+
+#ifdef _WIN64
+//TODO: we don't need these asmjit components for x64, but does defining them save any space in the optimised build
+//#define ASMJIT_NO_BUILDER
+//#define ASMJIT_NO_COMPILER
+//#define ASMJIT_NO_INTROSPECTION
+//#define ASMJIT_NO_VALIDATION
+#endif
 #include <asmjit/src/asmjit/asmjit.h>
 #include <string>
 #include <algorithm>
 using std::string;
 using xloil::Helpers::Exception;
+using std::unique_ptr;
 
 class xloper12;
 
@@ -68,6 +81,8 @@ namespace xloil
     bool hasReturnVal)
   {
     asmjit::x86::Assembler asmb(code);
+
+    XLO_DEBUG("Building thunk with {0} arguments", numArgs);
 
     // Build the signature of the function we are creating
     FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
@@ -205,39 +220,16 @@ namespace xloil
     }
   }
 
-  void writeToBuffer(CodeHolder& codeHolder, char* codeBuffer, size_t bufferSize, size_t& codeSize)
-  {
-    // TODO: run compactThunks first?
-    if (codeHolder.codeSize() > bufferSize)
-      throw Exception("Cannot write thunk: buffer exhausted");
-
-    auto err = asmJitWriteCode((uint8_t*)codeBuffer, &codeHolder, codeSize);
-    if (err != kErrorOk)
-      throw Exception("Thunk write failed: %s", DebugUtils::errorAsString(err));
-
-    // We need to get permissions to write to the code cave, since it's in the
-    // executable part of the program it won't be writeable by default.
-    DWORD dummy;
-    if (!VirtualProtect(codeBuffer, codeSize, PAGE_EXECUTE_READWRITE, &dummy))
-      throw Exception(Helpers::writeWindowsError());
-  }
-
-  void* buildThunk(
+  void buildThunk(
     const void* callback,
     const void* data,
     const size_t numArgs,
     const bool hasReturnVal,
-    char* codeBuffer,
-    size_t bufferSize,
-    size_t& codeSize)
+    asmjit::CodeHolder& codeHolder)
   {
     using namespace asmjit;
 
     XLO_DEBUG("Building thunk with {0} arguments", numArgs);
-
-    // Initialise place to hold code before compilation
-    CodeHolder codeHolder;
-    codeHolder.init(theRunTime.codeInfo());
 
     // Initialise JIT compiler
     x86::Compiler cc(&codeHolder);
@@ -265,36 +257,58 @@ namespace xloil
     auto err = cc.finalize();
     if (err)
       throw Exception("Thunk compilation failed: %s", DebugUtils::errorAsString(err));
-
-    writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
-
-    return codeBuffer;
   }
 
-  void* buildThunkLite(
+   ThunkWriter::ThunkWriter(
     const void* callback,
-    const void* data,
+    const void* contextData,
     const size_t numArgs,
     const bool hasReturnVal,
-    char* codeBuffer,
-    size_t bufferSize,
-    size_t& codeSize)
+    ThunkWriter::SlowBuild)
   {
-    using namespace asmjit;
-
-    XLO_DEBUG("Building thunk with {0} arguments", numArgs);
-
-    // Initialise place to hold code before compilation
-    CodeHolder codeHolder;
-    codeHolder.init(theRunTime.codeInfo());
-    handRoll64(&codeHolder, (void*)callback, data, numArgs, hasReturnVal);
-
-    writeToBuffer(codeHolder, codeBuffer, bufferSize, codeSize);
-
-    return codeBuffer;
+    _holder = new CodeHolder();
+    _holder->init(theRunTime.codeInfo());
+    buildThunk(callback, contextData, numArgs, hasReturnVal, *_holder);
   }
 
-  bool patchThunkData(char* thunk, size_t thunkSize, const void* fromData, const void* toData)
+  ThunkWriter::ThunkWriter(
+    const void* callback,
+    const void* contextData,
+    const size_t numArgs,
+    const bool hasReturnVal)
+  {
+    _holder = new CodeHolder();
+    _holder->init(theRunTime.codeInfo());
+#if _WIN64
+    handRoll64(_holder, (void*)callback, contextData, numArgs, hasReturnVal);
+#else
+    buildThunk(callback, contextData, numArgs, hasReturnVal, *_holder);
+#endif
+  }
+
+  ThunkWriter::~ThunkWriter()
+  {
+    delete _holder;
+  }
+  size_t ThunkWriter::codeSize() const
+  {
+    return _holder->codeSize();
+  }
+  size_t ThunkWriter::writeCode(char* buffer, size_t bufferSize)
+  {
+    if (!buffer || _holder->codeSize() > bufferSize)
+      throw Exception("Cannot write thunk: no buffer or buffer too small");
+
+    size_t codeSize;
+    auto err = asmJitWriteCode((uint8_t*)buffer, _holder, codeSize);
+    if (err != kErrorOk)
+      throw Exception("Thunk write failed: %s", DebugUtils::errorAsString(err));
+
+    return codeSize;
+  }
+
+
+  bool patchThunkData(char* thunk, size_t thunkSize, const void* fromData, const void* toData) noexcept
   {
     if (fromData == toData)
       return true;
@@ -329,6 +343,7 @@ namespace xloil
       return false;
 
     memcpy(found, bufferAfter, bufsize);
+
     return true;
   }
 }

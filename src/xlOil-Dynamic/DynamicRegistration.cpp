@@ -10,6 +10,7 @@
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil-Dynamic/PEHelper.h>
 #include <xlOil-Dynamic/Thunker.h>
+#include <xlOil-Dynamic/RegionAllocator.h>
 #include <xlOil/Preprocessor.h>
 #include <xlOil/Async.h>
 
@@ -35,31 +36,24 @@ namespace xloil
 
   class ThunkHolder
   {
-    // TODO: We can allocate within our DLL's address space by using
-    // NtAllocateVirtualMemory or VirtualAlloc with MEM_TOP_DOWN
-    // Currently this gives space for about 1500 thunks
-    static constexpr auto theCaveSize = 16384 * 8u;
-    static char theCodeCave[theCaveSize];
+
     unique_ptr<DllExportTable> theExportTable;
     int theFirstStub;
-    
+
     ThunkHolder()
+      : theExportTable(new DllExportTable((HMODULE)State::coreModuleHandle()))
+      , theAllocator(theExportTable->imageBase(), (BYTE*)theExportTable->imageBase() + DWORD(-1))
     {
       theCoreDllName = State::coreDllName();
-      theExportTable.reset(new DllExportTable((HMODULE)State::coreModuleHandle()));
       theFirstStub = theExportTable->findOrdinal(
         decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
       if (theFirstStub < 0)
         XLO_THROW("Could not find xlOil stub");
     }
 
-    /// <summary>
-    /// The next available spot in our code cave
-    /// </summary>
-    static char* theCodePtr;
-
   public:
     const wchar_t* theCoreDllName;
+    RegionAllocator<MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE> theAllocator;
 
     static ThunkHolder& get() {
       static ThunkHolder instance;
@@ -73,18 +67,20 @@ namespace xloil
       const bool hasReturnVal)
     {
       // TODO: cache thunks with same number of args and callback?
+      ThunkWriter writer(callback, contextData, numArgs, hasReturnVal);
+    
+      auto codeBytesNeeded = writer.codeSize();
 
-      const size_t codeBufferSize = sizeof(theCodeCave) + theCodeCave - theCodePtr;
-      size_t codeBytesWritten;
-#ifdef _WIN64
-      auto* thunk = buildThunkLite(callback, contextData, numArgs, hasReturnVal,
-        theCodePtr, codeBufferSize, codeBytesWritten);
-#else
-      auto* thunk = buildThunk(callback, contextData, numArgs, hasReturnVal,
-        theCodePtr, codeBufferSize, codeBytesWritten);
-#endif
-      XLO_ASSERT(thunk == (void*)theCodePtr);
-      theCodePtr += codeBytesWritten;
+      // We use a custom allocator for the thunks, which must have
+      // addresses in the range to be [imageBase, imageBase + DWORD_MAX]
+      // described in the DLL export table. Using VirtualAlloc with
+      // MEM_TOP_DOWN for some reason is not guaranteed to return
+      // addresses above imageBase.
+      auto* thunk = theAllocator.alloc((unsigned)codeBytesNeeded);
+
+      // TODO: compact the alloc if codeBytesWritten < codeBytesNeeded?
+      auto codeBytesWritten = writer.writeCode((char*)thunk, codeBytesNeeded);
+
       return std::make_pair(thunk, codeBytesWritten);
     }
 
@@ -109,8 +105,6 @@ namespace xloil
       return entryPoint;
     }
   };
-  char ThunkHolder::theCodeCave[theCaveSize];
-  char* ThunkHolder::theCodePtr = theCodeCave;
 
 
   class RegisteredCallback : public RegisteredWorksheetFunc
@@ -126,6 +120,11 @@ namespace xloil
       _thunk = thunk;
       _thunkSize = thunkSize;
       _registerId = doRegister();
+    }
+
+    ~RegisteredCallback()
+    {
+      ThunkHolder::get().theAllocator.free(_thunk);
     }
 
     int doRegister() const
@@ -160,7 +159,8 @@ namespace xloil
         if (!contextMatches)
         {
           XLO_DEBUG(L"Patching function context for '{0}'", newInfo->name);
-          if (!patchThunkData((char*)_thunk, _thunkSize, context.get(), newContext.get()))
+          auto didPatch = patchThunkData((char*)_thunk, _thunkSize, context.get(), newContext.get());
+          if (!didPatch)
           {
             XLO_ERROR(L"Failed to patch context for '{0}'", newInfo->name);
             return false;

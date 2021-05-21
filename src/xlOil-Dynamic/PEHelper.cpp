@@ -65,7 +65,7 @@ bool xloil::DllExportTable::hook(size_t ordinal, void* hook)
   if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) 
     return false;
 
-  *target = (DWORD)hook - DWORD(_imageBase);
+  *target = (BYTE*)hook - _imageBase;
 
   if (!VirtualProtect(target, sizeof(DWORD), oldProtect, &oldProtect)) 
     return false;
@@ -83,5 +83,5 @@ const char* xloil::DllExportTable::getName(size_t ordinal) const
 
 void* xloil::DllExportTable::functionPointer(size_t ordinal) const
 {
-  return (void*)(size_t)(_funcAddresses[ordinal] + DWORD(_imageBase));
+  return (void*)(_funcAddresses[ordinal] + size_t(_imageBase));
 }

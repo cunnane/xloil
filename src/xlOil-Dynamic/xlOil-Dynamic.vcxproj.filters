@@ -10,5 +10,6 @@
     <ClInclude Include="LocalFunctions.h" />
     <ClInclude Include="PEHelper.h" />
     <ClInclude Include="Thunker.h" />
+    <ClInclude Include="SimpleAllocator.h" />
   </ItemGroup>
 </Project>

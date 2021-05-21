@@ -10,5 +10,6 @@
     <ClCompile Include="TestThunker.cpp" />
     <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestCache.cpp" />
+    <ClCompile Include="TestSimpleAllocator.cpp" />
   </ItemGroup>
 </Project>
