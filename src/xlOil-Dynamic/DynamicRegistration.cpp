@@ -10,7 +10,7 @@
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil-Dynamic/PEHelper.h>
 #include <xlOil-Dynamic/Thunker.h>
-#include <xlOil-Dynamic/RegionAllocator.h>
+#include <xlOil-Dynamic/ExternalRegionAllocator.h>
 #include <xlOil/Preprocessor.h>
 #include <xlOil/Async.h>
 
@@ -34,9 +34,28 @@ namespace xloil
 {
   constexpr char* XLOIL_STUB_NAME_STR = XLO_STR(XLOIL_STUB_NAME);
 
+  class PageUnlock
+  {
+  public:
+    PageUnlock(void* address, size_t size)
+      : _address(address)
+      , _size(size)
+    {
+      if (!VirtualProtect(address, size, PAGE_READWRITE, &_permission))
+        XLO_THROW(Helpers::writeWindowsError());
+    }
+    ~PageUnlock()
+    {
+      VirtualProtect(_address, _size, _permission, &_permission);
+    }
+  private:
+    void* _address;
+    size_t _size;
+    DWORD _permission;
+  };
+
   class ThunkHolder
   {
-
     unique_ptr<DllExportTable> theExportTable;
     int theFirstStub;
 
@@ -53,7 +72,7 @@ namespace xloil
 
   public:
     const wchar_t* theCoreDllName;
-    RegionAllocator<MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE> theAllocator;
+    ExternalRegionAllocator theAllocator;
 
     static ThunkHolder& get() {
       static ThunkHolder instance;
@@ -78,8 +97,17 @@ namespace xloil
       // addresses above imageBase.
       auto* thunk = theAllocator.alloc((unsigned)codeBytesNeeded);
 
+      DWORD dummy;
+      if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_READWRITE, &dummy))
+        XLO_THROW(Helpers::writeWindowsError());
+
       // TODO: compact the alloc if codeBytesWritten < codeBytesNeeded?
       auto codeBytesWritten = writer.writeCode((char*)thunk, codeBytesNeeded);
+
+      // It's good security practice to remove write permissions if we're
+      // giving execute permissions, which the thunk code clearly requires
+      if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_EXECUTE_READ, &dummy))
+        XLO_THROW(Helpers::writeWindowsError());
 
       return std::make_pair(thunk, codeBytesWritten);
     }
@@ -159,6 +187,7 @@ namespace xloil
         if (!contextMatches)
         {
           XLO_DEBUG(L"Patching function context for '{0}'", newInfo->name);
+          PageUnlock unlockPage(_thunk, _thunkSize);
           auto didPatch = patchThunkData((char*)_thunk, _thunkSize, context.get(), newContext.get());
           if (!didPatch)
           {

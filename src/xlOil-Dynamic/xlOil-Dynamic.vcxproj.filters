@@ -11,5 +11,6 @@
     <ClInclude Include="PEHelper.h" />
     <ClInclude Include="Thunker.h" />
     <ClInclude Include="SimpleAllocator.h" />
+    <ClInclude Include="ExternalRegionAllocator.h" />
   </ItemGroup>
 </Project>

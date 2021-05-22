@@ -1,5 +1,5 @@
 #include "CppUnitTest.h"
-#include <xloil-Dynamic/RegionAllocator.h>
+#include <xloil-Dynamic/ExternalRegionAllocator.h>
 #include <vector>
 #include <list>
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -24,7 +24,7 @@ namespace Tests
       SYSTEM_INFO si;
       GetSystemInfo(&si);
         
-      auto allocator = RegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
+      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
 
       vector<void*> ptrs;
       for (auto sz = 16; sz < 1024; sz += 32)
@@ -40,7 +40,7 @@ namespace Tests
       SYSTEM_INFO si;
       GetSystemInfo(&si);
 
-      auto allocator = RegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
+      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
 
       const char* sample = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor";
       auto sampleLen = strlen(sample);
