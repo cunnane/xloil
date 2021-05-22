@@ -208,7 +208,7 @@ namespace xloil
       return ExcelRef(*this);
     }
 
-    RangeArg range( // TODO: rangearg?
+    RangeArg range(
       int fromRow, int fromCol,
       int toRow = Range::TO_END, int toCol = Range::TO_END) const
     {

@@ -69,7 +69,6 @@ namespace xloil
         SafeArrayUnaccessData(array.get());
 
         VARIANT result;
-        VariantInit(&result); // TODO: required?
         result.vt = VT_VARIANT | VT_ARRAY;
         result.parray = array.release();
 

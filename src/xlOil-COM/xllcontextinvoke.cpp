@@ -76,7 +76,7 @@ namespace xloil
 
   bool runInXllContext(const std::function<void()>& f)
   {
-    // TODO: this whole Xll context thing may go wrong in a multi-thread evironment. Are we gteed to be on main?
+    // May go wrong in a multi-thread evironment.
     if (InXllContext::check())
     {
       f();

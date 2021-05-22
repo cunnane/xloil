@@ -164,7 +164,6 @@ namespace xloil
         truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
       }
 
-      // TODO: this copies the excelobj
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
         info->name, utf8ToUtf16(entryPoint), numArgs);
 
@@ -214,7 +213,6 @@ namespace xloil
       for (auto f : theRegistry)
         const_cast<RegisteredWorksheetFunc&>(*f.second).deregister();
       theRegistry.clear();
-      // theCodePtr = theCodeCave;
     }
 
     auto find(const wchar_t* name)

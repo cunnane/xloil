@@ -88,6 +88,25 @@ namespace xloil
       shared_ptr<ComAddinEvents> events;
     };
 
+    struct SetAutomationSecurity
+    {
+      SetAutomationSecurity(Office::MsoAutomationSecurity value)
+      {
+        _previous = excelApp().AutomationSecurity;
+        excelApp().AutomationSecurity = value;
+      }
+      ~SetAutomationSecurity()
+      {
+        try
+        {
+          excelApp().AutomationSecurity = _previous;
+        }
+        catch (...)
+        {
+        }
+      }
+      Office::MsoAutomationSecurity _previous;
+    };
     class ComAddinCreator : public IComAddin
     {
       auto& comAddinImpl()
@@ -113,8 +132,14 @@ namespace xloil
           XLO_THROW("Com add-in name must be provided");
 
         // It's possible the addin has already been registered and loaded and 
-        // is just being reinitialised.
-        findAddin();
+        // is just being reinitialised, so we do findAddin twice
+        auto& app = excelApp();
+
+        SetAutomationSecurity setSecurity(
+          Office::MsoAutomationSecurity::msoAutomationSecurityLow);
+
+        findAddin(app);
+
         if (isConnected())
         {
           disconnect();
@@ -130,21 +155,16 @@ namespace xloil
           if (description)
             _registrar.writeRegistry(
               HKEY_CURRENT_USER, addinPath.c_str(), L"Description", description);
-          // TODO: set this guy back!
-          excelApp().AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
-          excelApp().GetCOMAddIns()->Update();
 
-          findAddin();
+          app.GetCOMAddIns()->Update();
+          findAddin(app);
           if (!_comAddin)
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
       }
 
-      void findAddin()
+      void findAddin(Excel::_Application& app)
       {
-        auto& app = excelApp();
-        // TODO: set this guy back!
-        app.AutomationSecurity = Office::MsoAutomationSecurity::msoAutomationSecurityLow;
         auto ourProgid = _variant_t(progid());
         app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin);
       }

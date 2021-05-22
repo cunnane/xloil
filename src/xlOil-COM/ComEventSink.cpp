@@ -250,69 +250,74 @@ namespace xloil
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
         EXCEPINFO* /*pexcepinfo*/, UINT* /*puArgErr*/)
       {
-        // TODO: TRY CATCH
-        auto* rgvarg = pdispparams->rgvarg;
-
-        // These dispids are copied from oleview and are in the same
-        // order as listed there
-
-        InComContext scope;
-
-        switch (dispidMember)
+        try
         {
-        case 0x0000061d:
-          NewWorkbook((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000616:
-          SheetSelectionChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
-          break;
-        case 0x00000617:
-          SheetBeforeDoubleClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
-          break;
-        case 0x00000618:
-          SheetBeforeRightClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
-          break;
-        case 0x00000619:
-          SheetActivate(rgvarg[0].pdispVal);
-          break;
-        case 0x0000061a:
-          SheetDeactivate(rgvarg[0].pdispVal);
-          break;
-        case 0x0000061b:
-          SheetCalculate(rgvarg[0].pdispVal);
-          break;
-        case 0x0000061c:
-          SheetChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
-          break;
-        case 0x0000061f:
-          WorkbookOpen((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000620:
-          WorkbookActivate((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000621:
-          WorkbookDeactivate((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000622:
-          WorkbookBeforeClose((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
-          break;
-        case 0x00000623:
-          WorkbookBeforeSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal, rgvarg[2].pboolVal);
-          break;
-        case 0x00000624:
-          WorkbookBeforePrint((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
-          break;
-        case 0x00000625:
-          WorkbookNewSheet((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pdispVal);
-          break;
-        case 0x00000626:
-          WorkbookAddinInstall((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000627:
-          WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
-          break;
-        case 0x00000a34:
-          AfterCalculate();
+          auto* rgvarg = pdispparams->rgvarg;
+
+          // These dispids are copied from oleview and are in the same order as listed there
+
+          InComContext scope;
+
+          switch (dispidMember)
+          {
+          case 0x0000061d:
+            NewWorkbook((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000616:
+            SheetSelectionChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
+            break;
+          case 0x00000617:
+            SheetBeforeDoubleClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
+            break;
+          case 0x00000618:
+            SheetBeforeRightClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
+            break;
+          case 0x00000619:
+            SheetActivate(rgvarg[0].pdispVal);
+            break;
+          case 0x0000061a:
+            SheetDeactivate(rgvarg[0].pdispVal);
+            break;
+          case 0x0000061b:
+            SheetCalculate(rgvarg[0].pdispVal);
+            break;
+          case 0x0000061c:
+            SheetChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
+            break;
+          case 0x0000061f:
+            WorkbookOpen((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000620:
+            WorkbookActivate((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000621:
+            WorkbookDeactivate((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000622:
+            WorkbookBeforeClose((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
+            break;
+          case 0x00000623:
+            WorkbookBeforeSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal, rgvarg[2].pboolVal);
+            break;
+          case 0x00000624:
+            WorkbookBeforePrint((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
+            break;
+          case 0x00000625:
+            WorkbookNewSheet((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pdispVal);
+            break;
+          case 0x00000626:
+            WorkbookAddinInstall((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000627:
+            WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
+            break;
+          case 0x00000a34:
+            AfterCalculate();
+          }
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Error during COM event handler callback: {0}", e.what());
         }
 
         return S_OK;
