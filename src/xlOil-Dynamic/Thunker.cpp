@@ -6,15 +6,12 @@
 // See asmjit/core/build.h
 #define ASMJIT_STATIC
 #define ASMJIT_NO_LOGGING
+#define ASMJIT_NO_VALIDATION
+#define ASMJIT_NO_JIT
 
+// We could also define NO_BUILDER, NO_COMPILER and NO_INTROSPECTION for x64
+// but it only saves 3kb in the compiled binary as they are optimised away
 
-#ifdef _WIN64
-//TODO: we don't need these asmjit components for x64, but does defining them save any space in the optimised build
-//#define ASMJIT_NO_BUILDER
-//#define ASMJIT_NO_COMPILER
-//#define ASMJIT_NO_INTROSPECTION
-//#define ASMJIT_NO_VALIDATION
-#endif
 #include <asmjit/src/asmjit/asmjit.h>
 #include <string>
 #include <algorithm>
@@ -30,9 +27,30 @@ namespace xloil {
 
 namespace
 {
-  using namespace asmjit;
+  /// <summary>
+  /// We create the asmjit::CodeInfo object ourselves rather than rely on the
+  /// JitRuntime object as this saves about 10kb of optimised binary
+  /// </summary>
+  /// <returns></returns>
+  auto createCodeInfo()
+  {
+    using namespace asmjit;
+    CodeInfo info;
+    info._archInfo = CpuInfo::host().archInfo();
+#ifdef _WIN64
+    info._stackAlignment = 16;
+#else
+    info._stackAlignment = uint8_t(sizeof(uintptr_t));
+#endif
+    info._cdeclCallConv = CallConv::kIdHostCDecl;
+    info._stdCallConv = CallConv::kIdHostStdCall;
+    info._fastCallConv = CallConv::kIdHostFastCall;
+    return info;
+  }
 
-  static JitRuntime theRunTime;
+  static asmjit::CodeInfo theCodeInfo = createCodeInfo();
+
+  using namespace asmjit;
 
   // This is jitRuntime.add() but with in-place allocation
   Error asmJitWriteCode(uint8_t* dst, CodeHolder* code, size_t& codeSize) noexcept
@@ -212,7 +230,6 @@ namespace xloil
       // this is a no-op as we just return the callback value
       x86::Gp ret = cc.newUIntPtr("ret");
 
-      // TODO: any chance of setting xl-free bit here?
       call->setRet(0, ret);
 
       // Pass callback return as our return
@@ -267,7 +284,7 @@ namespace xloil
     ThunkWriter::SlowBuild)
   {
     _holder = new CodeHolder();
-    _holder->init(theRunTime.codeInfo());
+    _holder->init(theCodeInfo);
     buildThunk(callback, contextData, numArgs, hasReturnVal, *_holder);
   }
 
@@ -278,7 +295,7 @@ namespace xloil
     const bool hasReturnVal)
   {
     _holder = new CodeHolder();
-    _holder->init(theRunTime.codeInfo());
+    _holder->init(theCodeInfo);
 #if _WIN64
     handRoll64(_holder, (void*)callback, contextData, numArgs, hasReturnVal);
 #else
@@ -317,7 +334,7 @@ namespace xloil
     auto bufsize = sizeof(bufferBefore);
     {
       CodeHolder code;
-      code.init(theRunTime.codeInfo());
+      code.init(theCodeInfo);
       x86::Assembler as(&code);
 #ifdef _WIN64
       as.mov(x86::rcx, imm(fromData));
@@ -328,7 +345,7 @@ namespace xloil
     }
     {
       CodeHolder code;
-      code.init(theRunTime.codeInfo());
+      code.init(theCodeInfo);
       x86::Assembler as(&code);
 #ifdef _WIN64
       as.mov(x86::rcx, imm(toData));
