@@ -71,7 +71,6 @@ namespace
       char buffer[WINDOW_TEXT_BUFFSIZE + 1];
       buffer[WINDOW_TEXT_BUFFSIZE] = 0;
 
-      // TODO: does this need adapting for other locales?
       len = GetWindowTextA(hwnd, buffer, WINDOW_TEXT_BUFFSIZE);
       if (len == 0) // No title
       {

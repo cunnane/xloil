@@ -2,7 +2,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
-
+#include <filesystem>
 
 namespace xloil
 {
@@ -10,16 +10,18 @@ namespace xloil
   {
     static HMODULE theCoreModuleHandle = nullptr;
 
-    static const wchar_t* ourDllName = nullptr;
-    static wchar_t ourDllPath[4 * MAX_PATH]; // TODO: may not be long enough!!!
+    static std::wstring ourDllName;
+    static std::wstring ourDllPath;
     static State::ExcelState ourExcelState;
 
     void setDllPath(HMODULE handle)
     {
-      auto size = GetModuleFileName(handle, ourDllPath, sizeof(ourDllPath));
-      if (size == 0)
-        XLO_THROW(L"Could not determine XLL location: {}", xloil::writeWindowsError());
-      ourDllName = wcsrchr(ourDllPath, L'\\') + 1;
+      ourDllPath = captureWStringBuffer(
+        [handle](auto* buf, auto len)
+      {
+        return GetModuleFileName(handle, buf, (DWORD)len);
+      });
+      ourDllName = std::filesystem::path(ourDllPath).filename();
     }
 
     int getExcelVersion()
@@ -70,11 +72,11 @@ namespace xloil
    
     const wchar_t* coreDllPath() noexcept
     {
-      return ourDllPath;
+      return ourDllPath.c_str();
     }
     const wchar_t* coreDllName() noexcept
     {
-      return ourDllName;
+      return ourDllName.c_str();
     }
     XLOIL_EXPORT ExcelState& excelState() noexcept
     {

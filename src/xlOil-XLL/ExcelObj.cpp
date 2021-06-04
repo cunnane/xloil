@@ -28,24 +28,23 @@ namespace
 {
   static_assert(sizeof(xloper12) == sizeof(xloil::ExcelObj));
 
-  wchar_t* makeStringBuffer(size_t& nChars)
+  wchar_t* makePStringBuffer(size_t nChars)
   {
     nChars = std::min<size_t>(nChars, XL_STRING_MAX_LEN);
-    auto buf = new wchar_t[nChars + 2];
+    auto buf = new wchar_t[nChars + 1];
     buf[0] = (wchar_t)nChars;
-    buf[nChars + 1] = L'\0';
-    return buf + 1;
+    return buf;
   }
 
-  // TODO: surely should use utf8 conversion here?
-  wchar_t* pascalWStringFromC(const char* s, size_t len)
+  wchar_t* pascalWStringFromC(const char* cstr, size_t len)
   {
-    assert(s);
-    auto pstr = makeStringBuffer(len);
-    size_t nChars = 0;
-    mbstowcs_s(&nChars, pstr, len + 1, s, len);
-    //MultiByteToWideChar()
-    return pstr - 1;
+    assert(cstr);
+    // This will result in a wchar buffer which may be too long
+    auto pstr = makePStringBuffer(len);
+    auto nChars = MultiByteToWideChar(CP_UTF8, 0, cstr, len, pstr + 1, pstr[0]);
+    // nChars <= pstr[0] so cast to wchar is OK
+    *pstr = (wchar_t)nChars;
+    return pstr;
   }
 
   size_t totalStringLength(const xloper12* arr, size_t nRows, size_t nCols)

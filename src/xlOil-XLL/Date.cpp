@@ -21,7 +21,8 @@ namespace xloil
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
   bool excelSerialDateToYMD(int nSerialDate, int &nYear, int &nMonth, int &nDay)
   {
-    // TODO: range check???
+    if (nSerialDate > XL_MAX_SERIAL_DATE || nSerialDate < 0)
+      return false;
 
     // Excel/Lotus 123 have a bug with 29-02-1900. 1900 is not a
     // leap year, but Excel/Lotus 123 think it is...
@@ -59,6 +60,10 @@ namespace xloil
   bool excelSerialDatetoYMDHMS(
     double serial, int &nYear, int &nMonth, int &nDay, int& nHours, int& nMins, int& nSecs, int& uSecs)
   {
+    // Allow for time component in max date
+    if (serial > (double)(XL_MAX_SERIAL_DATE + 1) || serial < 0) 
+      return false;
+
     double intpart;
     if (std::modf(serial, &intpart) != 0.0)
     {

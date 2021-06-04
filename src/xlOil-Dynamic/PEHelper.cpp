@@ -65,7 +65,7 @@ bool xloil::DllExportTable::hook(size_t ordinal, void* hook)
   if (!VirtualProtect(target, sizeof(DWORD), PAGE_READWRITE, &oldProtect)) 
     return false;
 
-  *target = (BYTE*)hook - _imageBase;
+  *target = DWORD((BYTE*)hook - _imageBase);
 
   if (!VirtualProtect(target, sizeof(DWORD), oldProtect, &oldProtect)) 
     return false;
