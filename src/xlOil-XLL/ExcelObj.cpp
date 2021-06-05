@@ -39,11 +39,16 @@ namespace
   wchar_t* pascalWStringFromC(const char* cstr, size_t len)
   {
     assert(cstr);
-    // This will result in a wchar buffer which may be too long
+    // The wchar buffer may be too long if there are multibyte chars in the input
     auto pstr = makePStringBuffer(len);
-    auto nChars = MultiByteToWideChar(CP_UTF8, 0, cstr, len, pstr + 1, pstr[0]);
+    auto nChars = MultiByteToWideChar(CP_UTF8, 0, cstr, int(len), pstr + 1, pstr[0]);
     // nChars <= pstr[0] so cast to wchar is OK
     *pstr = (wchar_t)nChars;
+    if (nChars == 0 && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+    {
+      nChars = MultiByteToWideChar(
+        CP_UTF8, 0, cstr, std::min<int>(nChars, XL_STRING_MAX_LEN), pstr + 1, pstr[0]);
+    }
     return pstr;
   }
 
