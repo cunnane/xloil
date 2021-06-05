@@ -14,16 +14,31 @@ namespace xloil
     namespace detail
     {
       template <class TKeyConv, class TValConv>
-      class PyDictFromArray : public FromExcelBase<PyObject*>
+      class PyDictFromArray : public PyFromExcelImpl
       {
         TKeyConv _keyConv;
         TValConv _valConv;
       public:
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
+
+        // Return empty dictionary for missing value
+        PyObject* operator()(MissingVal) const
+        {
+          return PyDict_New();
+        }
+        // Return empty dictionary for nil value
+        PyObject* operator()(nullptr_t) const
+        {
+          return PyDict_New();
+        }
 
         PyObject* operator()(ArrayVal obj) const
         {
           ExcelArray arr(obj);
+
+          // Return empty dict is array is empty
+          if (arr.nRows() == 0)
+            return PyDict_New();
 
           if (arr.nCols() != 2)
             XLO_THROW("Need a 2 column array to convert to dictionary");

@@ -22,29 +22,17 @@ namespace xloil
 {
   namespace Python
   {
+    // TODO: rename this to IPyFromExcel, IPyToExcel
     using IPyFromExcel = IConvertFromExcel<PyObject*>;
     using IPyToExcel = IConvertToExcel<PyObject>;
 
+    struct PyFromExcelImpl : public FromExcelBase<PyObject*>
+    {
+    };
+
+
     namespace detail
     {
-      // An invalid pointer value that's not null that we can use as a return value
-      static PyObject* USE_DEFAULT_VALUE = (PyObject*)0x01;
-
-      template<class TBase>
-      struct PyFromMissing : public TBase
-      {
-        template <class...Args>
-        PyFromMissing(Args&&...args)
-          : TBase(std::forward<Args>(args)...)
-        {}
-
-        using TBase::operator();
-        PyObject* operator()(MissingVal) const
-        {
-          return USE_DEFAULT_VALUE;
-        }
-      };
-
       /// <summary>
       /// Wraps a type conversion functor, interpreting the string conversion to
       /// look for a python cache reference.  If found, returns the cache object,
@@ -68,16 +56,16 @@ namespace xloil
         }
       };
 
-      struct PyFromDouble : public FromExcelBase<PyObject*>
+      struct PyFromDouble : public PyFromExcelImpl
       {
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
         PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
-      struct PyFromBool : public FromExcelBase<PyObject*>
+      struct PyFromBool : public PyFromExcelImpl
       {
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
         PyObject* operator()(bool x) const
         {
           if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
@@ -85,9 +73,9 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
-      struct PyFromString : public FromExcelBase<PyObject*>
+      struct PyFromString : public PyFromExcelImpl
       {
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
         PyObject* operator()(const PStringView<>& pstr) const
         {
           return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
@@ -101,9 +89,9 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected string"; }
       };
 
-      struct PyFromInt : public FromExcelBase<PyObject*>
+      struct PyFromInt : public PyFromExcelImpl
       {
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
         PyObject* operator()(int x) const { return PyLong_FromLong(long(x)); }
         PyObject* operator()(double x) const
         {
@@ -115,10 +103,9 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected int"; }
       };
 
-      struct PyFromAny : public FromExcelBase<PyObject*>
+      struct PyFromAny : public PyFromExcelImpl
       {
-        using FromExcelBase::operator();
-
+        using PyFromExcelImpl::operator();
         PyObject* operator()(int x) const { return PyFromInt()(x); }
         PyObject* operator()(bool x) const { return PyFromBool()(x); }
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
@@ -184,7 +171,7 @@ namespace xloil
     template<class TImpl>
     struct PyFromExcel
     {
-      detail::PyFromMissing<detail::PyFromCache<CacheConverter<TImpl>>> _impl;
+      detail::PyFromCache<CacheConverter<TImpl>> _impl;
 
       template <class...Args>
       PyFromExcel(Args&&...args)
@@ -205,19 +192,14 @@ namespace xloil
         const ExcelObj& xl,
         PyObject* defaultVal = nullptr) const
       {
-        auto* retVal = visitExcelObj(xl, _impl);
-
-        if (retVal == detail::USE_DEFAULT_VALUE)
+        if (xl.isMissing() && defaultVal)
         {
           // If we return the default value, we need to increment its refcount
-          if (defaultVal)
-          {
-            Py_INCREF(defaultVal);
-            return defaultVal;
-          }
-          // No default provided, set up for failure
-          retVal = nullptr;
+          Py_INCREF(defaultVal);
+          return defaultVal;
         }
+
+        auto* retVal = visitExcelObj(xl, _impl);
 
         if (!retVal)
         {

@@ -65,10 +65,10 @@ namespace xloil
           : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow, (int)toCol));
       }
 
-      class PyFromRange : public FromExcelBase<PyObject*>
+      class PyFromRange : public PyFromExcelImpl
       {
       public:
-        using FromExcelBase::operator();
+        using PyFromExcelImpl::operator();
 
         PyObject* operator()(RefVal obj) const 
         {

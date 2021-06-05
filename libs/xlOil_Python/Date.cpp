@@ -50,10 +50,10 @@ namespace xloil
       }
     }
 
-    class PyFromDate : public FromExcelBase<PyObject*>
+    class PyFromDate : public PyFromExcelImpl
     {
     public:
-      using FromExcelBase::operator();
+      using PyFromExcelImpl::operator();
 
       PyObject* operator()(int x) const 
       {
@@ -75,10 +75,10 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
 
-    class PyFromDateTime : public FromExcelBase<PyObject*>
+    class PyFromDateTime : public PyFromExcelImpl
     {
     public:
-      using FromExcelBase::operator();
+      using PyFromExcelImpl::operator();
 
       PyObject* operator()(int x) const
       {

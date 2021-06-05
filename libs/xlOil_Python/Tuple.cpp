@@ -98,11 +98,11 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public FromExcelBase<PyObject*>
+    class PyTupleFromArray : public PyFromExcelImpl
     {
       TValConv _valConv;
     public:
-      using FromExcelBase::operator();
+      using PyFromExcelImpl::operator();
 
       PyObject* operator()(ArrayVal obj) const
       {
