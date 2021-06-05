@@ -6,6 +6,8 @@
 namespace std { struct tm; }
 namespace xloil
 {
+  constexpr int XL_MAX_SERIAL_DATE = 2958465; // 31 December 9999
+
   /// <summary>
   /// Converts as Excel date expressed as an integer to day, month, year
   /// Returns true if the conversion was successful, otherwise the int
