@@ -68,7 +68,14 @@ def pyTestArr2d(x: xlo.Array(float)):
 def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
 	return x
 
-
+#
+# This just tests that xlo.Array with no args is valid syntax
+# (the default is a 2d trimmed array of object).
+# 
+@xlo.func
+def pyTestArrNoArgs(x: xlo.Array):
+	return x
+    
 # 
 # This func uses the explicit `args` specifier with xlo.Arg. This overrides any
 # auto detection of the argument type or default by xlOil.
@@ -546,7 +553,7 @@ def _xloil_unload():
 
 
 import xloil.debug
-xloil.debug.exception_debug('pdb')
+#xloil.debug.exception_debug('pdb')
 
 @xlo.func
 def pyTestDebug(x):

@@ -37,7 +37,7 @@ namespace xloil
       CustomConverter(py::object&& callable)
         : _callable(callable)
       {}
-      virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const
+      virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const override
       {
         try
         {
@@ -62,7 +62,7 @@ namespace xloil
       CustomReturn(py::object&& callable)
         : _callable(callable)
       {}
-      virtual ExcelObj operator()(const PyObject& pyObj) const
+      virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
         // Use raw C API for extra speed as this code is on a critical path
         auto p = (PyObject*)&pyObj;
@@ -80,6 +80,7 @@ namespace xloil
           return ExcelObj();
         }
         auto converted = PySteal<>(result);
+        // TODO: the custom converter should be able to specify the return type rather than generic FromPyObj
         return FromPyObj()(converted.ptr());
       }
     };

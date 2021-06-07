@@ -87,7 +87,7 @@ namespace xloil {
           .def("__call__",
             [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
             {
-              XLO_THROW("Not implemented");
+              XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
             });
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
 
@@ -106,6 +106,7 @@ namespace xloil {
           .def_readonly("hwnd", &State::ExcelState::hWnd)
           .def_readonly("main_thread_id", &State::ExcelState::mainThreadId);
 
+        // TODO: rename to excel_state (also in xloil.py)
         mod.def("get_excel_state", State::excelState);
 
         py::class_<CallerInfo>(mod, "Caller")
