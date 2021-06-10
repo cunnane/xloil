@@ -81,8 +81,11 @@ namespace xloil
         }
         auto converted = PySteal<>(result);
         // TODO: the custom converter should be able to specify the return type rather than generic FromPyObj
+        // TODO: the user could create an infinite loop which cycles between two type converters - best way to avoid?
         return FromPyObj()(converted.ptr());
       }
+
+      const py::object& handler() const { return _callable; }
     };
 
     class CannotConvert {};
@@ -95,7 +98,8 @@ namespace xloil
 
       py::class_<CustomReturn, IPyToExcel, std::shared_ptr<CustomReturn>>
         (mod, "CustomReturn")
-        .def(py::init<py::object>(), py::arg("callable"));
+        .def(py::init<py::object>(), py::arg("callable"))
+        .def("get_handler", &CustomReturn::handler);
 
       cannotConvertException = py::exception<CannotConvert>(mod, "CannotConvert");
     });

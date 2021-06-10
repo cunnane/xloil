@@ -50,7 +50,10 @@ class PDFrame:
         self._index = index
 
     def __call__(self, x):
-        if isinstance(x, ExcelArray):
+        if isinstance(x, pd.DataFrame):
+            return x # Already fetched a dataframe from the cache
+
+        elif isinstance(x, ExcelArray):
             df = None
             idx = self._index
             if self._headings:
@@ -74,19 +77,21 @@ class PDFrame:
         
         raise Exception(f"Unsupported type: {type(x)!r}")
 
+@returner(types=pd.DataFrame, register=True)
+def ReturnDataFrame(val):
+    # TODO: not performant - copies the values array
+    #
+    # Construct this array
+    #   [filler]      [col_labels]
+    #   [row_labels]  [values]
+    #
+    col_labels = val.columns.values
+    row_labels = val.index.values[:, np.newaxis]
+    filler = np.full((np.atleast_2d(col_labels).shape[0], row_labels.shape[1]), ' ', dtype=object)
+    # Write the name of the index in the top left
+    filler[0, 0] = val.index.name
+    return np.block([[filler, col_labels], [row_labels, val.values]])
 
-def PandasReturn(val):
-    if type(val) is pd.DataFrame:
-        # TODO: not exactly performant!
-        header = val.columns.values
-        index = val.index.values[:,np.newaxis]
-        pad = np.full((np.atleast_2d(header).shape[0], index.shape[1]), ' ', dtype=object)
-        pad[0, 0] = val.index.name
-        return np.block([[pad, header], [index, val.values]])
-    elif type(val) is pd.Timestamp:
-        return val.to_pydatetime()
-    else:
-        raise CannotConvert()
-
-
-return_converters.add(PandasReturn)
+@returner(types=pd.Timestamp, register=True)
+def ReturnTimestamp(val):
+    return val.to_pydatetime()

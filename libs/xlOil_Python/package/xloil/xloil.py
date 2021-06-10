@@ -119,19 +119,24 @@ def _function_argspec(func):
             raise Exception(f"Unhandled argument type for {name}")
     return args, sig.return_annotation
 
+_READ_CONVERTER_PREFIX   = "Read_"
+_RETURN_CONVERTER_PREFIX = "Return_"
 
-def _get_internal_converter(type_name, from_excel=True):
+def _get_internal_converter(type_name, read_excel_value=True):
     """
-    Attempt to find converter with standardised name like `From_int`. Falls back
-    to From_cache if none found
+    Attempt to find converter with standardised name like `Read_int`. Falls back
+    to Read_cache if none found
     """
-    to_from = 'To' if from_excel else 'From'
-    name = f"{to_from}_{type_name}"
+    to_from = _READ_CONVERTER_PREFIX if read_excel_value else _RETURN_CONVERTER_PREFIX
+    name = f"{to_from}{type_name}"
     if not hasattr(xloil_core, name):
-        name = f"{to_from}_cache"
+        name = f"{to_from}Cache"
     return getattr(xloil_core, name)()
 
-def _make_argconverter(base_type, impl, allow_range):
+def _get_internal_returner(type_name):
+    return _get_internal_converter(type_name, False)
+
+def _make_argconverter(base_type, impl, allow_range=False):
     class ArgConverter(base_type):
         _xloil_converter = impl
         _xloil_allow_range = allow_range
@@ -141,10 +146,10 @@ def _is_argconverter(obj):
     return hasattr(obj, "_xloil_converter")
 
 def _unpack_argconverter(obj):
-    return obj._xloil_converter, obj._xloil_allow_range
+    return obj._xloil_converter, getattr(obj, "_xloil_allow_range", False)
 
 
-def converter(target=typing.Callable, range=False):
+def converter(to=typing.Callable, range=False):
     """
     Decorator which declares a function or a class to be a type converter.
 
@@ -155,8 +160,7 @@ def converter(target=typing.Callable, range=False):
     ExcelArray or Range.
 
     A type converter class may take parameters into its constructor
-    and hold state.  It should implement __call__ to behave as a type
-    converter function.
+    and hold state.  It should implement __call__ to handle type conversion.
 
     Both functions and classes are turned into a class which inherits from 
     ``typ``.  This is to support type hints only.
@@ -184,8 +188,9 @@ def converter(target=typing.Callable, range=False):
             
     """
 
-    def decorate(converter):
-        if inspect.isclass(converter):
+    to_type = to
+    def decorate(impl):
+        if inspect.isclass(impl):
             #
             # We use a metaclass approach to allow some linting with nice syntax: 
             # We want to write `def f(x: obj)` and `def g(x: obj(...))` which requires 
@@ -193,23 +198,23 @@ def converter(target=typing.Callable, range=False):
             # a converter but also subclassing the conversion target to get type checking
             # and autocomplete. 
             #
-            class MetaConverter(target):
+            class MetaConverter(to_type):
                 
                 def __init__(self):
                     pass # Never called, but keeps linter quiet
 
                 def __new__(cls, *args, **kwargs):
                     # Construct the inner class with the provided args
-                    instance = converter(*args, **kwargs)
+                    instance = impl(*args, **kwargs)
                     # Embed it in a new Converter which inherits from target
                     return _make_argconverter(
-                        target or instance.target, _CustomConverter(instance), range)
+                        to_type or instance.target, _CustomConverter(instance), range)
 
             # If the target obj has a no-arg constructor, we want to write:
             # `def fn(x: target_obj)`, so MetaConverter must be a valid 
             # converter itself. We try to insert the correct attributes
             try:
-                MetaConverter._xloil_converter = _CustomConverter(converter())
+                MetaConverter._xloil_converter = _CustomConverter(impl())
                 MetaConverter._xloil_allow_range = range
             except TypeError:
                 pass
@@ -217,9 +222,164 @@ def converter(target=typing.Callable, range=False):
             return MetaConverter
 
         else:
-            return _make_argconverter(target, _CustomConverter(converter), range)
+            return _make_argconverter(to_type, _CustomConverter(impl), range)
 
     return decorate
+
+
+def _make_tuple(obj):
+    try:
+        return tuple(obj)
+    except TypeError:
+        return obj, 
+
+# TODO: return converters should be able to register types
+class _ReturnConverters:
+    
+    _converters = dict()
+    _registered = False
+
+    def add(self, converter, types):
+        """
+        Registers a return converter for a given single or iterable set of types.
+        """
+        key = _unpack_argconverter(converter)[0].get_handler()
+        log(f"Added return converter {key.__name__} for types {types}", level='info')
+        self._converters[key] = _make_tuple(types) # TODO: warn log on overwrite
+
+        # Register this object as the custom return converter tried by xlOil when 
+        # a func does not specify its return type 
+        if not self._registered:
+            set_return_converter(_CustomReturn(self))
+            self._registered = True
+
+    
+    def remove(self, converter):
+        key = _unpack_argconverter(converter)[0].get_handler()
+        self._converters.remove(key)
+        if len(self._converters) == 0:
+            set_return_converter(None)
+            self._registered = False
+
+    def create_returner(self, for_type):
+
+        """
+        Creates a _CustomReturn object which handles the given type or returns None
+        if no handlers can be found.  The _CustomReturn object is an internal xloil_core
+        wrapper for a python-based return converter
+        """
+
+        matching_converters = [converter for converter, types in self._converters.items() if for_type in types]
+
+        if not any(matching_converters):
+            return None
+
+        elif len(matching_converters) == 1:
+
+            def convert(obj):
+                return matching_converters[0](obj)
+            return _CustomReturn(convert)
+
+        else:
+            # If multiple handlers exist, try each one in the registered order
+            def convert(obj):
+                for converter in matching_converters:
+                     try:
+                         return converter(obj)
+                     except (CannotConvert):
+                        continue
+                raise CannotConvert()
+
+            return _CustomReturn(convert)
+
+    def __call__(self, obj):
+        """
+        Invoked by xlOil to try to convert the given object
+        """
+        for converter, types in self._converters.items():
+            try:
+                if isinstance(obj, types):
+                    return converter(obj)
+            except (CannotConvert):
+                continue
+        
+        raise CannotConvert()
+
+
+return_converters = _ReturnConverters()
+
+
+def returner(types=None, register=False):
+
+    """
+    Decorator which declares a function or a class to be a return type converter.
+
+    A return type converter should take a python object and return a type
+    which xlOil knows how to return to Excel (which could be another type 
+    converter).  It should raise ``CannotConvert`` if it cannot handle the
+    given object.
+
+    A return type converter class may take parameters into its constructor
+    and hold state.  It should implement __call__ to handle type conversion
+
+    Both functions and classes are turned into a class which inherit from 
+    ``types`` (or Union[types] if more than one is provided).  This is to 
+    support type hints only.
+
+    If ``register`` is True, and one or more ``types`` specfied, the return
+    converter is registered as a handler for those types, which means it 
+    can be invoked when handling a ``func`` which does explicitly declare
+    its return type.
+
+    Examples
+    --------
+    
+    ::
+
+        @returner(MyType, register=True)
+        def ReturnMyType(x):
+            if isinstance(x, MyType):
+                return x.__name__
+            raise CannotConvert()
+
+        @func
+        def pyTest(x) -> MyType:
+            return MyType()
+            
+    """
+
+    def decorate(impl):
+
+        from_type = typing.Union[_make_tuple(types)] if types is not None else object
+        result = None
+
+        if inspect.isclass(impl):
+            class MetaConverter(from_type):
+                def __init__(self):
+                    pass # Never called, but keeps linter quiet
+
+                def __new__(cls, *args, **kwargs):
+                    # Construct the inner class with the provided args
+                    instance = impl(*args, **kwargs)
+                    # Embed it in a new Converter which inherits from from_type
+                    return _make_argconverter(from_type, _CustomReturn(instance))
+
+            try:
+                MetaConverter._xloil_converter = _CustomReturn(impl())
+            except TypeError:
+                pass
+
+            result = MetaConverter
+        else:
+            result = _make_argconverter(from_type, _CustomReturn(impl))
+
+        if register and types is not None:
+            return_converters.add(result, types)
+
+        return result
+
+    return decorate
+
 
 class Cache:
     """
@@ -227,7 +387,7 @@ class Cache:
     the output to be placed in the object cache. The class has no actual
     functionality.
     """
-    pass
+    _xloil_converter = _get_internal_returner("Cache")
 
 class FuncDescription:
     """
@@ -272,8 +432,8 @@ class FuncDescription:
                 continue
             # Default option is the generic converter which tries to figure
             # out what to return based on the Excel type
-            # TODO: rename these To_XXX functions to _to_XXX
-            converter = xloil_core.To_object()
+            # TODO: rename these Read_XXX functions to _to_XXX
+            converter = xloil_core.Read_object()
             this_arg = info.args[i]
             argtype = x.typeof
             if argtype is not None:
@@ -283,11 +443,11 @@ class FuncDescription:
                     this_arg.allow_range = True
                 elif argtype is Range:
                     this_arg.allow_range = True
-                    converter = _get_internal_converter("Range", from_excel=True)
+                    converter = _get_internal_converter("Range")
                 elif argtype is ExcelValue:
                     pass # This the explicit generic type, so do nothing
                 elif isinstance(argtype, type) and argtype is not object:
-                    converter = _get_internal_converter(argtype.__name__, from_excel=True)
+                    converter = _get_internal_converter(argtype.__name__)
 
             if x.has_default:
                 this_arg.optional = True
@@ -299,11 +459,11 @@ class FuncDescription:
             ret_type = self.return_type
             ret_con = None
             if _is_argconverter(ret_type):
-                ret_con = _CustomReturn(ret_type._xloil_converter)
-            elif isinstance(ret_type, Cache):
-                ret_con = xloil_core.To_cache()
+                ret_con = ret_type._xloil_converter
             elif isinstance(ret_type, type) and ret_type is not object:
-                ret_con = _get_internal_converter(ret_type.__name__, from_excel=False)
+                ret_con = return_converters.create_returner(ret_type)
+                if ret_con is None:
+                    ret_con = _get_internal_returner(ret_type.__name__)
             else:
                 pass # Not sure how we get here
             holder.return_converter = ret_con
@@ -609,11 +769,11 @@ class Array:
 
     """
  
-    _xloil_converter = getattr(xloil_core, "To_Array_object_2d")(True)
+    _xloil_converter = getattr(xloil_core, _READ_CONVERTER_PREFIX + "Array_object_2d")(True)
     _xloil_allow_range = False
 
     def __new__(cls, dtype=object, dims=2, trim=True):
-        name = f"To_Array_{dtype.__name__}_{dims or 2}d" 
+        name = f"{_READ_CONVERTER_PREFIX}Array_{dtype.__name__}_{dims or 2}d" 
         type_conv = getattr(xloil_core, name)(trim)
         return _make_argconverter(np.ndarray, type_conv, False)
      
@@ -709,27 +869,3 @@ def scan_module(module, workbook_name=None):
             xloil_core.register_functions(handle, to_register)
 
         return handle
-
-# TODO: return converters should be able to register types
-class _ReturnConverters:
-
-    _converters = set()
-
-    def add(self, conv):
-        self._converters.add(conv)
-        set_return_converter(_CustomReturn(self))
-    
-    def remove(self, conv):
-        self._converters.remove(conv)
-        if len(self._converters) == 0:
-            set_return_converter(None)
-
-    def __call__(self, obj):
-        for c in self._converters:
-            try:
-                return c(obj)
-            except (CannotConvert):
-                continue
-        raise CannotConvert()
-
-return_converters = _ReturnConverters()

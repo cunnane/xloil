@@ -58,13 +58,13 @@ namespace xloil
       convertPy<PyFromBool>(mod, "bool");
       convertPy<PyFromString>(mod, "str");
       convertPy<PyFromAny>(mod, "object");
-      convertPy<PyCacheObject>(mod, "cache");
+      convertPy<PyCacheObject>(mod, "Cache");
 
       convertXl<FromPyLong>(mod, "int");
       convertXl<FromPyFloat>(mod, "float");
       convertXl<FromPyBool>(mod, "bool");
       convertXl<FromPyString>(mod, "str");
-      convertXl<FromPyToCache>(mod, "cache");
+      convertXl<FromPyToCache>(mod, "Cache");
 
       mod.def("set_return_converter", setReturnConverter);
     });

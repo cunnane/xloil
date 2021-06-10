@@ -9,6 +9,9 @@ namespace xloil
   namespace Python
   {
     constexpr char* const theInjectedModuleName = "xloil_core";
+    constexpr char* const theReadConverterPrefix = "Read_";
+    constexpr char* const theReturnConverterPrefix = "Return_";
+
     PyObject* buildInjectedModule();
 
     /// <summary>
@@ -30,7 +33,7 @@ namespace xloil
     {
       // TODO: static string concat?
       return pybind11::class_<T, IPyFromExcel, std::shared_ptr<T>>
-        (mod, ("To_" + std::string(type)).c_str());
+        (mod, (theReadConverterPrefix + std::string(type)).c_str());
     }
 
     /// <summary>
@@ -41,7 +44,7 @@ namespace xloil
     auto bindXlConverter(pybind11::module& mod, const char* type)
     {
       return pybind11::class_<T, IPyToExcel, std::shared_ptr<T>>(mod, 
-        ("From_" + std::string(type)).c_str());
+        (theReturnConverterPrefix + std::string(type)).c_str());
     }
   }
 }

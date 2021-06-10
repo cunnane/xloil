@@ -20,6 +20,7 @@
 namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;
+using std::string;
 
 // Useful references:
 //
@@ -602,7 +603,7 @@ namespace xloil
       auto declare(pybind11::module& mod, const char* type)
       {
         return py::class_<T, IPyFromExcel, shared_ptr<T>>
-          (mod, ("To_Array_" + std::string(type)).c_str())
+          (mod, (theReadConverterPrefix + string("Array_") + string(type)).c_str())
           .def(py::init<bool>(), py::arg("trim")=true);
       }
 
@@ -614,7 +615,7 @@ namespace xloil
         auto date1d = declare<Array1dFromXL<NPY_DATETIME> >(mod, "date_1d");
         // Alias so that either date or datetime arrays can be requested.
         // TODO: strictly should drop time information if it exists
-        mod.add_object("To_Array_datetime_1d", date1d);
+        mod.add_object((theReadConverterPrefix + string("Array_datetime_1d")).c_str(), date1d);
         declare<Array1dFromXL<NPY_STRING>   >(mod, "str_1d");
         declare<Array1dFromXL<NPY_OBJECT>   >(mod, "object_1d");
 
@@ -623,10 +624,9 @@ namespace xloil
         declare<Array2dFromXL<NPY_BOOL>     >(mod, "bool_2d");
         auto date2d = declare<Array2dFromXL<NPY_DATETIME> >(mod, "date_2d");
         // Alias so that either date or datetime arrays can be requested.
-        mod.add_object("To_Array_datetime_2d", date2d);
+        mod.add_object((theReadConverterPrefix + string("Array_datetime_2d")).c_str(), date2d);
         declare<Array2dFromXL<NPY_STRING>   >(mod, "str_2d");
         declare<Array2dFromXL<NPY_OBJECT>   >(mod, "object_2d");
-
       });
     }
   }

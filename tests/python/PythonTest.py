@@ -428,7 +428,11 @@ try:
             return df[col_name]
         else:
             return df
-        
+    
+    @xlo.func
+    def pyTestFrameWrite(df: PDFrame) -> pd.DataFrame:
+        return df
+    
 except ImportError:
     pass
 
