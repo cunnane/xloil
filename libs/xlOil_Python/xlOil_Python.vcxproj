@@ -62,7 +62,6 @@
     <ClCompile Include="StubLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="package\README.md" />
     <None Include="package\setup.py" />
     <CopyFileToFolders Include="package\xloil\excelfuncs.py">
       <FileType>Document</FileType>
@@ -93,17 +92,15 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="package\xloil\debug.py">
       <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)\xloil</DestinationFolders>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
     <CopyFileToFolders Include="package\xloil\rtd.py">
       <FileType>Document</FileType>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)\xloil</DestinationFolders>
-      <DestinationFolders Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)\xloil</DestinationFolders>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\type_converters.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
