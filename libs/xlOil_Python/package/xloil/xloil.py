@@ -146,8 +146,41 @@ def _is_argconverter(obj):
     return hasattr(obj, "_xloil_converter")
 
 def _unpack_argconverter(obj):
-    return obj._xloil_converter, getattr(obj, "_xloil_allow_range", False)
+    return obj._xloil_converter, obj._xloil_allow_range
 
+def _make_metaconverter(base_type, converter_impl, create_wrapper, allow_range=False):
+
+    if inspect.isclass(converter_impl):
+        #
+        # We use a metaclass approach to allow some linting with nice syntax: 
+        # We want to write `def f(x: obj)` and `def g(x: obj(...))` which requires 
+        # both of these expressions to evaluate to types identifiable to xloil as
+        # a converter but also subclassing the conversion target to get type checking
+        # and autocomplete. 
+        #
+        class MetaConverter(base_type):
+                
+                def __init__(self):
+                    pass # Never called, but keeps linter quiet
+
+                def __new__(cls, *args, **kwargs):
+                    # Construct the inner class with the provided args
+                    instance = converter_impl(*args, **kwargs)
+                    # Embed it in a new Converter which inherits from target
+                    return _make_argconverter(base_type, create_wrapper(instance), allow_range)
+
+        # If the target obj has a no-arg constructor, we want to write:
+        # `def fn(x: target_obj)`, so MetaConverter must be a valid 
+        # converter itself. We try to insert the correct attributes
+        try:
+            MetaConverter._xloil_converter = create_wrapper(converter_impl())
+            MetaConverter._xloil_allow_range = allow_range
+        except TypeError:
+            pass
+
+        return MetaConverter
+    else:
+        return _make_argconverter(base_type, create_wrapper(converter_impl), allow_range)
 
 def converter(to=typing.Callable, range=False):
     """
@@ -187,43 +220,8 @@ def converter(to=typing.Callable, range=False):
             return x
             
     """
-
-    to_type = to
     def decorate(impl):
-        if inspect.isclass(impl):
-            #
-            # We use a metaclass approach to allow some linting with nice syntax: 
-            # We want to write `def f(x: obj)` and `def g(x: obj(...))` which requires 
-            # both of these expressions to evaluate to types identifiable to xloil as
-            # a converter but also subclassing the conversion target to get type checking
-            # and autocomplete. 
-            #
-            class MetaConverter(to_type):
-                
-                def __init__(self):
-                    pass # Never called, but keeps linter quiet
-
-                def __new__(cls, *args, **kwargs):
-                    # Construct the inner class with the provided args
-                    instance = impl(*args, **kwargs)
-                    # Embed it in a new Converter which inherits from target
-                    return _make_argconverter(
-                        to_type or instance.target, _CustomConverter(instance), range)
-
-            # If the target obj has a no-arg constructor, we want to write:
-            # `def fn(x: target_obj)`, so MetaConverter must be a valid 
-            # converter itself. We try to insert the correct attributes
-            try:
-                MetaConverter._xloil_converter = _CustomConverter(impl())
-                MetaConverter._xloil_allow_range = range
-            except TypeError:
-                pass
-
-            return MetaConverter
-
-        else:
-            return _make_argconverter(to_type, _CustomConverter(impl), range)
-
+        return _make_metaconverter(to, impl, lambda x: _CustomConverter(x), range)
     return decorate
 
 
@@ -351,28 +349,9 @@ def returner(types=None, register=False):
     def decorate(impl):
 
         from_type = typing.Union[_make_tuple(types)] if types is not None else object
-        result = None
 
-        if inspect.isclass(impl):
-            class MetaConverter(from_type):
-                def __init__(self):
-                    pass # Never called, but keeps linter quiet
-
-                def __new__(cls, *args, **kwargs):
-                    # Construct the inner class with the provided args
-                    instance = impl(*args, **kwargs)
-                    # Embed it in a new Converter which inherits from from_type
-                    return _make_argconverter(from_type, _CustomReturn(instance))
-
-            try:
-                MetaConverter._xloil_converter = _CustomReturn(impl())
-            except TypeError:
-                pass
-
-            result = MetaConverter
-        else:
-            result = _make_argconverter(from_type, _CustomReturn(impl))
-
+        result = _make_metaconverter(from_type, impl, lambda x: _CustomReturn(x))
+        
         if register and types is not None:
             return_converters.add(result, types)
 
@@ -380,14 +359,12 @@ def returner(types=None, register=False):
 
     return decorate
 
-
-class Cache:
-    """
-    Allows you to write `-> xloil.Cache` after a function declaration to force
-    the output to be placed in the object cache. The class has no actual
-    functionality.
-    """
-    _xloil_converter = _get_internal_returner("Cache")
+"""
+Allows you to write `-> xloil.Cache` after a function declaration to force
+the output to be placed in the object cache. The class has no actual
+functionality.
+"""
+Cache = _make_argconverter(object, _get_internal_returner("Cache"))
 
 class FuncDescription:
     """
