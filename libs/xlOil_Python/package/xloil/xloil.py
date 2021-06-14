@@ -176,6 +176,9 @@ class FuncDescription:
                 # ExcelValue is just the explicit generic type, so do nothing
                 elif arg_type is ExcelValue:
                     pass 
+                elif arg_type is AllowRange:
+                    converter = xloil_core.Read_object(), 
+                    this_arg.allow_range = True
                 # Attempt to find a registered user-converter, otherwise assume the object
                 # should be read from the cache 
                 else:

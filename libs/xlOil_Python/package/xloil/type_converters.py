@@ -36,6 +36,10 @@ def get_internal_converter(type_name, read_excel_value=True):
     return None if found is None else found()
 
 def _make_argconverter(base_type, impl, allow_range=False):
+    # Only inheriting from one type is supported becasue inheriting from
+    # certain type pairs e.g. (int, str) will give "instance lay-out conflict"
+    # error and I don't know which pairs are impacted.  Afaik it's only
+    # C-implemented types
     class ArgConverter(base_type):
         _xloil_converter = impl
         _xloil_allow_range = allow_range
@@ -266,7 +270,14 @@ def returner(types=None, register=False):
 
     def decorate(impl):
 
-        from_type = typing.Union[_make_tuple(types)] if types is not None else object
+        # Mulitple types can be specified, we just take the first one: even
+        # this is unecessary, since xloil.funcs are never called from python
+        # code (they can be, but it's unwise) their return type hints shouldn't 
+        # be used by type checkers 
+        try:
+            from_type = next(iter(type))
+        except TypeError:
+            from_type = types
 
         result = _make_metaconverter(from_type, impl, lambda x: _CustomReturn(x))
         
@@ -292,14 +303,10 @@ SingleValue = _make_argconverter(object, xloil_core.Return_SingleValue())
 
 """
 The special AllowRange annotation allows functions to receive the argument
-as an ExcelRange object if appropriate. The argument may still be passed
-as another type if it was not created from a sheet reference.
+as an ExcelRange object if appropriate.  If a sheet reference (e.g. A1:B2) 
+was not passed from Excel, xlOil converts as per ExcelValue.
 """
-AllowRange = _make_argconverter(
-    # typing.Union[ExcelValue, xloil_core.Range], 
-    xloil_core.Range,
-    xloil_core.Read_object(), 
-    allow_range=True)
+AllowRange = typing.Union[ExcelValue, xloil_core.Range]
 
 class Array:
     """
