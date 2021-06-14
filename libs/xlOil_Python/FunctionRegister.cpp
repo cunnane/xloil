@@ -54,19 +54,36 @@ namespace xloil
         XLO_THROW(L"No python function specified for {0}", info->name);
     }
 
+    PyFuncInfo::~PyFuncInfo()
+    {
+      py::gil_scoped_acquire getGil;
+      returnConverter.reset();
+      argConverters.clear();
+      func = py::object();
+    }
+
     void PyFuncInfo::setArgTypeDefault(size_t i, shared_ptr<IPyFromExcel> converter, py::object defaultVal)
     {
+      if (i >= argConverters.size())
+        throw py::index_error();
       argConverters[i] = std::make_pair(converter, defaultVal);
     }
 
     void PyFuncInfo::setArgType(size_t i, shared_ptr<IPyFromExcel> converter)
     {
+      if (i >= argConverters.size())
+        throw py::index_error();
       argConverters[i] = std::make_pair(converter, py::object());
     }
 
     void PyFuncInfo::setFuncOptions(int val)
     {
       info->options = val;
+    }
+
+    void PyFuncInfo::setReturnConverter(const std::shared_ptr<IPyToExcel>& conv)
+    {
+      returnConverter = conv;
     }
 
     pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
@@ -79,8 +96,8 @@ namespace xloil
       {
         try
         {
-          auto* def = argConverters[i].second.ptr();
-          auto* pyObj = (*argConverters[i].first)(*xlArgs[i], def);
+          auto* defaultValue = argConverters[i].second.ptr();
+          auto* pyObj = (*argConverters[i].first)(*xlArgs[i], defaultValue);
           PyTuple_SET_ITEM(pyArgs.ptr(), i, pyObj);
         }
         catch (const std::exception& e)
@@ -208,10 +225,10 @@ namespace xloil
         if (!dir.empty())
           _fileWatcher = std::static_pointer_cast<const void>(
             Event::DirectoryChange(dir).bind(
-              [this](auto dir, auto file, auto act) 
-              { 
-                handleDirChange(dir, file, act);
-              }));
+              [this](auto dir, auto file, auto act)
+        {
+          handleDirChange(dir, file, act);
+        }));
 
         if (linkedWorkbook)
           _workbookWatcher = std::static_pointer_cast<const void>(
@@ -288,7 +305,7 @@ namespace xloil
         try
         {
           // TODO: cancel running async tasks?
-          py::gil_scoped_acquire get_gil;
+          py::gil_scoped_acquire getGil;
 
           // Call module cleanup function
           auto thisMod = PyBorrow<py::module>(_module);
@@ -490,7 +507,7 @@ namespace xloil
           .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
           .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
           .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
-          .def_readwrite("return_converter", &PyFuncInfo::returnConverter)
+          .def_property("return_converter", &PyFuncInfo::getReturnConverter, &PyFuncInfo::setReturnConverter)
           .def_readwrite("local", &PyFuncInfo::isLocalFunc)
           .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync)
           .def_readwrite("native_async", &PyFuncInfo::isAsync);

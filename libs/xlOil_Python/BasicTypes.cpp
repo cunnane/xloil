@@ -1,5 +1,6 @@
 #include "BasicTypes.h"
 #include "PyCoreModule.h"
+#include "PyEvents.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -33,6 +34,13 @@ namespace xloil
     }
 
     shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;
+
+    namespace
+    {
+      auto cleanupReturnConverter = Event_PyBye().bind([] {
+        theCustomReturnConverter.reset();
+      });
+    }
 
     void setReturnConverter(shared_ptr<const IPyToExcel> conv)
     {

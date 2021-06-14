@@ -37,6 +37,11 @@ namespace xloil
       CustomConverter(py::object&& callable)
         : _callable(callable)
       {}
+      virtual ~CustomConverter()
+      {
+        py::gil_scoped_acquire getGil;
+        _callable = py::object();
+      }
       virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const override
       {
         try
@@ -54,6 +59,13 @@ namespace xloil
 
     py::object cannotConvertException;
 
+    namespace
+    {
+      auto cleanupConvertException = Event_PyBye().bind([] {
+        cannotConvertException = py::object();
+      });
+    }
+
     class CustomReturn : public IPyToExcel
     {
     private:
@@ -62,6 +74,11 @@ namespace xloil
       CustomReturn(py::object&& callable)
         : _callable(callable)
       {}
+      virtual ~CustomReturn()
+      {
+        py::gil_scoped_acquire getGil;
+        _callable = py::object();
+      }
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
         // Use raw C API for extra speed as this code is on a critical path

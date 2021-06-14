@@ -38,6 +38,8 @@ namespace xloil
         const std::shared_ptr<FuncInfo>& info,
         const pybind11::function& func,
         bool keywordArgs);
+      
+      ~PyFuncInfo();
 
       void setArgTypeDefault(
         size_t i, 
@@ -51,6 +53,10 @@ namespace xloil
       void setFuncOptions(
         int val);
 
+      auto getReturnConverter() const { return returnConverter; }
+      void setReturnConverter(
+        const std::shared_ptr<IPyToExcel>& conv);
+
       std::pair<pybind11::tuple, pybind11::object> convertArgs(
         const ExcelObj** xlArgs) const;
 
@@ -61,12 +67,12 @@ namespace xloil
         PyObject* args, PyObject* kwargs) const;
 
       std::shared_ptr<FuncInfo> info;
-      std::shared_ptr<IPyToExcel> returnConverter;
       bool isLocalFunc;
       bool isAsync;
       bool isRtdAsync;
 
     private:
+      std::shared_ptr<IPyToExcel> returnConverter;
       pybind11::function func;
       std::vector<std::pair<std::shared_ptr<IPyFromExcel>, pybind11::object>> 
         argConverters;
