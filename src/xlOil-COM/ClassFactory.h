@@ -1,12 +1,12 @@
 #pragma once
-#include <list>
 #include <atlbase.h>
 #include <atlcom.h>
 #include <atlwin.h>
 #include <Objbase.h>
-#include <string>
 #include <xloil/Throw.h>
 #include <xlOilHelpers/Environment.h>
+#include <string>
+#include <list>
 
 namespace xloil
 {

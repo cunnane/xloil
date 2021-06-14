@@ -67,7 +67,7 @@ namespace xloil
             throw pybind11::key_error(utf16ToUtf8(str));
           return result;
         }
-        py::object get(const std::wstring_view& str, py::object default=py::none())
+        py::object get(const std::wstring_view& str, const py::object& default=py::none())
         {
           const ExcelObj* xlObj = getCached<ExcelObj>(str);
           if (xlObj)

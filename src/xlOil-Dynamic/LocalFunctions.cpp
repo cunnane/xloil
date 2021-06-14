@@ -22,7 +22,7 @@ using std::make_shared;
 
 namespace xloil
 {
-  // ensure this is cleaned before things close.
+  // TODO: this is not good, filesource should manage its own local funcs and event
   map<wstring, map<wstring, shared_ptr<const LambdaSpec<>>>> theRegistry;
 
   const LambdaSpec<>& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
