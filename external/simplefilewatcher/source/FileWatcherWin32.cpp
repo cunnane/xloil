@@ -27,6 +27,7 @@
 #define _WIN32_WINNT 0x0550
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <codecvt>
 
 #if defined(_MSC_VER)
 #pragma comment(lib, "comctl32.lib")
@@ -195,8 +196,11 @@ namespace FW
 		WatchStruct* watch = CreateWatch(directory.c_str(), recursive,
 			FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE);
 
+		using convert_type = std::codecvt_utf8<wchar_t>;
+		std::wstring_convert<convert_type, wchar_t> converter;
+
 		if(!watch)
-			throw FileNotFoundException(directory);
+			throw FileNotFoundException(converter.to_bytes(directory));
 
 		watch->mWatchid = watchid;
 		watch->mFileWatcher = this;

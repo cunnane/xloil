@@ -69,8 +69,8 @@ namespace FW
 			: Exception("File not found")
 		{}
 
-		FileNotFoundException(const String& filename)
-			: Exception("File not found (" + std::string(filename.begin(), filename.end()) + ")")
+		FileNotFoundException(const std::string& filename)
+			: Exception("File not found (" + filename + ")")
 		{}
 	};
 
