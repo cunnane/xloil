@@ -66,6 +66,9 @@ namespace xloil
         : _name(name ? name : "?")
       {}
 
+      virtual ~Event()
+      {}
+
       /// <summary>
       /// Registers an event handler
       /// </summary>
@@ -117,10 +120,11 @@ namespace xloil
       auto bind(handler&& h)
       {
         auto thisPtr = shared_from_this();
-        return std::shared_ptr<const handler>(
-          (*this) += std::forward<handler>(h),
-          [thisPtr](handler_id id) { (*thisPtr) -= id; });
-      }
+        return std::static_pointer_cast<const void>(
+          std::shared_ptr<const handler>(
+            (*this) += std::forward<handler>(h),
+            [thisPtr](handler_id id) { (*thisPtr) -= id; }));
+        }
 
       R fire(Args&&... args) const
       {
@@ -286,8 +290,8 @@ namespace xloil
       Modified = 4
     };
 
-    XLOIL_EXPORT Event<
-      void(const wchar_t* directory, const wchar_t* filename, FileAction)> &
+    XLOIL_EXPORT std::shared_ptr<Event<
+      void(const wchar_t* directory, const wchar_t* filename, FileAction)>>
       DirectoryChange(const std::wstring& path);
 
     XLOIL_EXPORT void allowEvents(bool value);

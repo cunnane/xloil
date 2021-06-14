@@ -187,12 +187,12 @@ namespace xloil
     {
       using namespace std::placeholders;
 
-      _calcEndHandler = std::static_pointer_cast<const void>(
-        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::onAfterCalculate), this)));
+      _calcEndHandler =
+        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::onAfterCalculate), this));
       
       if (reapOnWorkbookClose)
-        _workbookCloseHandler = std::static_pointer_cast<const void>(
-          xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); }));
+        _workbookCloseHandler =
+          xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); });
     }
 
     const TObj* fetch(const std::wstring_view& key) const
@@ -373,6 +373,8 @@ namespace xloil
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
       std::make_unique<T>(std::forward<Args>(args)...));
   }
+
+  // TODO: consider abrogated caching where simple types are just returned un-cached
   template<typename T>
   inline auto makeCached(const T* ptr)
   {

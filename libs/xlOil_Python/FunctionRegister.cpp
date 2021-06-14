@@ -223,16 +223,14 @@ namespace xloil
         auto path = fs::path(sourceName);
         auto dir = path.remove_filename();
         if (!dir.empty())
-          _fileWatcher = std::static_pointer_cast<const void>(
-            Event::DirectoryChange(dir).bind(
-              [this](auto dir, auto file, auto act)
+          _fileWatcher = Event::DirectoryChange(dir)->bind(
+            [this](auto dir, auto file, auto act)
         {
           handleDirChange(dir, file, act);
-        }));
+        });
 
         if (linkedWorkbook)
-          _workbookWatcher = std::static_pointer_cast<const void>(
-            Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); }));
+          _workbookWatcher = Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); });
       }
 
       virtual void reload() = 0;
