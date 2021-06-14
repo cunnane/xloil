@@ -3,7 +3,7 @@ import numpy as np
 from .xloil import *
 import typing
 
-@converter(pd.DataFrame)
+@converter(pd.DataFrame, register=True)
 class PDFrame:
     """
     Converter which takes tables with horizontal records to pandas dataframes.
@@ -33,7 +33,8 @@ class PDFrame:
         element : type
             Pandas performance can be improved by explicitly specifying  
             a type. In particular, creation of a homogenously typed
-            Dataframe does not require copying the data.
+            Dataframe does not require copying the data. Not currently
+            implemented!
 
         headings : bool
             Specifies that the first row should be interpreted as column
@@ -44,14 +45,16 @@ class PDFrame:
 
     """
     def __init__(self, element=None, headings=True, index=None):
-        # TODO: use element_type!
+        # TODO: use element_type in the dataframe construction
         self._element_type = element
         self._headings = headings
         self._index = index
 
     def __call__(self, x):
+        # A converter should check if provided value is already of the correct type.
+        # This can happen as xlOil expands cache strings before calling user converters
         if isinstance(x, pd.DataFrame):
-            return x # Already fetched a dataframe from the cache
+            return x
 
         elif isinstance(x, ExcelArray):
             df = None

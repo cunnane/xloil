@@ -119,9 +119,9 @@ def pyCacheKeys():
     return xlo.cache.keys()
 
 @xlo.func
-def pyTestToCache(x) -> xlo.Cache:
+def pyTestToCache(x) -> xlo.SingleValue:
     return x
-
+ 
 #------------------
 # Dates
 #------------------
@@ -395,23 +395,27 @@ try:
     import pandas as pd
 
     #
-    # xlo.PDFrame converts a block to a pandas DataFrame. The block should be
-    # formatted as a table with data in columns and a row of column headings
-    # if the headings parameter is set. We have to explicitly add the return
-    # value to the cache or it will be expanded to the sheet
+    # xlo.PDFrame converts a block to a pandas DataFrame. Because it registers
+    # the type pd.DataFrame, we can just use that in typing annotations. The block 
+    # passed should be formatted as a table with a single row of column headings.
+    # if the headings parameter is set.  We send the return value to the cache
+    # otherwise it will be expanded to the sheet
     #
     @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
-    def pyTestDFrame(df: PDFrame(headings=True)):
-        return xlo.cache.add(df)
+    def pyTestDFrame(df: pd.DataFrame) -> xlo.Cache:
+        return df
 
     #
-    # We can tell xlo.PDFrame to set the datafram index to a specified column 
-    # name. If you want the index column name to be dynamic, you'll need to
-    # drop the index param and call DataFrame.set_index yourself.
+    # If we want to use non-default arguments with xlo.PDFrame, we need to use it
+    # explicitly in the annotation. Below, we set the dataframe index to a specified  
+    # column name.  If you want the index column name to be dynamic, for example 
+    # based on another function argument, you'd need to call DataFrame.set_index 
+    # in the function body.  Note we can explicity add an object to the cache instead
+    # of using the `-> xlo.Cache` annotation.
     #
     @xlo.func
     def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time")):
-        return xlo.cache(df)
+        return xlo.cache(df) 
 
     #
     # This function tests that we can fetch data from the frames created by the
@@ -429,8 +433,14 @@ try:
         else:
             return df
     
+    
+    #
+    # We can specify an explicit return type of pd.DataFrame, which
+    # is slightly more performant than having xlOil try all known
+    # converters
+    # 
     @xlo.func
-    def pyTestFrameWrite(df: PDFrame) -> pd.DataFrame:
+    def pyTestFrameWrite(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
 except ImportError:

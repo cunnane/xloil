@@ -38,13 +38,6 @@ by the xloil.func decorator to the target func's __dict__
 _META_TAG = "_xloil_func_"
 
 
-"""
-The special AllowRange annotation allows functions to receive the argument
-as an ExcelRange object if appropriate. The argument may still be passed
-as another type if it was not created from a sheet reference.
-"""
-AllowRange = typing.Union[ExcelValue, Range]
-
 class Arg:
     """
     Holds the description of a function argument. Can be used with the 'func'
@@ -150,46 +143,69 @@ class FuncDescription:
         # each argument. If 'typeof' is a xloil typeconverter object
         # it's passed through.  If it is a general python type, we
         # attempt to create a suitable typeconverter
-        for i, x in enumerate(self.args):
-            if x.is_keywords:
+        for i, arg_info in enumerate(self.args):
+            if arg_info.is_keywords:
                 continue
-            # Default option is the generic converter which tries to figure
-            # out what to return based on the Excel type
-            # TODO: rename these Read_XXX functions to _to_XXX
-            converter = xloil_core.Read_object()
-            this_arg = info.args[i]
-            argtype = x.typeof
-            if argtype is not None:
-                if is_type_converter(argtype):
-                    converter, this_arg.allow_range = unpack_type_converter(argtype)
-                elif argtype is AllowRange:
-                    this_arg.allow_range = True
-                elif argtype is Range:
-                    this_arg.allow_range = True
-                    converter = get_internal_converter("Range")
-                elif argtype is ExcelValue:
-                    pass # This the explicit generic type, so do nothing
-                elif isinstance(argtype, type) and argtype is not object:
-                    converter = get_internal_converter(argtype.__name__)
 
-            if x.has_default:
+            # Determine the internal C++ arg converter to run on the Excel values
+            # before they are passed to python.  
+            converter = None
+            this_arg = info.args[i]
+            arg_type = arg_info.typeof
+
+            # If a typing annotation is None or not a type, ignore it.
+            # The default option is the generic converter which gives a python 
+            # type based on the provided Excel type
+            if not isinstance(arg_type, type):
+                converter = xloil_core.Read_object()
+            else:
+                # The ordering of these cases is based on presumed likeliness.
+                # First try an internal converter e.g. Read_str, Read_float, etc.
+                converter = get_internal_converter(arg_type.__name__)
+
+                # xloil_core.Range is special: the only core class in typing annotations
+                if arg_type is Range:
+                    this_arg.allow_range = True
+
+                # If internal converter was found, nothing more to do
+                if converter is not None:
+                    pass
+                # A designated xloil @converter type contains the internal converter
+                elif is_type_converter(arg_type):
+                    converter, this_arg.allow_range = unpack_type_converter(arg_type)
+                # ExcelValue is just the explicit generic type, so do nothing
+                elif arg_type is ExcelValue:
+                    pass 
+                # Attempt to find a registered user-converter, otherwise assume the object
+                # should be read from the cache 
+                else:
+                    converter = arg_converters.get_converter(arg_type)
+                    if converter is None:
+                        converter = xloil_core.Read_Cache()
+            log(f"Func {info.name}, arg {arg_info.name} using converter {type(converter)}", level="trace")
+            if arg_info.has_default:
                 this_arg.optional = True
-                holder.set_arg_type_defaulted(i, converter, x.default)
+                holder.set_arg_type_defaulted(i, converter, arg_info.default)
             else:
                 holder.set_arg_type(i, converter)
 
         if self.return_type is not inspect._empty:
             ret_type = self.return_type
-            ret_con = None
-            if is_type_converter(ret_type):
-                ret_con, _ = unpack_type_converter(ret_type)
-            elif isinstance(ret_type, type) and ret_type is not object:
-                ret_con = return_converters.create_returner(ret_type)
-                if ret_con is None:
-                    ret_con = get_internal_converter(ret_type.__name__, read_excel_value=False)
-            else:
-                pass # Not sure how we get here
-            holder.return_converter = ret_con
+            if isinstance(ret_type, type):
+
+                ret_con = None
+                if is_type_converter(ret_type):
+                    ret_con, _ = unpack_type_converter(ret_type)
+                else:
+                    ret_con = return_converters.create_returner(ret_type)
+
+                    if ret_con is None:
+                        ret_con = get_internal_converter(ret_type.__name__, read_excel_value=False)
+
+                    if ret_con is None:
+                        ret_con = Return_object()
+
+                holder.return_converter = ret_con
 
         # RTD-async is default unless rtd=False was explicitly specified.
         holder.rtd_async = self.is_async and (self.rtd is not False)

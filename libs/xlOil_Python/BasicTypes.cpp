@@ -43,10 +43,22 @@ namespace xloil
     {
       auto operator()(const PyObject* obj) const
       {
-        auto result = FromPyObj<false, CellError::GettingData>()(obj);
-        return makeCached<ExcelObj>(result == CellError::GettingData
-          ? pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)))
-          : std::move(result));;
+        return pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)));
+      }
+    };
+
+    /// <summary>
+    /// Always returns a single cell value. Uses the Excel object cache for 
+    /// returned arrays and the Python object cache for unconvertable objects
+    /// </summary>
+    struct FromPyToSingleValue
+    {
+      auto operator()(const PyObject* obj) const
+      {  
+        ExcelObj excelObj(FromPyObj()(obj));
+        if (excelObj.isType(ExcelType::ArrayValue))
+          return std::move(excelObj);
+        return makeCached<ExcelObj>(std::move(excelObj));
       }
     };
 
@@ -65,6 +77,7 @@ namespace xloil
       convertXl<FromPyBool>(mod, "bool");
       convertXl<FromPyString>(mod, "str");
       convertXl<FromPyToCache>(mod, "Cache");
+      convertXl<FromPyToSingleValue>(mod, "SingleValue");
 
       mod.def("set_return_converter", setReturnConverter);
     });
