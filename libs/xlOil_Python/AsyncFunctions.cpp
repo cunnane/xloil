@@ -252,7 +252,7 @@ namespace xloil
         // Raw ptr, but we take ownership below
         auto* asyncReturn = new AsyncReturn(
           *asyncHandle,
-          info->returnConverter);
+          info->getReturnConverter());
 
         // Kwargs will be dec-refed after the asyncReturn is used
         kwargs[THREAD_CONTEXT_TAG] = py::cast(asyncReturn,
@@ -383,7 +383,7 @@ namespace xloil
 
       void start(IRtdPublish& publish) override
       {
-        _returnObj.reset(new RtdReturn(publish, _info->returnConverter, _caller.c_str()));
+        _returnObj.reset(new RtdReturn(publish, _info->getReturnConverter(), _caller.c_str()));
         py::gil_scoped_acquire gilAcquired;
 
         PyErr_Clear();
