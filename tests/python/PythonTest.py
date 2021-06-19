@@ -386,6 +386,24 @@ def arg_doubler(x):
 def pyTestCustomConv(x: arg_doubler):
     return x
 
+@xlo.converter(list)
+def date_row(x):
+    if isinstance(x, float):
+        return [xlo.from_excel_date(x)]
+    elif isinstance(x, xlo.ExcelArray):
+        r = x.nrows
+        c = x.ncols
+        dates = []
+        for i in range(r):
+            for j in range(c):
+                dates.append(xlo.from_excel_date(x[i, j]))
+        return dates
+    return None
+
+@xlo.func
+def pyTestDateConv(dates: date_row):
+    return [d + dt.timedelta(days=1) for d in dates]
+    
 #-------------------
 # Pandas Dataframes
 #-------------------
@@ -502,6 +520,16 @@ def event_stopPrinting(wbName, cancel):
 xlo.event.AfterCalculate += event_writeTimeToA1
 xlo.event.WorkbookBeforePrint += event_stopPrinting
 
+#
+# xlOil will attempt to call a function with this name when the module is unloaded,
+# for example, because the linked workbook is closed. xlOil explictly clears the 
+# module's __dict__ before unload, so any globals, like _ribbon above will be 
+# deleted.
+#
+def _xloil_unload():
+    pass
+
+
 #----------------------
 # GUI: Creating Ribbons
 #----------------------
@@ -555,16 +583,75 @@ _ribbon = xlo.create_ribbon(r'''
         'buttonImg': button_image
     })
     
+#-----------------------------------------
+# Images: returning images from functions
+#-----------------------------------------
 
-#
-# xlOil will attempt to call a function with this name when the module is unloaded,
-# for example, because the linked workbook is closed. xlOil explictly clears the 
-# module's __dict__ before unload, so any globals, like _ribbon above will be 
-# deleted.
-#
-def _xloil_unload():
+try:
+
+    # This import defines a return converter which allows us to return a PIL image
+    import xloil.pillow
+    import os
+    from PIL import Image
+    
+    # The image return converter is registered, so we just need to return the PIL
+    # image from an xlo.func. Returning an image requires macro=True permissions
+    @xlo.func(macro=True)
+    def pyTestPic():
+        im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+        return im
+    
+    
+    # Normally we use a return converter as an annotation like `-> ReturnImage` but 
+    # if we want to dynamically pass arguments to the converter we can call it 
+    # directly as below
+    @xlo.func(macro=True)
+    def pyTestPicSized(width:float, height:float, fitCell: bool=False):
+        from PIL import Image
+        import os
+        im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+        if fitCell:
+            return xlo.pillow.ReturnImage(size="cell")(im)
+        else:
+            return xlo.pillow.ReturnImage((width, height))(im)
+        
+    #xlo.scan_module("xloil.matplotlib")
+
+except ImportError:
     pass
 
+#-----------------------------------------
+# Plots: returning matplotlib figures from functions
+#-----------------------------------------
+try:
+
+    # This import defines a return converter for a matplotlib figure
+    # It also imports matplotlib like this:
+    #
+    #   import matplotlib
+    #   matplotlib.use('Agg')
+    #   from matplotlib import pyplot
+    # 
+    # The order is important: the matplotlib backend must be switched
+    # from the Qt default before pyplot is imported
+    #
+    
+    import xloil.matplotlib
+    from matplotlib import pyplot
+    
+    @xlo.func(macro=True)
+    def pyTestPlot(x, y, width:float=4, height:float=4, **kwargs):
+        fig = pyplot.figure()
+        fig.set_size_inches(width, height)
+        ax = fig.add_subplot(111)
+        ax.plot(x, y, **kwargs)
+        return fig
+        
+except ImportError:
+    pass
+#-----------------------------------------
+# Debugging
+#-----------------------------------------
 
 import xloil.debug
 #xloil.debug.exception_debug('pdb')
@@ -583,22 +670,3 @@ def pyWbPath():
     full_path = xlo.app().Workbooks(caller.workbook).FullName
     
     return full_path.replace(caller.workbook,"")
-
-    
-@xlo.converter(list)
-def date_row(x):
-    if isinstance(x, float):
-        return [xlo.from_excel_date(x)]
-    elif isinstance(x, xlo.ExcelArray):
-        r = x.nrows
-        c = x.ncols
-        dates = []
-        for i in range(r):
-            for j in range(c):
-                dates.append(xlo.from_excel_date(x[i, j]))
-        return dates
-    return None
-
-@xlo.func
-def pyTestDateConv(dates: date_row):
-    return [d + dt.timedelta(days=1) for d in dates]

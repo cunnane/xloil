@@ -9,10 +9,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="package\README.md">
+    <None Include="package\setup.py" />
+    <None Include="package\xloil\matplotlib.py">
       <Filter>package</Filter>
     </None>
-    <None Include="package\setup.py" />
+    <None Include="package\xloil\pillow.py">
+      <Filter>package</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\__init__.py">
@@ -40,6 +43,9 @@
       <Filter>package</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="package\xloil\rtd.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\type_converters.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
   </ItemGroup>

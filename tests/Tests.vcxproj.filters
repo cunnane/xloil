@@ -11,5 +11,6 @@
     <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestCache.cpp" />
     <ClCompile Include="TestSimpleAllocator.cpp" />
+    <ClCompile Include="TestTempFile.cpp" />
   </ItemGroup>
 </Project>

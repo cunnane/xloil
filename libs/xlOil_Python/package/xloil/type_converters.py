@@ -43,6 +43,13 @@ def _make_argconverter(base_type, impl, allow_range=False):
     class ArgConverter(base_type):
         _xloil_converter = impl
         _xloil_allow_range = allow_range
+
+        def __new__(cls, *args, **kwargs):
+            """
+            Allows return type converters to be "called" in the expected way.
+            """
+            return cls._xloil_converter.get_handler()(*args, **kwargs)
+
     return ArgConverter
 
 def is_type_converter(obj):
@@ -181,7 +188,8 @@ class _ReturnConverters:
         Registers a return converter for a given single or iterable of types.
         """
         internal_converter = unpack_type_converter(converter)[0].get_handler()
-        xloil_core.log(f"Added return converter {internal_converter.__name__} for types {types}", level='info')
+        name = getattr(internal_converter, "__name__", type(internal_converter).__name__)
+        xloil_core.log(f"Added return converter {name} for types {types}", level='info')
         try:
             for t in types:
                 self._converters[t] = internal_converter # TODO: warn log on overwrite
@@ -270,7 +278,7 @@ def returner(types=None, register=False):
 
     def decorate(impl):
 
-        # Mulitple types can be specified, we just take the first one: even
+        # Multiple types can be specified, we just take the first one: even
         # this is unecessary, since xloil.funcs are never called from python
         # code (they can be, but it's unwise) their return type hints shouldn't 
         # be used by type checkers 

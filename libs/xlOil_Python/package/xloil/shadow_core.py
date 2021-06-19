@@ -350,10 +350,10 @@ class Cache:
         """
         pass
 
-    def get(self, ref:str):
+    def get(self, ref:str, default=None):
         """
         Fetches an object from the cache given a reference string.
-        Returns None if not found
+        Returns `default` if not found
         """
         pass
 
@@ -635,8 +635,40 @@ class Caller:
 
 def from_excel_date(value):
     """
-    Tries to the convert a given number to a dt.date or dt.datetime assuming it as an 
-    Excel date serial number.  Strings are parsed using the current default conversion 
-    settings. If dt.datetime is provided, it is simply returned as is.
+    Tries to the convert a given number to a dt.date or dt.datetime assuming it is an 
+    Excel date serial number.  Strings are parsed using the current date conversion 
+    settings. If dt.datetime is provided, it is simply returned as is.  Raises ValueError
+    if conversion is not possible.
+    """
+    pass
+
+def insert_cell_image(
+    writer, 
+    size=None, 
+    pos=(0, 0), 
+    origin:str=None, 
+    compress:bool=True):
+    """
+    Inserts an image associated with the calling cell. A second call to this function
+    removes any image previously inserted from the same calling cell.
+
+    Parameters
+    ----------
+
+    writer: 
+        a one-arg function which writes the image to a provided filename. The file
+        format must be one that Excel can open.
+    size:  
+        * A tuple (width, height) in points. 
+        * "cell" to fit to the caller size
+        * "img" or None to keep the original image size
+    pos:
+        A tuple (X, Y) in points. The origin is determined by the `origin` argument
+    origin:
+        * "top" or None: the top left of the calling range
+        * "sheet": the top left of the sheet
+        * "bottom": the bottom right of the calling range
+    compress:
+        if True, compresses the resulting image before storing in the sheet
     """
     pass

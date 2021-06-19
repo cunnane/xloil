@@ -1,6 +1,7 @@
 #pragma once
-
 #include <string>
+
+typedef void* HANDLE;
 
 namespace xloil
 {
@@ -67,4 +68,9 @@ namespace xloil
   /// keys will be replaced with an empty string
   /// </summary>
   std::wstring expandWindowsRegistryStrings(const std::wstring& str);
+
+  namespace Helpers
+  {
+    std::pair<HANDLE, std::wstring> makeTempFile();
+  }
 }

@@ -24,7 +24,8 @@ if importlib.util.find_spec("xloil_core") is not None:
         create_ribbon, RibbonUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
-        from_excel_date)
+        from_excel_date,
+        insert_cell_image)
 
 else:
     from .shadow_core import *

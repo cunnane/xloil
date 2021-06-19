@@ -1,6 +1,7 @@
 #include "Environment.h"
 #include <xloil/StringUtils.h>
 #include <xloil/WindowsSlim.h>
+#include "Exception.h"
 #include <regex>
 #include <cassert>
 
@@ -180,6 +181,38 @@ namespace xloil
           lpMsgBuf, LocalFree);
 
         return wstring(lpMsgBuf, size);
+      }
+
+      std::pair<HANDLE, std::wstring> makeTempFile()
+      {
+        wchar_t szTempFileName[MAX_PATH];
+        wchar_t lpTempPathBuffer[MAX_PATH];
+
+        //  Gets the temp path env string (no guarantee it's a valid path).
+        auto retVal = GetTempPath(MAX_PATH, lpTempPathBuffer);
+        if (retVal > MAX_PATH || retVal == 0)
+          throw Exception("GetTempPath failed");
+
+        retVal = GetTempFileName(lpTempPathBuffer,
+          L"XLO", // prefix 
+          0,      // use system time for uniquifier
+          szTempFileName);
+        if (retVal == 0)
+          throw Exception("GetTempFileName failed");
+
+        //  Creates the new file to write to for the upper-case version.
+        auto handle = CreateFile((LPTSTR)szTempFileName, // file name 
+          GENERIC_READ,        // open for write 
+          FILE_SHARE_READ | FILE_SHARE_WRITE,     // share everything
+          NULL,                 // default security 
+          CREATE_ALWAYS,        // overwrite existing
+          FILE_ATTRIBUTE_TEMPORARY, //| FILE_FLAG_DELETE_ON_CLOSE,
+          NULL);                // no template 
+
+        if (handle == INVALID_HANDLE_VALUE)
+          throw Exception("CreateFile failed");
+
+        return std::make_pair(handle, wstring(szTempFileName));
       }
     }
   }

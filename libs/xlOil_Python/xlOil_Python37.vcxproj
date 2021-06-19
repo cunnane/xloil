@@ -73,12 +73,13 @@
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Dictionary.cpp" />
     <ClCompile Include="ExcelErrorType.cpp" />
+    <ClCompile Include="PyCOM.cpp">
+	  <MultiProcessorCompilation>false</MultiProcessorCompilation>
+    </ClCompile>
     <ClCompile Include="PyExcelRange.cpp" />
     <ClCompile Include="PyImage.cpp" />
     <ClCompile Include="PyRibbon.cpp" />
-    <ClCompile Include="ReadSource.cpp">
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-    </ClCompile>
+    <ClCompile Include="ReadSource.cpp"/>
     <ClCompile Include="FunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PyCoreModule.cpp" />
@@ -94,6 +95,7 @@
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="Cache.h" />
     <ClInclude Include="ExcelErrorType.h" />
+    <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="ReadSource.h" />
     <ClInclude Include="Main.h" />

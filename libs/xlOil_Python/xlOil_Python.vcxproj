@@ -102,6 +102,14 @@
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\matplotlib.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\pillow.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

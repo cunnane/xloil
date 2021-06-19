@@ -1,6 +1,6 @@
 #include "ReadSource.h"
 
-#include <xlOil/ExcelTypeLib.h>
+#include "PyCOM.h"
 #include "PyHelpers.h"
 #include "FunctionRegister.h"
 #include "Main.h"
@@ -90,7 +90,7 @@ namespace xloil
         auto fileExtn = wcsrchr(wbName, L'.');
         auto modulePath = fmt::format(_workbookPattern,
           wbPath,
-          fileExtn ? wstring(wbName, fileExtn) : wstring(wbName));
+          fileExtn ? wstring(wbName, fileExtn).c_str() : wbName);
 
         std::error_code err;
         if (!fs::exists(modulePath, err))
@@ -113,17 +113,9 @@ namespace xloil
 
     void checkWorkbooksOnOpen(const WorkbookOpenHandler& handler)
     {
-      try
-      {
-        auto workbooks = excelApp().Workbooks;
-        auto nWorkbooks = workbooks->Count;
-        for (auto i = 0; i < nWorkbooks; ++i)
-        {
-          auto wb = workbooks->GetItem(_variant_t(i + 1));
-          handler(wb->Path, wb->Name);
-        }
-      }
-      XLO_RETHROW_COM_ERROR;
+      auto workbooks = listWorkbooksWithPath();
+      for (auto[name, path]: workbooks)
+        handler(path.c_str(), name.c_str());
     }
 
     void createWorkbookOpenHandler(const wchar_t* starredPattern)
