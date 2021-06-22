@@ -60,6 +60,8 @@ namespace xloil
       {
         using PyFromExcelImpl::operator();
         PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
+        PyObject* operator()(int x) const    { return operator()(double(x)); }
+        PyObject* operator()(bool x) const   { return operator()(double(x)); }
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
@@ -70,6 +72,8 @@ namespace xloil
         {
           if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
         }
+        PyObject* operator()(int x) const     { return operator()(bool(x)); }
+        PyObject* operator()(double x) const  { return operator()(x != 0); }
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
@@ -92,7 +96,8 @@ namespace xloil
       struct PyFromInt : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
-        PyObject* operator()(int x) const { return PyLong_FromLong(long(x)); }
+        PyObject* operator()(int x) const  { return PyLong_FromLong(long(x)); }
+        PyObject* operator()(bool x) const { return operator()(int(x)); }
         PyObject* operator()(double x) const
         {
           long i;
@@ -100,6 +105,7 @@ namespace xloil
             return PyLong_FromLong(i);
           return nullptr;
         }
+        
         constexpr wchar_t* failMessage() const { return L"Expected int"; }
       };
 
@@ -199,6 +205,7 @@ namespace xloil
           return defaultVal;
         }
 
+        // Why return null and not throw here?
         auto* retVal = visitExcelObj(xl, _impl);
 
         if (!retVal)
@@ -291,7 +298,7 @@ namespace xloil
           XLO_THROW("Expected python str, got '{0}'", pyToStr(obj));
 
         const auto len = (char16_t)std::min<size_t>(
-          USHRT_MAX, PyUnicode_GetLength((PyObject*)obj));
+          USHRT_MAX, PyUnicode_GET_LENGTH((PyObject*)obj));
         PString<wchar_t, TAlloc> pstr(len, allocator);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ExcelObj(std::move(pstr));
