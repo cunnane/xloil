@@ -58,7 +58,8 @@ namespace xloil
       PyObject* operator()(int x) const 
       {
         int day, month, year;
-        excelSerialDateToYMD(x, year, month, day);
+        if (!excelSerialDateToYMD(x, year, month, day))
+          throw py::value_error("Number not a valid Excel serial date");
         return PyDate_FromDate(year, month, day);
       }
       PyObject* operator()(double x) const
@@ -88,7 +89,8 @@ namespace xloil
       PyObject* operator()(double x) const
       {
         int day, month, year, hours, mins, secs, usecs;
-        excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
+        if (!excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs))
+          throw py::value_error("Number not a valid Excel serial date");
         return PyDateTime_FromDateAndTime(year, month, day, hours, mins, secs, usecs);
       }
 

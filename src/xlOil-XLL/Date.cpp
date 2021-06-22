@@ -52,7 +52,7 @@ namespace xloil
     l = int(j / 11);
     nMonth = j + 2 - (12 * l);
     nYear = 100 * (n - 49) + i + l;
-    return false;
+    return true;
   }
 
  
@@ -82,8 +82,8 @@ namespace xloil
     }
     else
       nHours = nMins = nSecs = uSecs = 0;
-    excelSerialDateToYMD(int(intpart), nYear, nMonth, nDay);
-    return true;
+
+    return excelSerialDateToYMD(int(intpart), nYear, nMonth, nDay);
   }
 
   /// Verbatim from https://www.codeproject.com/Articles/2750/Excel-Serial-Date-to-Day-Month-Year-and-Vice-Versa
