@@ -12,7 +12,7 @@ if importlib.util.find_spec("xloil_core") is not None:
         CannotConvert
     )
 else:
-    from .shadow_core import (_CustomReturn, _CustomConverter)
+    pass
 
 
 """

@@ -10,10 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="package\setup.py" />
-    <None Include="package\xloil\matplotlib.py">
-      <Filter>package</Filter>
-    </None>
-    <None Include="package\xloil\pillow.py">
+    <None Include="package\xloil\importer.py">
       <Filter>package</Filter>
     </None>
   </ItemGroup>
@@ -48,5 +45,7 @@
     <CopyFileToFolders Include="package\xloil\type_converters.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\matplotlib.py" />
+    <CopyFileToFolders Include="package\xloil\pillow.py" />
   </ItemGroup>
 </Project>
