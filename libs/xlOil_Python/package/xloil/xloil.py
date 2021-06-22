@@ -9,6 +9,8 @@ import sys
 import traceback
 from .type_converters import *
 
+## TODO: put this stuff in __init__!
+
 #
 # If the xloil_core module can be found, we are being called from an xlOil
 # embedded interpreter, so we go ahead and import the module. Otherwise we
@@ -36,8 +38,12 @@ else:
 Tag used to mark functions to register with Excel. It is added 
 by the xloil.func decorator to the target func's __dict__
 """
-_META_TAG = "_xloil_func_"
+_FUNC_META_TAG = "_xloil_func_"
+_LANDMARK_TAG = "_xloil_hasfuncs_"
 
+def _insert_landmark(obj):
+    module = inspect.getmodule(obj)
+    setattr(module, _LANDMARK_TAG, True)
 
 class Arg:
     """
@@ -186,7 +192,7 @@ class FuncDescription:
                     converter = arg_converters.get_converter(arg_type)
                     if converter is None:
                         converter = xloil_core.Read_Cache()
-            log(f"Func {info.name}, arg {arg_info.name} using converter {type(converter)}", level="trace")
+            log(f"Func '{info.name}', arg '{arg_info.name}' using converter {type(converter)}", level="trace")
             if arg_info.has_default:
                 this_arg.optional = True
                 holder.set_arg_type_defaulted(i, converter, arg_info.default)
@@ -229,17 +235,13 @@ class FuncDescription:
         return holder
 
 
-def _get_meta(fn):
-    return fn.__dict__.get(_META_TAG, None)
-
-
 def _create_event_loop():
     import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     return loop
 
-def async_wrapper(fn):
+def _async_wrapper(fn):
     """
     Wraps an async function or generator with a function which runs that generator on the thread's
     event loop. The wrapped function requires an 'xloil_thread_context' argument which provides a 
@@ -380,7 +382,7 @@ def func(fn=None,
 
         _is_async = is_async
         if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
-            fn = async_wrapper(fn)
+            fn = _async_wrapper(fn)
             _is_async = True
 
         descr = FuncDescription(fn)
@@ -412,12 +414,23 @@ def func(fn=None,
         
         descr.is_async = _is_async
 
-        fn.__dict__[_META_TAG] = descr
+        # Add the xlOil tags to the function and module
+        setattr(fn, _FUNC_META_TAG, descr)
+        _insert_landmark(fn)
+
         return fn
 
     return decorate if fn is None else decorate(fn)
 
-_excel_application_com_obj = None
+_excel_application_obj = None
+
+import comtypes
+import comtypes.client
+import ctypes
+def _get_excel_application_obj():
+    clsid = comtypes.GUID.from_progid("Excel.Application")
+    obj = ctypes.POINTER(comtypes.IUnknown)(xloil_core.application())
+    return comtypes.client._manage(obj, clsid, None)
 
 # TODO: Option to use win32com instead of comtypes?
 def app():
@@ -445,15 +458,10 @@ def app():
                 return xlo.app().ActiveSheet.Name
 
     """
-    global _excel_application_com_obj
-    if _excel_application_com_obj is None:
-        import comtypes.client
-        import comtypes
-        import ctypes
-        clsid = comtypes.GUID.from_progid("Excel.Application")
-        obj = ctypes.POINTER(comtypes.IUnknown)(xloil_core.application())
-        _excel_application_com_obj = comtypes.client._manage(obj, clsid, None)
-    return _excel_application_com_obj
+    global _excel_application_obj
+    if _excel_application_obj is None:
+        _excel_application_obj = _get_excel_application_obj()
+    return _excel_application_obj
      
 
 
@@ -488,63 +496,104 @@ class _ModuleFinder(importlib.abc.MetaPathFinder):
         return None
 
 
+# We maintain a _ModuleFinder on sys.meta_path to catch any reloads of our non-standard 
+# loaded modules
 _module_finder = _ModuleFinder()
 sys.meta_path.append(_module_finder)
 
-## TODO: hook import and recurse looking for xloil funcs
-## TODO: rename to maybe xl_import
-def scan_module(module, workbook_name=None):
+
+def scan_module(module):
     """
         Parses a specified module to look for functions with with the xloil.func 
-        decorator and register them. Does not search inside second level imports.
-
-        The argument can be a module object, module name or path string. The module 
-        is first imported if it has not already been loaded.
- 
-        Called by the xlOil C layer to import modules specified in the config.
+        decorator and register them. 
     """
 
-    with EventsPaused() as paused:
+    # We quickly discard modules which do not contain xloil declarations 
+    if getattr(module, _LANDMARK_TAG, None) is None:
+        return 
 
-        if type(module) is str:
-            mod_directory, filename = os.path.split(module)
-            filename = filename.replace('.py', '')
+    # If events are not paused this function can be entered multiply for the same module
+    with EventsPaused() as events_paused:
 
-            # avoid name collisions when loading workbook modules
-            mod_name = filename if workbook_name is None else "xloil_wb_" + filename
+        if getattr(module, _LANDMARK_TAG) is False:
+            return
 
-            if len(mod_directory) > 0 or workbook_name is not None:
-                _module_finder.path_map[mod_name] = module
-   
-            handle = importlib.import_module(mod_name)
+        log(f"Found xloil functions in {module}", level="debug")
 
-            # Allows 'local' modules to know which workbook they link to
-            if workbook_name is not None:
-                handle._xloil_workbook = workbook_name
-                handle._xloil_workbook_path = os.path.join(mod_directory, workbook_name)
-
-        elif (inspect.ismodule(module) and hasattr(module, '__file__')) or module in sys.modules:
-            # We can only reload modules with a __file__ attribute, e.g. not
-            # xloil_core
-            handle = importlib.reload(module)
-        else:
-            raise Exception(f"scan_module: could not process {str(module)}")
-
-    
         # Look for functions with an xloil decorator (_META_TAG) and create
         # a function holder object for each of them
-        xloil_funcs = inspect.getmembers(handle, 
-            lambda obj: inspect.isfunction(obj) and hasattr(obj, _META_TAG))
+        xloil_funcs = inspect.getmembers(module, 
+            lambda obj: inspect.isfunction(obj) and hasattr(obj, _FUNC_META_TAG))
 
         to_register = []
         for f_name, f in xloil_funcs:
             import traceback
             try:
-                to_register.append(_get_meta(f).create_holder())
+                to_register.append(getattr(f, _FUNC_META_TAG).create_holder())
             except Exception as e:
                 log(f"Register failed for {f_name}: {traceback.format_exc()}", level='error')
 
         if any(to_register):
-            xloil_core.register_functions(handle, to_register)
+            xloil_core.register_functions(module, to_register)
 
-        return handle
+        # Unset flag so we don't try to reregister functions
+        module.__dict__[_LANDMARK_TAG] = False
+
+
+def import_from_file(path, workbook_name=None):
+
+    """
+    Imports the specifed py file as a module without adding its path to sys.modules.
+
+    Optionally also adds xlOil linked workbook name information.
+    """
+
+    directory, filename = os.path.split(path)
+    filename = filename.replace('.py', '')
+
+    # avoid name collisions when loading workbook modules
+    module_name = filename if workbook_name is None else "xloil_wb_" + filename
+
+    if len(directory) > 0 or workbook_name is not None:
+        _module_finder.path_map[module_name] = path
+   
+    module = importlib.import_module(module_name)
+
+    # Allows 'local' modules to know which workbook they link to
+    if workbook_name is not None:
+        module._xloil_workbook = workbook_name
+        module._xloil_workbook_path = os.path.join(directory, workbook_name)
+
+    # Calling import_module will bypass our import hook, so scan_module explicitly
+    scan_module(module)
+
+    return module
+
+
+#
+# Hook 'import' and importlib.reload
+#
+import builtins
+_real_builtin_import = builtins.__import__
+
+def _import_hook(name, *args, **kwargs):
+
+    module = _real_builtin_import(name, *args, **kwargs)
+
+    # If name is of the form "foo.bar", module will point to the top level 
+    # package, not the module we want to scan
+    real_module = sys.modules.get(name, module)
+    scan_module(real_module)
+
+    return module
+
+builtins.__import__ = _import_hook
+
+_real_importlib_reload =  importlib.reload
+
+def _reload_hook(*args, **kwargs):
+    module = _real_importlib_reload(*args, **kwargs)
+    scan_module(module)
+    return module
+
+importlib.reload = _reload_hook

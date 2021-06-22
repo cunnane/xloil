@@ -285,6 +285,10 @@ namespace xloil
       }
     };
 
+    //TODO: Refactor Python FileSource
+    // It might be better for lifetime management if the whole FileSource interface was exposed
+    // via the core, then a reference to the FileSource can be held and closed by the module 
+    // itself
     class RegisteredModule : public WatchedSource
     {
     public:
@@ -328,6 +332,7 @@ namespace xloil
       {
         // Note we don't increment the ref-counter for the module to 
         // simplify our destructor
+        // TODO: this is not safe!
         _module = pyModule;
         vector<shared_ptr<const WorksheetFuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
@@ -382,11 +387,17 @@ namespace xloil
 
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
-        scanModule(
-          _module != Py_None
-            ? PyBorrow<py::module>(_module)
-            : py::wstr(sourcePath()),
-          linkedWorkbook().c_str());
+        py::object moduleHandle;
+        if (_module != Py_None)
+        {
+          moduleHandle = PyBorrow<py::object>(_module);
+          moduleHandle.cast<py::module>().reload();
+        }
+        else
+        {
+          moduleHandle = loadModuleFromFile(sourcePath().c_str(), linkedWorkbook().c_str());
+        }
+        scanModule(moduleHandle);
 
         // Set the addin context back. TODO: Not exception safe clearly.
         theCurrentContext = currentContext;
@@ -417,6 +428,7 @@ namespace xloil
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
       // Called from python so we have the GIL
+      // The "null" module handle is used by jupyter
       const auto modulePath = !moduleHandle.is_none()
         ? moduleHandle.attr("__file__").cast<wstring>()
         : L"";

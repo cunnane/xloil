@@ -1,5 +1,6 @@
 import xloil as xlo
 import sys
+import importlib
 
 @xlo.func(macro=True)
 def xloPyLoad(ModuleName:str = ""):
@@ -22,7 +23,12 @@ def xloPyLoad(ModuleName:str = ""):
         if wb_name in sys.modules:
             ModuleName = wb_name
 
-    return str(xlo.scan_module(ModuleName, workbook_name))
+    module = importlib.reload(sys.modules[ModuleName]) \
+        if ModuleName in sys.modules else \
+            xlo.import_from_file(ModuleName, workbook_name)
+    
+    return str(module)
+
 
 @xlo.func(macro=True,
           args={

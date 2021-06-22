@@ -20,24 +20,18 @@ namespace xloil
 {
   namespace Python
   {
-    void scanModule(const py::object& mod, const wchar_t* workbookName)
+    void scanModule(const py::object& mod)
     {
-      py::gil_scoped_acquire get_gil;
+      py::gil_scoped_acquire getGil;
 
       const auto xloilModule = py::module::import("xloil");
       const auto scanFunc = xloilModule.attr("scan_module").cast<py::function>();
-
-      // If you don't cast the wstr to object, you get none implicitly 
-      // converted to wstr. Principle of least astonishment violated.
-      const auto wbName = workbookName 
-        ? (py::object)py::wstr(workbookName) 
-        : py::none();
 
       const auto modName = (string)py::str(mod);
       try
       {
         XLO_INFO("Scanning module {0}", modName);
-        scanFunc(mod, wbName);
+        scanFunc(mod);
       }
       catch (const std::exception& e)
       {
@@ -46,7 +40,14 @@ namespace xloil
           modName, e.what(), pyPath);
       }
     }
-    
+    py::object loadModuleFromFile(const wchar_t* filepath, const wchar_t* linkedWorkbook)
+    {
+      py::gil_scoped_acquire getGil;
+      // TODO: make this into a global
+      const auto xloilModule = py::module::import("xloil");
+      return xloilModule.attr("import_from_file").cast<py::function>()(py::wstr(filepath),
+        linkedWorkbook ? py::wstr(linkedWorkbook) : py::str());
+    }
     bool unloadModule(const py::module& module)
     {
       py::gil_scoped_acquire get_gil;
@@ -102,7 +103,8 @@ namespace xloil
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
           FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
-          scanModule(py::wstr(modulePath), wbName);
+          auto loaded = loadModuleFromFile(modulePath.c_str(), wbName);
+          scanModule(loaded);
         }
         catch (const std::exception& e)
         {

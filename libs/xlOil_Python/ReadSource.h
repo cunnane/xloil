@@ -11,9 +11,9 @@ namespace xloil
     /// and classes to register. It can be called repeatedly on the same 
     /// module.
     /// </summary>
-    void scanModule(
-      const pybind11::object& mod,
-      const wchar_t* workbookName = nullptr);
+    void scanModule(const pybind11::object& mod);
+
+    pybind11::object loadModuleFromFile(const wchar_t* filepath, const wchar_t* linkedWorkbook = nullptr);
 
     /// <summary>
     /// 'Hard' unloads a python module: clears its __dict__ and removes it
