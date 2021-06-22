@@ -80,18 +80,22 @@ namespace xloil
     {
       std::function<void()> _func;
       std::shared_ptr<std::promise<void>> _promise;
-      bool _usesXllApi;
-      int _nRetries; 
+      int _flags;
+      int _nComRetries;
       unsigned _waitTime;
-      bool _isAPC;
+      
 
-      QueueItem(const std::function<void()>& func, std::shared_ptr<std::promise<void>> promise, bool usesXllApi, int nRetries, unsigned waitTime, bool isAPC)
+      QueueItem(
+        const std::function<void()>& func, 
+        std::shared_ptr<std::promise<void>> promise,
+        int flags,
+        int nComRetries, 
+        unsigned waitTime)
         : _func(func)
         , _promise(promise)
-        , _usesXllApi(usesXllApi)
-        , _nRetries(nRetries)
+        , _flags(flags)
+        , _nComRetries(nComRetries)
         , _waitTime(waitTime)
-        , _isAPC(isAPC)
       {}
 
       void operator()(Messenger& messenger);
@@ -117,10 +121,10 @@ namespace xloil
         PostMessage(_hiddenWindow, WINDOW_MESSAGE, (WPARAM)this, 0);
     }
 
-    void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs)
+    void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs) noexcept
     {
       scoped_lock lock(_lock);
-      _timerQueue[item.get()] = item;
+      _timerQueue[item.get()] = item; // is this noexcept?
       SetTimer(_hiddenWindow, (UINT_PTR)item.get(), millisecs, TimerCallback);
     }
 
@@ -203,22 +207,27 @@ namespace xloil
 
   void Messenger::QueueItem::operator()(Messenger& messenger)
   {
-    try
+    if (_nComRetries > 0 && (_flags & ExcelRunQueue::COM_API) != 0 && !COM::isComApiAvailable())
     {
-      if (_usesXllApi)
-        runInXllContext(_func);
-      else
-        _func();
-    }
-    catch (const ComBusyException& e)
-    {
-      if (--_nRetries < 0)
-        _promise->set_exception(make_exception_ptr(e));
-      else 
+      try
       {
+        --_nComRetries;
         //TODO: if _isAPC, then use SetWaitableTimer
         messenger.queueWindowTimer(shared_from_this(), _waitTime);
       }
+      catch (...)
+      {
+        _promise->set_exception(make_exception_ptr(std::runtime_error("Unknown exception")));
+      }
+      return;
+    }
+   
+    try
+    {
+      if ((_flags & ExcelRunQueue::XLL_API) != 0)
+        runInXllContext(_func);
+      else
+        _func();
     }
     catch (const std::exception& e) // What about SEH?
     {
@@ -259,21 +268,28 @@ namespace xloil
           promise->set_value();
       },
       promise, 
-      (flags & (int)ExcelRunQueue::XLL_API), 
+      flags,
       nRetries,
-      waitBetweenRetries,
-      (flags & (int)ExcelRunQueue::APC));
+      waitBetweenRetries);
 
     auto& messenger = Messenger::instance();
-    if (waitBeforeCall > 0)
-      messenger.queueWindowTimer(queueItem, waitBeforeCall);
-    else if ((flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread())
-      (*queueItem)(messenger);
-    else if (queueItem->_isAPC)
-      messenger.QueueAPC(queueItem);
-    else
-      messenger.QueueWindow(queueItem);
 
+    // Try to run immediately if possible
+    if (waitBeforeCall == 0 && (flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread())
+      (*queueItem)(messenger);
+    else
+    {
+      // Otherwise for XLL API usage we also need the COM API to switch to XLL context
+      if ((flags & ExcelRunQueue::XLL_API) != 0)
+        queueItem->_flags |= ExcelRunQueue::COM_API;
+
+      if (waitBeforeCall > 0)
+        messenger.queueWindowTimer(queueItem, waitBeforeCall);
+      else if ((flags & ExcelRunQueue::APC) != 0)
+        messenger.QueueAPC(queueItem);
+      else
+        messenger.QueueWindow(queueItem);
+    }
     return promise->get_future();
   }
 

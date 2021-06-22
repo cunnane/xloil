@@ -114,6 +114,17 @@ namespace xloil {
       theComConnector.reset();
     }
 
+    bool isComApiAvailable() noexcept
+    {
+      if (!theComConnector)
+        return false;
+      
+      // Do some random COM thing - is this the fastest thing?
+      VARIANT_BOOL temp;
+      auto result = theComConnector->excelApp()->get_EnableEvents(&temp);
+      return (SUCCEEDED(result));
+    }
+
     Excel::_Application& excelApp()
     {
       if (!theComConnector)

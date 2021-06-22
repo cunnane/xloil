@@ -19,6 +19,8 @@ namespace xloil
     void connectCom();
     void disconnectCom();
 
+    bool isComApiAvailable() noexcept;
+
     Excel::_Application& excelApp();
 
     /// <summary>
