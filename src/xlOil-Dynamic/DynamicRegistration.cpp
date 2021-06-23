@@ -166,7 +166,7 @@ namespace xloil
       return registerFuncRaw(info(), entryPoint.c_str(), registry.theCoreDllName);
     }
 
-    virtual bool reregister(const std::shared_ptr<const WorksheetFuncSpec>& other)
+    virtual bool reregister(const std::shared_ptr<const WorksheetFuncSpec>& other) override
     {
       auto* thisType = dynamic_cast<const DynamicSpec*>(other.get());
       if (!thisType)

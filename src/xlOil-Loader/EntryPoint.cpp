@@ -43,6 +43,7 @@ FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
   {
   case dliFailGetProc:
     msg = formatStr("Unable to find procedure: %s in %s", pdli->dlp.szProcName, pdli->szDll);
+    break;
   default:
     msg = formatStr("Unable to load library: %s", pdli->szDll);
   }

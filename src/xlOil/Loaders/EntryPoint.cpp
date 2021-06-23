@@ -59,6 +59,7 @@ namespace xloil
         retVal = 1;
       }
 
+      // If we are not the core xll, load our plugins
       if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
       {
         auto addinContext = openXll(xllPath);

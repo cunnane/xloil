@@ -15,8 +15,10 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-#include <oleacc.h> // must include this before type imports
-#include <comdef.h>
+#include <windows.h>
+
+// Disable "prefer 'enum class' over 'enum' (Enum.3)" in typelibs
+#pragma warning(disable:26812)
 
 // MSO.dll
 #import "libid:2DF8D04C-5BFA-101B-BDE5-00AA0044DE52" \
@@ -39,6 +41,9 @@
   rename("RGB", "ExcelRGB" ) \
   rename("CopyFile", "ExcelCopyFile" ) \
   rename("ReplaceText", "ExcelReplaceText" )
+
+// FM20.dll - Microsoft Forms 2.0
+//#import "libid:0D452EE1-E08F-101A-852E-02608C4D0BB4"
 
 extern "C" const GUID __declspec(selectany) LIBID_Excel =
   { 0x00020813,0x0000,0x0000,{0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46} };
@@ -94,6 +99,6 @@ constexpr HRESULT VBA_E_IGNORE = 0x800ac472;
     if (error.Error() == VBA_E_IGNORE) \
       throw xloil::ComBusyException(); \
     else \
-      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage()); \
+      XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
   }
   

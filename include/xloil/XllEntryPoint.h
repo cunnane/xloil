@@ -59,7 +59,8 @@ namespace xloil
         {
           State::initAppContext();
           State::initCoreContext(XllInfo::moduleHandle);
-          // TODO: check if we have registered async functions
+          // Handle this event even if we have no registered async funcions as they could be 
+          // dynamically registered later
           tryCallExcel(msxll::xlEventRegister,
             "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
 
@@ -212,8 +213,9 @@ namespace xloil
 
   namespace detail
   {
-    // This is all really really horrible, the template SFINAE is so
-    // painfully awkward.
+    // This is all really really horrible, the template SFINAE is so awkward.
+    // It checks if the templated type implements a given function, calls it 
+    // if found, otherwise calls the base implementation
 
     template<class T>
     auto callAutoOpen(T*, void*) 

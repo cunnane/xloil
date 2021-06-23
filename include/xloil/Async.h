@@ -38,9 +38,8 @@ namespace xloil
     AsyncHelper(const ExcelObj& asyncHandle)
       : _asyncHandle(asyncHandle)
     {
-      _eventHandler = std::static_pointer_cast<const void>(
-        xloil::Event::CalcCancelled().bind(
-          [self = this]() { self->cancel(); }));
+      _eventHandler = xloil::Event::CalcCancelled().bind(
+          [self = this]() { self->cancel(); });
     }
     virtual ~AsyncHelper()
     {
