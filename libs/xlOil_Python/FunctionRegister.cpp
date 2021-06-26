@@ -37,58 +37,81 @@ namespace xloil
     constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
-    PyFuncInfo::PyFuncInfo(
-      const shared_ptr<FuncInfo>& info,
-      const py::function& func,
-      bool keywordArgs)
+    void setFuncType(PyFuncInfo& info, const string& type, bool isVolatile)
     {
-      this->info = info;
-      this->func = func;
-      hasKeywordArgs = keywordArgs;
-      isLocalFunc = false;
-      isRtdAsync = false;
-      argConverters.resize(info->numArgs() - (hasKeywordArgs ? 1 : 0));
-      if (!info)
-        XLO_THROW("No function info specified in func registration");
+      unsigned base = isVolatile ? FuncInfo::VOLATILE : 0;
+      if (type == "macro")
+      {
+        info.setFuncOptions(FuncInfo::MACRO_TYPE & base);
+      }
+      else if (type == "threaded")
+      {
+        info.setFuncOptions(FuncInfo::THREAD_SAFE & base);
+      }
+      else if (type == "rtd")
+      {
+        info.isRtdAsync = true;
+      }
+      else if (type == "async")
+      {
+        info.isAsync = true;
+      }
+    }
+
+    PyFuncInfo::PyFuncInfo(
+      const std::wstring& name,
+      const pybind11::function& func,
+      const unsigned numArgs,
+      const std::string& features,
+      const std::wstring& help,
+      const std::wstring& category,
+      bool isLocal,
+      bool isVolatile,
+      bool hasKeywordArgs)
+      : _info(new FuncInfo())
+      , _func(func)
+      , _hasKeywordArgs(hasKeywordArgs)
+      , isLocalFunc(isLocal)
+      , isRtdAsync(false)
+    {
+      _info->name = name;
+      _info->help = help;
+      _info->category = category;
+      
       if (!func.ptr() || func.is_none())
-        XLO_THROW(L"No python function specified for {0}", info->name);
+        XLO_THROW(L"No python function specified for {0}", name);
+
+      setFuncType(*this, features, isVolatile);
+
+      _info->args.resize(numArgs + (isAsync ? 1 : 0));
+      if (isAsync)
+        _info->args[0] = FuncArg(nullptr, nullptr, FuncArg::AsyncHandle);
+
+      for (auto i = 0u; i < numArgs; ++i)
+        _args.push_back(PyFuncArg(_info, i + (isAsync ? 1 : 0)));
     }
 
     PyFuncInfo::~PyFuncInfo()
     {
       py::gil_scoped_acquire getGil;
       returnConverter.reset();
-      argConverters.clear();
-      func = py::object();
+      _args.clear();
+      _func = py::object();
     }
 
-    void PyFuncInfo::setArgTypeDefault(size_t i, shared_ptr<IPyFromExcel> converter, py::object defaultVal)
+    void PyFuncInfo::setFuncOptions(unsigned val)
     {
-      if (i >= argConverters.size())
-        throw py::index_error();
-      argConverters[i] = std::make_pair(converter, defaultVal);
+      _info->options = val;
     }
 
-    void PyFuncInfo::setArgType(size_t i, shared_ptr<IPyFromExcel> converter)
-    {
-      if (i >= argConverters.size())
-        throw py::index_error();
-      argConverters[i] = std::make_pair(converter, py::object());
-    }
-
-    void PyFuncInfo::setFuncOptions(int val)
-    {
-      info->options = val;
-    }
-
-    void PyFuncInfo::setReturnConverter(const std::shared_ptr<IPyToExcel>& conv)
+    void PyFuncInfo::setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv)
     {
       returnConverter = conv;
     }
 
     pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
     {
-      auto nArgs = argConverters.size();
+      auto nArgs = _args.size() - (_hasKeywordArgs ? 1u : 0);
       auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
 
       // TODO: is it worth having a enum switch to convert primitive types rather than a v-call
@@ -96,18 +119,18 @@ namespace xloil
       {
         try
         {
-          auto* defaultValue = argConverters[i].second.ptr();
-          auto* pyObj = (*argConverters[i].first)(*xlArgs[i], defaultValue);
+          auto* defaultValue = _args[i].getDefault().ptr();
+          auto* pyObj = (*_args[i].converter)(*xlArgs[i], defaultValue);
           PyTuple_SET_ITEM(pyArgs.ptr(), i, pyObj);
         }
         catch (const std::exception& e)
         {
           // We give the arg number 1-based as it's more natural
           XLO_THROW(L"Error in arg {1} '{0}': {2}",
-            info->args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
+            _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
-      if (hasKeywordArgs)
+      if (_hasKeywordArgs)
       {
         auto kwargs = PySteal<py::dict>(readKeywordArgs(*xlArgs[nArgs]));
         return make_pair(pyArgs, kwargs);
@@ -120,9 +143,9 @@ namespace xloil
     {
       PyObject* ret;
       if (kwargs != Py_None)
-        ret = PyObject_Call(func.ptr(), args, kwargs);
+        ret = PyObject_Call(_func.ptr(), args, kwargs);
       else
-        ret = PyObject_CallObject(func.ptr(), args);
+        ret = PyObject_CallObject(_func.ptr(), args);
       if (!ret)
         throw py::error_already_set();
     }
@@ -136,9 +159,9 @@ namespace xloil
       {
         py::object ret;
         if (kwargs != Py_None)
-          ret = PySteal<py::object>(PyObject_Call(func.ptr(), args, kwargs));
+          ret = PySteal<py::object>(PyObject_Call(_func.ptr(), args, kwargs));
         else
-          ret = PySteal<py::object>(PyObject_CallObject(func.ptr(), args));
+          ret = PySteal<py::object>(PyObject_CallObject(_func.ptr(), args));
 
         result = returnConverter
           ? (*returnConverter)(*ret.ptr())
@@ -173,7 +196,7 @@ namespace xloil
         // It's not safe to return the static object if the function
         // is being multi-threaded by Excel as we can't control when
         // Excel will read the result.
-        if ((info->info->options & FuncInfo::THREAD_SAFE) != 0)
+        if (info->isThreadSafe())
           return returnValue(result);
         else
           return &result;
@@ -194,22 +217,15 @@ namespace xloil
     }
 
 
-    shared_ptr<const WorksheetFuncSpec> createSpec(const shared_ptr<PyFuncInfo>& funcInfo)
+    shared_ptr<const WorksheetFuncSpec> createSpec(const shared_ptr<const PyFuncInfo>& funcInfo)
     {
-      shared_ptr<const PyFuncInfo> cFuncInfo = funcInfo;
- 
+      auto info = funcInfo->info();
       if (funcInfo->isAsync)
-      {
-        funcInfo->info->args.insert(
-          funcInfo->info->args.begin(), FuncArg(nullptr, nullptr, FuncArg::AsyncHandle));
-        return make_shared<DynamicSpec>(funcInfo->info, &pythonAsyncCallback, cFuncInfo);
-      }
+        return make_shared<DynamicSpec>(info, &pythonAsyncCallback, funcInfo);
       else if (funcInfo->isRtdAsync)
-      {
-        return make_shared<DynamicSpec>(funcInfo->info, &pythonRtdCallback, cFuncInfo);
-      }
+        return make_shared<DynamicSpec>(info, &pythonRtdCallback, funcInfo);
       else
-        return make_shared<DynamicSpec>(funcInfo->info, &pythonCallback, cFuncInfo);
+        return make_shared<DynamicSpec>(info, &pythonCallback, funcInfo);
     }
 
     class WatchedSource : public FileSource
@@ -346,7 +362,7 @@ namespace xloil
             nonLocal.push_back(createSpec(f));
           else
           {
-            funcInfo.push_back(f->info);
+            funcInfo.push_back(f->info());
             if (f->isRtdAsync)
             {
               funcs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
@@ -480,47 +496,36 @@ namespace xloil
         else
           x &= ~mask;
       }
+
+      
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<FuncArg>(mod, "FuncArg")
-          .def(py::init<const wchar_t*, const wchar_t*>())
-          .def_readwrite("name", &FuncArg::name)
-          .def_readwrite("help", &FuncArg::help)
+        py::class_<PyFuncArg>(mod, "FuncArg")
+          .def_property("name", &PyFuncArg::getName, &PyFuncArg::setName)
+          .def_property("help", &PyFuncArg::getHelp, &PyFuncArg::setHelp)
+          .def_readwrite("converter", &PyFuncArg::converter)
+          .def_property("default", &PyFuncArg::getDefault, &PyFuncArg::setDefault)
           .def_property("allow_range",
-            [](FuncArg& x) { return (x.type & FuncArg::Range) != 0; },
-            [](FuncArg& x, bool v) 
-        { 
-          bitSet(x.type, FuncArg::Range, v); 
-        }
-          )
-          .def_property("optional",
-            [](FuncArg& x) { return (x.type & FuncArg::Optional) != 0; },
-            [](FuncArg& x, bool v) { bitSet(x.type, FuncArg::Optional, v);  }
-          );
+            [](PyFuncArg& x) { return (x.arg.type & FuncArg::Range) != 0; },
+            [](PyFuncArg& x, bool v)
+            {
+              bitSet(x.arg.type, FuncArg::Range, v);
+            }
+        );
 
-        py::class_<FuncInfo, shared_ptr<FuncInfo>>(mod, "FuncInfo")
-          .def(py::init())
-          .def_readwrite("name", &FuncInfo::name)
-          .def_readwrite("help", &FuncInfo::help)
-          .def_readwrite("category", &FuncInfo::category)
-          .def_readwrite("args", &FuncInfo::args);
-
-        py::enum_<FuncInfo::FuncOpts>(mod, "FuncOpts", py::arithmetic())
-          .value("Macro", FuncInfo::MACRO_TYPE)
-          .value("ThreadSafe", FuncInfo::THREAD_SAFE)
-          .value("Volatile", FuncInfo::VOLATILE)
-          .export_values();
-
-        // TODO: Both these classes have terrible names...can we improve them?
-        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncHolder")
-          .def(py::init<const shared_ptr<FuncInfo>&, const py::function&, bool>())
-          .def("set_arg_type", &PyFuncInfo::setArgType, py::arg("i"), py::arg("arg_type"))
-          .def("set_arg_type_defaulted", &PyFuncInfo::setArgTypeDefault, py::arg("i"), py::arg("arg_type"), py::arg("default"))
-          .def("set_opts", &PyFuncInfo::setFuncOptions, py::arg("flags"))
+        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncSpec")
+          .def(py::init<wstring, py::function, unsigned, string, wstring, wstring, bool, bool, bool>(),
+            py::arg("name"),
+            py::arg("func"),
+            py::arg("nargs"),
+            py::arg("features") = py::none(),
+            py::arg("help") = "",
+            py::arg("category") = "",
+            py::arg("local") = true,
+            py::arg("volatile") = false,
+            py::arg("has_kwargs") = false)
           .def_property("return_converter", &PyFuncInfo::getReturnConverter, &PyFuncInfo::setReturnConverter)
-          .def_readwrite("local", &PyFuncInfo::isLocalFunc)
-          .def_readwrite("rtd_async", &PyFuncInfo::isRtdAsync)
-          .def_readwrite("native_async", &PyFuncInfo::isAsync);
+          .def_property_readonly("args", &PyFuncInfo::args);
 
         mod.def("register_functions", &registerFunctions);
         mod.def("deregister_functions", &deregisterFunctions);

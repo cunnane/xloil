@@ -107,32 +107,49 @@ class FuncDescription:
         Creates a core object which holds function info, argument converters,
         and a reference to the function object
         """
-        
-        info = xloil_core.FuncInfo()
-        info.args = [xloil_core.FuncArg(x.name, x.help) for x in self.args]
-        info.name = self.name
-        
-        if self.help:
-            info.help = self.help
-            
         has_kwargs = any(self.args) and self.args[-1].is_keywords
 
-        holder = xloil_core.FuncHolder(info, self._func, has_kwargs)
-        
+        # RTD-async is default unless rtd=False was explicitly specified.
+        features=""
+        if self.is_async:
+            features=("rtd" if self.rtd else "async")
+        elif self.macro:
+            features="macro"
+        elif self.threaded:
+            features="threaded"
+
+        # Default to true unless overriden - the parameter is ignored if a workbook
+        # has not been linked
+        is_local = True if (self.local is None and not features == "async") else self.local
+        if self.local and len(features) > 0:
+            log(f"Ignoring func options for local function {self.name}", level='info')
+
+        info = xloil_core.FuncSpec(
+            name = self.name,
+            func = self._func,
+            nargs = len(self.args),
+            features = features,
+            help = self.help if self.help else "",
+            category = self.group if self.group else "",
+            volatile = self.volatile,
+            local = is_local,
+            has_kwargs = has_kwargs)
+       
         # Set the arg converters based on the typeof provided for 
         # each argument. If 'typeof' is a xloil typeconverter object
         # it's passed through.  If it is a general python type, we
         # attempt to create a suitable typeconverter
         for i, arg_info in enumerate(self.args):
-            if arg_info.is_keywords:
-                continue
-
             # Determine the internal C++ arg converter to run on the Excel values
             # before they are passed to python.  
-            converter = None
             this_arg = info.args[i]
-            arg_type = arg_info.typeof
+            this_arg.name = arg_info.name
+            this_arg.help = arg_info.help
 
+            if arg_info.is_keywords:
+                continue
+            arg_type = arg_info.typeof
+            converter = None
             # If a typing annotation is None or not a type, ignore it.
             # The default option is the generic converter which gives a python 
             # type based on the provided Excel type
@@ -165,12 +182,12 @@ class FuncDescription:
                     converter = arg_converters.get_converter(arg_type)
                     if converter is None:
                         converter = xloil_core.Read_Cache()
-            log(f"Func '{info.name}', arg '{arg_info.name}' using converter {type(converter)}", level="trace")
+
+            log(f"Func '{self.name}', arg '{arg_info.name}' using converter {type(converter)}", level="trace")
+
             if arg_info.has_default:
-                this_arg.optional = True
-                holder.set_arg_type_defaulted(i, converter, arg_info.default)
-            else:
-                holder.set_arg_type(i, converter)
+                this_arg.default = arg_info.default
+            this_arg.converter = converter
 
         if self.return_type is not inspect._empty:
             ret_type = self.return_type
@@ -188,24 +205,10 @@ class FuncDescription:
                     if ret_con is None:
                         ret_con = Return_object()
 
-                holder.return_converter = ret_con
+                info.return_converter = ret_con
 
-        # RTD-async is default unless rtd=False was explicitly specified.
-        holder.rtd_async = self.is_async and (self.rtd is not False)
-        holder.native_async = self.is_async and not holder.rtd_async
 
-        holder.local = True if (self.local is None and not holder.native_async) else self.local
-
-        func_options = ((FuncOpts.Macro if self.macro else 0)
-                        | (FuncOpts.ThreadSafe if self.threaded else 0)
-                        | (FuncOpts.Volatile if self.volatile else 0))
-
-        if holder.local:
-            if func_options != 0:
-                log(f"Ignoring func options for local function {self.name}", level='info')
-        else:
-            holder.set_opts(func_options)
-        return holder
+        return info
 
 
 def _create_event_loop():

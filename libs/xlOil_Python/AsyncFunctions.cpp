@@ -185,7 +185,7 @@ namespace xloil
     {
       AsyncReturn(
         const ExcelObj& asyncHandle,
-        const shared_ptr<IPyToExcel>& returnConverter)
+        const shared_ptr<const IPyToExcel>& returnConverter)
         : AsyncHelper(asyncHandle)
         , _returnConverter(returnConverter)
       {}
@@ -226,7 +226,7 @@ namespace xloil
       }
 
     private:
-      shared_ptr<IPyToExcel> _returnConverter;
+      shared_ptr<const IPyToExcel> _returnConverter;
       py::object _task;
     };
 
@@ -281,7 +281,7 @@ namespace xloil
     {
       RtdReturn(
         IRtdPublish& notify,
-        const shared_ptr<IPyToExcel>& returnConverter,
+        const shared_ptr<const IPyToExcel>& returnConverter,
         const wchar_t* caller)
         : _notify(notify)
         , _returnConverter(returnConverter)
@@ -346,7 +346,7 @@ namespace xloil
 
     private:
       IRtdPublish& _notify;
-      shared_ptr<IPyToExcel> _returnConverter;
+      shared_ptr<const IPyToExcel> _returnConverter;
       py::object _task;
       std::atomic<bool> _running = true;
       const wchar_t* _caller;
@@ -358,7 +358,7 @@ namespace xloil
     /// </summary>
     struct RtdAsyncTask : public IRtdAsyncTask
     {
-      const PyFuncInfo* _info;
+      const PyFuncInfo& _info;
       PyObject *_args, *_kwargs;
       shared_ptr<RtdReturn> _returnObj;
       wstring _caller;
@@ -366,7 +366,7 @@ namespace xloil
       /// <summary>
       /// Steals references to PyObjects
       /// </summary>
-      RtdAsyncTask(const PyFuncInfo* info, PyObject* args, PyObject* kwargs)
+      RtdAsyncTask(const PyFuncInfo& info, PyObject* args, PyObject* kwargs)
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
@@ -383,7 +383,7 @@ namespace xloil
 
       void start(IRtdPublish& publish) override
       {
-        _returnObj.reset(new RtdReturn(publish, _info->getReturnConverter(), _caller.c_str()));
+        _returnObj.reset(new RtdReturn(publish, _info.getReturnConverter(), _caller.c_str()));
         py::gil_scoped_acquire gilAcquired;
 
         PyErr_Clear();
@@ -391,7 +391,7 @@ namespace xloil
         auto kwargs = PyBorrow<py::object>(_kwargs);
         kwargs[THREAD_CONTEXT_TAG] = _returnObj;
 
-        _info->invoke(_args, kwargs.ptr());
+        _info.invoke(_args, kwargs.ptr());
       }
       bool done() override
       {
@@ -467,7 +467,7 @@ namespace xloil
         }
 
         auto value = rtdAsync(
-          std::make_shared<RtdAsyncTask>(info, argsP, kwargsP));
+          std::make_shared<RtdAsyncTask>(*info, argsP, kwargsP));
 
         return returnValue(value ? *value : CellError::NA);
       }

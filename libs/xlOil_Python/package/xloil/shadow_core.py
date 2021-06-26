@@ -9,7 +9,7 @@ import importlib.util
 if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
-        CellError, FuncOpts, Range, ExcelArray, in_wizard, log,
+        CellError, Range, ExcelArray, in_wizard, log,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         register_functions, deregister_functions,
         create_ribbon, RibbonUI, run_later, 
@@ -602,7 +602,7 @@ else:
             pass
 
 
-    def create_ribbon(xml:str, handlers:dict) -> RibbonUI:
+    def create_ribbon(xml:str, handlers:dict, name:str=None) -> RibbonUI:
         """
         Returns a (connected) RibbonUI object which passes the specified ribbon
         customisation XML to Excel.  When the returned object is deleted, it 
@@ -618,6 +618,9 @@ else:
             The ``handlers`` dictionary links callbacks named in the Ribbon XML to
             python functions. Each handler should take a single ``RibbonControl``
             argument which describes the control which raised the callback.
+
+        name: str
+            If None, uses the filename at the call site
 
         """
         pass
