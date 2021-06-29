@@ -1,3 +1,7 @@
+"""
+Importing this module also hooks the import and reload functions
+"""
+
 import importlib
 import importlib.util
 import importlib.abc

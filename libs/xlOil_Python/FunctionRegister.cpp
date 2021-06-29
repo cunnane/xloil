@@ -37,30 +37,36 @@ namespace xloil
     constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
-    void setFuncType(PyFuncInfo& info, const string& type, bool isVolatile)
+    void setFuncType(PyFuncInfo& info, const string& features, bool isVolatile)
     {
       unsigned base = isVolatile ? FuncInfo::VOLATILE : 0;
-      if (type == "macro")
+      if (features.empty())
+        return;
+      else if(features == "macro")
       {
         info.setFuncOptions(FuncInfo::MACRO_TYPE & base);
       }
-      else if (type == "threaded")
+      else if (features == "threaded")
       {
         info.setFuncOptions(FuncInfo::THREAD_SAFE & base);
+        // turn off local?
       }
-      else if (type == "rtd")
+      else if (features == "rtd")
       {
         info.isRtdAsync = true;
       }
-      else if (type == "async")
+      else if (features == "async")
       {
         info.isAsync = true;
+        // turn off local!
       }
+      else
+        throw py::value_error(formatStr("FuncSpec: Unknown function features '%s'", features.c_str()));
     }
 
     PyFuncInfo::PyFuncInfo(
-      const std::wstring& name,
       const pybind11::function& func,
+      const std::wstring& name,
       const unsigned numArgs,
       const std::string& features,
       const std::wstring& help,
@@ -73,8 +79,12 @@ namespace xloil
       , _hasKeywordArgs(hasKeywordArgs)
       , isLocalFunc(isLocal)
       , isRtdAsync(false)
+      , isAsync(false)
     {
-      _info->name = name;
+      _info->name = name.empty() 
+        ? py::wstr(func.attr("__name__"))
+        : name;
+
       _info->help = help;
       _info->category = category;
       
@@ -83,7 +93,7 @@ namespace xloil
 
       setFuncType(*this, features, isVolatile);
 
-      _info->args.resize(numArgs + (isAsync ? 1 : 0));
+      _info->args.resize(numArgs + (isAsync ? 1u : 0));
       if (isAsync)
         _info->args[0] = FuncArg(nullptr, nullptr, FuncArg::AsyncHandle);
 
@@ -136,16 +146,14 @@ namespace xloil
         return make_pair(pyArgs, kwargs);
       }
       else
-        return make_pair(pyArgs, py::none());
+        return make_pair(pyArgs, py::object());
     }
 
     void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs) const
     {
-      PyObject* ret;
-      if (kwargs != Py_None)
-        ret = PyObject_Call(_func.ptr(), args, kwargs);
-      else
-        ret = PyObject_CallObject(_func.ptr(), args);
+      auto ret = kwargs
+        ? PyObject_Call(_func.ptr(), args, kwargs)
+        : PyObject_CallObject(_func.ptr(), args);
       if (!ret)
         throw py::error_already_set();
     }
@@ -157,11 +165,11 @@ namespace xloil
     {
       try
       {
-        py::object ret;
-        if (kwargs != Py_None)
-          ret = PySteal<py::object>(PyObject_Call(_func.ptr(), args, kwargs));
-        else
-          ret = PySteal<py::object>(PyObject_CallObject(_func.ptr(), args));
+        assert(!!kwargs == _hasKeywordArgs);
+
+        py::object ret = kwargs
+          ? PySteal<py::object>(PyObject_Call(_func.ptr(), args, kwargs))
+          : PySteal<py::object>(PyObject_CallObject(_func.ptr(), args));
 
         result = returnConverter
           ? (*returnConverter)(*ret.ptr())
@@ -190,7 +198,8 @@ namespace xloil
 
         auto[args, kwargs] = info->convertArgs(xlArgs);
 
-        static ExcelObj result; // Ok since we have the GIL
+        // Static OK since we have the GIL so are single-threaded 
+        static ExcelObj result; 
         info->invoke(result, args.ptr(), kwargs.ptr());
 
         // It's not safe to return the static object if the function
@@ -216,16 +225,23 @@ namespace xloil
       }
     }
 
-
-    shared_ptr<const WorksheetFuncSpec> createSpec(const shared_ptr<const PyFuncInfo>& funcInfo)
+    shared_ptr<const WorksheetFuncSpec> PyFuncInfo::createSpec() const
     {
-      auto info = funcInfo->info();
-      if (funcInfo->isAsync)
-        return make_shared<DynamicSpec>(info, &pythonAsyncCallback, funcInfo);
-      else if (funcInfo->isRtdAsync)
-        return make_shared<DynamicSpec>(info, &pythonRtdCallback, funcInfo);
+      auto self = shared_from_this();
+      if (isAsync)
+        return make_shared<DynamicSpec>(info(), &pythonAsyncCallback, self);
+      else if (isRtdAsync)
+        return make_shared<DynamicSpec>(info(), &pythonRtdCallback, self);
       else
-        return make_shared<DynamicSpec>(info, &pythonCallback, funcInfo);
+        return make_shared<DynamicSpec>(info(), &pythonCallback, self);
+    }
+
+    void PyFuncInfo::checkArgConverters() const
+    {
+      // TODO: handle kwargs#
+      for (auto i = 0; i < _args.size() - (_hasKeywordArgs ? 1 : 0); ++i)
+        if (!_args[i].converter)
+          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
     }
 
     class WatchedSource : public FileSource
@@ -322,15 +338,17 @@ namespace xloil
       {
         try
         {
+          if (!_module)
+            return;
+
           // TODO: cancel running async tasks?
           py::gil_scoped_acquire getGil;
 
           // Call module cleanup function
-          auto thisMod = PyBorrow<py::module>(_module);
-          if (py::hasattr(thisMod, XLOPY_CLEANUP_FUNCTION))
-            thisMod.attr(XLOPY_CLEANUP_FUNCTION)();
+          if (py::hasattr(_module, XLOPY_CLEANUP_FUNCTION))
+            _module.attr(XLOPY_CLEANUP_FUNCTION)();
          
-          auto success = unloadModule(thisMod);
+          auto success = unloadModule(_module.release());
 
           XLO_DEBUG(L"Python module unload {1} for '{0}'", 
             sourceName(), success ? L"succeeded" : L"failed");
@@ -343,36 +361,34 @@ namespace xloil
       }
 
       void registerPyFuncs(
-        PyObject* pyModule,
+        const py::handle& pyModule,
         const vector<shared_ptr<PyFuncInfo>>& functions)
       {
-        // Note we don't increment the ref-counter for the module to 
-        // simplify our destructor
-        // TODO: this is not safe!
-        _module = pyModule;
+        _module = py::reinterpret_steal<py::object>(pyModule);
         vector<shared_ptr<const WorksheetFuncSpec>> nonLocal;
         vector<shared_ptr<const FuncInfo>> funcInfo;
-        vector<DynamicExcelFunc<>> funcs;
+        vector<DynamicExcelFunc<>> localFuncs;
 
         for (auto& f : functions)
         {
+          f->checkArgConverters();
           if (!_linkedWorkbook)
             f->isLocalFunc = false;
           if (!f->isLocalFunc)
-            nonLocal.push_back(createSpec(f));
+            nonLocal.push_back(f->createSpec());
           else
           {
             funcInfo.push_back(f->info());
             if (f->isRtdAsync)
             {
-              funcs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
+              localFuncs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
               {
                 return pythonRtdCallback(f.get(), args);
               });
             }
             else
             {
-              funcs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
+              localFuncs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
               {
                 return pythonCallback(f.get(), args);
               });
@@ -380,13 +396,13 @@ namespace xloil
           }
         }
 
-        registerFuncs(nonLocal);
+        setRegisteredFuncs(nonLocal);
 
         if (!funcInfo.empty())
         {
           if (!_linkedWorkbook)
             XLO_THROW("Local functions found without workbook specification");
-          registerLocal(funcInfo, funcs);
+          registerLocal(funcInfo, localFuncs);
         }
       }
 
@@ -404,15 +420,11 @@ namespace xloil
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         py::object moduleHandle;
-        if (_module != Py_None)
-        {
-          moduleHandle = PyBorrow<py::object>(_module);
+        if (!_module.is_none())
           moduleHandle.cast<py::module>().reload();
-        }
         else
-        {
           moduleHandle = loadModuleFromFile(sourcePath().c_str(), linkedWorkbook().c_str());
-        }
+
         scanModule(moduleHandle);
 
         // Set the addin context back. TODO: Not exception safe clearly.
@@ -421,7 +433,7 @@ namespace xloil
 
     private:
       bool _linkedWorkbook;
-      PyObject* _module = Py_None;
+      py::object _module;
     };
 
     std::shared_ptr<RegisteredModule>
@@ -439,21 +451,25 @@ namespace xloil
       return fileSrc;
     }
 
+    auto getModulePath(const py::object& module)
+    {
+      return !module.is_none() && py::hasattr(module, "__file__")
+        ? module.attr("__file__").cast<wstring>()
+        : L"";
+    }
     void registerFunctions(
-      const py::object& moduleHandle,
+      py::object& module,
       const vector<shared_ptr<PyFuncInfo>>& functions)
     {
       // Called from python so we have the GIL
-      // The "null" module handle is used by jupyter
-      const auto modulePath = !moduleHandle.is_none()
-        ? moduleHandle.attr("__file__").cast<wstring>()
-        : L"";
+      // A "null" module handle is used by jupyter
+      const auto modulePath = getModulePath(module);
 
       py::gil_scoped_release releaseGil;
 
       auto mod = FunctionRegistry::addModule(
         theCurrentContext, modulePath, nullptr);
-      mod->registerPyFuncs(moduleHandle.ptr(), functions);
+      mod->registerPyFuncs(module.release(), functions);
     }
     void deregisterFunctions(
       const py::object& moduleHandle,
@@ -461,9 +477,7 @@ namespace xloil
     {
       // Called from python so we have the GIL
 
-      const auto modulePath = !moduleHandle.is_none()
-        ? moduleHandle.attr("__file__").cast<wstring>()
-        : L"";
+      const auto modulePath = getModulePath(moduleHandle);
 
       auto[foundSource, foundAddin] = FileSource::findFileContext(
         modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
@@ -497,6 +511,18 @@ namespace xloil
           x &= ~mask;
       }
 
+      string pyFuncInfoToString(const PyFuncInfo& info)
+      {
+        string result = utf16ToUtf8(info.info()->name) + "(";
+        for (auto& arg : info.cargs())
+          result += utf16ToUtf8(arg.getName()) + (arg.converter ? formatStr(": %s, ", typeid(*arg.converter).name()) : ", ");
+        if (!info.cargs().empty())
+          result.resize(result.size() - 2);
+        result.push_back(')');
+        if (info.getReturnConverter())
+          result += formatStr(" -> ", typeid(*info.getReturnConverter()).name());
+        return result;
+      }
       
       static int theBinder = addBinder([](py::module& mod)
       {
@@ -514,9 +540,9 @@ namespace xloil
         );
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncSpec")
-          .def(py::init<wstring, py::function, unsigned, string, wstring, wstring, bool, bool, bool>(),
-            py::arg("name"),
+          .def(py::init<py::function, wstring, unsigned, string, wstring, wstring, bool, bool, bool>(),
             py::arg("func"),
+            py::arg("name") = "",
             py::arg("nargs"),
             py::arg("features") = py::none(),
             py::arg("help") = "",
@@ -525,7 +551,8 @@ namespace xloil
             py::arg("volatile") = false,
             py::arg("has_kwargs") = false)
           .def_property("return_converter", &PyFuncInfo::getReturnConverter, &PyFuncInfo::setReturnConverter)
-          .def_property_readonly("args", &PyFuncInfo::args);
+          .def_property_readonly("args", &PyFuncInfo::args)
+          .def("__str__", pyFuncInfoToString);
 
         mod.def("register_functions", &registerFunctions);
         mod.def("deregister_functions", &deregisterFunctions);

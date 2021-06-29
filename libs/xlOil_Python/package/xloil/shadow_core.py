@@ -11,7 +11,7 @@ if importlib.util.find_spec("xloil_core") is not None:
     from xloil_core import (  # pylint: disable=import-error
         CellError, Range, ExcelArray, in_wizard, log,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
-        register_functions, deregister_functions,
+        deregister_functions, FuncSpec,
         create_ribbon, RibbonUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
@@ -513,13 +513,6 @@ else:
             """
             pass
 
-    def register_functions(module, function_holders):
-        """
-        Register worksheet functions for a specified module. The function_holders
-        must be objects created with FuncDescription.create_holder. Generally, there
-        is no need to call this directly, it is used by xlOil internals.
-        """
-        pass
 
     def deregister_functions(module, function_names):
         """

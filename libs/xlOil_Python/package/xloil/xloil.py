@@ -8,16 +8,27 @@ from .shadow_core import *
 
 
 """
-Tag used to mark functions to register with Excel. It is added 
-by the xloil.func decorator to the target func's __dict__
+Tag used to mark functions to register with Excel. It is added by the
+xloil.func decorator to the target func's __dict__. It contains a FuncSpec
 """
 _FUNC_META_TAG = "_xloil_func_"
-_LANDMARK_TAG = "_xloil_hasfuncs_"
+
+"""
+Tag used to mark modules which contain functions to register. It is added 
+by the xloil.func decorator to the module's __dict__ and contains a list
+of functions
+"""
+_LANDMARK_TAG = "_xloil_pending_funcs_"
+
 
 def _insert_landmark(obj):
     module = inspect.getmodule(obj)
-    setattr(module, _LANDMARK_TAG, True)
-
+    pending = getattr(module, _LANDMARK_TAG, None)
+    if pending:
+        pending.append(obj)
+    else:
+        setattr(module, _LANDMARK_TAG, [obj])
+    
 class Arg:
     """
     Holds the description of a function argument. Can be used with the 'func'
@@ -56,10 +67,86 @@ class Arg:
         """
         return self.default is not inspect._empty
 
-def _function_argspec(func):
+    def write_spec(self, this_arg):
+
+        import xloil_core
+
+        # Set the arg converters based on the typeof provided for 
+        # each argument. If 'typeof' is a xloil typeconverter object
+        # it's passed through.  If it is a general python type, we
+        # attempt to create a suitable typeconverter
+        # Determine the internal C++ arg converter to run on the Excel values
+        # before they are passed to python.  
+        this_arg.name = self.name
+        this_arg.help = self.help
+
+        if self.is_keywords:
+            return
+
+        arg_type = self.typeof
+        converter = 0
+        # If a typing annotation is None or not a type, ignore it.
+        # The default option is the generic converter which gives a python 
+        # type based on the provided Excel type
+        if not isinstance(arg_type, type):
+            converter = xloil_core.Read_object()
+        else:
+            # The ordering of these cases is based on presumed likeliness.
+            # First try an internal converter e.g. Read_str, Read_float, etc.
+            converter = get_internal_converter(arg_type.__name__)
+
+            # xloil_core.Range is special: the only core class in typing annotations
+            if arg_type is Range:
+                this_arg.allow_range = True
+
+            # If internal converter was found, nothing more to do
+            if converter is not None:
+                pass
+            # A designated xloil @converter type contains the internal converter
+            elif is_type_converter(arg_type):
+                converter, this_arg.allow_range = unpack_type_converter(arg_type)
+            # ExcelValue is just the explicit generic type, so do nothing
+            elif arg_type is ExcelValue:
+                pass 
+            elif arg_type is AllowRange:
+                converter = xloil_core.Read_object(), 
+                this_arg.allow_range = True
+            # Attempt to find a registered user-converter, otherwise assume the object
+            # should be read from the cache 
+            else:
+                converter = arg_converters.get_converter(arg_type)
+                if converter is None:
+                    converter = xloil_core.Read_Cache()
+        if self.has_default:
+            this_arg.default = self.default
+
+        log(f"Got here: {self.name}, {str(converter)}")
+        #assert converter is not None
+        this_arg.converter = converter
+
+
+    @staticmethod
+    def override_arglist(arglist, replacements):
+        if replacements is None:
+            return arglist
+        elif not isinstance(replacements, dict):
+            replacements = { a.name : a for a in replacements }
+
+        def override_arg(arg):
+            override = replacements.get(arg.name, None)
+            if override is None:
+                return arg
+            elif isinstance(override, str):
+                arg.help = override
+                return arg
+            else:
+                return override
+
+        return [override_arg(arg) for arg in arglist]
+
+def function_arg_info(func):
     """
-    Returns a list of Arg for a given function which describe
-    the function's arguments
+    Returns a list of Arg for a given function which describe the function's arguments
     """
     sig = inspect.signature(func)
     params = sig.parameters
@@ -85,131 +172,26 @@ def _function_argspec(func):
     return args, sig.return_annotation
 
 
-class FuncDescription:
+def find_return_converter(ret_type: type):
     """
-    Used to create the description of a worksheet function to register. 
-    External users would not typically use this class directly.
+    Get an xloil_core return converter for a given type.
     """
-    def __init__(self, func):
-        self._func = func
-        self.args, self.return_type = _function_argspec(func)
-        self.name = func.__name__
-        self.help = func.__doc__
-        self.is_async = False
-        self.rtd = None
-        self.macro = False
-        self.threaded = False
-        self.volatile = False
-        self.local = None
+    if not isinstance(ret_type, type):
+        return None
 
-    def create_holder(self):
-        """
-        Creates a core object which holds function info, argument converters,
-        and a reference to the function object
-        """
-        has_kwargs = any(self.args) and self.args[-1].is_keywords
+    ret_con = None
+    if is_type_converter(ret_type):
+        ret_con, _ = unpack_type_converter(ret_type)
+    else:
+        ret_con = return_converters.create_returner(ret_type)
 
-        # RTD-async is default unless rtd=False was explicitly specified.
-        features=""
-        if self.is_async:
-            features=("rtd" if self.rtd else "async")
-        elif self.macro:
-            features="macro"
-        elif self.threaded:
-            features="threaded"
+        if ret_con is None:
+            ret_con = get_internal_converter(ret_type.__name__, read_excel_value=False)
 
-        # Default to true unless overriden - the parameter is ignored if a workbook
-        # has not been linked
-        is_local = True if (self.local is None and not features == "async") else self.local
-        if self.local and len(features) > 0:
-            log(f"Ignoring func options for local function {self.name}", level='info')
+        if ret_con is None:
+            ret_con = Return_object()
 
-        info = xloil_core.FuncSpec(
-            name = self.name,
-            func = self._func,
-            nargs = len(self.args),
-            features = features,
-            help = self.help if self.help else "",
-            category = self.group if self.group else "",
-            volatile = self.volatile,
-            local = is_local,
-            has_kwargs = has_kwargs)
-       
-        # Set the arg converters based on the typeof provided for 
-        # each argument. If 'typeof' is a xloil typeconverter object
-        # it's passed through.  If it is a general python type, we
-        # attempt to create a suitable typeconverter
-        for i, arg_info in enumerate(self.args):
-            # Determine the internal C++ arg converter to run on the Excel values
-            # before they are passed to python.  
-            this_arg = info.args[i]
-            this_arg.name = arg_info.name
-            this_arg.help = arg_info.help
-
-            if arg_info.is_keywords:
-                continue
-            arg_type = arg_info.typeof
-            converter = None
-            # If a typing annotation is None or not a type, ignore it.
-            # The default option is the generic converter which gives a python 
-            # type based on the provided Excel type
-            if not isinstance(arg_type, type):
-                converter = xloil_core.Read_object()
-            else:
-                # The ordering of these cases is based on presumed likeliness.
-                # First try an internal converter e.g. Read_str, Read_float, etc.
-                converter = get_internal_converter(arg_type.__name__)
-
-                # xloil_core.Range is special: the only core class in typing annotations
-                if arg_type is Range:
-                    this_arg.allow_range = True
-
-                # If internal converter was found, nothing more to do
-                if converter is not None:
-                    pass
-                # A designated xloil @converter type contains the internal converter
-                elif is_type_converter(arg_type):
-                    converter, this_arg.allow_range = unpack_type_converter(arg_type)
-                # ExcelValue is just the explicit generic type, so do nothing
-                elif arg_type is ExcelValue:
-                    pass 
-                elif arg_type is AllowRange:
-                    converter = xloil_core.Read_object(), 
-                    this_arg.allow_range = True
-                # Attempt to find a registered user-converter, otherwise assume the object
-                # should be read from the cache 
-                else:
-                    converter = arg_converters.get_converter(arg_type)
-                    if converter is None:
-                        converter = xloil_core.Read_Cache()
-
-            log(f"Func '{self.name}', arg '{arg_info.name}' using converter {type(converter)}", level="trace")
-
-            if arg_info.has_default:
-                this_arg.default = arg_info.default
-            this_arg.converter = converter
-
-        if self.return_type is not inspect._empty:
-            ret_type = self.return_type
-            if isinstance(ret_type, type):
-
-                ret_con = None
-                if is_type_converter(ret_type):
-                    ret_con, _ = unpack_type_converter(ret_type)
-                else:
-                    ret_con = return_converters.create_returner(ret_type)
-
-                    if ret_con is None:
-                        ret_con = get_internal_converter(ret_type.__name__, read_excel_value=False)
-
-                    if ret_con is None:
-                        ret_con = Return_object()
-
-                info.return_converter = ret_con
-
-
-        return info
-
+    return ret_con
 
 def _create_event_loop():
     import asyncio
@@ -217,7 +199,7 @@ def _create_event_loop():
     asyncio.set_event_loop(loop)
     return loop
 
-def _async_wrapper(fn):
+def async_wrapper(fn):
     """
     Wraps an async function or generator with a function which runs that generator on the thread's
     event loop. The wrapped function requires an 'xloil_thread_context' argument which provides a 
@@ -256,7 +238,7 @@ def _async_wrapper(fn):
             
         ctx.set_task(asyncio.run_coroutine_threadsafe(run_async(), loop))
 
-    return synchronised    
+    return synchronised
 
 def _pump_message_loop(loop, timeout):
     """
@@ -272,11 +254,10 @@ def _pump_message_loop(loop, timeout):
 
 def func(fn=None, 
          name=None, 
-         help=None, 
+         help="", 
          args=None,
-         group=None, 
+         group="", 
          local=None,
-         is_async=False, 
          rtd=None,
          macro=False, 
          threaded=False, 
@@ -332,13 +313,12 @@ def func(fn=None,
         If True, registers the function as Macro Type. This grants the function
         extra priveledges, such as the ability to see un-calced cells and 
         call the full range of Excel.Application functions. Functions which will
-        be invoked as Excel macros, i.e. not functions appearing in a cell, should
+        be invoked as Excel macros, i.e. not functions called from a cell, should
         be declared with this attribute.
-    is_async: bool
-        Registers the function as asynchronous. It's better to use asyncio's
-        'async def' syntax if it is available. Only async RTD functions are
-        calculated in the background in Excel, non-RTD functions will be stopped
-        if calculation is interrupted.
+    rtd: bool
+        Determines whether a function declared as async uses native or RTD async.
+        Only RTD functions are calculated in the background in Excel, native async
+        functions will be stopped if calculation is interrupted. Default is True.
     threaded: bool
         Declares the function as safe for multi-threaded calculation. The
         function must be careful when accessing global objects. 
@@ -353,47 +333,61 @@ def func(fn=None,
 
     """
 
-    arguments = locals()
     def decorate(fn):
 
-        _is_async = is_async
-        if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
-            fn = _async_wrapper(fn)
-            _is_async = True
+        try:
+            is_async = False
+            if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
+                fn = async_wrapper(fn)
+                is_async = True
 
-        descr = FuncDescription(fn)
+            func_args, return_type = function_arg_info(fn)
 
-        for arg, val in arguments.items():
-            if not arg in ['fn', 'args', 'name', 'help']:
-                descr.__dict__[arg] = val
-        if name is not None:
-            descr.name = name
-        if help is not None:
-            descr.help = help
+            has_kwargs = any(func_args) and func_args[-1].is_keywords
 
-        if args is not None:
-            arg_names = [x.name.casefold() for x in descr.args]
-            if type(args) is dict:
-                for arg_name, arg_help in args.items():
-                    try:
-                        i = arg_names.index(arg_name.casefold())
-                        descr.args[i].help = arg_help
-                    except ValueError:
-                        raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
-            else:
-                for arg in args:
-                    try:
-                        i = arg_names.index(arg.name.casefold())
-                        descr.args[i] = arg
-                    except ValueError:
-                        raise Exception(f"No parameter '{arg_name}' in function {fn.__name__}")
-        
-        descr.is_async = _is_async
+            # RTD-async is default unless rtd=False was explicitly specified.
+            features=""
+            if is_async:
+                features=("rtd" if rtd is None or rtd else "async")
+            elif macro:
+                features="macro"
+            elif threaded:
+                features="threaded"
 
-        # Add the xlOil tags to the function and module
-        setattr(fn, _FUNC_META_TAG, descr)
-        _insert_landmark(fn)
+            # Default to true unless overriden - the parameter is ignored if a workbook
+            # has not been linked
+            is_local = True if (local is None and not features == "async") else local
+            if local and len(features) > 0:
+                log(f"Ignoring func options for local function {self.name}", level='info')
 
+            spec = xloil_core.FuncSpec(
+                func = fn,
+                nargs = len(func_args),
+                name = name if name else "",
+                features = features,
+                help = help if help else "",
+                category = group if group else "",
+                volatile = volatile,
+                local = is_local,
+                has_kwargs = has_kwargs)
+
+            func_args = Arg.override_arglist(func_args, args)
+
+            for i, arg in enumerate(func_args):
+                arg.write_spec(spec.args[i])
+
+            if return_type is not inspect._empty:
+                spec.return_converter = find_return_converter(return_type)
+
+            log(f"Found func: {str(spec)}", level="debug")
+
+            # Add the xlOil tags to the function and module
+            setattr(fn, _FUNC_META_TAG, spec)
+            _insert_landmark(fn)
+
+        except Exception as e:
+            log(f"Failed determing spec for '{fn.__name__}': {traceback.format_exc()}", level='error')
+            
         return fn
 
     return decorate if fn is None else decorate(fn)
@@ -440,7 +434,6 @@ def app():
     if _excel_application_obj is None:
         _excel_application_obj = _get_excel_application_obj()
     return _excel_application_obj
-     
 
 
 class EventsPaused():
@@ -455,7 +448,6 @@ class EventsPaused():
         event.allow()
 
 
-
 def scan_module(module):
     """
         Parses a specified module to look for functions with with the xloil.func 
@@ -463,31 +455,20 @@ def scan_module(module):
     """
 
     # We quickly discard modules which do not contain xloil declarations 
-    if getattr(module, _LANDMARK_TAG, None) is None:
+
+    pending_funcs = getattr(module, _LANDMARK_TAG, None) 
+    if pending_funcs is None or not any(pending_funcs):
         return 
 
     # If events are not paused this function can be entered multiply for the same module
     with EventsPaused() as events_paused:
 
-        if getattr(module, _LANDMARK_TAG) is False:
-            return
-
         log(f"Found xloil functions in {module}", level="debug")
 
-        # Look for functions with an xloil decorator (_META_TAG) and create
-        # a function holder object for each of them
-        xloil_funcs = inspect.getmembers(module, 
-            lambda obj: inspect.isfunction(obj) and hasattr(obj, _FUNC_META_TAG))
-
-        to_register = []
-        for f_name, f in xloil_funcs:
-            try:
-                to_register.append(getattr(f, _FUNC_META_TAG).create_holder())
-            except Exception as e:
-                log(f"Register failed for {f_name}: {traceback.format_exc()}", level='error')
-
-        if any(to_register):
-            xloil_core.register_functions(module, to_register)
-
+        to_register = [getattr(f, _FUNC_META_TAG) for f in pending_funcs]
+        
         # Unset flag so we don't try to reregister functions
-        module.__dict__[_LANDMARK_TAG] = False
+        setattr(module, _LANDMARK_TAG, [])
+
+        xloil_core.register_functions(module, to_register)
+

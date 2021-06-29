@@ -1,5 +1,5 @@
 #pragma once
-namespace pybind11 { class object; class module; }
+namespace pybind11 { class object; class handle; }
 
 namespace xloil
 {
@@ -17,9 +17,10 @@ namespace xloil
 
     /// <summary>
     /// 'Hard' unloads a python module: clears its __dict__ and removes it
-    /// from sys.modules
+    /// from sys.modules. Release the module handle into the argument so
+    /// there are no hanging references to the module object 
     /// </summary>
-    bool unloadModule(const pybind11::module& module);
+    bool unloadModule(const pybind11::handle& module);
 
     void createWorkbookOpenHandler(const wchar_t* starredPattern);
   }

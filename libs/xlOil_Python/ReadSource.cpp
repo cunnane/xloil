@@ -44,11 +44,11 @@ namespace xloil
     {
       py::gil_scoped_acquire getGil;
       // TODO: make this into a global
-      const auto xloilModule = py::module::import("xloil");
+      const auto xloilModule = py::module::import("xloil.importer");
       return xloilModule.attr("import_from_file").cast<py::function>()(py::wstr(filepath),
         linkedWorkbook ? py::wstr(linkedWorkbook) : py::str());
     }
-    bool unloadModule(const py::module& module)
+    bool unloadModule(const py::handle& module)
     {
       py::gil_scoped_acquire get_gil;
 
@@ -71,6 +71,10 @@ namespace xloil
       module.attr("__dict__").cast<py::dict>().clear();
 
       const auto ret = PyDict_DelItem(sysModules.ptr(), modName.ptr());
+
+      // Remove last remaining reference to module
+      module.dec_ref();
+
       return ret == 0;
     }
 

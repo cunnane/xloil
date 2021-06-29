@@ -67,12 +67,12 @@ namespace xloil
       }
     };
 
-    class PyFuncInfo
+    class PyFuncInfo : public std::enable_shared_from_this<PyFuncInfo>
     {
     public:
       PyFuncInfo(
-        const std::wstring& name,
         const pybind11::function& func,
+        const std::wstring& name,
         const unsigned numArgs,
         const std::string& features,
         const std::wstring& help,
@@ -84,6 +84,7 @@ namespace xloil
       ~PyFuncInfo();
 
       auto& args() { return _args; }
+      const auto& cargs() const { return _args; }
 
       void setFuncOptions(unsigned val);
 
@@ -105,7 +106,10 @@ namespace xloil
       bool isRtdAsync;
       bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
 
-      std::shared_ptr<const FuncInfo>  info() const { return _info; }
+      const std::shared_ptr<FuncInfo>& info() const { return _info; }
+
+      std::shared_ptr<const WorksheetFuncSpec> createSpec() const;
+      void checkArgConverters() const;
 
     private:
       std::shared_ptr<const IPyToExcel> returnConverter;

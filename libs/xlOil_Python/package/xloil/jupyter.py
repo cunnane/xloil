@@ -1,10 +1,19 @@
 import xloil as xlo
+import xloil.xloil # TODO: rename this module!
+import asyncio
+#
+# Must do this or jupyter gives:
+# https://stackoverflow.com/questions/44633458/why-am-i-getting-notimplementederror-with-async-and-await-on-windows
+#
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+import inspect
 import IPython
 import pickle
 from IPython.display import publish_display_data
 import jupyter_client
 import os
-import asyncio
+
 import re
 
 def _serialise(obj):
@@ -58,22 +67,69 @@ class MonitoredVariables:
         self._shell.events.unregister('post_execute', self.post_execute)
 
 
-def _func_decorator(fn, *args, **kwargs):
-    
-    # TODO: Work out how to deal with the args later
-    spec = xlo.FuncDescription(fn)
+class _FuncDescription:
+    """
+        A serialisable func description we can pickle and send over Jupyter 
+        messaging
+    """
+    def __init__(self, func, name, help, override_args):
+        self.func_name = func.__name__
+        self.name = name
+        self.help = help
+        self.args, self.return_type = xlo.xloil.function_arg_info(func)
 
-    # Hack the function description, replacing the function object with
-    # its name
-    spec._func = spec._func.__name__
+        self.args = xlo.Arg.override_arglist(self.args, override_args)
 
-    publish_display_data(
-        { "xloil/data": _serialise(spec) },
-        { 'type': "FuncRegister" }
-    )
+    def register(self, connection):
+        
+        import xloil_core
 
-    return fn
+        func_name = self.func_name
 
+        @xloil.xloil.async_wrapper
+        async def shim(*args, **kwargs):
+            return await connection.invoke(func_name, *args, **kwargs)
+
+        spec = xloil_core.FuncSpec(shim, 
+            nargs = len(self.args),
+            name = self.name,
+            features = "rtd",
+            help = self.help,
+            category = "xlOil Jupyter")
+
+        for i, arg in enumerate(self.args):
+            arg.write_spec(spec.args[i])
+
+        if self.return_type is not inspect._empty:
+            spec.return_converter = xloil.xloil.find_return_converter(return_type)
+
+        xlo.log(f"Found func: '{str(spec)}'", level="debug")
+
+        xloil_core.register_functions(None, [spec])
+
+def _replacement_func_decorator(
+        fn=None,
+        name=None, 
+        help="", 
+        args=None):
+
+    """
+        Replaces xlo.func in jupyter but removes arguments which do not make sense
+        when called from jupyter
+    """
+
+    def decorate(fn):
+       
+        spec = _FuncDescription(fn, name or fn.__name__, help, args)
+
+        publish_display_data(
+            { "xloil/data": _serialise(spec) },
+            { 'type': "FuncRegister" }
+        )
+
+        return fn
+
+    return decorate if fn is None else decorate(fn)
 
 def function_invoke(func, args_data, kwargs_data):
     args = _deserialise(args_data)
@@ -171,7 +227,7 @@ class _JupyterConnection:
             f"if not '{self._xloil_path}' in sys.path: sys.path.append('{self._xloil_path}')\n" + 
             "import xloil\n"
             "import xloil.jupyter\n"
-            "xloil.func = xloil.jupyter._func_decorator\n" # Overide xloil.func to do our own thing
+            "xloil.func = xloil.jupyter._replacement_func_decorator\n" # Overide xloil.func to do our own thing
             "_xloil_vars = xloil.jupyter.MonitoredVariables(get_ipython())\n"
         )
 
@@ -191,7 +247,9 @@ class _JupyterConnection:
 
             if msg.get('parent_header', {}).get('msg_id', None) == msg_id:
                 if msg['content']['status'] == 'error':
-                    raise Exception(f"Connection failed: {msg['content']['evalue']}")
+                    trace = "\n".join(msg['content']['traceback'])
+                    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+                    raise Exception(f"Connection failed: {msg['content']['evalue']} at {ansi_escape.sub('', trace)}")
                 break
 
         self._sessionId = msg['header']['session']
@@ -363,29 +421,11 @@ class _JupyterConnection:
                 self.publish_variables(payload)
 
             elif meta_type == "FuncRegister":
-                descr = payload
 
-                # The func description has be "hacked" so that _func is 
-                # the string name of the function to be invoked rather
-                # that a function object.  We use the name to create a
-                # shim which invokes jupyter. This is set as the 
-                # function object
-                func_name = descr._func
-
-                @xlo.async_wrapper
-                async def shim(*args, **kwargs):
-                    return await self.invoke(func_name, *args, **kwargs)
-
-                # Correctly set the function description: it's also RTD 
-                # async now
-                descr._func = shim
-                descr.rtd = True
-                descr.is_async = True
-
-                xlo.register_functions(None, [descr.create_holder()])
+                payload.register(self)
 
                 # Keep track of our funtions for a clean shutdown
-                self._registered_funcs.add(func_name)
+                self._registered_funcs.add(payload.name)
 
             elif meta_type == "FuncResult":
                 xlo.log(f"Unexpected function result: {msg}")

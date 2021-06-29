@@ -3,24 +3,33 @@ import importlib.util
 import typing
 import numpy as np
 
+from .shadow_core import Range, CellError
+
 if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core
     from xloil_core import (
         set_return_converter,
         CustomConverter as _CustomConverter,
         CustomReturn as _CustomReturn,
-        CannotConvert
+        CannotConvert,
+        Return_Cache as _Return_Cache,
+        Return_SingleValue as _Return_SingleValue,
+        Read_Array_object_2d as _Read_Array_object_2d,
     )
 else:
-    pass
-
+    def _Return_Cache():
+        pass
+    def _Return_SingleValue():
+        pass
+    def _Read_Array_object_2d(trim):
+        pass
 
 """
 This annotation includes all the types which can be passed from xlOil to
 a function. There is not need to specify it to xlOil, but it could give 
 useful type-checking information to other software which reads annotation.
 """
-ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, xloil_core.CellError]
+ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellError]
 
 _READ_CONVERTER_PREFIX   = "Read_"
 _RETURN_CONVERTER_PREFIX = "Return_"
@@ -300,21 +309,21 @@ def returner(types=None, register=False):
 Write `-> xloil.Cache` in a function declaration to force the output to be 
 placed in the python object cache rather than attempting a conversion
 """
-Cache = _make_argconverter(object, xloil_core.Return_Cache())
+Cache = _make_argconverter(object, _Return_Cache())
 
 """
 Use `-> xloil.SingleValue` in a function declaration to force the output to
 be a single cell value. Uses the Excel object cache for returned arrays and 
 the Python object cache for unconvertable objects
 """
-SingleValue = _make_argconverter(object, xloil_core.Return_SingleValue())
+SingleValue = _make_argconverter(object, _Return_SingleValue())
 
 """
 The special AllowRange annotation allows functions to receive the argument
 as an ExcelRange object if appropriate.  If a sheet reference (e.g. A1:B2) 
 was not passed from Excel, xlOil converts as per ExcelValue.
 """
-AllowRange = typing.Union[ExcelValue, xloil_core.Range]
+AllowRange = typing.Union[ExcelValue, Range]
 
 class Array:
     """
@@ -372,7 +381,7 @@ class Array:
 
     """
  
-    _xloil_converter = getattr(xloil_core, _READ_CONVERTER_PREFIX + "Array_object_2d")(True)
+    _xloil_converter = _Read_Array_object_2d(True)
     _xloil_allow_range = False
 
     def __new__(cls, dtype=object, dims=2, trim=True):
