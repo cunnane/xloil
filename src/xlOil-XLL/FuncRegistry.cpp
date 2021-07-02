@@ -198,14 +198,9 @@ namespace xloil
       return theRegistry.emplace(name, spec->registerFunc()).first->second;
     }
 
-    bool remove(const shared_ptr<RegisteredWorksheetFunc>& func)
+    void remove(const wchar_t* funcName)
     {
-      if (func->deregister())
-      {
-        theRegistry.erase(func->info()->name);
-        return true;
-      }
-      return false;
+      theRegistry.erase(funcName);
     }
 
     void clear()
@@ -269,6 +264,8 @@ namespace xloil
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;
     
+    FunctionRegistry::get().remove(name.c_str());
+
     return true;
   }
 
@@ -344,10 +341,5 @@ namespace xloil
   RegisteredFuncPtr findRegisteredFunc(const wchar_t * name)
   {
     return FunctionRegistry::get().find(name);
-  }
- 
-  bool deregisterFunc(const shared_ptr<RegisteredWorksheetFunc>& ptr)
-  {
-    return FunctionRegistry::get().remove(ptr);
   }
 }

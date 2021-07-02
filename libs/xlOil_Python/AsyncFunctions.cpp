@@ -246,7 +246,7 @@ namespace xloil
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
         auto[args, kwargs] = info->convertArgs(xlArgs + 1);
-        if (kwargs.is_none())
+        if (!kwargs || kwargs.is_none())
           kwargs = py::dict();
 
         // Raw ptr, but we take ownership below
@@ -453,7 +453,7 @@ namespace xloil
           py::gil_scoped_acquire gilAcquired;
 
           auto[args, kwargs] = info->convertArgs(xlArgs);
-          if (kwargs.is_none())
+          if (!kwargs || kwargs.is_none())
             kwargs = py::dict();
 
           // Add this here so that dict sizes for running and newly 

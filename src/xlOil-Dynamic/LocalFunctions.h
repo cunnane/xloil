@@ -5,8 +5,8 @@ namespace xloil
 {
   void registerLocalFuncs(
     const wchar_t* workbookName,
-    const std::vector<std::shared_ptr<const FuncInfo>>& registeredFuncs,
-    const std::vector<DynamicExcelFunc<ExcelObj*>> funcs);
+    const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+    const bool append);
 
-  void forgetLocalFunctions(const wchar_t* workbookName);
+  void clearLocalFunctions(const wchar_t* workbookName);
 }

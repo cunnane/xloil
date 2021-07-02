@@ -225,15 +225,18 @@ namespace xloil
       }
     }
 
-    shared_ptr<const WorksheetFuncSpec> PyFuncInfo::createSpec() const
+    shared_ptr<const DynamicSpec> PyFuncInfo::createSpec(const std::shared_ptr<const PyFuncInfo>& func)
     {
-      auto self = shared_from_this();
-      if (isAsync)
-        return make_shared<DynamicSpec>(info(), &pythonAsyncCallback, self);
-      else if (isRtdAsync)
-        return make_shared<DynamicSpec>(info(), &pythonRtdCallback, self);
+      // We implement this as a static function taking a shared_ptr rather than using 
+      // shared_from_this with PyFuncInfo as the latter causes pybind to catch a 
+      // std::bad_weak_ptr during construction which seems rather un-C++ like and irksome
+      func->checkArgConverters();
+      if (func->isAsync)
+        return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, func);
+      else if (func->isRtdAsync)
+        return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, func);
       else
-        return make_shared<DynamicSpec>(info(), &pythonCallback, self);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback, func);
     }
 
     void PyFuncInfo::checkArgConverters() const
@@ -244,6 +247,7 @@ namespace xloil
           XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
     }
 
+    // TODO: this could be moved to the core
     class WatchedSource : public FileSource
     {
     public:
@@ -265,6 +269,9 @@ namespace xloil
           _workbookWatcher = Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); });
       }
 
+      /// <summary>
+      /// Invoked when the watched file is modified, but not deleted
+      /// </summary>
       virtual void reload() = 0;
 
     private:
@@ -287,29 +294,26 @@ namespace xloil
           return;
         
         excelRunOnMainThread([
-            this,
-            dirStr = wstring(dirName),
-            fileStr = wstring(fileName),
+            self = std::static_pointer_cast<WatchedSource>(shared_from_this()),
+            filePath = fs::path(dirName) / fileName,
             action]()
           {
-            const auto filePath = (fs::path(dirStr) / fileStr).wstring();
-
-            // Directories should match as our directory watch listener only checks
+            // File paths should match as our directory watch listener only checks
             // the specified directory
-            assert(_wcsicmp(filePath.c_str(), sourcePath().c_str()) == 0);
+            assert(_wcsicmp(filePath.c_str(), self->sourcePath().c_str()) == 0);
 
             switch (action)
             {
             case Event::FileAction::Modified:
             {
-              XLO_INFO(L"Module '{0}' modified, reloading.", filePath);
-              reload();
+              XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
+              self->reload();
               break;
             }
             case Event::FileAction::Delete:
             {
-              XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath);
-              FileSource::deleteFileContext(shared_from_this());
+              XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
+              FileSource::deleteFileContext(self);
               break;
             }
             }
@@ -319,11 +323,15 @@ namespace xloil
 
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed
-    // via the core, then a reference to the FileSource can be held and closed by the module 
-    // itself
+    // via the core, then a reference to the FileSource can be held and closed by the module itself
     class RegisteredModule : public WatchedSource
     {
     public:
+      /// <summary>
+      /// If provided, a linked workbook can be used for local functions
+      /// </summary>
+      /// <param name="modulePath"></param>
+      /// <param name="workbookName"></param>
       RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
@@ -362,48 +370,29 @@ namespace xloil
 
       void registerPyFuncs(
         const py::handle& pyModule,
-        const vector<shared_ptr<PyFuncInfo>>& functions)
+        const vector<shared_ptr<PyFuncInfo>>& functions,
+        const bool append)
       {
+        // This function takes a handle from .release() rather than a py::object
+        // to avoid needing the GIL to change the refcount.
         _module = py::reinterpret_steal<py::object>(pyModule);
-        vector<shared_ptr<const WorksheetFuncSpec>> nonLocal;
-        vector<shared_ptr<const FuncInfo>> funcInfo;
-        vector<DynamicExcelFunc<>> localFuncs;
+        vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
 
         for (auto& f : functions)
         {
-          f->checkArgConverters();
           if (!_linkedWorkbook)
             f->isLocalFunc = false;
-          if (!f->isLocalFunc)
-            nonLocal.push_back(f->createSpec());
+          auto spec = PyFuncInfo::createSpec(f);
+
+          if (f->isLocalFunc)
+            localFuncs.emplace_back(std::move(spec));
           else
-          {
-            funcInfo.push_back(f->info());
-            if (f->isRtdAsync)
-            {
-              localFuncs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
-              {
-                return pythonRtdCallback(f.get(), args);
-              });
-            }
-            else
-            {
-              localFuncs.emplace_back([f](const FuncInfo&, const ExcelObj** args)
-              {
-                return pythonCallback(f.get(), args);
-              });
-            }
-          }
+            nonLocal.emplace_back(std::move(spec));
         }
 
-        setRegisteredFuncs(nonLocal);
-
-        if (!funcInfo.empty())
-        {
-          if (!_linkedWorkbook)
-            XLO_THROW("Local functions found without workbook specification");
-          registerLocal(funcInfo, localFuncs);
-        }
+        registerFuncs(nonLocal, append);
+        if (!localFuncs.empty())
+          registerLocal(localFuncs, append);
       }
 
       void reload()
@@ -419,13 +408,12 @@ namespace xloil
 
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
-        py::object moduleHandle;
         if (!_module.is_none())
-          moduleHandle.cast<py::module>().reload();
+          _module.cast<py::module>().reload();
         else
-          moduleHandle = loadModuleFromFile(sourcePath().c_str(), linkedWorkbook().c_str());
+          _module = loadModuleFromFile(sourcePath().c_str(), linkedWorkbook().c_str());
 
-        scanModule(moduleHandle);
+        scanModule(_module);
 
         // Set the addin context back. TODO: Not exception safe clearly.
         theCurrentContext = currentContext;
@@ -458,8 +446,9 @@ namespace xloil
         : L"";
     }
     void registerFunctions(
+      const vector<shared_ptr<PyFuncInfo>>& functions,
       py::object& module,
-      const vector<shared_ptr<PyFuncInfo>>& functions)
+      const bool append)
     {
       // Called from python so we have the GIL
       // A "null" module handle is used by jupyter
@@ -469,7 +458,7 @@ namespace xloil
 
       auto mod = FunctionRegistry::addModule(
         theCurrentContext, modulePath, nullptr);
-      mod->registerPyFuncs(module.release(), functions);
+      mod->registerPyFuncs(module.release(), functions, append);
     }
     void deregisterFunctions(
       const py::object& moduleHandle,
@@ -554,7 +543,10 @@ namespace xloil
           .def_property_readonly("args", &PyFuncInfo::args)
           .def("__str__", pyFuncInfoToString);
 
-        mod.def("register_functions", &registerFunctions);
+        mod.def("register_functions", &registerFunctions, 
+          py::arg("funcs"),
+          py::arg("module")=py::none(),
+          py::arg("append")=false);
         mod.def("deregister_functions", &deregisterFunctions);
       });
     }

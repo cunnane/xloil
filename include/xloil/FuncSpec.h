@@ -18,6 +18,8 @@ namespace xloil
       : _info(info)
     {}
 
+    virtual ~WorksheetFuncSpec() {}
+
     /// <summary>
     /// Registers this function with the registry
     /// </summary>
@@ -39,6 +41,8 @@ namespace xloil
     /// <returns></returns>
     const std::wstring& name() const { return _info->name; }
 
+    virtual ExcelObj* call(const ExcelObj** args) const = 0;
+
   private:
     std::shared_ptr<const FuncInfo> _info;
   };
@@ -58,6 +62,11 @@ namespace xloil
     {}
 
     XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
+
+    ExcelObj* call(const ExcelObj**) const override
+    {
+      throw std::exception();
+    }
 
     std::wstring _dllName;
     std::string _entryPoint;

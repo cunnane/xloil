@@ -48,10 +48,6 @@ namespace xloil
       const char* entryPoint,
       const wchar_t* moduleName);
 
-  /// Remove a registered function. Zeros the passed pointer
-  bool 
-    deregisterFunc(const RegisteredFuncPtr& ptr);
-
   RegisteredFuncPtr
     findRegisteredFunc(const wchar_t* name);
 }

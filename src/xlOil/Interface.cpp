@@ -32,7 +32,7 @@ namespace xloil
   FileSource::FileSource(
     const wchar_t* sourcePath, 
     const wchar_t* linkedWorkbook,
-    bool watchSource)
+    bool watchSource) // TODO: implement watchSource parameter
     : _sourcePath(sourcePath)
   {
     auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
@@ -44,6 +44,9 @@ namespace xloil
 
   FileSource::~FileSource()
   {
+    if (_functions.empty() && _workbookName.empty())
+      return;
+
     XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
 
     decltype(_functions) functions;
@@ -51,81 +54,76 @@ namespace xloil
     std::swap(_functions, functions);
     std::swap(_workbookName, workbookName);
 
-    excelRunOnMainThread([=]()
+    if (!workbookName.empty())
+      clearLocalFunctions(workbookName.c_str());
+
+    excelRunOnMainThread([=]() // TODO: move semanatics rather than copy functions?
     {
-      if (!workbookName.empty())
-        forgetLocalFunctions(workbookName.c_str());
       for (auto& f : functions)
-        xloil::deregisterFunc(f.second);
+        f.second->deregister();
     }, ExcelRunQueue::XLL_API);
   }
 
-  void FileSource::registerFuncs(
-    const vector<shared_ptr<const WorksheetFuncSpec> >& funcSpecs)
+  namespace
   {
-    excelRunOnMainThread([specs = funcSpecs, self = shared_from_this()]() mutable
+    auto registerFunc(
+      std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>>& existingFuncs,
+      const shared_ptr<const WorksheetFuncSpec>& spec)
     {
+      auto& name = spec->name();
+      auto iFunc = existingFuncs.find(name);
+      if (iFunc != existingFuncs.end())
+      {
+        auto& ptr = iFunc->second;
+
+        // Attempt to patch the function context to refer to the new function
+        if (ptr->reregister(spec))
+          return make_pair(ptr, true);
+
+        if (!ptr->deregister())
+          return make_pair(ptr, false);
+
+        existingFuncs.erase(iFunc);
+      }
+
+      auto ptr = xloil::registerFunc(spec);
+      return make_pair(ptr, !!ptr);
+    }
+  }
+
+  void
+    FileSource::registerFuncs(
+      const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& funcSpecs,
+      const bool append)
+  {
+    excelRunOnMainThread([append, specs = funcSpecs, self = shared_from_this()]() mutable
+    {
+      auto& existingFuncs = self->_functions;
       decltype(self->_functions) newFuncs;
 
       for (auto& f : specs)
       {
         // If registration succeeds, just add the function to the new map
-        auto ptr = self->registerFunc(f);
+        auto [ptr, success] = registerFunc(existingFuncs, f);
+
+        // If deregistration fails we have to keep the ptr or it will be orphaned
         if (ptr)
-        {
-          self->_functions.erase(f->name());
           newFuncs.emplace(f->name(), ptr);
-          f.reset();
-        }
+
+        if (success)
+          f.reset(); // Clear pointer in specs to indicate success
       }
 
-      // Remove all the null WorksheetFuncSpec ptrs
-      specs.erase(
-        std::remove_if(specs.begin(), specs.end(), [](auto& f) { return !f; }),
-        specs.end());
-
-      // Any functions remaining in the old map must have been removed from the module
-      // so we can deregister them, but if that fails we have to keep them or they
-      // will be orphaned
-      for (auto& f : self->_functions)
-        if (!xloil::deregisterFunc(f.second))
-          newFuncs.emplace(f);
-
-      self->_functions = newFuncs;
-
       for (auto& f : specs)
-        XLO_ERROR(L"Registration failed for: {0}", f->name());
+        if (f)
+          XLO_ERROR(L"Registration failed for: {0}", f->name());
 
+      if (append)
+        newFuncs.merge(existingFuncs);
+      self->_functions = newFuncs;
     }, ExcelRunQueue::XLL_API);
   }
-
-  RegisteredFuncPtr FileSource::registerFunc(
-    const shared_ptr<const WorksheetFuncSpec>& spec)
-  {
-    auto& name = spec->name();
-    auto iFunc = _functions.find(name);
-    if (iFunc != _functions.end())
-    {
-      auto& ptr = iFunc->second;
-
-      // Attempt to patch the function context to refer to the new function
-      auto success = ptr->reregister(spec);
-      if (success)
-        return ptr;
-      
-      if (!ptr->deregister())
-        return RegisteredFuncPtr();
-
-      _functions.erase(iFunc);
-    }
-
-    auto ptr = xloil::registerFunc(spec);
-    if (!ptr) 
-      return RegisteredFuncPtr();
-    _functions.emplace(name, ptr);
-    return ptr;
-  }
-
+  
   bool FileSource::deregister(const std::wstring& name)
   {
     auto iFunc = _functions.find(name);
@@ -133,7 +131,7 @@ namespace xloil
     {
       excelRunOnMainThread([iFunc, self = this]()
       {
-        if (xloil::deregisterFunc(iFunc->second))
+        if (iFunc->second->deregister())
           self->_functions.erase(iFunc);
       }, ExcelRunQueue::XLL_API);
       return true;
@@ -142,14 +140,14 @@ namespace xloil
   }
 
   void FileSource::registerLocal(
-    const vector<shared_ptr<const FuncInfo>>& funcInfo, 
-    const vector<DynamicExcelFunc<>> funcs)
+    const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+    const bool append)
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
     excelRunOnMainThread([=, self = this]()
     {
-      xloil::registerLocalFuncs(self->_workbookName.c_str(), funcInfo, funcs);
+      xloil::registerLocalFuncs(self->_workbookName.c_str(), funcSpecs, append);
     });
   }
 

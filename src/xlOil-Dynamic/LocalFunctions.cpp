@@ -23,9 +23,9 @@ using std::make_shared;
 namespace xloil
 {
   // TODO: this is not good, filesource should manage its own local funcs and event
-  map<wstring, map<wstring, shared_ptr<const LambdaSpec<>>>> theRegistry;
+  map<wstring, map<wstring, shared_ptr<const WorksheetFuncSpec>>> theRegistry;
 
-  const LambdaSpec<>& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
+  auto& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
   {
     auto wb = theRegistry.find(wbName);
     if (wb == theRegistry.end())
@@ -46,23 +46,22 @@ namespace xloil
 
   void registerLocalFuncs(
     const wchar_t* workbookName,
-    const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
-    const std::vector<DynamicExcelFunc<>> funcs)
+    const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+    const bool append)
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
-    vector<shared_ptr<const WorksheetFuncSpec>> funcSpecs;
-    for (size_t i = 0; i < funcInfo.size(); ++i)
+    vector<shared_ptr<const FuncInfo>> funcInfo;
+    for (auto& spec: funcSpecs)
     {
-      auto& info = funcInfo[i];
-      auto spec = make_shared<LambdaSpec<>>(info, funcs[i]);
-      funcSpecs.push_back(spec);
-      wbFuncs[info->name] = spec;
+     // auto spec = make_shared<LambdaSpec<>>(info, funcs[i]);
+      funcInfo.push_back(spec->info());
+      wbFuncs[spec->name()] = spec;
     }
-    COM::writeLocalFunctionsToVBA(workbookName, funcSpecs);
+    COM::writeLocalFunctionsToVBA(workbookName, funcInfo, append);
   }
 
-  void forgetLocalFunctions(const wchar_t* workbookName)
+  void clearLocalFunctions(const wchar_t* workbookName)
   {
     theRegistry.erase(workbookName);
   }

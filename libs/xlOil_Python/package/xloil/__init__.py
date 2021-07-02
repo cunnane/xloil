@@ -9,6 +9,7 @@ from .xloil import (
     app,
     EventsPaused,
     scan_module,
+    register_functions
     )
 
 from .rtd import RtdSimplePublisher

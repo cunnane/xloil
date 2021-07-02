@@ -39,13 +39,10 @@ of functions
 _LANDMARK_TAG = "_xloil_pending_funcs_"
 
 
-def _insert_landmark(obj):
-    module = inspect.getmodule(obj)
-    pending = getattr(module, _LANDMARK_TAG, None)
-    if pending:
-        pending.append(obj)
-    else:
-        setattr(module, _LANDMARK_TAG, [obj])
+def _insert_landmark(module, obj):
+    pending = getattr(module, _LANDMARK_TAG, set())
+    pending.add(obj)
+    setattr(module, _LANDMARK_TAG, pending)
     
 class Arg:
     """
@@ -276,7 +273,8 @@ def func(fn=None,
          rtd=None,
          macro=False, 
          threaded=False, 
-         volatile=False):
+         volatile=False,
+         register=True):
     """ 
     Decorator which tells xlOil to register the function in Excel. 
     If arguments are annotated using 'typing' annotations, xlOil will attempt to 
@@ -397,8 +395,10 @@ def func(fn=None,
             log(f"Found func: {str(spec)}", level="debug")
 
             # Add the xlOil tags to the function and module
+            # this creates a circular dep
             setattr(fn, _FUNC_META_TAG, spec)
-            _insert_landmark(fn)
+            if register:
+                _insert_landmark(inspect.getmodule(fn), spec)
 
         except Exception as e:
             log(f"Failed determing spec for '{fn.__name__}': {traceback.format_exc()}", level='error')
@@ -462,6 +462,10 @@ class EventsPaused():
     def __exit__(self, type, value, traceback):
         event.allow()
 
+       
+def _clear_pending_registrations(module):
+    if hasattr(module, _LANDMARK_TAG):
+        delattr(module, _LANDMARK_TAG)
 
 def scan_module(module):
     """
@@ -480,10 +484,27 @@ def scan_module(module):
 
         log(f"Found xloil functions in {module}", level="debug")
 
-        to_register = [getattr(f, _FUNC_META_TAG) for f in pending_funcs]
+        to_register = [f if isinstance(f, _FuncSpec) else getattr(f, _FUNC_META_TAG) for f in pending_funcs]
         
-        # Unset flag so we don't try to reregister functions
-        setattr(module, _LANDMARK_TAG, [])
+        xloil_core.register_functions(to_register, module, append=False)
+                                      
+        _clear_pending_registrations(module)
+        
+def register_functions(funcs, module=None, append=True):
 
-        xloil_core.register_functions(module, to_register)
+    def to_spec(f):
+        if isinstance(f, _FuncSpec):
+            return f
+        else:   
+            return getattr(f, _FUNC_META_TAG, None) or getattr(func(f, register=False), _FUNC_META_TAG)
+
+    to_register = [to_spec(f) for f in funcs]
+
+    pending_funcs = getattr(module, _LANDMARK_TAG, None)
+
+    if pending_funcs is None or not any(pending_funcs):
+        xloil_core.register_functions(to_register, module, append)
+    else:
+        pending_funcs.update(to_register)
+
 

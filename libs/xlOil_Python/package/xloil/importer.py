@@ -10,7 +10,7 @@ import sys
 import os
 
 from .shadow_core import *
-from .xloil import scan_module
+from .xloil import scan_module, _clear_pending_registrations
 
 class _ModuleFinder(importlib.abc.MetaPathFinder):
 
@@ -90,6 +90,7 @@ builtins.__import__ = _import_hook
 _real_importlib_reload =  importlib.reload
 
 def _reload_hook(*args, **kwargs):
+    _clear_pending_registrations(args[0])
     module = _real_importlib_reload(*args, **kwargs)
     scan_module(module)
     return module

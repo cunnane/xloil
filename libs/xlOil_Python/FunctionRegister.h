@@ -8,6 +8,7 @@ namespace xloil {
   class AddinContext; 
   struct FuncInfo; 
   class ExcelObj; 
+  class DynamicSpec;
   template <class T> class IConvertFromExcel;
 }
 namespace xloil 
@@ -67,7 +68,7 @@ namespace xloil
       }
     };
 
-    class PyFuncInfo : public std::enable_shared_from_this<PyFuncInfo>
+    class PyFuncInfo
     {
     public:
       PyFuncInfo(
@@ -108,8 +109,7 @@ namespace xloil
 
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
 
-      std::shared_ptr<const WorksheetFuncSpec> createSpec() const;
-      void checkArgConverters() const;
+      static std::shared_ptr<const DynamicSpec> createSpec(const std::shared_ptr<const PyFuncInfo>& funcInfo);
 
     private:
       std::shared_ptr<const IPyToExcel> returnConverter;
@@ -117,6 +117,8 @@ namespace xloil
       std::shared_ptr<FuncInfo> _info;
       pybind11::function _func;
       bool _hasKeywordArgs;
+
+      void checkArgConverters() const;
     };
   }
 }

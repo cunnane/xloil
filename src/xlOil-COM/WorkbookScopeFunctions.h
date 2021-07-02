@@ -1,15 +1,17 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 
 namespace xloil
 {
-  class WorksheetFuncSpec;
+  struct FuncInfo;
 
   namespace COM
   {
     void writeLocalFunctionsToVBA(
       const wchar_t* workbookName,
-      const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& registeredFuncs);
+      const std::vector<std::shared_ptr<const FuncInfo>>& registeredFuncs,
+      const bool append);
   }
 }

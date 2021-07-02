@@ -37,17 +37,18 @@ namespace xloil
 
     /// <summary>
     /// Registers the given function specifcations with Excel. If
-    /// registration fails the input parameter will contain the 
-    /// failed functions, otherwise it will be empty. 
+    /// registration fails the input parameter will contain the failed
+    /// functions, otherwise it will be empty. 
     /// 
-    /// If this function is called a second time it replaces 
-    /// all currently registered functions with the new set.
+    /// If this function is called a second time it replaces all currently
+    /// registered functions unless append is true.
     /// 
     /// </summary>
     /// <param name="specs">functions to register</param>
-    void 
+    void
       registerFuncs(
-        const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs);
+        const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs,
+        const bool append = false);
 
     /// <summary>
     /// Removes the specified function from Excel
@@ -66,8 +67,8 @@ namespace xloil
     /// <param name="funcs"></param>
     void 
       registerLocal(
-        const std::vector<std::shared_ptr<const FuncInfo>>& funcInfo,
-        const std::vector<DynamicExcelFunc<>> funcs);
+        const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+        const bool append);
 
     /// <summary>
     /// Looks for a FileSource corresponding the specified pathname.
@@ -96,9 +97,6 @@ namespace xloil
     std::wstring _workbookName;
 
     // TODO: implement std::string _functionPrefix;
-
-    std::shared_ptr<RegisteredWorksheetFunc> registerFunc(
-      const std::shared_ptr<const WorksheetFuncSpec>& spec);
   };
 
   /// <summary>

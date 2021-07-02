@@ -56,7 +56,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/wholearchive:xloil-Funcs.lib /wholearchive:xloil-COM.lib /wholearchive:xloil-XLL.lib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/wholearchive:xloil-Funcs.lib /wholearchive:xloil-COM.lib /wholearchive:xloil-XLL.lib /wholearchive:xloil-Dynamic.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

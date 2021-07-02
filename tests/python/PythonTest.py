@@ -4,6 +4,7 @@ import datetime as dt
 import asyncio
 
 
+
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -649,6 +650,7 @@ try:
         
 except ImportError:
     pass
+    
 #-----------------------------------------
 # Debugging
 #-----------------------------------------
@@ -670,3 +672,17 @@ def pyWbPath():
     full_path = xlo.app().Workbooks(caller.workbook).FullName
     
     return full_path.replace(caller.workbook,"")
+
+
+#-----------------------------------------
+# On demand function registration
+#-----------------------------------------
+funcs = []
+for i in range(3):
+    val = i
+    @xlo.func(name=f"pyTestDynamic{i}", register=False)
+    def pyTestDynamic():
+        return val
+    funcs.append(pyTestDynamic)
+xlo.register_functions(funcs, sys.modules[__name__])
+

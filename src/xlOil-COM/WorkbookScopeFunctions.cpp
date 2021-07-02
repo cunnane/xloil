@@ -1,4 +1,4 @@
-
+#include "WorkbookScopeFunctions.h"
 #include "Connect.h"
 #include "ComVariant.h"
 #include <xlOil/ExcelRange.h>
@@ -51,7 +51,8 @@ namespace xloil
 
     void writeLocalFunctionsToVBA(
       const wchar_t* workbookName,
-      const vector<shared_ptr<const WorksheetFuncSpec>>& registeredFuncs)
+      const vector<shared_ptr<const FuncInfo>>& registeredFuncs,
+      const bool append)
     {
       try
       {
@@ -67,6 +68,7 @@ namespace xloil
         struct _VBComponent* vbFound = 0;
         vbProj->VBComponents->raw_Item(_variant_t(ourModuleName), &vbFound);
         _VBComponentPtr vbMod;
+        auto startLine = 1;
         if (!vbFound)
         {
           vbMod = vbProj->VBComponents->Add(vbext_ct_StdModule);
@@ -75,16 +77,20 @@ namespace xloil
         else
         {
           vbMod = vbProj->VBComponents->Item(ourModuleName);
-          vbMod->CodeModule->DeleteLines(1, vbMod->CodeModule->CountOfLines);
+          if (!append)
+            vbMod->CodeModule->DeleteLines(1, vbMod->CodeModule->CountOfLines);
+          else
+            startLine = vbMod->CodeModule->CountOfLines + 1;
         }
 
-        Writer writer{ 1, vbMod->CodeModule };
-        writer.write(L"Declare PtrSafe Function localFunctionEntryPoint "
-          "Lib \"xloil.dll\" "
-          "(ByRef workbookName as variant, "
-          " ByRef funcName as variant, "
-          " ByRef ret as variant, "
-          " ByRef args as variant) as Long");
+        Writer writer{ startLine, vbMod->CodeModule };
+        if (!append)
+          writer.write(L"Declare PtrSafe Function localFunctionEntryPoint "
+            "Lib \"xloil.dll\" "
+            "(ByRef workbookName as variant, "
+            " ByRef funcName as variant, "
+            " ByRef ret as variant, "
+            " ByRef args as variant) as Long");
 
         for (size_t i = 0; i < registeredFuncs.size(); ++i)
         {
@@ -92,7 +98,7 @@ namespace xloil
           // We declare all args as optional variant and let the called 
           // function handle things.
           wstring args, optionalArgs;
-          for (auto& arg : func.info()->args)
+          for (auto& arg : func.args)
           {
             args += arg.name + L',';
             optionalArgs += L"Optional " + arg.name + L",";
@@ -108,7 +114,7 @@ namespace xloil
           //   localFunctionEntryPoint workbook, name, name, args
           // End Function
 
-          auto& name = func.name();
+          auto& name = func.name;
 
           writer.write(fmt::format(L"Public Function {0}({1})", name, optionalArgs).c_str());
           writer.write(fmt::format(L"  Dim args: args=Array({0})", args));
