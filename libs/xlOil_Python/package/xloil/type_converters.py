@@ -3,7 +3,8 @@ import importlib.util
 import typing
 import numpy as np
 
-from .shadow_core import Range, CellError
+from .shadow_core import Range, CellError, CannotConvert
+from xloil import log
 
 if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core
@@ -11,7 +12,6 @@ if importlib.util.find_spec("xloil_core") is not None:
         set_return_converter,
         CustomConverter as _CustomConverter,
         CustomReturn as _CustomReturn,
-        CannotConvert,
         Return_Cache as _Return_Cache,
         Return_SingleValue as _Return_SingleValue,
         Read_Array_object_2d as _Read_Array_object_2d,
@@ -118,7 +118,7 @@ class _ArgConverters:
         Registers a arg converter for a given type
         """
         internal = unpack_type_converter(converter)[0]
-        xloil_core.log(f"Added arg converter for type {arg_type}", level='info')
+        log(f"Added arg converter for type {arg_type}", level='info')
         self._converters[arg_type] = internal
     
     def remove(self, arg_type):
@@ -178,7 +178,7 @@ def converter(to=typing.Callable, range=False, register=False):
             if to is not typing.Callable and is_type_converter(result):
                 arg_converters.add(result, to)
             else:
-                xloil_core.log(
+                log(
                     f"Cannot register arg converter {impl.__name__}: requires a specifed 'to' type and a default-constructible instance",
                     level="warn")
 
@@ -198,7 +198,7 @@ class _ReturnConverters:
         """
         internal_converter = unpack_type_converter(converter)[0].get_handler()
         name = getattr(internal_converter, "__name__", type(internal_converter).__name__)
-        xloil_core.log(f"Added return converter {name} for types {types}", level='info')
+        log(f"Added return converter {name} for types {types}", level='info')
         try:
             for t in types:
                 self._converters[t] = internal_converter # TODO: warn log on overwrite
@@ -208,7 +208,7 @@ class _ReturnConverters:
         # Register this object as the custom return converter tried by xlOil when 
         # a func does not specify its return type 
         if not self._registered:
-            xloil_core.set_return_converter(_CustomReturn(self))
+            set_return_converter(_CustomReturn(self))
             self._registered = True
 
     

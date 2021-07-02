@@ -3,8 +3,26 @@ import functools
 import os
 import sys
 import traceback
+import importlib.util
 from .type_converters import *
 from .shadow_core import *
+from xloil import log
+
+if importlib.util.find_spec("xloil_core") is not None:
+    import xloil_core
+    from xloil_core import (
+        Read_object as _Read_object,
+        Read_Cache as _Read_Cache,
+        FuncSpec as _FuncSpec
+    )
+else:
+    def _Read_object():
+        pass
+    def _Read_Cache():
+        pass
+    class _FuncSpec:
+        def __init__(self, *args, **kwargs):
+            pass
 
 
 """
@@ -69,8 +87,6 @@ class Arg:
 
     def write_spec(self, this_arg):
 
-        import xloil_core
-
         # Set the arg converters based on the typeof provided for 
         # each argument. If 'typeof' is a xloil typeconverter object
         # it's passed through.  If it is a general python type, we
@@ -89,7 +105,7 @@ class Arg:
         # The default option is the generic converter which gives a python 
         # type based on the provided Excel type
         if not isinstance(arg_type, type):
-            converter = xloil_core.Read_object()
+            converter = _Read_object()
         else:
             # The ordering of these cases is based on presumed likeliness.
             # First try an internal converter e.g. Read_str, Read_float, etc.
@@ -109,19 +125,18 @@ class Arg:
             elif arg_type is ExcelValue:
                 pass 
             elif arg_type is AllowRange:
-                converter = xloil_core.Read_object(), 
+                converter = _Read_object(), 
                 this_arg.allow_range = True
             # Attempt to find a registered user-converter, otherwise assume the object
             # should be read from the cache 
             else:
                 converter = arg_converters.get_converter(arg_type)
                 if converter is None:
-                    converter = xloil_core.Read_Cache()
+                    converter = _Read_Cache()
         if self.has_default:
             this_arg.default = self.default
 
-        log(f"Got here: {self.name}, {str(converter)}")
-        #assert converter is not None
+        assert converter is not None
         this_arg.converter = converter
 
 
@@ -360,7 +375,7 @@ def func(fn=None,
             if local and len(features) > 0:
                 log(f"Ignoring func options for local function {self.name}", level='info')
 
-            spec = xloil_core.FuncSpec(
+            spec = _FuncSpec(
                 func = fn,
                 nargs = len(func_args),
                 name = name if name else "",

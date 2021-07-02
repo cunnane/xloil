@@ -1,6 +1,8 @@
 
 from .shadow_core import *
 
+log = LogWriter()
+
 from .xloil import (
     Arg, 
     func,

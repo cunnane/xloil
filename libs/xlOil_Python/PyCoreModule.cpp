@@ -60,21 +60,59 @@ namespace xloil {
 
     namespace
     {
-      void writeToLog(const char* message, const char* level)
+      py::object comBusyException;
+
+      // The numerical values of the python log levels align nicely with spdlog
+      // so we can translate with a factor of 10.
+      // https://docs.python.org/3/library/logging.html#levels
+
+      class LogWriter
       {
-        const auto levelEnum = spdlog::level::from_str(level);
-        if (levelEnum != spdlog::level::off)
-          SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), levelEnum, message);
-      }
+      public:
+        spdlog::level::level_enum toSpdLogLevel(const py::object& level)
+        {
+          if (PyLong_Check(level.ptr()))
+          {
+            return spdlog::level::level_enum(
+              std::min(PyLong_AsUnsignedLong(level.ptr()) / 10, 6ul));
+          }
+          return spdlog::level::from_str(py::str(level));
+        }
+
+        void writeToLog(const char* message, const py::object& level)
+        {
+          SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), toSpdLogLevel(level), message);
+        }
+
+        unsigned getLogLevel()
+        {
+          auto level = spdlog::default_logger()->level();
+          return level * 10;
+        }
+
+        void setLogLevel(const py::object& level)
+        {
+          spdlog::default_logger()->set_level(toSpdLogLevel(level));
+        }
+      };
 
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
         excelRunOnMainThread([callable]()
           {
             py::gil_scoped_acquire getGil;
-            callable();
+            try
+            {
+              callable();
+            }
+            catch (py::error_already_set& err)
+            {
+              if (err.matches(comBusyException))
+                throw ComBusyException();
+              throw;
+            }
           },
-          ExcelRunQueue::WINDOW,
+          ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
           nRetries,
           retryPause,
           delay);
@@ -89,10 +127,16 @@ namespace xloil {
             {
               XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
             });
+
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
 
         mod.def("in_wizard", &inFunctionWizard);
-        mod.def("log", &writeToLog, py::arg("msg"), py::arg("level") = "info");
+
+        py::class_<LogWriter>(mod, "LogWriter")
+          .def(py::init<>())
+          .def("__call__", &LogWriter::writeToLog, py::arg("msg"), py::arg("level") = 20)
+          .def_property("level", &LogWriter::getLogLevel, &LogWriter::setLogLevel);
+
         mod.def("run_later",
           &runLater,
           py::arg("func"),
@@ -128,6 +172,8 @@ namespace xloil {
               return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
             }, py::arg("a1style") = false);
 
+
+        comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError");
       }, 1000);
     }
 } }

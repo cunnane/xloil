@@ -9,7 +9,8 @@ import importlib.util
 if importlib.util.find_spec("xloil_core") is not None:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
-        CellError, Range, ExcelArray, in_wizard, log,
+        CellError, Range, ExcelArray, in_wizard, 
+        LogWriter,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions, FuncSpec,
         create_ribbon, RibbonUI, run_later, 
@@ -29,14 +30,22 @@ else:
         """
         pass
 
-    def log(msg, level="info"):
-        """
-        Writes a log message at a level of *error*, *warn*, *info*, *debug* or *trace*.
-        Only messages with a level higher than the log level defined in the xlOil
-        settings will be output to the log file. Trace output can only be seen with 
-        a debug build of xlOil.
-        """
+    class LogWriter:
+
+        def __call__(msg, level=20):
+            """
+            Writes a log message at a level which can be a level constant from the `logging` module
+            or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
+
+            Only messages with a level higher than the xlOil log level which is initially set
+            to the value in the xlOil settings will be output to the log file. Trace output
+            can only be seen with a debug build of xlOil.
+            """
         pass
+
+        @property
+        def level(self):
+            pass
 
     def run_later(func,
             num_retries = 10,
