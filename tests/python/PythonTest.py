@@ -321,8 +321,12 @@ def pyTestIter(size:int, dims:int):
 #
 # Declaring a function as a macro allows use of the Excel.Application object
 # accessible via `xlo.app()`. The available methods and properties are described
-# in the microsoft documentation
+# in the microsoft documentation. COM support can be provided by 'comtypes',
+# a newer pure python package or 'win32com' a well-established more C++ based
+# library.
 #
+xlo.use_com_lib("win32com")
+
 @xlo.func(macro=True)
 def pyTestCom():
     app = xlo.app()

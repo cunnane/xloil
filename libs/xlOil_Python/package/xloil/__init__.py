@@ -9,7 +9,8 @@ from .register import (
     app,
     EventsPaused,
     scan_module,
-    register_functions
+    register_functions,
+    use_com_lib
     )
 
 from .rtd import RtdSimplePublisher

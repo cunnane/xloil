@@ -180,6 +180,31 @@ namespace xloil
     }
     namespace
     {
+      py::object getExcelApp()
+      {
+        return PySteal<py::object>(PyLong_FromVoidPtr(&excelApp()));
+      }
+
+      /// <summary>
+      /// Support win32com by calling PyCom_PyObjectFromIUnknown in pythoncom
+      /// to get suitable IDispatch object. This can be cast to Excel::Application
+      /// by win32com
+      /// </summary>
+      /// <param name="pythoncomDLL">the pythoncom DLL name</param>
+      /// <returns></returns>
+      py::object getExcelAppAsPyComObject(const std::wstring& pythoncomDLL)
+      {
+        static auto pythoncom = LoadLibrary(pythoncomDLL.c_str());
+        if (!pythoncom)
+          XLO_THROW(L"Failed to load pythoncom DLL '{}'", pythoncomDLL);
+
+        typedef PyObject* (*FuncType)(IUnknown*, REFIID riid, BOOL);
+        static auto PyCom_PyObjectFromIUnknown = (FuncType)GetProcAddress(pythoncom, "PyCom_PyObjectFromIUnknown");
+        if (!PyCom_PyObjectFromIUnknown)
+          XLO_THROW(L"Failed to find PyCom_PyObjectFromIUnknown in pythoncom DLL '{}'", pythoncomDLL);
+
+        return PySteal<py::object>(PyCom_PyObjectFromIUnknown(&excelApp(), IID_IDispatch, true));
+      }
       static int theBinder = addBinder([](py::module& mod)
       {
         mod.def("insert_cell_image", writeCellImage, 
@@ -188,6 +213,9 @@ namespace xloil
           py::arg("pos") = py::none(),
           py::arg("origin") = py::none(),
           py::arg("compress") = true);
+
+        mod.def("application", getExcelApp);
+        mod.def("get_excel_app_pycom", getExcelAppAsPyComObject);
       });
     }
   }
