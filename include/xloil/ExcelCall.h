@@ -115,7 +115,7 @@ namespace xloil
   /// <see cref="tryCallExcel"/>.
   /// </summary>
   XLOIL_EXPORT const wchar_t*
-    xlRetCodeToString(int xlret);
+    xlRetCodeToString(int xlret, bool checkXllContext=true);
 
   /// <summary>
   /// Calls the specified Excel function number with the given arguments.
@@ -136,7 +136,7 @@ namespace xloil
     case msxll::xlretAbort:
       throw ExcelAbort();
     default:
-      XLO_THROW(L"Call to Excel failed: {0}", xlRetCodeToString(ret));
+      XLO_THROW(L"Excel call failed: {0}", xlRetCodeToString(ret));
     }
     return result;
   }
@@ -185,12 +185,12 @@ namespace xloil
 
   /// <summary>
   /// If this error is thrown, Excel SDK documentation says you must
-  /// immediately exit.
+  /// immediately return control.
   /// </summary>
   class ExcelAbort : public std::runtime_error
   {
   public:
-    ExcelAbort() : std::runtime_error("Excel abort called") {}
+    ExcelAbort() : std::runtime_error("Excel abort") {}
   };
 }
 

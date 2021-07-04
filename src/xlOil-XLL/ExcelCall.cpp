@@ -5,20 +5,26 @@ using namespace msxll;
 
 namespace xloil
 {
-  const wchar_t* xlRetCodeToString(int ret)
+  const wchar_t* xlRetCodeToString(int ret, bool checkXllContext)
   {
+    if (checkXllContext)
+    {
+      ExcelObj dummy;
+      if (Excel12v(xlStack, &dummy, 0, nullptr) == xlretInvXlfn)
+        return L"XLL function called outside XLL Context";
+    }
     switch (ret)
     {
-    case xlretSuccess: return L"success";
-    case xlretAbort:    return L"macro halted";
-    case xlretInvXlfn:    return L"invalid function number";
-    case xlretInvCount:    return L"invalid number of arguments";
-    case xlretInvXloper:    return L"invalid OPER structure";
-    case xlretStackOvfl:   return L"stack overflow";
-    case xlretFailed:   return L"command failed";
-    case xlretUncalced:   return L"uncalced cell";
+    case xlretSuccess:    return L"success";
+    case xlretAbort:      return L"macro was stopped by the user ";
+    case xlretInvXlfn:    return L"invalid function number, or calling function does not have permission to call the function or command";
+    case xlretInvCount:   return L"invalid number of arguments";
+    case xlretInvXloper:  return L"invalid XLOPER structure";
+    case xlretStackOvfl:  return L"stack overflow";
+    case xlretFailed:     return L"command failed";
+    case xlretUncalced:   return L"attempt to read an uncalculated cell: this requires macro sheet permission";
     case xlretNotThreadSafe:  return L"not allowed during multi-threaded calc";
-    case xlretInvAsynchronousContext:  return L"invalid asynchronous function handle";
+    case xlretInvAsynchronousContext: return L"invalid asynchronous function handle";
     case xlretNotClusterSafe:  return L"not supported on cluster";
     default:
       return L"unknown error";
