@@ -108,7 +108,7 @@ namespace xloil
     std::vector<FuncArg> args;
 
     // TODO: make me an Enum, apparently that's OK in modern c++
-    int options;
+    unsigned options;
 
     /// <summary>
     /// Returns the number of function arguments 

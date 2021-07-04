@@ -18,17 +18,24 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT bool isMainThread();
 
-  // Enum class just doesn't cut it with flags. You can overload all the 
-  // operators and use some SFINAE to make it safe... or you can do this.
+  /// <summary>
+  /// Determines how <see ref="excelRunOnMainThread"/> will dispatch the provided
+  /// function. 
+  /// </summary>
   namespace ExcelRunQueue
   {
     enum QueueTypeValues
     {
-      WINDOW  = 1 << 0, /// Run item via a hidden window message 
-      APC     = 1 << 1, /// Run item via an APC call
-      ENQUEUE = 1 << 2, /// Always queue item, do not try to run immediately if on main thread
-      XLL_API = 1 << 3, /// Item uses XLL API functions
-      COM_API = 1 << 4  /// Item uses COM API functions (default)
+      /// Run item via a hidden window message (default)
+      WINDOW  = 1 << 0,
+      /// Run item via an APC call (use in special cases)
+      APC     = 1 << 1, 
+      /// Always queue item, do not try to run immediately if on main thread
+      ENQUEUE = 1 << 2, 
+      /// Item uses XLL API functions
+      XLL_API = 1 << 3, 
+      /// Item uses COM API functions (default)
+      COM_API = 1 << 4  
     };
   }
 

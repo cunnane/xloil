@@ -399,7 +399,7 @@ namespace xloil
       {
         const auto type = PyArray_TYPE(pArr);
         if (type != NPY_UNICODE && type != NPY_STRING)
-          XLO_THROW("Incorrect array type");
+          XLO_THROW("Incorrect array type: expected string or unicode");
       }
 
       auto toExcelObj(
@@ -428,7 +428,7 @@ namespace xloil
       {
         auto type = PyArray_TYPE(pArr);
         if (PyArray_ITEMSIZE(pArr) != sizeof(PyObject*) || type != NPY_OBJECT)
-          XLO_THROW("Incorrect array type");
+          XLO_THROW("Incorrect array type: expected object");
 
         stringLength = 0;
         auto dims = PyArray_DIMS(pArr);
