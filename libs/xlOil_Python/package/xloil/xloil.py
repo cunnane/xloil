@@ -26,12 +26,6 @@ else:
 
 
 """
-Tag used to mark functions to register with Excel. It is added by the
-xloil.func decorator to the target func's __dict__. It contains a FuncSpec
-"""
-_FUNC_META_TAG = "_xloil_func_"
-
-"""
 Tag used to mark modules which contain functions to register. It is added 
 by the xloil.func decorator to the module's __dict__ and contains a list
 of functions
@@ -39,9 +33,9 @@ of functions
 _LANDMARK_TAG = "_xloil_pending_funcs_"
 
 
-def _insert_landmark(module, obj):
+def _add_pending_fucs(module, objects):
     pending = getattr(module, _LANDMARK_TAG, set())
-    pending.add(obj)
+    pending.update(objects)
     setattr(module, _LANDMARK_TAG, pending)
     
 class Arg:
@@ -156,6 +150,7 @@ class Arg:
 
         return [override_arg(arg) for arg in arglist]
 
+# TODO: Could be replaced by inspect.getfullargspec??
 def function_arg_info(func):
     """
     Returns a list of Arg for a given function which describe the function's arguments
@@ -264,6 +259,20 @@ def _pump_message_loop(loop, timeout):
     loop.run_until_complete(wait())
 
 
+class _WorksheetFunc:
+    """
+    Decorator class for functions declared using `func` which contains information
+    about the Excel function to be registered
+    """
+    def __init__(self, func, spec):
+        self.__wrapped__ = func
+        self._xloil_spec = spec
+        self.__doc__     = spec.help
+        self.__name__    = spec.name
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+
 def func(fn=None, 
          name=None, 
          help="", 
@@ -276,7 +285,7 @@ def func(fn=None,
          volatile=False,
          register=True):
     """ 
-    Decorator which tells xlOil to register the function in Excel. 
+    Decorator which tells xlOil to register the function (or callable) in Excel. 
     If arguments are annotated using 'typing' annotations, xlOil will attempt to 
     convert values received from Excel to the specfied type, raising an exception 
     if this is not possible. The currently available types are
@@ -302,6 +311,8 @@ def func(fn=None,
     Parameters
     ----------
 
+    fn: function or Callable:
+        Automatically passed when `func` is used as a decorator
     name: str
         Overrides the funtion name registered with Excel otherwise the function's 
         declared name is used.
@@ -394,16 +405,14 @@ def func(fn=None,
 
             log(f"Found func: {str(spec)}", level="debug")
 
-            # Add the xlOil tags to the function and module
-            # this creates a circular dep
-            setattr(fn, _FUNC_META_TAG, spec)
-            if register:
-                _insert_landmark(inspect.getmodule(fn), spec)
-
         except Exception as e:
-            log(f"Failed determing spec for '{fn.__name__}': {traceback.format_exc()}", level='error')
-            
-        return fn
+            fn_name = getattr(fn, "__name__", str(fn))
+            log(f"Failed determing spec for '{fn_name}': {traceback.format_exc()}", level='error')
+         
+        if register: # and inspect.isfunction(fn):
+            _add_pending_fucs(inspect.getmodule(fn), [spec])
+
+        return _WorksheetFunc(fn, spec)
 
     return decorate if fn is None else decorate(fn)
 
@@ -464,17 +473,20 @@ class EventsPaused():
 
        
 def _clear_pending_registrations(module):
+    """
+    Called by the xloil reload hook to start afresh with function registrations
+    """
     if hasattr(module, _LANDMARK_TAG):
         delattr(module, _LANDMARK_TAG)
 
 def scan_module(module):
     """
         Parses a specified module to look for functions with with the xloil.func 
-        decorator and register them. 
+        decorator and register them. Rather than call this manually, it is easer
+        to import xloil.importer which registers a hook on the import function.
     """
 
     # We quickly discard modules which do not contain xloil declarations 
-
     pending_funcs = getattr(module, _LANDMARK_TAG, None) 
     if pending_funcs is None or not any(pending_funcs):
         return 
@@ -484,27 +496,44 @@ def scan_module(module):
 
         log(f"Found xloil functions in {module}", level="debug")
 
-        to_register = [f if isinstance(f, _FuncSpec) else getattr(f, _FUNC_META_TAG) for f in pending_funcs]
-        
-        xloil_core.register_functions(to_register, module, append=False)
+        xloil_core.register_functions(list(pending_funcs), module, append=False)
                                       
-        _clear_pending_registrations(module)
+        pending_funcs.clear()
         
 def register_functions(funcs, module=None, append=True):
+    """
+        Registers the provided callables and associates tehm with the given modeule
 
+        Parameters
+        ----------
+
+        funcs: iterable
+            An iterable of `_WorksheetFunc` (a callable decorated with `func`), callables or
+            `_FuncSpec`.  A callable is registered by using `func` with the default settings.
+            Passing one of the other two allows control over the registration such as changing
+            the function or argument names.
+        module: python module
+            A python module which is the source of the functions. If this module is edited 
+            it is automatically reloaded and the functions re-registered. Passing None disables
+            this behaviour
+        append: bool
+            Whether to append to or overwrite any existing functions associated with the module
+    """
+
+    # Check if we have a _FuncSpec, else call the decorator to get one 
     def to_spec(f):
         if isinstance(f, _FuncSpec):
             return f
-        else:   
-            return getattr(f, _FUNC_META_TAG, None) or getattr(func(f, register=False), _FUNC_META_TAG)
+        elif isinstance(f, _WorksheetFunc):
+            return f._xloil_spec
+        else:
+            return func(f, register=False)._xloil_spec
 
     to_register = [to_spec(f) for f in funcs]
 
-    pending_funcs = getattr(module, _LANDMARK_TAG, None)
-
-    if pending_funcs is None or not any(pending_funcs):
-        xloil_core.register_functions(to_register, module, append)
-    else:
-        pending_funcs.update(to_register)
-
-
+    # We don't know if the module is in the process of loading. Since scan_module will
+    # overwrite all existing functions, we both register now and add to the pending list 
+    # Registering the same function twice is optimised by xlOil to avoid overhead
+    # TODO: check we are called from exec_module for the matching module object
+    _add_pending_fucs(module, to_register)
+    xloil_core.register_functions(to_register, module, append)

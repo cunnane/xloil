@@ -541,6 +541,8 @@ namespace xloil
             py::arg("has_kwargs") = false)
           .def_property("return_converter", &PyFuncInfo::getReturnConverter, &PyFuncInfo::setReturnConverter)
           .def_property_readonly("args", &PyFuncInfo::args)
+          .def_property_readonly("name", [](const PyFuncInfo& self) { return self.info()->name; })
+          .def_property_readonly("help", [](const PyFuncInfo& self) { return self.info()->help; })
           .def("__str__", pyFuncInfoToString);
 
         mod.def("register_functions", &registerFunctions, 

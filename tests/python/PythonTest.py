@@ -679,10 +679,15 @@ def pyWbPath():
 #-----------------------------------------
 funcs = []
 for i in range(3):
-    val = i
-    @xlo.func(name=f"pyTestDynamic{i}", register=False)
-    def pyTestDynamic():
-        return val
-    funcs.append(pyTestDynamic)
+
+    class Closure:
+        val = i
+        def __call__(self):
+            return self.val
+    
+    funcs.append(
+        xlo.func(fn=Closure(), name=f"pyTestDynamic{i}", register=False)
+        )
+
 xlo.register_functions(funcs, sys.modules[__name__])
 
