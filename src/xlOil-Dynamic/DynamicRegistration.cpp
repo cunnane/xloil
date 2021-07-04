@@ -139,12 +139,14 @@ namespace xloil
   {
   public:
     RegisteredCallback(
-      const shared_ptr<const DynamicSpec>& spec)
+      const shared_ptr<const DynamicSpec>& spec, 
+      const void* callback,
+      const bool callbackHasReturn)
       : RegisteredWorksheetFunc(spec)
     {
       auto& registry = ThunkHolder::get();
       auto[thunk, thunkSize] = registry.callBuildThunk(
-        spec->_callback, spec->_context.get(), spec->info()->numArgs(), spec->_hasReturn);
+        callback, spec->_context.get(), spec->info()->numArgs(), callbackHasReturn);
       _thunk = thunk;
       _thunkSize = thunkSize;
       _registerId = doRegister();
@@ -223,11 +225,10 @@ namespace xloil
     size_t _thunkSize;
   };
 
-  shared_ptr<RegisteredWorksheetFunc> DynamicSpec::registerFunc() const
+  XLOIL_EXPORT shared_ptr<RegisteredWorksheetFunc> DynamicSpec::registerFunc() const
   {
     return make_shared<RegisteredCallback>(
-      static_pointer_cast<const DynamicSpec>(
-        this->shared_from_this()));
+      static_pointer_cast<const DynamicSpec>(this->shared_from_this()), _callback, _hasReturn);
   }
 
   namespace
