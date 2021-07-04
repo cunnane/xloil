@@ -58,7 +58,7 @@ namespace xloil
       {
         size_t fromRow, fromCol, toRow, toCol, nRows, nCols;
         std::tie(nRows, nCols) = range.shape();
-        bool singleValue = sliceHelper2d(loc, nRows, nCols,
+        bool singleValue = getItemIndexReader2d(loc, nRows, nCols,
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))

@@ -5,7 +5,7 @@ using std::wstring;
 namespace xloil {
   namespace Python
   {
-    bool sliceHelper1d(
+    bool getItemIndexReader1d(
       const pybind11::object& index,
       const size_t size, size_t& from, size_t& to)
     {
@@ -30,7 +30,7 @@ namespace xloil {
       return false;
     }
 
-    bool sliceHelper2d(
+    bool getItemIndexReader2d(
       const pybind11::tuple& loc,
       const size_t nRows, const size_t nCols,
       size_t& fromRow, size_t& fromCol,
@@ -39,8 +39,8 @@ namespace xloil {
       if (loc.size() != 2)
         XLO_THROW("Expecting tuple of size 2");
 
-      auto singleElement = sliceHelper1d(loc[0], nRows, fromRow, toRow);
-      singleElement &= sliceHelper1d(loc[1], nCols, fromCol, toCol);
+      auto singleElement = getItemIndexReader1d(loc[0], nRows, fromRow, toRow);
+      singleElement &= getItemIndexReader1d(loc[1], nCols, fromCol, toCol);
       return singleElement;
     }
 

@@ -85,7 +85,7 @@ namespace xloil
       if (dims() == 1)
       {
         size_t from, to;
-        bool singleElem = sliceHelper1d(loc[0], size(), from, to);
+        bool singleElem = getItemIndexReader1d(loc[0], size(), from, to);
         return singleElem
           ? operator()(from)
           : py::cast<PyExcelArray>(slice((int)from, 0, (int)to, 1));
@@ -93,7 +93,7 @@ namespace xloil
       else
       {
         size_t fromRow, fromCol, toRow, toCol;
-        bool singleElem = sliceHelper2d(loc, nRows(), nCols(),
+        bool singleElem = getItemIndexReader2d(loc, nRows(), nCols(),
           fromRow, fromCol, toRow, toCol);
         return singleElem
           ? operator()(fromRow, fromCol)

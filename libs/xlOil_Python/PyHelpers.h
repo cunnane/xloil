@@ -121,20 +121,36 @@ namespace xloil
     std::wstring pyToWStr(const PyObject* p);
 
     /// <summary>
+    /// Reads an argument to __getitem__ i.e. [] using the following rules
+    ///     None => entire array
+    ///     Slice [a:b] => compute indices using python rules
+    ///     int => single value (0-based)
+    /// Modifies the <param ref="from"/> and <param ref="to"/> arguments
+    /// to indicate the extent of the sliced array. Only handles slices with
+    /// stride = 1.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="size">The size of the object being indexed</param>
+    /// <param name="from"></param>
+    /// <param name="to"></param>
+    /// <returns>Returns true if only a single element is accessed</returns>
+    bool getItemIndexReader1d(
+      const pybind11::object& index,
+      const size_t size, size_t& from, size_t& to);
+
+    /// <summary>
+    /// Take a 2-tuple of indeices and applies <see ref="getItemIndexReader1d"/> in 
+    /// each dimension
     /// </summary>
     /// <param name="loc"></param>
-    /// <param name="nRows"></param>
-    /// <param name="nCols"></param>
+    /// <param name="nRows">The first dimension of the object being indexed</param>
+    /// <param name="nCols">The second dimension of the object being indexed</param>
     /// <param name="fromRow"></param>
     /// <param name="fromCol"></param>
     /// <param name="toRow"></param>
     /// <param name="toCol"></param>
-    /// <returns>Returns true for single element access</returns>
-    bool sliceHelper1d(
-      const pybind11::object& index,
-      const size_t size, size_t& from, size_t& to);
-
-    bool sliceHelper2d(
+    /// <returns>Returns true if only a single element is accessed/returns>
+    bool getItemIndexReader2d(
       const pybind11::tuple& loc,
       const size_t nRows, const size_t nCols,
       size_t& fromRow, size_t& fromCol,
