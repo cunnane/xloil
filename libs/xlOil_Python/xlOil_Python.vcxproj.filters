@@ -10,9 +10,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="package\setup.py" />
-    <None Include="package\xloil\importer.py">
-      <Filter>package</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="package\xloil\__init__.py">
@@ -27,7 +24,7 @@
     <CopyFileToFolders Include="package\xloil\jupyter.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\xloil.py">
+    <CopyFileToFolders Include="package\xloil\register.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="package\xloil\shadow_core.py">
@@ -47,5 +44,6 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="package\xloil\matplotlib.py" />
     <CopyFileToFolders Include="package\xloil\pillow.py" />
+    <CopyFileToFolders Include="package\xloil\importer.py" />
   </ItemGroup>
 </Project>

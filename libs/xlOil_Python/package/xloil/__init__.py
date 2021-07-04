@@ -3,7 +3,7 @@ from .shadow_core import *
 
 log = LogWriter()
 
-from .xloil import (
+from .register import (
     Arg, 
     func,
     app,

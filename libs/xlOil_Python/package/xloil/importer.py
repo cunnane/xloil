@@ -10,7 +10,7 @@ import sys
 import os
 
 from .shadow_core import *
-from .xloil import scan_module, _clear_pending_registrations
+from .register import scan_module, _clear_pending_registrations
 
 class _ModuleFinder(importlib.abc.MetaPathFinder):
 
@@ -65,7 +65,6 @@ def import_from_file(path, workbook_name=None):
     scan_module(module)
 
     return module
-
 
 #
 # Hook 'import' and importlib.reload

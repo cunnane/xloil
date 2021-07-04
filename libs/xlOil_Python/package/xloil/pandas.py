@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from .xloil import *
+from xloil import *
 import typing
 
 @converter(pd.DataFrame, register=True)

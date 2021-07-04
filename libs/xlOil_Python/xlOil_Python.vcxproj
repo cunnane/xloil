@@ -71,7 +71,7 @@
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\xloil.py">
+    <CopyFileToFolders Include="package\xloil\register.py">
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>

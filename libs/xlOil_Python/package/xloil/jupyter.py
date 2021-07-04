@@ -1,5 +1,5 @@
 import xloil as xlo
-import xloil.xloil # TODO: rename this module!
+import xloil.register
 import asyncio
 #
 # Must do this or jupyter gives:
@@ -86,7 +86,7 @@ class _FuncDescription:
 
         func_name = self.func_name
 
-        @xloil.xloil.async_wrapper
+        @xloil.register.async_wrapper
         async def shim(*args, **kwargs):
             return await connection.invoke(func_name, *args, **kwargs)
 
@@ -101,7 +101,7 @@ class _FuncDescription:
             arg.write_spec(spec.args[i])
 
         if self.return_type is not inspect._empty:
-            spec.return_converter = xloil.xloil.find_return_converter(return_type)
+            spec.return_converter = xloil.register.find_return_converter(return_type)
 
         xlo.log(f"Found func: '{str(spec)}'", level="debug")
 
