@@ -6,11 +6,14 @@ log = LogWriter()
 from .register import (
     Arg, 
     func,
-    app,
-    EventsPaused,
     scan_module,
-    register_functions,
-    use_com_lib
+    register_functions
+    )
+
+from .com import (
+    use_com_lib,
+    app,
+    EventsPaused
     )
 
 from .rtd import RtdSimplePublisher

@@ -42,8 +42,17 @@
     <CopyFileToFolders Include="package\xloil\type_converters.py">
       <Filter>package</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\matplotlib.py" />
-    <CopyFileToFolders Include="package\xloil\pillow.py" />
-    <CopyFileToFolders Include="package\xloil\importer.py" />
+    <CopyFileToFolders Include="package\xloil\pillow.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\matplotlib.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
+	<CopyFileToFolders Include="package\xloil\com.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders
+    <CopyFileToFolders Include="package\xloil\importer.py">
+      <Filter>package</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
