@@ -117,6 +117,9 @@ namespace xloil
       // Is morally const: py::handle doesn't change refcount
       return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
     }
+
+    std::wstring pyToWStr(const PyObject* p);
+
     /// <summary>
     /// </summary>
     /// <param name="loc"></param>

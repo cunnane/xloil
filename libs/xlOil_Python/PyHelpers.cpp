@@ -1,5 +1,7 @@
 #include "PyHelpers.h"
 
+using std::wstring;
+
 namespace xloil {
   namespace Python
   {
@@ -40,6 +42,25 @@ namespace xloil {
       auto singleElement = sliceHelper1d(loc[0], nRows, fromRow, toRow);
       singleElement &= sliceHelper1d(loc[1], nCols, fromCol, toCol);
       return singleElement;
+    }
+
+    std::wstring pyToWStr(const PyObject* p)
+    {
+      Py_ssize_t len;
+      wchar_t* wstr;
+      if (!p)
+        return wstring();
+      else if (PyUnicode_Check(p))
+        wstr = PyUnicode_AsWideCharString((PyObject*)p, &len);
+      else
+      {
+        auto str = PyObject_Str((PyObject*)p);
+        wstr = PyUnicode_AsWideCharString(str, &len);
+        Py_XDECREF(str);
+      }
+
+      auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
+      return wstring(wstr, len);
     }
   }
 }

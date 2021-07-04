@@ -6,6 +6,7 @@
 #include <xloil/Ribbon.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
+#include <filesystem>
 namespace py = pybind11;
 using std::shared_ptr;
 using std::wstring;
@@ -67,9 +68,25 @@ namespace xloil
       };
       addin->setRibbon(xml, cmapper);
     }
-    auto createRibbon(const wchar_t* xml, const py::object& mapper)
+    auto createRibbon(const wchar_t* xml, const py::object& mapper, const py::object& name)
     {
-      auto addin = makeComAddin(theCurrentContext->fileName());
+      wstring addinName;
+      if (name.is_none())
+      {
+        // The returned pointers here do no need to be freed or 
+        // decref'd
+        auto frame = PyEval_GetFrame();
+        if (!frame)
+          throw py::cast_error();
+        auto code = PyFrame_GetCode(frame);
+        if (!code)
+          throw py::cast_error();
+        std::filesystem::path filePath(pyToWStr(code->co_filename));
+        addinName = filePath.filename().stem();
+      }
+      else
+        addinName = pyToWStr(name.ptr());
+      auto addin = makeComAddin(addinName.c_str());
       setRibbon(addin.get(), xml, mapper);
       addin->connect();
       return addin;
@@ -86,8 +103,9 @@ namespace xloil
           .def("disconnect", &IComAddin::disconnect)
           .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("mapper"))
           .def("invalidate", &IComAddin::ribbonInvalidate, py::arg("id") = nullptr)
-          .def("activate", &IComAddin::ribbonActivate, py::arg("id"));
-        mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("mapper"));
+          .def("activate", &IComAddin::ribbonActivate, py::arg("id"))
+          .def_property_readonly("name", &IComAddin::progid);
+        mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("mapper"), py::arg("name")=py::none());
       });
     }
   }
