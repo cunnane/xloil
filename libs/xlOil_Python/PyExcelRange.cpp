@@ -109,7 +109,7 @@ namespace xloil
               return r.shape();
             });
 
-        bindPyConverter<PyExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
 
       }, 99);
     }

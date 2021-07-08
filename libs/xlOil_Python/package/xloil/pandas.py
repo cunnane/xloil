@@ -8,6 +8,8 @@ class PDFrame:
     """
     Converter which takes tables with horizontal records to pandas dataframes.
 
+    **PDFrame(element, headings, index)**
+
     Examples
     --------
 
@@ -25,23 +27,21 @@ class PDFrame:
         def array3(z: xlo.PDFrame(str, index='Index')):
             pass
     
-    Methods
-    -------
+    Parameters
+    ----------
+        
+    element : type
+        Pandas performance can be improved by explicitly specifying  
+        a type. In particular, creation of a homogenously typed
+        Dataframe does not require copying the data. Not currently
+        implemented!
 
-    **PDFrame(element, headings, index)** : 
-            
-        element : type
-            Pandas performance can be improved by explicitly specifying  
-            a type. In particular, creation of a homogenously typed
-            Dataframe does not require copying the data. Not currently
-            implemented!
+    headings : bool
+        Specifies that the first row should be interpreted as column
+        headings
 
-        headings : bool
-            Specifies that the first row should be interpreted as column
-            headings
-
-        index : various
-            Is used in a call to pandas.DataFrame.set_index()
+    index : various
+        Is used in a call to pandas.DataFrame.set_index()
 
     """
     def __init__(self, element=None, headings=True, index=None):
@@ -50,7 +50,7 @@ class PDFrame:
         self._headings = headings
         self._index = index
 
-    def __call__(self, x):
+    def read(self, x):
         # A converter should check if provided value is already of the correct type.
         # This can happen as xlOil expands cache strings before calling user converters
         if isinstance(x, pd.DataFrame):
@@ -78,23 +78,36 @@ class PDFrame:
                 df.set_index(idx, inplace=True)
             return df
         
-        raise Exception(f"Unsupported type: {type(x)!r}")
+        raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
-@returner(types=pd.DataFrame, register=True)
-def ReturnDataFrame(val):
-    # TODO: not performant - copies the values array
-    #
-    # Construct this array
-    #   [filler]      [col_labels]
-    #   [row_labels]  [values]
-    #
-    col_labels = val.columns.values
-    row_labels = val.index.values[:, np.newaxis]
-    filler = np.full((np.atleast_2d(col_labels).shape[0], row_labels.shape[1]), ' ', dtype=object)
-    # Write the name of the index in the top left
-    filler[0, 0] = val.index.name
-    return np.block([[filler, col_labels], [row_labels, val.values]])
+    def write(self, val):
+        # Construct this array
+        #   [filler]      [col_labels]
+        #   [row_labels]  [values]
 
-@returner(types=pd.Timestamp, register=True)
-def ReturnTimestamp(val):
-    return val.to_pydatetime()
+        row_labels = val.index.values[:, np.newaxis]
+
+        if self._headings:
+            col_labels = val.columns.values
+            filler_size = (np.atleast_2d(col_labels).shape[0], row_labels.shape[1])
+            filler = np.full(filler_size, ' ', dtype=object)
+        
+            # Write the name of the index in the top left
+            filler[0, 0] = val.index.name
+       
+            return np.block([[filler, col_labels], [row_labels, val.values]])
+        else:
+            return np.block([[row_labels, val.values]])
+
+@converter(typeof=pd.Timestamp, register=True)
+class PandasTimestamp:
+    """
+        There is not need to use this class directly in annotations, rather 
+        use ``pandas.Timestamp``
+    """
+
+    def read(self, val):
+        return pd.Timestamp(val)
+
+    def write(self, val):
+        return val.to_pydatetime()

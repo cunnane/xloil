@@ -14,23 +14,13 @@ namespace xloil
     template <class T>
     void convertPy(pybind11::module& mod, const char* type)
     {
-      bindPyConverter<PyExcelConverter<T>>(mod, type).def(py::init<>());
+      bindPyConverter<PyFromExcelConverter<T>>(mod, type).def(py::init<>());
     }
-    
-    template<class TFunc>
-    class PyFuncToXl : public IPyToExcel
-    {
-    public:
-      ExcelObj operator()(const PyObject& obj) const override
-      {
-        return TFunc()(&obj);
-      }
-    };
 
     template <class T>
     void convertXl(pybind11::module& mod, const char* type)
     {
-      bindXlConverter<PyFuncToXl<T>>(mod, type).def(py::init<>());
+      bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
     }
 
     shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;

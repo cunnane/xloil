@@ -24,7 +24,8 @@ else:
     class _FuncSpec:
         def __init__(self, *args, **kwargs):
             pass
-
+        help = ""
+        name = ""
 
 """
 Tag used to mark modules which contain functions to register. It is added 
@@ -111,8 +112,10 @@ class Arg:
             if converter is not None:
                 pass
             # A designated xloil @converter type contains the internal converter
-            elif is_type_converter(arg_type):
-                converter, this_arg.allow_range = unpack_type_converter(arg_type)
+            elif unpack_arg_converter(arg_type) is not None:
+                converter, this_arg.allow_range = unpack_arg_converter(arg_type)
+                #if converter is None:
+                #    raise TypeError(f"The annotation for {this_arg.name} is an xlOil converter but does not define an arg converter")
             # ExcelValue is just the explicit generic type, so do nothing
             elif arg_type is ExcelValue:
                 pass 
@@ -187,10 +190,8 @@ def find_return_converter(ret_type: type):
     if not isinstance(ret_type, type):
         return None
 
-    ret_con = None
-    if is_type_converter(ret_type):
-        ret_con, _ = unpack_type_converter(ret_type)
-    else:
+    ret_con = unpack_return_converter(ret_type)
+    if ret_con is None:
         ret_con = return_converters.create_returner(ret_type)
 
         if ret_con is None:

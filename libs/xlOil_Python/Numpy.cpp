@@ -21,6 +21,7 @@ namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::string;
+using std::to_string;
 
 // Useful references:
 //
@@ -593,40 +594,79 @@ namespace xloil
 
     namespace
     {
-      template <int TNpType>
-      using Array1dFromXL = PyExcelConverter<PyFromArray1d<TNpType>>;
-
-      template <int TNpType>
-      using Array2dFromXL = PyExcelConverter<PyFromArray2d<TNpType>>;
-
-      template<class T>
-      auto declare(pybind11::module& mod, const char* type)
+      constexpr const char* name(int numpyDataType)
       {
-        return py::class_<T, IPyFromExcel, shared_ptr<T>>
-          (mod, (theReadConverterPrefix + string("Array_") + string(type)).c_str())
-          .def(py::init<bool>(), py::arg("trim")=true);
+        switch (numpyDataType)
+        {
+        case NPY_INT: return "Array_int";
+        case NPY_DOUBLE: return "Array_float";
+        case NPY_BOOL: return "Array_bool";
+        case NPY_DATETIME: return "Array_datetime";
+        case NPY_STRING: return "Array_str";
+        case NPY_OBJECT: return "Array_object";
+        default: return "?";
+        }
+      }
+
+      constexpr const char* dims(int n)
+      {
+        switch (n)
+        {
+        case 1: return "_1d";
+        case 2: return "_2d";
+        default: return "?";
+        }
+      }
+
+      template <int TNpType>
+      using Array1dFromXL = PyFromExcelConverter<PyFromArray1d<TNpType>>;
+
+      template <int TNpType>
+      using Array2dFromXL = PyFromExcelConverter<PyFromArray2d<TNpType>>;
+  
+      template<template<int N> class T, int TNpType, int TNDims>
+      struct Reader
+      {
+        auto operator()(pybind11::module& mod) const
+        {
+          return py::class_<T<TNpType>, IPyFromExcel, shared_ptr<T<TNpType>>>
+            (mod, (prefix + name(TNpType) + dims(TNDims)).c_str())
+            .def(py::init<bool>(), py::arg("trim")=true);
+        }
+        static inline auto prefix = string(theReadConverterPrefix);
+      };
+      template<template<int N> class T, int TNpType, int TNDims>
+      struct Writer
+      {
+        auto operator()(pybind11::module& mod) const
+        {
+          return py::class_<T<TNpType>, IPyToExcel, shared_ptr<T<TNpType>>>
+            (mod, (prefix + name(TNpType) + dims(TNDims)).c_str())
+            .def(py::init<bool>(), py::arg("cache") = false);
+        }
+        static inline auto prefix = string(theReturnConverterPrefix);
+      };
+      template<template<template<int> class, int, int> class Func, template<int N> class T, int TNDims>
+      void declare(pybind11::module& mod)
+      {
+        Func<T, NPY_INT,    TNDims>()(mod);
+        Func<T, NPY_DOUBLE, TNDims>()(mod);
+        Func<T, NPY_BOOL,   TNDims>()(mod);
+        Func<T, NPY_STRING, TNDims>()(mod);
+        Func<T, NPY_OBJECT, TNDims>()(mod);
+
+        auto datetime = Func<T, NPY_DATETIME, TNDims>()(mod);
+        // Alias so that either date or datetime arrays can be requested.
+        // TODO: strictly should drop time information if it exists
+        mod.add_object((Func<T, 1, 1>::prefix + string("Array_date_") + dims(TNDims)).c_str(), datetime);
       }
 
       static int theBinder = addBinder([](py::module& mod)
       {
-        declare<Array1dFromXL<NPY_INT>      >(mod, "int_1d");
-        declare<Array1dFromXL<NPY_DOUBLE>   >(mod, "float_1d");
-        declare<Array1dFromXL<NPY_BOOL>     >(mod, "bool_1d");
-        auto date1d = declare<Array1dFromXL<NPY_DATETIME> >(mod, "date_1d");
-        // Alias so that either date or datetime arrays can be requested.
-        // TODO: strictly should drop time information if it exists
-        mod.add_object((theReadConverterPrefix + string("Array_datetime_1d")).c_str(), date1d);
-        declare<Array1dFromXL<NPY_STRING>   >(mod, "str_1d");
-        declare<Array1dFromXL<NPY_OBJECT>   >(mod, "object_1d");
-
-        declare<Array2dFromXL<NPY_INT>      >(mod, "int_2d");
-        declare<Array2dFromXL<NPY_DOUBLE>   >(mod, "float_2d");
-        declare<Array2dFromXL<NPY_BOOL>     >(mod, "bool_2d");
-        auto date2d = declare<Array2dFromXL<NPY_DATETIME> >(mod, "date_2d");
-        // Alias so that either date or datetime arrays can be requested.
-        mod.add_object((theReadConverterPrefix + string("Array_datetime_2d")).c_str(), date2d);
-        declare<Array2dFromXL<NPY_STRING>   >(mod, "str_2d");
-        declare<Array2dFromXL<NPY_OBJECT>   >(mod, "object_2d");
+        declare<Reader, Array1dFromXL, 1>(mod);
+        declare<Reader, Array2dFromXL, 2>(mod);
+        declare<Writer, XlFromArray1d, 1>(mod);
+        declare<Writer, XlFromArray2d, 2>(mod);
       });
     }
   }

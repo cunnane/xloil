@@ -153,8 +153,8 @@ namespace xloil
       }
       static int theBinder = addBinder([](py::module& mod)
       {
-        bindPyConverter<PyExcelConverter<PyFromDateTime>>(mod, "datetime").def(py::init<>());
-        bindPyConverter<PyExcelConverter<PyFromDate>>(mod, "date").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyFromDateTime>>(mod, "datetime").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyFromDate>>(mod, "date").def(py::init<>());
         bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
         bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
 

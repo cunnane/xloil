@@ -133,16 +133,17 @@ namespace xloil
 
     namespace
     {
-      template <class T>
-      void declare(pybind11::module& mod, const char* name)
+      struct Adapter
       {
-        py::class_<T, IPyFromExcel, shared_ptr<T>>(mod, name)
-          .def(py::init<>());
-      }
-
+        template<class... Args> auto operator()(Args&&... args)
+        {
+          return nestedIterableToExcel(std::forward<Args>(args)...);
+        }
+      };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        declare<PyExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple_object_from_Excel");
+        bindPyConverter<PyFromExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple_from_Excel").def(py::init<>());
+        bindXlConverter<PyFuncToExcel<Adapter>>(mod, "tuple_to_Excel").def(py::init<>());
       });
     }
   }

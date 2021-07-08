@@ -240,13 +240,13 @@ namespace xloil
     /// and create a type converter object with a virtual call.
     /// </summary>
     template <class TImpl>
-    class PyExcelConverter : public IPyFromExcel
+    class PyFromExcelConverter : public IPyFromExcel
     {
       typename detail::MakePyFromExcel<TImpl>::type _impl;
 
     public:
       template <class...Args>
-      PyExcelConverter(Args&&...args) 
+      PyFromExcelConverter(Args&&...args) 
         : _impl(std::forward<Args>(args)...)
       {}
 
@@ -367,6 +367,16 @@ namespace xloil
         }
         else
           return ExcelObj(TFailure);
+      }
+    };
+
+    template<class TFunc>
+    class PyFuncToExcel : public IPyToExcel
+    {
+    public:
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        return TFunc()(&obj);
       }
     };
   }

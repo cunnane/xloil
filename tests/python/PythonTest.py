@@ -52,7 +52,7 @@ def pyTest1(x):
 # conversion.
 #
 @xlo.func(args={'x': "2-dim array to return"})
-def pyTestArr2d(x: xlo.Array(float)):
+def pyTestArr2d(x: xlo.Array(float)) -> xlo.Array(float):
 	return x
 
 #

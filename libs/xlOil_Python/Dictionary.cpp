@@ -59,7 +59,7 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected array"; }
       };
     }
-    using PyDictFromExcel = PyExcelConverter<
+    using PyDictFromExcel = PyFromExcelConverter<
       detail::PyDictFromArray<PyFromAny, PyFromAny>>;
 
     PyObject* readKeywordArgs(const ExcelObj& obj)
