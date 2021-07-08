@@ -78,7 +78,11 @@ namespace xloil
         auto frame = PyEval_GetFrame();
         if (!frame)
           throw py::cast_error();
+#if PY_MAJOR_VERSION >= 4 || PY_MINOR_VERSION >= 9       
         auto code = PyFrame_GetCode(frame);
+#else
+        auto code = frame->f_code;
+#endif
         if (!code)
           throw py::cast_error();
         std::filesystem::path filePath(pyToWStr(code->co_filename));
