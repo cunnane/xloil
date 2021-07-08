@@ -118,15 +118,15 @@ def _handler_func(type, value, trace):
 
 def exception_debug(debugger):
     """
-    Selects a debugger for exceptions in user code. Only effects exceptions
-    which are handled by xlOil. Choices are:
+        Selects a debugger for exceptions in user code. Only effects exceptions
+        which are handled by xlOil. Choices are:
 
-        pdb 
-        ---
+        **'pdb'**
+        
         opens a console window with pdb active at the exception point
 
-        vs 
-        --
+        **'vs'**
+        
         uses ptvsd (Python Tools for Visual Studio) to enable Visual Studio
         (or VS Code) to connect via a remote session. Connection is on the default 
         settings i.e. localhost:5678. This means your lauch.json in VS Code should be:
@@ -144,8 +144,8 @@ def exception_debug(debugger):
 
         A breakpoint is also set a the exception site.
 
-        None
-        ----
+        **None**
+        
         Turns off exception debugging
 
     """

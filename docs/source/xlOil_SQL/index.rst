@@ -88,16 +88,16 @@ xloSqlDB
 
 .. function:: xloSqlDB()
 
-    Returns a reference to a new database object. The functions :any:`xloSqlDB`, :any:`xloSqlTable`
-    and :any:`xloSqlQuery` can be used to build up an in-memory database for the cases where
-    building these objects on the fly using :any:`xloSql` is not performant.
+    Returns a reference to a new database object. The functions :ref:`xloSqlDB`, :ref:`xloSqlTable`
+    and :ref:`xloSqlQuery` can be used to build up an in-memory database for the cases where
+    building these objects on the fly using :ref:`xloSql` is not performant.
 
 xloSqlTable
 ~~~~~~~~~~~
 
 .. function:: xloSqlTable(Database, Data, Name, [Headings], [Query])
 
-    Creates a table in a database created with :any:`xloSqlDB`.  The function returns a reference 
+    Creates a table in a database created with :ref:`xloSqlDB`.  The function returns a reference 
     to the database: it is recommended to chain xloSqlTable calls to force execution order
     in Excel. This ensures tables are added to the database before any queries are run
 
@@ -124,12 +124,12 @@ xloSqlQuery
 .. function:: xloSqlQuery(Database, Query)
 
         Database:
-            A reference to a database originally created with :any:`xloSqlDB` but which has
-            passed through calls to :any:`xloSqlTable`.
+            A reference to a database originally created with :ref:`xloSqlDB` but which has
+            passed through calls to :ref:`xloSqlTable`.
 
         Query:
             A SQL query to execute. Tables referenced in the query must have been added 
-            to the database by :any:`xloSqlTable` before this function is called.
+            to the database by :ref:`xloSqlTable` before this function is called.
 
 
    **Examples**

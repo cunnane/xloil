@@ -34,6 +34,8 @@ in addition the arguments passed by Excel.
 You can dynamically register any function you could register statically, so :any:`SpecialArgs` 
 arguments are valid, as well as a void return, for example:
 
+.. highlight:: c++
+
 ::
 
     auto regId = RegisterLambda<void>(

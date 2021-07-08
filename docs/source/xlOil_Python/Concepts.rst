@@ -56,11 +56,11 @@ You can take this further to evaluate polynominals of n-th degree:
 
     @xlo.func
     def poly(x, coeffs: xlo.Array(float)):
-        return np.sum(coeffs * X[:,None] ** range(coeffs.T.shape[0]), axis=1)
+        return np.sum(coeffs * x[:,None] ** range(coeffs.T.shape[0]), axis=1)
 
-Specifing the type of the array avoids xlOil needing to scan the element to determine it.
-There is a problem with this function: what happens if ``x`` is two-dimensional?  To avoid
-this quandry we can specify:
+Specifing that we expect an array argument and the data type of that array avoids the
+overhead of xlOil determining the type.  There is a problem with this function:
+what happens if ``x`` is two-dimensional?  To avoid this possibility we can specify:
 
 ::
 
@@ -72,14 +72,14 @@ this quandry we can specify:
 Events
 ------
 
-With events, you can request a callback on various user interactions. If you are familiar  
+Events request a callback on various user interactions. If you are familiar  
 with VBA, you may have used Excel's event model already.  Most of the workbook events 
 described in `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
 are available in xlOil. See the xloil.Event documention for the complete list.
 
-Some events use reference parameters, for example setting the `cancel` bool in `WorkbookBeforeSave`, 
-cancels the event.  In xlOil you need to set this value using `cancel.value=True` as python 
-does not support reference parameters for primitive types.
+Some events take reference parameters, which do not exist in python. For example, setting 
+the `cancel` bool in `WorkbookBeforeSave` cancels the event.  In xlOil you need to set this
+value using `cancel.value=True`.
 
 Events are (currently) global to the Excel instance, so you may need to filter by workbook name when 
 handling events.
@@ -105,8 +105,10 @@ Examples
 Looking for xlOil functions in imported modules
 -----------------------------------------------
 
-To tell xlOil to look for functions in a python module use ``xloil.scan_module(name)``. 
-xlOil will import ``name`` if required, then look for decorated functions to register.
+This happens automatically when a module is imported or reloaded.  
+
+If you load a module outside the normal ``import`` mechanism, you can tell 
+xlOil to look for functions to register with ``xloil.scan_module(module)``. 
 
 
 xloPyLoad: import and scan a python module (worksheet function)
@@ -114,6 +116,6 @@ xloPyLoad: import and scan a python module (worksheet function)
 
 .. function:: xloPyLoad(ModuleName)
 
-    Imports the specifed python module and scans it for xloil functions by calling
-    ``xloil.scan_module(name)``.  Leaving the argument blank loads or reloads the
-    workbook module for the caller, i.e. the file `WorkbookName.py`.
+    Imports the specifed python module and registers any it for xloil 
+    functions it contains.  Leaving the argument blank loads or reloads the
+    workbook module for the calling sheet, i.e. the file `WorkbookName.py`.

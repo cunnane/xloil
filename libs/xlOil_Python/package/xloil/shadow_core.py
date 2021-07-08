@@ -12,7 +12,7 @@ if importlib.util.find_spec("xloil_core") is not None:
         CellError, Range, ExcelArray, in_wizard, 
         LogWriter,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
-        deregister_functions, FuncSpec,
+        deregister_functions,
         create_ribbon, RibbonUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
@@ -31,20 +31,24 @@ else:
         pass
 
     class LogWriter:
-
-        def __call__(msg, level=20):
-            """
-            Writes a log message at a level which can be a level constant from the `logging` module
-            or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
+        """
+            Writes a log message to xlOil's log.  The level parameter can be a level constant 
+            from the `logging` module or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
 
             Only messages with a level higher than the xlOil log level which is initially set
             to the value in the xlOil settings will be output to the log file. Trace output
             can only be seen with a debug build of xlOil.
-            """
-        pass
+        """
+        def __call__(self, msg, level=20):
+            pass
 
         @property
         def level(self):
+            """
+            Returns or sets the current log level. The returned value will always be an 
+            integer corresponding to levels in the `logging` module.  The level can be
+            set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
+            """
             pass
 
     def run_later(func,
@@ -249,7 +253,7 @@ else:
         Enum-type class which represents an Excel error condition of the 
         form `#N/A!`, `#NAME!`, etc passed as a function argument. If a 
         function argument does not specify a type (e.g. int, str) it may be passed 
-        an object of this type, which it can handle based on error condition.
+        an object of this type, which it can handle based on the error condition.
         """
         Null = None
         Div0 = None
@@ -273,6 +277,8 @@ else:
             """
             Registers an event handler function, for example:
             
+            ::
+
                 event.NewWorkbook += lambda wb_name: print(wb_name)
             
             """
@@ -539,9 +545,9 @@ else:
 
     class CannotConvert(Exception):
         """
-        Should be thrown by a return converter when it is unable to handle the 
-        provided type.  It does not indicate a fatal condition, as xlOil will
-        fallback to another converter, so no message string is required.
+        Should be thrown by a converter when it is unable to handle the 
+        provided type.  In a return converter it may not indicate a fatal 
+        condition, as xlOil will fallback to another converter.
         """
         pass
 
