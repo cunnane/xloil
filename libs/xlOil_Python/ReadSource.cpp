@@ -112,7 +112,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_WARN(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
+          XLO_ERROR(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
         }
       }
     };
