@@ -506,13 +506,11 @@ namespace xloil
     class RtdServer : public IRtdServer
     {
       RegisterCom<RtdServerImpl<ExcelObj>> _registrar;
-      RtdServerImpl<ExcelObj>* _server;
+      RtdServerImpl<ExcelObj>& server() const { return _registrar.server(); }
     public:
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
         : _registrar(new CComObject<RtdServerImpl<ExcelObj>>(), progId, fixedClsid)
       {
-        // TODO: no need for member var!
-        _server = &_registrar.server();
 #ifdef _DEBUG
         //void* testObj;
         //res = CoCreateInstance(
@@ -535,20 +533,20 @@ namespace xloil
       void start(
         const shared_ptr<IRtdPublisher>& topic) override
       {
-        _server->addProducer(topic);
+        server().addProducer(topic);
       }
 
       shared_ptr<const ExcelObj> subscribe(const wchar_t * topic) override
       {
         shared_ptr<const ExcelObj> value;
         // If there is a producer, but no value yet, put N/A
-        if (callRtd(topic) && _server->value(topic, value) && !value)
+        if (callRtd(topic) && server().value(topic, value) && !value)
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
       bool publish(const wchar_t * topic, ExcelObj&& value) override
       {
-        _server->update(topic, make_shared<ExcelObj>(value));
+        server().update(topic, make_shared<ExcelObj>(value));
         return true;
       }
       shared_ptr<const ExcelObj> 
@@ -556,13 +554,13 @@ namespace xloil
       {
         shared_ptr<const ExcelObj> value;
         // If there is a producer, but no value yet, put N/A
-        if (_server->value(topic, value) && !value)
+        if (server().value(topic, value) && !value)
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
       bool drop(const wchar_t* topic) override
       {
-        return _server->dropProducer(topic);
+        return server().dropProducer(topic);
       }
       const wchar_t* progId() const noexcept override
       {
@@ -577,7 +575,7 @@ namespace xloil
           // Although we can't force Excel to finalise the RTD server when we
           // want (as far as I know) we can deactive it and cut links to any 
           // external DLLs
-          _server->clear();
+          server().clear();
         }
         catch (const std::exception& e)
         {
