@@ -1,7 +1,7 @@
 from PIL import Image
 import xloil as xlo
 
-@xlo.returner(typeof=Image.Image, register=True)
+@xlo.returner(target=Image.Image, register=True)
 class ReturnImage:
     
     """

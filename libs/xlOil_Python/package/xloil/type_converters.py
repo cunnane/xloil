@@ -181,7 +181,7 @@ class _ArgConverters:
 arg_converters = _ArgConverters()
 
 
-def converter(typeof=typing.Callable, range=False, register=False, direction="read"):
+def converter(target=typing.Callable, range=False, register=False, direction="read"):
     """
     Decorator which declares a function or a class to be a type converter
     which serialises from/to a set of simple types understood by Excel and 
@@ -216,14 +216,14 @@ def converter(typeof=typing.Callable, range=False, register=False, direction="re
     Parameters
     ----------
 
-    typeof: 
+    target: 
         The type which the converter handles
 
     register: 
-        If not True, registers the converter as a handler for ``typeof``, replacing
-        any exsting handlers. For a reader, this means if ``typeof`` is used as an 
+        If not True, registers the converter as a handler for ``target``, replacing
+        any exsting handlers. For a reader, this means if ``target`` is used as an 
         argument annotation, this converter will be used.  For a writer, it enables 
-        ``typeof`` as an return type annotation *and* it allows xlOil to try to call 
+        ``target`` as an return type annotation *and* it allows xlOil to try to call 
         this converter for Excel functions with no return annotation.
     
     range:
@@ -252,24 +252,24 @@ def converter(typeof=typing.Callable, range=False, register=False, direction="re
             
     """
     def decorate(impl):
-        result = _make_metaconverter(typeof, impl, direction == "write", range)
+        result = _make_metaconverter(target, impl, direction == "write", range)
 
-        if bool(register) and typeof is not typing.Callable:
+        if bool(register) and target is not typing.Callable:
 
             global arg_converters, return_converters
 
             arg_converter = unpack_arg_converter(result)
             if arg_converter is not None:
-                arg_converters.add(result, typeof)
+                arg_converters.add(result, target)
 
             ret_converter = unpack_return_converter(result)
             if ret_converter is not None:
-                try: 
+                return_converters.add(result, target)
+                if not isinstance(register, bool):
                     # Is register an iterable of types?
                     return_converters.add(result, register)
-                except TypeError:
-                    pass
-                return_converters.add(result, typeof)
+
+                
             
         return result
     return decorate
@@ -291,12 +291,15 @@ class _ReturnConverters:
         name = getattr(converter_impl, "__name__", type(converter_impl).__name__)
         log(f"Added return converter {name} for types {types}", level='info')
 
-        try:
+        if hasattr(type(types), '__iter__'):
             for t in types:
+                if not isinstance(t, type):
+                    raise TypeError(t)
                 self._converters[t] = converter_impl # TODO: warn log on overwrite
-        except TypeError:
-            # Not iterable
+        elif isinstance(types, type):
             self._converters[types] = converter_impl
+        else:
+            raise TypeError(types)
         
         # Register this singleton object as the custom return converter tried by xlOil 
         # when a func does not specify its return type 
@@ -339,11 +342,11 @@ class _ReturnConverters:
 return_converters = _ReturnConverters()
 
 
-def returner(typeof=None, register=False):
+def returner(target=None, register=False):
     """
     A proxy for converter(..., direction="write")
     """
-    return converter(typeof, register=register, direction="write")
+    return converter(target, register=register, direction="write")
 
 
 Cache = _make_typeconverter(object, writer=_Return_Cache())

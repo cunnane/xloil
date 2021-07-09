@@ -14,7 +14,7 @@ def xloPyPlot(x, y, width:float=None, height:float=None, **kwargs):
     return fig
 
 
-@returner(typeof=pyplot.Figure, register=True)
+@returner(target=pyplot.Figure, register=True)
 class ReturnFigure:
     """
         Inserts a plot as an image associated with the calling cell. A second call

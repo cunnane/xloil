@@ -99,7 +99,7 @@ class PDFrame:
         else:
             return np.block([[row_labels, val.values]])
 
-@converter(typeof=pd.Timestamp, register=True)
+@converter(target=pd.Timestamp, register=True)
 class PandasTimestamp:
     """
         There is not need to use this class directly in annotations, rather 
