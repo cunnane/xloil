@@ -23,18 +23,26 @@ namespace xloil
 
   namespace detail
   {
-    inline auto writeCacheId(const CallerLite& caller, wchar_t padding)
+    template<uint16_t NPadding>
+    inline auto writeCacheId(
+      const CallerLite& caller, const wchar_t* optionalName, size_t nameLength)
     {
-      PString<> pascalStr(CallerLite::INTERNAL_REF_MAX_LEN + padding + 1);
+      auto pstrLength = CallerLite::INTERNAL_REF_MAX_LEN + nameLength + NPadding + 1u;
+      PString<> pascalStr((uint16_t)pstrLength);
       auto* buf = pascalStr.pstr() + 1;
 
-      wchar_t nWritten = 1; // Leave space for uniquifier
+      int nWritten = 1; // Leave space for uniquifier
 
-      // Full cell address: eg. [wbName]wsName!RxCy
-      nWritten += (wchar_t)caller.writeInternalAddress(buf, pascalStr.length() - 1);
+      nWritten += caller.writeInternalAddress(buf, pstrLength - 1);
+      // Check for a negative return condition from the above. This should not
+      // be possible as we made the buffer larget than the max internal ref length
+      assert(nWritten - 1 > 0);
+
+      if (optionalName)
+        wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName, nameLength);
 
       // Fix up length
-      pascalStr.resize(nWritten + padding);
+      pascalStr.resize(uint16_t(nWritten + nameLength + NPadding));
 
       return pascalStr;
     }
@@ -208,9 +216,14 @@ namespace xloil
         : found->second.fetch(iResult);
     }
 
-    ExcelObj add(TObj&& obj, const CallerLite& caller = CallerLite())
+    ExcelObj add(
+      TObj&& obj, 
+      const CallerLite& caller = CallerLite(), 
+      const wchar_t* name = nullptr,
+      const size_t nameLength = 0
+    )
     {
-      auto fullKey = detail::writeCacheId(caller, PADDING);
+      auto fullKey = detail::writeCacheId<PADDING>(caller, name, nameLength);
       fullKey[0] = _uniquifier.value;
 
       auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
@@ -376,10 +389,13 @@ namespace xloil
 
   // TODO: consider abrogated caching where simple types are just returned un-cached
   template<typename T>
-  inline auto makeCached(const T* ptr)
+  inline auto addCached(
+    const T* ptr, 
+    const wchar_t* name = nullptr,
+    const size_t nameLength = 0)
   {
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
-      std::unique_ptr<const T>(ptr));
+      std::unique_ptr<const T>(ptr), CallerLite(), name, nameLength);
   }
 
   /// <summary>

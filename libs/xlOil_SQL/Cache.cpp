@@ -16,7 +16,7 @@ namespace xloil
     {
       if (!obj)
         return Const::Error(CellError::Value);
-      return makeCached<CacheObj>(obj.release());
+      return addCached<CacheObj>(obj.release(), L"SQLDB", 5u);
     }
     const CacheObj* cacheFetch(const std::wstring_view& key)
     {

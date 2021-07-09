@@ -21,6 +21,7 @@ namespace xloil
     namespace
     {
       struct PyCache;
+      // Non-owning pointer
       static PyCache* thePythonObjCache = nullptr;
 
       // Only a single instance of this class is created
@@ -46,6 +47,7 @@ namespace xloil
 
         ~PyCache()
         {
+          thePythonObjCache = nullptr;
           XLO_TRACE("Python object cache destroyed");
         }
 
@@ -100,12 +102,19 @@ namespace xloil
     }
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
     {
-      return thePythonObjCache->_cache.add(py::object(obj), caller 
-        ? CallerLite(ExcelObj(caller))
-        : CallerLite());
+      if (!thePythonObjCache)
+        XLO_THROW("Fatal: Python object cache not available");
+      auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
+      return thePythonObjCache->_cache.add(
+        py::object(obj),
+        caller ? CallerLite(ExcelObj(caller)) : CallerLite(),
+        name.c_str(),
+        name.size());
     }
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
+      if (!thePythonObjCache)
+        XLO_THROW("Fatal: Python object cache not available");
       const auto* p = thePythonObjCache->_cache.fetch(str);
       if (p)
         obj = *p;
