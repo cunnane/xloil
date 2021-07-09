@@ -335,11 +335,11 @@ namespace xloil
         _running = false;
         getLoopController().callback(_task.attr("cancel"));
       }
-      bool done()
+      bool done() noexcept
       {
         return !_running;
       }
-      void wait()
+      void wait() noexcept
       {
         // asyncio.Future has no 'wait'
       }
@@ -393,11 +393,11 @@ namespace xloil
 
         _info.invoke(_args, kwargs.ptr());
       }
-      bool done() override
+      bool done() noexcept override
       {
         return _returnObj ? _returnObj->done() : false;
       }
-      void wait() override
+      void wait() noexcept override
       {
         if (_returnObj)
           _returnObj->wait();

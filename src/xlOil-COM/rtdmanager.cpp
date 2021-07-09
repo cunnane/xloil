@@ -83,15 +83,15 @@ namespace xloil
     }
     return false;
   }
-  void RtdPublisher::stop()
+  void RtdPublisher::stop() noexcept
   {
     _task->cancel();
   }
-  bool RtdPublisher::done() const
+  bool RtdPublisher::done() const noexcept
   {
     return _task->done();
   }
-  const wchar_t* RtdPublisher::topic() const
+  const wchar_t* RtdPublisher::topic() const noexcept
   {
     return _topic.c_str();
   }
@@ -427,7 +427,6 @@ namespace xloil
           }
           catch (const std::exception& e)
           {
-            // TODO: topic() may throw
             XLO_INFO(L"Failed to stop producer: '{0}': {1}",
               pub->topic(), utf8ToUtf16(e.what()));
           }

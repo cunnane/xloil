@@ -202,15 +202,24 @@ namespace xloil
       }
       virtual void stop() override
       {
+
         PYBIND11_OVERLOAD_PURE(void, IRtdPublisher, stop, )
       }
       virtual bool done() const override
       {
         PYBIND11_OVERLOAD_PURE(bool, IRtdPublisher, done, )
       }
-      virtual const wchar_t * topic() const override
+      virtual const wchar_t * topic() const noexcept override
       {
+        try
+        {
         PYBIND11_OVERLOAD_PURE(const wchar_t *, IRtdPublisher, topic, )
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Rtd publisher failed to get topic name: {}", e.what());
+          return L"";
+        }
       }
     };
     namespace

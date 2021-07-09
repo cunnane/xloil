@@ -43,7 +43,7 @@ namespace xloil
     /// can be destroyed
     /// </summary>
     /// <returns></returns>
-    virtual bool done() = 0;
+    virtual bool done() noexcept = 0;
 
     /// <summary>
     /// Wait for pending completion of child tasks
@@ -95,7 +95,7 @@ namespace xloil
     /// The name of the topic
     /// </summary>
     /// <returns></returns>
-    virtual const wchar_t* topic() const = 0;
+    virtual const wchar_t* topic() const noexcept = 0;
   };
 ;
 
@@ -170,17 +170,19 @@ namespace xloil
       _cancel = false;
       _future = (*this)(RtdNotifier(n, _cancel));
     }
-    bool done() override
+    bool done() noexcept override
     {
-      return !_future.valid()
-        || _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+      // The offical way to check readiness is 
+      // _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready
+      // But the clearly much more efficient _future._Is_ready seems to have appeared.
+      return !_future.valid() || _future._Is_ready();
     }
     void wait() override
     {
       if (_future.valid())
         _future.wait();
     }
-    void cancel() override
+    void cancel() noexcept override
     {
       _cancel = true;
     }
@@ -237,9 +239,9 @@ namespace xloil
     virtual ~RtdPublisher();
     virtual void connect(size_t numSubscribers) override;
     virtual bool disconnect(size_t numSubscribers) override;
-    virtual void stop() override;
-    virtual bool done() const override;
-    virtual const wchar_t* topic() const override;
+    virtual void stop() noexcept override;
+    virtual bool done() const noexcept override;
+    virtual const wchar_t* topic() const noexcept override;
     virtual bool publish(ExcelObj&& value) noexcept override;
     const std::shared_ptr<IRtdTask>& task() const { return _task; }
 
