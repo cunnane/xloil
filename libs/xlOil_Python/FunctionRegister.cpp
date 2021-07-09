@@ -242,7 +242,7 @@ namespace xloil
     void PyFuncInfo::checkArgConverters() const
     {
       // TODO: handle kwargs#
-      for (auto i = 0; i < _args.size() - (_hasKeywordArgs ? 1 : 0); ++i)
+      for (auto i = 0u; i < _args.size() - (_hasKeywordArgs ? 1u : 0); ++i)
         if (!_args[i].converter)
           XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
     }
@@ -504,7 +504,7 @@ namespace xloil
       {
         string result = utf16ToUtf8(info.info()->name) + "(";
         for (auto& arg : info.cargs())
-          result += utf16ToUtf8(arg.getName()) + (arg.converter ? formatStr(": %s, ", typeid(*arg.converter).name()) : ", ");
+          result += utf16ToUtf8(arg.getName()) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
         if (!info.cargs().empty())
           result.resize(result.size() - 2);
         result.push_back(')');

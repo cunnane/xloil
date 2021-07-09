@@ -16,7 +16,6 @@ namespace xloil
   namespace Python
   {
     class RegisteredModule;
-    using IPyFromExcel = IConvertFromExcel<PyObject*>;
 
     namespace FunctionRegistry
     {

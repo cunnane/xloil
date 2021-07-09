@@ -103,6 +103,7 @@ namespace xloil
       TValConv _valConv;
     public:
       using PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "tuple";
 
       PyObject* operator()(ArrayVal obj) const
       {

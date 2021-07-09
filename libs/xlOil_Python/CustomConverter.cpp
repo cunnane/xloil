@@ -55,6 +55,10 @@ namespace xloil
           throw;
         }
       }
+      const char* name() const override
+      {
+        return _callable.ptr()->ob_type->tp_name;
+      }
     };
 
     py::object cannotConvertException;

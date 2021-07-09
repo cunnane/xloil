@@ -22,8 +22,16 @@ namespace xloil
 {
   namespace Python
   {
-    // TODO: rename this to IPyFromExcel, IPyToExcel
-    using IPyFromExcel = IConvertFromExcel<PyObject*>;
+    class IPyFromExcel : public IConvertFromExcel<PyObject*>
+    {
+    public:
+      /// <summary>
+      /// A useful name for the converter, typically the type supported.
+      /// Currently used only for log diagnostics.
+      /// </summary>
+      /// <returns></returns>
+      virtual const char* name() const;
+    };
     using IPyToExcel = IConvertToExcel<PyObject>;
 
     struct PyFromExcelImpl : public FromExcelBase<PyObject*>
@@ -59,6 +67,8 @@ namespace xloil
       struct PyFromDouble : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "float";
+
         PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
         PyObject* operator()(int x) const    { return operator()(double(x)); }
         PyObject* operator()(bool x) const   { return operator()(double(x)); }
@@ -68,6 +78,8 @@ namespace xloil
       struct PyFromBool : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "bool";
+
         PyObject* operator()(bool x) const
         {
           if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
@@ -80,6 +92,8 @@ namespace xloil
       struct PyFromString : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "str";
+
         PyObject* operator()(const PStringView<>& pstr) const
         {
           return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
@@ -96,6 +110,8 @@ namespace xloil
       struct PyFromInt : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "int";
+
         PyObject* operator()(int x) const  { return PyLong_FromLong(long(x)); }
         PyObject* operator()(bool x) const { return operator()(int(x)); }
         PyObject* operator()(double x) const
@@ -112,6 +128,8 @@ namespace xloil
       struct PyFromAny : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "Any";
+
         PyObject* operator()(int x) const { return PyFromInt()(x); }
         PyObject* operator()(bool x) const { return PyFromBool()(x); }
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
@@ -149,6 +167,7 @@ namespace xloil
       {
       public:
         using FromExcelBase::operator();
+        static constexpr char* const ourName = "CacheObject";
 
         PyObject* operator()(const PStringView<>& pstr) const
         {
@@ -215,6 +234,10 @@ namespace xloil
         }
         return retVal;
       }
+      const char* name() const
+      {
+        return TImpl::NAME;
+      }
     };
 
     using PyFromInt = PyFromExcel<detail::PyFromInt>;
@@ -223,6 +246,7 @@ namespace xloil
     using PyFromString = PyFromExcel<detail::PyFromString>;
     using PyFromAny = PyFromExcel<detail::PyFromAny>;
     using PyCacheObject = PyFromExcel<detail::PyCacheObject>;
+
 
     namespace detail
     {
@@ -256,6 +280,10 @@ namespace xloil
         // Because ref-counting there's no notion of a const PyObject*
         // for a default value
         return _impl(xl, const_cast<PyObject*>(defaultVal));
+      }
+      const char* name() const override
+      {
+        return _impl.name();
       }
     };
 

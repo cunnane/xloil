@@ -11,6 +11,11 @@ namespace xloil
 {
   namespace Python
   {
+    const char* IPyFromExcel::name() const
+    {
+      return "type";
+    }
+
     template <class T>
     void convertPy(pybind11::module& mod, const char* type)
     {

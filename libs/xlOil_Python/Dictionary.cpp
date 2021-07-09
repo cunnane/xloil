@@ -20,6 +20,7 @@ namespace xloil
         TValConv _valConv;
       public:
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "dict";
 
         // Return empty dictionary for missing value
         PyObject* operator()(MissingVal) const

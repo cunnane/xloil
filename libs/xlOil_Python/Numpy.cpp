@@ -264,6 +264,7 @@ namespace xloil
       {}
 
       using PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "ndarray(1d)";
 
       PyObject* operator()(ArrayVal obj) const
       {
@@ -273,7 +274,7 @@ namespace xloil
 
       PyObject* operator()(const ExcelArray& arr) const
       {
-        Py_intptr_t dims[] = { arr.size() };
+        Py_intptr_t dims[] = { (intptr_t)arr.size() };
 
         if (arr.size() == 0)
           return PyArray_EMPTY(1, dims, TNpType, 0);
@@ -316,6 +317,7 @@ namespace xloil
       {}
 
       using PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "ndarray(2d)";
 
       PyObject* operator()(ArrayVal obj) const
       {
@@ -333,7 +335,7 @@ namespace xloil
           return PyArray_EMPTY(2, dims, TNpType, 0);
         }
 
-        Py_intptr_t dims[] = { arr.nRows(), arr.nCols() };
+        Py_intptr_t dims[] = { (intptr_t)arr.nRows(), (intptr_t)arr.nCols() };
         
         const auto itemsize = getItemSize<TNpType>(arr);
         const auto dataSize = arr.size() * itemsize;

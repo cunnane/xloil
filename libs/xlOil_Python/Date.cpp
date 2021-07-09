@@ -54,6 +54,7 @@ namespace xloil
     {
     public:
       using PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "date";
 
       PyObject* operator()(int x) const 
       {
@@ -80,6 +81,7 @@ namespace xloil
     {
     public:
       using PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "datetime";
 
       PyObject* operator()(int x) const
       {

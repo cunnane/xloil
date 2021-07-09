@@ -69,6 +69,7 @@ namespace xloil
       {
       public:
         using PyFromExcelImpl::operator();
+        static constexpr char* const ourName = "Range";
 
         PyObject* operator()(RefVal obj) const 
         {
