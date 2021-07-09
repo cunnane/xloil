@@ -45,6 +45,7 @@ namespace xloil
     /// 
     /// </summary>
     /// <param name="specs">functions to register</param>
+    /// <param name="append">if false, replacess all currently registered functions</param>
     void
       registerFuncs(
         const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs,
@@ -62,9 +63,8 @@ namespace xloil
     /// Registers the given functions as local functions in the specified
     /// workbook
     /// </summary>
-    /// <param name="workbookName"></param>
-    /// <param name="funcInfo"></param>
-    /// <param name="funcs"></param>
+    /// <param name="funcSpecs"></param>
+    /// <param name="append">if false, replacess all currently registered functions</param>
     void 
       registerLocal(
         const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,

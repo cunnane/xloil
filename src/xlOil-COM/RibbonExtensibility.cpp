@@ -30,7 +30,6 @@ namespace xloil
       wstring _xml;
       std::function<RibbonCallback(const wchar_t*)> _handler;
 
-      // First two functions are raw_GetCustomUI and onLoadHandler
       static constexpr DISPID theFirstDispid = 3;
 
     public:
@@ -38,6 +37,11 @@ namespace xloil
 
       RibbonImpl()
       {
+        // Function DispIds are:
+        //    1    raw_GetCustomUI
+        //    2    onLoadHandler - a standard ribbonUI callback
+        //    3... custom callbacks passed via the setRibbon/addCallback functions
+        // 
         _idsOfNames[L"onLoadHandler"] = 2;
       }
       ~RibbonImpl()

@@ -19,7 +19,7 @@ namespace xloil
   XLOIL_EXPORT bool isMainThread();
 
   /// <summary>
-  /// Determines how <see ref="excelRunOnMainThread"/> will dispatch the provided
+  /// Determines how <see cref="excelRunOnMainThread"/> will dispatch the provided
   /// function. 
   /// </summary>
   namespace ExcelRunQueue
@@ -44,7 +44,7 @@ namespace xloil
   /// happen when the user needs to complete a UI gesture such as closing dialog box.
   /// This is against standard COM practice, but the COM interface, unlike the GUI colours
   /// has been abandoned and does not appear to receive updates. xlOil will throw the
-  /// ComBusyException in this case. Use of <see cref="excelRunOnMainThread"> allows
+  /// ComBusyException in this case. Use of <see cref="excelRunOnMainThread"/> allows
   /// retrying a call until the interface becomes available.
   /// </summary>
   class ComBusyException : public std::runtime_error

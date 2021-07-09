@@ -143,7 +143,10 @@ namespace xloil
     const auto startArg = 0;
     
     // Under x64 Microsoft calling convention the args will be in rcx, rdx, r8, r9
-    // with the remainder on the stack. rax is considered volatile and we clobber it
+    // with the remainder on the stack. 
+    // We copy each of the 4 register arguments to a array in our stack, then copy
+    // the remaining stack arguments from earlier in the stack via rax. (rax is 
+    // considered volatile so we can clobber it)
     for (auto i = startArg; i < numArgs; ++i)
     {
       const auto offset = (ptrSize * (i - (uint32_t)startArg));
