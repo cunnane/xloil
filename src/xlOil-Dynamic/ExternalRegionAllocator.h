@@ -1,8 +1,6 @@
 #pragma once
 #include <xloil/WindowsSlim.h>
-#include <list>
 #include <map>
-#include <vector>
 #include <set>
 #include <cassert>
 
@@ -24,9 +22,12 @@ namespace xloil
   class ExternalRegionAllocator
   {
   private:
+    static constexpr unsigned MIN_BLOCKSIZE = 4;
+    static constexpr unsigned GRANULARITY = 16;
+
     struct Block
     {
-      unsigned offset;
+      short offset;
       bool operator<(const Block& that) const { return offset < that.offset; }
     };
     struct FreeBlock
@@ -37,21 +38,23 @@ namespace xloil
     class Chunk
     {
     private:
-      unsigned _size;
-      unsigned _bytesUsed;
       std::set<Block> _blocks;
-
+      short _size;
+      short _bytesUsed;
+      //std::vector<bool> _bitblock
     public:
-      Chunk(unsigned size) : _size(size), _bytesUsed(0) {}
+      Chunk(unsigned size) 
+        : _size(short(size >> MIN_BLOCKSIZE)), _bytesUsed(0) 
+      {}
 
       void* toAddress(void* chunkStart, Block block) const
       {
-        return (char*)chunkStart + block.offset;
+        return (char*)chunkStart + (size_t(block.offset) << MIN_BLOCKSIZE);
       }
       Block appendBlock(unsigned blockSize)
       {
         auto[i, success] = _blocks.emplace(Block{ _bytesUsed });
-        _bytesUsed += blockSize;
+        _bytesUsed += short(blockSize >> MIN_BLOCKSIZE);
         return *i;
       }
       unsigned getBlockSize(typename decltype(_blocks)::iterator i) const
@@ -59,31 +62,29 @@ namespace xloil
         assert(i != _blocks.end());
         auto offset = i->offset;
         ++i;
-        return i == _blocks.end()
+        return (i == _blocks.end()
           ? _size - offset
-          : i->offset - offset;
+          : i->offset - offset) << MIN_BLOCKSIZE;
       }
       auto findBlock(char* chunkStart, void* memPtr) const
       {
-        auto block = Block{ (unsigned)((char*)memPtr - chunkStart) };
+        auto block = Block{ (short)((char*)memPtr - chunkStart) >> MIN_BLOCKSIZE };
         return _blocks.find(block);
       }
       auto splitBlock(char* chunkStart, Block block, unsigned size)
       {
-        auto[i, success] = _blocks.emplace(Block{ block.offset + size });
+        auto[i, success] = _blocks.emplace(Block{ short(block.offset + (size >> MIN_BLOCKSIZE)) });
         auto blocksize = getBlockSize(i);
-        return std::make_pair(blocksize, FreeBlock{ chunkStart, block.offset + size });
+        return std::make_pair(blocksize, FreeBlock{ chunkStart, short(block.offset + (size >> MIN_BLOCKSIZE)) });
       }
       unsigned free(unsigned size)
       {
-        return _bytesUsed -= size;
+        return _bytesUsed -= short(size >> MIN_BLOCKSIZE);
       }
-      unsigned available() const { return _size - _bytesUsed; }
-      unsigned size() const { return _size; }
+      unsigned available() const { return (_size - _bytesUsed) << MIN_BLOCKSIZE; }
+      unsigned size() const { return _size << MIN_BLOCKSIZE; }
     };
 
-    static constexpr unsigned MIN_BLOCKSIZE = 4;
-    static constexpr unsigned GRANULARITY = 16;
 
   public:
     ExternalRegionAllocator(void* minAddress, void* maxAddress)
