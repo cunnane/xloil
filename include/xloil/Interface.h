@@ -27,6 +27,7 @@ namespace xloil
     /// 
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
+    /// <param name="linkedWorkbook">Name of linked workbook, required for local functions</param>
     /// <param name="watchFile">Currently unimplemented</param>
     FileSource(
       const wchar_t* sourcePath, 

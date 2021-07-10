@@ -195,7 +195,7 @@ namespace xloil
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
     /// <param name="totalStrLength">Total length of all strings to be added to the array</param>
-    /// <param name="padTo2DimArray">Adds #N/A to ensure the array is at least 2x2</param>
+    /// <param name="padTo2DimArray">Adds # N/A to ensure the array is at least 2x2</param>
     ExcelArrayBuilder(row_t nRows, col_t nCols,
       size_t totalStrLength = 0, bool padTo2DimArray = false)
     {

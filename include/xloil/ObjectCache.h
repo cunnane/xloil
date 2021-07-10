@@ -270,7 +270,7 @@ namespace xloil
     /// strings. Note the counter (,NNN) after the cache reference is ignored
     /// if specifed and all matching objects are removed.
     /// </summary>
-    /// <param name="cacheRef">cache reference to remove</param>
+    /// <param name="key">cache reference to remove</param>
     /// <returns>true if removal succeeded, otherwise false</returns>
     bool erase(const std::wstring_view& key)
     {

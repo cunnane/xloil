@@ -260,9 +260,10 @@ namespace xloil
     }
 
     /// <summary>
-    /// Construct from an STL string
+    /// Construct from an STL string_view
     /// </summary>
     /// <param name="str"></param>
+    /// <param name="allocator">Optional allocator instance</param>
     explicit PString(const std::basic_string_view<TChar>& str, TAlloc allocator = TAlloc())
       : PString((TChar)str.length(), allocator)
     {
@@ -272,6 +273,8 @@ namespace xloil
     /// <summary>
     /// Construct from C-string 
     /// </summary>
+    /// <param name="str">C-string, must be null terminated</param>
+    /// <param name="allocator">Optional allocator instance</param>
     PString(const TChar* str, TAlloc allocator = TAlloc())
       : PString((TChar)traits::length(str), allocator)
     {
@@ -281,6 +284,8 @@ namespace xloil
     /// <summary>
     /// Construct from string literal
     /// </summary>
+    /// <param name="str"></param>
+    /// <param name="allocator">Optional allocator instance</param>
     template<size_t N>
     PString(const TChar(*str)[N], TAlloc allocator = TAlloc())
       : PString((TChar)N, allocator)
@@ -292,6 +297,7 @@ namespace xloil
     /// Construct from another PString or PStringView
     /// </summary>
     /// <param name="that"></param>
+    /// <param name="allocator">Optional allocator instance</param>
     PString(const PStringImpl& that, TAlloc allocator = TAlloc())
       : PString(that.length(), allocator)
     {

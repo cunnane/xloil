@@ -45,8 +45,7 @@ namespace xloil
     /// actual C++ functions.
     /// </summary>
     /// <param name="xml"></param>
-    /// <param name="handlers">A map from names to functions which take a 
-    ///   <see cref="RibbonControl"/> argument.
+    /// <param name="mapper">A map from names to functions which returns a <see cref="RibbonCallback"/> .
     /// </param>
     virtual void setRibbon(
       const wchar_t* xml,

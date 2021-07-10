@@ -30,6 +30,8 @@ namespace xloil
     /// address will be returned by <see cref="writeAddress"/> unmodified.
     /// </summary>
     /// <param name="address"></param>
+    /// <param name="sheetId">Optional C API sheet ID. Only used for display so does 
+    /// not have to be a valid pointer.</param>
     CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId = nullptr);
     /// <summary>
     /// Writes the caller address to the provided buffer, returning the number

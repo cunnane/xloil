@@ -60,7 +60,7 @@ namespace xloil
   /// Associates a topic string with a publishing task (typically a 
   /// <see cref="IRtdTask"/>) and manages publication of results via
   /// <see cref="IRtdServer::publish"/>. This interface does not extend
-  /// <see cref="IRtdPublish">, which publishes the actual values, rather
+  /// <see cref="IRtdPublish"/>, which publishes the actual values, rather
   /// it defines the management of the task in the context of the RTD Server.
   /// </summary>
   struct IRtdPublisher
@@ -272,19 +272,12 @@ namespace xloil
   {
   public:
     /// <summary>
-    /// Starts a producer embedded in an <see cref="RtdTask"/>
+    /// Starts a producer/publisher embedded in an <see cref="IRtdPublisher"/>
     /// </summary>
-    /// <param name="task"></param>
-    /// <param name="topic">The topic key which consumers can use to 
-    /// locate this producer.
-    /// </param>
-    /// <param name="persistent">If false, the producer will be cancelled
-    /// when its subscriber count reaches zero for a second time (the first
-    /// time being at creation). False is the natural choice for a producer
-    /// and consumer started in the same cell
+    /// <param name="publisher">
     /// </param>
     virtual void start(
-      const std::shared_ptr<IRtdPublisher>& topic) = 0;
+      const std::shared_ptr<IRtdPublisher>& publisher) = 0;
 
     /// <summary>
     /// Convenience function which wraps a given `std::function` object in a 
@@ -349,7 +342,7 @@ namespace xloil
 
     /// <summary>
     /// Drops the producer for a topic by calling RtdPublisher::stop, then waits
-    /// for it to complete and publishes #N/A to all subscribers.
+    /// for it to complete and publishes # N/A to all subscribers.
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
