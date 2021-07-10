@@ -91,7 +91,7 @@ namespace xloil
         {
           py::list out;
           for (auto&[key, cellCache] : _cache)
-            for (auto i = 0; i < cellCache.count(); ++i)
+            for (auto i = 0u; i < cellCache.count(); ++i)
               out.append(py::wstr(_cache.writeKey(key, i)));
           return out;
         }

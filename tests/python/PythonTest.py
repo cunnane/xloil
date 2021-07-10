@@ -76,7 +76,7 @@ def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
 @xlo.func
 def pyTestArrNoArgs(x: xlo.Array):
 	return x
-    
+
 # 
 # This func uses the explicit `args` specifier with xlo.Arg. This overrides any
 # auto detection of the argument type or default by xlOil.

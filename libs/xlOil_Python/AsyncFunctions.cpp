@@ -52,7 +52,7 @@ namespace xloil
             {
               py::gil_scoped_acquire acquire;
               acquire.inc_ref();
-              const auto xloilMod = py::module::import("xloil.xloil");
+              const auto xloilMod = py::module::import("xloil.register");
               self->_eventLoop = xloilMod.attr("_create_event_loop")();
               self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
               self->_callSoonFunction = self->_eventLoop.attr("call_soon_threadsafe");

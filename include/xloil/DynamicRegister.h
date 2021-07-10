@@ -181,9 +181,7 @@ namespace xloil
     /// </summary>
     template <class TFunc>
     RegisterLambda(TFunc func, std::shared_ptr<FuncInfo> info = nullptr)
-      : FuncInfoBuilderT(
-          detail::ArgTypes<TFunc>::nArgs,
-          detail::ArgTypes<TFunc>::types)
+      : FuncInfoBuilderT(detail::ArgTypes<TFunc>::types)
     {
       _registerFunction = detail::dynamicCallbackFromLambda<TRet, TFunc>(func);
       if (info)

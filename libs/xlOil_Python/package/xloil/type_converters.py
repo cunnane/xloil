@@ -75,14 +75,14 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
             """
             Allows return type converters to be "called" in the expected way.
             """
-            return read(*args, **kwargs)
+            return cls.read(*args, **kwargs)
 
-        @staticmethod
-        def read(cls, value, *args, **kwargs):
+        @classmethod
+        def read(cls, value):
             """
             Allows return type converters to be "called" in the expected way.
             """
-            return cls._xloil_return_writer.get_handler()(*args, **kwargs)
+            return cls._xloil_return_writer.get_handler()(value)
 
     if source:
         functools.update_wrapper(_TypeConverter, source, updated=[])

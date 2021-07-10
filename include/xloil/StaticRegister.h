@@ -90,6 +90,10 @@ namespace xloil
     struct FuncInfoBuilderBase
     {
       FuncInfoBuilderBase(size_t nArgs, const int* types);
+      template<int N> 
+      FuncInfoBuilderBase(const std::array<int, N>& types)
+        : FuncInfoBuilderBase(N, types.data())
+      {}
 
       std::shared_ptr<FuncInfo> getInfo();
 

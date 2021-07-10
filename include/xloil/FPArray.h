@@ -27,8 +27,8 @@ namespace xloil
       auto n = nRows * nCols;
       auto fp = (FPArray*)new char[sizeof(msxll::_FP12) + n * sizeof(double)];
       assert(fp);
-      fp->rows = nRows;
-      fp->columns = nCols;
+      fp->rows = (int)nRows;
+      fp->columns = (int)nCols;
       return fp;
     }
     /// <summary>
