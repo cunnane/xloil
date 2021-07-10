@@ -236,7 +236,7 @@ namespace xloil
       }
       const char* name() const
       {
-        return TImpl::NAME;
+        return TImpl::ourName;
       }
     };
 
