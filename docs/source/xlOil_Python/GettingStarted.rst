@@ -45,14 +45,13 @@ To test the setup, you can try the python example sheet: :ref:`core-example-shee
 Note it's not necessary for ``xlOil.xll`` to be registered in this way: you can just
 drop it into your Excel session when required. 
 
-You now have three ways to get xlOil to load your python code:
+You have three ways to get xlOil to load your python code.
 
 
 My first xlOil module
 ~~~~~~~~~~~~~~~~~~~~~
 
-Now let's make our first python module using xlOil.  Create a `MyTest.py` file with 
-the following lines:
+Create a `MyTest.py` file with the following lines:
 
 ::
 
@@ -62,17 +61,18 @@ the following lines:
     def Greeting(who):
         return "Hello  " + who
 
-Edit `%APPDATA%/xlOil/xlOil.ini` so that `PYTHONPATH` includes the 
-directory containing `MyTest.py` then add `MyTest` to the `LoadModules` key.
+Open `%APPDATA%/xlOil/xlOil.ini`.  Find `PYTHONPATH` and ensure it includes the
+directory containing `MyTest.py`.  Find `LoadModules`, uncomment it if required
+and add `MyTest` to the list.
 
-Now open Excel and call the Greeting function.
+Open Excel and call the `=Greeting("world")` function.
 
 
 My first workbook module
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create an Excel workbook called `MyBook`. In the same directory, create
-a file `MyBook.py` containing the following:
+Create an Excel workbook called `MyBook`. In the same directory, create a
+file `MyBook.py` containing the following:
 
 ::
 
@@ -82,11 +82,12 @@ a file `MyBook.py` containing the following:
     def Adder(x, y):
         return x + y
 
-You'll need to open and close `MyBook` in Excel for xlOil to find the python file.
-Now try invoking the Adder function - it can also add arrays!
+You need to open and close `MyBook` in Excel for xlOil to find the python file.
+Now try invoking the `=Adder()` function - it can also add arrays!
 
 If this isn't working, ensure that "Trust accesst to the VBA object model" 
-is checked in Excel Options -> Trust Centre -> Macro Settings.
+is checked in Excel Options -> Trust Centre -> Macro Settings - this 
+setting is off by default.
 
 
 My first xlOil addin
@@ -121,7 +122,7 @@ Troubleshooting
 
 If xlOil detects a serious load error, it pops up a log window to alert you (this can
 be turned off). If it succesfully loaded the core DLL a log file will also be created
-in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `xloLog` will tell 
+in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `=xloLog()` will tell 
 you where this file is.
 
 You may need to set the python paths, i.e. the `PATH` and `PYTHONPATH` values, in 

@@ -100,9 +100,9 @@ else:
 
     class Range:
         """
-        Similar to an Excel Range object, this class allows access to an area on a 
-        worksheet. It uses similar syntax to Excel's object, supporting the ``cell``
-        and ``range`` functions, however they are zero-based like python.
+        Similar to the `Excel.Range <https://docs.microsoft.com/en-us/office/vba/api/excel.range(object)> 
+        object, this class allows direct access to an area on a worksheet. It uses similar syntax to Excel's object, 
+        supporting the ``cell`` and ``range`` functions, however they are zero-based as per python's standard.
 
         A Range can be accessed and sliced using the usual syntax (the slice step must be 1):
 

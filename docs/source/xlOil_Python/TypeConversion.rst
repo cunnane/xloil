@@ -9,6 +9,14 @@ xlOil Python Type Conversion
 Argument Types
 --------------
 
+xlOil function declarations in python look like:
+
+::
+
+    @xlo.func
+    def DoSomething(x, y:float):
+      return x
+
 If no type is specified for an argument, xlOil will dynamically choose a type based
 on the argument provied by Excel, this can be one of:
 
@@ -24,33 +32,33 @@ typing.  Annonations also allow for user-defined conversion to any python type.
 xlOil has built-in support for the following annotations:
 
 .. list-table:: Supported argument annotations
-    :widths: 25 50
+    :widths: 20 50
     :header-rows: 1
 
     * - Type
       - Comment
-    * - bool
+    * - *bool*
       - 
-    * - int
+    * - *int*
       -
-    * - str
+    * - *str*
       -
-    * - float
+    * - *float*
       -
-    * - numpy.ndarray
+    * - *numpy.ndarray*
       - Use the :py:class:`xloil.Array` annotation rather than ndarray directly
-    * - dict
+    * - *dict*
       - Requires a 2-column input array. The first column is interpreted as keys
-    * - tuple
+    * - *tuple*
       - Gives a tuple of tuple-of-tuples depending on number of input dimensions
-    * - datetime.date
+    * - *datetime.date*
       - See :ref:`Dates`
-    * - datetime.datetime
+    * - *datetime.datetime*
       - See :ref:`Dates`
-    * - pandas.DataFrame
+    * - *pandas.DataFrame*
       - Can use the :py:class:`xloil.pandas.PDFrame` annotation for more conversion options. 
         Need to `import xloil.pandas` before use.
-    * - pandas.Timestamp
+    * - *pandas.Timestamp*
       - Need to `import xloil.pandas` before use.
     * - :py:class:`xloil.Range`
       - See :ref:`Range Arguments`
@@ -89,7 +97,7 @@ is specified xlOil tries the following conversions:
 If none of these succeeds, the object is placed in the cache, see :ref:`Cached Objects`
 
 .. list-table:: Supported return type annotations
-    :widths: 25 50
+    :widths: 20 50
     :header-rows: 1
 
     * - Type
@@ -106,7 +114,7 @@ If none of these succeeds, the object is placed in the cache, see :ref:`Cached O
       - Use the :py:class:`xloil.Array` annotation rather than ndarray directly
     * - *dict*
       - Outputs a 2-column array of key, value pairs
-    * - tuple
+    * - *tuple*
       - A tuple of tuple-of-tuples produces a 1 or 2 dim array
     * - *datetime.date*
       - See :ref:`Dates`
@@ -228,12 +236,12 @@ A function can only receive range arguments if it is declared as *macro-type*. I
 addition, attempting to write to a Range during Excel's calculation cycle will fail.
 
 Annotating an argument with :py:class:`xlo.Range` will tell xlOil to pass the function an
-:py:class:`ExcelRange` object, or fail if this is not possible.  An :py:class:`ExcelRange` 
+:py:class:`Range` object, or fail if this is not possible.  An :py:class:`Range` 
 can only be created when the input argument explicitly points to a part of the worksheet, not 
 an array output from another function.
 
 Annotating an argument with :py:class:`xlo.AllowRange` will tell xlOil to pass an 
-:py:class:`ExcelRange` object if possible, otherwise one of the other basic data types
+:py:class:`Range` object if possible, otherwise one of the other basic data types
 (int, str, array, etc.).
 
 
@@ -250,25 +258,25 @@ It may take parameters in its constructor and hold state.
 A function can be interpreted as a type reader or writer depending on the parameters
 passed to the :py:func:`xloil.converter` decorator.
 
-The *read* method or a function decorated as a 'read' or argument converter should
-be able to receieve a value of: 
+The ``read(self, val)`` method or a function decorated as a reader or argument converter 
+should be able to accept a value of: 
 
     *int*, *bool*, *float*, *str*, :py:class:`xloil.ExcelArray`, :py:class:`CellError`, 
-    :py:class:`xloil.ExcelRange` (optional) 
+    :py:class:`xloil.Range` (optional) 
 
 and return a python object or raise an exception (ideally :py:class:`xloil.CannotConvert`).
 
-An :py:class:`xloil.ExcelArray` represents an un-processed array argument, that is a
+An :py:class:`xloil.ExcelArray` represents an un-processed array argument, a
 handle to the raw Excel object not yet converted to a *numpy* array.  The converter
 may opt to process only a part of this array for efficiency. 
 
 A converter may be used by name in *typing* annotations for :py:func:`xloil.func` 
 functions.  In addition, the converter can register as the handler for a specific type 
-which enables that type to be used in annotations.  The converter must be default-constructible
-(or be a function).
+which enables that type to be used in annotations.  For registration, the converter must
+be default-constructible (or be a function).
 
-By specifying ``xloil.converter(range=True)``, the type converter can opt to
-receive :py:class:`ExcelRange` arguments in addition to the other types.
+By decorating with ``@xloil.converter(range=True)``, the type converter can opt to
+receive :py:class:`Range` arguments in addition to the other types.
 
 
 ::
@@ -300,7 +308,7 @@ Custom Return Conversion
 ------------------------
 
 A return type converter should take a python object and return a simple type
-which xlOil knows how to return to Excel. It should raise :py::class:`xloil.CannotConvert` 
+which xlOil knows how to return to Excel. It should raise :py:class:`xloil.CannotConvert` 
 if it cannot handle the given object.
 
 It can be a class implementing ``write(self, val)`` and decorated with 
@@ -343,7 +351,7 @@ the previous image and replaces it with a new one.
 
 
 Importing ``xloil.pillow`` registers a custom return converter for ``PIL.Image``.
-To gain control over the image size and position, use the :py::class:`xloil.pillow.ReturnImage`
+To gain control over the image size and position, use the :py:class:`xloil.pillow.ReturnImage`
 return annotation.
 
 Similarly a matplotlib figure can be returned directly
@@ -360,6 +368,6 @@ Similarly a matplotlib figure can be returned directly
 
 Importing ``xloil.matplotlib`` registers a custom return converter for 
 ``matplotlib.pyplot.Figure``. To gain control over the plot size and position, 
-use the :py::class:`xloil.matplotlib.ReturnFigure` return annotation.
+use the :py:class:`xloil.matplotlib.ReturnFigure` return annotation.
 
-Both of these converters use :py::class:`xloil.insert_cell_image`.
+Both of these converters use :py:class:`xloil.insert_cell_image`.

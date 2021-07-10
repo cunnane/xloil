@@ -11,8 +11,8 @@ and joined.
 
 .. _sql-getting-started:
 
-Getting Started
----------------
+SQL Getting Started
+-------------------
 
 xlOil_SQL does not require any settings and is automatically loaded in a default 
 xlOil installation.  It should appear in the plugin list in
@@ -37,6 +37,7 @@ Suppose the table is in cells A1:C5, then in another cell type
 Make the output an array formula with Ctrl-Shift-Enter and size it 
 appropriately.
 
+.. _xloSql:
 
 xloSql: executes a query on multiples data arrays
 -------------------------------------------------
@@ -81,7 +82,7 @@ Stateful Database Functions
 
 This family of functions can be used to build up and repeatedly query an 
 in-memory database for cases where building the database on the fly using 
-:any:`xloSql` is not performant.
+:ref:`xloSql` is not performant.
 
 xloSqlDB
 ~~~~~~~~

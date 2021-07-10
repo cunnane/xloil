@@ -199,12 +199,12 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
     A *reader* converts function arguments to python types. It should receieve
     a value of: 
 
-      *int*, *bool*, *float*, *str*, `xloil.ExcelArray`, `CellError`, `xloil.ExcelRange` (optional) 
+      *int*, *bool*, *float*, *str*, `xloil.ExcelArray`, `CellError`, `xloil.Range` (optional) 
 
     and return a python object or raise an exception (ideally `xloil.CannotConvert`).
 
-    If ``range`` is True, xlOil may pass an *ExcelRange* or and *ExcelArray*
-    object depending on how the function was invoked.  The converter should 
+    If ``range`` is True, xlOil may pass a *Range* or *ExcelArray* object
+    depending on how the function was invoked.  The converter should 
     handle both cases consistently.
 
     **Writers**
@@ -227,7 +227,7 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
         this converter for Excel functions with no return annotation.
     
     range:
-        For readers, setting this flag allows *xloil.ExcelRange* arguments to be passed
+        For readers, setting this flag allows *xloil.Range* arguments to be passed
 
     direction:
         When decorating a function, the direction "read" or "write" determines the
@@ -365,7 +365,7 @@ the Python object cache for unconvertable objects
 AllowRange = typing.Union[ExcelValue, Range]
 """
 The special AllowRange annotation allows functions to receive the argument
-as an ExcelRange object if appropriate.  If a sheet reference (e.g. A1:B2) 
+as an Range object if appropriate.  If a sheet reference (e.g. A1:B2) 
 was not passed from Excel, xlOil converts as per ExcelValue.
 """
 
