@@ -28,11 +28,9 @@ namespace xloil
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
     /// <param name="linkedWorkbook">Name of linked workbook, required for local functions</param>
-    /// <param name="watchFile">Currently unimplemented</param>
     FileSource(
       const wchar_t* sourcePath, 
-      const wchar_t* linkedWorkbook=nullptr,
-      bool watchFile=false);
+      const wchar_t* linkedWorkbook=nullptr);
 
     virtual ~FileSource();
 
@@ -100,7 +98,30 @@ namespace xloil
     // TODO: implement std::string _functionPrefix;
   };
 
-  /// <summary>
+  class WatchedSource : public FileSource
+  {
+  public:
+    XLOIL_EXPORT WatchedSource(
+      const wchar_t* sourceName,
+      const wchar_t* linkedWorkbook = nullptr);
+
+    /// <summary>
+    /// Invoked when the watched file is modified, but not deleted
+    /// </summary>
+    virtual void reload() = 0;
+
+  private:
+    std::shared_ptr<const void> _fileWatcher;
+    std::shared_ptr<const void> _workbookWatcher;
+
+    void handleClose(const wchar_t* wbName);
+    void handleDirChange(
+      const wchar_t* dirName,
+      const wchar_t* fileName,
+      const int action);
+  };
+
+  /// <summary> 
   /// The AddinContext keeps track of file sources associated with an Addin
   /// to ensure they are properly cleaned up when the addin unloads
   /// </summary>

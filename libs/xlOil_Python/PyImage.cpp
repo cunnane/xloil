@@ -1,9 +1,11 @@
 #include "PyImage.h"
-#define WIN32_LEAN_AND_MEAN
 #include "PyHelpers.h"
 #include <xlOil/State.h>
+
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <olectl.h>
+
 namespace py = pybind11;
 namespace xloil
 {
@@ -61,7 +63,7 @@ namespace xloil
       // Create a Device Independent Bitmap in PIL and copy it to the device context
       auto ImageWin = py::module::import("PIL.ImageWin");
       auto dib = ImageWin.attr("Dib")(image);
-      dib.attr("expose")((int)memoryDC.h);
+      dib.attr("expose")((intptr_t)memoryDC.h);
      
       // Get the (updated) palette from our device context
       auto palette = (HPALETTE)GetCurrentObject(memoryDC.h, OBJ_PAL);

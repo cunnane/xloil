@@ -1,7 +1,8 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
 #include <xlOil/Caller.h>
-#include "PyHelpers.h"
+
+namespace pybind11 { class object; }
 namespace xloil 
 {
   namespace Python 

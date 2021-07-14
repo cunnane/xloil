@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Numpy.h"
-#include "Cache.h"
-#include "Date.h"
+#include "PyCache.h"
+#include "PyDateType.h"
 #include "Main.h"
-#include "Tuple.h"
-#include "ExcelErrorType.h"
+#include "PyTupleType.h"
 #include "PyHelpers.h"
+#include "PyCore.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/TypeConverters.h>
@@ -333,8 +333,7 @@ namespace xloil
       }
     };
 
-    extern std::shared_ptr<const IPyToExcel> theCustomReturnConverter;
-
+   
     template<bool TUseCache = true, CellError TFailure=CellError::Value>
     struct FromPyObj
     {
@@ -369,7 +368,7 @@ namespace xloil
         {
           return ExcelObj(pyDateToExcel(p));
         }
-        else if (Py_TYPE(p) == pyExcelErrorType)
+        else if (Py_TYPE(p) == cellErrorType)
         {
           auto err = pybind11::reinterpret_borrow<pybind11::object>(p).cast<CellError>();
           return ExcelObj(err);

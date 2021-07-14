@@ -1,6 +1,7 @@
-#include "xloil/Date.h"
 #include "BasicTypes.h"
-#include "PyCoreModule.h"
+#include "PyDateType.h"
+#include "PyCore.h"
+#include <xloil/Date.h>
 #include <Python.h>
 #include <datetime.h>
 
@@ -147,12 +148,7 @@ namespace xloil
         else
           throw std::invalid_argument("No conversion to date");
       }
-      template<class T>
-      void declare2(pybind11::module& mod, const char* name)
-      {
-        py::class_<T, IPyToExcel, shared_ptr<T>>(mod, name)
-          .def(py::init<>());
-      }
+
       static int theBinder = addBinder([](py::module& mod)
       {
         bindPyConverter<PyFromExcelConverter<PyFromDateTime>>(mod, "datetime").def(py::init<>());

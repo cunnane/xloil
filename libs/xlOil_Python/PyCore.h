@@ -1,13 +1,18 @@
 #pragma once
 
-#include "BasicTypes.h"
 #include <pybind11/pybind11.h>
 #include <functional>
 
+struct _typeobject;
+namespace xloil {
+  template<class T> class IConvertToExcel;
+}
 namespace xloil
 {
   namespace Python
   {
+    using IPyToExcel = IConvertToExcel<PyObject>;
+
     constexpr char* const theInjectedModuleName = "xloil_core";
     constexpr char* const theReadConverterPrefix = "Read_";
     constexpr char* const theReturnConverterPrefix = "Return_";
@@ -21,8 +26,8 @@ namespace xloil
     /// over dependencies.
     /// </summary>
     int addBinder(
-      std::function<void(pybind11::module&)> binder, 
-      size_t priority = 0);
+      std::function<void(pybind11::module&)> binder);
+     // size_t priority = 0);
 
     /// <summary>
     /// Declare a class of type IPyFromExcel which handles the 
@@ -46,5 +51,10 @@ namespace xloil
       return pybind11::class_<T, IPyToExcel, std::shared_ptr<T>>(mod, 
         (theReturnConverterPrefix + std::string(type)).c_str());
     }
+
+    extern _typeobject* cellErrorType;
+    extern PyObject*    comBusyException;
+    extern PyObject*    cannotConvertException;
+    extern std::shared_ptr<const IPyToExcel> theCustomReturnConverter;
   }
 }

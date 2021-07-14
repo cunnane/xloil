@@ -1,6 +1,6 @@
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "PyHelpers.h"
-#include "PyExcelArray.h"
+#include "PyEvents.h"
 #include "BasicTypes.h"
 #include <xlOil/ExcelApp.h>
 #include <xloil/Log.h>
@@ -14,54 +14,26 @@ using std::wstring;
 namespace py = pybind11;
 using std::make_pair;
 
-namespace xloil {
-  namespace Python {
-
+namespace xloil 
+{
+  namespace Python 
+  {
     using BinderFunc = std::function<void(pybind11::module&)>;
-    void bindFirst(py::module& mod);
+
+    PyTypeObject* cellErrorType;
+    PyObject*     comBusyException;
+    PyObject*     cannotConvertException;
+    shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;
+
     namespace
     {
-      class BinderRegistry
-      {
-      public:
-        static BinderRegistry& get() {
-          static BinderRegistry instance;
-          return instance;
-        }
-
-        void add(BinderFunc f, size_t priority)
-        {
-          theFunctions.insert(make_pair(priority, f));
-        }
-
-        void bindAll(py::module& mod)
-        {
-          std::for_each(theFunctions.rbegin(), theFunctions.rend(),
-            [&mod](auto f) { f.second(mod); });
-        }
-      private:
-        BinderRegistry() {}
-        std::multimap<size_t, BinderFunc> theFunctions;
-      };
-    }
-
-    PyObject* buildInjectedModule()
-    {
-      auto mod = py::module(theInjectedModuleName);
-      BinderRegistry::get().bindAll(mod);
-      return mod.release().ptr();
-    }
-
-    int addBinder(std::function<void(pybind11::module&)> binder, size_t priority)
-    {
-      BinderRegistry::get().add(binder, priority);
-      return 0;
+      auto cleanupGlobals = Event_PyBye().bind([] {
+        theCustomReturnConverter.reset();
+      });
     }
 
     namespace
     {
-      py::object comBusyException;
-
       // The numerical values of the python log levels align nicely with spdlog
       // so we can translate with a factor of 10.
       // https://docs.python.org/3/library/logging.html#levels
@@ -99,36 +71,45 @@ namespace xloil {
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
         excelRunOnMainThread([callable]()
+        {
+          py::gil_scoped_acquire getGil;
+          try
           {
-            py::gil_scoped_acquire getGil;
-            try
-            {
-              callable();
-            }
-            catch (py::error_already_set& err)
-            {
-              if (err.matches(comBusyException))
-                throw ComBusyException();
-              throw;
-            }
-          },
+            callable();
+          }
+          catch (py::error_already_set& err)
+          {
+            if (err.matches(comBusyException))
+              throw ComBusyException();
+            throw;
+          }
+        },
           ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
           nRetries,
           retryPause,
           delay);
       }
 
-      static int theBinder = addBinder([](pybind11::module& mod)
+      void setReturnConverter(const shared_ptr<const IPyToExcel>& conv)
+      {
+        theCustomReturnConverter = conv;
+      }
+
+      class CannotConvert {};
+
+      void initialiseCore(pybind11::module& mod)
       {
         // Bind the two base classes for python converters
         py::class_<IPyFromExcel, shared_ptr<IPyFromExcel>>(mod, "IPyFromExcel")
           .def("__call__",
             [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
-            {
-              XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
-            });
+        {
+          XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
+        });
 
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
+
+        mod.def("set_return_converter", setReturnConverter);
 
         mod.def("in_wizard", &inFunctionWizard);
 
@@ -156,24 +137,72 @@ namespace xloil {
         py::class_<CallerInfo>(mod, "Caller")
           .def(py::init<>())
           .def_property_readonly("sheet",
-            [](const CallerInfo& self) 
-            { 
-              const auto name = self.sheetName();
-              return name.empty() ? py::none() : py::wstr(wstring(name));
-            })
+            [](const CallerInfo& self)
+        {
+          const auto name = self.sheetName();
+          return name.empty() ? py::none() : py::wstr(wstring(name));
+        })
           .def_property_readonly("workbook",
             [](const CallerInfo& self)
-            {
-              const auto name = self.workbook();
-              return name.empty() ? py::none() : py::wstr(wstring(name));
-            })
+        {
+          const auto name = self.workbook();
+          return name.empty() ? py::none() : py::wstr(wstring(name));
+        })
           .def("address", [](const CallerInfo& self, bool x)
-            {
-              return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
-            }, py::arg("a1style") = false);
+        {
+          return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
+        }, py::arg("a1style") = false);
 
 
-        comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError");
-      }, 1000);
+        comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
+
+        cannotConvertException = py::exception<CannotConvert>(mod, "CannotConvert").ptr();
+
+        {
+          // Bind CellError type to xloil::CellError enum
+          auto eType = py::enum_<CellError>(mod, "CellError");
+          for (auto e : theCellErrors)
+            eType.value(utf16ToUtf8(enumAsWCString(e)).c_str(), e);
+
+          cellErrorType = (PyTypeObject*)eType.ptr();
+        }
+      }
+   
+      class BinderRegistry
+      {
+      public:
+        static BinderRegistry& get() {
+          static BinderRegistry instance;
+          return instance;
+        }
+
+        auto add(BinderFunc f, size_t priority)
+        {
+          return theFunctions.insert(make_pair(priority, f));
+        }
+
+        void bindAll(py::module& mod)
+        {
+          std::for_each(theFunctions.rbegin(), theFunctions.rend(),
+            [&mod](auto f) { f.second(mod); });
+        }
+      private:
+        BinderRegistry() {}
+        std::multimap<size_t, BinderFunc> theFunctions;
+      };
+    }
+
+    PyObject* buildInjectedModule()
+    {
+      auto mod = py::module(theInjectedModuleName);
+      initialiseCore(mod);
+      BinderRegistry::get().bindAll(mod);
+      return mod.release().ptr();
+    }
+
+    int addBinder(std::function<void(pybind11::module&)> binder)//, size_t priority)
+    {
+      BinderRegistry::get().add(binder, 1);
+      return 0;
     }
 } }

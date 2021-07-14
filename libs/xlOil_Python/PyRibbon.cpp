@@ -1,6 +1,6 @@
 #include "Main.h"
 #include "BasicTypes.h"
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "PyEvents.h"
 #include "PyImage.h"
 #include <xloil/Ribbon.h>
@@ -73,8 +73,7 @@ namespace xloil
       wstring addinName;
       if (name.is_none())
       {
-        // The returned pointers here do no need to be freed or 
-        // decref'd
+        // The returned pointers here do no need to be freed or decref'd
         auto frame = PyEval_GetFrame();
         if (!frame)
           throw py::cast_error();
@@ -83,8 +82,6 @@ namespace xloil
 #else
         auto code = frame->f_code;
 #endif
-        if (!code)
-          throw py::cast_error();
         std::filesystem::path filePath(pyToWStr(code->co_filename));
         addinName = filePath.filename().stem();
       }

@@ -1,9 +1,10 @@
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/ObjectCache.h>
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "BasicTypes.h"
-#include "Cache.h"
-#include "Main.h"
+#include "PyCache.h"
+//#include "Main.h"
+
 namespace py = pybind11;
 using std::wstring;
 

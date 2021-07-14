@@ -1,6 +1,6 @@
 #pragma once
 #include "PyHelpers.h"
-#include "Cache.h"
+#include "PyCache.h"
 
 namespace xloil
 {

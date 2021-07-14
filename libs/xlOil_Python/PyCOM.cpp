@@ -1,8 +1,10 @@
 #include <xlOil/ExcelTypeLib.h>
 #include <xloil/Log.h>
+#include <xloil/Throw.h>
 #include <xlOil/ExcelApp.h>
-#include <xloilHelpers/Environment.h>
-#include "PyCoreModule.h"
+#include <xlOilHelpers/Environment.h>
+#include "PyHelpers.h"
+#include "PyCore.h"
 #include "PyImage.h"
 #include <fcntl.h>
 
@@ -153,6 +155,8 @@ namespace xloil
 
         // I don't think it's possible to check if the shape exists prior to deletion
         // so we have to catch the error
+
+        // TODO: copy size info from existing image?
         try
         {
           shapes->Item(shapeName.c_str())->Delete();

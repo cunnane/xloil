@@ -1,5 +1,5 @@
 #include "BasicTypes.h"
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "PyEvents.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -28,19 +28,6 @@ namespace xloil
       bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
     }
 
-    shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;
-
-    namespace
-    {
-      auto cleanupReturnConverter = Event_PyBye().bind([] {
-        theCustomReturnConverter.reset();
-      });
-    }
-
-    void setReturnConverter(shared_ptr<const IPyToExcel> conv)
-    {
-      theCustomReturnConverter = conv;
-    }
 
     struct FromPyToCache
     {
@@ -81,8 +68,6 @@ namespace xloil
       convertXl<FromPyString>(mod, "str");
       convertXl<FromPyToCache>(mod, "Cache");
       convertXl<FromPyToSingleValue>(mod, "SingleValue");
-
-      mod.def("set_return_converter", setReturnConverter);
     });
   }
 }

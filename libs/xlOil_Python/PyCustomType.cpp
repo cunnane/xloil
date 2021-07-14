@@ -1,8 +1,8 @@
 #include "PyHelpers.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
-#include "PyCoreModule.h"
-#include "PyExcelArray.h"
+#include "PyCore.h"
+#include "PyExcelArrayType.h"
 #include "PyEvents.h"
 #include <pybind11/pybind11.h>
 
@@ -61,15 +61,7 @@ namespace xloil
       }
     };
 
-    py::object cannotConvertException;
-
-    namespace
-    {
-      auto cleanupConvertException = Event_PyBye().bind([] {
-        cannotConvertException = py::object();
-      });
-    }
-
+ 
     class CustomReturn : public IPyToExcel
     {
     private:
@@ -86,16 +78,15 @@ namespace xloil
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
         // Use raw C API for extra speed as this code is on a critical path
-        auto p = (PyObject*)&pyObj;
-        auto args = PyTuple_New(1);
-        PyTuple_SET_ITEM(args, 0, p);
-        Py_INCREF(p); // SetItem steals a reference
-        auto result = PyObject_CallObject(_callable.ptr(), args);
-        Py_DECREF(args);
+#if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 8
+        auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&pyObj), nullptr);
+#else
+        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&pyObj));
+#endif
         if (!result)
         {
           auto error = PyErr_Occurred();
-          if (!PyErr_GivenExceptionMatches(error, cannotConvertException.ptr()))
+          if (!PyErr_GivenExceptionMatches(error, cannotConvertException))
             throw py::error_already_set();
           PyErr_Clear();
           return ExcelObj();
@@ -109,7 +100,7 @@ namespace xloil
       const py::object& handler() const { return _callable; }
     };
 
-    class CannotConvert {};
+ 
 
     static int theBinder = addBinder([](py::module& mod)
     {
@@ -122,7 +113,6 @@ namespace xloil
         .def(py::init<py::object>(), py::arg("callable"))
         .def("get_handler", &CustomReturn::handler);
 
-      cannotConvertException = py::exception<CannotConvert>(mod, "CannotConvert");
     });
   }
 }

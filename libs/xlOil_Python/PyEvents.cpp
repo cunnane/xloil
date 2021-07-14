@@ -3,7 +3,7 @@
 #include <xlOil/Log.h>
 #include <xlOil/ExcelRange.h>
 #include "PyHelpers.h"
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include <list>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/stringize.hpp>

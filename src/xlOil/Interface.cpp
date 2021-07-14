@@ -9,12 +9,14 @@
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <xlOil-COM/Connect.h>
-
+#include <filesystem>
 using std::make_pair;
 using std::wstring;
 using std::make_shared;
 using std::shared_ptr;
 using std::vector;
+
+namespace fs = std::filesystem;
 
 namespace xloil
 {
@@ -31,8 +33,7 @@ namespace xloil
 
   FileSource::FileSource(
     const wchar_t* sourcePath, 
-    const wchar_t* linkedWorkbook,
-    bool watchSource) // TODO: implement watchSource parameter
+    const wchar_t* linkedWorkbook)
     : _sourcePath(sourcePath)
   {
     auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
@@ -173,6 +174,66 @@ namespace xloil
     FileSource::deleteFileContext(const shared_ptr<FileSource>& source)
   {
     xloil::deleteFileSource(source);
+  }
+
+  WatchedSource::WatchedSource(
+    const wchar_t* sourceName,
+    const wchar_t* linkedWorkbook)
+    : FileSource(sourceName, linkedWorkbook)
+  {
+    auto path = fs::path(sourceName);
+    auto dir = path.remove_filename();
+    if (!dir.empty())
+      _fileWatcher = Event::DirectoryChange(dir)->bind(
+        [this](auto dir, auto file, auto act)
+    {
+      handleDirChange(dir, file, (int)act);
+    });
+
+    if (linkedWorkbook)
+      _workbookWatcher = Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); });
+  }
+
+  void WatchedSource::handleClose(
+    const wchar_t* wbName)
+  {
+    if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
+      FileSource::deleteFileContext(shared_from_this());
+  }
+
+  void WatchedSource::handleDirChange(
+    const wchar_t* dirName,
+    const wchar_t* fileName,
+    const int action)
+  {
+    if (_wcsicmp(fileName, sourceName()) != 0)
+      return;
+
+    excelRunOnMainThread([
+      self = std::static_pointer_cast<WatchedSource>(shared_from_this()),
+        filePath = fs::path(dirName) / fileName,
+        action]()
+      {
+        // File paths should match as our directory watch listener only checks
+        // the specified directory
+        assert(_wcsicmp(filePath.c_str(), self->sourcePath().c_str()) == 0);
+
+        switch ((Event::FileAction)action)
+        {
+        case Event::FileAction::Modified:
+        {
+          XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
+          self->reload();
+          break;
+        }
+        case Event::FileAction::Delete:
+        {
+          XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
+          FileSource::deleteFileContext(self);
+          break;
+        }
+        }
+      }, ExcelRunQueue::ENQUEUE);
   }
 
   void 

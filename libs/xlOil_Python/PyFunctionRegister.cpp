@@ -1,10 +1,9 @@
-#include "FunctionRegister.h"
-#include "PyCoreModule.h"
+#include "PyFunctionRegister.h"
+#include "PyCore.h"
 #include "Main.h"
 #include "BasicTypes.h"
-#include "Dictionary.h"
-#include "ReadSource.h"
-#include "FunctionRegister.h"
+#include "PyDictType.h"
+#include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
 #include <xloil/StaticRegister.h>
@@ -140,13 +139,10 @@ namespace xloil
             _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
-      if (_hasKeywordArgs)
-      {
-        auto kwargs = PySteal<py::dict>(readKeywordArgs(*xlArgs[nArgs]));
-        return make_pair(pyArgs, kwargs);
-      }
-      else
-        return make_pair(pyArgs, py::object());
+      auto kwargs = _hasKeywordArgs
+        ? PySteal<py::object>(readKeywordArgs(*xlArgs[nArgs]))
+        : py::object();
+      return make_pair(pyArgs, kwargs);
     }
 
     void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs) const
@@ -167,7 +163,7 @@ namespace xloil
       {
         assert(!!kwargs == _hasKeywordArgs);
 
-        py::object ret = kwargs
+        auto ret = kwargs
           ? PySteal<py::object>(PyObject_Call(_func.ptr(), args, kwargs))
           : PySteal<py::object>(PyObject_CallObject(_func.ptr(), args));
 
@@ -247,79 +243,7 @@ namespace xloil
           XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
     }
 
-    // TODO: this could be moved to the core
-    class WatchedSource : public FileSource
-    {
-    public:
-      WatchedSource(
-        const wchar_t* sourceName,
-        const wchar_t* linkedWorkbook = nullptr)
-        : FileSource(sourceName, linkedWorkbook)
-      {
-        auto path = fs::path(sourceName);
-        auto dir = path.remove_filename();
-        if (!dir.empty())
-          _fileWatcher = Event::DirectoryChange(dir)->bind(
-            [this](auto dir, auto file, auto act)
-        {
-          handleDirChange(dir, file, act);
-        });
-
-        if (linkedWorkbook)
-          _workbookWatcher = Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); });
-      }
-
-      /// <summary>
-      /// Invoked when the watched file is modified, but not deleted
-      /// </summary>
-      virtual void reload() = 0;
-
-    private:
-      shared_ptr<const void> _fileWatcher;
-      shared_ptr<const void> _workbookWatcher;
-
-      void handleClose(
-        const wchar_t* wbName)
-      {
-        if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
-          FileSource::deleteFileContext(shared_from_this());
-      }
-
-      void handleDirChange(
-        const wchar_t* dirName,
-        const wchar_t* fileName,
-        const Event::FileAction action)
-      {
-        if (_wcsicmp(fileName, sourceName()) != 0)
-          return;
-        
-        excelRunOnMainThread([
-            self = std::static_pointer_cast<WatchedSource>(shared_from_this()),
-            filePath = fs::path(dirName) / fileName,
-            action]()
-          {
-            // File paths should match as our directory watch listener only checks
-            // the specified directory
-            assert(_wcsicmp(filePath.c_str(), self->sourcePath().c_str()) == 0);
-
-            switch (action)
-            {
-            case Event::FileAction::Modified:
-            {
-              XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
-              self->reload();
-              break;
-            }
-            case Event::FileAction::Delete:
-            {
-              XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
-              FileSource::deleteFileContext(self);
-              break;
-            }
-            }
-          }, ExcelRunQueue::ENQUEUE);
-      }
-    };
+   
 
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed

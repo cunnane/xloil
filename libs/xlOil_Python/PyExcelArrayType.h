@@ -1,12 +1,11 @@
 #pragma once
 #include <xlOil/ExcelArray.h>
+#include <pybind11/pybind11.h>
 
 namespace xloil
 {
   namespace Python
   {
-    extern PyTypeObject* ExcelArrayType;
-
     class PyExcelArray
     {
       ExcelArray _base;
@@ -50,6 +49,8 @@ namespace xloil
 
       ExcelType dataType() const;
     };
+
+    extern PyTypeObject* ExcelArrayType;
 
     auto toArray(const PyExcelArray& arr, std::optional<int> dtype, std::optional<int> dims);
   }

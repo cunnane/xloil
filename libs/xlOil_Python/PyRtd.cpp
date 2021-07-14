@@ -1,4 +1,4 @@
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "BasicTypes.h"
 #include "PyEvents.h"
 #include <xloil/RtdServer.h>

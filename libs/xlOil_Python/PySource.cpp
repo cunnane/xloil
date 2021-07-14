@@ -1,4 +1,4 @@
-#include "ReadSource.h"
+#include "PySource.h"
 
 #include "PyCOM.h"
 #include "PyHelpers.h"
@@ -7,6 +7,7 @@
 
 #include <xloil/Log.h>
 #include <xlOil/ExcelApp.h>
+#include <xlOil/Events.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;

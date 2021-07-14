@@ -1,7 +1,7 @@
 #pragma once
 #include "PyHelpers.h"
-#include "PyExcelArray.h"
-#include "PyCoreModule.h"
+#include "PyExcelArrayType.h"
+#include "PyCore.h"
 #include "BasicTypes.h"
 
 using std::vector;
@@ -161,7 +161,7 @@ namespace xloil
           py::arg("array"), 
           py::arg("dtype") = py::none(), 
           py::arg("dims") = 2);
-      }, 100);
+      });
     }
   }
 }

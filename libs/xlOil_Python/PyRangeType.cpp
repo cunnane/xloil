@@ -1,4 +1,4 @@
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include "PyHelpers.h"
 #include "BasicTypes.h"
 #include <xlOil/ExcelRange.h>
@@ -111,8 +111,7 @@ namespace xloil
             });
 
         bindPyConverter<PyFromExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
-
-      }, 99);
+      });
     }
   }
 }

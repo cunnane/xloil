@@ -1,5 +1,6 @@
 #include "PyHelpers.h"
 
+namespace py = pybind11;
 using std::wstring;
 
 namespace xloil {

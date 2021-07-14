@@ -1,10 +1,11 @@
-#include "PyCoreModule.h"
+#include "PyTupleType.h"
+#include "PyCore.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include "ArrayHelpers.h"
 #include <xlOil/ArrayBuilder.h>
 #include <pybind11/pybind11.h>
-#include "Tuple.h"
+
 
 namespace py = pybind11;
 using std::shared_ptr;

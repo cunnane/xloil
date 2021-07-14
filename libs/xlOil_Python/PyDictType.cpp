@@ -1,4 +1,4 @@
-#include "PyCoreModule.h"
+#include "PyCore.h"
 #include <xlOil/ExcelArray.h>
 #include "BasicTypes.h"
 #include "ArrayHelpers.h"
@@ -106,13 +106,6 @@ namespace xloil
 
     namespace
     {
-      template <class T>
-      void declare(pybind11::module& mod, const char* name)
-      {
-        py::class_<T, IPyFromExcel, shared_ptr<T>>(mod, name)
-          .def(py::init<>());
-      }
-
       static int theBinder = addBinder([](pybind11::module& mod)
       {
           bindPyConverter<PyDictFromExcel>(mod, "dict").def(py::init<>());

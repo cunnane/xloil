@@ -1,5 +1,6 @@
 #pragma once
-#include "PyCoreModule.h"
+#include "PyCore.h"
+#include <xlOil/Register.h>
 #include <map>
 #include <string>
 #include <pybind11/pybind11.h>
@@ -9,13 +10,15 @@ namespace xloil {
   struct FuncInfo; 
   class ExcelObj; 
   class DynamicSpec;
-  template <class T> class IConvertFromExcel;
+  template <class T> class IConvertToExcel;
 }
 namespace xloil 
 {
   namespace Python
   {
-    class RegisteredModule;
+    class RegisteredModule; 
+    class IPyFromExcel; 
+    using IPyToExcel = IConvertToExcel<PyObject>;
 
     namespace FunctionRegistry
     {
@@ -35,13 +38,11 @@ namespace xloil
     {
     private:
       std::shared_ptr<FuncInfo> _info;
-      unsigned _argNum;
       pybind11::object _default;
 
     public:
       PyFuncArg(std::shared_ptr<FuncInfo> info, unsigned i)
         : _info(info)
-        , _argNum(i)
         , arg(_info->args[i])
       {}
 
@@ -60,7 +61,7 @@ namespace xloil
         arg.type |= FuncArg::Optional;
         _default = value; 
       }
-      auto getDefault() const 
+      const auto& getDefault() const 
       { 
         // what to return if this is null???
         return _default; 

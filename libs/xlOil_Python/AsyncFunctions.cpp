@@ -1,6 +1,6 @@
 #include "AsyncFunctions.h"
-#include "FunctionRegister.h"
-#include "PyCoreModule.h"
+#include "PyFunctionRegister.h"
+#include "PyCore.h"
 #include "BasicTypes.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
