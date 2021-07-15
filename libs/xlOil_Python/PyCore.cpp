@@ -53,7 +53,19 @@ namespace xloil
 
         void writeToLog(const char* message, const py::object& level)
         {
-          SPDLOG_LOGGER_CALL(spdlog::default_logger_raw(), toSpdLogLevel(level), message);
+          auto frame = PyEval_GetFrame();
+          spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
+          if (frame)
+          {
+            auto code = frame->f_code; // Guaranteed never null
+            source.line = PyCode_Addr2Line(code, frame->f_lasti);
+            source.filename = PyUnicode_AsUTF8(code->co_filename);
+            source.funcname = PyUnicode_AsUTF8(code->co_name);
+          }
+          spdlog::default_logger_raw()->log(
+            source,
+            toSpdLogLevel(level),
+            message);
         }
 
         unsigned getLogLevel()
