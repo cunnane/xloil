@@ -98,6 +98,8 @@ namespace xloil
 
       for (auto i = 0u; i < numArgs; ++i)
         _args.push_back(PyFuncArg(_info, i + (isAsync ? 1 : 0)));
+
+      _numPositionalArgs = _args.size() - (_hasKeywordArgs ? 1u : 0);
     }
 
     PyFuncInfo::~PyFuncInfo()
@@ -118,10 +120,10 @@ namespace xloil
       returnConverter = conv;
     }
 
-    pair<py::tuple, py::object> PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
+    py::tuple PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
     {
-      auto nArgs = _args.size() - (_hasKeywordArgs ? 1u : 0);
-      auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs));
+      const auto nArgs = _numPositionalArgs;
+      auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs)); // This could be a static member in PyFuncInfo for unthreaded funcs
 
       // TODO: is it worth having a enum switch to convert primitive types rather than a v-call
       for (auto i = 0u; i < nArgs; ++i)
@@ -139,10 +141,19 @@ namespace xloil
             _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
-      auto kwargs = _hasKeywordArgs
-        ? PySteal<py::object>(readKeywordArgs(*xlArgs[nArgs]))
-        : py::object();
-      return make_pair(pyArgs, kwargs);
+
+      return std::move(pyArgs);
+    }
+
+    void PyFuncInfo::convertArgs(
+      const ExcelObj** xlArgs, py::object& args, py::object& kwargs) const
+    {
+      if (_args.empty())
+        return;
+
+      args = convertArgs(xlArgs);
+      if (_hasKeywordArgs)
+        kwargs = PySteal<py::object>(readKeywordArgs(*xlArgs[_numPositionalArgs]));
     }
 
     void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs) const
@@ -163,9 +174,9 @@ namespace xloil
       {
         assert(!!kwargs == _hasKeywordArgs);
 
-        auto ret = kwargs
-          ? PySteal<py::object>(PyObject_Call(_func.ptr(), args, kwargs))
-          : PySteal<py::object>(PyObject_CallObject(_func.ptr(), args));
+        auto ret = PySteal<py::object>(_hasKeywordArgs
+          ? PyObject_Call(_func.ptr(), args, kwargs)
+          : PyObject_CallObject(_func.ptr(), args));
 
         result = returnConverter
           ? (*returnConverter)(*ret.ptr())
@@ -182,6 +193,7 @@ namespace xloil
       }
     }
 
+    template<bool TThreadSafe>
     ExcelObj* pythonCallback(
       const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
@@ -192,19 +204,22 @@ namespace xloil
 
         PyErr_Clear();
 
-        auto[args, kwargs] = info->convertArgs(xlArgs);
+        py::object args, kwargs;
+        info->convertArgs(xlArgs, args, kwargs);
 
-        // Static OK since we have the GIL so are single-threaded 
-        static ExcelObj result; 
-        info->invoke(result, args.ptr(), kwargs.ptr());
-
-        // It's not safe to return the static object if the function
-        // is being multi-threaded by Excel as we can't control when
-        // Excel will read the result.
-        if (info->isThreadSafe())
+        if constexpr (TThreadSafe)
+        {
+          ExcelObj result;
+          info->invoke(result, args.ptr(), kwargs.ptr());
           return returnValue(result);
+        }
         else
+        {
+          // Static OK since we have the GIL so are single-threaded 
+          static ExcelObj result;
+          info->invoke(result, args.ptr(), kwargs.ptr());
           return &result;
+        }
       }
       catch (const py::error_already_set& e)
       {
@@ -231,8 +246,10 @@ namespace xloil
         return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, func);
       else if (func->isRtdAsync)
         return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, func);
+      else if (func->isThreadSafe())
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<true>, func);
       else
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false>, func);
     }
 
     void PyFuncInfo::checkArgConverters() const
@@ -427,9 +444,9 @@ namespace xloil
       string pyFuncInfoToString(const PyFuncInfo& info)
       {
         string result = utf16ToUtf8(info.info()->name) + "(";
-        for (auto& arg : info.cargs())
+        for (auto& arg : info.constArgs())
           result += utf16ToUtf8(arg.getName()) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
-        if (!info.cargs().empty())
+        if (!info.constArgs().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
         if (info.getReturnConverter())

@@ -85,7 +85,7 @@ namespace xloil
       ~PyFuncInfo();
 
       auto& args() { return _args; }
-      const auto& cargs() const { return _args; }
+      const auto& constArgs() const { return _args; }
 
       void setFuncOptions(unsigned val);
 
@@ -93,8 +93,8 @@ namespace xloil
       void setReturnConverter(
         const std::shared_ptr<const IPyToExcel>& conv);
 
-      std::pair<pybind11::tuple, pybind11::object> convertArgs(
-        const ExcelObj** xlArgs) const;
+      void convertArgs(
+        const ExcelObj** xlArgs, pybind11::object& args, pybind11::object& kwargs) const;
 
       void invoke(
         ExcelObj& result, PyObject* args, PyObject* kwargs) const noexcept;
@@ -106,7 +106,6 @@ namespace xloil
       bool isAsync;
       bool isRtdAsync;
       bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
-
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
 
       static std::shared_ptr<const DynamicSpec> createSpec(const std::shared_ptr<const PyFuncInfo>& funcInfo);
@@ -117,8 +116,10 @@ namespace xloil
       std::shared_ptr<FuncInfo> _info;
       pybind11::function _func;
       bool _hasKeywordArgs;
+      size_t _numPositionalArgs;
 
       void checkArgConverters() const;
+      pybind11::tuple convertArgs(const ExcelObj** xlArgs) const;
     };
   }
 }

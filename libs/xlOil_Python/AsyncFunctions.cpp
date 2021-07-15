@@ -245,7 +245,8 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        auto[args, kwargs] = info->convertArgs(xlArgs + 1);
+        py::object args, kwargs;
+        info->convertArgs(xlArgs + 1, args, kwargs);
         if (!kwargs || kwargs.is_none())
           kwargs = py::dict();
 
@@ -452,7 +453,8 @@ namespace xloil
         {
           py::gil_scoped_acquire gilAcquired;
 
-          auto[args, kwargs] = info->convertArgs(xlArgs);
+          py::object args, kwargs;
+          info->convertArgs(xlArgs, args, kwargs);
           if (!kwargs || kwargs.is_none())
             kwargs = py::dict();
 
