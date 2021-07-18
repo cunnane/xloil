@@ -78,8 +78,11 @@ namespace xloil
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
         // Use raw C API for extra speed as this code is on a critical path
-#if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 8
+#if PY_VERSION_HEX < 0x03080000
         auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&pyObj), nullptr);
+#elseif PY_VERSION_HEX < 0x03090000
+        PyObject* args[] = { nullptr, const_cast<PyObject*>(&pyObj) };
+        auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #else
         auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&pyObj));
 #endif

@@ -2,7 +2,7 @@
 
 #include "PyCOM.h"
 #include "PyHelpers.h"
-#include "FunctionRegister.h"
+#include "PyFunctionRegister.h"
 #include "Main.h"
 
 #include <xloil/Log.h>
