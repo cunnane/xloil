@@ -26,6 +26,7 @@ using std::wstring;
 using std::string;
 using std::make_shared;
 using std::make_pair;
+using std::unique_ptr;
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -92,14 +93,21 @@ namespace xloil
 
       setFuncType(*this, features, isVolatile);
 
-      _info->args.resize(numArgs + (isAsync ? 1u : 0));
       if (isAsync)
+      {
+        _info->args.resize(numArgs + 1);
         _info->args[0] = FuncArg(nullptr, nullptr, FuncArg::AsyncHandle);
+        for (auto i = 1u; i < numArgs + 1; ++i)
+          _args.push_back(PyFuncArg(_info, i));
+      }
+      else
+      {
+        _info->args.resize(numArgs);
+        for (auto i = 0u; i < numArgs; ++i)
+          _args.push_back(PyFuncArg(_info, i));
+      }
 
-      for (auto i = 0u; i < numArgs; ++i)
-        _args.push_back(PyFuncArg(_info, i + (isAsync ? 1 : 0)));
-
-      _numPositionalArgs = _args.size() - (_hasKeywordArgs ? 1u : 0);
+      _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
     }
 
     PyFuncInfo::~PyFuncInfo()
@@ -120,67 +128,67 @@ namespace xloil
       returnConverter = conv;
     }
 
-    py::tuple PyFuncInfo::convertArgs(const ExcelObj** xlArgs) const
+    void PyFuncInfo::convertArgs(
+      const ExcelObj** xlArgs, 
+      PyObject** args,
+      py::object& kwargs) const
     {
-      const auto nArgs = _numPositionalArgs;
-      auto pyArgs = PySteal<py::tuple>(PyTuple_New(nArgs)); // This could be a static member in PyFuncInfo for unthreaded funcs
-
-      // TODO: is it worth having a enum switch to convert primitive types rather than a v-call
-      for (auto i = 0u; i < nArgs; ++i)
+      uint16_t i = 0;
+      try
       {
-        try
+        for (; i < _numPositionalArgs; ++i)
         {
           auto* defaultValue = _args[i].getDefault().ptr();
           auto* pyObj = (*_args[i].converter)(*xlArgs[i], defaultValue);
-          PyTuple_SET_ITEM(pyArgs.ptr(), i, pyObj);
+          args[i] = pyObj;
         }
-        catch (const std::exception& e)
-        {
-          // We give the arg number 1-based as it's more natural
-          XLO_THROW(L"Error in arg {1} '{0}': {2}",
-            _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
-        }
+
+        if (_hasKeywordArgs)
+          kwargs = PySteal<py::object>(readKeywordArgs(*xlArgs[_numPositionalArgs]));
       }
-
-      return std::move(pyArgs);
+      catch (const std::exception& e)
+      {
+        // Unwind any args already written
+        for (auto j = 0u; j < i; ++j)
+          Py_DECREF(args[j]);
+        
+        // We give the arg number 1-based as it's more natural
+        XLO_THROW(L"Error in arg {1} '{0}': {2}",
+          _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
+      }
     }
 
-    void PyFuncInfo::convertArgs(
-      const ExcelObj** xlArgs, py::object& args, py::object& kwargs) const
+    py::object PyFuncInfo::invoke(PyObject* const* args, PyObject* kwargs) const
     {
-      if (_args.empty())
-        return;
+#if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 8
+      auto argTuple = PySteal<py::tuple>(PyTuple_New(_numPositionalArgs));
+      for (auto i = 0u; i < _numPositionalArgs; ++i)
+        PyTuple_SET_ITEM(argTuple.ptr(), i, args[i]);
 
-      args = convertArgs(xlArgs);
-      if (_hasKeywordArgs)
-        kwargs = PySteal<py::object>(readKeywordArgs(*xlArgs[_numPositionalArgs]));
-    }
-
-    void PyFuncInfo::invoke(PyObject* args, PyObject* kwargs) const
-    {
-      auto ret = kwargs
-        ? PyObject_Call(_func.ptr(), args, kwargs)
-        : PyObject_CallObject(_func.ptr(), args);
-      if (!ret)
-        throw py::error_already_set();
+      auto retVal = _hasKeywordArgs
+        ? PyObject_Call(_func.ptr(), argTuple.ptr(), kwargs)
+        : PyObject_CallObject(_func.ptr(), argTuple.ptr());
+#else
+      auto retVal = _PyObject_FastCallDict(
+        _func.ptr(), args, _numPositionalArgs, kwargs);
+#endif
+      return PySteal<>(retVal);
     }
 
     void PyFuncInfo::invoke(
       ExcelObj& result, 
-      PyObject* args, 
-      PyObject* kwargs) const noexcept
+      PyObject* const* args,
+      PyObject* kwargsDict) const noexcept
     {
       try
       {
-        assert(!!kwargs == _hasKeywordArgs);
+        assert(!!kwargsDict == _hasKeywordArgs);
 
-        auto ret = PySteal<py::object>(_hasKeywordArgs
-          ? PyObject_Call(_func.ptr(), args, kwargs)
-          : PyObject_CallObject(_func.ptr(), args));
+        auto retVal = invoke(args, kwargsDict);
 
         result = returnConverter
-          ? (*returnConverter)(*ret.ptr())
-          : FromPyObj()(ret.ptr());
+          ? (*returnConverter)(*retVal.ptr())
+          : FromPyObj()(retVal.ptr());
       }
       catch (const py::error_already_set& e)
       {
@@ -201,23 +209,37 @@ namespace xloil
       try
       {
         py::gil_scoped_acquire gilAcquired;
-
         PyErr_Clear();
 
-        py::object args, kwargs;
-        info->convertArgs(xlArgs, args, kwargs);
+        py::object kwargs;
 
         if constexpr (TThreadSafe)
         {
+          vector<py::object> args(info->numPositionalArgs());
+          info->convertArgs(xlArgs, args, kwargs);
+
           ExcelObj result;
-          info->invoke(result, args.ptr(), kwargs.ptr());
-          return returnValue(result);
+          info->invoke(result, args, kwargs.ptr());
+          return returnValue(std::move(result));
         }
         else
         {
-          // Static OK since we have the GIL so are single-threaded 
+          // Statics OK since we have the GIL and are single-threaded so can
+          // only be called on Excel's main thread. The args array is large 
+          // enough: registration with Excel will fail otherwise.
+          static PyObject* argsArray[XL_MAX_UDF_ARGS];
           static ExcelObj result;
-          info->invoke(result, args.ptr(), kwargs.ptr());
+
+          info->convertArgs(xlArgs, argsArray, kwargs);
+         
+          auto finally = [&](void*)
+          {
+            for (auto i = 0; i < info->numPositionalArgs(); ++i)
+              Py_DECREF(argsArray[i]);
+          };
+          unique_ptr<void, decltype(finally)> cleanup(0, finally);
+
+          info->invoke(result, argsArray, kwargs.ptr());
           return &result;
         }
       }

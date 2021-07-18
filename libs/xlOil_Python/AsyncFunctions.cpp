@@ -245,7 +245,9 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        py::object args, kwargs;
+        vector<py::object> args(info->numPositionalArgs());
+
+        py::object kwargs;
         info->convertArgs(xlArgs + 1, args, kwargs);
         if (!kwargs || kwargs.is_none())
           kwargs = py::dict();
@@ -259,7 +261,7 @@ namespace xloil
         kwargs[THREAD_CONTEXT_TAG] = py::cast(asyncReturn,
           py::return_value_policy::take_ownership);
 
-        info->invoke(args.ptr(), kwargs.ptr());
+        info->invoke(args, kwargs.ptr());
       }
       catch (const py::error_already_set& e) 
       {
@@ -360,14 +362,15 @@ namespace xloil
     struct RtdAsyncTask : public IRtdAsyncTask
     {
       const PyFuncInfo& _info;
-      PyObject *_args, *_kwargs;
+      vector<py::object> _args;
+      PyObject *_kwargs;
       shared_ptr<RtdReturn> _returnObj;
       wstring _caller;
 
       /// <summary>
       /// Steals references to PyObjects
       /// </summary>
-      RtdAsyncTask(const PyFuncInfo& info, PyObject* args, PyObject* kwargs)
+      RtdAsyncTask(const PyFuncInfo& info, vector<py::object>&& args, PyObject* kwargs)
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
@@ -377,7 +380,7 @@ namespace xloil
       virtual ~RtdAsyncTask()
       {
         py::gil_scoped_acquire gilAcquired;
-        Py_XDECREF(_args);
+        _args.clear();
         Py_XDECREF(_kwargs);
         _returnObj.reset();
       }
@@ -416,17 +419,15 @@ namespace xloil
 
         py::gil_scoped_acquire gilAcquired;
 
-        auto args = PyBorrow<py::tuple>(_args);
         auto kwargs = PyBorrow<py::dict>(_kwargs);
-        auto that_args = PyBorrow<py::tuple>(that->_args);
         auto that_kwargs = PyBorrow<py::dict>(that->_kwargs);
 
-        if (args.size() != that_args.size()
+        if (_args.size() != that->_args.size()
           || kwargs.size() != that_kwargs.size())
           return false;
 
-        for (auto i = args.begin(), j = that_args.begin();
-          i != args.end();
+        for (auto i = _args.begin(), j = that->_args.begin();
+          i != _args.end();
           ++i, ++j)
         {
           if (!i->equal(*j))
@@ -449,12 +450,14 @@ namespace xloil
       try
       {
         // TODO: consider argument capture and equality check under c++
-        PyObject *argsP, *kwargsP;
+        PyObject *kwargsP;
+        vector<py::object> args(info->numPositionalArgs());
         {
           py::gil_scoped_acquire gilAcquired;
 
-          py::object args, kwargs;
+          py::object kwargs;
           info->convertArgs(xlArgs, args, kwargs);
+
           if (!kwargs || kwargs.is_none())
             kwargs = py::dict();
 
@@ -462,14 +465,12 @@ namespace xloil
           // created tasks match
           kwargs[THREAD_CONTEXT_TAG] = py::none();
 
-          // Need to drop pybind links before capturing in lambda otherwise the destructor
-          // is called at some random time after losing the GIL and it crashes.
-          argsP = args.release().ptr();
+          // TODO: not sure of the need for this
           kwargsP = kwargs.release().ptr();
         }
 
         auto value = rtdAsync(
-          std::make_shared<RtdAsyncTask>(*info, argsP, kwargsP));
+          std::make_shared<RtdAsyncTask>(*info, std::move(args), kwargsP));
 
         return returnValue(value ? *value : CellError::NA);
       }
