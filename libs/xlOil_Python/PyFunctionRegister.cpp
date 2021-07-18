@@ -158,11 +158,11 @@ namespace xloil
       }
     }
 
-    py::object PyFuncInfo::invoke(PyObject* const* args, PyObject* kwargs) const
+    py::object PyFuncInfo::invoke(PyObject* const* args, const size_t nArgs, PyObject* kwargs) const
     {
 #if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 8
       auto argTuple = PySteal<py::tuple>(PyTuple_New(_numPositionalArgs));
-      for (auto i = 0u; i < _numPositionalArgs; ++i)
+      for (auto i = 0u; i < nArgs; ++i)
         PyTuple_SET_ITEM(argTuple.ptr(), i, args[i]);
 
       auto retVal = _hasKeywordArgs
@@ -170,7 +170,7 @@ namespace xloil
         : PyObject_CallObject(_func.ptr(), argTuple.ptr());
 #else
       auto retVal = _PyObject_FastCallDict(
-        _func.ptr(), args, _numPositionalArgs, kwargs);
+        _func.ptr(), args, nArgs, kwargs);
 #endif
       return PySteal<>(retVal);
     }
@@ -184,7 +184,7 @@ namespace xloil
       {
         assert(!!kwargsDict == _hasKeywordArgs);
 
-        auto retVal = invoke(args, kwargsDict);
+        auto retVal = invoke(args, _numPositionalArgs, kwargsDict);
 
         result = returnConverter
           ? (*returnConverter)(*retVal.ptr())

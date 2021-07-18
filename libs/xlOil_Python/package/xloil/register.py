@@ -222,7 +222,7 @@ def async_wrapper(fn):
     import asyncio
 
     @functools.wraps(fn)
-    def synchronised(*args, xloil_thread_context, **kwargs):
+    def synchronised(xloil_thread_context, *args, **kwargs):
 
         loop = get_event_loop()
         ctx = xloil_thread_context

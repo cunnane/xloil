@@ -25,8 +25,6 @@ namespace xloil
 {
   namespace Python
   {
-    constexpr const char* THREAD_CONTEXT_TAG = "xloil_thread_context";
-
     class EventLoopController
     {
       std::atomic<bool> _stop = true;
@@ -245,21 +243,18 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        vector<py::object> args(info->numPositionalArgs());
+        vector<py::object> args(1 + info->numPositionalArgs());
 
-        py::object kwargs;
-        info->convertArgs(xlArgs + 1, args, kwargs);
-        if (!kwargs || kwargs.is_none())
-          kwargs = py::dict();
-
-        // Raw ptr, but we take ownership below
+        // Raw ptr, but we take ownership in the next line
         auto* asyncReturn = new AsyncReturn(
           *asyncHandle,
           info->getReturnConverter());
 
-        // Kwargs will be dec-refed after the asyncReturn is used
-        kwargs[THREAD_CONTEXT_TAG] = py::cast(asyncReturn,
+        args[0] = py::cast(asyncReturn,
           py::return_value_policy::take_ownership);
+
+        py::object kwargs;
+        info->convertArgs(xlArgs + 1, (PyObject**)(args.data() + 1), kwargs);
 
         info->invoke(args, kwargs.ptr());
       }
@@ -392,10 +387,8 @@ namespace xloil
 
         PyErr_Clear();
 
-        auto kwargs = PyBorrow<py::object>(_kwargs);
-        kwargs[THREAD_CONTEXT_TAG] = _returnObj;
-
-        _info.invoke(_args, kwargs.ptr());
+        _args[0] = py::cast(_returnObj);
+        _info.invoke(_args, _kwargs);
       }
       bool done() noexcept override
       {
@@ -419,24 +412,31 @@ namespace xloil
 
         py::gil_scoped_acquire gilAcquired;
 
-        auto kwargs = PyBorrow<py::dict>(_kwargs);
-        auto that_kwargs = PyBorrow<py::dict>(that->_kwargs);
-
-        if (_args.size() != that->_args.size()
-          || kwargs.size() != that_kwargs.size())
+        if (_args.size() != that->_args.size())
           return false;
 
-        for (auto i = _args.begin(), j = that->_args.begin();
+        // Skip first argument as that contains the the RtdReturn object which will
+        // be different (set to None in unstarted tasks)l
+        for (auto i = _args.begin() + 1, j = that->_args.begin() + 1;
           i != _args.end();
           ++i, ++j)
         {
           if (!i->equal(*j))
             return false;
         }
+
+        if (!_kwargs)
+          return !that->_kwargs;
+        
+        auto kwargs = PyBorrow<py::dict>(_kwargs);
+        auto that_kwargs = PyBorrow<py::dict>(that->_kwargs);
+        
+        if (kwargs.size() != that_kwargs.size())
+          return false;
+
         for (auto i = kwargs.begin(); i != kwargs.end(); ++i)
         {
-          if (!i->first.equal(py::str(THREAD_CONTEXT_TAG))
-            && !i->second.equal(that_kwargs[i->first]))
+          if (!i->second.equal(that_kwargs[i->first]))
             return false;
         }
         return true;
@@ -451,19 +451,13 @@ namespace xloil
       {
         // TODO: consider argument capture and equality check under c++
         PyObject *kwargsP;
-        vector<py::object> args(info->numPositionalArgs());
+        // Size +1 to allow for RtdReturn argument
+        vector<py::object> args(1 + info->numPositionalArgs());
         {
           py::gil_scoped_acquire gilAcquired;
 
           py::object kwargs;
-          info->convertArgs(xlArgs, args, kwargs);
-
-          if (!kwargs || kwargs.is_none())
-            kwargs = py::dict();
-
-          // Add this here so that dict sizes for running and newly 
-          // created tasks match
-          kwargs[THREAD_CONTEXT_TAG] = py::none();
+          info->convertArgs(xlArgs, (PyObject**)(args.data() + 1), kwargs);
 
           // TODO: not sure of the need for this
           kwargsP = kwargs.release().ptr();

@@ -121,13 +121,12 @@ namespace xloil
       }
 
       pybind11::object invoke(
-        PyObject* const* args, PyObject* kwargsDict) const;
+        PyObject* const* args, const size_t nArgs, PyObject* kwargsDict) const;
 
       pybind11::object invoke(
         const std::vector<pybind11::object>& args, PyObject* kwargsDict) const
       {
-        assert(args.size() == _numPositionalArgs);
-        return invoke((PyObject* const*)args.data(), kwargsDict);
+        return invoke((PyObject* const*)args.data(), args.size(), kwargsDict);
       }
 
       bool isLocalFunc;
