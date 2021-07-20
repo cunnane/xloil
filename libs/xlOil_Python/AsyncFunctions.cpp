@@ -243,14 +243,14 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        vector<py::object> args(1 + info->numPositionalArgs());
+        vector<py::object> args(1 + info->argArraySize());
 
         // Raw ptr, but we take ownership in the next line
         auto* asyncReturn = new AsyncReturn(
           *asyncHandle,
           info->getReturnConverter());
 
-        args[0] = py::cast(asyncReturn,
+        args[PyFuncInfo::theVectorCallOffset] = py::cast(asyncReturn,
           py::return_value_policy::take_ownership);
 
         py::object kwargs;
@@ -258,7 +258,7 @@ namespace xloil
 
         info->invoke(args, kwargs.ptr());
       }
-      catch (const py::error_already_set& e) 
+      catch (const py::error_already_set& e)
       {
         Event_PyUserException().fire(e.type(), e.value(), e.trace());
         asyncReturn(*asyncHandle, ExcelObj(e.what()));
@@ -387,7 +387,7 @@ namespace xloil
 
         PyErr_Clear();
 
-        _args[0] = py::cast(_returnObj);
+        _args[PyFuncInfo::theVectorCallOffset] = py::cast(_returnObj);
         _info.invoke(_args, _kwargs);
       }
       bool done() noexcept override
@@ -416,8 +416,9 @@ namespace xloil
           return false;
 
         // Skip first argument as that contains the the RtdReturn object which will
-        // be different (set to None in unstarted tasks)l
-        for (auto i = _args.begin() + 1, j = that->_args.begin() + 1;
+        // be different (set to None in unstarted tasks)
+        auto nSkip = 1 + PyFuncInfo::theVectorCallOffset;
+        for (auto i = _args.begin() + nSkip, j = that->_args.begin() + nSkip;
           i != _args.end();
           ++i, ++j)
         {
@@ -451,12 +452,14 @@ namespace xloil
       {
         // TODO: consider argument capture and equality check under c++
         PyObject *kwargsP;
-        // Size +1 to allow for RtdReturn argument
-        vector<py::object> args(1 + info->numPositionalArgs());
+
+        // Array size +1 to allow for RtdReturn argument
+        vector<py::object> args(1 + info->argArraySize());
         {
           py::gil_scoped_acquire gilAcquired;
 
           py::object kwargs;
+          // +1 to skip the RtdReturn argument
           info->convertArgs(xlArgs, (PyObject**)(args.data() + 1), kwargs);
 
           // TODO: not sure of the need for this

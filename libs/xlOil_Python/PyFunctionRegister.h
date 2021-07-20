@@ -92,31 +92,49 @@ namespace xloil
       auto getReturnConverter() const { return returnConverter; }
       void setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv);
 
+      bool isLocalFunc;
+      bool isAsync;
+      bool isRtdAsync;
+      bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
+      const std::shared_ptr<FuncInfo>& info() const { return _info; }
+
+      static std::shared_ptr<const DynamicSpec> createSpec(
+        const std::shared_ptr<const PyFuncInfo>& funcInfo);
+  
+      /// <summary>
+      /// Convert the array of ExcelObj arguments to PyObject values, with 
+      /// option kwargs.
+      /// </summary>
+      /// <param name="xlArgs">Size must be equal to `args().size()`</param>
+      /// <param name="args">Size must equal `argArraySize()`</param>
+      /// <param name="kwargs"></param>
       void convertArgs(
         const ExcelObj** xlArgs,
         PyObject** args,
         pybind11::object& kwargs) const;
 
+      template <class TArray>
       void convertArgs(
         const ExcelObj** xlArgs,
-        std::vector<pybind11::object>& args,
+        TArray& args,
         pybind11::object& kwargsDict) const
       {
-        assert(args.size() == _numPositionalArgs);
+        assert(args.size() >= argArraySize());
         convertArgs(xlArgs, (PyObject**)args.data(), kwargsDict);
       }
 
       void invoke(
-        ExcelObj& result, 
+        ExcelObj& result,
         PyObject* const* args,
         PyObject* kwargsDict) const noexcept;
 
+      template <class TArray>
       void invoke(
         ExcelObj& result,
-        const std::vector<pybind11::object>& args,
+        const TArray& args,
         PyObject* kwargsDict) const noexcept
       {
-        assert(args.size() == _numPositionalArgs);
+        assert(args.size() >= argArraySize());
         invoke(result, (PyObject* const*)args.data(), kwargsDict);
       }
 
@@ -126,17 +144,23 @@ namespace xloil
       pybind11::object invoke(
         const std::vector<pybind11::object>& args, PyObject* kwargsDict) const
       {
-        return invoke((PyObject* const*)args.data(), args.size(), kwargsDict);
+        return invoke((PyObject* const*)args.data(), args.size() - theVectorCallOffset, kwargsDict);
       }
 
-      bool isLocalFunc;
-      bool isAsync;
-      bool isRtdAsync;
-      bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
-      const std::shared_ptr<FuncInfo>& info() const { return _info; }
-      uint16_t numPositionalArgs() const { return _numPositionalArgs; }
+      /// <summary>
+      /// Python can optimise onward calls to PyObject_Vectorcall if we
+      /// leave a free entry at the start of the args array passed 
+      /// through the API. For Py 3.7 and earlier vector call is not
+      /// available so this is not required.  See <see cref="theVectorCallOffset"/>
+      /// </summary>
+      size_t argArraySize() const { return _numPositionalArgs + theVectorCallOffset; }
 
-      static std::shared_ptr<const DynamicSpec> createSpec(const std::shared_ptr<const PyFuncInfo>& funcInfo);
+#if PY_VERSION_HEX < 0x03080000
+      static constexpr auto theVectorCallOffset = 0u;
+#else
+
+      static constexpr auto theVectorCallOffset = 1u;
+#endif
 
     private:
       std::shared_ptr<const IPyToExcel> returnConverter;

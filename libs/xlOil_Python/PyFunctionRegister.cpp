@@ -133,6 +133,7 @@ namespace xloil
       PyObject** args,
       py::object& kwargs) const
     {
+      args = args + theVectorCallOffset;
       uint16_t i = 0;
       try
       {
@@ -160,8 +161,8 @@ namespace xloil
 
     py::object PyFuncInfo::invoke(PyObject* const* args, const size_t nArgs, PyObject* kwargs) const
     {
-#if PY_MAJOR_VERSION <= 3 && PY_MINOR_VERSION < 8
-      auto argTuple = PySteal<py::tuple>(PyTuple_New(_numPositionalArgs));
+#if PY_VERSION_HEX < 0x03080000
+      auto argTuple = PySteal<py::tuple>(PyTuple_New(nArgs));
       for (auto i = 0u; i < nArgs; ++i)
         PyTuple_SET_ITEM(argTuple.ptr(), i, args[i]);
 
@@ -170,7 +171,7 @@ namespace xloil
         : PyObject_CallObject(_func.ptr(), argTuple.ptr());
 #else
       auto retVal = _PyObject_FastCallDict(
-        _func.ptr(), args, nArgs, kwargs);
+        _func.ptr(), args + theVectorCallOffset, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs);
 #endif
       return PySteal<>(retVal);
     }
@@ -211,34 +212,35 @@ namespace xloil
         py::gil_scoped_acquire gilAcquired;
         PyErr_Clear();
 
+        std::array<PyObject*, PyFuncInfo::theVectorCallOffset + XL_MAX_UDF_ARGS> argsArray;
         py::object kwargs;
+
+        info->convertArgs(xlArgs, argsArray, kwargs);
+
+        // This finally block seems pretty heavy, but an array<py::object> would result in 
+        // 256 dtor calls every invocation. This approach does just what is required.
+        auto finally = [
+          begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
+          end = argsArray.begin() + info->argArraySize()
+        ](void*)
+        {
+          for (auto i = begin; i != end; ++i)
+            Py_DECREF(*i);
+        };
+        unique_ptr<void, decltype(finally)> cleanup(0, finally);
 
         if constexpr (TThreadSafe)
         {
-          vector<py::object> args(info->numPositionalArgs());
-          info->convertArgs(xlArgs, args, kwargs);
-
           ExcelObj result;
-          info->invoke(result, args, kwargs.ptr());
+          info->invoke(result, argsArray, kwargs.ptr());
           return returnValue(std::move(result));
         }
         else
         {
-          // Statics OK since we have the GIL and are single-threaded so can
+          // Static OK since we have the GIL and are single-threaded so can
           // only be called on Excel's main thread. The args array is large 
           // enough: registration with Excel will fail otherwise.
-          static PyObject* argsArray[XL_MAX_UDF_ARGS];
           static ExcelObj result;
-
-          info->convertArgs(xlArgs, argsArray, kwargs);
-         
-          auto finally = [&](void*)
-          {
-            for (auto i = 0; i < info->numPositionalArgs(); ++i)
-              Py_DECREF(argsArray[i]);
-          };
-          unique_ptr<void, decltype(finally)> cleanup(0, finally);
-
           info->invoke(result, argsArray, kwargs.ptr());
           return &result;
         }
