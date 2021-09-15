@@ -13,7 +13,7 @@ if importlib.util.find_spec("xloil_core") is not None:
         LogWriter,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions,
-        create_ribbon, RibbonUI, run_later, 
+        create_ribbon, ExcelUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
         from_excel_date,
@@ -353,6 +353,13 @@ else:
         WorkbookAddinInstall= _Event()
         WorkbookAddinUninstall= _Event()
 
+        """
+        Called just before xlOil finalises the python interpreter. All python and xlOil
+        functionality is still available. This event is useful to stop threads as it is 
+        called before threading module teardown, whereas `atexit` is not.
+        """
+        PyBye= _Event()
+
     event = Event()
 
     class Cache:
@@ -571,7 +578,7 @@ else:
             """
             pass
 
-    class RibbonUI:
+    class ExcelUI:
         """
         Controls an Ribbon and it's associated COM addin
         """
@@ -612,7 +619,7 @@ else:
 
     def create_ribbon(xml:str, handlers:dict, name:str=None) -> RibbonUI:
         """
-        Returns a (connected) RibbonUI object which passes the specified ribbon
+        Returns a (connected) ExcelUI object which passes the specified ribbon
         customisation XML to Excel.  When the returned object is deleted, it 
         unloads the Ribbon customisation and the associated COM add-in.
 
@@ -633,7 +640,7 @@ else:
         """
         pass
 
-    class Caller:
+class Caller:
         """
         Captures the caller information for a worksheet function. On construction
         the class queries Excel via the xlfCaller function.

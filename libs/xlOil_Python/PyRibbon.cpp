@@ -99,7 +99,7 @@ namespace xloil
         py::class_<RibbonControl>(mod, "RibbonControl")
           .def_readonly("id", &RibbonControl::Id)
           .def_readonly("tag", &RibbonControl::Tag);
-        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "RibbonUI")
+        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelUI")
           .def("connect", &IComAddin::connect)
           .def("disconnect", &IComAddin::disconnect)
           .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("mapper"))
