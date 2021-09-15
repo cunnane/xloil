@@ -1,9 +1,10 @@
+# If not first, gives a "specified module cannot be found" error - ?
+from PIL import Image
+
 import xloil as xlo
 from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
-
-
 
 #
 # Functions are registered by decorating them with xloil.func.  The function
@@ -342,6 +343,10 @@ def pyTestRange(r: xlo.Range):
     r2 = r.cells(0, 0).value
     return r.cells(1, 1).address()
 
+@xlo.func
+async def pyTestCaller():
+    return xlo.Caller().address()
+    
 #
 # Displays python's sys.path. Useful for debugging some module loads
 # 
@@ -546,13 +551,12 @@ def _xloil_unload():
 #
 def press1(ctrl):
     xlo.log("1 Pressed")
-    return "NotSupposedToReturnHere"
+    return "NotSupposedToReturnHere" # check this doesn't cause an error
     
 def button_label(ctrl, *args):
     return "PyButton"
 
 def button_image(ctrl):
-    from PIL import Image
     import os
     im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
     return im
@@ -561,7 +565,7 @@ def combo_change(ctrl, value):
     xlo.log(f"Combo: {value} selected")
     pass
     
-_ribbon = xlo.create_ribbon(r'''
+_excelgui = xlo.create_ribbon(r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -587,7 +591,7 @@ _ribbon = xlo.create_ribbon(r'''
         'buttonLabel': button_label,
         'buttonImg': button_image
     })
-    
+
 #-----------------------------------------
 # Images: returning images from functions
 #-----------------------------------------

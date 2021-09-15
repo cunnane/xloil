@@ -35,7 +35,7 @@ of functions
 _LANDMARK_TAG = "_xloil_pending_funcs_"
 
 
-def _add_pending_fucs(module, objects):
+def _add_pending_funcs(module, objects):
     pending = getattr(module, _LANDMARK_TAG, set())
     pending.update(objects)
     setattr(module, _LANDMARK_TAG, pending)
@@ -208,6 +208,39 @@ def _create_event_loop():
     asyncio.set_event_loop(loop)
     return loop
 
+import contextvars
+_async_caller = contextvars.ContextVar('async_caller')
+
+class Caller:
+    """
+    Captures the caller information for a worksheet function. On construction
+    the class queries Excel via the xlfCaller function.
+    """
+    @property
+    def sheet(self):
+        """
+        Gives the sheet name of the caller or None if not called from a sheet.
+        """
+        pass
+    @property
+    def workbook(self):
+        """
+        Gives the workbook name of the caller or None if not called from a sheet.
+        If the workbook has been saved, the name will contain a file extension.
+        """
+        pass
+    def address(self, a1style=False):
+        """
+        Gives the sheet address either in A1 form: 'Sheet!A1' or RC form: 'Sheet!R1C1'
+        """
+        pass
+
+    def __new__(self, *args, **kwargs):
+        global _async_caller
+        override = _async_caller.get(None)
+        return override or xloil_core.Caller(*args, **kwargs)
+    
+
 def async_wrapper(fn):
     """
     Wraps an async function or generator with a function which runs that generator on the thread's
@@ -228,7 +261,7 @@ def async_wrapper(fn):
         ctx = xloil_thread_context
 
         async def run_async():
-            result = None
+            _async_caller.set(ctx.caller())
             try:
                 # TODO: is inspect.isasyncgenfunction expensive?
                 if inspect.isasyncgenfunction(fn):
@@ -285,6 +318,7 @@ def func(fn=None,
          macro=False, 
          threaded=False, 
          volatile=False,
+         is_async=False,
          register=True):
     """ 
     Decorator which tells xlOil to register the function (or callable) in Excel. 
@@ -356,24 +390,29 @@ def func(fn=None,
         Tells Excel to recalculate this function on every calc cycle: the same
         behaviour as the NOW() and INDIRECT() built-ins.  Due to the performance 
         hit this brings, it is rare that you will need to use this attribute.
-
+    is_async: bool
+        If true, manually creates an async function. This means your function
+        must take a thread context as its first argument and start its own async
+        task similar to ``xloil.async_wrapper``.  Generally this parameter should
+        not be used and async functions declared using the normal `async def` syntax.
     """
 
     def decorate(fn):
 
         try:
-            is_async = False
+            func_args, return_type = function_arg_info(fn)
+            has_kwargs = any(func_args) and func_args[-1].is_keywords
+
+            async_def = False
             if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
                 fn = async_wrapper(fn)
-                is_async = True
-
-            func_args, return_type = function_arg_info(fn)
-
-            has_kwargs = any(func_args) and func_args[-1].is_keywords
+                async_def = True
+            elif is_async:
+                func_args = func_args[1:]
 
             # RTD-async is default unless rtd=False was explicitly specified.
             features=""
-            if is_async:
+            if is_async or async_def:
                 features=("rtd" if rtd is None or rtd else "async")
             elif macro:
                 features="macro"
@@ -407,14 +446,16 @@ def func(fn=None,
 
             log(f"Found func: {str(spec)}", level="debug")
 
+                     
+            if register: # and inspect.isfunction(fn):
+                _add_pending_funcs(inspect.getmodule(fn), [spec])
+
+            return _WorksheetFunc(fn, spec)
+
         except Exception as e:
             fn_name = getattr(fn, "__name__", str(fn))
             log(f"Failed determing spec for '{fn_name}': {traceback.format_exc()}", level='error')
-         
-        if register: # and inspect.isfunction(fn):
-            _add_pending_fucs(inspect.getmodule(fn), [spec])
-
-        return _WorksheetFunc(fn, spec)
+            return fn
 
     return decorate if fn is None else decorate(fn)
 
@@ -482,5 +523,5 @@ def register_functions(funcs, module=None, append=True):
     # overwrite all existing functions, we both register now and add to the pending list 
     # Registering the same function twice is optimised by xlOil to avoid overhead
     # TODO: check we are called from exec_module for the matching module object
-    _add_pending_fucs(module, to_register)
+    _add_pending_funcs(module, to_register)
     xloil_core.register_functions(to_register, module, append)
