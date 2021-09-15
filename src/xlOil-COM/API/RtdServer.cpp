@@ -97,10 +97,11 @@ namespace xloil
       // calls ignored until the last one which must call subscribe (and hence 
       // RTD) for Excel to make the RTD connection.
       //
-      const auto ref = CallerInfo().sheetRef();
+      const auto caller = CallerInfo();
+      const auto ref = caller.sheetRef();
       const auto arraySize = (ref->colLast - ref->colFirst + 1) 
         * (ref->rwLast - ref->rwFirst + 1);
-      auto address = CallerInfo().writeAddress(CallerInfo::RC);
+      auto address = caller.writeAddress(CallerInfo::RC);
 
       // Turn array address into top left cell
       if (arraySize > 1)
