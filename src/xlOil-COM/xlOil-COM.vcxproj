@@ -121,6 +121,7 @@
     <ClInclude Include="ComRange.h" />
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
+    <ClInclude Include="CustomTaskPane.h" />
     <ClInclude Include="ExcelTypeLib.h" />
     <ClInclude Include="RibbonExtensibility.h" />
     <ClInclude Include="RtdManager.h" />
@@ -138,6 +139,7 @@
     <ClCompile Include="ComRange.cpp" />
     <ClCompile Include="ComVariant.cpp" />
     <ClCompile Include="Connect.cpp" />
+    <ClCompile Include="CustomTaskPane.cpp" />
     <ClCompile Include="RibbonExtensibility.cpp" />
     <ClCompile Include="RtdManager.cpp" />
     <ClCompile Include="WorkbookScopeFunctions.cpp" />

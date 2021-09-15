@@ -13,6 +13,7 @@
     <ClInclude Include="RtdServer.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
+    <ClInclude Include="CustomTaskPane.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ComAddin.cpp" />
@@ -36,6 +37,7 @@
     <ClCompile Include="API\ApiCall.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="CustomTaskPane.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="API">

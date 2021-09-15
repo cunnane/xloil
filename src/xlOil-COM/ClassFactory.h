@@ -123,10 +123,65 @@ namespace xloil
       return detail::regWriteImpl<REG_DWORD>(hive, path, name, (BYTE*)&value, sizeof(DWORD));
     }
 
-    template <class TInstance>
+    /// <summary>
+    /// A copy of CComObject from ATL but with a modern forwarding constructor
+    /// </summary>
+    /// <typeparam name="Base"></typeparam>
+    template <class Base>
+    class ComObject : public Base
+    {
+    public:
+      typedef Base _BaseClass;
+
+      template<class...Args>
+      ComObject(Args&&...args)
+        : Base(std::forward<Args>(args)...)
+      {
+        _pAtlModule->Lock();
+      }
+
+      virtual ~ComObject()
+      {
+        // Set refcount to -(LONG_MAX/2) to protect destruction and
+        // also catch mismatched Release in debug builds
+        this->m_dwRef = -(LONG_MAX / 2);
+        this->FinalRelease();
+        _pAtlModule->Unlock();
+      }
+      STDMETHOD_(ULONG, AddRef)()
+      {
+        return this->InternalAddRef();
+      }
+      STDMETHOD_(ULONG, Release)()
+      {
+        ULONG l = this->InternalRelease();
+        if (l == 0)
+        {
+          // Lock the module to avoid DLL unload when destruction of member variables take a long time
+          ModuleLockHelper lock;
+          delete this;
+        }
+        return l;
+      }
+      STDMETHOD(QueryInterface)(
+        REFIID iid,
+        _COM_Outptr_ void** ppvObject) throw()
+      {
+        return this->_InternalQueryInterface(iid, ppvObject);
+      }
+      // TODO: doesnt this exist in IUnk?
+      /*template <class Q>
+      HRESULT STDMETHODCALLTYPE QueryInterface(
+        _COM_Outptr_ Q** pp) throw()
+      {
+        return QueryInterface(__uuidof(Q), (void**)pp);
+      }*/
+    };
+
+    template <class TComServer>
     class RegisterCom
     {
-      CComPtr<TInstance> _server;
+      CComPtr<TComServer> _server;
       CComPtr<ClassFactory> _factory;
       DWORD _comRegistrationCookie;
       std::wstring _clsid;
@@ -134,14 +189,12 @@ namespace xloil
       std::list<std::wstring> _regKeysAdded;
 
     public:
+      template<class TCreatorFunc>
       RegisterCom(
-        TInstance* obj,
+        TCreatorFunc createServer,
         const wchar_t* progId = nullptr,
         const wchar_t* fixedClsid = nullptr)
       {
-        _server = obj;
-        _factory = new ClassFactory(_server.p);
-
         GUID clsid;
         if (progId)
         {
@@ -175,8 +228,11 @@ namespace xloil
 
         // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
         _progId = progId ? progId :
-          wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
+          std::wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
         std::replace(_progId.begin(), _progId.end(), L'-', L'.');
+
+        _server  = createServer(_progId.c_str(), clsid);
+        _factory = new ClassFactory((IDispatch*)_server.p);
 
         HRESULT res;
         res = CoRegisterClassObject(
@@ -214,7 +270,7 @@ namespace xloil
 
       const wchar_t* progid() const { return _progId.c_str(); }
       const wchar_t* clsid() const { return _clsid.c_str(); }
-      TInstance& server() const { return *_server; }
+      TComServer& server() const { return *_server; }
 
       HRESULT writeRegistry(
         HKEY hive,
@@ -289,5 +345,33 @@ namespace xloil
         return E_NOTIMPL;
       }
     };
+
+    template<class TSource>
+      void connectSourceToSink(
+        const IID& iid,
+        TSource* source,
+        IDispatch* sink,
+        IConnectionPoint*& connectionPoint,
+        DWORD& eventCookie)
+      {
+        IConnectionPointContainer* pContainer;
+        IUnknown* pIUnknown = nullptr;
+
+        // Get IUnknown for sink
+        sink->QueryInterface(IID_IUnknown, (void**)(&pIUnknown));
+
+        // Get connection point for source
+        source->QueryInterface(IID_IConnectionPointContainer, (void**)&pContainer);
+        if (pContainer)
+        {
+          pContainer->FindConnectionPoint(iid, &connectionPoint);
+          pContainer->Release();
+        }
+
+        if (connectionPoint)
+          connectionPoint->Advise(pIUnknown, &eventCookie);
+
+        pIUnknown->Release();
+    }
   }
 }

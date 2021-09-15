@@ -99,19 +99,6 @@ namespace xloil
       }
 #pragma region IDispatch
 
-      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* /*pctinfo*/)
-      {
-        return 0;
-      }
-
-      STDMETHOD(GetTypeInfo)(
-        UINT /*itinfo*/,
-        LCID /*lcid*/,
-        _Outptr_result_maybenull_ ITypeInfo** /*pptinfo*/)
-      {
-        return E_NOTIMPL;
-      }
-
       STDMETHOD(GetIDsOfNames)(
         _In_ REFIID /*riid*/,
         _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* rgszNames,
@@ -220,7 +207,7 @@ namespace xloil
         const wchar_t* xml, 
         const std::function<RibbonCallback(const wchar_t*)>& handler)
       {
-        _ribbon = new CComObject<RibbonImpl>();
+        _ribbon = new ComObject<RibbonImpl>();
         _ribbon->setRibbon(xml, handler);
       }
       void invalidate(const wchar_t* controlId) const override
@@ -246,7 +233,7 @@ namespace xloil
         return _ribbon;
       }
 
-      CComPtr<CComObject<RibbonImpl>> _ribbon;
+      CComPtr<ComObject<RibbonImpl>> _ribbon;
     };
     shared_ptr<IRibbon> createRibbon(
       const wchar_t* xml,

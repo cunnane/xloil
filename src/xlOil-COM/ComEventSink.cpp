@@ -1,5 +1,6 @@
 
 #include <xlOil/ExcelTypeLib.h>
+#include "ClassFactory.h"
 #include "Connect.h"
 #include "ComRange.h"
 #include "XllContextInvoke.h"
@@ -51,32 +52,7 @@ namespace xloil
 
     set<wstring> WorkbookMonitor::_workbooks;
 
-    template<class TSource>
-    void connectSourceToSink(
-      TSource* source, 
-      IDispatch* sink,
-      IConnectionPoint*& connectionPoint, 
-      DWORD& eventCookie)
-    {
-      IConnectionPointContainer *pContainter;
-      IUnknown* pIUnknown = nullptr;
-
-      // Get IUnknown for sink
-      sink->QueryInterface(IID_IUnknown, (void**)(&pIUnknown));
-
-      // Get connection point for source
-      source->QueryInterface(IID_IConnectionPointContainer, (void**)&pContainter);
-      if (pContainter)
-      {
-        pContainter->FindConnectionPoint(__uuidof(Excel::AppEvents), &connectionPoint);
-        pContainter->Release();
-      }
-
-      if (connectionPoint)
-        connectionPoint->Advise(pIUnknown, &eventCookie);
-
-      pIUnknown->Release();
-    }
+   
 
     class EventHandler : public Excel::AppEvents
     {
@@ -88,7 +64,7 @@ namespace xloil
       EventHandler(Excel::_Application* source)
         : _cRef(1)
       {
-        connectSourceToSink(source, this, _pIConnectionPoint, _dwEventCookie);
+        connectSourceToSink(__uuidof(Excel::AppEvents), source, this, _pIConnectionPoint, _dwEventCookie);
       }
 
       virtual ~EventHandler()

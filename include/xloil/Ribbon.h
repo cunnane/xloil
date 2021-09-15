@@ -5,6 +5,7 @@
 #include <memory>
 
 typedef struct tagVARIANT VARIANT;
+struct IDispatch;
 
 namespace xloil
 {
@@ -16,6 +17,26 @@ namespace xloil
   {
     const wchar_t* Id;
     const wchar_t* Tag;
+  };
+
+  class ICustomTaskPane
+  {
+  public:
+    using ChangeHandler = std::function<void(ICustomTaskPane&)>;
+    virtual ~ICustomTaskPane() {}
+
+    virtual IDispatch* content() const = 0;
+
+    virtual long hWnd() const = 0;
+
+    virtual void setVisible(bool) = 0;
+    virtual bool getVisible() = 0;
+
+    virtual std::pair<int, int> getSize() = 0;
+    virtual void setSize(int width, int height) = 0;
+
+    virtual void addVisibilityChangeHandler(const ChangeHandler& handler) = 0;
+    virtual void addDockStateChangeHandler(const ChangeHandler& handler) = 0;
   };
 
   class IComAddin
@@ -66,6 +87,8 @@ namespace xloil
     /// </summary>
     /// <returns>true if successful</returns>
     virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
+
+    virtual ICustomTaskPane* createTaskPane(const wchar_t* name) const = 0;
   };
 
   /// <summary>

@@ -11,19 +11,11 @@ class _Handler_ptvsd:
         #ptvsd.wait_for_attach()
         ptvsd.break_into_debugger()
 
-_tkinter_root = None
 
 class _Handler_pdb_window:
 
     def __init__(self):
-        import tkinter as tk
-
-        global _tkinter_root
-
-        # Only create Tk once - doing this multiple times will coredump tcl
-        if _tkinter_root is None:
-            _tkinter_root = tk.Tk(baseName="xlOil")
-            _tkinter_root.withdraw()
+        tk.Tk.get_default_root().withdraw() # Hide root window
 
     def call(self, type, value, trace):
         import pdb
@@ -94,7 +86,7 @@ class _Handler_pdb_window:
                 line = self.stdin_buffer.get()
                 return line
 
-        top_level = tk.Toplevel(_tkinter_root)
+        top_level = tk.Toplevel(xloil.tkroot())
 
         def disable_debugging():
             xloil.event.UserException.clear()

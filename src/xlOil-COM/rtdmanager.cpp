@@ -509,7 +509,10 @@ namespace xloil
       RtdServerImpl<ExcelObj>& server() const { return _registrar.server(); }
     public:
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
-        : _registrar(new CComObject<RtdServerImpl<ExcelObj>>(), progId, fixedClsid)
+        : _registrar(
+          [](const wchar_t*, const GUID&) { return new ComObject<RtdServerImpl<ExcelObj>>(); }, 
+          progId, 
+          fixedClsid)
       {
 #ifdef _DEBUG
         //void* testObj;

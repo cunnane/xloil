@@ -4,55 +4,24 @@
     <ClCompile Include="StubLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="package">
-      <UniqueIdentifier>{e1e10b85-4193-4e87-9d4f-0a040eca3d1a}</UniqueIdentifier>
-    </Filter>
+    <CopyFileToFolders Include="package\xloil\excelfuncs.py" />
+    <CopyFileToFolders Include="package\xloil\pandas.py" />
+    <CopyFileToFolders Include="package\xloil\register.py" />
+    <CopyFileToFolders Include="package\xloil\command_line.py" />
+    <CopyFileToFolders Include="package\xloil\jupyter.py" />
+    <CopyFileToFolders Include="package\xloil\__init__.py" />
+    <CopyFileToFolders Include="package\xloil\shadow_core.py" />
+    <CopyFileToFolders Include="package\xloil\debug.py" />
+    <CopyFileToFolders Include="package\xloil\rtd.py" />
+    <CopyFileToFolders Include="package\xloil\type_converters.py" />
+    <CopyFileToFolders Include="package\xloil\matplotlib.py" />
+    <CopyFileToFolders Include="package\xloil\pillow.py" />
+    <CopyFileToFolders Include="package\xloil\importer.py" />
+    <CopyFileToFolders Include="package\xloil\com.py" />
+    <CopyFileToFolders Include="package\tkinter.py" />
+    <CopyFileToFolders Include="package\xloil\qtgui.py" />
   </ItemGroup>
   <ItemGroup>
     <None Include="package\setup.py" />
-  </ItemGroup>
-  <ItemGroup>
-    <CopyFileToFolders Include="package\xloil\__init__.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\command_line.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\excelfuncs.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\jupyter.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\register.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\shadow_core.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\pandas.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\debug.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\rtd.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\type_converters.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\pillow.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\matplotlib.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
-	<CopyFileToFolders Include="package\xloil\com.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders
-    <CopyFileToFolders Include="package\xloil\importer.py">
-      <Filter>package</Filter>
-    </CopyFileToFolders>
   </ItemGroup>
 </Project>

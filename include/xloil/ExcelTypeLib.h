@@ -17,6 +17,8 @@
 
 #include <windows.h>
 
+#include <xloil/ExcelApp.h> // for ComBusyException
+
 // Disable "prefer 'enum class' over 'enum' (Enum.3)" in typelibs
 #pragma warning(disable:26812)
 

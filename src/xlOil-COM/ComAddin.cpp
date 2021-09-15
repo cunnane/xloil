@@ -3,6 +3,7 @@
 #include "ClassFactory.h"
 #include "Connect.h"
 #include "RibbonExtensibility.h"
+#include "CustomTaskPane.h"
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelApp.h>
@@ -15,6 +16,7 @@ using std::wstring;
 using std::map;
 using std::vector;
 using std::shared_ptr;
+using std::unique_ptr;
 using namespace Office;
 
 namespace xloil
@@ -28,11 +30,65 @@ namespace xloil
       void OnBeginShutdown() {}
     };
 
+
+    class __declspec(novtable)
+      CustomTaskPaneConsumerImpl :
+        public CComObjectRootEx<CComSingleThreadModel>,
+        public NoIDispatchImpl<ICustomTaskPaneConsumer>
+    {
+    public:
+      HRESULT __stdcall raw_CTPFactoryAvailable(ICTPFactory* ctpfactory) override
+      {
+        factory = ctpfactory;
+        return S_OK;
+      }
+
+      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
+      {
+        *ppv = NULL;
+        if (riid == IID_IUnknown || riid == IID_IDispatch
+          || riid == __uuidof(ICustomTaskPaneConsumer))
+        {
+          *ppv = this;
+          AddRef();
+          return S_OK;
+        }
+        return E_NOINTERFACE;
+      }
+
+      STDMETHOD(Invoke)(
+        _In_ DISPID dispidMember,
+        _In_ REFIID /*riid*/,
+        _In_ LCID /*lcid*/,
+        _In_ WORD /*wFlags*/,
+        _In_ DISPPARAMS* pdispparams,
+        _Out_opt_ VARIANT* /*pvarResult*/,
+        _Out_opt_ EXCEPINFO* /*pexcepinfo*/,
+        _Out_opt_ UINT* /*puArgErr*/) override
+      {
+        // Remember the args are in reverse order
+        auto* rgvarg = pdispparams->rgvarg;
+
+        if (dispidMember == 1)
+        {
+          return raw_CTPFactoryAvailable((Office::ICTPFactory*)rgvarg[0].pdispVal);
+        }
+        else
+        {
+          XLO_ERROR("Internal Error: unknown dispid called on task pane consumer Invoke.");
+          return E_FAIL;
+        }
+        return S_OK;
+      }
+
+      ICTPFactory* factory = nullptr;
+    };
+
     // This class does not need a disp-interface
     class __declspec(novtable)
       ComAddinImpl :
-      public CComObjectRootEx<CComSingleThreadModel>,
-      public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
+        public CComObjectRootEx<CComSingleThreadModel>,
+        public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
     {
     public:
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
@@ -50,6 +106,10 @@ namespace xloil
         {
           if (ribbon)
             return ribbon->QueryInterface(riid, ppv);
+        }
+        else if (riid == __uuidof(ICustomTaskPaneConsumer))
+        {
+          return customTaskPane->QueryInterface(riid, ppv);
         }
         return E_NOINTERFACE;
       }
@@ -85,7 +145,8 @@ namespace xloil
       }
 
       IRibbonExtensibility* ribbon;
-      shared_ptr<ComAddinEvents> events;
+      CComPtr<ComObject<CustomTaskPaneConsumerImpl>> customTaskPane = new ComObject<CustomTaskPaneConsumerImpl>();
+      unique_ptr<ComAddinEvents> events;
     };
 
     struct SetAutomationSecurity
@@ -107,9 +168,11 @@ namespace xloil
       }
       Office::MsoAutomationSecurity _previous;
     };
+
     class ComAddinCreator : public IComAddin
     {
-      auto& comAddinImpl()
+    private:
+      auto& comAddinImpl() const
       {
         return _registrar.server();
       }
@@ -122,7 +185,7 @@ namespace xloil
     public:
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
         : _registrar(
-          new CComObject<ComAddinImpl>(),
+          [](const wchar_t*, const GUID&) { return new CComObject<ComAddinImpl>(); },
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         // TODO: hook OnDisconnect to stop user from disabling COM stub.
@@ -160,6 +223,18 @@ namespace xloil
           findAddin(app);
           if (!_comAddin)
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
+        }
+      }
+
+      ~ComAddinCreator()
+      {
+        try
+        {
+          disconnect();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("ComAddin failed to close: {0}", e.what());
         }
       }
 
@@ -213,18 +288,6 @@ namespace xloil
         comAddinImpl().ribbon = _ribbon->getRibbon();
       }
 
-      ~ComAddinCreator()
-      {
-        try
-        {
-          disconnect();
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR("ComAddin failed to close: {0}", e.what());
-        }
-      }
-
       const wchar_t* progid() const override
       {
         return _registrar.progid();
@@ -239,6 +302,11 @@ namespace xloil
         return _ribbon
           ? _ribbon->activateTab(controlId)
           : false;
+      }
+
+      ICustomTaskPane* createTaskPane(const wchar_t* name) const override
+      {
+        return createCustomTaskPane(comAddinImpl().customTaskPane->factory, name);
       }
     };
 
