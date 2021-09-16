@@ -617,7 +617,7 @@ else:
             pass
 
 
-    def create_ribbon(xml:str, handlers:dict, name:str=None) -> RibbonUI:
+    def create_ribbon(xml:str, handlers:dict, name:str=None) -> ExcelUI:
         """
         Returns a (connected) ExcelUI object which passes the specified ribbon
         customisation XML to Excel.  When the returned object is deleted, it 
