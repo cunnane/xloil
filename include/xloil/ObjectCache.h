@@ -84,8 +84,8 @@ namespace xloil
       TObj _obj;
 
     public:
-      CellCache(TObj&& obj) 
-        : _calcId(0)
+      CellCache(TObj&& obj, size_t calcId)
+        : _calcId(calcId)
         , _obj(std::move(obj))
       {}
 
@@ -228,8 +228,7 @@ namespace xloil
 
       auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
 
-      // These are only used for TReverseLookup
-      std::vector<TObj> staleObjects;
+      typename std::conditional<TReverseLookup, std::vector<TObj>, char>::type staleObjects;
       decltype(_cache)::iterator found;
 
       uint8_t iPos = 0;
@@ -238,13 +237,17 @@ namespace xloil
 
         found = _cache.search(cacheKey);
         if (found == _cache.end())
+        {
           found = _cache.emplace(
             std::make_pair(
-              std::wstring(cacheKey), CellCache(std::forward<TObj>(obj)))).first;
+              std::wstring(cacheKey), 
+              CellCache(std::forward<TObj>(obj), _calcId))).first;
+        }
         else
         {
           if constexpr (TReverseLookup)
             found->second.getStaleObjects(_calcId, staleObjects);
+
           iPos = (uint8_t)found->second.add(std::forward<TObj>(obj), _calcId);
         }      
       }
