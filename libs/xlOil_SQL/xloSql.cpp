@@ -3,6 +3,7 @@
 #include <xloil/Interface.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelObj.h>
+#include <xloil/ExcelObjCache.h>
 #include "Common.h"
 
 #include <xlOil/Preprocessor.h>
@@ -71,7 +72,7 @@ namespace xloil
           for (auto i = 0; i < names.size(); ++i)
             builder(i, 0) = names[i];*/
         }
-        ExcelArray metaData(meta);
+        ExcelArray metaData(cacheCheck(meta));
         ProcessArgs([db, metaData](auto iArg, auto& argVal, auto& argName)
         {
           processMeta(metaData, db.get(), iArg, argVal, argName);
@@ -82,7 +83,7 @@ namespace xloil
         ProcessArgs([db](auto& argVal, auto& argName)
         {
           if (argVal.isNonEmpty())
-            createVTable(db.get(), ExcelArray(argVal), argName);
+            createVTable(db.get(), ExcelArray(cacheCheck(argVal)), argName);
         }, XLO_ARGS_LIST(XLOSQL_NARGS, XLOSQL_ARG_NAME));
       }
 

@@ -5,6 +5,9 @@
 
 namespace xloil
 {
+  /// <summary>
+  /// The CacheUniquifier character for the Excel Object Cache
+  /// </summary>
   template<>
   struct CacheUniquifier<std::unique_ptr<const ExcelObj>>
   {
@@ -20,7 +23,7 @@ namespace xloil
   /// </summary>
   /// <param name="obj"></param>
   /// <returns></returns>
-  inline const ExcelObj& objectCacheExpand(const ExcelObj& obj)
+  inline const ExcelObj& cacheCheck(const ExcelObj& obj)
   {
     if (obj.isType(ExcelType::Str))
     {
@@ -30,6 +33,41 @@ namespace xloil
     }
     return obj;
   }
+
+  /// <summary>
+  /// Runs <see ref="xloil::cacheCheck"/> on each supplied argument in-place. 
+  /// Usage:
+  /// <code>
+  ///    ExcelObj *arg1, *arg2;
+  ///    cacheCheck(arg1, arg2);
+  ///    ExcelArray array1(arg1);
+  ///    ...
+  /// </code>
+  /// </summary>
+  /// <typeparam name="...Args"></typeparam>
+  /// <param name="first"></param>
+  /// <param name="...more"></param>
+  template<class...Args>
+  inline void cacheCheck(const ExcelObj*& first, Args&&... more)
+  {
+    first = &cacheCheck(*first);
+    cacheCheck(std::forward<Args>(more)...);
+  }
+
+  inline void cacheCheck(const ExcelObj*& obj)
+  {
+    obj = &cacheCheck(*obj);
+  }
+
+  /// <summary>
+  /// Function object which runs <see ref="xloil::cacheCheck"/>
+  /// </summary>
+  struct CacheCheck
+  {
+    void operator()(const ExcelObj*& obj) { cacheCheck(obj); }
+    template<class...Args>
+    void operator()(Args&&... args) { cacheCheck(std::forward<Args>(args)...); }
+  };
 
 
   /// <summary>

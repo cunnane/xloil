@@ -136,12 +136,11 @@ namespace xloil
       }
 
       /// <summary>
-      /// Optimisation of operator= when you know the type of ExcelObj is not
-      /// a string
+      /// Optimisation of operator=. Safe when the type of ExcelObj is not
+      /// a string or the parent ExcelObj will outlive the array.
       /// </summary>
-      void copy_non_string(const ExcelObj& x)
+      void overwrite(const ExcelObj& x)
       {
-        assert(!x.isType(ExcelType::Str));
         ExcelObj::overwrite(_target, x);
       }
 
@@ -172,7 +171,6 @@ namespace xloil
 
   /// <summary>
   /// Constructs and allocates ExcelObj arrays. 
-  /// 
   /// Usage:
   /// <code>
   ///    ExcelArrayBuilder builder(3, 1);

@@ -2,6 +2,7 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/ExcelObjCache.h>
 #include <boost/preprocessor/repeat_from_to.hpp>
 #include <xlOil/Preprocessor.h>
 
@@ -26,7 +27,8 @@ namespace xloil
   ))
   {
     constexpr size_t nArgs = XLOBLOCK_NARGS - 1;
-    const ExcelObj* args[] = { XLO_ARG_PTRS(XLOBLOCK_NARGS, XLOBLOCK_ARG_NAME) };
+    std::array<const ExcelObj*, XLOBLOCK_NARGS> args = { { XLO_ARG_PTRS(XLOBLOCK_NARGS, XLOBLOCK_ARG_NAME) } };
+    std::apply(CacheCheck(), args);
 
     constexpr short NEW_ROW = -1;
     constexpr short PADDING = 0;
@@ -134,11 +136,7 @@ namespace xloil
     }
 
     ExcelArrayBuilder builder(totalRows, totalCols, totalStrLength);
-
-    // TODO: is it possible to fill just the holes or is that too complicated?
-    for (row_t i = 0; i < totalRows; ++i)
-      for (col_t j = 0; j < totalCols; ++j)
-        builder(i, j) = CellError::NA;
+    builder.fillNA();
 
     row = 0; col = 0;
     for (auto[nRows, nCols, iArg] : spec)
