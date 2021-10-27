@@ -5,272 +5,30 @@
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
 #include <atlctl.h>
+using std::shared_ptr;
 
 namespace xloil
 {
   namespace COM
   {
-    class __declspec(novtable)
-      CustomTaskPaneConsumerImpl :
-      public CComObjectRootEx<CComSingleThreadModel>,
-      public NoIDispatchImpl<Office::ICustomTaskPaneConsumer>
-    {
-    public:
-
-      CustomTaskPaneConsumerImpl()
-      {
-      }
-      ~CustomTaskPaneConsumerImpl()
-      {}
-
-      virtual HRESULT __stdcall raw_CTPFactoryAvailable(
-        Office::ICTPFactory* factory
-      ) override
-      {
-
-      }
-
-      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
-      {
-        *ppv = NULL;
-        if (riid == IID_IUnknown || riid == IID_IDispatch
-          || riid == __uuidof(ICustomTaskPaneConsumer))
-        {
-          *ppv = this;
-          AddRef();
-          return S_OK;
-        }
-        return E_NOINTERFACE;
-      }
-#pragma region IDispatch
-
-      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* /*pctinfo*/)
-      {
-        return 0;
-      }
-
-      STDMETHOD(GetTypeInfo)(
-        UINT /*itinfo*/,
-        LCID /*lcid*/,
-        _Outptr_result_maybenull_ ITypeInfo** /*pptinfo*/)
-      {
-        return E_NOTIMPL;
-      }
-
-      STDMETHOD(GetIDsOfNames)(
-        _In_ REFIID /*riid*/,
-        _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* rgszNames,
-        _In_range_(0, 16384) UINT cNames,
-        LCID /*lcid*/,
-        _Out_ DISPID* rgdispid)
-      {
-        return E_NOTIMPL;
-      }
-
-      STDMETHOD(Invoke)(
-        _In_ DISPID dispidMember,
-        _In_ REFIID /*riid*/,
-        _In_ LCID /*lcid*/,
-        _In_ WORD /*wFlags*/,
-        _In_ DISPPARAMS* pdispparams,
-        _Out_opt_ VARIANT* pvarResult,
-        _Out_opt_ EXCEPINFO* /*pexcepinfo*/,
-        _Out_opt_ UINT* /*puArgErr*/)
-      {
-        // Remember the args are in reverse order
-        auto* rgvarg = pdispparams->rgvarg;
-
-        if (dispidMember == 1)
-        {
-          return raw_CTPFactoryAvailable((Office::ICTPFactory*)rgvarg[0].pdispVal);
-        }
-        else
-        {
-          XLO_ERROR("Internal Error: unknown dispid called on task pane consumer Invoke.");
-          return E_FAIL;
-        }
-        return S_OK;
-      }
-
-#pragma endregion
-
-    };
 
     //public class zCustomTaskPaneCollection
     //{
     //  // Public list of TaskPane items
     //  public List<zCustomTaskPane> Items = new List<zCustomTaskPane>();
     //  private Office.ICTPFactory _paneFactory;
-
     //};
 
 
-
-/////////////////////////////////////////////////////////////////////////////
-
-  class ATL_NO_VTABLE CustomTaskPaneCtrl :
-      public CComObjectRootEx<CComSingleThreadModel>,
-      public IDispatchImpl<IDispatch>,
-      //public CStockPropImpl<IDispatch, IPolyCtl, &IID_IPolyCtl, &LIBID_POLYGONLib>,
-      public CComControl<CustomTaskPaneCtrl>,
-      //public IPersistStreamInitImpl<CustomTaskPaneCtrl>,
-      public IOleControlImpl<CustomTaskPaneCtrl>,
-      public IOleObjectImpl<CustomTaskPaneCtrl>,
-      public IOleInPlaceActiveObjectImpl<CustomTaskPaneCtrl>,
-      public IViewObjectExImpl<CustomTaskPaneCtrl>,
-      public IOleInPlaceObjectWindowlessImpl<CustomTaskPaneCtrl>
-      //public ISupportErrorInfo,
-      //public IConnectionPointContainerImpl<CustomTaskPaneCtrl>,
-      //public IPersistStorageImpl<CustomTaskPaneCtrl>,
-      //public ISpecifyPropertyPagesImpl<CustomTaskPaneCtrl>,
-      //public IQuickActivateImpl<CustomTaskPaneCtrl>,
-      //public IDataObjectImpl<CustomTaskPaneCtrl>,
-      //public IProvideClassInfo2Impl<&CLSID_PolyCtl, &DIID__IPolyCtlEvents, &LIBID_POLYGONLib>,
-      //public IPropertyNotifySinkCP<CustomTaskPaneCtrl>,
-      //public CComCoClass<CustomTaskPaneCtrl, &CLSID_PolyCtl>,
-      //public CProxy_IPolyCtlEvents< CustomTaskPaneCtrl >,
-      //public IObjectSafetyImpl<CustomTaskPaneCtrl, INTERFACESAFE_FOR_UNTRUSTED_CALLER>
-    {
-      GUID _clsid;
-
-    public:
-      CustomTaskPaneCtrl(const wchar_t* progId, const GUID& clsid)
-        : _clsid(clsid)
-      {
-        CComControlBase::m_bWindowOnly = true;
-      }
-      static const CLSID& WINAPI GetObjectCLSID()
-      {
-        XLO_THROW("Not supported");
-      }
-
-      HWND getHwnd() const
-      {
-        return CComControlBase::m_hWndCD;
-      }
-
-      //DECLARE_REGISTRY_RESOURCEID(IDR_POLYCTL)
-
-      BEGIN_COM_MAP(CustomTaskPaneCtrl)
-        //COM_INTERFACE_ENTRY_IMPL(IConnectionPointContainer)
-        //COM_INTERFACE_ENTRY(IPolyCtl)
-        COM_INTERFACE_ENTRY(IDispatch)
-        COM_INTERFACE_ENTRY(IViewObjectEx)
-        COM_INTERFACE_ENTRY(IViewObject2)
-        COM_INTERFACE_ENTRY(IViewObject)
-        //COM_INTERFACE_ENTRY(IOleInPlaceObjectWindowless)
-        COM_INTERFACE_ENTRY(IOleInPlaceObject)
-        COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObject)
-        //COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObjectWindowless)
-        COM_INTERFACE_ENTRY(IOleInPlaceActiveObject)
-        COM_INTERFACE_ENTRY(IOleControl)
-        COM_INTERFACE_ENTRY(IOleObject)
-        //COM_INTERFACE_ENTRY(IPersistStreamInit)
-        //COM_INTERFACE_ENTRY2(IPersist, IPersistStreamInit)
-        //COM_INTERFACE_ENTRY(ISupportErrorInfo)
-        //COM_INTERFACE_ENTRY(IConnectionPointContainer)
-        //COM_INTERFACE_ENTRY(ISpecifyPropertyPages)
-        //COM_INTERFACE_ENTRY(IQuickActivate)
-        //COM_INTERFACE_ENTRY(IPersistStorage)
-        //COM_INTERFACE_ENTRY(IDataObject)
-       // COM_INTERFACE_ENTRY(IProvideClassInfo)
-        //COM_INTERFACE_ENTRY(IProvideClassInfo2)
-        //COM_INTERFACE_ENTRY(IObjectSafety)
-      END_COM_MAP()
-
-      //BEGIN_PROP_MAP(CustomTaskPaneCtrl)
-   
-      //END_PROP_MAP()
-
-      //BEGIN_CONNECTION_POINT_MAP(CustomTaskPaneCtrl)
-      ////  CONNECTION_POINT_ENTRY(DIID__IPolyCtlEvents)
-      ////  CONNECTION_POINT_ENTRY(IID_IPropertyNotifySink)
-      //END_CONNECTION_POINT_MAP()
-
-      BEGIN_MSG_MAP(CustomTaskPaneCtrl)
-        CHAIN_MSG_MAP(CComControl<CustomTaskPaneCtrl>)
-        DEFAULT_REFLECTION_HANDLER()
-      END_MSG_MAP()
-      // Handler prototypes:
-      //  LRESULT MessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-      //  LRESULT CommandHandler(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
-      //  LRESULT NotifyHandler(int idCtrl, LPNMHDR pnmh, BOOL& bHandled);
-      /*
-      BEGIN_MSG_MAP(CCDInfo)
-	      MESSAGE_HANDLER(WM_PAINT         , OnPaint)
-	      MESSAGE_HANDLER(WM_ERASEBKGND , OnEraseBkgnd)
-	      MESSAGE_HANDLER(WM_MOUSEMOVE     , OnMouseMove)
-	      MESSAGE_HANDLER(WM_LBUTTONDOWN, OnLButtonDown)
-	      MESSAGE_HANDLER(WM_LBUTTONUP  , RelayEvent)
-	      MESSAGE_HANDLER(WM_RBUTTONDOWN, RelayEvent)
-	      MESSAGE_HANDLER(WM_RBUTTONUP  , RelayEvent)
-	      MESSAGE_HANDLER(WM_MBUTTONDOWN, RelayEvent)
-	      MESSAGE_HANDLER(WM_MBUTTONUP  , RelayEvent)
-        END_MSG_MAP()
-      */
-
-
-      // ISupportsErrorInfo
-      //STDMETHOD(InterfaceSupportsErrorInfo)(REFIID riid)
-      //{
-      //  static const IID* arr[] =
-      //  {
-      //    &IID_IPolyCtl,
-      //  };
-      //  for (int i = 0; i < sizeof(arr) / sizeof(arr[0]); i++)
-      //  {
-      //    if (InlineIsEqualGUID(*arr[i], riid))
-      //      return S_OK;
-      //  }
-      //  return S_FALSE;
-      //}
-
-      // IViewObjectEx
-      DECLARE_VIEW_STATUS(VIEWSTATUS_SOLIDBKGND | VIEWSTATUS_OPAQUE)
-
-      // IPolyCtl
-    public:
-      STDMETHOD(EnumVerbs)(_Outptr_ IEnumOLEVERB** ppEnumOleVerb)
-      {
-        if (!ppEnumOleVerb)
-          return E_POINTER;
-        return OleRegEnumVerbs(_clsid, ppEnumOleVerb);
-      }
-      STDMETHOD(GetUserClassID)(_Out_ CLSID* pClsid)
-      {
-        if (!pClsid)
-          return E_POINTER;
-        *pClsid = _clsid;
-        return S_OK;
-      }
-      STDMETHOD(GetUserType)(
-        _In_ DWORD dwFormOfType,
-        _Outptr_result_z_ LPOLESTR* pszUserType)
-      {
-        return OleRegGetUserType(_clsid, dwFormOfType, pszUserType);
-      }
-      STDMETHOD(GetMiscStatus)(
-        _In_ DWORD dwAspect,
-        _Out_ DWORD* pdwStatus)
-      {
-        return OleRegGetMiscStatus(_clsid, dwAspect, pdwStatus);
-      }
-
-      HRESULT CustomTaskPaneCtrl::OnDraw(ATL_DRAWINFO& di)
-      {
-        return S_OK;
-      }
-    };
-
     class __declspec(novtable) CustomTaskPaneEventHandler
-      : public CComObjectRootEx<CComSingleThreadModel>, 
-        public NoIDispatchImpl<Office::_CustomTaskPaneEvents>
+      : public CComObjectRootEx<CComSingleThreadModel>,
+      public NoIDispatchImpl<Office::_CustomTaskPaneEvents>
     {
     public:
-      CustomTaskPaneEventHandler(ICustomTaskPane& parent)
+      CustomTaskPaneEventHandler(ICustomTaskPane& parent, shared_ptr<ICustomTaskPaneEvents> handler)
         : _parent(parent)
-      {
-      }
+        , _handler(handler)
+      {}
 
       void connect(Office::_CustomTaskPane* source)
       {
@@ -291,15 +49,6 @@ namespace xloil
           _pIConnectionPoint->Release();
           _pIConnectionPoint = NULL;
         }
-      }
-
-      void addVisibilityChangeHandler(const ICustomTaskPane::ChangeHandler& handler)
-      {
-        _visibilityChangeHandlers.push_back(handler);
-      }
-      void addDockStateChangeHandler(const ICustomTaskPane::ChangeHandler& handler)
-      {
-        _dockStateChangeHandlers.push_back(handler);
       }
 
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
@@ -346,15 +95,13 @@ namespace xloil
       HRESULT VisibleStateChange(
         struct _CustomTaskPane* CustomTaskPaneInst)
       {
-        for (auto & h : _visibilityChangeHandlers)
-          h(_parent);
+        _handler->visible(_parent.getVisible());
         return S_OK;
       }
       HRESULT DockPositionStateChange(
         struct _CustomTaskPane* CustomTaskPaneInst)
       {
-        for (auto & h : _visibilityChangeHandlers)
-          h(_parent);
+        _handler->docked();
         return S_OK;
       }
 
@@ -363,38 +110,177 @@ namespace xloil
       DWORD	_dwEventCookie;
       ICustomTaskPane& _parent;
 
-      std::list<ICustomTaskPane::ChangeHandler> _visibilityChangeHandlers;
-      std::list<ICustomTaskPane::ChangeHandler> _dockStateChangeHandlers;
+      shared_ptr<ICustomTaskPaneEvents> _handler;
+    };
+
+
+    class ATL_NO_VTABLE CustomTaskPaneCtrl :
+      public CComObjectRootEx<CComSingleThreadModel>,
+      public IDispatchImpl<IDispatch>,
+      public CComControl<CustomTaskPaneCtrl>,
+      public IOleControlImpl<CustomTaskPaneCtrl>,
+      public IOleObjectImpl<CustomTaskPaneCtrl>,
+      public IOleInPlaceActiveObjectImpl<CustomTaskPaneCtrl>,
+      public IViewObjectExImpl<CustomTaskPaneCtrl>,
+      public IOleInPlaceObjectWindowlessImpl<CustomTaskPaneCtrl>
+    {
+      GUID _clsid;
+      std::list<shared_ptr<ICustomTaskPaneEvents>> _handlers;
+
+      unsigned n_bWindowOnly = 1;
+
+    public:
+      CustomTaskPaneCtrl(const wchar_t* progId, const GUID& clsid)
+        : _clsid(clsid)
+      {
+      }
+      static const CLSID& WINAPI GetObjectCLSID()
+      {
+        XLO_THROW("Not supported");
+      }
+      void addHandler(const shared_ptr<ICustomTaskPaneEvents>& events)
+      {
+        _handlers.push_back(events);
+      }
+
+      BEGIN_COM_MAP(CustomTaskPaneCtrl)
+        //COM_INTERFACE_ENTRY_IMPL(IConnectionPointContainer)
+        COM_INTERFACE_ENTRY(IDispatch)
+        COM_INTERFACE_ENTRY(IViewObjectEx)
+        COM_INTERFACE_ENTRY(IViewObject2)
+        COM_INTERFACE_ENTRY(IViewObject)
+        //COM_INTERFACE_ENTRY(IOleInPlaceObjectWindowless)
+        COM_INTERFACE_ENTRY(IOleInPlaceObject)
+        COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObject)
+        //COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObjectWindowless)
+        COM_INTERFACE_ENTRY(IOleInPlaceActiveObject)
+        COM_INTERFACE_ENTRY(IOleControl)
+        COM_INTERFACE_ENTRY(IOleObject)
+      END_COM_MAP()
+
+      BEGIN_MSG_MAP(CustomTaskPaneCtrl)
+        MESSAGE_HANDLER(WM_SIZE, OnSize)
+        //MESSAGE_HANDLER(WM_MOVE, OnMove)
+        //MESSAGE_HANDLER(WM_WINDOWPOSCHANGED, OnPosChange)
+        CHAIN_MSG_MAP(CComControl<CustomTaskPaneCtrl>)
+        DEFAULT_REFLECTION_HANDLER()
+      END_MSG_MAP()
+
+      // IViewObjectEx
+      DECLARE_VIEW_STATUS(VIEWSTATUS_SOLIDBKGND | VIEWSTATUS_OPAQUE)
+
+    public:
+      // We need trival implementations of these four methods since we do not have a static CLSID
+      STDMETHOD(EnumVerbs)(_Outptr_ IEnumOLEVERB** ppEnumOleVerb)
+      {
+        if (!ppEnumOleVerb)
+          return E_POINTER;
+        return OleRegEnumVerbs(_clsid, ppEnumOleVerb);
+      }
+      STDMETHOD(GetUserClassID)(_Out_ CLSID* pClsid)
+      {
+        if (!pClsid)
+          return E_POINTER;
+        *pClsid = _clsid;
+        return S_OK;
+      }
+      STDMETHOD(GetUserType)(DWORD dwFormOfType, LPOLESTR* pszUserType)
+      {
+        return OleRegGetUserType(_clsid, dwFormOfType, pszUserType);
+      }
+      STDMETHOD(GetMiscStatus)(
+        _In_ DWORD dwAspect,
+        _Out_ DWORD* pdwStatus)
+      {
+        return OleRegGetMiscStatus(_clsid, dwAspect, pdwStatus);
+      }
+
+      HWND GetActualParent()
+      {
+        HWND hwndParent = m_hWnd;
+
+        // Get the window associated with the in-place site object,
+        // which is connected to this ActiveX control.
+        if (m_spInPlaceSite == NULL)
+          m_spInPlaceSite->GetWindow(&hwndParent);
+
+        return hwndParent;  
+      }
+
+
+      HRESULT OnSize(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+      {
+        try
+        {
+          UINT width = LOWORD(lParam);
+          UINT height = HIWORD(lParam);
+          for (auto& h : _handlers)
+            h->resize(width, height);
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR(e.what());
+        }
+        return S_OK;
+      }
+      //HRESULT OnMove(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+      //{
+      //  try
+      //  {
+      //    UINT x = LOWORD(lParam);
+      //    UINT y = HIWORD(lParam);
+      //    for (auto& h : _handlers)
+      //      h->move(x, y);
+      //  }
+      //  catch (const std::exception& e)
+      //  {
+      //    XLO_ERROR(e.what());
+      //  }
+      //  return S_OK;
+      //}
+      //HRESULT OnPosChange(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+      //{
+      //  auto pos = (WINDOWPOS*)lParam;
+      //  try
+      //  {
+      //    RECT rect;
+      //    GetWindowRect(&rect);
+      //    for (auto& h : _handlers)
+      //      h->move(rect.left, rect.top);
+      //  }
+      //  catch (const std::exception& e)
+      //  {
+      //    XLO_ERROR(e.what());
+      //  }
+      //  return S_OK;
+      //}
     };
 
     class CustomTaskPaneCreator : public ICustomTaskPane
     {
-      auto& comAddinImpl()
-      {
-        return _registrar.server();
-      }
-
-      RegisterCom<CustomTaskPaneCtrl> _registrar;
       Office::_CustomTaskPanePtr _pane;
-      CComPtr<ComObject<CustomTaskPaneEventHandler>> _paneEvents;
-
+      std::list<CComPtr<ComObject<CustomTaskPaneEventHandler>>> _paneEvents;
+      CComPtr<CustomTaskPaneCtrl> _customCtrl;
 
     public:
-      CustomTaskPaneCreator(Office::ICTPFactory* ctpFactory, const wchar_t* name)
-        : _registrar(
-          [](const wchar_t* progId, const GUID& clsid) 
-          { 
-            return new ComObject<CustomTaskPaneCtrl>(progId, clsid); 
-          },
-          formatStr(L"%s.CTP", name ? name : L"xlOil").c_str())
+      CustomTaskPaneCreator(
+        Office::ICTPFactory& ctpFactory, 
+        const wchar_t* name,
+        const wchar_t* progId)
       {
-        _pane = ctpFactory->CreateCTP(_registrar.progid(), name);
-        //_pane = ctpFactory->CreateCTP(L"WinForms.Control.Host.V3", name);
-        //_pane = ctpFactory->CreateCTP(L"Paint.Picture", name);
-        _paneEvents = new ComObject<CustomTaskPaneEventHandler>(*this);
-        _paneEvents->connect(_pane);
-
-        SetWindowPos((HWND)hWnd(), HWND_TOP, 0, 0, 100, 300, SWP_NOMOVE);
+        if (!progId)
+        {
+          RegisterCom<CustomTaskPaneCtrl> registrar(
+            [](const wchar_t* progId, const GUID& clsid)
+            {
+              return new ComObject<CustomTaskPaneCtrl>(progId, clsid);
+            },
+            formatStr(L"%s.CTP", name ? name : L"xlOil").c_str());
+          _pane = ctpFactory.CreateCTP(registrar.progid(), name);
+          _customCtrl = registrar.server();
+        }
+        else
+          _pane = ctpFactory.CreateCTP(progId, name);  
       }
       ~CustomTaskPaneCreator()
       {
@@ -404,14 +290,44 @@ namespace xloil
       {
         return _pane->ContentControl;
       }
-      long hWnd() const override
+      intptr_t documentWindow() const override
       {
-        //_pane->
         //auto window = Excel::WindowPtr(_pane->Window);
+        //return window->Hwnd;
+        auto x = _pane->Window;
         IOleWindowPtr oleWin(_pane->ContentControl);
         HWND result;
         oleWin->GetWindow(&result);
-        return (long)result;
+        return (intptr_t)result;
+      }
+
+      intptr_t parentWindow() const override
+      {
+        HWND parent = 0;
+        if (_customCtrl)
+          parent = _customCtrl->GetActualParent();
+        else
+        {
+          IOleWindowPtr oleWin(_pane->ContentControl);
+          HWND result;
+          oleWin->GetWindow(&parent);
+        }
+        constexpr wchar_t target[] = L"NUIPane";      // could be MsoWorkPane
+        constexpr auto len = 1 + _countof(target);
+        wchar_t winClass[len + 1];
+        //  Ensure that class_name is always null terminated for safety.
+        winClass[len] = 0;
+
+        do 
+        {
+          auto hwnd = parent;
+          parent = ::GetParent(hwnd);
+          if (parent == hwnd)
+            XLO_THROW(L"Failed to find parent window with class {}", target);
+          ::GetClassName(parent, winClass, len);
+        } while (wcscmp(target, winClass) != 0);
+
+        return (intptr_t)parent;
       }
       void setVisible(bool value) override
       { 
@@ -430,21 +346,33 @@ namespace xloil
         _pane->Width = width;
         _pane->Height = height;
       }
-      void addVisibilityChangeHandler(const ChangeHandler& handler) override
+      DockPosition getPosition() const override
       {
-        _paneEvents->addVisibilityChangeHandler(handler);
+        return DockPosition(_pane->DockPosition);
       }
-      void addDockStateChangeHandler(const ChangeHandler& handler) override
+      void setPosition(DockPosition pos) override
       {
-        _paneEvents->addDockStateChangeHandler(handler);
+        _pane->DockPosition = (Office::MsoCTPDockPosition)pos;
       }
+
+      void addEventHandler(const std::shared_ptr<ICustomTaskPaneEvents>& events) override
+      {
+        _paneEvents.push_back(new ComObject<CustomTaskPaneEventHandler>(*this, events));
+        _paneEvents.back()->connect(_pane);
+        if (_customCtrl)
+          _customCtrl->addHandler(events);
+      }
+      
     };
 
-    ICustomTaskPane* createCustomTaskPane(Office::ICTPFactory* ctpFactory, const wchar_t* name)
+    ICustomTaskPane* createCustomTaskPane(
+      Office::ICTPFactory& ctpFactory, 
+      const wchar_t* name,
+      const wchar_t* progId)
     {
       try
       {
-        return new CustomTaskPaneCreator(ctpFactory, name);
+        return new CustomTaskPaneCreator(ctpFactory, name, progId);
       }
       XLO_RETHROW_COM_ERROR;
     }

@@ -545,8 +545,10 @@ def _xloil_unload():
 # https://github.com/fernandreu/office-ribbonx-editor
 #
 def press1(ctrl):
+    global _taskpane
     xlo.log("1 Pressed")
-    return "NotSupposedToReturnHere"
+    _taskpane.visible = True
+    return "NotSupposedToReturnHere" # check this doesn't cause an error
     
 def button_label(ctrl, *args):
     return "PyButton"
@@ -560,8 +562,9 @@ def button_image(ctrl):
 def combo_change(ctrl, value):
     xlo.log(f"Combo: {value} selected")
     pass
-    
-_ribbon = xlo.create_ribbon(r'''
+
+
+_excelgui = xlo.create_ribbon(r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -587,7 +590,68 @@ _ribbon = xlo.create_ribbon(r'''
         'buttonLabel': button_label,
         'buttonImg': button_image
     })
-    
+
+
+
+def draw_task_pane(hwnd):
+   
+    from PyQt5.QtGui import QWindow
+    from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
+    from PyQt5.QtCore import pyqtSignal, Qt
+
+    class MyGui(QWidget, xlo.CustomTaskPaneEvents):
+        progress = pyqtSignal(int)
+        
+        def __init__(self, hwnd):
+            super().__init__()
+            label = QLabel("Hello from Qt")
+            
+            layout = QHBoxLayout()
+            
+            layout.addWidget(label)
+            
+            progress_bar = QProgressBar(self)
+            progress_bar.setGeometry(200, 80, 250, 20)
+            self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
+            layout.addWidget(progress_bar)
+            
+            self.setLayout(layout)
+
+            self.show() # windowHandle does not exist before show
+            
+            nativeWindow = QWindow.fromWinId(hwnd)
+            
+            self.windowHandle().setParent(nativeWindow)
+            self.move(0, 0)
+            self.update()
+            
+        def pane_resize(self, pane, width, height):
+            self.resize(width, height)
+            
+        def pane_move(self, pane, x, y):
+            self.move(x, y)
+        
+        def pane_show(self, pane):
+            self.show()
+        
+        def pane_hide(self, pane):
+            self.hide()
+            
+    return MyGui(hwnd)
+   
+   
+_taskpane = _excelgui.create_task_pane("PyTest")
+
+from xloil.qtgui import QtThread
+import time
+#Slightly dodgy busy-wait until thread starts up, import earlier to avoid this
+while not QtThread.ready:
+    time.sleep(0.01)
+
+_qt_taskpane = QtThread.send(lambda: draw_task_pane(_taskpane.parent_hwnd))
+
+_taskpane.add_event_handler(_qt_taskpane)
+
 #-----------------------------------------
 # Images: returning images from functions
 #-----------------------------------------

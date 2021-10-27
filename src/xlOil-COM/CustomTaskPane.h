@@ -8,6 +8,9 @@ namespace xloil
 
   namespace COM
   {
-    ICustomTaskPane* createCustomTaskPane(Office::ICTPFactory* ctpFactory, const wchar_t* name);
+    ICustomTaskPane* createCustomTaskPane(
+      Office::ICTPFactory& ctpFactory, 
+      const wchar_t* name,
+      const wchar_t* progId = nullptr);
   }
 }

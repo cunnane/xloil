@@ -506,7 +506,8 @@ namespace xloil
     class RtdServer : public IRtdServer
     {
       RegisterCom<RtdServerImpl<ExcelObj>> _registrar;
-      RtdServerImpl<ExcelObj>& server() const { return _registrar.server(); }
+      RtdServerImpl<ExcelObj>& server() const { return *_registrar.server(); }
+
     public:
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
         : _registrar(

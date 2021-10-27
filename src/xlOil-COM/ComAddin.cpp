@@ -91,6 +91,11 @@ namespace xloil
         public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
     {
     public:
+      ComAddinImpl()
+        : _customTaskPane(new ComObject<CustomTaskPaneConsumerImpl>())
+        , ribbon(nullptr)
+      {}
+
       HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
       {
         *ppv = NULL;
@@ -109,7 +114,7 @@ namespace xloil
         }
         else if (riid == __uuidof(ICustomTaskPaneConsumer))
         {
-          return customTaskPane->QueryInterface(riid, ppv);
+          return _customTaskPane->QueryInterface(riid, ppv);
         }
         return E_NOINTERFACE;
       }
@@ -144,8 +149,13 @@ namespace xloil
         return S_OK;
       }
 
+      ICTPFactory* ctpFactory() const
+      {
+        return _customTaskPane ? _customTaskPane->factory : nullptr;
+      }
+
       IRibbonExtensibility* ribbon;
-      CComPtr<ComObject<CustomTaskPaneConsumerImpl>> customTaskPane = new ComObject<CustomTaskPaneConsumerImpl>();
+      CComPtr<ComObject<CustomTaskPaneConsumerImpl>> _customTaskPane;
       unique_ptr<ComAddinEvents> events;
     };
 
@@ -189,7 +199,7 @@ namespace xloil
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         // TODO: hook OnDisconnect to stop user from disabling COM stub.
-        comAddinImpl().events.reset(new ComAddinEvents());
+        comAddinImpl()->events.reset(new ComAddinEvents());
 
         if (!name)
           XLO_THROW("Com add-in name must be provided");
@@ -285,7 +295,7 @@ namespace xloil
         if (_connected)
           XLO_THROW("Can only set Ribbon when add-in is disconnected");
         _ribbon = createRibbon(xml, mapper);
-        comAddinImpl().ribbon = _ribbon->getRibbon();
+        comAddinImpl()->ribbon = _ribbon->getRibbon();
       }
 
       const wchar_t* progid() const override
@@ -304,9 +314,14 @@ namespace xloil
           : false;
       }
 
-      ICustomTaskPane* createTaskPane(const wchar_t* name) const override
+      ICustomTaskPane* createTaskPane(
+        const wchar_t* name,
+        const wchar_t* progId) const override
       {
-        return createCustomTaskPane(comAddinImpl().customTaskPane->factory, name);
+        auto factory = comAddinImpl()->ctpFactory();
+        if (!factory)
+          XLO_THROW("Internal error: failed to receive CTP factory");
+        return createCustomTaskPane(*factory, name, progId);
       }
     };
 

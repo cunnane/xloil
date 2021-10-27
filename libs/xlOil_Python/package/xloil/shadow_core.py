@@ -13,7 +13,7 @@ if importlib.util.find_spec("xloil_core") is not None:
         LogWriter,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions,
-        create_ribbon, RibbonUI, run_later, 
+        create_ribbon, ExcelUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
         from_excel_date,
@@ -696,3 +696,18 @@ else:
             if True, compresses the resulting image before storing in the sheet
         """
         pass
+
+
+class CustomTaskPaneEvents:
+
+    def pane_resize(self, pane, width, height):
+        ...
+             
+    def pane_show(self, pane):
+        ...
+        
+    def pane_hide(self, pane):
+        ...
+
+    def pane_dock(self, pane):
+        ...

@@ -9,7 +9,9 @@
 #include <filesystem>
 namespace py = pybind11;
 using std::shared_ptr;
+using std::unique_ptr;
 using std::wstring;
+using std::make_shared;
 
 namespace xloil
 {
@@ -128,26 +130,42 @@ namespace xloil
         return result;
       }
 
-      void addVisibilityCallback(const py::object& self, const py::object& obj)
+      class PyTaskPane : public ICustomTaskPaneEvents
+      {
+      public:
+        PyTaskPane(const py::object& pane, const py::object& eventHandler)
+          : _pane(pane), _handler(eventHandler)
+        {}
+
+        void resize(int width, int height) override
+        {
+          py::gil_scoped_acquire gil;
+          _handler.attr("pane_resize")(_pane, width, height);
+        }
+        void visible(bool c) override
+        {
+          py::gil_scoped_acquire gil;
+          if (c)
+            _handler.attr("pane_show")(_pane);
+          else
+            _handler.attr("pane_hide")(_pane);
+        }
+        void docked() override
+        {
+          py::gil_scoped_acquire gil;
+          _handler.attr("pane_dock")(_pane);
+        }
+        PyObjectHolder _pane;
+        py::object _handler;
+      };
+      void addPaneEventHandler(const py::object& self, const py::object& eventHandler)
       {
         auto ctp = self.cast<ICustomTaskPane*>();
         // We take a weak reference to everything - avoid increasing ref count
         // to avoid a circular reference
         // pybind weakref bug https://github.com/pybind/pybind11/issues/2536
-        ctp->addVisibilityChangeHandler([
-            callable = PyObjectHolder(obj),//py::weakref(static_cast<py::handle>(obj))),
-            pane = self.ptr()
-          ](ICustomTaskPane&)
-          {
-            py::gil_scoped_acquire getGil;
-            // Get strong ref first then check it, this is thread safe
-            PySteal<>(callOneArg(callable.ptr(), pane));
-            //auto strong = callable();
-            //if (!strong.is_none())
-            //  PySteal<>(callOneArg(strong.ptr(), pane));
-          });
+        ctp->addEventHandler(make_shared<PyTaskPane>(self, eventHandler));
       }
-
       void setTaskPaneSize(ICustomTaskPane* pane, const py::object& pair)
       {
         pane->setSize(pair.begin()->cast<int>(), (++pair.begin())->cast<int>());
@@ -159,10 +177,10 @@ namespace xloil
           .def_readonly("tag", &RibbonControl::Tag);
 
         py::class_<ICustomTaskPane>(mod, "TaskPane")
-          .def_property_readonly("hwnd", &ICustomTaskPane::hWnd)
+          .def_property_readonly("parent_hwnd", &ICustomTaskPane::parentWindow)
           .def_property("visible", &ICustomTaskPane::getVisible, &ICustomTaskPane::setVisible)
           .def_property("size", &ICustomTaskPane::getSize, setTaskPaneSize)
-          .def("visibility_change_callback", addVisibilityCallback, py::arg("callable"));
+          .def("add_event_handler", &addPaneEventHandler, py::arg("handler"));
 
         py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelUI")
           .def("connect", &IComAddin::connect)
@@ -170,7 +188,7 @@ namespace xloil
           .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("mapper"))
           .def("invalidate", &IComAddin::ribbonInvalidate, py::arg("id") = nullptr)
           .def("activate", &IComAddin::ribbonActivate, py::arg("id"))
-          .def("create_task_pane", &IComAddin::createTaskPane, py::arg("name"))
+          .def("create_task_pane", &IComAddin::createTaskPane, py::arg("name"), py::arg("progid")=py::none())
           .def_property_readonly("name", &IComAddin::progid);
 
         mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("mapper"), py::arg("name")=py::none());

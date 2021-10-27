@@ -270,7 +270,7 @@ namespace xloil
 
       const wchar_t* progid() const { return _progId.c_str(); }
       const wchar_t* clsid() const { return _clsid.c_str(); }
-      TComServer& server() const { return *_server; }
+      const CComPtr<TComServer>& server() const { return _server; }
 
       HRESULT writeRegistry(
         HKEY hive,

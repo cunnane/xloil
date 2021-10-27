@@ -17,7 +17,6 @@ class _QtThread:
         self._thread.join()
         
     def stop(self):
-        xloil.log("Thread stopped", level="error")
         if self.app:
             self._queue.put(self.app.quit)
             self._enqueued.timeout.emit()
@@ -44,22 +43,16 @@ class _QtThread:
         
     def _main_loop(self):
  
-        #from PyQt5.QtCore import QCoreApplication
-
-        #app = QCoreApplication([])
-
+        # For some reason, my version of PyQt doesn't read the platform plugin
+        # path env var, so I need to explicityl pass it to the QApplication ctor
         import os
         ppp = os.environ['QT_QPA_PLATFORM_PLUGIN_PATH']
-        #xloil.log(f"Qt with ppp={ppp}", level="error")
-        #app.addLibraryPath(ppp)
-
-        # TODO: another version of pyqt?
         from PyQt5.QtWidgets import QApplication
         from PyQt5.QtCore import QTimer
         
         self._app = QApplication(['','-platformpluginpath', ppp])
 
-        xloil.log(f"Started Qt with libpaths={self._app.libraryPaths()}", level="error")
+        xloil.log(f"Started Qt with libpaths={self._app.libraryPaths()}", level="info")
         def check_queue():
             try:
                 while True:
@@ -79,6 +72,7 @@ class _QtThread:
 
 QtThread = _QtThread()
 
-# PyBye is called before threading module teardown, whereas `atexit` is not.
+# PyBye is called before threading module teardown, whereas `atexit` comes later
+# Note the need to create a global var to stop the event hander going out of scope
 _stopper = QtThread.stop
 xloil.event.PyBye += _stopper

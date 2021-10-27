@@ -19,15 +19,30 @@ namespace xloil
     const wchar_t* Tag;
   };
 
+  class ICustomTaskPaneEvents
+  {
+  public:
+    virtual void resize(int width, int height) = 0;
+    virtual void visible(bool c) = 0;
+    virtual void docked() = 0;
+  };
   class ICustomTaskPane
   {
   public:
-    using ChangeHandler = std::function<void(ICustomTaskPane&)>;
+    enum DockPosition
+    {
+      Bottom =	3,
+      Floating =	4,
+      Left =	0,
+      Right = 2,
+      Top = 1
+    };
     virtual ~ICustomTaskPane() {}
 
     virtual IDispatch* content() const = 0;
 
-    virtual long hWnd() const = 0;
+    virtual intptr_t documentWindow() const = 0;
+    virtual intptr_t parentWindow() const = 0;
 
     virtual void setVisible(bool) = 0;
     virtual bool getVisible() = 0;
@@ -35,8 +50,10 @@ namespace xloil
     virtual std::pair<int, int> getSize() = 0;
     virtual void setSize(int width, int height) = 0;
 
-    virtual void addVisibilityChangeHandler(const ChangeHandler& handler) = 0;
-    virtual void addDockStateChangeHandler(const ChangeHandler& handler) = 0;
+    virtual DockPosition getPosition() const = 0;
+    virtual void setPosition(DockPosition pos) = 0;
+
+    virtual void addEventHandler(const std::shared_ptr<ICustomTaskPaneEvents>& events) = 0;
   };
 
   class IComAddin
@@ -88,7 +105,9 @@ namespace xloil
     /// <returns>true if successful</returns>
     virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
 
-    virtual ICustomTaskPane* createTaskPane(const wchar_t* name) const = 0;
+    virtual ICustomTaskPane* createTaskPane(
+      const wchar_t* name,
+      const wchar_t* progId=nullptr) const = 0;
   };
 
   /// <summary>
