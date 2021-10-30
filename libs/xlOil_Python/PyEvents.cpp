@@ -157,8 +157,12 @@ namespace xloil
         return new PyEvent<TEvent, true, typename TEvent::handler>(event);
       }
 
+      /// <summary>
+      /// Binds an event which does not fire the UserException handler - useful
+      /// to avoid circular event calls
+      /// </summary>
       template<class TEvent>
-      auto makeEvent2(TEvent& event)
+      auto makeEventNoUserExcept(TEvent& event)
       {
         return new PyEvent<TEvent, false, typename TEvent::handler>(event);
       }
@@ -214,8 +218,8 @@ namespace xloil
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
 
-        bindEvent(eventMod, makeEvent2(Event_PyUserException()), "UserException");
-        bindEvent(eventMod, makeEvent2(Event_PyBye()), "PyBye");
+        bindEvent(eventMod, makeEventNoUserExcept(Event_PyUserException()), "UserException");
+        bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), "PyBye");
       });
     }
   }
