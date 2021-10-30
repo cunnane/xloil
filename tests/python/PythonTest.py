@@ -592,6 +592,7 @@ _excelgui = xlo.create_ribbon(r'''
     })
 
 
+from xloil.qtgui import QtThread
 
 def draw_task_pane(hwnd):
    
@@ -626,29 +627,26 @@ def draw_task_pane(hwnd):
             self.update()
             
         def pane_resize(self, pane, width, height):
-            self.resize(width, height)
+            QtThread.send(lambda: self.resize(width, height))
             
-        def pane_move(self, pane, x, y):
-            self.move(x, y)
-        
         def pane_show(self, pane):
-            self.show()
+            self.show() # This seems to be OK on any thread
         
         def pane_hide(self, pane):
-            self.hide()
+            self.hide() # This seems to be OK on any thread
             
     return MyGui(hwnd)
    
    
 _taskpane = _excelgui.create_task_pane("PyTest")
 
-from xloil.qtgui import QtThread
+
 import time
 #Slightly dodgy busy-wait until thread starts up, import earlier to avoid this
 while not QtThread.ready:
     time.sleep(0.01)
 
-_qt_taskpane = QtThread.send(lambda: draw_task_pane(_taskpane.parent_hwnd))
+_qt_taskpane = QtThread.run(lambda: draw_task_pane(_taskpane.parent_hwnd))
 
 _taskpane.add_event_handler(_qt_taskpane)
 

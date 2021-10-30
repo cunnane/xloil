@@ -215,6 +215,7 @@ namespace xloil
 #undef XLO_PY_EVENT
 
         bindEvent(eventMod, makeEvent2(Event_PyUserException()), "UserException");
+        bindEvent(eventMod, makeEvent2(Event_PyBye()), "PyBye");
       });
     }
   }

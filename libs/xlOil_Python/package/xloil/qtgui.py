@@ -21,14 +21,17 @@ class _QtThread:
             self._queue.put(self.app.quit)
             self._enqueued.timeout.emit()
         
+    def run(self, cmd):
+        self.send(cmd)
+        self._queue.join()
+        return self._results.get()
+
     def send(self, cmd):
         if not self.ready:
             raise RuntimeError()
         self._queue.put(cmd)
         self._enqueued.timeout.emit()
-        self._queue.join()
-        return self._results.get()
-    
+
     @property
     def ready(self):
         return self._enqueued is not None
