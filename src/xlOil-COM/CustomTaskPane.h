@@ -11,6 +11,7 @@ namespace xloil
     ICustomTaskPane* createCustomTaskPane(
       Office::ICTPFactory& ctpFactory, 
       const wchar_t* name,
+      const IDispatch* window = nullptr,
       const wchar_t* progId = nullptr);
   }
 }

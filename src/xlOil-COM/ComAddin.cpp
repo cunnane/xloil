@@ -1,13 +1,13 @@
 #include "ComAddin.h"
-#include <xlOil/ExcelTypeLib.h>
 #include "ClassFactory.h"
 #include "Connect.h"
 #include "RibbonExtensibility.h"
 #include "CustomTaskPane.h"
+#include <xlOil/ExcelTypeLib.h>
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelApp.h>
-#include <xlOil/Ribbon.h>
+#include <xlOil/ExcelUI.h>
 #include <xlOil/Events.h>
 #include <map>
 #include <functional>
@@ -29,7 +29,6 @@ namespace xloil
       void OnAddInsUpdate() { Event::ComAddinsUpdate().fire(); }
       void OnBeginShutdown() {}
     };
-
 
     class __declspec(novtable)
       CustomTaskPaneConsumerImpl :
@@ -73,12 +72,9 @@ namespace xloil
         {
           return raw_CTPFactoryAvailable((Office::ICTPFactory*)rgvarg[0].pdispVal);
         }
-        else
-        {
-          XLO_ERROR("Internal Error: unknown dispid called on task pane consumer Invoke.");
-          return E_FAIL;
-        }
-        return S_OK;
+
+        XLO_ERROR("Internal Error: unknown dispid called on task pane consumer Invoke.");
+        return E_FAIL;
       }
 
       ICTPFactory* factory = nullptr;
@@ -188,9 +184,11 @@ namespace xloil
       }
 
       RegisterCom<ComAddinImpl> _registrar;
-      bool _connected = false;
-      shared_ptr<IRibbon> _ribbon;
-      COMAddIn* _comAddin = nullptr;
+      bool                      _connected = false;
+      shared_ptr<IRibbon>       _ribbon;
+      COMAddIn*                 _comAddin = nullptr;
+      TaskPaneMap               _panes;
+      shared_ptr<const void>    _closeHandler;
 
     public:
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
@@ -234,12 +232,15 @@ namespace xloil
           if (!_comAddin)
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
+
+        _closeHandler = Event::WorkbookAfterClose().bind([this](auto wb) { handleWorkbookClose(wb); });
       }
 
       ~ComAddinCreator()
       {
         try
         {
+          _panes.clear();
           disconnect();
         }
         catch (const std::exception& e)
@@ -314,21 +315,32 @@ namespace xloil
           : false;
       }
 
-      ICustomTaskPane* createTaskPane(
+      shared_ptr<ICustomTaskPane> createTaskPane(
         const wchar_t* name,
-        const wchar_t* progId) const override
+        const IDispatch* window,
+        const wchar_t* progId) override
       {
         auto factory = comAddinImpl()->ctpFactory();
         if (!factory)
           XLO_THROW("Internal error: failed to receive CTP factory");
-        return createCustomTaskPane(*factory, name, progId);
+
+        shared_ptr<ICustomTaskPane> pane(createCustomTaskPane(*factory, name, window, progId));
+        _panes.insert(make_pair(pane->window().workbook(), pane));
+        return pane;
+      }
+
+      const TaskPaneMap& panes() const override { return _panes; }
+
+      void handleWorkbookClose(const wchar_t* wbName)
+      {
+        _panes.erase(wbName);
       }
     };
 
-    std::shared_ptr<IComAddin> createComAddin(
+    IComAddin* createComAddin(
       const wchar_t* name, const wchar_t* description)
     {
-      return std::make_shared<ComAddinCreator>(name, description);
+      return new ComAddinCreator(name, description);
     }
   }
 }

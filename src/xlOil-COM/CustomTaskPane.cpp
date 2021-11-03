@@ -1,11 +1,12 @@
 
 #include "ClassFactory.h"
 #include <xlOil/ExcelTypeLib.h>
-#include <xlOil/Ribbon.h>
+#include <xlOil/ExcelUI.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
 #include <atlctl.h>
 using std::shared_ptr;
+using std::make_shared;
 
 namespace xloil
 {
@@ -20,12 +21,13 @@ namespace xloil
     //};
 
 
+    // TODO: I don't think we need one of these per pane, just one global one, although we'd have to map back to ICustomTaskPane objects
     class __declspec(novtable) CustomTaskPaneEventHandler
       : public CComObjectRootEx<CComSingleThreadModel>,
       public NoIDispatchImpl<Office::_CustomTaskPaneEvents>
     {
     public:
-      CustomTaskPaneEventHandler(ICustomTaskPane& parent, shared_ptr<ICustomTaskPaneEvents> handler)
+      CustomTaskPaneEventHandler(ICustomTaskPane& parent, shared_ptr<ICustomTaskPaneHandler> handler)
         : _parent(parent)
         , _handler(handler)
       {}
@@ -93,15 +95,15 @@ namespace xloil
 
     private:
       HRESULT VisibleStateChange(
-        struct _CustomTaskPane* CustomTaskPaneInst)
+        struct _CustomTaskPane* /*CustomTaskPaneInst*/)
       {
-        _handler->visible(_parent.getVisible());
+        _handler->onVisible(_parent.getVisible());
         return S_OK;
       }
       HRESULT DockPositionStateChange(
-        struct _CustomTaskPane* CustomTaskPaneInst)
+        struct _CustomTaskPane* /*CustomTaskPaneInst*/)
       {
-        _handler->docked();
+        _handler->onDocked();
         return S_OK;
       }
 
@@ -110,10 +112,10 @@ namespace xloil
       DWORD	_dwEventCookie;
       ICustomTaskPane& _parent;
 
-      shared_ptr<ICustomTaskPaneEvents> _handler;
+      shared_ptr<ICustomTaskPaneHandler> _handler;
     };
 
-
+    // TODO: do we really need all these interfaces?
     class ATL_NO_VTABLE CustomTaskPaneCtrl :
       public CComObjectRootEx<CComSingleThreadModel>,
       public IDispatchImpl<IDispatch>,
@@ -125,7 +127,7 @@ namespace xloil
       public IOleInPlaceObjectWindowlessImpl<CustomTaskPaneCtrl>
     {
       GUID _clsid;
-      std::list<shared_ptr<ICustomTaskPaneEvents>> _handlers;
+      std::list<shared_ptr<ICustomTaskPaneHandler>> _handlers;
 
       unsigned n_bWindowOnly = 1;
 
@@ -138,13 +140,18 @@ namespace xloil
       {
         XLO_THROW("Not supported");
       }
-      void addHandler(const shared_ptr<ICustomTaskPaneEvents>& events)
+      void addHandler(const shared_ptr<ICustomTaskPaneHandler>& events)
       {
         _handlers.push_back(events);
       }
-
+      void destroy()
+      {
+        for (auto& h : _handlers)
+          h->onDestroy();
+        _handlers.clear();
+      }
+      // TODO: should we re-enable windowless mode since we don't need the hwnd
       BEGIN_COM_MAP(CustomTaskPaneCtrl)
-        //COM_INTERFACE_ENTRY_IMPL(IConnectionPointContainer)
         COM_INTERFACE_ENTRY(IDispatch)
         COM_INTERFACE_ENTRY(IViewObjectEx)
         COM_INTERFACE_ENTRY(IViewObject2)
@@ -160,8 +167,6 @@ namespace xloil
 
       BEGIN_MSG_MAP(CustomTaskPaneCtrl)
         MESSAGE_HANDLER(WM_SIZE, OnSize)
-        //MESSAGE_HANDLER(WM_MOVE, OnMove)
-        //MESSAGE_HANDLER(WM_WINDOWPOSCHANGED, OnPosChange)
         CHAIN_MSG_MAP(CComControl<CustomTaskPaneCtrl>)
         DEFAULT_REFLECTION_HANDLER()
       END_MSG_MAP()
@@ -215,7 +220,7 @@ namespace xloil
           UINT width = LOWORD(lParam);
           UINT height = HIWORD(lParam);
           for (auto& h : _handlers)
-            h->resize(width, height);
+            h->onSize(width, height);
         }
         catch (const std::exception& e)
         {
@@ -223,37 +228,6 @@ namespace xloil
         }
         return S_OK;
       }
-      //HRESULT OnMove(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
-      //{
-      //  try
-      //  {
-      //    UINT x = LOWORD(lParam);
-      //    UINT y = HIWORD(lParam);
-      //    for (auto& h : _handlers)
-      //      h->move(x, y);
-      //  }
-      //  catch (const std::exception& e)
-      //  {
-      //    XLO_ERROR(e.what());
-      //  }
-      //  return S_OK;
-      //}
-      //HRESULT OnPosChange(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
-      //{
-      //  auto pos = (WINDOWPOS*)lParam;
-      //  try
-      //  {
-      //    RECT rect;
-      //    GetWindowRect(&rect);
-      //    for (auto& h : _handlers)
-      //      h->move(rect.left, rect.top);
-      //  }
-      //  catch (const std::exception& e)
-      //  {
-      //    XLO_ERROR(e.what());
-      //  }
-      //  return S_OK;
-      //}
     };
 
     class CustomTaskPaneCreator : public ICustomTaskPane
@@ -266,8 +240,11 @@ namespace xloil
       CustomTaskPaneCreator(
         Office::ICTPFactory& ctpFactory, 
         const wchar_t* name,
+        const IDispatch* window,
         const wchar_t* progId)
       {
+        // Pasing vtMissing causes the pane to be attached to ActiveWindow
+        auto targetWindow = window ? _variant_t(window) : vtMissing;
         if (!progId)
         {
           RegisterCom<CustomTaskPaneCtrl> registrar(
@@ -276,32 +253,26 @@ namespace xloil
               return new ComObject<CustomTaskPaneCtrl>(progId, clsid);
             },
             formatStr(L"%s.CTP", name ? name : L"xlOil").c_str());
-          _pane = ctpFactory.CreateCTP(registrar.progid(), name);
+          _pane = ctpFactory.CreateCTP(registrar.progid(), name, targetWindow);
           _customCtrl = registrar.server();
         }
         else
-          _pane = ctpFactory.CreateCTP(progId, name);  
+          _pane = ctpFactory.CreateCTP(progId, name, targetWindow);
       }
       ~CustomTaskPaneCreator()
       {
-        _pane->Delete();
+        destroy();
       }
       IDispatch* content() const override
       {
         return _pane->ContentControl;
       }
-      intptr_t documentWindow() const override
+      ExcelWindow window() const override
       {
-        //auto window = Excel::WindowPtr(_pane->Window);
-        //return window->Hwnd;
-        auto x = _pane->Window;
-        IOleWindowPtr oleWin(_pane->ContentControl);
-        HWND result;
-        oleWin->GetWindow(&result);
-        return (intptr_t)result;
+        return ExcelWindow(Excel::WindowPtr(_pane->Window));
       }
 
-      intptr_t parentWindow() const override
+      size_t parentWindowHandle() const override
       {
         HWND parent = 0;
         if (_customCtrl)
@@ -327,7 +298,7 @@ namespace xloil
           ::GetClassName(parent, winClass, len);
         } while (wcscmp(target, winClass) != 0);
 
-        return (intptr_t)parent;
+        return (size_t)parent;
       }
       void setVisible(bool value) override
       { 
@@ -355,7 +326,17 @@ namespace xloil
         _pane->DockPosition = (Office::MsoCTPDockPosition)pos;
       }
 
-      void addEventHandler(const std::shared_ptr<ICustomTaskPaneEvents>& events) override
+      std::wstring getTitle() const
+      {
+        return _pane->Title.GetBSTR();
+      }
+      void destroy() const
+      {
+        if (_customCtrl)
+          _customCtrl->destroy();
+        _pane->Delete();
+      }
+      void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) override
       {
         _paneEvents.push_back(new ComObject<CustomTaskPaneEventHandler>(*this, events));
         _paneEvents.back()->connect(_pane);
@@ -368,11 +349,12 @@ namespace xloil
     ICustomTaskPane* createCustomTaskPane(
       Office::ICTPFactory& ctpFactory, 
       const wchar_t* name,
+      const IDispatch* window,
       const wchar_t* progId)
     {
       try
       {
-        return new CustomTaskPaneCreator(ctpFactory, name, progId);
+        return new CustomTaskPaneCreator(ctpFactory, name, window, progId);
       }
       XLO_RETHROW_COM_ERROR;
     }

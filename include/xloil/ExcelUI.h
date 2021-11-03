@@ -3,9 +3,12 @@
 #include <xloil/ExcelObj.h>
 #include <functional>
 #include <memory>
+#include <map>
 
 typedef struct tagVARIANT VARIANT;
 struct IDispatch;
+
+namespace Excel { struct Window; }
 
 namespace xloil
 {
@@ -19,13 +22,64 @@ namespace xloil
     const wchar_t* Tag;
   };
 
-  class ICustomTaskPaneEvents
+  /// <summary>
+  /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
+  /// </summary>
+  class XLOIL_EXPORT ExcelWindow
   {
   public:
-    virtual void resize(int width, int height) = 0;
-    virtual void visible(bool c) = 0;
-    virtual void docked() = 0;
+    /// <summary>
+    /// Constructs and ExcelWindow from a COM pointer
+    /// </summary>
+    /// <param name="p"></param>
+    ExcelWindow(Excel::Window* p);
+    /// <summary>
+    /// Gives the ExcelWindow object associated with the give window caption, or the active window
+    /// </summary>
+    /// <param name="windowCaption">The name of the window to find, or the active window if null</param>
+    ExcelWindow(const wchar_t* windowCaption = nullptr);
+
+    ExcelWindow(ExcelWindow&& that) : _window(that._window) { that._window = nullptr; }
+    ~ExcelWindow();
+
+    /// <summary>
+    /// Retuns the Win32 window handle
+    /// </summary>
+    /// <returns></returns>
+    size_t hwnd() const;
+    /// <summary>
+    /// Returns the window title
+    /// </summary>
+    /// <returns></returns>
+    std::wstring caption() const;
+    /// <summary>
+    /// Gives the name of the workbook displayed by this window 
+    /// </summary>
+    std::wstring workbook() const;
+  private:
+    Excel::Window* _window;
   };
+
+  /// <summary>
+  /// Returns all Windows associated with a given workbook, or the active workbook if null is passed
+  /// </summary>
+  /// <param name="wbName"></param>
+  /// <returns></returns>
+  XLOIL_EXPORT std::vector<std::shared_ptr<ExcelWindow>> 
+    workbookWindows(const wchar_t* wbName = nullptr);
+
+  /// <summary>
+  /// Event handler to respond to custom task pane events
+  /// </summary>
+  class ICustomTaskPaneHandler
+  {
+  public:
+    virtual void onSize(int width, int height) = 0;
+    virtual void onVisible(bool c) = 0;
+    virtual void onDocked() = 0;
+    virtual void onDestroy() = 0;
+  };
+
   class ICustomTaskPane
   {
   public:
@@ -41,8 +95,13 @@ namespace xloil
 
     virtual IDispatch* content() const = 0;
 
-    virtual intptr_t documentWindow() const = 0;
-    virtual intptr_t parentWindow() const = 0;
+    /// <summary>
+    /// Gives the Window object to which this task pane is attached
+    /// </summary>
+    /// <returns></returns>
+    virtual ExcelWindow window() const = 0;
+
+    virtual size_t parentWindowHandle() const = 0;
 
     virtual void setVisible(bool) = 0;
     virtual bool getVisible() = 0;
@@ -53,7 +112,11 @@ namespace xloil
     virtual DockPosition getPosition() const = 0;
     virtual void setPosition(DockPosition pos) = 0;
 
-    virtual void addEventHandler(const std::shared_ptr<ICustomTaskPaneEvents>& events) = 0;
+    virtual std::wstring getTitle() const = 0;
+
+    virtual void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) = 0;
+
+    virtual void destroy() const = 0;
   };
 
   class IComAddin
@@ -105,9 +168,13 @@ namespace xloil
     /// <returns>true if successful</returns>
     virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
 
-    virtual ICustomTaskPane* createTaskPane(
+    virtual std::shared_ptr<ICustomTaskPane> createTaskPane(
       const wchar_t* name,
-      const wchar_t* progId=nullptr) const = 0;
+      const IDispatch* window=nullptr,
+      const wchar_t* progId=nullptr) = 0;
+
+    using TaskPaneMap = std::multimap<std::wstring, std::shared_ptr<ICustomTaskPane>>;
+    virtual const TaskPaneMap& panes() const = 0;
   };
 
   /// <summary>
@@ -117,18 +184,18 @@ namespace xloil
   /// </summary>
   /// <returns>A pointer to an a <see cref="IComAddin"/> object which controls
   ///   the add-in.</returns>
-  XLOIL_EXPORT std::shared_ptr<IComAddin>
+  XLOIL_EXPORT IComAddin*
     makeComAddin(const wchar_t* name, const wchar_t* description = nullptr);
 
-  inline std::shared_ptr<IComAddin> makeAddinWithRibbon(
+  inline auto makeAddinWithRibbon(
     const wchar_t* name,
     const wchar_t* xml,
     const IComAddin::RibbonMap& mapper)
   {
-    auto addin = makeComAddin(name, nullptr);
+    std::unique_ptr<IComAddin> addin(makeComAddin(name, nullptr));
     addin->setRibbon(xml, mapper);
     addin->connect();
-    return addin;
+    return addin.release();
   }
 
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);

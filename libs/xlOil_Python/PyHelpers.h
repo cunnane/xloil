@@ -107,6 +107,7 @@ namespace xloil
     }
 
     std::wstring pyToWStr(const PyObject* p);
+    inline std::wstring pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
 
     /// <summary>
     /// Reads an argument to __getitem__ i.e. [] using the following rules
@@ -143,5 +144,30 @@ namespace xloil
       const size_t nRows, const size_t nCols,
       size_t& fromRow, size_t& fromCol,
       size_t& toRow, size_t& toCol);
+
+    /// <summary>
+      /// Holds a py::object and ensures the GIL is held when the holder is destroyed
+      /// and the underlying py::object is decref'd 
+      /// </summary>
+    class PyObjectHolder : public pybind11::detail::object_api<PyObjectHolder>
+    {
+      pybind11::object _obj;
+    public:
+      PyObjectHolder(const pybind11::object& obj)
+        : _obj(obj)
+      {}
+      ~PyObjectHolder()
+      {
+        pybind11::gil_scoped_acquire getGil;
+        _obj = pybind11::none();
+      }
+      operator pybind11::object() const { return _obj; }
+
+      /// Return the underlying ``PyObject *`` pointer
+      PyObject* ptr() const { return _obj.ptr(); }
+      PyObject*& ptr() { return _obj.ptr(); }
+    };
+
+
   }
 }

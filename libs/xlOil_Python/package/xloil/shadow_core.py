@@ -1,23 +1,23 @@
-import importlib.util
+from ._common import *
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
-# embedded interpreter, so we go ahead and import the module. Otherwise we
-# define skeletons of the imported types to support type-checking, linting,
+# embedded interpreter, so we import the module. Otherwise we define
+# skeletons of the imported types to support type-checking, linting,
 # auto-completion and documentation.
 #
-if importlib.util.find_spec("xloil_core") is not None:
+if XLOIL_HAS_CORE:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, Range, ExcelArray, in_wizard, 
-        LogWriter,
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions,
         create_ribbon, ExcelUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
         from_excel_date,
-        insert_cell_image)
+        insert_cell_image,
+        TaskPaneFrame as TaskPaneFrame)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -29,27 +29,6 @@ else:
         use this sparingly.
         """
         pass
-
-    class LogWriter:
-        """
-            Writes a log message to xlOil's log.  The level parameter can be a level constant 
-            from the `logging` module or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
-
-            Only messages with a level higher than the xlOil log level which is initially set
-            to the value in the xlOil settings will be output to the log file. Trace output
-            can only be seen with a debug build of xlOil.
-        """
-        def __call__(self, msg, level=20):
-            pass
-
-        @property
-        def level(self):
-            """
-            Returns or sets the current log level. The returned value will always be an 
-            integer corresponding to levels in the `logging` module.  The level can be
-            set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
-            """
-            pass
 
     def run_later(func,
             num_retries = 10,
@@ -571,7 +550,47 @@ else:
             """
             pass
 
-    class RibbonUI:
+    class TaskPaneFrame:
+        """
+            References Excel's internal task pane object into which the python GUI
+            can be drawn
+        """
+        @property
+        def parent_hwnd(self):
+            """
+            Win32 window handle used to attach a python GUI to a task pane frame
+            """
+            ...
+        @property
+        def window(self):
+            """
+            Gives the window of the document window to which the frame is attached, can be 
+            used to uniquely identify the pane
+            """
+            ...
+
+        @property
+        def visible(self) -> bool:
+            ...
+        @visible.setter
+        def visible(self, value: bool):
+            ...
+
+        @property
+        def size(self) -> typing.Tuple[int, int]:
+            ...
+        @size.setter
+        def size(self, value: typing.Tuple[int, int]):
+            ...
+
+        @property
+        def title(self) -> str:
+            ...
+
+        def add_event_handler(self, handler):
+            ...
+
+    class ExcelUI:
         """
         Controls an Ribbon and it's associated COM addin
         """
@@ -586,13 +605,13 @@ else:
             Unloads the underlying COM add-in and any ribbon customisation.
             """
             pass
-        def set_ribbon(xml:str, handlers:dict):
+        def set_ribbon(self, xml:str, handlers:dict):
             """
             See `create_ribbon`. This function can only be called when the Ribbon
             is disconnected.
             """
             pass
-        def invalidate(id=None):
+        def invalidate(self, id=None):
             """
             Invalidates the specified control: this clears the caches of the
             responses to all callbacks associated with the control. For example,
@@ -602,17 +621,32 @@ else:
             If no control ID is specified, all controls are invalidated.
             """
             pass
-        def activate(id):
+        def activate(self, id):
             """
             Activatives the ribbon tab with the specified id.  Returns False if
             there is no Ribbon or the Ribbon is collapsed.
             """
             pass
+        def create_task_pane(self, name, progid=None) -> TaskPaneFrame:
+            """
+            Creates a custom task pane associated with the current active window,
+            with the title `name`. 
 
+            A COM `progid` can be specified, but this will prevent using a python GUI
+            in the task pane. This is a specialised use case.
+            """
+            pass
+        def com_control(self):
+            """
+            Returns a pointer to the ActiveX / COM control hosted by the task pane.
+            This pointer could be manipulated by win32com or comtypes but this is a 
+            specialised use case.
+            """
+            ...
 
-    def create_ribbon(xml:str, handlers:dict, name:str=None) -> RibbonUI:
+    def create_ribbon(xml:str, handlers:dict, name:str=None) -> ExcelUI:
         """
-        Returns a (connected) RibbonUI object which passes the specified ribbon
+        Returns a (connected) ExcelUI object which passes the specified ribbon
         customisation XML to Excel.  When the returned object is deleted, it 
         unloads the Ribbon customisation and the associated COM add-in.
 
@@ -697,17 +731,73 @@ else:
         """
         pass
 
+_task_panes = set()
 
-class CustomTaskPaneEvents:
+class CustomTaskPane:
+    """
+        Base class for custom task pane event handler. Can be sub-classes to 
+        implement task panes with different GUI toolkits
+    """
 
-    def pane_resize(self, pane, width, height):
+    def __init__(self, pane: TaskPaneFrame):
+        self._pane = pane
+        self._pane.add_event_handler(self)
+        _task_panes.add(self)
+
+    def on_size(self, width, height):
+        # Called when the task pane is resized
         ...
              
-    def pane_show(self, pane):
-        ...
-        
-    def pane_hide(self, pane):
+    def on_visible(self, value):
+        # Called when the visible state changes, passes the new state
         ...
 
-    def pane_dock(self, pane):
+    def on_docked(self):
+        # Called when the pane is docked to a new location or undocked
         ...
+
+    def on_destroy(self):
+        # Called before the pane is destroyed to release any resources
+
+        # Release internal task pane pointer
+        self._pane = None
+        # Remove ourselves from pane lookup table
+        _task_panes.remove(self)
+
+    @property
+    def pane(self):
+        return self._pane
+
+    @property
+    def visible(self):
+        return self._pane.visible
+
+    @visible.setter
+    def visible(self, value: bool):
+        self._pane.visible = value
+
+
+def find_task_pane(title=None, workbook=None):
+    """
+        Finds any xlOil python task panes associated with the active window, 
+        optionally filtering by pane `title`. 
+
+        This function should be used to find an existing task pane to make
+        visible before a task pane is created.
+
+        Task panes are linked to Excel's Window objects which can have a many-to-one
+        relationship with workbooks. If a `workbook` name is specified, all task panes 
+        associated with that workbook will be searched.
+
+        Returns: if `title` is specified, returns a (case-sensitive) match of a single
+        `xloil.CustomTaskPane object` or None, otherwise returns a list of 
+        `xloil.CustomTaskPane` objects.
+    """
+
+    hwnds = xloil_core.workbook_hwnds(workbook)
+    found = [x for x in _task_panes if x.pane.window.hwnd in hwnds]
+    if title is None:
+        return found
+    else:
+        return next((x for x in found if x.pane.title == title), None)
+

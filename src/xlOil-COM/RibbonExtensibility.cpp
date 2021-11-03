@@ -1,9 +1,8 @@
-#pragma once
-#include <xlOil/ExcelTypeLib.h>
 #include "RibbonExtensibility.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "ClassFactory.h"
+#include <xlOil/ExcelUI.h>
 #include <xlOil/Log.h>
-#include <xlOil/Ribbon.h>
 #include <map>
 #include <functional>
 #include <regex>

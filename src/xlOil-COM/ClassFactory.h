@@ -19,6 +19,7 @@ namespace xloil
 
       ClassFactory(IUnknown* p)
         : _instance(p)
+        , _cRef(0)
       {}
 
       HRESULT STDMETHODCALLTYPE CreateInstance(
@@ -196,6 +197,7 @@ namespace xloil
         const wchar_t* fixedClsid = nullptr)
       {
         GUID clsid;
+
         if (progId)
         {
           // Check if ProgId is already registered by trying to find its CLSID
@@ -205,31 +207,40 @@ namespace xloil
             if (fixedClsid && _wcsicmp(_clsid.c_str(), fixedClsid) != 0)
               XLO_THROW(L"COM Server progId={0} already in registry with clsid={1}, "
                          "but clsid={2} was requested",
-                progId, _clsid, fixedClsid);
-            CLSIDFromString(_clsid.c_str(), &clsid);
+                          progId, _clsid, fixedClsid);
+            
           }
+          _progId = progId;
         }
+  
 
-        // If no CLSID, generate one 
-        if (_clsid.empty())
+        // If no CLSID, generate one
+        if (fixedClsid)
+          _clsid = fixedClsid;
+         
+        
+        if (!_clsid.empty())
         {
-          HRESULT res = fixedClsid
-            ? CLSIDFromString(fixedClsid, &clsid)
-            : CoCreateGuid(&clsid);
-          if (res != 0)
-            XLO_THROW("Failed to create CLSID for COM Server");
-
-          LPOLESTR clsidStr;
+           CLSIDFromString(_clsid.c_str(), &clsid);
+        }
+        else
+        {
+          auto fail = CoCreateGuid(&clsid) != 0;
+          LPOLESTR clsidStr = nullptr;
           // This generates the string '{W-X-Y-Z}'
-          StringFromCLSID(clsid, &clsidStr);
+          fail = fail || StringFromCLSID(clsid, &clsidStr) != 0;
+          if (fail)
+            XLO_THROW("Failed to create CLSID for COM Server");
           _clsid = clsidStr;
           CoTaskMemFree(clsidStr);
         }
 
-        // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
-        _progId = progId ? progId :
-          std::wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
-        std::replace(_progId.begin(), _progId.end(), L'-', L'.');
+        if (!progId)
+        {
+          // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
+          _progId = std::wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
+          std::replace(_progId.begin(), _progId.end(), L'-', L'.');
+        }
 
         _server  = createServer(_progId.c_str(), clsid);
         _factory = new ClassFactory((IDispatch*)_server.p);

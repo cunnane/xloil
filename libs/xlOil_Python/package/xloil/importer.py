@@ -9,7 +9,6 @@ import builtins
 import sys
 import os
 
-from .shadow_core import *
 from .register import scan_module, _clear_pending_registrations
 
 class _ModuleFinder(importlib.abc.MetaPathFinder):

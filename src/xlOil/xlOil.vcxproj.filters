@@ -112,7 +112,7 @@
     <ClInclude Include="..\..\include\xloil\State.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\Ribbon.h">
+    <ClInclude Include="..\..\include\xloil\ExcelUI.h">
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\Plugin.h">

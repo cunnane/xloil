@@ -534,6 +534,51 @@ xlo.event.WorkbookBeforePrint += event_stopPrinting
 def _xloil_unload():
     pass
 
+#---------------------------------
+# GUI: Creating Custom Task Panes
+#---------------------------------
+
+# You *must* import `xloil.qtgui` before `PyQt5`, this allows xlOil to create
+# a thread to manage the Qt GUI.  *All* interaction with the Qt GUI must be done
+# on the GUI thread or Qt _will abort_.  *This includes importing PyQt5* 
+#  `Use QtThread.run(...)` or `QtThread.send(...)`
+
+from xloil.qtgui import QtCustomTaskPane, QtThread
+
+_PANE_NAME="MyPane"
+
+def make_task_pane(name, gui):
+
+    def draw_task_pane():
+        from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
+        from PyQt5.QtCore import pyqtSignal, Qt
+        
+        class MyTaskPane(QWidget):
+            progress = pyqtSignal(int)
+            
+            def __init__(self):
+                super().__init__()
+                progress_bar = QProgressBar(self)
+                progress_bar.setGeometry(200, 80, 250, 20)
+                
+                self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
+
+                label = QLabel("Hello from Qt")
+                
+                layout = QHBoxLayout()
+                
+                layout.addWidget(label)
+  
+                layout.addWidget(progress_bar)
+                
+                self.setLayout(layout)
+    
+        return MyTaskPane()
+        
+    # Create the GUI object using QtThread.run(...) or Qt will core
+    widget = QtThread.run(lambda: draw_task_pane())
+    return QtCustomTaskPane(name, gui, widget)
+    
 
 #----------------------
 # GUI: Creating Ribbons
@@ -544,25 +589,38 @@ def _xloil_unload():
 # unloaded.  To create the ribbon XML use an editor such as Office RibbonX Editor:
 # https://github.com/fernandreu/office-ribbonx-editor
 #
-def press1(ctrl):
-    global _taskpane
-    xlo.log("1 Pressed")
-    _taskpane.visible = True
-    return "NotSupposedToReturnHere" # check this doesn't cause an error
+ 
+def get_icon_path():
+    os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
     
 def button_label(ctrl, *args):
-    return "PyButton"
-
+    return "Open Task Pane"
+ 
 def button_image(ctrl):
     from PIL import Image
     import os
-    im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+    im = Image.open(get_icon_path())
     return im
+        
+def pressOpenPane(ctrl):
+    global _excelgui
     
-def combo_change(ctrl, value):
-    xlo.log(f"Combo: {value} selected")
-    pass
-
+    xlo.log("Button Pressed")
+    
+    pane = xlo.find_task_pane(title=_PANE_NAME)
+    if not pane:
+        pane = make_task_pane(_PANE_NAME, _excelgui)
+    pane.visible = True
+    
+ def combo_change(ctrl, value):
+    
+    # The combo box has the value 33, 66 or 99. We send this as the progress % 
+    # to the progress bar in our task pane (if it has been created)
+    pane = xlo.find_task_pane(title=_PANE_NAME)
+    if pane:
+        xlo.log(f"Combo: {value} sent to progress bar")
+        pane.widget.progress.emit(int(value))
+    return "NotSupposedToReturnHere" # check this doesn't cause an error
 
 _excelgui = xlo.create_ribbon(r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
@@ -572,11 +630,11 @@ _excelgui = xlo.create_ribbon(r'''
                     <group idMso="GroupClipboard" />
                     <group idMso="GroupFont" />
                     <group id="customGroup" label="MyButtons">
-                        <button id="pyButt1" getLabel="buttonLabel" getImage="buttonImg" size="large" onAction="press1" />
+                        <button id="pyButt1" getLabel="buttonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
-                         <item id="item1" label="Item 1" />
-                         <item id="item2" label="Item 2" />
-                         <item id="item3" label="Item 3" />
+                         <item id="item1" label="33" />
+                         <item id="item2" label="66" />
+                         <item id="item3" label="99" />
                        </comboBox>
                     </group>
                 </tab>
@@ -585,70 +643,12 @@ _excelgui = xlo.create_ribbon(r'''
     </customUI>
     ''', 
     mapper={
-        'press1': press1,
+        'pressOpenPane': pressOpenPane,
         'comboChange': combo_change,
         'buttonLabel': button_label,
         'buttonImg': button_image
     })
 
-
-from xloil.qtgui import QtThread
-
-def draw_task_pane(hwnd):
-   
-    from PyQt5.QtGui import QWindow
-    from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
-    from PyQt5.QtCore import pyqtSignal, Qt
-
-    class MyGui(QWidget, xlo.CustomTaskPaneEvents):
-        progress = pyqtSignal(int)
-        
-        def __init__(self, hwnd):
-            super().__init__()
-            label = QLabel("Hello from Qt")
-            
-            layout = QHBoxLayout()
-            
-            layout.addWidget(label)
-            
-            progress_bar = QProgressBar(self)
-            progress_bar.setGeometry(200, 80, 250, 20)
-            self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
-            layout.addWidget(progress_bar)
-            
-            self.setLayout(layout)
-
-            self.show() # windowHandle does not exist before show
-            
-            nativeWindow = QWindow.fromWinId(hwnd)
-            
-            self.windowHandle().setParent(nativeWindow)
-            self.move(0, 0)
-            self.update()
-            
-        def pane_resize(self, pane, width, height):
-            QtThread.send(lambda: self.resize(width, height))
-            
-        def pane_show(self, pane):
-            self.show() # This seems to be OK on any thread
-        
-        def pane_hide(self, pane):
-            self.hide() # This seems to be OK on any thread
-            
-    return MyGui(hwnd)
-   
-   
-_taskpane = _excelgui.create_task_pane("PyTest")
-
-
-import time
-#Slightly dodgy busy-wait until thread starts up, import earlier to avoid this
-while not QtThread.ready:
-    time.sleep(0.01)
-
-_qt_taskpane = QtThread.run(lambda: draw_task_pane(_taskpane.parent_hwnd))
-
-_taskpane.add_event_handler(_qt_taskpane)
 
 #-----------------------------------------
 # Images: returning images from functions
@@ -665,7 +665,7 @@ try:
     # image from an xlo.func. Returning an image requires macro=True permissions
     @xlo.func(macro=True)
     def pyTestPic():
-        im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+        im = Image.open(get_icon_path())
         return im
     
     
@@ -676,7 +676,7 @@ try:
     def pyTestPicSized(width:float, height:float, fitCell: bool=False):
         from PIL import Image
         import os
-        im = Image.open(os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp'))
+        im = Image.open(get_icon_path())
         if fitCell:
             return xlo.pillow.ReturnImage(size="cell")(im)
         else:

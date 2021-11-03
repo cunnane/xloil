@@ -7,9 +7,9 @@ import importlib.util
 from .type_converters import *
 from .shadow_core import *
 from .com import EventsPaused
-from xloil import log
+from ._common import *
 
-if importlib.util.find_spec("xloil_core") is not None:
+if XLOIL_HAS_CORE:
     import xloil_core
     from xloil_core import (
         Read_object as _Read_object,

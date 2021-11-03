@@ -3,7 +3,7 @@
 #include "PyCore.h"
 #include "PyEvents.h"
 #include "PyImage.h"
-#include <xloil/Ribbon.h>
+#include <xloil/ExcelUI.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
 #include <filesystem>
@@ -11,6 +11,7 @@ namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::wstring;
+using std::vector;
 using std::make_shared;
 
 namespace xloil
@@ -91,31 +92,13 @@ namespace xloil
         }
         else
           addinName = pyToWStr(name.ptr());
-        auto addin = makeComAddin(addinName.c_str());
+        unique_ptr<IComAddin> addin(makeComAddin(addinName.c_str()));
         setRibbon(addin.get(), xml, mapper);
         addin->connect();
-        return addin;
+        return addin.release();
       }
 
-      class PyObjectHolder : public pybind11::detail::object_api<PyObjectHolder>
-      {
-        py::object _obj;
-      public:
-        PyObjectHolder(const py::object& obj)
-          : _obj(obj)
-        {}
-        ~PyObjectHolder()
-        {
-          py::gil_scoped_acquire getGil;
-          _obj = py::none();
-        }
-        operator py::object() const { return _obj; }
-
-        /// Return the underlying ``PyObject *`` pointer
-        PyObject* ptr() const { return _obj.ptr(); }
-        PyObject*& ptr()      { return _obj.ptr(); }
-      };
-
+      
       PyObject* callOneArg(PyObject* callable, PyObject* arg)
       {
 #if PY_VERSION_HEX < 0x03080000
@@ -130,68 +113,97 @@ namespace xloil
         return result;
       }
 
-      class PyTaskPane : public ICustomTaskPaneEvents
+      // TODO: attach task pane to any windowCaption
+      auto createTaskPane(IComAddin& self, const std::wstring& name, const py::object& progId)
+      {
+        IDispatch* window = nullptr;
+        return self.createTaskPane(name.c_str(), window, progId.is_none() ? nullptr : pyToWStr(progId).c_str());
+      }
+
+      auto listExcelWindows(const py::object& workbook)
+      {
+        // Just give panes for current window
+        if (workbook.is_none())
+          return vector<size_t>(1, ExcelWindow().hwnd());
+        
+        auto windows = workbookWindows(pyToWStr(workbook).c_str());
+        vector<size_t> result;
+        std::transform(windows.begin(), windows.end(), std::back_inserter(result), [](auto x) { return x->hwnd(); });
+        return result;
+      }
+
+      class PyTaskPaneHandler : public ICustomTaskPaneHandler
       {
       public:
-        PyTaskPane(const py::object& pane, const py::object& eventHandler)
-          : _pane(pane), _handler(eventHandler)
+        PyTaskPaneHandler(const py::object& eventHandler)
+          : _handler(eventHandler)
         {}
 
-        void resize(int width, int height) override
+        void onSize(int width, int height) override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("pane_resize")(_pane, width, height);
+          _handler.attr("on_size")(width, height);
         }
-        void visible(bool c) override
+        void onVisible(bool c) override
         {
           py::gil_scoped_acquire gil;
-          if (c)
-            _handler.attr("pane_show")(_pane);
-          else
-            _handler.attr("pane_hide")(_pane);
+          _handler.attr("on_visible")(c);
         }
-        void docked() override
+        void onDocked() override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("pane_dock")(_pane);
+          _handler.attr("on_docked")();
         }
-        PyObjectHolder _pane;
-        py::object _handler;
+        void onDestroy() override
+        {
+          py::gil_scoped_acquire gil;
+          _handler.attr("on_destroy")();
+        }
+        PyObjectHolder _handler;
       };
-      void addPaneEventHandler(const py::object& self, const py::object& eventHandler)
+
+      void addPaneEventHandler(ICustomTaskPane& self, const py::object& eventHandler)
       {
-        auto ctp = self.cast<ICustomTaskPane*>();
-        // We take a weak reference to everything - avoid increasing ref count
-        // to avoid a circular reference
-        // pybind weakref bug https://github.com/pybind/pybind11/issues/2536
-        ctp->addEventHandler(make_shared<PyTaskPane>(self, eventHandler));
+        self.addEventHandler(make_shared<PyTaskPaneHandler>(eventHandler));
       }
-      void setTaskPaneSize(ICustomTaskPane* pane, const py::object& pair)
+ 
+      void setTaskPaneSize(ICustomTaskPane* pane, const py::tuple& pair)
       {
-        pane->setSize(pair.begin()->cast<int>(), (++pair.begin())->cast<int>());
+        pane->setSize(pair[0].cast<int>(), pair[1].cast<int>());
       }
+
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<RibbonControl>(mod, "RibbonControl")
           .def_readonly("id", &RibbonControl::Id)
           .def_readonly("tag", &RibbonControl::Tag);
 
-        py::class_<ICustomTaskPane>(mod, "TaskPane")
-          .def_property_readonly("parent_hwnd", &ICustomTaskPane::parentWindow)
+        py::class_<ExcelWindow, shared_ptr<ExcelWindow>>(mod, "ExcelWindow")
+          .def_property_readonly("hwnd", &ExcelWindow::hwnd)
+          .def_property_readonly("caption", &ExcelWindow::caption)
+          .def_property_readonly("workbook", &ExcelWindow::workbook);
+
+        py::class_<ICustomTaskPane, shared_ptr<ICustomTaskPane>>(mod, "TaskPaneFrame")
+          .def_property_readonly("parent_hwnd", &ICustomTaskPane::parentWindowHandle)
+          .def_property_readonly("window", &ICustomTaskPane::window)
           .def_property("visible", &ICustomTaskPane::getVisible, &ICustomTaskPane::setVisible)
           .def_property("size", &ICustomTaskPane::getSize, setTaskPaneSize)
+          .def_property_readonly("title", &ICustomTaskPane::getTitle)
+          .def("com_control", &ICustomTaskPane::content)
           .def("add_event_handler", &addPaneEventHandler, py::arg("handler"));
 
-        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelUI")
+        py::class_<IComAddin>(mod, "ExcelUI")
+          //TODO: write ctor! 
           .def("connect", &IComAddin::connect)
           .def("disconnect", &IComAddin::disconnect)
           .def("set_ribbon", setRibbon, py::arg("xml"), py::arg("mapper"))
           .def("invalidate", &IComAddin::ribbonInvalidate, py::arg("id") = nullptr)
           .def("activate", &IComAddin::ribbonActivate, py::arg("id"))
-          .def("create_task_pane", &IComAddin::createTaskPane, py::arg("name"), py::arg("progid")=py::none())
+          .def("create_task_pane", createTaskPane, py::arg("name"), py::arg("progid")=py::none())
           .def_property_readonly("name", &IComAddin::progid);
 
         mod.def("create_ribbon", createRibbon, py::arg("xml"), py::arg("mapper"), py::arg("name")=py::none());
+        mod.def("workbook_hwnds", listExcelWindows, py::arg("workbook")=py::none());
       });
     }
   }

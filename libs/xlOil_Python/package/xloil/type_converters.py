@@ -5,9 +5,9 @@ import numpy as np
 import functools
 
 from .shadow_core import Range, CellError, CannotConvert
-from xloil import log
+from ._common import *
 
-if importlib.util.find_spec("xloil_core") is not None:
+if XLOIL_HAS_CORE:
     import xloil_core
     from xloil_core import (
         set_return_converter,

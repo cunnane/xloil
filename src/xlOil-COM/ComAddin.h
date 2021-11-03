@@ -9,7 +9,6 @@ namespace xloil
 
   namespace COM
   {
-    std::shared_ptr<IComAddin> createComAddin(
-      const wchar_t* name, const wchar_t* description);
+    IComAddin* createComAddin(const wchar_t* name, const wchar_t* description);
   }
 }

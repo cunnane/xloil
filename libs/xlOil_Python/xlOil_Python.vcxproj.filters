@@ -20,6 +20,7 @@
     <CopyFileToFolders Include="package\xloil\com.py" />
     <CopyFileToFolders Include="package\tkinter.py" />
     <CopyFileToFolders Include="package\xloil\qtgui.py" />
+    <CopyFileToFolders Include="package\xloil\_common.py" />
   </ItemGroup>
   <ItemGroup>
     <None Include="package\setup.py" />

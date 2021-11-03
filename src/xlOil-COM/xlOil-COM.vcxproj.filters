@@ -7,7 +7,6 @@
     <ClInclude Include="ComRange.h" />
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
-    <ClInclude Include="ExcelTypeLib.h" />
     <ClInclude Include="RibbonExtensibility.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="RtdServer.h" />
@@ -38,6 +37,9 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="CustomTaskPane.cpp" />
+    <ClCompile Include="API\ComUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="API">

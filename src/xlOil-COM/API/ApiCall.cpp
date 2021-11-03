@@ -1,15 +1,12 @@
-#pragma once
 #include <xlOil/ExcelApp.h>
 #include <xlOil/WindowsSlim.h>
-#include <xloil/Loaders/EntryPoint.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/Connect.h>
-#include <xlOil-COM/ComAddin.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
-#include <xloil/Ribbon.h>
+#include <xloil/ExcelUI.h>
 #include <functional>
 #include <queue>
 #include <mutex>
@@ -22,25 +19,7 @@ using std::make_shared;
 
 namespace xloil
 {
-  Excel::_Application& excelApp() noexcept
-  {
-    return COM::excelApp();
-  }
 
-  std::shared_ptr<IComAddin> xloil::makeComAddin(
-    const wchar_t * name, const wchar_t * description)
-  {
-    return COM::createComAddin(name, description);
-  }
-
-  ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange)
-  {
-    return COM::variantToExcelObj(variant, allowRange);
-  }
-  void excelObjToVariant(VARIANT* v, const ExcelObj& obj)
-  {
-    COM::excelObjToVariant(v, obj);
-  }
   class Messenger
   {
   public:

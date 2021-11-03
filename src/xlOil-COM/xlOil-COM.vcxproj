@@ -122,7 +122,6 @@
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="CustomTaskPane.h" />
-    <ClInclude Include="ExcelTypeLib.h" />
     <ClInclude Include="RibbonExtensibility.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="RtdServer.h" />
@@ -131,6 +130,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="API\ApiCall.cpp" />
+    <ClCompile Include="API\ComUtils.cpp" />
     <ClCompile Include="API\Events.cpp" />
     <ClCompile Include="API\ExcelRange.cpp" />
     <ClCompile Include="API\RtdServer.cpp" />

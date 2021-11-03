@@ -79,7 +79,7 @@ struct MyAddin
       theComAddin->ribbonInvalidate();
       theComAddin->ribbonActivate(L"customTab");
 
-      std::unique_ptr<ICustomTaskPane> taskPane(theComAddin->createTaskPane(L"xloil"));
+      std::shared_ptr<ICustomTaskPane> taskPane(theComAddin->createTaskPane(L"xloil"));
       taskPane->setVisible(true);
     });
   }

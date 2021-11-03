@@ -86,7 +86,7 @@
     <ClInclude Include="..\..\include\xloil\Preprocessor.h" />
     <ClInclude Include="..\..\include\xloil\PString.h" />
     <ClInclude Include="..\..\include\xloil\Register.h" />
-    <ClInclude Include="..\..\include\xloil\Ribbon.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelUI.h" />
     <ClInclude Include="..\..\include\xloil\RtdServer.h" />
     <ClInclude Include="..\..\include\xloil\State.h" />
     <ClInclude Include="..\..\include\xloil\StaticRegister.h" />
