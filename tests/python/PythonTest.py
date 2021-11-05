@@ -577,7 +577,7 @@ def make_task_pane(name, gui):
         
     # Create the GUI object using QtThread.run(...) or Qt will core
     widget = QtThread.run(lambda: draw_task_pane())
-    return QtCustomTaskPane(name, gui, widget)
+    return QtCustomTaskPane(gui.new_task_pane(name), widget)
     
 
 #----------------------
@@ -612,7 +612,7 @@ def pressOpenPane(ctrl):
         pane = make_task_pane(_PANE_NAME, _excelgui)
     pane.visible = True
     
- def combo_change(ctrl, value):
+def combo_change(ctrl, value):
     
     # The combo box has the value 33, 66 or 99. We send this as the progress % 
     # to the progress bar in our task pane (if it has been created)
@@ -622,7 +622,7 @@ def pressOpenPane(ctrl):
         pane.widget.progress.emit(int(value))
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
-_excelgui = xlo.create_ribbon(r'''
+_excelgui = xlo.ExcelUI(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -642,7 +642,7 @@ _excelgui = xlo.create_ribbon(r'''
         </ribbon>
     </customUI>
     ''', 
-    mapper={
+    func_names={
         'pressOpenPane': pressOpenPane,
         'comboChange': combo_change,
         'buttonLabel': button_label,

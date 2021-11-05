@@ -115,9 +115,7 @@ if XLOIL_HAS_CORE:
 
 class QtCustomTaskPane(CustomTaskPane):
 
-    def __init__(self, name, gui, widget):
-
-        pane = gui.create_task_pane(name)
+    def __init__(self, pane, widget):
         super().__init__(pane)
         self.widget = widget
         QtThread.run(lambda: self._reparent_widget(widget, self.pane.parent_hwnd))

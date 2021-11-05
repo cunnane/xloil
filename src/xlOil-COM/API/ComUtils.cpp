@@ -44,9 +44,10 @@ namespace xloil
   {
     try
     {
-      _window = caption
+      auto winptr = caption
         ? excelApp().Windows->GetItem(caption)
         : excelApp().ActiveWindow;
+      _window = winptr;
       _window->AddRef();
     }
     XLO_RETHROW_COM_ERROR;

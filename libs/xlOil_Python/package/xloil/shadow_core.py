@@ -12,7 +12,7 @@ if XLOIL_HAS_CORE:
         CellError, Range, ExcelArray, in_wizard, 
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions,
-        create_ribbon, ExcelUI, run_later, 
+        ExcelUI, run_later, 
         get_excel_state, Caller,
         CannotConvert, 
         from_excel_date,
@@ -594,6 +594,29 @@ else:
         """
         Controls an Ribbon and it's associated COM addin
         """
+        def __init__(self, ribbon:str, func_names:dict, name:str=None):
+            """
+            Returns a (connected) ExcelUI object which passes the specified ribbon
+            customisation XML to Excel.  When the returned object is deleted, it 
+            unloads the Ribbon customisation and the associated COM add-in.
+
+            Parameters
+            ----------
+
+            ribbon: str
+                A Ribbon XML string, most easily created with a specialised editor.
+
+            func_names: dict
+                The ``func_names`` dictionary links callbacks named in the Ribbon XML to
+                python functions. Each handler should take a single ``RibbonControl``
+                argument which describes the control which raised the callback.
+
+            name: str
+                If None, uses the filename at the call site
+
+            """
+            pass
+
         def connect(self):
             """
             Connects this COM add-in underlying this Ribbon to Excel. Any specified 
@@ -605,7 +628,7 @@ else:
             Unloads the underlying COM add-in and any ribbon customisation.
             """
             pass
-        def set_ribbon(self, xml:str, handlers:dict):
+        def ribbon(self, xml:str, func_names:dict):
             """
             See `create_ribbon`. This function can only be called when the Ribbon
             is disconnected.
@@ -627,7 +650,7 @@ else:
             there is no Ribbon or the Ribbon is collapsed.
             """
             pass
-        def create_task_pane(self, name, progid=None) -> TaskPaneFrame:
+        def add_task_pane(self, name, progid=None, window=None) -> TaskPaneFrame:
             """
             Creates a custom task pane associated with the current active window,
             with the title `name`. 
@@ -644,28 +667,7 @@ else:
             """
             ...
 
-    def create_ribbon(xml:str, handlers:dict, name:str=None) -> ExcelUI:
-        """
-        Returns a (connected) ExcelUI object which passes the specified ribbon
-        customisation XML to Excel.  When the returned object is deleted, it 
-        unloads the Ribbon customisation and the associated COM add-in.
-
-        Parameters
-        ----------
-
-        xml: str
-            A Ribbon XML string, most easily created with a specialised editor.
-
-        handlers: dict
-            The ``handlers`` dictionary links callbacks named in the Ribbon XML to
-            python functions. Each handler should take a single ``RibbonControl``
-            argument which describes the control which raised the callback.
-
-        name: str
-            If None, uses the filename at the call site
-
-        """
-        pass
+  
 
     class Caller:
         """

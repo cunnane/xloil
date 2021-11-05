@@ -56,6 +56,9 @@ namespace xloil
     /// Gives the name of the workbook displayed by this window 
     /// </summary>
     std::wstring workbook() const;
+
+    Excel::Window* ptr() const { return _window; }
+
   private:
     Excel::Window* _window;
   };

@@ -283,7 +283,7 @@ namespace xloil
           HWND result;
           oleWin->GetWindow(&parent);
         }
-        constexpr wchar_t target[] = L"NUIPane";      // could be MsoWorkPane
+        constexpr wchar_t target[] = L"NUIPane";   // TODO: could be MsoWorkPane or NetUIHWND
         constexpr auto len = 1 + _countof(target);
         wchar_t winClass[len + 1];
         //  Ensure that class_name is always null terminated for safety.
