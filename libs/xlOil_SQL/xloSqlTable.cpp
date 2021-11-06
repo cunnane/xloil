@@ -1,6 +1,7 @@
 #include <xlOil/StaticRegister.h>
 #include <xloil/Caller.h>
 #include <xlOil/ExcelArray.h>
+#include <xloil/ExcelObjCache.h>
 #include "Common.h"
 #include "Cache.h"
 
@@ -26,7 +27,7 @@ namespace xloil
       vector<wstring> headingsVec;
       if (headings.isNonEmpty())
       {
-        ExcelArray headingArray(headings);
+        ExcelArray headingArray(cacheCheck(headings));
         std::transform(
           headingArray.begin(), headingArray.end(),
           std::back_inserter(headingsVec),
@@ -48,7 +49,7 @@ namespace xloil
 
       createVTable(
         db.get(),
-        ExcelArray(data),
+        ExcelArray(cacheCheck(data)),
         tableName.c_str(),
         headingsVec.empty() ? nullptr : &headingsVec);
 

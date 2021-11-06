@@ -87,6 +87,7 @@ namespace xloil
         if (_handlers.empty())
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
 
+        XLO_INFO("Event {} added handler {}", _event.name(), (void*)obj.ptr());
         // We use a weakref to avoid dangling pointers to event handlers
         // the callback calls this->remove(ptr)
         _handlers.push_back(py::weakref(obj, _refRemover));
@@ -97,6 +98,7 @@ namespace xloil
       {
         _handlers.remove(obj);
         // Unhook ourselves from the core for efficiency if there are no handlers
+        XLO_INFO("Event {} removed handler {}", _event.name(), (void*)obj.ptr());
         if (_handlers.empty())
           _event -= _coreEventHandler;
         return *this;

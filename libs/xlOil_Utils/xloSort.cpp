@@ -3,6 +3,7 @@
 #include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil/Preprocessor.h>
+#include <xloil/ExcelObjCache.h>
 #include <algorithm>
 #include <numeric>
 #include <array>
@@ -69,24 +70,30 @@ namespace xloil
 
   XLO_FUNC_START(
     xloSort(
-      const ExcelObj* array,
+      const ExcelObj* arrayOrRef,
       const ExcelObj* order,
       XLO_DECLARE_ARGS(XLOSORT_NARGS, XLOSORT_ARG_NAME)
     )
   )
   {
-    ExcelArray arr(*array);
+    // TODO: want to optionally take an array ref, but we sort in-place so need to make a copy!
+    const ExcelObj& array = cacheCheck(*arrayOrRef);
+    ExcelArray arr(array);
     const auto nRows = arr.nRows();
     const auto nCols = arr.nCols();
 
-    const ExcelObj* args[] = { XLO_ARG_PTRS(XLOSORT_NARGS, XLOSORT_ARG_NAME) };
-
-    // could use raw pascal str, but unnecessary optimisation
-    auto orderStr = order->toString(); 
-
     // Anything to do?
     if (nRows < 2 || nCols == 0)
-      return const_cast<ExcelObj*>(array);
+      return const_cast<ExcelObj*>(&array);
+
+    // If we are not using a cache object, we can sort inplace on the input: 
+    // Excel doesn't seem to mind.
+    const bool inplace = &array == arrayOrRef;
+
+    const ExcelObj* args[] = { XLO_ARG_PTRS(XLOSORT_NARGS, XLOSORT_ARG_NAME) };
+
+    // could use raw pascal str, but that's an unnecessary optimisation
+    auto orderStr = order->toString(); 
 
     MyArray directions, columns;
 
@@ -158,6 +165,7 @@ namespace xloil
     directions[nOrders] = StopSearch;
 
     using row_t = ExcelArray::row_t;
+    using col_t = ExcelArray::col_t;
 
     vector<row_t> indices(nRows);
     std::iota(indices.begin(), indices.end(), 0);
@@ -165,35 +173,51 @@ namespace xloil
     std::sort(indices.begin() + (hasHeadings ? 1 : 0), indices.end(),
       LessThan(arr, directions, columns));
 
-    // For an inplace sort, we note the indices array contains
-    // the inverse of the permutation we need to apply to the rows
-    // so we just step through each cycle, applying transpositions.
-    // We mark moved rows with npos
 
-    const auto npos = row_t(-1);
-
-    row_t start = 0;
-    while (true)
+    if (inplace)
     {
-      while (start < indices.size() && indices[start] == npos) ++start;
-      if (start == indices.size())
-        break;
-
-      row_t k = start;
+      // For an inplace sort, we note the indices array contains
+      // the inverse of the permutation we need to apply to the rows
+      // so we just step through each cycle, applying transpositions.
+      // We mark moved rows with npos
+      const auto npos = row_t(-1);
+      row_t start = 0;
       while (true)
       {
-        const auto r = indices[k];
-        indices[k] = npos;
-        if (r == start)
+        while (start < indices.size() && indices[start] == npos) ++start;
+        if (start == indices.size())
           break;
-        swapmem(
-          (size_t*)arr.row_begin(k),
-          (size_t*)arr.row_begin(r),
-          nCols * sizeof(ExcelObj));
-        k = r;
+
+        row_t k = start;
+        while (true)
+        {
+          const auto r = indices[k];
+          indices[k] = npos;
+          if (r == start)
+            break;
+          swapmem(
+            (size_t*)arr.row_begin(k),
+            (size_t*)arr.row_begin(r),
+            nCols * sizeof(ExcelObj));
+          k = r;
+        }
       }
+
+      return const_cast<ExcelObj*>(&array);
     }
-    return const_cast<ExcelObj*>(array);
+    else
+    {
+      // If not "inplace" we're sorting a cache object. We know the strings in this
+      // object will outlive the return value, so it's safe to call 'overwrite'
+      ExcelArrayBuilder builder(nRows, nCols);
+      for (row_t i = 0; i < nRows; ++i)
+      {
+        auto iRow = indices[i];
+        for (col_t j = 0; j < nCols; ++j)
+          builder(i, j).overwrite(arr(iRow, j));
+      }
+      return returnValue(builder.toExcelObj());
+    }
   }
   XLO_FUNC_END(xloSort).threadsafe()
     .help(L"Sorts an array by one or more columns. If column headings are specified the first row is "

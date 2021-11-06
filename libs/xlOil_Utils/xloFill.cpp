@@ -32,7 +32,7 @@ namespace xloil
     {
       for (auto i = 0; i < nRowsVal; ++i)
         for (auto j = 0; j < nColsVal; ++j)
-          builder(i, j).copy_non_string(*value);
+          builder(i, j).overwrite(*value);
     }
 
     return returnValue(builder.toExcelObj());

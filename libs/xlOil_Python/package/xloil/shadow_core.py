@@ -332,6 +332,13 @@ else:
         WorkbookAddinInstall= _Event()
         WorkbookAddinUninstall= _Event()
 
+        """
+        Called just before xlOil finalises the python interpreter. All python and xlOil
+        functionality is still available. This event is useful to stop threads as it is 
+        called before threading module teardown, whereas `atexit` is not.
+        """
+        PyBye= _Event()
+
     event = Event()
 
     class Cache:
@@ -668,7 +675,6 @@ else:
             ...
 
   
-
     class Caller:
         """
         Captures the caller information for a worksheet function. On construction

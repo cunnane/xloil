@@ -57,6 +57,10 @@ namespace xloil
       auto numArgs = info->args.size();
       int opts = info->options;
 
+      if (numArgs > XL_MAX_UDF_ARGS)
+        XLO_THROW("Number of positional arguments ({}) exceeds maximum allowed by Excel ({})",
+          numArgs, XL_MAX_UDF_ARGS);
+
       // Build the argument type descriptor
       string argTypes;
       if (opts & FuncInfo::COMMAND)

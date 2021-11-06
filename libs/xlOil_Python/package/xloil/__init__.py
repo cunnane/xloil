@@ -7,7 +7,8 @@ from .register import (
     Arg, 
     func,
     scan_module,
-    register_functions
+    register_functions,
+    Caller
     )
 
 from .com import (

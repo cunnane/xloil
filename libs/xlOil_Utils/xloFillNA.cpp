@@ -2,13 +2,14 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/ExcelObjCache.h>
 
 namespace xloil
 {
   XLO_FUNC_START(
     xloFillNA(
+      const ExcelObj* arrayOrRef,
       const ExcelObj* value,
-      const ExcelObj* array,
       const ExcelObj* trim
     )
   )
@@ -16,7 +17,10 @@ namespace xloil
     if (!value->isType(ExcelType::ArrayValue))
       XLO_THROW("Value must be a suitable type for an array element");
 
-    ExcelArray arr(*array, trim->isMissing() ? true : trim->toBool());
+    const auto& array = cacheCheck(*arrayOrRef);
+    ExcelArray arr(array, trim->isMissing() ? true : trim->toBool());
+
+    const auto inplace = &array == arrayOrRef;
 
     const auto nRows = arr.nRows();
     const auto nCols = arr.nCols();
@@ -47,18 +51,18 @@ namespace xloil
       // each element so we won't double delete.
       auto newArray = builder.toExcelObj();
       memcpy_s(newArray.val.array.lparray, arrayNumBytes, 
-               array->val.array.lparray, arrayNumBytes);
+        array.val.array.lparray, arrayNumBytes);
 
       // Now replace all N/As with the specified value. Note the builder
       // and our newArray both point to the same underlying data
       for (auto i = 0u; i < nRows; ++i)
         for (auto j = 0u; j < nCols; ++j)
-          if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
+          if (arr.at(i, j).isNA())
             builder(i, j).emplace_pstr(arrayStr.release());
 
       return returnValue(std::move(newArray));
     }   
-    else
+    else if (inplace)
     {
       // For non strings, we simply replace N/As with the specified value.
       // ExcelArray is a view, so we const_cast to change the underlying data
@@ -67,7 +71,29 @@ namespace xloil
           if (arr.at(i, j).isNA() || arr.at(i, j).isMissing())
             const_cast<ExcelObj&>(arr(i, j)) = *value;
 
-      return const_cast<ExcelObj*>(array);
+      return const_cast<ExcelObj*>(arrayOrRef);
+    }
+    else
+    {
+      // If not "inplace" we're filling a cache object. We know the strings in this
+      // object will outlive the return value, so it's safe to call 'memcpy' to
+      // do a fast bitwise copy, leaving the strings pointed at the cache object.
+      ExcelArrayBuilder builder(nRows, nCols);
+
+      const auto arrayNumBytes = nRows * nCols * sizeof(ExcelObj);
+
+      auto newArray = builder.toExcelObj();
+      memcpy_s(newArray.val.array.lparray, arrayNumBytes,
+        array.val.array.lparray, arrayNumBytes);
+
+      // Now replace all N/As with the specified value. Note the builder
+      // and our newArray both point to the same underlying data
+      for (auto i = 0u; i < nRows; ++i)
+        for (auto j = 0u; j < nCols; ++j)
+          if (arr.at(i, j).isNA())
+            builder(i, j) = *value;
+
+      return returnValue(std::move(newArray));
     }
   }
   XLO_FUNC_END(xloFillNA).threadsafe()

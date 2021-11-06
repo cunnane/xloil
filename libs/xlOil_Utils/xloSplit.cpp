@@ -4,6 +4,7 @@
 #include <xlOil/ExcelRange.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil/Preprocessor.h>
+#include <xloil/ExcelObjCache.h>
 
 using std::wstring;
 using std::vector;
@@ -55,14 +56,14 @@ namespace xloil
     // Note this functon relies on the currently observed fact that 
     // Excel doesn't mind if we modify the input data a little bit,
     // then pass it back as the return value to avoid copies. That 
-    // is, it appears to copy the function result before freeing the
+    // is, Excel appears to copy the function result before freeing the
     // memory associated with the inputs.
     auto consecutive = consecutiveAsOne.toBool(true);
     auto sep = separators.toString();
 
     if (stringOrArray.isType(ExcelType::Multi))
     {
-      ExcelArray inputArray(stringOrArray);
+      ExcelArray inputArray(cacheCheck(stringOrArray));
       if (inputArray.dims() != 1)
         XLO_THROW("Input array must be 1-dim");
 
