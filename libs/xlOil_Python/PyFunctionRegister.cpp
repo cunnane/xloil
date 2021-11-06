@@ -44,11 +44,11 @@ namespace xloil
         return;
       else if(features == "macro")
       {
-        info.setFuncOptions(FuncInfo::MACRO_TYPE & base);
+        info.setFuncOptions(FuncInfo::MACRO_TYPE | base);
       }
       else if (features == "threaded")
       {
-        info.setFuncOptions(FuncInfo::THREAD_SAFE & base);
+        info.setFuncOptions(FuncInfo::THREAD_SAFE | base);
         // turn off local?
       }
       else if (features == "rtd")

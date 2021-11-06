@@ -44,6 +44,7 @@ namespace xloil
       }
       virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const override
       {
+        // Called from type conversion code where GIL has already been acquired
         try
         {
           auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
@@ -77,10 +78,11 @@ namespace xloil
       }
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
+        // This c
         // Use raw C API for extra speed as this code is on a critical path
 #if PY_VERSION_HEX < 0x03080000
         auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&pyObj), nullptr);
-#elseif PY_VERSION_HEX < 0x03090000
+#elif PY_VERSION_HEX < 0x03090000
         PyObject* args[] = { nullptr, const_cast<PyObject*>(&pyObj) };
         auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #else

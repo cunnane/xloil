@@ -183,9 +183,11 @@ namespace xloil
     {
       AsyncReturn(
         const ExcelObj& asyncHandle,
-        const shared_ptr<const IPyToExcel>& returnConverter)
+        const shared_ptr<const IPyToExcel>& returnConverter,
+        CallerInfo&& caller)
         : AsyncHelper(asyncHandle)
         , _returnConverter(returnConverter)
+        , _caller(std::move(caller))
       {}
 
       ~AsyncReturn()
@@ -223,9 +225,15 @@ namespace xloil
         }
       }
 
+      const CallerInfo& caller() const noexcept
+      {
+        return _caller;
+      }
+
     private:
       shared_ptr<const IPyToExcel> _returnConverter;
       py::object _task;
+      CallerInfo _caller;
     };
 
     void pythonAsyncCallback(
@@ -248,7 +256,8 @@ namespace xloil
         // Raw ptr, but we take ownership in the next line
         auto* asyncReturn = new AsyncReturn(
           *asyncHandle,
-          info->getReturnConverter());
+          info->getReturnConverter(),
+          CallerInfo());
 
         args[PyFuncInfo::theVectorCallOffset] = py::cast(asyncReturn,
           py::return_value_policy::take_ownership);
@@ -280,7 +289,7 @@ namespace xloil
       RtdReturn(
         IRtdPublish& notify,
         const shared_ptr<const IPyToExcel>& returnConverter,
-        const wchar_t* caller)
+        const CallerInfo& caller)
         : _notify(notify)
         , _returnConverter(returnConverter)
         , _caller(caller)
@@ -313,7 +322,7 @@ namespace xloil
 
         // If nil, conversion wasn't possible, so use the cache
         if (result.isType(ExcelType::Nil))
-          result = pyCacheAdd(value, _caller);
+          result = pyCacheAdd(value, _caller.writeInternalAddress().c_str());
 
         _notify.publish(std::move(result));
       }
@@ -341,13 +350,16 @@ namespace xloil
       {
         // asyncio.Future has no 'wait'
       }
-
+      const CallerInfo& caller() const noexcept
+      {
+        return _caller;
+      }
     private:
       IRtdPublish& _notify;
       shared_ptr<const IPyToExcel> _returnConverter;
       py::object _task;
       std::atomic<bool> _running = true;
-      const wchar_t* _caller;
+      const CallerInfo& _caller;
     };
 
     /// <summary>
@@ -360,7 +372,7 @@ namespace xloil
       vector<py::object> _args;
       PyObject *_kwargs;
       shared_ptr<RtdReturn> _returnObj;
-      wstring _caller;
+      CallerInfo _caller;
 
       /// <summary>
       /// Steals references to PyObjects
@@ -369,7 +381,6 @@ namespace xloil
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
-        , _caller(CallerLite().writeInternalAddress())
       {}
 
       virtual ~RtdAsyncTask()
@@ -382,7 +393,7 @@ namespace xloil
 
       void start(IRtdPublish& publish) override
       {
-        _returnObj.reset(new RtdReturn(publish, _info.getReturnConverter(), _caller.c_str()));
+        _returnObj.reset(new RtdReturn(publish, _info.getReturnConverter(), _caller));
         py::gil_scoped_acquire gilAcquired;
 
         PyErr_Clear();
@@ -492,12 +503,14 @@ namespace xloil
         py::class_<AsyncReturn>(mod, "AsyncReturn")
           .def("set_result", &AsyncReturn::set_result)
           .def("set_done", &AsyncReturn::set_done)
-          .def("set_task", &AsyncReturn::set_task);
+          .def("set_task", &AsyncReturn::set_task)
+          .def("caller", &AsyncReturn::caller);
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)
           .def("set_done", &RtdReturn::set_done)
-          .def("set_task", &RtdReturn::set_task);
+          .def("set_task", &RtdReturn::set_task)
+          .def("caller", &RtdReturn::caller);
 
 
         mod.def("get_event_loop", []() { return getLoopController().getEventLoop(); });

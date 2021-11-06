@@ -2,19 +2,21 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/ExcelObjCache.h>
 
 namespace xloil
 {
   XLO_FUNC_START(
-    xloPad(const ExcelObj* inArray)
+    xloPad(const ExcelObj* arrayOrRef)
   )
   {
-    ExcelArray arr(*inArray);
+    const auto& array = cacheCheck(*arrayOrRef);
+    ExcelArray arr(array);
     const auto nCols = arr.nCols();
     const auto nRows = arr.nRows();
 
     if (nCols > 1 && nRows > 1)
-      return const_cast<ExcelObj*>(inArray);
+      return const_cast<ExcelObj*>(&array);
 
     size_t strLen = 0u;
     for (auto& x : arr)

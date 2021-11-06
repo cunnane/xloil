@@ -17,7 +17,7 @@ namespace xloil
   {
     // TODO: handle range
 
-    ExcelArray array(objectCacheExpand(inArrayOrRef));
+    ExcelArray array(cacheCheck(inArrayOrRef));
     auto fromRow = inFromRow.toInt(1);         
     auto fromCol = inFromCol.toInt(1);
 

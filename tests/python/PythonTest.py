@@ -1,9 +1,10 @@
+# If not first, gives a "specified module cannot be found" error - ?
+from PIL import Image
+
 import xloil as xlo
 from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
-
-
 
 #
 # Functions are registered by decorating them with xloil.func.  The function
@@ -342,6 +343,10 @@ def pyTestRange(r: xlo.Range):
     r2 = r.cells(0, 0).value
     return r.cells(1, 1).address()
 
+@xlo.func
+async def pyTestCaller():
+    return xlo.Caller().address()
+    
 #
 # Displays python's sys.path. Useful for debugging some module loads
 # 
@@ -577,7 +582,7 @@ def make_task_pane(name, gui):
         
     # Create the GUI object using QtThread.run(...) or Qt will core
     widget = QtThread.run(lambda: draw_task_pane())
-    return QtCustomTaskPane(gui.new_task_pane(name), widget)
+    return QtCustomTaskPane(gui.add_task_pane(name), widget)
     
 
 #----------------------
@@ -591,13 +596,13 @@ def make_task_pane(name, gui):
 #
  
 def get_icon_path():
-    os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
+    global _xloil_workbook_path
+    return os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
     
 def button_label(ctrl, *args):
     return "Open Task Pane"
  
 def button_image(ctrl):
-    from PIL import Image
     import os
     im = Image.open(get_icon_path())
     return im
@@ -648,8 +653,7 @@ _excelgui = xlo.ExcelUI(ribbon=r'''
         'buttonLabel': button_label,
         'buttonImg': button_image
     })
-
-
+    
 #-----------------------------------------
 # Images: returning images from functions
 #-----------------------------------------

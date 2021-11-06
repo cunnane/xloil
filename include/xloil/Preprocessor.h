@@ -10,7 +10,7 @@ namespace xloil { class ExcelObj; }
 
 
 #define XLO_L() L
-/// <summary>
+/// <summary>  
 /// Stringifies the given argument to a wide string literal
 /// </summary>
 /// 
@@ -46,6 +46,12 @@ namespace xloil { class ExcelObj; }
   BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_WRITE_ARG_HELP_I, (prefix, help))
 #define XLO_WRITE_ARG_HELP_I(z, N, data) .arg(XLO_WSTR(BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, data),N)), BOOST_PP_TUPLE_ELEM(1, data))
 
+/// <summary>
+/// As <see ref="XLO_ARG_PTRS"/>, but runs <see ref="xloil::objectCacheExpand"/> on each argument.
+/// Useful to create an array of function arguments.
+/// </summary>
+#define XLO_CACHE_ARG_PTRS_I(z, N, data) &xloil::objectCacheExpand(BOOST_PP_CAT(data ## N)) BOOST_PP_COMMA_IF(N)
+#define XLO_CACHE_ARG_PTRS(N, prefix) BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_CACHE_ARG_PTRS_I, prefix)
 
 namespace xloil
 {
