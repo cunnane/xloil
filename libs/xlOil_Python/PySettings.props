@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup>
-    <IncludePath>$(xlOilRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(xlOilRoot)external\python\numpy\include;$(xlOilRoot)external\pybind11\include;$(xlOilRoot)src;$(IncludePath)</IncludePath>
+    <IncludePath>$(xlOilRoot)external\python\$(PyMajorVer).$(PyMinorVer)\include;$(xlOilRoot)external\python\numpy\include;$(xlOilRoot)external\pybind11\include;$(xlOilRoot)src;$(IncludePath);$(ProjectDir)</IncludePath>
     <LibraryPath>$(xlOilRoot)external\python\$(PyMajorVer).$(PyMinorVer)\$(Platform);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>

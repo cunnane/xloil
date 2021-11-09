@@ -92,9 +92,7 @@ class _QtThread:
 
             # Thread main loop, run until quit
             self._app.exec()
-            log(f"Exiting Qtthread", level="error")
             # Thread cleanup
-            #self._app.destroy()
             self._app = None
             self._enqueued = None
         except Exception as e:

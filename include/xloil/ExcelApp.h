@@ -2,6 +2,7 @@
 #include "ExportMacro.h"
 #include <functional>
 #include <future>
+#include <memory>
 
 namespace Excel { struct _Application; }
 
@@ -57,6 +58,13 @@ namespace xloil
     {}
   };
 
+  XLOIL_EXPORT void
+    runExcelThreadImpl(
+      std::function<void()>&& func,
+      int flags,
+      int nComRetries,
+      unsigned waitBetweenRetries,
+      unsigned waitBeforeCall);
 
   /// <summary>
   /// Excel's COM interface, that is any called based on the Excel::Application object,
@@ -97,15 +105,19 @@ namespace xloil
   /// </param>
   /// <returns>A std::future which contains the result of <param ref="func"/></returns>
   /// 
-  XLOIL_EXPORT std::future<void> 
-    excelRunOnMainThread(
-      const std::function<void()>& func, 
-      int flags = ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
-      int nComRetries = 10, 
-      unsigned waitBetweenRetries = 200,
-      unsigned waitBeforeCall = 0);
+  template<typename F>
+  inline auto runExcelThread(F&& func,
+    int flags = ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
+    int nComRetries = 10,
+    unsigned waitBetweenRetries = 200,
+    unsigned waitBeforeCall = 0) -> std::future<decltype(func())>
+  {
+    auto task = std::make_shared<std::packaged_task<decltype(func())()>>(std::forward<F>(func));
+    auto voidFunc = std::function<void()>( [task]() { (*task)(); });
+    runExcelThreadImpl(std::move(voidFunc), flags, nComRetries, waitBetweenRetries, waitBeforeCall);
+    return task->get_future();
+  }
 
-  
   void runComSetupOnXllOpen(const std::function<void()>& func);
 
   /// <summary>

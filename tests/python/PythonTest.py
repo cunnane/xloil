@@ -582,7 +582,7 @@ def make_task_pane(name, gui):
         
     # Create the GUI object using QtThread.run(...) or Qt will core
     widget = QtThread.run(lambda: draw_task_pane())
-    return QtCustomTaskPane(gui.new_task_pane(name), widget)
+    return QtCustomTaskPane(gui.add_task_pane(name), widget)
     
 
 #----------------------
@@ -596,6 +596,7 @@ def make_task_pane(name, gui):
 #
  
 def get_icon_path():
+    global _xloil_workbook_path
     return os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
     
 def button_label(ctrl, *args):

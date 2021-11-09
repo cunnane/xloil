@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyCache.cpp" />
+    <ClCompile Include="PyCOM.cpp" />
+    <ClCompile Include="PyImage.cpp" />
+    <ClCompile Include="PyRibbon.cpp" />
+    <ClCompile Include="PySource.cpp" />
+    <ClCompile Include="PyFunctionRegister.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="PyCore.cpp" />
+    <ClCompile Include="PyEvents.cpp" />
+    <ClCompile Include="PyHelpers.cpp" />
+    <ClCompile Include="PyRtd.cpp" />
+    <ClCompile Include="TypeConversion\BasicTypes.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyCustomType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyDateType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyDictType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyExcelArrayType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyRangeType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\PyTupleType.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeConversion\Numpy.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AsyncFunctions.h" />
+    <ClInclude Include="CPython.h" />
+    <ClInclude Include="PyCache.h" />
+    <ClInclude Include="PyCOM.h" />
+    <ClInclude Include="PyImage.h" />
+    <ClInclude Include="PySource.h" />
+    <ClInclude Include="Main.h" />
+    <ClInclude Include="PyFunctionRegister.h" />
+    <ClInclude Include="PyCore.h" />
+    <ClInclude Include="PyEvents.h" />
+    <ClInclude Include="PyHelpers.h" />
+    <ClInclude Include="TypeConversion\BasicTypes.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\PyDateType.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\PyDictType.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\PyExcelArrayType.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\PyTupleType.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\Numpy.h" />
+    <ClInclude Include="TypeConversion\ArrayHelpers.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="TypeConversion">
+      <UniqueIdentifier>{92ecbc1c-26d1-4843-bafe-bcb200fa7050}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

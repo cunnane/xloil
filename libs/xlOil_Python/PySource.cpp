@@ -8,6 +8,7 @@
 #include <xloil/Log.h>
 #include <xlOil/ExcelApp.h>
 #include <xlOil/Events.h>
+#include <xlOil/ExcelUI.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -108,8 +109,14 @@ namespace xloil
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
           FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
-          auto loaded = loadModuleFromFile(modulePath.c_str(), wbName);
-          scanModule(loaded);
+          runPython([modulePath, workbook = wstring(wbName)](int)
+          {
+            StatusBar status(5000);
+            status.msg(L"Loading " + workbook + L"...");
+            auto loaded = loadModuleFromFile(modulePath.c_str(), workbook.c_str());
+            scanModule(loaded);
+            status.msg(L"Finished loading " + workbook);
+          });
         }
         catch (const std::exception& e)
         {

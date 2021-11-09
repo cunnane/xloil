@@ -1,6 +1,7 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
+#include <xlOil/ExcelApp.h>
 #include <functional>
 #include <memory>
 #include <map>
@@ -61,6 +62,39 @@ namespace xloil
 
   private:
     Excel::Window* _window;
+  };
+
+  /// <summary>
+  /// Displays a message in Excel's status bar
+  /// </summary>
+  /// <param name="msg"></param>
+  /// <param name="timeout">if positive, the message will be cleared after the specified
+  /// number of milliseconds</param>
+  /// <returns></returns>
+  XLOIL_EXPORT void statusBarMsg(const std::wstring_view& msg, size_t timeout = 0);
+
+  /// <summary>
+  /// Displays status bar messages, then clears the status bar on destruction
+  /// (with an optional delay)
+  /// </summary>
+  class StatusBar
+  {
+  public:
+    /// <summary>
+    /// Sets a final timeout in milliseconds. The status bar will be cleared
+    /// after this amount of time since the class is destroyed.
+    /// </summary>
+    /// <param name="finalTimeout"></param>
+    StatusBar(size_t finalTimeout = 0) : _timeout(finalTimeout) {}
+    void msg(const std::wstring_view& msg, size_t timeout = 0)
+    {
+      statusBarMsg(msg, timeout);
+    }
+    ~StatusBar()
+    {
+      statusBarMsg(L"", _timeout);
+    }
+    size_t _timeout;
   };
 
   /// <summary>
@@ -203,4 +237,100 @@ namespace xloil
 
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
   XLOIL_EXPORT void excelObjToVariant(VARIANT* v, const ExcelObj& obj);
+
+
+  class ComAddinThreadSafe : public IComAddin
+  {
+  private:
+    std::shared_ptr<IComAddin> _base;
+  public:
+    ComAddinThreadSafe(const wchar_t* name)
+    {
+      runExcelThread([this, nameStr = std::wstring(name)]() mutable
+      {
+        this->_base.reset(makeComAddin(nameStr.c_str(), nullptr));
+      });
+    }
+
+    ComAddinThreadSafe(
+      const wchar_t* name,
+      const wchar_t* xml,
+      const IComAddin::RibbonMap& mapper)
+    {
+      runExcelThread([this, nameStr = std::wstring(name), xmlStr = std::wstring(xml), maps = RibbonMap(mapper)]() mutable
+      {
+        this->_base.reset(makeComAddin(nameStr.c_str(), nullptr));
+        _base->setRibbon(xmlStr.c_str(), maps);
+        _base->connect();
+      });
+    }
+
+    const wchar_t* progid() const override
+    {
+      return _base->progid();
+    }
+    void connect() override
+    {
+      connectAsync().wait();
+    }
+    void disconnect() override
+    {
+      disconnectAsync().wait();
+    }
+    void setRibbon(const wchar_t* xml, const RibbonMap& mapper) override
+    {
+      setRibbonAsync(xml, mapper).wait();
+    }
+    void ribbonInvalidate(const wchar_t* controlId = 0) const override
+    {
+      ribbonInvalidateAsync(controlId).wait();
+    }
+    bool ribbonActivate(const wchar_t* controlId) const override
+    {
+      return ribbonActivateAsync(controlId).get();
+    }
+    std::shared_ptr<ICustomTaskPane> createTaskPane(
+      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* progId = nullptr) override
+    {
+      return createTaskPaneAsync(name, window, progId).get();
+    }
+    const TaskPaneMap& panes() const override
+    {
+      return _base->panes();
+    }
+
+    std::future<void> connectAsync()
+    {
+      return runExcelThread([obj=_base]() { obj->connect(); });
+    }
+    std::future<void> disconnectAsync()
+    {
+      return runExcelThread([obj = _base]() { obj->disconnect(); });
+    }
+    std::future<void> setRibbonAsync(const wchar_t* xml, const RibbonMap& mapper)
+    {
+      return runExcelThread([obj = _base, xmlStr = std::wstring(xml), maps = RibbonMap(mapper)]() {
+        obj->setRibbon(xmlStr.c_str(), maps);
+      });
+    }
+    std::future<void> ribbonInvalidateAsync(const wchar_t* controlId = 0) const
+    {
+      return runExcelThread([obj = _base,  id = std::wstring(controlId)]() { 
+        obj->ribbonInvalidate(id.empty() ? nullptr : id.c_str()); 
+      });
+    }
+    std::future<bool> ribbonActivateAsync(const wchar_t* controlId) const
+    {
+      return runExcelThread([obj = _base, id = std::wstring(controlId)]() { 
+        return obj->ribbonActivate(id.c_str()); 
+      });
+    }
+    std::future<std::shared_ptr<ICustomTaskPane>> createTaskPaneAsync(
+      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* progId = nullptr)
+    {
+      return runExcelThread([obj = _base, nameStr = std::wstring(name), window]() {
+        return obj->createTaskPane(nameStr.c_str(), window);
+      });
+    }
+  };
 }

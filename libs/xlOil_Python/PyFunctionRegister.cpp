@@ -1,8 +1,8 @@
 #include "PyFunctionRegister.h"
 #include "PyCore.h"
 #include "Main.h"
-#include "BasicTypes.h"
-#include "PyDictType.h"
+#include "TypeConversion/BasicTypes.h"
+#include "TypeConversion/PyDictType.h"
 #include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
@@ -193,7 +193,7 @@ namespace xloil
       }
       catch (const py::error_already_set& e)
       {
-        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        raiseUserException(e);
         result = e.what();
       }
       catch (const std::exception& e)
@@ -247,7 +247,7 @@ namespace xloil
       }
       catch (const py::error_already_set& e)
       {
-        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        raiseUserException(e);
         return returnValue(e.what());
       }
       catch (const std::exception& e)

@@ -27,7 +27,7 @@ namespace xloil
         }
       );
       auto milliSecsDelay = 1000;
-      excelRunOnMainThread([=]() mutable
+      runExcelThread([=]() mutable
       {
         handle.reset(); // Removes the SheetChange handler
       }, ExcelRunQueue::WINDOW, 0, 0, milliSecsDelay);

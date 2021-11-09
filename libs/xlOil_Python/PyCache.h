@@ -9,13 +9,13 @@ namespace xloil
   {
     /// <summary>
     /// Adds a python object to the cache, returning a cache reference
-    /// string in an ExcelObj
+    /// string in an ExcelObj. Must hold the GIL to call.
     /// </summary>
     ExcelObj pyCacheAdd(const pybind11::object& obj, const wchar_t* caller = nullptr);
 
     /// <summary>
     /// Tries to fetch an object give a cache reference string, returning
-    /// true if sucessful
+    /// true if sucessful. Must hold the GIL to call.
     /// </summary>
     bool pyCacheGet(const std::wstring_view& cacheStr, pybind11::object& obj);
 

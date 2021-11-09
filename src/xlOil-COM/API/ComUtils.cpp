@@ -70,7 +70,13 @@ namespace xloil
     auto wb = Excel::_WorkbookPtr(_window->Parent);
     return wb->Name.GetBSTR();
   }
-
+  void statusBarMsg(const std::wstring_view& msg, size_t timeout)
+  {
+    if (!msg.empty())
+      runExcelThread([str = std::wstring(msg)](){excelApp().PutStatusBar(0, str.c_str()); });
+    if (timeout > 0)
+      runExcelThread([]() { excelApp().PutStatusBar(0, _bstr_t()); }, ExcelRunQueue::COM_API, 10, 200, timeout);
+  }
   std::vector<std::shared_ptr<ExcelWindow>> workbookWindows(const wchar_t* wbName)
   {
     try
