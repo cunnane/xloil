@@ -58,7 +58,6 @@ namespace xloil
     struct QueueItem : std::enable_shared_from_this<QueueItem>
     {
       std::function<void()> _func;
-      std::shared_ptr<std::promise<void>> _promise;
       int _flags;
       int _nComRetries;
       unsigned _waitTime;
@@ -66,12 +65,10 @@ namespace xloil
 
       QueueItem(
         const std::function<void()>& func, 
-        std::shared_ptr<std::promise<void>> promise,
         int flags,
         int nComRetries, 
         unsigned waitTime)
         : _func(func)
-        , _promise(promise)
         , _flags(flags)
         , _nComRetries(nComRetries)
         , _waitTime(waitTime)
@@ -196,7 +193,7 @@ namespace xloil
       }
       catch (...)
       {
-        _promise->set_exception(make_exception_ptr(std::runtime_error("Unknown exception")));
+        XLO_THROW("Unknown exception");
       }
       return;
     }
@@ -208,20 +205,13 @@ namespace xloil
       else
         _func();
     }
-    catch (const std::exception& e) // What about SEH?
-    {
-      _promise->set_exception(make_exception_ptr(e));
-    }
     catch (_com_error& error)
     { 
-      _promise->set_exception(
-        make_exception_ptr(std::runtime_error(fmt::format(
-          "COM Error {0:#x}", (size_t)error.Error()
-        ))));
+      XLO_THROW("COM Error {0:#x}", (size_t)error.Error());
     }
     catch (...)
     {
-      _promise->set_exception(make_exception_ptr(std::runtime_error("Unknown exception")));
+      XLO_THROW("Unknown exception");
     }
   }
 
@@ -232,21 +222,14 @@ namespace xloil
     return State::excelState().mainThreadId == GetCurrentThreadId();
   }
 
-  std::future<void> excelRunOnMainThread(
-    const std::function<void()>& func, 
+  void runExcelThreadImpl(
+    std::function<void()>&& func,
     int flags, 
     int nRetries, 
     unsigned waitBetweenRetries,
     unsigned waitBeforeCall)
   {
-    auto promise = std::make_shared<std::promise<void>>();
-
-    auto queueItem = make_shared<Messenger::QueueItem>([promise, func]()
-      {
-          func();
-          promise->set_value();
-      },
-      promise, 
+    auto queueItem = make_shared<Messenger::QueueItem>(func,
       flags,
       nRetries,
       waitBetweenRetries);
@@ -269,7 +252,6 @@ namespace xloil
       else
         messenger.QueueWindow(queueItem);
     }
-    return promise->get_future();
   }
 
   struct RetryAtStartup
@@ -279,11 +261,11 @@ namespace xloil
       try
       {
         COM::connectCom();
-        excelRunOnMainThread(func, ExcelRunQueue::XLL_API);
+        runExcelThread(func, ExcelRunQueue::XLL_API);
       }
       catch (const COM::ComConnectException&)
       {
-        excelRunOnMainThread(
+        runExcelThread(
           RetryAtStartup{ func },
           ExcelRunQueue::WINDOW | ExcelRunQueue::ENQUEUE,
           0, // no retry
@@ -301,6 +283,6 @@ namespace xloil
 
   void runComSetupOnXllOpen(const std::function<void()>& func)
   {
-    excelRunOnMainThread(RetryAtStartup{ func }, ExcelRunQueue::ENQUEUE);
+    runExcelThread(RetryAtStartup{ func }, ExcelRunQueue::ENQUEUE);
   }
 }

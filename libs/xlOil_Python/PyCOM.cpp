@@ -6,6 +6,7 @@
 #include "PyHelpers.h"
 #include "PyCore.h"
 #include "PyImage.h"
+#include "PyEvents.h"
 #include <fcntl.h>
 
 using std::vector;
@@ -145,7 +146,8 @@ namespace xloil
           std::tie(tempFileHandle, tempFileName) = Helpers::makeTempFile();
           CloseHandle(tempFileHandle);
         }
-        saveFunction(tempFileName);
+
+        checkUserException([&]() {saveFunction(tempFileName); });
 
         // Release GIL before doing any more slow stuff
         py::gil_scoped_release releaseGil;

@@ -27,7 +27,6 @@ namespace xloil
     /// </summary>
     int addBinder(
       std::function<void(pybind11::module&)> binder);
-     // size_t priority = 0);
 
     /// <summary>
     /// Declare a class of type IPyFromExcel which handles the 

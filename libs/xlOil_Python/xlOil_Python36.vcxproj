@@ -71,32 +71,32 @@
       <AdditionalDependencies>python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
+   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
-    <ClCompile Include="BasicTypes.cpp" />
+    <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
-    <ClCompile Include="PyCustomType.cpp" />
-    <ClCompile Include="PyDateType.cpp" />
-    <ClCompile Include="PyDictType.cpp" />
+    <ClCompile Include="TypeConversion\PyCustomType.cpp" />
+    <ClCompile Include="TypeConversion\PyDateType.cpp" />
+    <ClCompile Include="TypeConversion\PyDictType.cpp" />
     <ClCompile Include="PyCOM.cpp">
       <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
-    <ClCompile Include="PyRangeType.cpp" />
+    <ClCompile Include="TypeConversion\PyRangeType.cpp" />
     <ClCompile Include="PyImage.cpp" />
     <ClCompile Include="PyRibbon.cpp" />
     <ClCompile Include="PySource.cpp" />
     <ClCompile Include="PyFunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PyCore.cpp" />
-    <ClCompile Include="Numpy.cpp" />
+    <ClCompile Include="TypeConversion\Numpy.cpp" />
     <ClCompile Include="PyEvents.cpp" />
-    <ClCompile Include="PyExcelArrayType.cpp" />
+    <ClCompile Include="TypeConversion\PyExcelArrayType.cpp" />
     <ClCompile Include="PyHelpers.cpp" />
     <ClCompile Include="PyRtd.cpp" />
-    <ClCompile Include="PyTupleType.cpp" />
+    <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ArrayHelpers.h" />
+    <ClInclude Include="TypeConversion\ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />
     <ClInclude Include="PyCache.h" />
@@ -104,16 +104,16 @@
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="PySource.h" />
     <ClInclude Include="Main.h" />
-    <ClInclude Include="PyDateType.h" />
-    <ClInclude Include="PyDictType.h" />
+    <ClInclude Include="TypeConversion\PyDateType.h" />
+    <ClInclude Include="TypeConversion\PyDictType.h" />
     <ClInclude Include="PyFunctionRegister.h" />
-    <ClInclude Include="BasicTypes.h" />
+    <ClInclude Include="TypeConversion\BasicTypes.h" />
     <ClInclude Include="PyCore.h" />
-    <ClInclude Include="Numpy.h" />
+    <ClInclude Include="TypeConversion\Numpy.h" />
     <ClInclude Include="PyEvents.h" />
-    <ClInclude Include="PyExcelArrayType.h" />
+    <ClInclude Include="TypeConversion\PyExcelArrayType.h" />
     <ClInclude Include="PyHelpers.h" />
-    <ClInclude Include="PyTupleType.h" />
+    <ClInclude Include="TypeConversion\PyTupleType.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

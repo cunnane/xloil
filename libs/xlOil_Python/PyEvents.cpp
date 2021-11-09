@@ -224,5 +224,10 @@ namespace xloil
         bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), "PyBye");
       });
     }
+
+    void raiseUserException(const pybind11::error_already_set& e)
+    {
+      Event_PyUserException().fire(e.type(), e.value(), e.trace());
+    }
   }
 }

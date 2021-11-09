@@ -1,5 +1,6 @@
 #include "Main.h"
-#include "BasicTypes.h"
+#include "TypeConversion/BasicTypes.h"
+#include "PyHelpers.h"
 #include "PyCore.h"
 #include "PyEvents.h"
 #include "PyImage.h"
@@ -13,6 +14,7 @@ using std::unique_ptr;
 using std::wstring;
 using std::vector;
 using std::make_shared;
+using std::make_unique;
 
 namespace xloil
 {
@@ -20,17 +22,23 @@ namespace xloil
   {
     namespace
     {
-      auto setRibbon(IComAddin& addin, const wchar_t* xml, py::object mapper)
+      /// <summary>
+      /// Expects funcNameMap to be either a function of name -> handler or a 
+      /// dict of names and handler.  The handler function arguments vary depending
+      /// on what type of ribbon callback is requested
+      /// </summary>
+      auto makeRibbonNameMapper(const py::object& funcNameMap)
       {
-        if (PyDict_Check(mapper.ptr()))
-          mapper = mapper.attr("__getitem__");
+        auto pyMapper = PyDict_Check(funcNameMap.ptr())
+          ? funcNameMap.attr("__getitem__")
+          : funcNameMap;
 
-        auto cmapper = [mapper](const wchar_t* name) // PyObjectHolder
+        return [pyMapper = PyObjectHolder(pyMapper)](const wchar_t* name)
         {
           try
           {
             py::gil_scoped_acquire getGil;
-            auto callback = mapper(name);
+            auto callback = pyMapper(name);
             return [callback](
               const RibbonControl& ctrl, VARIANT* vRet, int nArgs, VARIANT** vArgs)
             {
@@ -60,20 +68,25 @@ namespace xloil
               }
               catch (const py::error_already_set& e)
               {
-                Event_PyUserException().fire(e.type(), e.value(), e.trace());
+                raiseUserException(e);
                 throw;
               }
             };
           }
           catch (const py::error_already_set& e)
           {
-            Event_PyUserException().fire(e.type(), e.value(), e.trace());
+            raiseUserException(e);
             throw;
           }
         };
-        addin.setRibbon(xml, cmapper);
       }
-      auto createRibbon(const py::object& xml, const py::object& mapper, const py::object& name)
+
+      auto setRibbon(IComAddin& addin, const wchar_t* xml, py::object mapper)
+      {
+        addin.setRibbon(xml, makeRibbonNameMapper(mapper));
+      }
+
+      auto createRibbon(const py::object& xml, const py::object& funcNameMap, const py::object& name)
       {
         wstring addinName;
         if (name.is_none())
@@ -92,13 +105,18 @@ namespace xloil
         }
         else
           addinName = pyToWStr(name.ptr());
-        unique_ptr<IComAddin> addin(makeComAddin(addinName.c_str()));
+        
         if (!xml.is_none())
         {
-          setRibbon(*addin, pyToWStr(xml).c_str(), mapper);
-          addin->connect();
+          auto addin = make_unique<ComAddinThreadSafe>(
+            addinName.c_str(), pyToWStr(xml).c_str(), makeRibbonNameMapper(funcNameMap));
+          return addin.release();
         }
-        return addin.release();
+        else
+        {
+          auto addin = make_unique<ComAddinThreadSafe>(addinName.c_str());
+          return addin.release();
+        }
       }
 
       
@@ -147,22 +165,22 @@ namespace xloil
         void onSize(int width, int height) override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("on_size")(width, height);
+          checkUserException([=]() { _handler.attr("on_size")(width, height); });
         }
         void onVisible(bool c) override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("on_visible")(c);
+          checkUserException([=]() { _handler.attr("on_visible")(c); });
         }
         void onDocked() override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("on_docked")();
+          checkUserException([this]() { _handler.attr("on_docked")(); });
         }
         void onDestroy() override
         {
           py::gil_scoped_acquire gil;
-          _handler.attr("on_destroy")();
+          checkUserException([this]() { _handler.attr("on_destroy")(); });
         }
         PyObjectHolder _handler;
       };

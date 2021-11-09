@@ -447,7 +447,7 @@ namespace xloil
         // with the throttle interval)
         if (_newValues.size() == 1)
         {
-          excelRunOnMainThread([this]()
+          runExcelThread([this]()
           {
             if (isServerRunning())
               (*_updateCallback).raw_UpdateNotify();

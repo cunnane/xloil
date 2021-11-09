@@ -58,7 +58,7 @@ namespace xloil
     if (!workbookName.empty())
       clearLocalFunctions(workbookName.c_str());
 
-    excelRunOnMainThread([=]() // TODO: move semanatics rather than copy functions?
+    runExcelThread([=]() // TODO: move semanatics rather than copy functions?
     {
       for (auto& f : functions)
         f.second->deregister();
@@ -97,7 +97,7 @@ namespace xloil
       const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& funcSpecs,
       const bool append)
   {
-    excelRunOnMainThread([append, specs = funcSpecs, self = shared_from_this()]() mutable
+    runExcelThread([append, specs = funcSpecs, self = shared_from_this()]() mutable
     {
       auto& existingFuncs = self->_functions;
       decltype(self->_functions) newFuncs;
@@ -130,7 +130,7 @@ namespace xloil
     auto iFunc = _functions.find(name);
     if (iFunc != _functions.end())
     {
-      excelRunOnMainThread([iFunc, self = this]()
+      runExcelThread([iFunc, self = this]()
       {
         if (iFunc->second->deregister())
           self->_functions.erase(iFunc);
@@ -146,7 +146,7 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    excelRunOnMainThread([=, self = this]()
+    runExcelThread([=, self = this]()
     {
       xloil::registerLocalFuncs(self->_workbookName.c_str(), funcSpecs, append);
     });
@@ -209,7 +209,7 @@ namespace xloil
     if (_wcsicmp(fileName, sourceName()) != 0)
       return;
 
-    excelRunOnMainThread([
+    runExcelThread([
       self = std::static_pointer_cast<WatchedSource>(shared_from_this()),
         filePath = fs::path(dirName) / fileName,
         action]()

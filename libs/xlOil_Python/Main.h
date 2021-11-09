@@ -1,5 +1,6 @@
 #pragma once
 #include <xloil/Interface.h>
+#include <future>
 
 namespace xloil
 {
@@ -16,5 +17,18 @@ namespace xloil
     /// to the core context.
     /// </summary>
     extern AddinContext* theCurrentContext;
+
+
+    template<typename F>
+    inline auto runPython(F&& f) ->std::future<decltype(f(0))> {
+      auto pck = std::make_shared<std::packaged_task<decltype(f(0))(int)>>(std::forward<F>(f));
+      auto _f = std::function<void(int id)>([pck](int id) {
+        (*pck)(id);
+      });
+      runPython(std::move(_f));
+      return pck->get_future();
+    }
+
+    void runPython(std::function<void(int)>&& task);
   }
 }

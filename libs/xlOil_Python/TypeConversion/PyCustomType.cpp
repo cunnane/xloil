@@ -45,16 +45,11 @@ namespace xloil
       virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const override
       {
         // Called from type conversion code where GIL has already been acquired
-        try
+        return checkUserException([&]() 
         {
           auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
           return _callable(arg).release().ptr();
-        }
-        catch (const py::error_already_set& e)
-        {
-          Event_PyUserException().fire(e.type(), e.value(), e.trace());
-          throw;
-        }
+        });
       }
       const char* name() const override
       {

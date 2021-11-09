@@ -274,7 +274,17 @@ namespace xloil
           _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
         }
-        XLO_RETHROW_COM_ERROR;
+        catch (_com_error& error)
+        {
+          if (error.Error() == 0x80004004) // Operation aborted
+          {
+            XLO_THROW("During add-in connect, received Operation Aborted ({}) this probably indicates  "
+              "blocking by add-in security.  Check add-ins are enabled and this add-in is not a disabled "
+              "COM add-in.", (unsigned)error.Error());
+          }
+          else
+            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+        }
       }
 
       void disconnect() override

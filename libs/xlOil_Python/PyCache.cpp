@@ -1,7 +1,7 @@
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/ObjectCache.h>
 #include "PyCore.h"
-#include "BasicTypes.h"
+#include "TypeConversion/BasicTypes.h"
 #include "PyCache.h"
 //#include "Main.h"
 
@@ -52,13 +52,13 @@ namespace xloil
           XLO_TRACE("Python object cache destroyed");
         }
 
-        py::object add(const py::object& obj, const wchar_t* tag=nullptr)
+        py::object add(py::object obj, const wchar_t* tag=nullptr)
         {
           // The cache expects callers to be of the form [.]xxx, so we add
           // a prefix if a custom tag is specified. Note the forward slash
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
-          const auto cacheKey = _cache.add(py::object(obj), tag 
+          const auto cacheKey = _cache.add(std::move(obj), tag 
               ? CallerLite(ExcelObj(tag))
               : CallerLite());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));

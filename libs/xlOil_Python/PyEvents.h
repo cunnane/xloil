@@ -1,7 +1,7 @@
 #pragma once
 #include <xlOil/Events.h>
 namespace pybind11 {
-  class object;
+  class object; class error_already_set;
 }
 namespace xloil
 {
@@ -23,5 +23,21 @@ namespace xloil
       const pybind11::object&, 
       const pybind11::object&)>&
         Event_PyUserException();
+
+    void raiseUserException(const pybind11::error_already_set& e);
+    
+    template<class F, class... Args>
+    auto checkUserException(F&& f, Args... args)
+    {
+      try
+      {
+        return f(std::forward<Args>(args)...);
+      }
+      catch (const pybind11::error_already_set& e)
+      {
+        raiseUserException(e);
+        throw;
+      }
+    }
   }
 }

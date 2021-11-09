@@ -1,5 +1,5 @@
 #include "PyCore.h"
-#include "BasicTypes.h"
+#include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
@@ -48,22 +48,22 @@ namespace xloil
 {
   namespace Python
   {
-    template<class T>
-    class PyFuture
-    {
-      std::future<T> _future;
-    public:
-      PyFuture(std::future<T> future)
-        : _future(future)
-      {}
-      T await()
-      {
-        if (_future.wait_for(microseconds(0)) == future_status::ready)
-          return this;
-          //throw pybind11::stop_iteration()
-        return
-      }
-    };
+    //template<class T>
+    //class PyFuture
+    //{
+    //  std::future<T> _future;
+    //public:
+    //  PyFuture(std::future<T> future)
+    //    : _future(future)
+    //  {}
+    //  T await()
+    //  {
+    //    if (_future.wait_for(microseconds(0)) == future_status::ready)
+    //      return this;
+    //      //throw pybind11::stop_iteration()
+    //    return
+    //  }
+    //};
 
     class PyRtdServer
     {

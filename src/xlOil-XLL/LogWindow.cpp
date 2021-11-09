@@ -222,7 +222,7 @@ namespace xloil
           appendToWindow(msg);
 
         // Should only call window drawing API functions on the main thread
-        excelRunOnMainThread([this]
+        runExcelThread([this]
         {
           setWindowText();
           showWindow();
@@ -241,7 +241,7 @@ namespace xloil
         {
           appendToWindow(_messages.back());
           // Should only call window drawing API functions on the main thread
-          excelRunOnMainThread([this]
+          runExcelThread([this]
           {
             setWindowText();
           });

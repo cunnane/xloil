@@ -1,7 +1,7 @@
 #include "AsyncFunctions.h"
 #include "PyFunctionRegister.h"
 #include "PyCore.h"
-#include "BasicTypes.h"
+#include "TypeConversion/BasicTypes.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
 #include <xloil/ExcelObj.h>
@@ -269,7 +269,7 @@ namespace xloil
       }
       catch (const py::error_already_set& e)
       {
-        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        raiseUserException(e);
         asyncReturn(*asyncHandle, ExcelObj(e.what()));
       }
       catch (const std::exception& e)
@@ -484,7 +484,7 @@ namespace xloil
       }
       catch (const py::error_already_set& e)
       {
-        Event_PyUserException().fire(e.type(), e.value(), e.trace());
+        raiseUserException(e);
         return returnValue(e.what());
       }
       catch (const std::exception& e)

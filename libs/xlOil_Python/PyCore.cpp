@@ -1,7 +1,7 @@
 #include "PyCore.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
-#include "BasicTypes.h"
+#include "TypeConversion/BasicTypes.h"
 #include <xlOil/ExcelApp.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
@@ -82,7 +82,7 @@ namespace xloil
 
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
-        excelRunOnMainThread([callable]()
+        runExcelThread([callable]()
         {
           py::gil_scoped_acquire getGil;
           try
