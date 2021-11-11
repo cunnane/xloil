@@ -284,7 +284,7 @@ def async_wrapper(fn):
 
 def _pump_message_loop(loop, timeout):
     """
-    Called internally to run the asyncio message loop.
+    Called internally to run the asyncio message loop. Returns the number of active tasks
     """
     import asyncio
 
@@ -292,6 +292,8 @@ def _pump_message_loop(loop, timeout):
         await asyncio.sleep(timeout)
     
     loop.run_until_complete(wait())
+
+    return len([task for task in asyncio.all_tasks(loop) if not task.done()])
 
 
 class _WorksheetFunc:

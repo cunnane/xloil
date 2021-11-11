@@ -27,7 +27,7 @@ namespace xloil
   {
     class EventLoopController
     {
-      std::atomic<bool> _stop = true;
+      std::atomic<bool> _stopped = true;
       std::future<void> _loopRunner;
       ctpl::thread_pool _thread;
       std::shared_ptr<const void> _shutdownHandler;
@@ -48,8 +48,9 @@ namespace xloil
           {
             try
             {
-              py::gil_scoped_acquire acquire;
-              acquire.inc_ref();
+              py::gil_scoped_acquire getGil;
+              getGil.inc_ref();
+              // TODO: not sure calling back into xloil.register is that cool a design...
               const auto xloilMod = py::module::import("xloil.register");
               self->_eventLoop = xloilMod.attr("_create_event_loop")();
               self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
@@ -81,44 +82,36 @@ namespace xloil
     public:
       void start()
       {
-        _stop = false;
+        if (!_stopped)
+          return;
+        
         _loopRunner = _thread.push(
-          [=](int)
+          [this](int)
           {
+          _stopped = false;
             try
             {
-              py::gil_scoped_acquire gilAcquired;
-              // TODO: this is a bit of a busy-wait can we signal when there are tasks?
-              while (!_stop)
+              constexpr double timeout = 0.5; // seconds 
+              bool tasks = true;
+              do
               {
-                constexpr double timeout = 0.5; // seconds 
-                _runLoopFunction(this->_eventLoop, timeout);
-              }
+                py::gil_scoped_acquire getGil;
+                tasks = _runLoopFunction(this->_eventLoop, timeout).cast<int>() > 0;
+              } while (!_stopped && tasks);
             }
             catch (const std::exception& e)
             {
               XLO_ERROR("Error running asyncio loop: {0}", e.what());
             }
+            _stopped = true;
           }
         );
       }
-      /// <summary>
-      /// Executes the function on the python asyncio thread. The thread is normally
-      /// running the asyncio event loop.  This stops and restarts the loop to allow
-      /// the function to run. Note we never actually use it...
-      /// </summary>
-      template<typename F>
-      void runInterrupt(F && f)
-      {
-        py::gil_scoped_release noGil;
-        auto task = _thread.push(f);
-        stop();
-        start();
-      }
+
 
       bool stopped()
       {
-        return _stop;
+        return _stopped;
       }
 
       py::object getEventLoop() const
@@ -141,9 +134,9 @@ namespace xloil
     private:
       void stop()
       {
-        _stop = true;
+        _stopped = true;
         // Must wait for the loop to stop, otherwise we may switch the stop
-        // flag back without it ever being check
+        // flag back without it ever being checked
         if (_loopRunner.valid())
           _loopRunner.wait();
       }
@@ -173,7 +166,7 @@ namespace xloil
       }
     };
 
-    auto& getLoopController()
+    auto& eventLoopController()
     {
       return EventLoopController::instance();
     }
@@ -202,6 +195,7 @@ namespace xloil
       void set_task(const py::object& task)
       {
         _task = task;
+        eventLoopController().start();
       }
 
       void set_result(const py::object& value)
@@ -220,7 +214,7 @@ namespace xloil
         if (_task.ptr())
         {
           py::gil_scoped_acquire gilAcquired;
-          getLoopController().callback(_task.attr("cancel"));
+          eventLoopController().callback(_task.attr("cancel"));
           _task.release();
         }
       }
@@ -308,6 +302,7 @@ namespace xloil
         py::gil_scoped_acquire gilAcquired;
         _task = task;
         _running = true;
+        eventLoopController().start();
       }
       void set_result(const py::object& value) const
       {
@@ -340,7 +335,7 @@ namespace xloil
           return;
         py::gil_scoped_acquire gilAcquired;
         _running = false;
-        getLoopController().callback(_task.attr("cancel"));
+        eventLoopController().callback(_task.attr("cancel"));
       }
       bool done() noexcept
       {
@@ -513,7 +508,7 @@ namespace xloil
           .def("caller", &RtdReturn::caller);
 
 
-        mod.def("get_event_loop", []() { return getLoopController().getEventLoop(); });
+        mod.def("get_event_loop", []() { return eventLoopController().getEventLoop(); });
       });
 
       // Uncomment this for debugging in case weird things happen with the GIL not releasing
