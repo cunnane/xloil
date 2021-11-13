@@ -215,10 +215,13 @@ namespace xloil
         // We use this bool to protect against this.
         if (!_enableAfterCalculate)
           return;
-        excelApp().EnableEvents = VARIANT_FALSE;
+
+        excelApp().put_EnableEvents(VARIANT_FALSE);
         _enableAfterCalculate = false;
+
         Event::AfterCalculate().fire();
-        excelApp().EnableEvents = VARIANT_TRUE;
+
+        excelApp().put_EnableEvents(VARIANT_TRUE);
         _enableAfterCalculate = true;
       }
 
@@ -290,6 +293,10 @@ namespace xloil
           case 0x00000a34:
             AfterCalculate();
           }
+        }
+        catch (_com_error& error)
+        { 
+          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
         }
         catch (const std::exception& e)
         {

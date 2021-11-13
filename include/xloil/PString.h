@@ -252,7 +252,7 @@ namespace xloil
     explicit PString(size_type length = 0, TAlloc allocator = TAlloc())
       : PStringImpl(length == 0
         ? nullptr
-        : allocator.allocate(length + 1))
+        : allocator.allocate((unsigned)length + 1))
       , _alloc(allocator)
     {
       if (length > 0)
