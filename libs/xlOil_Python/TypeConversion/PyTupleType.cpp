@@ -32,7 +32,8 @@ namespace xloil
       // First loop to establish array size and length of strings
       while ((item = PyIter_Next(iter)) != 0) 
       {
-        ++nRows;
+        if (++nRows > XL_MAX_ROWS)
+          XLO_THROW("Max rows exceeded when returning iterator");
         if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           decltype(nCols) j = 0;

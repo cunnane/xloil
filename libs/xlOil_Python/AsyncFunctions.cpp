@@ -214,7 +214,8 @@ namespace xloil
         if (_task.ptr())
         {
           py::gil_scoped_acquire gilAcquired;
-          eventLoopController().callback(_task.attr("cancel"));
+          if (py::hasattr(_task, "cancel"))
+            eventLoopController().callback(_task.attr("cancel"));
           _task.release();
         }
       }

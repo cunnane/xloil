@@ -3,7 +3,6 @@
 #include "PyCore.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyCache.h"
-//#include "Main.h"
 
 namespace py = pybind11;
 using std::wstring;
