@@ -17,6 +17,8 @@ using std::scoped_lock;
 using std::shared_ptr;
 using std::make_shared;
 
+//TODO: rename this file
+
 namespace xloil
 {
 
@@ -74,7 +76,7 @@ namespace xloil
         , _waitTime(waitTime)
       {}
 
-      void operator()(Messenger& messenger);
+      void operator()(Messenger& messenger) noexcept;
     };
 
     static constexpr unsigned WINDOW_MESSAGE = 666;
@@ -100,7 +102,7 @@ namespace xloil
     void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs) noexcept
     {
       scoped_lock lock(_lock);
-      _timerQueue[item.get()] = item; // is this noexcept?
+      _timerQueue[item.get()] = item; // TODO: the [] is not really noexcept
       SetTimer(_hiddenWindow, (UINT_PTR)item.get(), millisecs, TimerCallback);
     }
 
@@ -154,7 +156,7 @@ namespace xloil
 
     static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue)
     {
-      decltype(_apcQueue) jobs;
+      std::remove_reference<decltype(queue)>::type jobs;
       {
         scoped_lock lock(self._lock);
         jobs.assign(queue.begin(), queue.end());
@@ -181,7 +183,7 @@ namespace xloil
     Messenger::instance();
   }
 
-  void Messenger::QueueItem::operator()(Messenger& messenger)
+  void Messenger::QueueItem::operator()(Messenger& messenger) noexcept
   {
     if (_nComRetries > 0 && (_flags & ExcelRunQueue::COM_API) != 0 && !COM::isComApiAvailable())
     {
@@ -193,11 +195,12 @@ namespace xloil
       }
       catch (...)
       {
-        XLO_THROW("Unknown exception");
+        XLO_ERROR("Unknown exception");
       }
       return;
     }
    
+    //TODO: want to pass in a way to call to set_exception on _func's promise
     try
     {
       if ((_flags & ExcelRunQueue::XLL_API) != 0)
@@ -205,13 +208,9 @@ namespace xloil
       else
         _func();
     }
-    catch (_com_error& error)
-    { 
-      XLO_THROW("COM Error {0:#x}", (size_t)error.Error());
-    }
     catch (...)
     {
-      XLO_THROW("Unknown exception");
+      XLO_ERROR("Unknown exception");
     }
   }
 

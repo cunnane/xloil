@@ -71,8 +71,9 @@
       <AdditionalDependencies>python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-   <ItemGroup>
+  <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
     <ClCompile Include="TypeConversion\PyCustomType.cpp" />
@@ -96,6 +97,7 @@
     <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="PyFuture.h" />
     <ClInclude Include="TypeConversion\ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />

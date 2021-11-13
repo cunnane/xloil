@@ -17,7 +17,8 @@ if XLOIL_HAS_CORE:
         CannotConvert, 
         from_excel_date,
         insert_cell_image,
-        TaskPaneFrame as TaskPaneFrame)
+        TaskPaneFrame,
+        xlfunc, xlfunc_async)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -738,6 +739,12 @@ else:
             if True, compresses the resulting image before storing in the sheet
         """
         pass
+
+
+    def xlfunc(func, *args):
+        ...
+    async def xlfunc_async(func, *args):
+        ...
 
 _task_panes = set()
 
