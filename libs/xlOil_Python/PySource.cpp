@@ -1,6 +1,5 @@
 #include "PySource.h"
 
-#include "PyCOM.h"
 #include "PyHelpers.h"
 #include "PyFunctionRegister.h"
 #include "Main.h"
