@@ -16,7 +16,6 @@
   <ItemGroup>
     <ClCompile Include="ComAddin.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
-    <ClCompile Include="ComRange.cpp" />
     <ClCompile Include="ComVariant.cpp" />
     <ClCompile Include="Connect.cpp" />
     <ClCompile Include="RibbonExtensibility.cpp" />
