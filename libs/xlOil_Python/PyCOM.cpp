@@ -19,30 +19,6 @@ namespace xloil
 {
   namespace Python
   {
-    std::vector<std::pair<std::wstring, std::wstring>> listWorkbooksWithPath()
-    {
-      try
-      {
-        auto workbooks = excelApp().Workbooks;
-        auto nWorkbooks = workbooks->Count;
-        decltype(listWorkbooksWithPath()) result(nWorkbooks);
-        
-        for (auto i = 0; i < nWorkbooks; ++i)
-        {
-          auto wb = workbooks->GetItem(_variant_t(i + 1));
-          result[i] = make_pair(wstring(wb->Name), wstring(wb->Path));
-        }
-        return result;
-      }
-      XLO_RETHROW_COM_ERROR;
-    }
-
-    string& toLower(string&& str)
-    {
-      std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
-      return str;
-    }
-
     //
     // Some things I tried to add an image that don't work
     // 
@@ -88,7 +64,7 @@ namespace xloil
         float width = -1, height = -1; 
         if (PyUnicode_Check(size.ptr()))
         {
-          string sz = toLower(py::str(size));
+          string sz = toLower((string)py::str(size));
           if (strcmp(sz.c_str(), "cell") == 0)
           { 
             width = float(caller->Width);
@@ -116,7 +92,7 @@ namespace xloil
 
         string coord;
         if (!coordinates.is_none())
-          coord = toLower(py::str(coordinates));
+          coord = toLower((string)py::str(coordinates));
  
         float absX, absY;
         if (coord.empty() || strcmp(coord.c_str(), "top") == 0)

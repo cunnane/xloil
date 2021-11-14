@@ -2,6 +2,7 @@
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
 #include <xlOil/ExcelApp.h>
+#include <xlOil/AppObjects.h>
 #include <functional>
 #include <memory>
 #include <map>
@@ -21,47 +22,6 @@ namespace xloil
   {
     const wchar_t* Id;
     const wchar_t* Tag;
-  };
-
-  /// <summary>
-  /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
-  /// </summary>
-  class XLOIL_EXPORT ExcelWindow
-  {
-  public:
-    /// <summary>
-    /// Constructs and ExcelWindow from a COM pointer
-    /// </summary>
-    /// <param name="p"></param>
-    ExcelWindow(Excel::Window* p);
-    /// <summary>
-    /// Gives the ExcelWindow object associated with the give window caption, or the active window
-    /// </summary>
-    /// <param name="windowCaption">The name of the window to find, or the active window if null</param>
-    ExcelWindow(const wchar_t* windowCaption = nullptr);
-
-    ExcelWindow(ExcelWindow&& that) : _window(that._window) { that._window = nullptr; }
-    ~ExcelWindow();
-
-    /// <summary>
-    /// Retuns the Win32 window handle
-    /// </summary>
-    /// <returns></returns>
-    size_t hwnd() const;
-    /// <summary>
-    /// Returns the window title
-    /// </summary>
-    /// <returns></returns>
-    std::wstring caption() const;
-    /// <summary>
-    /// Gives the name of the workbook displayed by this window 
-    /// </summary>
-    std::wstring workbook() const;
-
-    Excel::Window* ptr() const { return _window; }
-
-  private:
-    Excel::Window* _window;
   };
 
   /// <summary>
@@ -96,14 +56,6 @@ namespace xloil
     }
     size_t _timeout;
   };
-
-  /// <summary>
-  /// Returns all Windows associated with a given workbook, or the active workbook if null is passed
-  /// </summary>
-  /// <param name="wbName"></param>
-  /// <returns></returns>
-  XLOIL_EXPORT std::vector<std::shared_ptr<ExcelWindow>> 
-    workbookWindows(const wchar_t* wbName = nullptr);
 
   /// <summary>
   /// Event handler to respond to custom task pane events
@@ -253,11 +205,11 @@ namespace xloil
     }
 
     ComAddinThreadSafe(
-      const wchar_t* name,
-      const wchar_t* xml,
-      const IComAddin::RibbonMap& mapper)
+      std::wstring&& name,
+      std::wstring&& xml,
+      IComAddin::RibbonMap&& mapper)
     {
-      runExcelThread([this, nameStr = std::wstring(name), xmlStr = std::wstring(xml), maps = RibbonMap(mapper)]() mutable
+      runExcelThread([this, nameStr = name, xmlStr = xml, maps = mapper]() mutable
       {
         this->_base.reset(makeComAddin(nameStr.c_str(), nullptr));
         _base->setRibbon(xmlStr.c_str(), maps);

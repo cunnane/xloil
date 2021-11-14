@@ -118,7 +118,6 @@
     <ClInclude Include="ClassFactory.h" />
     <ClInclude Include="ComAddin.h" />
     <ClInclude Include="ComEventSink.h" />
-    <ClInclude Include="ComRange.h" />
     <ClInclude Include="ComVariant.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="CustomTaskPane.h" />

@@ -335,7 +335,7 @@ namespace xloil
           XLO_THROW("Internal error: failed to receive CTP factory");
 
         shared_ptr<ICustomTaskPane> pane(createCustomTaskPane(*factory, name, window, progId));
-        _panes.insert(make_pair(pane->window().workbook(), pane));
+        _panes.insert(make_pair(pane->window().workbook().name(), pane));
         return pane;
       }
 

@@ -108,8 +108,12 @@ namespace xloil
         
         if (!xml.is_none())
         {
+          auto mapper = makeRibbonNameMapper(funcNameMap);
+          auto xmlStr = pyToWStr(xml);
+
+          py::gil_scoped_release releaseGil;
           auto addin = make_unique<ComAddinThreadSafe>(
-            addinName.c_str(), pyToWStr(xml).c_str(), makeRibbonNameMapper(funcNameMap));
+            addinName.c_str(), xmlStr.c_str(), std::move(mapper));
           return addin.release();
         }
         else
@@ -118,7 +122,6 @@ namespace xloil
           return addin.release();
         }
       }
-
       
       PyObject* callOneArg(PyObject* callable, PyObject* arg)
       {
@@ -138,21 +141,12 @@ namespace xloil
       auto createTaskPane(IComAddin& self, const std::wstring& name, 
         const py::object& progId, const py::object& window)
       {
-        self.connect();
-        auto winptr = window.is_none() ? nullptr : (IDispatch*)ExcelWindow(pyToWStr(window).c_str()).ptr();
-        return self.createTaskPane(name.c_str(), winptr, progId.is_none() ? nullptr : pyToWStr(progId).c_str());
-      }
+        auto winPtr = window.is_none() ? nullptr : (IDispatch*)ExcelWindow(pyToWStr(window).c_str()).ptr();
+        auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
 
-      auto listExcelWindows(const py::object& workbook)
-      {
-        // Just give panes for current window
-        if (workbook.is_none())
-          return vector<size_t>(1, ExcelWindow().hwnd());
-        
-        auto windows = workbookWindows(pyToWStr(workbook).c_str());
-        vector<size_t> result;
-        std::transform(windows.begin(), windows.end(), std::back_inserter(result), [](auto x) { return x->hwnd(); });
-        return result;
+        py::gil_scoped_release releaseGil;
+        self.connect();
+        return self.createTaskPane(name.c_str(), winPtr, progIdStr.empty() ? nullptr : progIdStr.c_str());
       }
 
       class PyTaskPaneHandler : public ICustomTaskPaneHandler
@@ -201,11 +195,6 @@ namespace xloil
           .def_readonly("id", &RibbonControl::Id)
           .def_readonly("tag", &RibbonControl::Tag);
 
-        py::class_<ExcelWindow, shared_ptr<ExcelWindow>>(mod, "ExcelWindow")
-          .def_property_readonly("hwnd", &ExcelWindow::hwnd)
-          .def_property_readonly("caption", &ExcelWindow::caption)
-          .def_property_readonly("workbook", &ExcelWindow::workbook);
-
         py::class_<ICustomTaskPane, shared_ptr<ICustomTaskPane>>(mod, "TaskPaneFrame")
           .def_property_readonly("parent_hwnd", &ICustomTaskPane::parentWindowHandle)
           .def_property_readonly("window", &ICustomTaskPane::window)
@@ -224,8 +213,6 @@ namespace xloil
           .def("activate", &IComAddin::ribbonActivate, py::arg("id"))
           .def("add_task_pane", createTaskPane, py::arg("name"), py::arg("progid")=py::none(), py::arg("window")=py::none())
           .def_property_readonly("name", &IComAddin::progid);
-
-        mod.def("workbook_hwnds", listExcelWindows, py::arg("workbook")=py::none());
       });
     }
   }

@@ -127,9 +127,8 @@ namespace xloil
 
     void checkWorkbooksOnOpen(const WorkbookOpenHandler& handler)
     {
-      auto workbooks = listWorkbooksWithPath();
-      for (auto[name, path]: workbooks)
-        handler(path.c_str(), name.c_str());
+      for (const auto& wb : App::workbooks())
+        handler(wb.path().c_str(), wb.name().c_str());
     }
 
     void createWorkbookOpenHandler(const wchar_t* starredPattern)

@@ -4,6 +4,7 @@
 #include <xloil/ExcelArray.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/XlCallSlim.h>
+#include <xloil/AppObjects.h>
 #include <xlOilHelpers/Environment.h>
 #include <array>
 
@@ -91,7 +92,7 @@ namespace
   {
     DWORD pid = 0;
     const char* windowName;
-    auto& state = xloil::State::excelState();
+    auto& state = xloil::App::internals();
     if (state.version < 13)
       windowName = "";
     else

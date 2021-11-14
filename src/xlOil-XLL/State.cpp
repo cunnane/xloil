@@ -2,6 +2,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
+#include <xloil/AppObjects.h>
 #include <filesystem>
 
 namespace xloil
@@ -12,7 +13,7 @@ namespace xloil
 
     static std::wstring ourDllName;
     static std::wstring ourDllPath;
-    static State::ExcelState ourExcelState;
+    static App::ExcelInternals ourExcelState;
 
     void setDllPath(HMODULE handle)
     {
@@ -49,7 +50,7 @@ namespace xloil
   {
     XLOIL_EXPORT void initAppContext()
     {
-      ourExcelState = ExcelState
+      ourExcelState = App::ExcelInternals
       {
         getExcelVersion(),
         getExcelHInstance(),
@@ -78,7 +79,11 @@ namespace xloil
     {
       return ourDllName.c_str();
     }
-    XLOIL_EXPORT ExcelState& excelState() noexcept
+  }
+
+  namespace App
+  {
+    XLOIL_EXPORT const ExcelInternals& internals() noexcept
     {
       return ourExcelState;
     }

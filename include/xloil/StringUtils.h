@@ -278,4 +278,10 @@ namespace xloil
     return detail::captureStringBufferImpl<wchar_t, F>(bufWriter, initialSize);
   }
 
+  template <class Elem> inline
+   std::basic_string<Elem>& toLower(std::basic_string<Elem>&& str)
+  {
+    std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
+    return str;
+  }
 }

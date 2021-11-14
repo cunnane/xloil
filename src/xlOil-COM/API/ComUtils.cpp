@@ -4,6 +4,7 @@
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComAddin.h>
 #include <xlOil-COM/ComVariant.h>
+#include <xloil/AppObjects.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
@@ -40,6 +41,7 @@ namespace xloil
   {
     _window->AddRef();
   }
+  
   ExcelWindow::ExcelWindow(const wchar_t* caption)
   {
     try
@@ -52,23 +54,17 @@ namespace xloil
     }
     XLO_RETHROW_COM_ERROR;
   }
-  ExcelWindow::~ExcelWindow()
-  {
-    if (_window)
-      _window->Release();
-  }
   size_t ExcelWindow::hwnd() const
   {
     return (size_t)_window->Hwnd;
   }
-  std::wstring ExcelWindow::caption() const
+  std::wstring ExcelWindow::name() const
   {
     return _window->Caption.bstrVal;
   }
-  std::wstring ExcelWindow::workbook() const
+  ExcelWorkbook ExcelWindow::workbook() const
   {
-    auto wb = Excel::_WorkbookPtr(_window->Parent);
-    return wb->Name.GetBSTR();
+    return ExcelWorkbook(Excel::_WorkbookPtr(_window->Parent));
   }
   void statusBarMsg(const std::wstring_view& msg, size_t timeout)
   {
@@ -77,16 +73,86 @@ namespace xloil
     if (timeout > 0)
       runExcelThread([]() { excelApp().PutStatusBar(0, _bstr_t()); }, ExcelRunQueue::COM_API, 10, 200, timeout);
   }
-  std::vector<std::shared_ptr<ExcelWindow>> workbookWindows(const wchar_t* wbName)
+
+  IAppObject::~IAppObject()
+  {
+    auto p = basePtr();
+    if (p)
+      p->Release();
+  }
+  ExcelWorkbook::ExcelWorkbook(Excel::_Workbook* p)
+    : _wb(p)
+  {
+    p->AddRef();
+  }
+
+  ExcelWorkbook::ExcelWorkbook(const wchar_t* name)
   {
     try
     {
-      auto wb = wbName ? excelApp().Workbooks->GetItem(wbName) : excelApp().ActiveWorkbook;
-      vector<shared_ptr<ExcelWindow>> result(wb->Windows->Count);
-      for (auto i = 0; i < result.size(); ++i)
-        result[i].reset(new ExcelWindow(wb->Windows->GetItem(i)));
+      auto ptr = name
+        ? excelApp().Workbooks->GetItem(name)
+        : excelApp().ActiveWorkbook;
+      _wb = ptr;
+      ptr->AddRef();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  std::wstring ExcelWorkbook::name() const
+  {
+    return _wb->Name;
+  }
+
+  std::wstring ExcelWorkbook::path() const
+  {
+    return _wb->Path;
+  }
+  std::vector<ExcelWindow> ExcelWorkbook::windows() const
+  {
+    try
+    {
+      vector<ExcelWindow> result;
+      for (auto i = 0; i < _wb->Windows->Count; ++i)
+        result.emplace_back(_wb->Windows->GetItem(i));
       return result;
     }
     XLO_RETHROW_COM_ERROR;
+  }
+
+  void ExcelWorkbook::activate() const
+  {
+    _wb->Activate();
+  }
+
+  namespace App
+  {
+    ExcelWorkbook activeWorkbook()
+    {
+      return ExcelWorkbook();
+    }
+
+    std::vector<ExcelWorkbook> workbooks()
+    {
+      auto& app = excelApp();
+      vector<ExcelWorkbook> result;
+      for (auto i = 1; i <= app.Workbooks->Count; ++i)
+        result.emplace_back(app.Workbooks->GetItem(i));
+      return std::move(result);
+    }
+
+    ExcelWindow activeWindow()
+    {
+      return ExcelWindow();
+    }
+    std::vector<ExcelWindow> windows()
+    {
+      auto& app = excelApp();
+      vector<ExcelWindow> result;
+      for (auto i = 1; i <= app.Windows->Count; ++i)
+        result.emplace_back(app.Windows->GetItem(i));
+      return std::move(result);
+    }
+
   }
 }

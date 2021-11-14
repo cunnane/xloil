@@ -1,6 +1,6 @@
 #include <xloil/ExcelRange.h>
 #include <xlOil/ExcelRef.h>
-#include <xlOil-COM/ComRange.h>
+#include <xlOil/AppObjects.h>
 #include <xlOil-COM/XllContextInvoke.h>
 
 namespace xloil
@@ -10,6 +10,6 @@ namespace xloil
     if (InXllContext::check())
       return new XllRange(ExcelRef(address));
     else
-      return new COM::ComRange(address);
+      return new ExcelRange(address);
   }
 }

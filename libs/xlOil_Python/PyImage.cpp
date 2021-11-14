@@ -1,6 +1,6 @@
 #include "PyImage.h"
 #include "PyHelpers.h"
-#include <xlOil/State.h>
+#include <xlOil/AppObjects.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -47,7 +47,7 @@ namespace xloil
       const auto height = py::cast<int>(size[1]);
 
       // Retrieve the handle to a display device context for the Excel window 
-      const auto hwnd = (HWND)State::excelState().hWnd;
+      const auto hwnd = (HWND)App::internals().hWnd;
       auto hdcWindow = GetDC(hwnd);
 
       // Create a colour compatible device context and bitmap to receive the image

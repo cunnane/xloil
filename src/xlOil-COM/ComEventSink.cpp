@@ -1,8 +1,8 @@
 
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 #include "ClassFactory.h"
 #include "Connect.h"
-#include "ComRange.h"
 #include "XllContextInvoke.h"
 #include <xlOil/Events.h>
 #include <xlOil/ExcelApp.h>
@@ -95,7 +95,7 @@ namespace xloil
         if (Event::SheetSelectionChange().handlers().empty())
           return;
         Event::SheetSelectionChange().fire(
-          ((Worksheet*)Sh)->Name, ComRange(Target));
+          ((Worksheet*)Sh)->Name, ExcelRange(Target));
       }
       void SheetBeforeDoubleClick(
         IDispatch* Sh,
@@ -107,7 +107,7 @@ namespace xloil
 
         bool cancel = *Cancel;
         Event::SheetBeforeDoubleClick().fire(
-          ((Worksheet*)Sh)->Name, ComRange(Target), cancel);
+          ((Worksheet*)Sh)->Name, ExcelRange(Target), cancel);
         *Cancel = cancel ? -1 : 0;
       }
       void SheetBeforeRightClick(
@@ -120,7 +120,7 @@ namespace xloil
 
         bool cancel = *Cancel;
         Event::SheetBeforeRightClick().fire(
-          ((Worksheet*)Sh)->Name, ComRange(Target), cancel);
+          ((Worksheet*)Sh)->Name, ExcelRange(Target), cancel);
         *Cancel = cancel ? -1 : 0;
       }
       void SheetActivate(IDispatch* Sh)
@@ -144,7 +144,7 @@ namespace xloil
         if (Event::SheetChange().handlers().empty())
           return;
         Event::SheetChange().fire(
-          ((Worksheet*)Sh)->Name, ComRange(Target));
+          ((Worksheet*)Sh)->Name, ExcelRange(Target));
       }
       void WorkbookOpen(Workbook* Wb)
       {

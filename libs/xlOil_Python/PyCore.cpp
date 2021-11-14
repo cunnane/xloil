@@ -1,11 +1,12 @@
 #include "PyCore.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
-#include "TypeConversion/BasicTypes.h"
+#include <TypeConversion/BasicTypes.h>
 #include <xlOil/ExcelApp.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
-#include <xloil/State.h>
+#include <xloil/AppObjects.h>
+
 #include <map>
 
 using std::shared_ptr;
@@ -30,6 +31,44 @@ namespace xloil
       auto cleanupGlobals = Event_PyBye().bind([] {
         theCustomReturnConverter.reset();
       });
+      void initialiseCore(py::module& mod);
+    }
+
+    class BinderRegistry
+    {
+    public:
+      static BinderRegistry& get() {
+        static BinderRegistry instance;
+        return instance;
+      }
+
+      auto add(BinderFunc f, size_t priority)
+      {
+        return theFunctions.insert(make_pair(priority, f));
+      }
+
+      void bindAll(py::module& mod)
+      {
+        std::for_each(theFunctions.rbegin(), theFunctions.rend(),
+          [&mod](auto f) { f.second(mod); });
+      }
+    private:
+      BinderRegistry() {}
+      std::multimap<size_t, BinderFunc> theFunctions;
+    };
+
+    PyObject* buildInjectedModule()
+    {
+      auto mod = py::module(theInjectedModuleName);
+      initialiseCore(mod);
+      BinderRegistry::get().bindAll(mod);
+      return mod.release().ptr();
+    }
+
+    int addBinder(std::function<void(pybind11::module&)> binder)
+    {
+      BinderRegistry::get().add(binder, 1);
+      return 0;
     }
 
     namespace
@@ -107,7 +146,44 @@ namespace xloil
         theCustomReturnConverter = conv;
       }
 
-      class CannotConvert {};
+      struct CannotConvert {};
+
+      template<class T, class TList, TList f_enumerate, class TActive, TActive f_active>
+      struct Collection
+      {
+        struct Iter
+        {
+          vector<T> _workbooks;
+          size_t i = 0;
+          Iter() : _workbooks(f_enumerate()) {}
+          Iter(const Iter&) = delete;
+          auto next()
+          {
+            if (i >= _workbooks.size())
+              throw py::stop_iteration();
+            return std::move(_workbooks[i++]);
+          }
+        };
+        auto getitem(const wstring& name)
+        {
+          try
+          {
+            return T(name.c_str());
+          }
+          catch (...)
+          {
+            throw py::key_error();
+          }
+        }
+        auto iter()
+        {
+          return new Iter();
+        }
+        auto active()
+        {
+          return std::move(f_active());
+        }
+      };
 
       void initialiseCore(pybind11::module& mod)
       {
@@ -130,40 +206,42 @@ namespace xloil
           .def("__call__", &LogWriter::writeToLog, py::arg("msg"), py::arg("level") = 20)
           .def_property("level", &LogWriter::getLogLevel, &LogWriter::setLogLevel);
 
-        mod.def("run_later",
+        // TODO: consider rename to app_run ?
+        mod.def("excel_run",
           &runLater,
           py::arg("func"),
           py::arg("num_retries") = 10,
           py::arg("retry_delay") = 500,
           py::arg("wait_time") = 0);
 
-        py::class_<State::ExcelState>(mod, "ExcelState")
-          .def_readonly("version", &State::ExcelState::version)
-          .def_readonly("hinstance", &State::ExcelState::hInstance)
-          .def_readonly("hwnd", &State::ExcelState::hWnd)
-          .def_readonly("main_thread_id", &State::ExcelState::mainThreadId);
+        py::class_<App::ExcelInternals>(mod, "ExcelState")
+          .def_readonly("version", &App::ExcelInternals::version)
+          .def_readonly("hinstance", &App::ExcelInternals::hInstance)
+          .def_readonly("hwnd", &App::ExcelInternals::hWnd)
+          .def_readonly("main_thread_id", &App::ExcelInternals::mainThreadId);
 
-        // TODO: rename to excel_state (also in xloil.py)
-        mod.def("get_excel_state", State::excelState);
+        // TODO: rename to app_state? (also in xloil.py)
+        mod.def("excel_state", App::internals);
 
         py::class_<CallerInfo>(mod, "Caller")
           .def(py::init<>())
           .def_property_readonly("sheet",
             [](const CallerInfo& self)
-        {
-          const auto name = self.sheetName();
-          return name.empty() ? py::none() : py::wstr(wstring(name));
-        })
+            {
+              const auto name = self.sheetName();
+              return name.empty() ? py::none() : py::wstr(wstring(name));
+            })
           .def_property_readonly("workbook",
             [](const CallerInfo& self)
-        {
-          const auto name = self.workbook();
-          return name.empty() ? py::none() : py::wstr(wstring(name));
-        })
-          .def("address", [](const CallerInfo& self, bool x)
-        {
-          return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
-        }, py::arg("a1style") = false);
+            {
+              const auto name = self.workbook();
+              return name.empty() ? py::none() : py::wstr(wstring(name));
+            })
+          .def("address",
+            [](const CallerInfo& self, bool x)
+            {
+              return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
+            }, py::arg("a1style") = false);
 
 
         comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
@@ -178,43 +256,39 @@ namespace xloil
 
           cellErrorType = (PyTypeObject*)eType.ptr();
         }
+
+        py::class_<ExcelWorkbook>(mod, "ExcelWorkbook")
+          .def_property_readonly("name", &ExcelWorkbook::name)
+          .def_property_readonly("path", &ExcelWorkbook::path);
+
+        py::class_<ExcelWindow>(mod, "ExcelWindow")
+          .def_property_readonly("hwnd", &ExcelWindow::hwnd)
+          .def_property_readonly("name", &ExcelWindow::name)
+          .def_property_readonly("workbook", &ExcelWindow::workbook);
+
+        using Workbooks = Collection<ExcelWorkbook, decltype(App::workbooks), App::workbooks, decltype(App::activeWorkbook), App::activeWorkbook>;
+        using Windows   = Collection<ExcelWindow, decltype(App::windows), App::windows, decltype(App::activeWindow), App::activeWindow>;
+
+        py::class_<Workbooks::Iter>(mod, "ExcelWorkbooksIter")
+          .def("__iter__", [](py::object self) { return self; })
+          .def("__next__", &Workbooks::Iter::next);
+
+        py::class_<Workbooks>(mod, "ExcelWorkbooks")
+          .def("__getitem__", &Workbooks::getitem)
+          .def("__iter__", &Workbooks::iter)
+          .def("active", &Workbooks::active);
+
+        py::class_<Windows::Iter>(mod, "ExcelWindowsIter")
+          .def("__iter__", [](py::object self) { return self; })
+          .def("__next__", &Windows::Iter::next);
+
+        py::class_<Windows>(mod, "ExcelWindows")
+          .def("__getitem__", &Windows::getitem)
+          .def("__iter__", &Windows::iter)
+          .def("active", &Windows::active);
+
+        mod.add_object("workbooks", py::cast(Workbooks(), py::return_value_policy::take_ownership));
+        mod.add_object("windows",   py::cast(Windows(),   py::return_value_policy::take_ownership));
       }
-   
-      class BinderRegistry
-      {
-      public:
-        static BinderRegistry& get() {
-          static BinderRegistry instance;
-          return instance;
-        }
-
-        auto add(BinderFunc f, size_t priority)
-        {
-          return theFunctions.insert(make_pair(priority, f));
-        }
-
-        void bindAll(py::module& mod)
-        {
-          std::for_each(theFunctions.rbegin(), theFunctions.rend(),
-            [&mod](auto f) { f.second(mod); });
-        }
-      private:
-        BinderRegistry() {}
-        std::multimap<size_t, BinderFunc> theFunctions;
-      };
-    }
-
-    PyObject* buildInjectedModule()
-    {
-      auto mod = py::module(theInjectedModuleName);
-      initialiseCore(mod);
-      BinderRegistry::get().bindAll(mod);
-      return mod.release().ptr();
-    }
-
-    int addBinder(std::function<void(pybind11::module&)> binder)//, size_t priority)
-    {
-      BinderRegistry::get().add(binder, 1);
-      return 0;
     }
 } }

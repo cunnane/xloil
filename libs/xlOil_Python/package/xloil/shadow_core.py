@@ -1,4 +1,5 @@
 from ._common import *
+import typing
 
 #
 # If the xloil_core module can be found, we are being called from an xlOil
@@ -12,12 +13,13 @@ if XLOIL_HAS_CORE:
         CellError, Range, ExcelArray, in_wizard, 
         event, cache, RtdServer, RtdPublisher, get_event_loop,
         deregister_functions,
-        ExcelUI, run_later, 
-        get_excel_state, Caller,
+        ExcelUI, excel_run, excel_state,
+        Caller,
         CannotConvert, 
         from_excel_date,
         insert_cell_image,
-        TaskPaneFrame as TaskPaneFrame)
+        TaskPaneFrame as TaskPaneFrame,
+        workbooks, windows)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -30,7 +32,7 @@ else:
         """
         pass
 
-    def run_later(func,
+    def excel_run(func,
             num_retries = 10,
             retry_delay = 500,
             wait_time = 0):
@@ -63,7 +65,7 @@ else:
         hwnd = int()
         main_thread_id = int()
 
-    def get_excel_state() -> _ExcelState:
+    def excel_state() -> _ExcelState:
         """
         Gives information about the Excel application, in particular the handles required 
         to interact with Excel via the Win32 API. The function returns a class with the 
@@ -739,6 +741,37 @@ else:
         """
         pass
 
+
+    class ExcelWorkbook:
+        @property
+        def name(self):
+            ...
+
+        @property
+        def path(self):
+            ...
+
+    class ExcelWindow:
+        @property
+        def name(self):
+            ...
+        @property
+        def hwnd(self):
+            ...
+        @property
+        def workbook(self) -> ExcelWorkbook:
+            ...
+
+    class _Collection(typing.Generic[VT]):
+        def __iter__(self):
+            ...
+        def __getitem__(self, i: str) -> VT:
+            ...
+
+    workbooks:_Collection[ExcelWorkbook]
+    windows:_Collection[ExcelWindow]
+
+
 _task_panes = set()
 
 class CustomTaskPane:
@@ -802,7 +835,7 @@ def find_task_pane(title=None, workbook=None):
         `xloil.CustomTaskPane` objects.
     """
 
-    hwnds = xloil_core.workbook_hwnds(workbook)
+    hwnds = [x.hwnd for x in windows]
     found = [x for x in _task_panes if x.pane.window.hwnd in hwnds]
     if title is None:
         return found

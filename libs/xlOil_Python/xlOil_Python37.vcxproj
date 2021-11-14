@@ -94,7 +94,6 @@
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />
     <ClInclude Include="PyCache.h" />
-    <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="PySource.h" />
     <ClInclude Include="Main.h" />

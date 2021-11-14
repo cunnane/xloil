@@ -3,6 +3,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
 #include <xlOil/Loaders/EntryPoint.h>
+#include <xloil/AppObjects.h>
 #include <xloil/State.h>
 #include <xlOil/Throw.h>
 #include <xlOilHelpers/Exception.h>
@@ -42,7 +43,7 @@ namespace xloil
 
     void loggerInitPopupWindow()
     {
-      auto& state = State::excelState();
+      auto& state = App::internals();
       auto logWindow = makeLogWindowSink(
         (HWND)state.hWnd,
         (HINSTANCE)State::coreModuleHandle());

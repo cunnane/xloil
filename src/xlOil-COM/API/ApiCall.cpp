@@ -1,4 +1,5 @@
 #include <xlOil/ExcelApp.h>
+#include <xloil/AppObjects.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/Connect.h>
@@ -30,7 +31,7 @@ namespace xloil
       WNDCLASS wc;
       memset(&wc, 0, sizeof(WNDCLASS));
       wc.lpfnWndProc   = WindowProc;
-      wc.hInstance     = (HINSTANCE)State::excelState().hInstance;
+      wc.hInstance     = (HINSTANCE)App::internals().hInstance;
       wc.lpszClassName = L"xlOilHidden";
       if (RegisterClass(&wc) == 0)
         XLO_ERROR(L"Failed to register window class: {0}", writeWindowsError());
@@ -219,7 +220,7 @@ namespace xloil
   bool isMainThread()
   {
     // TODO: would a thread-local bool be quicker here?
-    return State::excelState().mainThreadId == GetCurrentThreadId();
+    return App::internals().mainThreadId == GetCurrentThreadId();
   }
 
   void runExcelThreadImpl(
