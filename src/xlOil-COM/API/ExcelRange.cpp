@@ -37,10 +37,7 @@ namespace xloil
         return ExcelRef(sheetId.val.mref.idSheet,
           fromRow, fromCol, fromRow + nRows - 1, fromCol + nCols - 1);
       }
-      catch (_com_error& error)
-      {
-        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-      }
+      XLO_RETHROW_COM_ERROR;
     }
   }
 
@@ -48,33 +45,35 @@ namespace xloil
   {
     try
     {
-      auto& app = excelApp();
-      _range = app.GetRange(_variant_t(address));
+      auto rangePtr = excelApp().GetRange(_variant_t(address));
+      _range = rangePtr;
+      _range->AddRef();
     }
-    catch (_com_error& error)
-    {
-      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-    }
+    XLO_RETHROW_COM_ERROR;
   }
   ExcelRange::ExcelRange(Excel::Range* range)
     : _range(range)
   {
-    range->AddRef();
+    _range->AddRef();
   }
 
   Range* ExcelRange::range(
     int fromRow, int fromCol,
     int toRow, int toCol) const
   {
-    if (toRow == Range::TO_END)
-      toRow = _range->Row + _range->Rows->GetCount();
-    if (toCol == Range::TO_END)
-      toCol = _range->Column + _range->Columns->GetCount();
+    try
+    {
+      if (toRow == Range::TO_END)
+        toRow = _range->Row + _range->Rows->GetCount();
+      if (toCol == Range::TO_END)
+        toCol = _range->Column + _range->Columns->GetCount();
 
-    auto r = _range->GetRange(
-      _range->Cells->Item[fromRow - 1][fromCol - 1],
-      _range->Cells->Item[toRow - 1][toCol - 1]);
-    return new ExcelRange(r);
+      auto r = _range->GetRange(
+        _range->Cells->Item[fromRow - 1][fromCol - 1],
+        _range->Cells->Item[toRow - 1][toCol - 1]);
+      return new ExcelRange(r);
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
 
@@ -102,10 +101,7 @@ namespace xloil
         : _range->GetAddressLocal(true, true, Excel::xlA1);
       return std::wstring(result);
     }
-    catch (_com_error& error)
-    {
-      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelObj ExcelRange::value() const
@@ -129,10 +125,7 @@ namespace xloil
       COM::excelObjToVariant(&v, value);
       _range->PutValue2(_variant_t(v, false)); // Move variant
     }
-    catch (_com_error& error)
-    {
-      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-    }
+    XLO_RETHROW_COM_ERROR;
   }
   void ExcelRange::clear()
   {

@@ -64,7 +64,11 @@ namespace xloil
   }
   ExcelWorkbook ExcelWindow::workbook() const
   {
-    return ExcelWorkbook(Excel::_WorkbookPtr(_window->Parent));
+    try
+    {
+      return ExcelWorkbook(Excel::_WorkbookPtr(_window->Parent));
+    }
+    XLO_RETHROW_COM_ERROR;
   }
   void statusBarMsg(const std::wstring_view& msg, size_t timeout)
   {
@@ -113,7 +117,7 @@ namespace xloil
     try
     {
       vector<ExcelWindow> result;
-      for (auto i = 0; i < _wb->Windows->Count; ++i)
+      for (auto i = 1; i <= _wb->Windows->Count; ++i)
         result.emplace_back(_wb->Windows->GetItem(i));
       return result;
     }
@@ -134,11 +138,15 @@ namespace xloil
 
     std::vector<ExcelWorkbook> workbooks()
     {
-      auto& app = excelApp();
-      vector<ExcelWorkbook> result;
-      for (auto i = 1; i <= app.Workbooks->Count; ++i)
-        result.emplace_back(app.Workbooks->GetItem(i));
-      return std::move(result);
+      try
+      {
+        auto& app = excelApp();
+        vector<ExcelWorkbook> result;
+        for (auto i = 1; i <= app.Workbooks->Count; ++i)
+          result.emplace_back(app.Workbooks->GetItem(i));
+        return std::move(result);
+      }
+      XLO_RETHROW_COM_ERROR;
     }
 
     ExcelWindow activeWindow()
@@ -147,12 +155,15 @@ namespace xloil
     }
     std::vector<ExcelWindow> windows()
     {
-      auto& app = excelApp();
-      vector<ExcelWindow> result;
-      for (auto i = 1; i <= app.Windows->Count; ++i)
-        result.emplace_back(app.Windows->GetItem(i));
-      return std::move(result);
+      try
+      {
+        auto& app = excelApp();
+        vector<ExcelWindow> result;
+        for (auto i = 1; i <= app.Windows->Count; ++i)
+          result.emplace_back(app.Windows->GetItem(i));
+        return std::move(result);
+      }
+      XLO_RETHROW_COM_ERROR;
     }
-
   }
 }
