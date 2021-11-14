@@ -767,6 +767,9 @@ else:
             ...
         def __getitem__(self, i: str) -> VT:
             ...
+        @property
+        def active(self) -> VT:
+            ...
 
     workbooks:_Collection[ExcelWorkbook]
     windows:_Collection[ExcelWindow]

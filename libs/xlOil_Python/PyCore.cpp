@@ -276,7 +276,7 @@ namespace xloil
         py::class_<Workbooks>(mod, "ExcelWorkbooks")
           .def("__getitem__", &Workbooks::getitem)
           .def("__iter__", &Workbooks::iter)
-          .def("active", &Workbooks::active);
+          .def_property_readonly("active", &Workbooks::active);
 
         py::class_<Windows::Iter>(mod, "ExcelWindowsIter")
           .def("__iter__", [](py::object self) { return self; })
@@ -285,7 +285,7 @@ namespace xloil
         py::class_<Windows>(mod, "ExcelWindows")
           .def("__getitem__", &Windows::getitem)
           .def("__iter__", &Windows::iter)
-          .def("active", &Windows::active);
+          .def_property_readonly("active", &Windows::active);
 
         mod.add_object("workbooks", py::cast(Workbooks(), py::return_value_policy::take_ownership));
         mod.add_object("windows",   py::cast(Windows(),   py::return_value_policy::take_ownership));
