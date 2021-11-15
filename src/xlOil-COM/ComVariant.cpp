@@ -4,7 +4,6 @@
 #include <xlOil/ExcelRange.h>
 #include <xloil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
-#include "COMRange.h"
 #include <xlOil/ExcelTypeLib.h>
 
 using std::shared_ptr;
@@ -171,10 +170,11 @@ namespace xloil
           XLO_THROW("Unexpected variant type: could not convert to Range");
         
         auto xlRef = ExcelRef(pRange->GetAddress(true, true, Excel::xlA1));
+        //TODO: surely pRange->Release();
         variant.pdispVal->Release();
-
+        
         if (allowRange)
-          return xlRef; // Should use move conversion
+          return xlRef;
         else
           // Probably faster than variantToExcelObj(pRange->Value2).
           return xlRef.value(); 
