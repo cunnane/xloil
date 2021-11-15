@@ -20,11 +20,13 @@ namespace xloil
 
 
     template<typename F>
-    inline auto runPython(F&& f) ->std::future<decltype(f(0))> {
-      auto pck = std::make_shared<std::packaged_task<decltype(f(0))(int)>>(std::forward<F>(f));
-      auto _f = std::function<void(int id)>([pck](int id) {
-        (*pck)(id);
-      });
+    inline auto runPython(F&& f) -> std::future<decltype(f())> 
+    {
+      auto pck = std::make_shared<std::packaged_task<decltype(f())()>>(std::forward<F>(f));
+      auto _f = std::function<void(int /*id*/)>(
+        [pck](int id) {
+          (*pck)();
+        });
       runPython(std::move(_f));
       return pck->get_future();
     }
