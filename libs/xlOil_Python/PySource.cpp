@@ -101,26 +101,27 @@ namespace xloil
         std::error_code err;
         if (!fs::exists(modulePath, err))
           return;
-
-        try
-        {
+  
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
           FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
+
           runPython([modulePath, workbook = wstring(wbName)](int)
           {
-            StatusBar status(5000);
-            status.msg(L"Loading " + workbook + L"...");
-            auto loaded = loadModuleFromFile(modulePath.c_str(), workbook.c_str());
-            scanModule(loaded);
-            status.msg(L"Finished loading " + workbook);
+            try
+            {
+              StatusBar status(5000);
+              status.msg(L"Loading " + workbook + L"...");
+              auto loaded = loadModuleFromFile(modulePath.c_str(), workbook.c_str());
+              scanModule(loaded);
+              status.msg(L"Finished loading " + workbook);
+            }
+            catch (const std::exception& e)
+            {
+              XLO_ERROR(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
+            }
           });
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
-        }
       }
     };
 
