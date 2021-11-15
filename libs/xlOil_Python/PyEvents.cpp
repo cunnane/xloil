@@ -88,9 +88,16 @@ namespace xloil
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
 
         XLO_INFO("Event {} added handler {}", _event.name(), (void*)obj.ptr());
-        // We use a weakref to avoid dangling pointers to event handlers
-        // the callback calls this->remove(ptr)
-        _handlers.push_back(py::weakref(obj, _refRemover));
+
+        // We use a weakref to avoid dangling pointers to event handlers.
+        // For bound methods, we need the WeakMethod class to avoid them
+        // being immediately deleted.
+
+        if (py::hasattr(obj, "__self__"))
+          _handlers.push_back(py::module::import("weakref").attr("WeakMethod")(obj));
+        else
+          _handlers.push_back(py::weakref(obj, _refRemover));
+
         return *this;
       }
 
@@ -120,10 +127,10 @@ namespace xloil
           py::gil_scoped_acquire get_gil;
           for (auto& h : _handlers)
           {
-            auto* handler = PyWeakref_GET_OBJECT(h.ptr());
+            auto handler = h();
             // See above for the purpose of ReplaceArithmeticRef
-            if (handler != Py_None)
-              py::cast<py::function>(handler)(ReplaceArithmeticRef<Args>()(args)...);
+            if (!handler.is_none())
+              handler(ReplaceArithmeticRef<Args>()(args)...);
           }
         }
         catch (const py::error_already_set& e)
