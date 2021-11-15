@@ -157,14 +157,14 @@ namespace xloil
           size_t i = 0;
           Iter() : _workbooks(f_enumerate()) {}
           Iter(const Iter&) = delete;
-          auto next()
+          T next()
           {
             if (i >= _workbooks.size())
               throw py::stop_iteration();
             return std::move(_workbooks[i++]);
           }
         };
-        auto getitem(const wstring& name)
+        T getitem(const wstring& name)
         {
           try
           {
@@ -179,7 +179,7 @@ namespace xloil
         {
           return new Iter();
         }
-        auto active()
+        T active()
         {
           return std::move(f_active());
         }
@@ -287,8 +287,9 @@ namespace xloil
           .def("__iter__", &Windows::iter)
           .def_property_readonly("active", &Windows::active);
 
-        mod.add_object("workbooks", py::cast(Workbooks(), py::return_value_policy::take_ownership));
-        mod.add_object("windows",   py::cast(Windows(),   py::return_value_policy::take_ownership));
+        // Use 'new' with this return value policy or we get a segfault later. 
+        mod.add_object("workbooks", py::cast(new Workbooks(), py::return_value_policy::take_ownership));
+        mod.add_object("windows",   py::cast(new Windows(),   py::return_value_policy::take_ownership));
       }
     }
 } }
