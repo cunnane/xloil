@@ -240,6 +240,7 @@ namespace xloil
       {
         try
         {
+          _closeHandler.reset();
           _panes.clear();
           disconnect();
         }
