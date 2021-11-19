@@ -202,13 +202,17 @@ def find_return_converter(ret_type: type):
 
     return ret_con
 
-def _create_event_loop():
+
+def _get_event_loop():
     import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop
+    _async_function_loop = asyncio.new_event_loop()
+    #asyncio.set_event_loop(_async_function_loop) # Required?
+    return _async_function_loop
 
 import contextvars
+# This is a thread-local variable to get Caller to behave like a static
+# but work properly on different threads and when used in an async funcion
+# where normally xlfCaller is not available.
 _async_caller = contextvars.ContextVar('async_caller')
 
 class Caller:
@@ -257,11 +261,10 @@ def async_wrapper(fn):
     @functools.wraps(fn)
     def synchronised(xloil_thread_context, *args, **kwargs):
 
-        loop = get_event_loop()
         ctx = xloil_thread_context
 
         async def run_async():
-            _async_caller.set(ctx.caller())
+            _async_caller.set(ctx.caller)
             try:
                 # TODO: is inspect.isasyncgenfunction expensive?
                 if inspect.isasyncgenfunction(fn):
@@ -278,22 +281,9 @@ def async_wrapper(fn):
                 
             ctx.set_done()
             
-        ctx.set_task(asyncio.run_coroutine_threadsafe(run_async(), loop))
+        ctx.set_task(asyncio.run_coroutine_threadsafe(run_async(), ctx.loop))
 
     return synchronised
-
-def _pump_message_loop(loop, timeout):
-    """
-    Called internally to run the asyncio message loop. Returns the number of active tasks
-    """
-    import asyncio
-
-    async def wait():
-        await asyncio.sleep(timeout)
-    
-    loop.run_until_complete(wait())
-
-    return len([task for task in asyncio.all_tasks(loop) if not task.done()])
 
 
 class _WorksheetFunc:
@@ -492,7 +482,7 @@ def scan_module(module):
         
 def register_functions(funcs, module=None, append=True):
     """
-        Registers the provided callables and associates tehm with the given modeule
+        Registers the provided callables and associates them with the given modeule
 
         Parameters
         ----------
@@ -503,9 +493,9 @@ def register_functions(funcs, module=None, append=True):
             Passing one of the other two allows control over the registration such as changing
             the function or argument names.
         module: python module
-            A python module which is the source of the functions. If this module is edited 
-            it is automatically reloaded and the functions re-registered. Passing None disables
-            this behaviour
+            A python module which contains the source of the functions (it does not have to be the. 
+            module calling this function). If this module is edited it is automatically reloaded
+            and the functions re-registered. Passing None disables this behaviour.
         append: bool
             Whether to append to or overwrite any existing functions associated with the module
     """

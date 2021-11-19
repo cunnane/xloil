@@ -96,6 +96,7 @@
     <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EventLoop.h" />
     <ClInclude Include="TypeConversion\ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />

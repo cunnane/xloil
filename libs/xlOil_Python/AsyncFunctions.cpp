@@ -4,6 +4,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
+#include "EventLoop.h"
 #include <xloil/ExcelObj.h>
 #include <xloil/Async.h>
 #include <xloil/RtdServer.h>
@@ -25,152 +26,11 @@ namespace xloil
 {
   namespace Python
   {
-    class EventLoopController
-    {
-      std::atomic<bool> _stopped = true;
-      std::future<void> _loopRunner;
-      ctpl::thread_pool _thread;
-      std::shared_ptr<const void> _shutdownHandler;
-      py::object _eventLoop;
-      py::object _runLoopFunction;
-      py::object _callSoonFunction;
-
-      EventLoopController()
-        : _thread(1)
-      {
-        py::gil_scoped_release releaseGil;
-
-        // We create a hanging reference in gil_scoped_aquire to prevent it 
-        // destroying the python thread state. The thread state contains thread 
-        // locals used by asyncio to find the event loop for that thread and avoid
-        // creating a new one.
-        _thread.push([self = this](int) mutable
-          {
-            try
-            {
-              py::gil_scoped_acquire getGil;
-              getGil.inc_ref();
-              // TODO: not sure calling back into xloil.register is that cool a design...
-              const auto xloilMod = py::module::import("xloil.register");
-              self->_eventLoop = xloilMod.attr("_create_event_loop")();
-              self->_runLoopFunction = xloilMod.attr("_pump_message_loop");
-              self->_callSoonFunction = self->_eventLoop.attr("call_soon_threadsafe");
-            }
-            catch (const std::exception& e)
-            {
-              XLO_ERROR("Failed to initialise python worker thread: {0}", e.what());
-            }
-          }
-        ).wait();
-
-        if (!_runLoopFunction.ptr())
-          XLO_THROW("Cannot start python worker thread");
-
-        _shutdownHandler = std::static_pointer_cast<const void>(
-          Event_PyBye().bind([self = this]
-          {
-            self->shutdown();
-          })
-        );
-        
-        start();
-      }
-
-      EventLoopController(const EventLoopController&) = delete;
-      EventLoopController& operator=(const EventLoopController&) = delete;
-
-    public:
-      void start()
-      {
-        if (!_stopped)
-          return;
-        
-        _loopRunner = _thread.push(
-          [this](int)
-          {
-          _stopped = false;
-            try
-            {
-              constexpr double timeout = 0.5; // seconds 
-              bool tasks = true;
-              do
-              {
-                py::gil_scoped_acquire getGil;
-                tasks = _runLoopFunction(this->_eventLoop, timeout).cast<int>() > 0;
-              } while (!_stopped && tasks);
-            }
-            catch (const std::exception& e)
-            {
-              XLO_ERROR("Error running asyncio loop: {0}", e.what());
-            }
-            _stopped = true;
-          }
-        );
-      }
-
-
-      bool stopped()
-      {
-        return _stopped;
-      }
-
-      py::object getEventLoop() const
-      {
-        return _eventLoop;
-      }
-
-      void callback(const py::object& func)
-      {
-        if (!active())
-          return;
-        _callSoonFunction(func);
-      }
-      static EventLoopController& instance()
-      {
-        static EventLoopController instance;
-        return instance;
-      }
-      
-    private:
-      void stop()
-      {
-        _stopped = true;
-        // Must wait for the loop to stop, otherwise we may switch the stop
-        // flag back without it ever being checked
-        if (_loopRunner.valid())
-          _loopRunner.wait();
-      }
-
-      void shutdown()
-      {
-        stop();
-        // Resolve the hanging reference in gil_scoped_aquire and destroy
-        // the python thread state
-        _thread.push([](int)
-        {
-          py::gil_scoped_acquire acquire;
-          acquire.dec_ref();
-        }).wait();
-
-        _thread.stop();
-
-        py::gil_scoped_acquire acquire;
-        _eventLoop = py::object();
-        _runLoopFunction = py::object();
-        _callSoonFunction = py::object();
-      }
-
-      bool active()
-      {
-        return _thread.size() > 0;
-      }
-    };
-
     auto& eventLoopController()
     {
-      return EventLoopController::instance();
+      static EventLoop loop;
+      return loop;
     }
-
 
     struct AsyncReturn : public AsyncHelper
     {
@@ -181,7 +41,9 @@ namespace xloil
         : AsyncHelper(asyncHandle)
         , _returnConverter(returnConverter)
         , _caller(std::move(caller))
-      {}
+      {
+        eventLoopController(); // Ensure loop is started
+      }
 
       ~AsyncReturn()
       {
@@ -195,7 +57,6 @@ namespace xloil
       void set_task(const py::object& task)
       {
         _task = task;
-        eventLoopController().start();
       }
 
       void set_result(const py::object& value)
@@ -288,7 +149,9 @@ namespace xloil
         : _notify(notify)
         , _returnConverter(returnConverter)
         , _caller(caller)
-      {}
+      {
+        eventLoopController();  // Ensure loop is started
+      }
       ~RtdReturn()
       {
         if (!_running && !_task.ptr())
@@ -303,7 +166,6 @@ namespace xloil
         py::gil_scoped_acquire gilAcquired;
         _task = task;
         _running = true;
-        eventLoopController().start();
       }
       void set_result(const py::object& value) const
       {
@@ -500,16 +362,18 @@ namespace xloil
           .def("set_result", &AsyncReturn::set_result)
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)
-          .def("caller", &AsyncReturn::caller);
+          .def_property_readonly("caller", &AsyncReturn::caller)
+          .def_property_readonly("loop", [](py::object x) { return eventLoopController().loop(); });
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)
           .def("set_done", &RtdReturn::set_done)
           .def("set_task", &RtdReturn::set_task)
-          .def("caller", &RtdReturn::caller);
+          .def_property_readonly("caller", &RtdReturn::caller)
+          .def_property_readonly("loop", [](py::object x) { return eventLoopController().loop(); });
 
 
-        mod.def("get_event_loop", []() { return eventLoopController().getEventLoop(); });
+        //mod.def("get_event_loop", []() { return eventLoopController().getEventLoop(); });
       });
 
       // Uncomment this for debugging in case weird things happen with the GIL not releasing

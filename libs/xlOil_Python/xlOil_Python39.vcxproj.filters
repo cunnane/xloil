@@ -66,6 +66,7 @@
     <ClInclude Include="TypeConversion\ArrayHelpers.h">
       <Filter>TypeConversion</Filter>
     </ClInclude>
+    <ClInclude Include="EventLoop.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">

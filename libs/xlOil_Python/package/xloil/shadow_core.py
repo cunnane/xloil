@@ -11,7 +11,7 @@ if XLOIL_HAS_CORE:
     import xloil_core         # pylint: disable=import-error
     from xloil_core import (  # pylint: disable=import-error
         CellError, Range, ExcelArray, in_wizard, 
-        event, cache, RtdServer, RtdPublisher, get_event_loop,
+        event, cache, RtdServer, RtdPublisher,
         deregister_functions,
         ExcelUI, excel_run, excel_state,
         Caller,
@@ -844,4 +844,3 @@ def find_task_pane(title=None, workbook=None):
         return found
     else:
         return next((x for x in found if x.pane.title == title), None)
-
