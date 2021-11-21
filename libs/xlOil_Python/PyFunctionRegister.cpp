@@ -6,12 +6,14 @@
 #include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
+#include "EventLoop.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
 #include <xloil/RtdServer.h>
 #include <xlOil/ExcelApp.h>
+#include <xlOil/Interface.h>
 #include <pybind11/stl.h>
 
 #include <map>
@@ -362,26 +364,16 @@ namespace xloil
 
       void reload()
       {
-        // TODO: can we be sure about this context setting?
-        // 
-        auto[source, addin] = FileSource::findFileContext(sourcePath().c_str());
+        auto[source, addin] = Python::findFileContext(sourcePath().c_str());
         if (source.get() != this)
           XLO_THROW(L"Error reloading '{0}': source ptr mismatch", sourcePath());
-
-        auto currentContext = theCurrentContext;
-        theCurrentContext = addin.get();
-
+        
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         if (_module && !_module.is_none())
-          _module.cast<py::module>().reload();
+          addin->thread->callback("xloil.register", "_reload_scan", _module);
         else
-          _module = loadModuleFromFile(sourcePath().c_str(), linkedWorkbook().c_str());
-
-        scanModule(_module);
-
-        // Set the addin context back. TODO: Not exception safe clearly.
-        theCurrentContext = currentContext;
+          addin->thread->callback("xloil.register", "import_file", sourcePath(), linkedWorkbook());
       }
 
     private:
@@ -391,7 +383,7 @@ namespace xloil
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
-        AddinContext* context,
+        AddinContext& context,
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
@@ -400,19 +392,24 @@ namespace xloil
         return std::static_pointer_cast<RegisteredModule>(source);
 
       auto fileSrc = make_shared<RegisteredModule>(modulePath, workbookName);
-      context->addSource(fileSrc);
+      context.addSource(fileSrc);
       return fileSrc;
     }
 
-    auto getModulePath(const py::object& module)
+    namespace
     {
-      return !module.is_none() && py::hasattr(module, "__file__")
-        ? module.attr("__file__").cast<wstring>()
-        : L"";
+      auto getModulePath(const py::object& module)
+      {
+        return !module.is_none() && py::hasattr(module, "__file__")
+          ? module.attr("__file__").cast<wstring>()
+          : L"";
+      }
     }
+
     void registerFunctions(
       const vector<shared_ptr<PyFuncInfo>>& functions,
       py::object& module,
+      const py::object& addinCtx,
       const bool append)
     {
       // Called from python so we have the GIL
@@ -421,10 +418,15 @@ namespace xloil
 
       py::gil_scoped_release releaseGil;
 
-      auto mod = FunctionRegistry::addModule(
-        theCurrentContext, modulePath, nullptr);
-      mod->registerPyFuncs(module.release(), functions, append);
+      auto registeredMod = FunctionRegistry::addModule(
+        addinCtx.is_none() 
+          ? theCoreAddin().context 
+          : findAddin(pyToWStr(addinCtx).c_str()).context,
+        modulePath, 
+        nullptr);
+      registeredMod->registerPyFuncs(module.release(), functions, append);
     }
+
     void deregisterFunctions(
       const py::object& moduleHandle,
       const py::object& functionNames)
@@ -513,6 +515,7 @@ namespace xloil
         mod.def("register_functions", &registerFunctions, 
           py::arg("funcs"),
           py::arg("module")=py::none(),
+          py::arg("addin")=py::none(),
           py::arg("append")=false);
         mod.def("deregister_functions", &deregisterFunctions);
       });

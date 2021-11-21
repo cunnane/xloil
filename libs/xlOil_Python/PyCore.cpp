@@ -6,12 +6,14 @@
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
 #include <xloil/AppObjects.h>
-
+#include <xlOil/StringUtils.h>
+#include <xlOil/ExcelUI.h>
 #include <map>
 
 using std::shared_ptr;
 using std::vector;
 using std::wstring;
+using std::string;
 namespace py = pybind11;
 using std::make_pair;
 
@@ -80,6 +82,25 @@ namespace xloil
       class LogWriter
       {
       public:
+
+        /// <summary>
+        /// Allows intial match like 'warn' for 'warning'
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        spdlog::level::level_enum levelFromStr(const std::string& target)
+        {
+          using namespace spdlog::level;
+          int iLevel = 0;
+          for (const auto& level_str : level_string_views)
+          {
+            if (strncmp(target.c_str(), level_str.data(), target.length()) == 0)
+              return static_cast<level_enum>(iLevel);
+            iLevel++;
+          }
+          return off;
+        }
+
         spdlog::level::level_enum toSpdLogLevel(const py::object& level)
         {
           if (PyLong_Check(level.ptr()))
@@ -87,7 +108,7 @@ namespace xloil
             return spdlog::level::level_enum(
               std::min(PyLong_AsUnsignedLong(level.ptr()) / 10, 6ul));
           }
-          return spdlog::level::from_str(py::str(level));
+          return levelFromStr(toLower((string)py::str(level)));
         }
 
         void writeToLog(const char* message, const py::object& level)
@@ -185,6 +206,23 @@ namespace xloil
         }
       };
 
+      struct PyStatusBar
+      {
+        std::unique_ptr<StatusBar> _bar;
+
+        PyStatusBar(size_t timeout)
+          : _bar(new StatusBar(timeout))
+        {}
+        void msg(const std::wstring& msg, size_t timeout)
+        {
+          _bar->msg(msg, timeout);
+        }
+        void exit(py::args)
+        {
+          _bar.reset();
+        }
+      };
+
       void initialiseCore(pybind11::module& mod)
       {
         // Bind the two base classes for python converters
@@ -243,6 +281,12 @@ namespace xloil
               return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
             }, py::arg("a1style") = false);
 
+
+        py::class_<PyStatusBar>(mod, "StatusBar")
+          .def(py::init<size_t>(), py::arg("timeout") = 0)
+          .def("__enter__", [](py::object self) { return self; })
+          .def("__exit__", &PyStatusBar::exit)
+          .def("msg", &PyStatusBar::msg, py::arg("msg"), py::arg("timeout") = 0);
 
         comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
 

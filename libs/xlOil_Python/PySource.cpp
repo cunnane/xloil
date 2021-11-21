@@ -3,6 +3,7 @@
 #include "PyHelpers.h"
 #include "PyFunctionRegister.h"
 #include "Main.h"
+#include "EventLoop.h"
 
 #include <xloil/Log.h>
 #include <xlOil/ExcelApp.h>
@@ -24,30 +25,16 @@ namespace xloil
     void scanModule(const py::object& mod)
     {
       py::gil_scoped_acquire getGil;
-
-      const auto xloilModule = py::module::import("xloil");
-      const auto scanFunc = xloilModule.attr("scan_module").cast<py::function>();
-
-      const auto modName = (string)py::str(mod);
       try
       {
-        XLO_INFO("Scanning module {0}", modName);
-        scanFunc(mod);
+        py::module::import("xloil").attr("scan_module")(mod);
       }
       catch (const std::exception& e)
       {
         auto pyPath = (string)py::str(PyBorrow<py::list>(PySys_GetObject("path")));
         XLO_ERROR("Error reading module {0}: {1}\nsys.path={2}", 
-          modName, e.what(), pyPath);
+          (string)py::str(mod), e.what(), pyPath);
       }
-    }
-    py::object loadModuleFromFile(const wchar_t* filepath, const wchar_t* linkedWorkbook)
-    {
-      py::gil_scoped_acquire getGil;
-      // TODO: make this into a global
-      const auto xloilModule = py::module::import("xloil.importer");
-      return xloilModule.attr("import_from_file").cast<py::function>()(py::wstr(filepath),
-        linkedWorkbook ? py::wstr(linkedWorkbook) : py::str());
     }
     bool unloadModule(const py::handle& module)
     {
@@ -79,59 +66,50 @@ namespace xloil
       return ret == 0;
     }
 
-    struct WorkbookOpenHandler
+    namespace
     {
-      WorkbookOpenHandler(const wstring& starredPattern)
+      struct WorkbookOpenHandler
       {
-        // Turn the starred pattern into a fmt string for easier substitution later
-        _workbookPattern = starredPattern;
-        _workbookPattern.replace(_workbookPattern.find(L'*'), 1, wstring(L"{0}\\{1}"));
-      }
+        wstring _workbookPattern;
+        PyAddin& _loadContext;
 
-      wstring _workbookPattern;
+        WorkbookOpenHandler(const wstring& starredPattern, PyAddin& loadContext)
+          : _loadContext(loadContext)
+          , _workbookPattern(starredPattern)
+        {
+          // Turn the starred pattern into a fmt string for easier substitution later
+          _workbookPattern.replace(_workbookPattern.find(L'*'), 1, wstring(L"{0}\\{1}"));
+        }
 
-      void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
-      {
-        // Subtitute in to find target module name, removing extension
-        auto fileExtn = wcsrchr(wbName, L'.');
-        auto modulePath = fmt::format(_workbookPattern,
-          wbPath,
-          fileExtn ? wstring(wbName, fileExtn).c_str() : wbName);
+        void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
+        {
+          // Subtitute in to find target module name, removing extension
+          auto fileExtn = wcsrchr(wbName, L'.');
+          auto modulePath = fmt::format(_workbookPattern,
+            wbPath,
+            fileExtn ? wstring(wbName, fileExtn).c_str() : wbName);
 
-        std::error_code err;
-        if (!fs::exists(modulePath, err))
-          return;
-  
+          std::error_code err;
+          if (!fs::exists(modulePath, err))
+            return;
+
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
-          FunctionRegistry::addModule(theCoreContext, modulePath, wbName);
+          // TODO: ideally wouldn't need to hold the gil for this
+          FunctionRegistry::addModule(_loadContext.context, modulePath, wbName);
+          py::gil_scoped_acquire getGil;
+          _loadContext.thread->callback("xloil.register", "import_file", modulePath, wbName);
+        }
+      };
 
-          runPython([modulePath, workbook = wstring(wbName)](int)
-          {
-            try
-            {
-              StatusBar status(5000);
-              status.msg(L"Loading " + workbook + L"...");
-              auto loaded = loadModuleFromFile(modulePath.c_str(), workbook.c_str());
-              scanModule(loaded);
-              status.msg(L"Finished loading " + workbook);
-            }
-            catch (const std::exception& e)
-            {
-              XLO_ERROR(L"Failed to load module {0}: {1}", modulePath, utf8ToUtf16(e.what()));
-            }
-          });
+      void checkExistingWorkbooks(const WorkbookOpenHandler& handler)
+      {
+        for (const auto& wb : App::workbooks())
+          handler(wb.path().c_str(), wb.name().c_str());
       }
-    };
-
-    void checkWorkbooksOnOpen(const WorkbookOpenHandler& handler)
-    {
-      for (const auto& wb : App::workbooks())
-        handler(wb.path().c_str(), wb.name().c_str());
     }
-
-    void createWorkbookOpenHandler(const wchar_t* starredPattern)
+    void createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
     {
       if (!wcschr(starredPattern, L'*'))
       {
@@ -139,9 +117,10 @@ namespace xloil
           "will be replaced by the full workbook path with file extension removed");
         return;
       }
-      WorkbookOpenHandler handler(starredPattern);
 
-      checkWorkbooksOnOpen(handler);
+      WorkbookOpenHandler handler(starredPattern, loadContext);
+
+      checkExistingWorkbooks(handler);
 
       static auto wbOpenHandler = Event::WorkbookOpen().bind(handler);
     }

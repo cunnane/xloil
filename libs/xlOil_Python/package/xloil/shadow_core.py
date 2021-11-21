@@ -12,13 +12,14 @@ if XLOIL_HAS_CORE:
     from xloil_core import (  # pylint: disable=import-error
         CellError, Range, ExcelArray, in_wizard, 
         event, cache, RtdServer, RtdPublisher,
-        deregister_functions,
+        deregister_functions, get_async_loop,
         ExcelUI, excel_run, excel_state,
         Caller,
         CannotConvert, 
         from_excel_date,
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
+        StatusBar,
         workbooks, windows)
 
 else:
@@ -524,7 +525,7 @@ else:
         """
         pass
 
-    def get_event_loop():
+    def get_async_loop():
         """
         Returns the asyncio event loop assoicated with the async background
         worker thread.
@@ -762,6 +763,7 @@ else:
         def workbook(self) -> ExcelWorkbook:
             ...
 
+    VT = typing.TypeVar('VT')
     class _Collection(typing.Generic[VT]):
         def __iter__(self):
             ...
@@ -774,6 +776,15 @@ else:
     workbooks:_Collection[ExcelWorkbook]
     windows:_Collection[ExcelWindow]
 
+    class StatusBar:
+        def __init__(self, timeout=0):
+            ...
+        def __enter__(self):
+            ...
+        def __exit__(self, *args):
+            ...
+        def msg(self, text, timeout=0):
+            ...
 
 _task_panes = set()
 

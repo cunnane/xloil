@@ -26,10 +26,9 @@ namespace xloil
 {
   namespace Python
   {
-    auto& eventLoopController()
+    auto& asyncEventLoop()
     {
-      static EventLoop loop;
-      return loop;
+      return *theCoreAddin().thread;
     }
 
     struct AsyncReturn : public AsyncHelper
@@ -42,7 +41,6 @@ namespace xloil
         , _returnConverter(returnConverter)
         , _caller(std::move(caller))
       {
-        eventLoopController(); // Ensure loop is started
       }
 
       ~AsyncReturn()
@@ -76,7 +74,7 @@ namespace xloil
         {
           py::gil_scoped_acquire gilAcquired;
           if (py::hasattr(_task, "cancel"))
-            eventLoopController().callback(_task.attr("cancel"));
+            asyncEventLoop().callback(_task.attr("cancel"));
           _task.release();
         }
       }
@@ -150,7 +148,6 @@ namespace xloil
         , _returnConverter(returnConverter)
         , _caller(caller)
       {
-        eventLoopController();  // Ensure loop is started
       }
       ~RtdReturn()
       {
@@ -198,7 +195,7 @@ namespace xloil
           return;
         py::gil_scoped_acquire gilAcquired;
         _running = false;
-        eventLoopController().callback(_task.attr("cancel"));
+        asyncEventLoop().callback(_task.attr("cancel"));
       }
       bool done() noexcept
       {
@@ -363,17 +360,17 @@ namespace xloil
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)
           .def_property_readonly("caller", &AsyncReturn::caller)
-          .def_property_readonly("loop", [](py::object x) { return eventLoopController().loop(); });
+          .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)
           .def("set_done", &RtdReturn::set_done)
           .def("set_task", &RtdReturn::set_task)
           .def_property_readonly("caller", &RtdReturn::caller)
-          .def_property_readonly("loop", [](py::object x) { return eventLoopController().loop(); });
+          .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
 
 
-        //mod.def("get_event_loop", []() { return eventLoopController().getEventLoop(); });
+        mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });
       });
 
       // Uncomment this for debugging in case weird things happen with the GIL not releasing

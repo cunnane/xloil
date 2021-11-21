@@ -1,36 +1,44 @@
 #pragma once
-#include <xloil/Interface.h>
-#include <future>
+#include <memory>
 
 namespace xloil
 {
+  class AddinContext; class FileSource;
+
   namespace Python
   {
-    /// <summary>
-    /// The addin context of the main xloil.dll
-    /// </summary>
-    extern AddinContext* theCoreContext;
+    class EventLoop;
 
     /// <summary>
-    /// The current context is set to reflect the addin whose
-    /// settings are being processed. It is then switched back
-    /// to the core context.
+    /// Hold a python addin context. Each XLL which uses xlOil_Python has a 
+    /// separate context to keep track of the functions it registers. It also
+    /// has separate thread and event loop on which all importing is done
     /// </summary>
-    extern AddinContext* theCurrentContext;
-
-
-    template<typename F>
-    inline auto runPython(F&& f) -> std::future<decltype(f())> 
+    struct PyAddin
     {
-      auto pck = std::make_shared<std::packaged_task<decltype(f())()>>(std::forward<F>(f));
-      auto _f = std::function<void(int /*id*/)>(
-        [pck](int id) {
-          (*pck)();
-        });
-      runPython(std::move(_f));
-      return pck->get_future();
-    }
+      PyAddin(AddinContext&);
+      AddinContext& context;
+      std::unique_ptr<EventLoop> thread;
+    };
 
-    void runPython(std::function<void(int)>&& task);
-  }
+    PyAddin& findAddin(const wchar_t* xllPath);
+
+    /// <summary>
+    /// The core context corresponds to xlOil.dll - it always exists and is
+    /// used for loading any modules specified in the core settings and addin 
+    /// non-specific stuff such as workbook modules and jupyter functions. 
+    /// </summary>
+    /// <returns></returns>
+    PyAddin& theCoreAddin();
+
+    /// <summary>
+    /// Similar to the function in FileSource, but retrieve the PyAddin
+    /// instead of the AddinContext
+    /// </summary>
+    /// <param name="sourcePath"></param>
+    /// <returns></returns>
+    std::pair<std::shared_ptr<FileSource>, PyAddin*> 
+      findFileContext(const wchar_t* sourcePath);
+
+   }
 }

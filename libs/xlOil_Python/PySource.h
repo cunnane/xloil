@@ -5,6 +5,8 @@ namespace xloil
 {
   namespace Python
   {
+    struct PyAddin;
+
     /// <summary>
     /// Calls scan_module in the xloil.py file on the specified module.
     /// This function looks for appropriately decorated xlOil functions
@@ -13,8 +15,6 @@ namespace xloil
     /// </summary>
     void scanModule(const pybind11::object& mod);
 
-    pybind11::object loadModuleFromFile(const wchar_t* filepath, const wchar_t* linkedWorkbook = nullptr);
-
     /// <summary>
     /// 'Hard' unloads a python module: clears its __dict__ and removes it
     /// from sys.modules. Release the module handle into the argument so
@@ -22,6 +22,6 @@ namespace xloil
     /// </summary>
     bool unloadModule(const pybind11::handle& module);
 
-    void createWorkbookOpenHandler(const wchar_t* starredPattern);
+    void createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext);
   }
 }

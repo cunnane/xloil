@@ -29,7 +29,7 @@ namespace xloil
       /// </summary>
       std::shared_ptr<RegisteredModule>
         addModule(
-          AddinContext* context, 
+          AddinContext& context, 
           const std::wstring& modulePath,
           const wchar_t* workbookName);
     };

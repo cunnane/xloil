@@ -8,6 +8,7 @@ from .type_converters import *
 from .shadow_core import *
 from .com import EventsPaused
 from ._common import *
+import contextvars
 
 if XLOIL_HAS_CORE:
     import xloil_core
@@ -192,6 +193,7 @@ def find_return_converter(ret_type: type):
 
     ret_con = unpack_return_converter(ret_type)
     if ret_con is None:
+        # TODO: can we chain this with 'or' maybe?
         ret_con = return_converters.create_returner(ret_type)
 
         if ret_con is None:
@@ -206,10 +208,22 @@ def find_return_converter(ret_type: type):
 def _get_event_loop():
     import asyncio
     _async_function_loop = asyncio.new_event_loop()
-    #asyncio.set_event_loop(_async_function_loop) # Required?
+    asyncio.set_event_loop(_async_function_loop) # Required?
     return _async_function_loop
 
-import contextvars
+def _loop_call_threadsafe(loop, func, *args):
+    """
+    Calls asyncio's call_soon_threadsafe but wraps func so that any errors
+    are logged
+    """
+    def logged_func(*args):
+        try:
+            func(*args)
+        except Exception as e:
+            log(f"Error during event loop: {str(e)}", level='error')
+    loop.call_soon_threadsafe(logged_func, *args)
+  
+
 # This is a thread-local variable to get Caller to behave like a static
 # but work properly on different threads and when used in an async funcion
 # where normally xlfCaller is not available.
@@ -459,6 +473,12 @@ def _clear_pending_registrations(module):
     if hasattr(module, _LANDMARK_TAG):
         delattr(module, _LANDMARK_TAG)
 
+
+_addin_context = contextvars.ContextVar("Addin", default=None)
+
+def _set_addin_context(ctx):
+    _addin_context.set(ctx)
+
 def scan_module(module):
     """
         Parses a specified module to look for functions with with the xloil.func 
@@ -476,7 +496,7 @@ def scan_module(module):
 
         log(f"Found xloil functions in {module}", level="debug")
 
-        xloil_core.register_functions(list(pending_funcs), module, append=False)
+        xloil_core.register_functions(list(pending_funcs), module, _addin_context.get(), append=False)
                                       
         pending_funcs.clear()
         
@@ -516,4 +536,98 @@ def register_functions(funcs, module=None, append=True):
     # Registering the same function twice is optimised by xlOil to avoid overhead
     # TODO: check we are called from exec_module for the matching module object
     _add_pending_funcs(module, to_register)
-    xloil_core.register_functions(to_register, module, append)
+    xloil_core.register_functions(to_register, module, _addin_context.get(), append)
+
+
+import importlib
+import importlib.util
+import importlib.abc
+
+class _ModuleFinder(importlib.abc.MetaPathFinder):
+
+    """
+    Allows importing a module from a path specified in path_map
+    without needing to add it to sys.paths - essentially a private
+    set of import paths, indexed by module name
+    """
+
+    path_map = dict()
+
+    def find_spec(self, fullname, path, target=None):
+        path = self.path_map.get(fullname, None)
+        if path is None:
+            return None
+        return importlib.util.spec_from_file_location(fullname, self.path_map[fullname])
+
+    def find_module(self, fullname, path):
+        return None
+
+
+# We maintain a _ModuleFinder on sys.meta_path to catch any reloads of our non-standard 
+# loaded modules
+_module_finder = _ModuleFinder()
+sys.meta_path.append(_module_finder)
+
+def _reload_scan(what):
+    """
+    Loads or reloads the specifed module, which can be a string name
+    or module object, then calls scan_module.
+
+    Internal use only, users should prefer to import "xloil.importers"
+    which hooks import/reload to trigger a module scan.
+    """
+
+    if isinstance(what, str):
+        module = importlib.import_module(what)
+    elif inspect.ismodule(what):
+        module = importlib.reload(what) # can we avoid calling our hooked reload?
+    else:
+        # We don't care about the return value currently
+        result = []
+        with StatusBar(3000) as status:
+            for m in what:
+                status.msg(f"Loading {m}")
+                result.append(_reload_scan(m))
+        return result
+    
+    scan_module(module)
+    return module
+
+def import_file(path, workbook_name=None):
+
+    """
+    Imports the specifed py file as a module without adding its path to sys.modules.
+
+    Optionally also adds xlOil linked workbook name information.
+    """
+
+    with StatusBar(3000) as status:
+        try:
+            status.msg(f"Loading {path}...")
+            directory, filename = os.path.split(path)
+            filename = filename.replace('.py', '')
+
+            # avoid name collisions when loading workbook modules
+            module_name = filename if workbook_name is None else "xloil_wb_" + filename
+
+            if len(directory) > 0 or workbook_name is not None:
+                _module_finder.path_map[module_name] = path
+   
+            module = importlib.import_module(module_name)
+
+            # Allows 'local' modules to know which workbook they link to
+            if workbook_name is not None:
+                module._xloil_workbook = workbook_name
+                module._xloil_workbook_path = os.path.join(directory, workbook_name)
+
+            # Calling import_module will bypass our import hook, so scan_module explicitly
+            scan_module(module)
+
+            status.msg(f"Finished loading {path}")
+
+            return module
+
+        except Exception as e:
+
+            log(f"Failed to load module {path}: {e.msg}", level='warning')
+            status.msg(f"Error loading {path}, see log")
