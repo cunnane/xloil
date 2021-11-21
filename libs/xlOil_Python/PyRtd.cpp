@@ -2,6 +2,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include <xloil/RtdServer.h>
+#include <xloil/ExcelApp.h>
 #include <pybind11/pybind11.h>
 #include <future>
 #include <chrono>
@@ -48,42 +49,39 @@ namespace xloil
 {
   namespace Python
   {
-    //template<class T>
-    //class PyFuture
-    //{
-    //  std::future<T> _future;
-    //public:
-    //  PyFuture(std::future<T> future)
-    //    : _future(future)
-    //  {}
-    //  T await()
-    //  {
-    //    if (_future.wait_for(microseconds(0)) == future_status::ready)
-    //      return this;
-    //      //throw pybind11::stop_iteration()
-    //    return
-    //  }
-    //};
 
     class PyRtdServer
     {
       shared_ptr<IRtdServer> _impl;
       shared_ptr<const void> _cleanup;
+      std::future<shared_ptr<IRtdServer>> _initialiser;
+
+      IRtdServer& impl()
+      {
+        if (!_impl)
+        {
+          if (!_initialiser.valid())
+            XLO_THROW("RtdServer terminated");
+          _impl = _initialiser.get();
+        }
+        return *_impl;
+      }
 
     public:
       PyRtdServer()
       {
-        _impl = newRtdServer();
+        _initialiser = runExcelThread([]() { return newRtdServer(); });
         // Destroy the Rtd server if we are still around on python exit. The 
         // Rtd server may maintain links to python objects and Excel may not
         // call the server terminate function until after python has unloaded.
-        _cleanup = Event_PyBye().bind([self = this] 
+        // PyBye will only be called synchronously from the thread destroying the 
+        // interpreter, so capturing 'this' is safe.
+        _cleanup = Event_PyBye().bind([this]
         { 
-          self->_impl.reset(); 
+          _impl.reset(); 
         });
       }
-      ~PyRtdServer()
-      {}
+
       void start(const py_shared_ptr<IRtdPublisher>& topic)
       {
         impl().start(topic);
@@ -133,15 +131,9 @@ namespace xloil
       }
       void drop(const wchar_t* topic)
       {
+        // Don't throw if _impl has been destroyed, just ignore
         if (_impl)
           _impl->drop(topic);
-      }
-
-      IRtdServer& impl() const
-      {
-        if (!_impl)
-          XLO_THROW("RtdServer terminated");
-        return *_impl;
       }
     };
 
