@@ -1,12 +1,6 @@
 import xloil as xlo
 import xloil.register
 import asyncio
-#
-# Must do this or jupyter gives:
-# https://stackoverflow.com/questions/44633458/why-am-i-getting-notimplementederror-with-async-and-await-on-windows
-#
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
 import inspect
 import IPython
 import pickle
@@ -76,7 +70,7 @@ class _FuncDescription:
         self.func_name = func.__name__
         self.name = name
         self.help = help
-        self.args, self.return_type = xlo.xloil.function_arg_info(func)
+        self.args, self.return_type = xloil.register.function_arg_info(func)
 
         self.args = xlo.Arg.override_arglist(self.args, override_args)
 
@@ -90,6 +84,7 @@ class _FuncDescription:
         async def shim(*args, **kwargs):
             return await connection.invoke(func_name, *args, **kwargs)
 
+        # TODO: can we avoid using the core?
         spec = xloil_core.FuncSpec(shim, 
             nargs = len(self.args),
             name = self.name,
@@ -105,7 +100,8 @@ class _FuncDescription:
 
         xlo.log(f"Found func: '{str(spec)}'", level="debug")
 
-        xloil_core.register_functions(None, [spec])
+        # TODO: can we avoid using the core?
+        xloil_core.register_functions([spec])
 
 def _replacement_func_decorator(
         fn=None,
@@ -176,7 +172,7 @@ class _VariableWatcher(xlo.RtdPublisher):
 class JupyterNotReadyError(Exception):
     pass
 
-_rtdServer = xlo.RtdServer()
+_rtd_server = xlo.RtdServer()
 
 class _JupyterConnection:
     
@@ -189,7 +185,7 @@ class _JupyterConnection:
 
         from jupyter_client.asynchronous import AsyncKernelClient
 
-        self._loop = xlo.get_event_loop()
+        self._loop = xlo.get_async_loop()
         self._client = AsyncKernelClient()
         self._xloil_path = xloil_path.replace('\\', '/')
         self._connection_file = connection_file
@@ -259,6 +255,8 @@ class _JupyterConnection:
 
     def close(self):
 
+        global _rtd_server
+
         # If still ready, i.e. not triggered by a kernel restart, clean up our variables
         if self._ready:
             self._client.execute("_xloil_vars.close()\ndel _xloil_vars")
@@ -270,13 +268,14 @@ class _JupyterConnection:
         variable_topics = [x.topic() for x in self._watched_variables.values()]
         
         for topic in variable_topics:
-            _rtdServer.drop(topic)
+            _rtd_server.drop(topic)
         
         # Remove any stragglers
         self._watched_variables.clear()
 
-        for func_name in self._registered_funcs:
-            xlo.deregister_functions(None, func_name)
+        # Remove all registered functions
+        xlo.deregister_functions(None, self._registered_funcs)
+
 
     async def wait_for_restart(self):
 
@@ -330,6 +329,9 @@ class _JupyterConnection:
         return f"{prefix}_{name}" 
 
     def watch_variable(self, name):
+        
+        global _rtd_server
+
         if not self._ready:
             raise JupyterNotReadyError()
 
@@ -342,9 +344,9 @@ class _JupyterConnection:
             self._watched_variables[name] = watcher
 
             xlo.log(f"Starting variable watch {name}", level='debug')
-            _rtdServer.start(watcher)
+            _rtd_server.start(watcher)
 
-        return _rtdServer.subscribe(topic)
+        return _rtd_server.subscribe(topic)
 
     def stop_watch_variable(self, name):
         try:
@@ -353,8 +355,10 @@ class _JupyterConnection:
             pass
 
     def publish_variables(self, updates:dict):
+        global _rtd_server
+
         for name, value in updates.items():
-            _rtdServer.publish(self._watch_prefix(name), value)
+            _rtd_server.publish(self._watch_prefix(name), value)
 
     async def process_messages(self):
    
@@ -460,17 +464,17 @@ class _JupyterTopic(xlo.RtdPublisher):
                         # TODO: use a customer converter for this publish() to stop xloil 
                         # unpacking the cacheref, this would save needing to create a 
                         # cache object
-                        _rtdServer.publish(self._topic, self._cacheRef)
+                        _rtd_server.publish(self._topic, self._cacheRef)
                         restart = await conn.process_messages()
                         conn.close()
                         if not restart:
                             break
                         await conn.wait_for_restart()
 
-                    _rtdServer.publish(self._topic, "KernelShutdown")
+                    _rtd_server.publish(self._topic, "KernelShutdown")
 
                 except Exception as e:
-                    _rtdServer.publish(self._topic, e)
+                    _rtd_server.publish(self._topic, e)
 
             self._task = conn._loop.create_task(run())
 
@@ -549,11 +553,11 @@ def xloJpyConnect(ConnectInfo):
         raise Exception(f"Could not find connection for {ConnectInfo}")
 
     topic = connection_file.lower()
-    if _rtdServer.peek(topic) is None:
+    if _rtd_server.peek(topic) is None:
         conn = _JupyterTopic(topic, connection_file, 
                              os.path.join(os.path.dirname(__file__), os.pardir))
-        _rtdServer.start(conn)
-    return _rtdServer.subscribe(topic)
+        _rtd_server.start(conn)
+    return _rtd_server.subscribe(topic)
 
 
 @xlo.func(
