@@ -53,22 +53,22 @@ namespace xloil
   }
 
   void loadPlugins(
-    AddinContext* context, 
+    AddinContext& context, 
     const std::vector<std::wstring>& names) noexcept
   {
     auto plugins = std::set<wstring>(names.cbegin(), names.cend());
 
-    const auto xllDir = fs::path(context->pathName()).remove_filename();
+    const auto xllDir = fs::path(context.pathName()).remove_filename();
     const auto coreDir = fs::path(State::coreDllPath()).remove_filename();
 
     // If the settings specify a search pattern for plugins, 
     // find the DLLs and add them to our plugins collection
-    if (context->settings())
+    if (context.settings())
     {
       WIN32_FIND_DATA fileData;
 
       auto searchPath = xllDir / Settings::pluginSearchPattern(
-        (*context->settings())["Addin"]);
+        (*context.settings())["Addin"]);
       auto fileHandle = FindFirstFile(searchPath.c_str(), &fileData);
       if (fileHandle != INVALID_HANDLE_VALUE &&
         fileHandle != (void*)ERROR_FILE_NOT_FOUND)
@@ -82,7 +82,6 @@ namespace xloil
         } while (FindNextFile(fileHandle, &fileData));
       }
     }
-
     
     auto& loadedPlugins = getLoadedPlugins();
     
@@ -106,7 +105,7 @@ namespace xloil
         XLO_INFO(L"Loading plugin {}", pluginName);
         
         const auto pluginSettings = Settings::findPluginSettings(
-          context->settings(), pluginNameUtf8.c_str());
+          context.settings(), pluginNameUtf8.c_str());
 
         // If the plugin has already be loaded, we just notify it of 
         // a new XLL by calling attach and passing any XLL specific settings
@@ -117,8 +116,8 @@ namespace xloil
           // core config file, otherwise the ones in the add-ins ini file. This avoids
           // race conditions with different add-in load orders.
 
-          auto loadSettings = theCoreContext()->settings()
-            ? Settings::findPluginSettings(theCoreContext()->settings(), pluginNameUtf8.c_str())
+          auto loadSettings = theCoreContext().settings()
+            ? Settings::findPluginSettings(theCoreContext().settings(), pluginNameUtf8.c_str())
             : pluginSettings;
 
           auto environment = Settings::environmentVariables(loadSettings);
@@ -151,7 +150,7 @@ namespace xloil
             XLOIL_MINOR_VERSION,
             XLOIL_PATCH_VERSION
           };
-          if (initFunc(theCoreContext(), pluginLoadContext) < 0)
+          if (initFunc(&theCoreContext(), pluginLoadContext) < 0)
           {
             //TODO:  Can we roll back any bad registrations?
             FreeLibrary(lib);
@@ -159,15 +158,14 @@ namespace xloil
           }
 
           // Add the plugin to the list of loaded plugins
-          LoadedPlugin description = { context, lib, initFunc };
+          LoadedPlugin description = { &context, lib, initFunc };
           pluginData = loadedPlugins
             .insert(make_pair(pluginName, description)).first;
 
-          // Register any static functions in the plugin by adding
-          // it as a source.
+          // Register any static functions in the plugin by adding it as a source.
           auto source = make_shared<StaticFunctionSource>(pluginName.c_str());
           source->registerQueue();
-          context->addSource(source);
+          context.addSource(source);
 
           XLO_DEBUG(L"Finished loading plugin {0}", pluginName);
         }
@@ -182,9 +180,9 @@ namespace xloil
           XLOIL_MINOR_VERSION,
           XLOIL_PATCH_VERSION
         };
-        if (pluginData->second.Init(context, pluginAttach) < 0)
+        if (pluginData->second.Init(&context, pluginAttach) < 0)
           XLO_ERROR(L"Failed to attach addin {0} to plugin {1}", 
-            context->pathName(), pluginName);
+            context.pathName(), pluginName);
       }
       catch (const std::exception& e)
       {

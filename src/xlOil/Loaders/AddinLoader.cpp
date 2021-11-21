@@ -27,21 +27,45 @@ namespace xloil
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
 
-    AddinContext*
-      createAddinContext(
-        const wchar_t* pathName, std::shared_ptr<const toml::table> settings)
+    AddinContext* createAddinContext(
+        const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
     {
       auto [ctx, isNew] = theAddinContexts.try_emplace(
         wstring(pathName), make_shared<AddinContext>(pathName, settings));
       return isNew ? ctx->second.get() : nullptr;
     }
+
+    auto processAddinSettings(const wchar_t* xllPath)
+    {
+      auto settings = findSettingsFile(xllPath);
+      if (!settings)
+        return settings;
+
+      XLO_DEBUG("Found core settings file '{0}'",
+        *settings->source().path);
+
+      auto addinRoot = (*settings)["Addin"];
+
+      // Log file settings
+      auto logFile = Settings::logFilePath(*settings);
+      auto logLevel = Settings::logLevel(addinRoot);
+      auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
+      detail::loggerAddFile(logFile.c_str(), logLevel.c_str(), logMaxSize, logNumFiles);
+
+      // Add any requested date formats
+      auto dateFormats = Settings::dateFormats(addinRoot);
+      for (auto& form : dateFormats)
+        dateTimeAddFormat(form.c_str());
+
+      return settings;
+    }
   }
 
   static xloil::AddinContext* ourCoreContext;
 
-  AddinContext* theCoreContext()
+  AddinContext& theCoreContext()
   {
-    return ourCoreContext;
+    return *ourCoreContext;
   }
 
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
@@ -67,63 +91,41 @@ namespace xloil
     }
   }
 
-  auto processAddinSettings(const wchar_t* xllPath)
+  namespace
   {
-    auto settings = findSettingsFile(xllPath);
-    if (!settings)
-      return settings;
-
-    XLO_DEBUG("Found core settings file '{0}'",
-      *settings->source().path);
-
-    auto addinRoot = (*settings)["Addin"];
-
-    // Log file settings
-    auto logFile = Settings::logFilePath(*settings);
-    auto logLevel = Settings::logLevel(addinRoot);
-    auto[logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
-    detail::loggerAddFile(logFile.c_str(), logLevel.c_str(), logMaxSize, logNumFiles);
-
-    // Add any requested date formats
-    auto dateFormats = Settings::dateFormats(addinRoot);
-    for (auto& form : dateFormats)
-      dateTimeAddFormat(form.c_str());
-
-    return settings;
+    
   }
-
 
   void createCoreContext() 
   {
-    ourCoreContext = openXll(State::coreDllPath());
+    ourCoreContext = &openXll(State::coreDllPath());
     // Can only do this once not per-addin
     setLogWindowPopupLevel(
       spdlog::level::from_str(
         Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str()));
 
-    auto source = make_shared<StaticFunctionSource>(State::coreDllName());
-    source->registerQueue();
-    ourCoreContext->addSource(source);
+    auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
+    staticSource->registerQueue();
+    ourCoreContext->addSource(staticSource);
   }
 
-  void loadPluginsForAddin(AddinContext* ctx)
+  void loadPluginsForAddin(AddinContext& ctx)
   {
-    auto plugins = Settings::plugins((*ctx->settings())["Addin"]);
+    auto plugins = Settings::plugins((*ctx.settings())["Addin"]);
     loadPlugins(ctx, plugins);
   }
 
-  AddinContext* openXll(const wchar_t* xllPath)
+  AddinContext& openXll(const wchar_t* xllPath)
   {
-    auto settings = processAddinSettings(xllPath);
-    
     // Delete existing context if addin is reloaded
     if (theAddinContexts.find(xllPath) != theAddinContexts.end())
       theAddinContexts.erase(xllPath);
-    
+
+    auto settings = processAddinSettings(xllPath);
     auto ctx = createAddinContext(xllPath, settings);
     if (!ctx)
       XLO_THROW(L"Failed to create add-in context for {0}", xllPath);
-    return ctx;
+    return *ctx;
   }
 
   void closeXll(const wchar_t* xllPath)
@@ -133,7 +135,7 @@ namespace xloil
     // Check if only the core left
     if (theAddinContexts.size() == 1)
     {
-      theAddinContexts.erase(State::coreDllPath());
+      theAddinContexts.clear();
       
       // Somewhat cheap trick to ensure any async tasks which may reference plugin
       // code are destroyed in a timely manner prior to teardown.  Better would be
