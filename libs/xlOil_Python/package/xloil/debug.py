@@ -1,4 +1,5 @@
 import xloil
+import xloil.tkinter
 
 class _Handler_ptvsd:
 
@@ -15,7 +16,7 @@ class _Handler_ptvsd:
 class _Handler_pdb_window:
 
     def __init__(self):
-        tk.Tk.get_default_root().withdraw() # Hide root window
+        ...
 
     def call(self, type, value, trace):
         import pdb
@@ -86,7 +87,7 @@ class _Handler_pdb_window:
                 line = self.stdin_buffer.get()
                 return line
 
-        top_level = tk.Toplevel(xloil.tkroot())
+        top_level = tk.Toplevel(xloil.tkinter.tk_root())
 
         def disable_debugging():
             xloil.event.UserException.clear()
