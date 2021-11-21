@@ -107,27 +107,38 @@ namespace xloil
 
   private:
     static void CALLBACK TimerCallback(
-      HWND hwnd, UINT /*uMsg*/, UINT_PTR idEvent, DWORD /*dwTime*/)
+      HWND hwnd, UINT /*uMsg*/, UINT_PTR idEvent, DWORD /*dwTime*/) noexcept
     {
-      auto& self = instance();
-      auto retKill = KillTimer(hwnd, idEvent);
-      shared_ptr<QueueItem> item;
+      try
       {
-        scoped_lock lock(self._lock);
-        auto found = self._timerQueue.find((QueueItem*)idEvent);
-        if (found == self._timerQueue.end())
+        auto& self = instance();
+        auto retKill = KillTimer(hwnd, idEvent);
+        shared_ptr<QueueItem> item;
         {
-          XLO_ERROR("Internal error: bad window timer");
-          return;
+          scoped_lock lock(self._lock);
+          auto found = self._timerQueue.find((QueueItem*)idEvent);
+          if (found == self._timerQueue.end())
+          {
+            XLO_ERROR("Internal error: bad window timer");
+            return;
+          }
+          item = found->second;
+          self._timerQueue.erase(found);
         }
-        item = found->second;
-        self._timerQueue.erase(found);
+        (*item)(self);
       }
-      (*item)(self);
+      catch (const std::exception& e)
+      {
+        XLO_ERROR("Error running timed callback: {}", e.what());
+      }
+      catch (...)
+      {
+        XLO_ERROR("Error running timed callback: unknown");
+      }
     }
 
     static LRESULT CALLBACK WindowProc(
-      HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+      HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
     {
       switch (uMsg)
       {
@@ -141,30 +152,41 @@ namespace xloil
       }
     }
 
-    static void processWindowQueue(ULONG_PTR ptr)
+    static void processWindowQueue(ULONG_PTR ptr) noexcept
     {
       auto& self = *(Messenger*)ptr;
       processQueue(self, self._windowQueue);
     }
 
-    static void __stdcall processAPCQueue(ULONG_PTR ptr)
+    static void __stdcall processAPCQueue(ULONG_PTR ptr) noexcept
     {
       auto& self = *(Messenger*)ptr;
       processQueue(self, self._apcQueue);
     }
 
-    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue)
+    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue) noexcept
     {
-      decltype(_apcQueue) jobs;
+      try
       {
-        scoped_lock lock(self._lock);
-        jobs.assign(queue.begin(), queue.end());
-        queue.clear();
-      }
+        decltype(_apcQueue) jobs;
+        {
+          scoped_lock lock(self._lock);
+          jobs.assign(queue.begin(), queue.end());
+          queue.clear();
+        }
 
-      for (auto& job : jobs)
+        for (auto& job : jobs)
+        {
+          (*job)(self);
+        }
+      }
+      catch (const std::exception& e)
       {
-        (*job)(self);
+        XLO_ERROR("Error running on main thread: {}", e.what());
+      }
+      catch (...)
+      {
+        XLO_ERROR("Error running on main thread: unknown");
       }
     }
 
@@ -186,19 +208,11 @@ namespace xloil
   {
     if (_nComRetries > 0 && (_flags & ExcelRunQueue::COM_API) != 0 && !COM::isComApiAvailable())
     {
-      try
-      {
-        --_nComRetries;
-        //TODO: if _isAPC, then use SetWaitableTimer
-        messenger.queueWindowTimer(shared_from_this(), _waitTime);
-      }
-      catch (...)
-      {
-        XLO_THROW("Unknown exception");
-      }
+      --_nComRetries;
+      //TODO: if _isAPC, then use SetWaitableTimer
+      messenger.queueWindowTimer(shared_from_this(), _waitTime);
       return;
     }
-   
     try
     {
       if ((_flags & ExcelRunQueue::XLL_API) != 0)
@@ -207,12 +221,8 @@ namespace xloil
         _func();
     }
     catch (_com_error& error)
-    { 
-      XLO_THROW("COM Error {0:#x}", (size_t)error.Error());
-    }
-    catch (...)
     {
-      XLO_THROW("Unknown exception");
+      XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
     }
   }
 
