@@ -124,7 +124,25 @@ namespace xloil
           std::shared_ptr<const handler>(
             (*this) += std::forward<handler>(h),
             [thisPtr](handler_id id) { (*thisPtr) -= id; }));
-        }
+      }
+
+      /// <summary>
+      /// Safe version of <see cref="bind"/> which binds a member function to 
+      /// an event and holds a weak ptr to the associated object, which it 
+      /// checks for validity. The event handler itself is not unbound when the 
+      /// weak ptr expires, only when the shared_ptr returned from this function
+      /// is destroyed.
+      /// </summary>
+      template<class T, class U, class D>
+      auto weakBind(std::weak_ptr<U>&& wptr, const D T::* func)
+      {
+        return bind([=] (Args&&... args)
+        {
+          auto ptr = std::static_pointer_cast<T>(wptr.lock());
+          if (ptr)
+            ((*ptr).*func)(std::forward<Args>(args)...);
+        });
+      }
 
       R fire(Args&&... args) const
       {

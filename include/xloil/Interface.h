@@ -7,7 +7,11 @@
 #include <map>
 
 namespace toml { class table; }
-namespace xloil { class RegisteredWorksheetFunc; class AddinContext; }
+namespace xloil { 
+  class RegisteredWorksheetFunc; 
+  class AddinContext; 
+  namespace Event { enum class FileAction; }
+}
 
 namespace xloil
 {
@@ -118,7 +122,7 @@ namespace xloil
     void handleDirChange(
       const wchar_t* dirName,
       const wchar_t* fileName,
-      const int action);
+      const Event::FileAction action);
   };
 
   /// <summary> 
@@ -215,6 +219,8 @@ namespace xloil
   /// Contains information the plugin can use to initialise or 
   /// link with another addin
   /// </summary>
+  /// 
+  // TODO: rename to maybe PluginAction?  Also maybe Extensions rather than plugin?
   struct PluginContext
   {
     enum Action

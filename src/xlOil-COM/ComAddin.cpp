@@ -175,7 +175,7 @@ namespace xloil
       Office::MsoAutomationSecurity _previous;
     };
 
-    class ComAddinCreator : public IComAddin
+    class ComAddinCreator : public IComAddin, public std::enable_shared_from_this<IComAddin>
     {
     private:
       auto& comAddinImpl() const
@@ -232,8 +232,8 @@ namespace xloil
           if (!_comAddin)
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
-
-        _closeHandler = Event::WorkbookAfterClose().bind([this](auto wb) { handleWorkbookClose(wb); });
+        
+        _closeHandler = Event::WorkbookAfterClose().weakBind(weak_from_this(), &ComAddinCreator::handleWorkbookClose);
       }
 
       ~ComAddinCreator()
@@ -348,10 +348,10 @@ namespace xloil
       }
     };
 
-    IComAddin* createComAddin(
+    shared_ptr<IComAddin> createComAddin(
       const wchar_t* name, const wchar_t* description)
     {
-      return new ComAddinCreator(name, description);
+      return shared_ptr<IComAddin>(new ComAddinCreator(name, description));
     }
   }
 }

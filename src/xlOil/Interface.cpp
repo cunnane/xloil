@@ -184,14 +184,10 @@ namespace xloil
     auto path = fs::path(sourceName);
     auto dir = path.remove_filename();
     if (!dir.empty())
-      _fileWatcher = Event::DirectoryChange(dir)->bind(
-        [this](auto dir, auto file, auto act)
-    {
-      handleDirChange(dir, file, (int)act);
-    });
+      _fileWatcher = Event::DirectoryChange(dir)->weakBind(weak_from_this(), &WatchedSource::handleDirChange);
 
     if (linkedWorkbook)
-      _workbookWatcher = Event::WorkbookAfterClose().bind([this](auto wb) { handleClose(wb); });
+      _workbookWatcher = Event::WorkbookAfterClose().weakBind(weak_from_this(), &WatchedSource::handleClose);
   }
 
   void WatchedSource::handleClose(
@@ -204,7 +200,7 @@ namespace xloil
   void WatchedSource::handleDirChange(
     const wchar_t* dirName,
     const wchar_t* fileName,
-    const int action)
+    const Event::FileAction action)
   {
     if (_wcsicmp(fileName, sourceName()) != 0)
       return;
@@ -218,7 +214,7 @@ namespace xloil
         // the specified directory
         assert(_wcsicmp(filePath.c_str(), self->sourcePath().c_str()) == 0);
 
-        switch ((Event::FileAction)action)
+        switch (action)
         {
         case Event::FileAction::Modified:
         {

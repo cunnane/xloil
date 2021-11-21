@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 namespace pybind11 { class object; class handle; }
 
 namespace xloil
@@ -22,6 +23,6 @@ namespace xloil
     /// </summary>
     bool unloadModule(const pybind11::handle& module);
 
-    void createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext);
+    std::shared_ptr<const void> createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext);
   }
 }

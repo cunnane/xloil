@@ -58,12 +58,6 @@ namespace xloil
             XLO_ERROR("Failed to initialise python worker thread: {0}", e.what());
           }
         });
-
-        _shutdownHandler = std::static_pointer_cast<const void>(
-          Event_PyBye().bind([self = this]
-          {
-            self->shutdown();
-          }));
       }
       ~EventLoop()
       {

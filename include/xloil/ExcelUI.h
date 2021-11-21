@@ -173,7 +173,7 @@ namespace xloil
   /// </summary>
   /// <returns>A pointer to an a <see cref="IComAddin"/> object which controls
   ///   the add-in.</returns>
-  XLOIL_EXPORT IComAddin*
+  XLOIL_EXPORT std::shared_ptr<IComAddin>
     makeComAddin(const wchar_t* name, const wchar_t* description = nullptr);
 
   inline auto makeAddinWithRibbon(
@@ -181,15 +181,14 @@ namespace xloil
     const wchar_t* xml,
     const IComAddin::RibbonMap& mapper)
   {
-    std::unique_ptr<IComAddin> addin(makeComAddin(name, nullptr));
+    auto addin = makeComAddin(name, nullptr);
     addin->setRibbon(xml, mapper);
     addin->connect();
-    return addin.release();
+    return addin;
   }
 
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
   XLOIL_EXPORT void excelObjToVariant(VARIANT* v, const ExcelObj& obj);
-
 
   class ComAddinThreadSafe : public IComAddin
   {
@@ -200,7 +199,7 @@ namespace xloil
     {
       runExcelThread([this, nameStr = std::wstring(name)]() mutable
       {
-        this->_base.reset(makeComAddin(nameStr.c_str(), nullptr));
+        this->_base = makeComAddin(nameStr.c_str(), nullptr);
       });
     }
 
@@ -211,7 +210,7 @@ namespace xloil
     {
       runExcelThread([this, nameStr = name, xmlStr = xml, maps = mapper]() mutable
       {
-        this->_base.reset(makeComAddin(nameStr.c_str(), nullptr));
+        this->_base = makeComAddin(nameStr.c_str(), nullptr);
         _base->setRibbon(xmlStr.c_str(), maps);
         _base->connect();
       });
@@ -278,7 +277,7 @@ namespace xloil
       });
     }
     std::future<std::shared_ptr<ICustomTaskPane>> createTaskPaneAsync(
-      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* progId = nullptr)
+      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* /*progId*/ = nullptr)
     {
       return runExcelThread([obj = _base, nameStr = std::wstring(name), window]() {
         return obj->createTaskPane(nameStr.c_str(), window);

@@ -149,7 +149,7 @@ namespace xloil
   /// </code>
   /// </summary>
   template<class TObj, class TUniquifier, bool TReverseLookup = false>
-  class ObjectCache
+  class ObjectCache : public std::enable_shared_from_this<void>
   {
   private:
     typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
@@ -196,13 +196,13 @@ namespace xloil
       using namespace std::placeholders;
 
       _calcEndHandler =
-        xloil::Event::AfterCalculate().bind(std::bind(std::mem_fn(&self::onAfterCalculate), this));
+        xloil::Event::AfterCalculate().weakBind(weak_from_this(), &self::onAfterCalculate);
       
       if (reapOnWorkbookClose)
         _workbookCloseHandler =
-          xloil::Event::WorkbookAfterClose().bind([this](auto wbName) { this->onWorkbookClose(wbName); });
+          xloil::Event::WorkbookAfterClose().weakBind(weak_from_this(), &self::onWorkbookClose);
     }
-
+   
     const TObj* fetch(const std::wstring_view& key) const
     {
       const auto iResult = readCount(key[key.size() - 1]);

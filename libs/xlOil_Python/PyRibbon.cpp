@@ -112,14 +112,14 @@ namespace xloil
           auto xmlStr = pyToWStr(xml);
 
           py::gil_scoped_release releaseGil;
-          auto addin = make_unique<ComAddinThreadSafe>(
+          auto addin = make_shared<ComAddinThreadSafe>(
             addinName.c_str(), xmlStr.c_str(), std::move(mapper));
-          return addin.release();
+          return addin;
         }
         else
         {
-          auto addin = make_unique<ComAddinThreadSafe>(addinName.c_str());
-          return addin.release();
+          auto addin = make_shared<ComAddinThreadSafe>(addinName.c_str());
+          return addin;
         }
       }
       
@@ -204,7 +204,7 @@ namespace xloil
           .def("com_control", &ICustomTaskPane::content)
           .def("add_event_handler", &addPaneEventHandler, py::arg("handler"));
 
-        py::class_<IComAddin>(mod, "ExcelUI")
+        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelUI")
           .def(py::init(std::function(createRibbon)), py::arg("ribbon")=py::none(), py::arg("func_names")=py::none(), py::arg("name")=py::none())
           .def("connect", &IComAddin::connect)
           .def("disconnect", &IComAddin::disconnect)

@@ -109,20 +109,20 @@ namespace xloil
           handler(wb.path().c_str(), wb.name().c_str());
       }
     }
-    void createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
+    std::shared_ptr<const void> createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
     {
       if (!wcschr(starredPattern, L'*'))
       {
         XLO_WARN("WorkbookModule should be of the form '*foo.py' where '*'"
           "will be replaced by the full workbook path with file extension removed");
-        return;
+        return std::shared_ptr<void>();
       }
 
       WorkbookOpenHandler handler(starredPattern, loadContext);
 
       checkExistingWorkbooks(handler);
 
-      static auto wbOpenHandler = Event::WorkbookOpen().bind(handler);
+      return Event::WorkbookOpen().bind(handler);
     }
   }
 }

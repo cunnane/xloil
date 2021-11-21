@@ -21,7 +21,7 @@ namespace xloil
     return COM::excelApp();
   }
 
-  IComAddin* xloil::makeComAddin(
+  std::shared_ptr<IComAddin> xloil::makeComAddin(
     const wchar_t* name, const wchar_t* description)
   {
     return COM::createComAddin(name, description);
