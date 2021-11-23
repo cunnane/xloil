@@ -32,15 +32,32 @@ namespace xloil
     }
   }
 
-  XLOIL_EXPORT ExcelRef::ExcelRef(const wchar_t* address)
+  XLOIL_EXPORT ExcelRef::ExcelRef(const std::wstring_view& address)
     : ExcelRef(callExcel(msxll::xlfIndirect, address))
-  {}
+  {
+    // If address contains a '!', get sheetId of that name otherwise use
+    // the active sheet (which we get by passing no args)
+    auto pling = address.find_last_of(L'!');
+    auto [sheetId, ret] = pling > 0
+      ? tryCallExcel(msxll::xlSheetId, address.substr(0, pling))
+      : tryCallExcel(msxll::xlSheetId);
+
+    if (ret != 0 || !sheetId.isType(ExcelType::Ref))
+      XLO_THROW(L"Could not find sheet name from address {}", address);
+
+    // Indirect only returns an sref, even if the address contains a sheet name
+    // TODO: parse address without calling xll api?
+    auto addressAsSref = callExcel(msxll::xlfIndirect, address);
+
+    _obj = ExcelObj(sheetId.val.mref.idSheet, addressAsSref.val.sref.ref);
+  }
 
   XLOIL_EXPORT ExcelRef::ExcelRef(
     msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol)
   {
     create(sheetId, fromRow, fromCol, toRow, toCol);
   }
+
   void ExcelRef::create(
     msxll::IDSHEET sheetId, 
     row_t fromRow, col_t fromCol, 

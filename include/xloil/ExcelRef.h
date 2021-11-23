@@ -114,7 +114,10 @@ namespace xloil
     /// address does not contain a sheet name, the current
     /// Active sheet is used.
     /// </summary>
-    explicit ExcelRef(const wchar_t* address);
+    explicit ExcelRef(const std::wstring_view& address);
+    explicit ExcelRef(const wchar_t* address) 
+      : ExcelRef(std::wstring_view(address)) 
+    {}
 
     ExcelRef(msxll::IDSHEET sheetId,
       int fromRow, int fromCol, int toRow, int toCol);
