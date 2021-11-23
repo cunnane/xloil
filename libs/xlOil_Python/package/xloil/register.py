@@ -220,7 +220,7 @@ def _loop_call_threadsafe(loop, func, *args):
         try:
             func(*args)
         except Exception as e:
-            log(f"Error during event loop: {str(e)}", level='error')
+            log(f"Error during event loop: {str(e)} : {traceback.format_exc()}", level='error')
     loop.call_soon_threadsafe(logged_func, *args)
   
 
@@ -629,5 +629,5 @@ def import_file(path, workbook_name=None):
 
         except Exception as e:
 
-            log(f"Failed to load module {path}: {e.msg}", level='warning')
+            log(f"Failed to load module {path}: {str(e)}", level='warning')
             status.msg(f"Error loading {path}, see log")
