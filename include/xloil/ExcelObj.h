@@ -223,16 +223,16 @@ namespace xloil
     /// <summary>
     /// Construct from STL wstring
     /// </summary>
-    explicit ExcelObj(const std::wstring& s)
+    explicit ExcelObj(const std::wstring_view& s)
       : ExcelObj(std::move(PString<>(s)))
     {}
 
     /// <summary>
     /// Construct from STL string
     /// </summary>
-    explicit ExcelObj(const std::string& s)
+    explicit ExcelObj(const std::string_view& s)
     {
-      createFromChars(s.c_str(), s.length());
+      createFromChars(s.data(), s.length());
     }    
     
     /// <summary>

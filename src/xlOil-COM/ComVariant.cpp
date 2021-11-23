@@ -169,9 +169,8 @@ namespace xloil
         if (S_OK != variant.pdispVal->QueryInterface(&pRange))
           XLO_THROW("Unexpected variant type: could not convert to Range");
         
-        auto xlRef = ExcelRef(pRange->GetAddress(true, true, Excel::xlA1));
-        //TODO: surely pRange->Release();
-        variant.pdispVal->Release();
+        auto xlRef = ExcelRef(pRange->GetAddress(VARIANT_TRUE, VARIANT_TRUE, Excel::xlA1, VARIANT_TRUE));
+        variant.pdispVal->Release(); //TODO: surely pRange->Release();
         
         if (allowRange)
           return xlRef;
