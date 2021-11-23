@@ -12,7 +12,6 @@ namespace xloil
       ctpl::thread_pool _thread;
       pybind11::object _eventLoop;
       pybind11::object _callSoonFunction;
-      std::shared_ptr<const void> _shutdownHandler;
 
     public:
       EventLoop()
@@ -36,12 +35,16 @@ namespace xloil
             getGil.inc_ref();
             _eventLoop = pybind11::module::import("asyncio").attr("new_event_loop")();
             _callSoonFunction = pybind11::module::import("xloil.register").attr("_loop_call_threadsafe");
+   
           }
           catch (const std::exception& e)
           {
-            XLO_ERROR("Failed to initialise python worker thread: {0}", e.what());
+            XLO_ERROR("Failed to initialise python event loop: {0}", e.what());
           }
         }).get();
+
+        if (!_eventLoop || _eventLoop.is_none() || !_callSoonFunction || _callSoonFunction.is_none())
+          XLO_THROW("Failed starting event loop");
 
         _thread.push([this](int) mutable
         {
@@ -87,7 +90,6 @@ namespace xloil
       }
       void shutdown()
       {
-        _shutdownHandler.reset();
         stop();
         _thread.stop();
       }
