@@ -211,18 +211,25 @@ def _get_event_loop():
     asyncio.set_event_loop(_async_function_loop) # Required?
     return _async_function_loop
 
-def _loop_call_threadsafe(loop, func, *args):
+def _logged_wrapper(func):
     """
-    Calls asyncio's call_soon_threadsafe but wraps func so that any errors
-    are logged
+    Wraps func so that any errors are logged. Invoked from the core.
     """
-    def logged_func(*args):
+    def logged_func(*args, **kwargs):
         try:
-            func(*args)
+            return func(*args, **kwargs)
         except Exception as e:
-            log(f"Error during event loop: {str(e)} : {traceback.format_exc()}", level='error')
-    loop.call_soon_threadsafe(logged_func, *args)
-  
+            log(f"Error during {func.__name__}: {str(e)} : {traceback.format_exc()}", level='error')
+    return logged_func
+
+async def _logged_wrapper_async(coro):
+    """
+    Wraps coroutine so that any errors are logged. Invoked from the core.
+    """
+    try:
+        return await coro
+    except Exception as e:
+        log(f"Error during coroutine: {str(e)} : {traceback.format_exc()}", level='error')
 
 # This is a thread-local variable to get Caller to behave like a static
 # but work properly on different threads and when used in an async funcion

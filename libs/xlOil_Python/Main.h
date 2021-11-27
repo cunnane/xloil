@@ -22,6 +22,7 @@ namespace xloil
     };
 
     PyAddin& findAddin(const wchar_t* xllPath);
+    PyAddin& theCurrentAddin();
 
     /// <summary>
     /// The core context corresponds to xlOil.dll - it always exists and is

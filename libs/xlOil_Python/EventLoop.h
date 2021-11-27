@@ -34,7 +34,7 @@ namespace xloil
             pybind11::gil_scoped_acquire getGil;
             getGil.inc_ref();
             _eventLoop = pybind11::module::import("asyncio").attr("new_event_loop")();
-            _callSoonFunction = pybind11::module::import("xloil.register").attr("_loop_call_threadsafe");
+            _callSoonFunction = _eventLoop.attr("call_soon_threadsafe");
    
           }
           catch (const std::exception& e)
@@ -72,12 +72,19 @@ namespace xloil
       {
         if (!active())
           return;
-        _callSoonFunction(_eventLoop, func, std::forward<Args>(args)...);
+        auto loggedFunc = pybind11::module::import("xloil.register").attr("_logged_wrapper")(func);
+        _callSoonFunction(loggedFunc, std::forward<Args>(args)...);
       }
       template <class...Args>
       void callback(const char* module, const char* func, Args&&... args)
       {
         callback(py::module::import(module).attr(func), std::forward<Args>(args)...);
+      }
+
+      void runAsync(const pybind11::object& coro)
+      {
+        auto loggedCoro = pybind11::module::import("xloil.register").attr("_logged_wrapper_async")(coro);
+        pybind11::module::import("asyncio").attr("run_coroutine_threadsafe")(loggedCoro, _eventLoop);
       }
       bool active()
       {
@@ -93,7 +100,9 @@ namespace xloil
         stop();
         _thread.stop();
       }
-      auto loop() { return _eventLoop; }
+
+      auto& loop() { return _eventLoop; }
+      auto& thread() { return _thread.get_thread(0); }
     };
   }
 }

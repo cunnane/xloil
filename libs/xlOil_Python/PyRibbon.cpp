@@ -4,6 +4,7 @@
 #include "PyCore.h"
 #include "PyEvents.h"
 #include "PyImage.h"
+#include "EventLoop.h"
 #include <xloil/ExcelUI.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
@@ -32,46 +33,55 @@ namespace xloil
         auto pyMapper = PyDict_Check(funcNameMap.ptr())
           ? funcNameMap.attr("__getitem__")
           : funcNameMap;
-
-        return [pyMapper = PyObjectHolder(pyMapper)](const wchar_t* name)
+        
+        return [pyMapper = PyObjectHolder(pyMapper), addin = &theCurrentAddin()](const wchar_t* name)
         {
           try
-          {
-            py::gil_scoped_acquire getGil;
-            auto callback = pyMapper(name);
-            return [callback](
+          {  
+            return [&, funcname=wstring(name)](
               const RibbonControl& ctrl, VARIANT* vRet, int nArgs, VARIANT** vArgs)
-            {
-              try
               {
-                // Converting via an ExcelObj is not optimal, but avoids building
-                // a VARIANT converter. Since very few VARIANT types can appear in
-                // callbacks this might be a feasible approach when IPictureDisp
-                // support is introduced.
-                py::gil_scoped_acquire getGil;
-                py::tuple args(nArgs);
-                for (auto i = 0; i < nArgs; ++i)
-                  args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
-                auto pyRet = callback(ctrl, *args);
-                if (vRet && !pyRet.is_none())
+                try
                 {
-                  auto picture = pictureFromPilImage(pyRet);
-                  if (picture)
+                  // Converting via an ExcelObj is not optimal, but avoids building
+                  // a VARIANT converter. Since very few VARIANT types can appear in
+                  // callbacks this might be a feasible approach when IPictureDisp
+                  // support is introduced.
+                  py::gil_scoped_acquire getGil;
+                  auto callback = pyMapper(funcname);
+
+                  py::tuple args(nArgs);
+                  for (auto i = 0; i < nArgs; ++i)
+                    args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
+                  
+                  auto pyRet = callback(ctrl, *args);
+                  auto isAsync = py::module::import("inspect").attr("iscoroutine")(pyRet).cast<bool>();
+
+                  if (isAsync)
                   {
-                    VariantInit(vRet);
-                    vRet->pdispVal = (IDispatch*)picture;
-                    vRet->vt = VT_DISPATCH;
+                    if (vRet)
+                      XLO_THROW("Ribbon callback functions which return a value cannot be async");
+                    addin->thread->runAsync(pyRet);
                   }
-                  else
-                    excelObjToVariant(vRet, FromPyObj<false>()(pyRet.ptr()));
+                  else if (vRet && !pyRet.is_none())
+                  {
+                    auto picture = pictureFromPilImage(pyRet);
+                    if (picture)
+                    {
+                      VariantInit(vRet);
+                      vRet->pdispVal = (IDispatch*)picture;
+                      vRet->vt = VT_DISPATCH;
+                    }
+                    else
+                      excelObjToVariant(vRet, FromPyObj<false>()(pyRet.ptr()));
+                  }
                 }
-              }
-              catch (const py::error_already_set& e)
-              {
-                raiseUserException(e);
-                throw;
-              }
-            };
+                catch (const py::error_already_set& e)
+                {
+                  raiseUserException(e);
+                  throw;
+                }
+              };
           }
           catch (const py::error_already_set& e)
           {
