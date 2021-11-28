@@ -59,7 +59,7 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="StubLoader.cpp" />
+    <ClCompile Include="Loader\StubLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="package\setup.py" />
@@ -118,15 +118,19 @@
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
-	   <CopyFileToFolders Include="package\xloil\tkinter.py">
+    <CopyFileToFolders Include="package\xloil\tkinter.py">
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
-	   <CopyFileToFolders Include="package\xloil\qtgui.py">
+    <CopyFileToFolders Include="package\xloil\qtgui.py">
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
-	   <CopyFileToFolders Include="package\xloil\_common.py">
+    <CopyFileToFolders Include="package\xloil\_common.py">
+      <FileType>Document</FileType>
+      <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="package\xloil\excelgui.py">
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>

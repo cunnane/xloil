@@ -169,5 +169,54 @@ namespace xloil
     };
 
 
+    template<class Return, class Class, class... Args>
+    constexpr auto MainThreadWrap(Return(Class::* f)(Args...) const)
+    {
+      return [f](Class* self, Args... args)
+      {
+        auto fut = runExcelThread([=]()
+        {
+          return (self->*f)(args...);
+        });
+        py::gil_scoped_release release;
+        return fut.get();
+      };
+    }
+    template<class Return, class Class, class... Args>
+    constexpr auto MainThreadWrap(Return(Class::* f)(Args...))
+    {
+      return [f](Class* self, Args... args)
+      {
+        auto fut = runExcelThread([=]()
+        {
+          return (self->*f)(args...);
+        });
+        py::gil_scoped_release release;
+        return fut.get();
+      };
+    }
+
+    template<class F, class T, class Return, class... Args>
+    constexpr auto MainThreadWrap(
+      F&& f,
+      Return(T::*)(Args...) const)
+    {
+      return [f](Args... args)
+      {
+        auto fut = runExcelThread([=]()
+        {
+          return f(args...);
+        });
+        py::gil_scoped_release release;
+        return fut.get();
+      };
+    }
+
+    template<class F>
+    constexpr auto MainThreadWrap(F&& f)
+    {
+      return MainThreadWrap(f, (decltype(&F::operator())) nullptr);
+    }
+
   }
 }

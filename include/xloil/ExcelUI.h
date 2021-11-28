@@ -54,6 +54,7 @@ namespace xloil
     {
       statusBarMsg(L"", _timeout);
     }
+
     size_t _timeout;
   };
 
@@ -69,6 +70,10 @@ namespace xloil
     virtual void onDestroy() = 0;
   };
 
+  /// <summary>
+  /// Wraps an Excel Custom Task Pane 
+  /// (https://docs.microsoft.com/en-us/dotnet/api/microsoft.office.tools.customtaskpane)
+  /// </summary>
   class ICustomTaskPane
   {
   public:
@@ -82,27 +87,72 @@ namespace xloil
     };
     virtual ~ICustomTaskPane() {}
 
+    /// <summary>
+    /// Gets the base COM control created in the task pane. Thread safe.
+    /// </summary>
+    /// <returns></returns>
     virtual IDispatch* content() const = 0;
 
     /// <summary>
-    /// Gives the Window object to which this task pane is attached
+    /// Gives the main Excel Window object to which this task pane is attached
     /// </summary>
     /// <returns></returns>
     virtual ExcelWindow window() const = 0;
 
+    /// <summary>
+    /// Gets the window handle for parent of the task pane control, that is
+    /// the child window which houses the task pane. Thread safe.
+    /// </summary>
+    /// <returns></returns>
     virtual size_t parentWindowHandle() const = 0;
 
-    virtual void setVisible(bool) = 0;
+    /// <summary>
+    /// Sets the visblity of the task pane to true/false
+    /// </summary>
+    /// <param name="visible"></param>
+    virtual void setVisible(bool visible) = 0;
+
+    /// <summary>
+    /// Returns the current visibility of the task pane
+    /// </summary>
+    /// <returns></returns>
     virtual bool getVisible() = 0;
 
+    /// <summary>
+    /// Returns the task pane size in pixels as a tuple (width, height)
+    /// </summary>
+    /// <returns></returns>
     virtual std::pair<int, int> getSize() = 0;
+
+    /// <summary>
+    /// Sets the task pane size to the specified number of pixels
+    /// </summary>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
     virtual void setSize(int width, int height) = 0;
 
+    /// <summary>
+    /// Gets the current dock position of the task pane
+    /// </summary>
+    /// <returns></returns>
     virtual DockPosition getPosition() const = 0;
+    /// <summary>
+    /// Sets the dock position: top, left, right, bottom, floating
+    /// </summary>
+    /// <param name="pos"></param>
     virtual void setPosition(DockPosition pos) = 0;
 
+    /// <summary>
+    /// Gets the window title of the task pane
+    /// </summary>
+    /// <returns></returns>
     virtual std::wstring getTitle() const = 0;
 
+    /// <summary>
+    /// Registers a callback handler for task pane events such as size change.
+    /// The callback will occur in Excel's main thread.
+    /// </summary>
+    /// <param name="events"></param>
     virtual void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) = 0;
 
     virtual void destroy() const = 0;
@@ -189,99 +239,4 @@ namespace xloil
 
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
   XLOIL_EXPORT void excelObjToVariant(VARIANT* v, const ExcelObj& obj);
-
-  class ComAddinThreadSafe : public IComAddin
-  {
-  private:
-    std::shared_ptr<IComAddin> _base;
-  public:
-    ComAddinThreadSafe(const wchar_t* name)
-    {
-      runExcelThread([this, nameStr = std::wstring(name)]() mutable
-      {
-        this->_base = makeComAddin(nameStr.c_str(), nullptr);
-      });
-    }
-
-    ComAddinThreadSafe(
-      std::wstring&& name,
-      std::wstring&& xml,
-      IComAddin::RibbonMap&& mapper)
-    {
-      runExcelThread([this, nameStr = name, xmlStr = xml, maps = mapper]() mutable
-      {
-        this->_base = makeComAddin(nameStr.c_str(), nullptr);
-        _base->setRibbon(xmlStr.c_str(), maps);
-        _base->connect();
-      });
-    }
-
-    const wchar_t* progid() const override
-    {
-      return _base->progid();
-    }
-    void connect() override
-    {
-      connectAsync().wait();
-    }
-    void disconnect() override
-    {
-      disconnectAsync().wait();
-    }
-    void setRibbon(const wchar_t* xml, const RibbonMap& mapper) override
-    {
-      setRibbonAsync(xml, mapper).wait();
-    }
-    void ribbonInvalidate(const wchar_t* controlId = 0) const override
-    {
-      ribbonInvalidateAsync(controlId).wait();
-    }
-    bool ribbonActivate(const wchar_t* controlId) const override
-    {
-      return ribbonActivateAsync(controlId).get();
-    }
-    std::shared_ptr<ICustomTaskPane> createTaskPane(
-      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* progId = nullptr) override
-    {
-      return createTaskPaneAsync(name, window, progId).get();
-    }
-    const TaskPaneMap& panes() const override
-    {
-      return _base->panes();
-    }
-
-    std::future<void> connectAsync()
-    {
-      return runExcelThread([obj=_base]() { obj->connect(); });
-    }
-    std::future<void> disconnectAsync()
-    {
-      return runExcelThread([obj = _base]() { obj->disconnect(); });
-    }
-    std::future<void> setRibbonAsync(const wchar_t* xml, const RibbonMap& mapper)
-    {
-      return runExcelThread([obj = _base, xmlStr = std::wstring(xml), maps = RibbonMap(mapper)]() {
-        obj->setRibbon(xmlStr.c_str(), maps);
-      });
-    }
-    std::future<void> ribbonInvalidateAsync(const wchar_t* controlId = 0) const
-    {
-      return runExcelThread([obj = _base,  id = std::wstring(controlId)]() { 
-        obj->ribbonInvalidate(id.empty() ? nullptr : id.c_str()); 
-      });
-    }
-    std::future<bool> ribbonActivateAsync(const wchar_t* controlId) const
-    {
-      return runExcelThread([obj = _base, id = std::wstring(controlId)]() { 
-        return obj->ribbonActivate(id.c_str()); 
-      });
-    }
-    std::future<std::shared_ptr<ICustomTaskPane>> createTaskPaneAsync(
-      const wchar_t* name, const IDispatch* window = nullptr, const wchar_t* /*progId*/ = nullptr)
-    {
-      return runExcelThread([obj = _base, nameStr = std::wstring(name), window]() {
-        return obj->createTaskPane(nameStr.c_str(), window);
-      });
-    }
-  };
 }

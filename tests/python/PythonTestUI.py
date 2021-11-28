@@ -15,12 +15,12 @@ import asyncio
 # on the GUI thread or Qt _will abort_.  *This includes importing PyQt5* 
 #  `Use QtThread.run(...)` or `QtThread.send(...)`
 
-from xloil.qtgui import QtCustomTaskPane, QtThread
+from xloil.qtgui import QtThreadTaskPane
 
 _PANE_NAME="MyPane"
 
 def make_task_pane(name, gui):
-
+    
     def draw_task_pane():
         from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
         from PyQt5.QtCore import pyqtSignal, Qt
@@ -32,9 +32,8 @@ def make_task_pane(name, gui):
                 super().__init__()
                 progress_bar = QProgressBar(self)
                 progress_bar.setGeometry(200, 80, 250, 20)
-                
                 self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
-
+                
                 label = QLabel("Hello from Qt")
                 
                 layout = QHBoxLayout()
@@ -47,11 +46,8 @@ def make_task_pane(name, gui):
     
         return MyTaskPane()
         
-    # Create the GUI object using QtThread.run(...) or Qt will core
-    widget = QtThread.run(lambda: draw_task_pane())
-    return QtCustomTaskPane(gui.add_task_pane(name), widget)
+    return QtThreadTaskPane(gui.add_task_pane(name), draw_task_pane)
     
-
 #----------------------
 # GUI: Creating Ribbons
 #----------------------
@@ -63,6 +59,7 @@ def make_task_pane(name, gui):
 #
  
 def get_icon_path():
+    # Gets the path to an icon file to demonstrate PIL image handling
     global _xloil_workbook_path
     return os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
     
@@ -73,12 +70,17 @@ def button_image(ctrl):
     import os
     im = Image.open(get_icon_path())
     return im
-        
-def pressOpenPane(ctrl):
+
+#
+# GUI callbacks declared async will be executed in the addin's 
+# event loop. Other callbacks are executed in Excel's main thread.
+# Async callbacks cannot return values.
+# 
+async def pressOpenPane(ctrl):
     global _excelgui
     
     xlo.log("Button Pressed")
-    
+  
     pane = xlo.find_task_pane(title=_PANE_NAME)
     if not pane:
         pane = make_task_pane(_PANE_NAME, _excelgui)
@@ -94,6 +96,10 @@ def combo_change(ctrl, value):
         pane.widget.progress.emit(int(value))
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
+#
+# We construct the ExcelUI (actually a handle to a COM addin) using XML to describe 
+# the ribbon and a map from callbacks referred to in the XML to actual python functions
+#
 _excelgui = xlo.ExcelUI(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
@@ -125,6 +131,7 @@ _excelgui = xlo.ExcelUI(ribbon=r'''
 # Images: returning images from functions
 #-----------------------------------------
 
+# In case PIL is not installed, protect this section
 try:
 
     # This import defines a return converter which allows us to return a PIL image
@@ -152,8 +159,6 @@ try:
             return xlo.pillow.ReturnImage(size="cell")(im)
         else:
             return xlo.pillow.ReturnImage((width, height))(im)
-        
-    #xlo.scan_module("xloil.matplotlib")
 
 except ImportError:
     pass
@@ -161,6 +166,8 @@ except ImportError:
 #-----------------------------------------
 # Plots: returning matplotlib figures from functions
 #-----------------------------------------
+
+# In case matplotlib is not installed, protect this section
 try:
 
     # This import defines a return converter for a matplotlib figure

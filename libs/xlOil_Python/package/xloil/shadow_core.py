@@ -562,8 +562,11 @@ else:
 
     class TaskPaneFrame:
         """
-            References Excel's internal task pane object into which the python GUI
-            can be drawn
+            References Excel's internal task pane object into which the python GUI can be drawn.
+            The methods of this object are safe to call from any thread.  COM must be used on Excel's
+            main thread, so the methods all wrap their calls to ensure to this happens. This could lead 
+            to deadlocks if the call triggers event  handlers on the main thread, which in turn block 
+            waiting for the thread originally calling TaskPaneFrame.
         """
         @property
         def parent_hwnd(self):
@@ -588,9 +591,15 @@ else:
 
         @property
         def size(self) -> typing.Tuple[int, int]:
+            """
+            Returns the task pane size as a tuple (width, height)
+            """
             ...
         @size.setter
         def size(self, value: typing.Tuple[int, int]):
+            """
+            Sets the task pane size given a tuple (width, height)
+            """
             ...
 
         @property
@@ -602,7 +611,10 @@ else:
 
     class ExcelUI:
         """
-        Controls an Ribbon and it's associated COM addin
+        Controls an Ribbon and it's associated COM addin. The methods of this object are safe
+        to call from any thread.  COM must be used on Excel's main thread, so the methods all wrap
+        their calls to ensure to this happens. This could lead to deadlocks if the call triggers event 
+        handlers on the main thread, which in turn block waiting for the thread originally calling ExcelUI.
         """
         def __init__(self, ribbon:str, func_names:dict, name:str=None):
             """
@@ -615,11 +627,18 @@ else:
 
             ribbon: str
                 A Ribbon XML string, most easily created with a specialised editor.
+                The XML format is documented on Microsoft's website
 
-            func_names: dict
-                The ``func_names`` dictionary links callbacks named in the Ribbon XML to
-                python functions. Each handler should take a single ``RibbonControl``
+            func_names: Func[str -> callable] or Dict[str, callabe]
+                The ``func_names`` mapper links callbacks named in the Ribbon XML to
+                python functions. It can be either a dictionary containing named 
+                functions or any callable which returns a function given a string.
+                Each return handler should take a single ``RibbonControl``
                 argument which describes the control which raised the callback.
+
+                Callbacks declared async will be executed in the addin's event loop. 
+                Other callbacks are executed in Excel's main thread. Async callbacks 
+                cannot return values.
 
             name: str
                 If None, uses the filename at the call site
@@ -640,7 +659,7 @@ else:
             pass
         def ribbon(self, xml:str, func_names:dict):
             """
-            See `create_ribbon`. This function can only be called when the Ribbon
+            See the constructor. This function can only be called when the Ribbon
             is disconnected.
             """
             pass
@@ -777,81 +796,32 @@ else:
     windows:_Collection[ExcelWindow]
 
     class StatusBar:
+        """
+             Displays status bar messages and clears the status bar (after an optional delay) 
+             on context exit.
+
+             Example
+             -------
+
+             with StatusBar(1000) as status:
+                status.msg('Doing slow thing')
+                ...
+                status.msg('Done slow thing')
+             
+        """
         def __init__(self, timeout=0):
+            """
+            Constructs a StatusBar with a timeout specified in milliseconds.  After the 
+            StatusBar context exits, any messages will be cleared after this time
+            """
             ...
         def __enter__(self):
             ...
         def __exit__(self, *args):
             ...
         def msg(self, text, timeout=0):
+            """
+            Posts a status bar message, and if `timeout` is non-zero, clears if after
+            the specified number of milliseconds
+            """
             ...
-
-_task_panes = set()
-
-class CustomTaskPane:
-    """
-        Base class for custom task pane event handler. Can be sub-classes to 
-        implement task panes with different GUI toolkits
-    """
-
-    def __init__(self, pane: TaskPaneFrame):
-        self._pane = pane
-        self._pane.add_event_handler(self)
-        _task_panes.add(self)
-
-    def on_size(self, width, height):
-        # Called when the task pane is resized
-        ...
-             
-    def on_visible(self, value):
-        # Called when the visible state changes, passes the new state
-        ...
-
-    def on_docked(self):
-        # Called when the pane is docked to a new location or undocked
-        ...
-
-    def on_destroy(self):
-        # Called before the pane is destroyed to release any resources
-
-        # Release internal task pane pointer
-        self._pane = None
-        # Remove ourselves from pane lookup table
-        _task_panes.remove(self)
-
-    @property
-    def pane(self):
-        return self._pane
-
-    @property
-    def visible(self):
-        return self._pane.visible
-
-    @visible.setter
-    def visible(self, value: bool):
-        self._pane.visible = value
-
-
-def find_task_pane(title=None, workbook=None):
-    """
-        Finds any xlOil python task panes associated with the active window, 
-        optionally filtering by pane `title`. 
-
-        This function should be used to find an existing task pane to make
-        visible before a task pane is created.
-
-        Task panes are linked to Excel's Window objects which can have a many-to-one
-        relationship with workbooks. If a `workbook` name is specified, all task panes 
-        associated with that workbook will be searched.
-
-        Returns: if `title` is specified, returns a (case-sensitive) match of a single
-        `xloil.CustomTaskPane object` or None, otherwise returns a list of 
-        `xloil.CustomTaskPane` objects.
-    """
-
-    hwnds = [x.hwnd for x in windows]
-    found = [x for x in _task_panes if x.pane.window.hwnd in hwnds]
-    if title is None:
-        return found
-    else:
-        return next((x for x in found if x.pane.title == title), None)

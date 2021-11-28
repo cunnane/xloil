@@ -1,26 +1,26 @@
 import threading
 import queue
 from ._common import *
-from .shadow_core import CustomTaskPane, event
+from .shadow_core import event
+from .excelgui import CustomTaskPane
 
 class _QtThread:
 
-    def __init__(self, start=True):
-        # The 'start' argument exists to avoid starting the thread if we are linting etc.
-        if start: 
-            self._start()
-
-    def _start(self):
-        self._thread = threading.Thread(target=self._main_loop, name="QtGuiThread")
+    def __init__(self):
+        self._thread = None
         self._app = None
         self._enqueued = None
+
+    def start(self):
+        if self._thread is not None:
+            return
+        self._thread = threading.Thread(target=self._main_loop, name="QtGuiThread")
         self._queue = queue.Queue()
         self._results = queue.Queue()
         self._thread.start()
-            
-    def join(self):
-        self._thread.join()
-        
+        # PyBye is called before threading module teardown, whereas `atexit` comes later
+        event.PyBye += self.stop
+
     def stop(self):
         if self.ready:
             self._queue.put((False, self.app.quit))
@@ -49,7 +49,7 @@ class _QtThread:
     
     @property
     def stopped(self):
-        return not self._thread.is_alive()
+        return not self._thread or not self._thread.is_alive()
         
     @property
     def app(self):
@@ -98,26 +98,22 @@ class _QtThread:
         except Exception as e:
             log(f"QtThread failed: {e}", level='error')
 
-QtThread = _QtThread(XLOIL_HAS_CORE) 
 
-# PyBye is called before threading module teardown, whereas `atexit` comes later
-# The need to create a global var to stop the event hander going out of scope is a bit horrible
-_stopper = QtThread.stop
-event.PyBye += _stopper
 
-# If we are running 'for real' and have created the GUI thread above, we send this
-# blocking no-op to ensure our QApplication first as importing PyQt5.QtWidgets will create
-# a default global app object on the wrong thread if one does not exist.
-if XLOIL_HAS_CORE:
-    QtThread.run(lambda: 0)
+QtThread = _QtThread() 
 
-class QtCustomTaskPane(CustomTaskPane):
+class QtThreadTaskPane(CustomTaskPane):
 
-    def __init__(self, pane, widget):
+    def __init__(self, pane, draw_widget):
         super().__init__(pane)
-        self.widget = widget
-        QtThread.run(lambda: self._reparent_widget(widget, self.pane.parent_hwnd))
 
+        # Send this blocking no-op to ensure our QApplication is created first as importing 
+        # PyQt5.QtWidgets will create one if it does not already exist.
+        QtThread.start()
+        QtThread.run(lambda: 0)
+
+        self.widget = QtThread.run(draw_widget)
+        QtThread.run(lambda: self._reparent_widget(self.widget, self.pane.parent_hwnd))
 
     def on_size(self, width, height):
         QtThread.send(lambda: self.widget.resize(width, height))
@@ -137,4 +133,3 @@ class QtCustomTaskPane(CustomTaskPane):
         widget.windowHandle().setParent(nativeWindow)
         widget.update()
         widget.move(0, 0)
-

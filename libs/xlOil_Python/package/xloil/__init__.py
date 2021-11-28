@@ -28,3 +28,8 @@ from .type_converters import (
     converter,
     returner
     )
+
+from .excelgui import (
+    CustomTaskPane,
+    find_task_pane
+    )
