@@ -12,15 +12,6 @@ namespace xloil
 {
   namespace COM
   {
-
-    //public class zCustomTaskPaneCollection
-    //{
-    //  // Public list of TaskPane items
-    //  public List<zCustomTaskPane> Items = new List<zCustomTaskPane>();
-    //  private Office.ICTPFactory _paneFactory;
-    //};
-
-
     // TODO: I don't think we need one of these per pane, just one global one, although we'd have to map back to ICustomTaskPane objects
     class __declspec(novtable) CustomTaskPaneEventHandler
       : public CComObjectRootEx<CComSingleThreadModel>,
@@ -330,6 +321,7 @@ namespace xloil
       {
         return _pane->Title.GetBSTR();
       }
+
       void destroy() const
       {
         if (_customCtrl)
