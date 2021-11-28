@@ -1,3 +1,4 @@
+#include "..\..\..\include\xloil\AppObjects.h"
 #include <xlOil/ExcelApp.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/WindowsSlim.h>
@@ -35,12 +36,6 @@ namespace xloil
   {
     COM::excelObjToVariant(v, obj);
   }
-
-  ExcelWindow::ExcelWindow(Excel::Window* ptr) 
-    : _window(ptr) 
-  {
-    _window->AddRef();
-  }
   
   ExcelWindow::ExcelWindow(const wchar_t* caption)
   {
@@ -49,24 +44,23 @@ namespace xloil
       auto winptr = caption
         ? excelApp().Windows->GetItem(caption)
         : excelApp().ActiveWindow;
-      _window = winptr;
-      _window->AddRef();
+      init(winptr);
     }
     XLO_RETHROW_COM_ERROR;
   }
   size_t ExcelWindow::hwnd() const
   {
-    return (size_t)_window->Hwnd;
+    return (size_t)ptr()->Hwnd;
   }
   std::wstring ExcelWindow::name() const
   {
-    return _window->Caption.bstrVal;
+    return ptr()->Caption.bstrVal;
   }
   ExcelWorkbook ExcelWindow::workbook() const
   {
     try
     {
-      return ExcelWorkbook(Excel::_WorkbookPtr(_window->Parent));
+      return ExcelWorkbook(Excel::_WorkbookPtr(ptr()->Parent));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -80,14 +74,22 @@ namespace xloil
 
   IAppObject::~IAppObject()
   {
-    auto p = basePtr();
-    if (p)
-      p->Release();
+    if (_ptr)
+      _ptr->Release();
   }
-  ExcelWorkbook::ExcelWorkbook(Excel::_Workbook* p)
-    : _wb(p)
+
+  void IAppObject::init(IDispatch* ptr)
   {
-    p->AddRef();
+    _ptr = ptr;
+    if (ptr)
+      ptr->AddRef();
+  }
+
+  void IAppObject::assign(const IAppObject& that)
+  {
+    if (_ptr) _ptr->Release();
+    _ptr = that._ptr;
+    _ptr->AddRef();
   }
 
   ExcelWorkbook::ExcelWorkbook(const wchar_t* name)
@@ -97,28 +99,27 @@ namespace xloil
       auto ptr = name
         ? excelApp().Workbooks->GetItem(name)
         : excelApp().ActiveWorkbook;
-      _wb = ptr;
-      ptr->AddRef();
+      init(ptr);
     }
     XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelWorkbook::name() const
   {
-    return _wb->Name;
+    return ptr()->Name.GetBSTR();
   }
 
   std::wstring ExcelWorkbook::path() const
   {
-    return _wb->Path;
+    return ptr()->Path.GetBSTR();
   }
   std::vector<ExcelWindow> ExcelWorkbook::windows() const
   {
     try
     {
       vector<ExcelWindow> result;
-      for (auto i = 1; i <= _wb->Windows->Count; ++i)
-        result.emplace_back(_wb->Windows->GetItem(i));
+      for (auto i = 1; i <= ptr()->Windows->Count; ++i)
+        result.emplace_back(ptr()->Windows->GetItem(i));
       return result;
     }
     XLO_RETHROW_COM_ERROR;
@@ -126,7 +127,7 @@ namespace xloil
 
   void ExcelWorkbook::activate() const
   {
-    _wb->Activate();
+    ptr()->Activate();
   }
 
   namespace App

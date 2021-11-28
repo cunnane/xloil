@@ -11,36 +11,74 @@ namespace Excel { struct Window; struct _Workbook; struct Range; }
 
 namespace xloil
 {
-  class IAppObject
+  /// <summary>
+  /// Base class for objects in the object model, not very usefuly directly.
+  /// </summary>
+  class XLOIL_EXPORT IAppObject
   {
   public:
     virtual ~IAppObject();
+    /// <summary>
+    /// Returns an identifier for the object. This may be a workbook name,
+    /// window caption or range address.
+    /// </summary>
+    /// <returns></returns>
     virtual std::wstring name() const = 0;
-    virtual IDispatch* basePtr() const { return nullptr; }
+    IDispatch* basePtr() const { return _ptr; }
+
+  protected:
+    IDispatch* _ptr;
+    IAppObject(IDispatch* ptr = nullptr) { init(ptr); }
+    void init(IDispatch* ptr);
+    void assign(const IAppObject& that);
   };
 
   class ExcelWindow;
 
+  /// <summary>
+  /// Wraps a Workbook (https://docs.microsoft.com/en-us/office/vba/api/excel.workbook) in
+  /// Excel's object model but with very limited functionality at present
+  /// </summary>
   class XLOIL_EXPORT ExcelWorkbook : public IAppObject
   {
   public:
-    ExcelWorkbook(Excel::_Workbook* p);
+    /// <summary>
+    /// Gives the ExcelWorkbook object associated with the given workbookb name, or the active workbook
+    /// </summary>
+    /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
     explicit ExcelWorkbook(const wchar_t* name = nullptr);
-    ExcelWorkbook(ExcelWorkbook&& that) noexcept : _wb(that._wb) { that._wb = nullptr; }
-    ExcelWorkbook(const ExcelWorkbook& that) : ExcelWorkbook(that._wb) {}
+    /// <summary>
+    /// Constructs an ExcelWorkbook from a COM pointer
+    /// </summary>
+    /// <param name="p"></param>
+    ExcelWorkbook(Excel::_Workbook* p) : IAppObject((IDispatch*)p) {}
 
+    ExcelWorkbook& operator=(const ExcelWorkbook& that) { assign(that); return *this; }
+    ExcelWorkbook(ExcelWorkbook&& that) noexcept { std::swap(_ptr, that._ptr); }
+    ExcelWorkbook(const ExcelWorkbook& that) : IAppObject(that._ptr) {}
+    
+    /// <inheritdoc />
     std::wstring name() const override;
     
+    /// <summary>
+    /// Returns the full file path and file name for this workbook
+    /// </summary>
     std::wstring path() const;
+
+    /// <summary>
+    /// Returns a list of all Windows associated with this workbook (there can be
+    /// multiple windows viewing a single workbook).
+    /// </summary>
+    /// <returns></returns>
     std::vector<ExcelWindow> windows() const;
 
+    /// <summary>
+    /// Makes this the active workbook
+    /// </summary>
+    /// <returns></returns>
     void activate() const;
 
-    IDispatch* basePtr() const override { return (IDispatch*)_wb; }
-    Excel::_Workbook * ptr() const { return _wb; }
-
-  private:
-    Excel::_Workbook* _wb;
+    Excel::_Workbook* ptr() const { return (Excel::_Workbook * )_ptr; }
   };
 
 
@@ -51,18 +89,19 @@ namespace xloil
   {
   public:
     /// <summary>
-    /// Constructs and ExcelWindow from a COM pointer
+    /// Constructs an ExcelWindow from a COM pointer
     /// </summary>
     /// <param name="p"></param>
-    ExcelWindow(Excel::Window* p);
+    ExcelWindow(Excel::Window* p) : IAppObject((IDispatch*)p) {}
     /// <summary>
-    /// Gives the ExcelWindow object associated with the give window caption, or the active window
+    /// Gives the ExcelWindow object associated with the given window caption, or the active window
     /// </summary>
     /// <param name="windowCaption">The name of the window to find, or the active window if null</param>
     explicit ExcelWindow(const wchar_t* windowCaption = nullptr);
 
-    ExcelWindow(ExcelWindow&& that) noexcept : _window(that._window) { that._window = nullptr; }
-    ExcelWindow(const ExcelWindow& that) : ExcelWindow(that._window) {}
+    ExcelWindow& operator=(const ExcelWindow& that) { assign(that); return *this; }
+    ExcelWindow(ExcelWindow&& that) noexcept { std::swap(_ptr, that._ptr); }
+    ExcelWindow(const ExcelWindow& that) : IAppObject(that._ptr) {}
 
     /// <summary>
     /// Retuns the Win32 window handle
@@ -79,27 +118,34 @@ namespace xloil
     /// </summary>
     ExcelWorkbook workbook() const;
 
-    IDispatch* basePtr() const override { return (IDispatch*)_window; }
-    Excel::Window* ptr() const { return _window; }
-
-  private:
-    Excel::Window* _window;
+    Excel::Window* ptr() const { return (Excel::Window * )_ptr; }
   };
 
   class XLOIL_EXPORT ExcelRange : public Range, public IAppObject
   {
   public:
+    /// <summary>
+    /// Constructs a Range from a address. A local address (not qualified with
+    /// a workbook name) will refer to the active workbook
+    /// </summary>
     explicit ExcelRange(const wchar_t* address);
-    ExcelRange(Excel::Range* range);
-    ExcelRange(ExcelRange&& that) noexcept : _range(that._range) { that._range = nullptr; }
-    ExcelRange(const ExcelRange& that) : ExcelRange(that._range) {}
+    ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
+    ExcelRange(ExcelRange&& that) noexcept { std::swap(_ptr, that._ptr); }
+    ExcelRange(const ExcelRange& that) : IAppObject(that._ptr) {}
 
     Range* range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
+    /// <summary>
+    /// Returns a tuple (width, height)
+    /// </summary>
     std::tuple<row_t, col_t> shape() const final override;
 
+    /// <summary>
+    /// Returns the tuple (top row, top column, bottom row, bottom column)  
+    /// which describes the extent of the range, which is assumed rectangular.
+    /// </summary>
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
 
     /// <summary>
@@ -115,8 +161,14 @@ namespace xloil
     /// </summary>
     ExcelObj value() const final override;
 
+    /// <summary>
+    /// Gets the value at (i, j) as an ExcelObj
+    /// </summary>
     ExcelObj value(row_t i, col_t j) const final override;
 
+    /// <summary>
+    /// Sets all cells in the range to the specified value
+    /// </summary>
     void set(const ExcelObj& value) final override;
 
     /// <summary>
@@ -126,11 +178,8 @@ namespace xloil
 
     std::wstring name() const override;
 
-    IDispatch* basePtr() const override { return (IDispatch*)_range; }
-    const Excel::Range* ptr() const { return _range; }
-
-  private:
-    Excel::Range* _range;
+    Excel::Range* ptr() const { return (Excel::Range*)_ptr; }
+    Excel::Range* ptr()       { return (Excel::Range*)_ptr; }
   };
 
   namespace App
