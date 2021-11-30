@@ -61,11 +61,12 @@ class _QtThread:
         # path env var, so I need to explicitly pass it to the QApplication ctor
         try:
             import os
-            ppp = os.environ['QT_QPA_PLATFORM_PLUGIN_PATH']
+            ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH')
+
             from PyQt5.QtWidgets import QApplication
             from PyQt5.QtCore import QTimer
         
-            self._app = QApplication(['','-platformpluginpath', ppp])
+            self._app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
 
             log(f"Started Qt on thread {threading.get_native_id()} with libpaths={self._app.libraryPaths()}", level="info")
 
