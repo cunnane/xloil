@@ -143,19 +143,19 @@ namespace xloil
       void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
         runExcelThread([callable]()
-        {
-          py::gil_scoped_acquire getGil;
-          try
           {
-            callable();
-          }
-          catch (py::error_already_set& err)
-          {
-            if (err.matches(comBusyException))
-              throw ComBusyException();
-            throw;
-          }
-        },
+            py::gil_scoped_acquire getGil;
+            try
+            {
+              callable();
+            }
+            catch (py::error_already_set& err)
+            {
+              if (err.matches(comBusyException))
+                throw ComBusyException();
+              throw;
+            }
+          },
           ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
           nRetries,
           retryPause,
@@ -174,15 +174,15 @@ namespace xloil
       {
         struct Iter
         {
-          vector<T> _workbooks;
+          vector<T> _objects;
           size_t i = 0;
-          Iter() : _workbooks(f_enumerate()) {}
+          Iter() : _objects(f_enumerate()) {}
           Iter(const Iter&) = delete;
           T next()
           {
-            if (i >= _workbooks.size())
+            if (i >= _objects.size())
               throw py::stop_iteration();
-            return std::move(_workbooks[i++]);
+            return std::move(_objects[i++]);
           }
         };
         T getitem(const wstring& name)
