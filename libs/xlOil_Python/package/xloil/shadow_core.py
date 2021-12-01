@@ -792,8 +792,28 @@ else:
         def active(self) -> VT:
             ...
 
-    workbooks:_Collection[ExcelWorkbook]
-    windows:_Collection[ExcelWindow]
+    """
+    Collection of all open workbooks as ExcelWorkbook objects.
+    
+    Example
+    -------
+
+        workbooks['MyBook'].path
+        windows.active.workbook.path
+
+    """
+    workbooks:_Collection[ExcelWorkbook] = None
+    """
+    Collection of all open windws as ExcelWindow objects.
+    
+    Example
+    -------
+
+        workbooks['CaptionMyCaption'].path
+        workbooks.active.name
+
+    """
+    windows:_Collection[ExcelWindow] = None
 
     class StatusBar:
         """
