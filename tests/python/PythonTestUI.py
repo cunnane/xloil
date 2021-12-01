@@ -21,32 +21,33 @@ _PANE_NAME="MyPane"
 
 def make_task_pane(name, gui):
     
-    def draw_task_pane():
-        from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
-        from PyQt5.QtCore import pyqtSignal, Qt
-        
-        class MyTaskPane(QWidget):
-            progress = pyqtSignal(int)
-            
-            def __init__(self):
-                super().__init__()
-                progress_bar = QProgressBar(self)
-                progress_bar.setGeometry(200, 80, 250, 20)
-                self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
-                
-                label = QLabel("Hello from Qt")
-                
-                layout = QHBoxLayout()
-                
-                layout.addWidget(label)
-  
-                layout.addWidget(progress_bar)
-                
-                self.setLayout(layout)
     
+    from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
+    from PyQt5.QtCore import pyqtSignal, Qt
+    
+    class MyTaskPane(QWidget):
+        progress = pyqtSignal(int)
+        
+        def __init__(self):
+            super().__init__()
+            progress_bar = QProgressBar(self)
+            progress_bar.setGeometry(200, 80, 250, 20)
+            self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
+            
+            label = QLabel("Hello from Qt")
+            
+            layout = QHBoxLayout()
+            
+            layout.addWidget(label)
+
+            layout.addWidget(progress_bar)
+            
+            self.setLayout(layout)
+            
+    def draw_task_pane():
         return MyTaskPane()
         
-    return QtThreadTaskPane(gui.add_task_pane(name), draw_task_pane)
+    return QtThreadTaskPane(gui.add_task_pane(name), MyTaskPane)
     
 #----------------------
 # GUI: Creating Ribbons
