@@ -38,7 +38,16 @@ release = Path(soln_dir / "Version.txt").read_text()
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.autosectionlabel", "numpydoc", 'autodocsumm']
+extensions = [
+    "sphinx.ext.autodoc", 
+    "sphinx.ext.autosummary", 
+    "sphinx.ext.autosectionlabel", 
+    "numpydoc",
+    'autodocsumm'
+    ]
+
+# Avoid duplicate label warnings from autosectionlabel
+suppress_warnings = ['autosectionlabel.*']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

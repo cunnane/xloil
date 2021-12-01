@@ -12,7 +12,7 @@ xlOil Python Module Reference
 	ExcelArray
 	AllowRange
 	Range
-	RibbonUI
+	ExcelUI
 	RibbonControl
 	RtdPublisher
 	RtdServer
@@ -25,12 +25,12 @@ xlOil Python Module Reference
 	in_wizard
 	log
 	LogWriter
-	run_later
-	get_event_loop
+	excel_run
+	get_async_loop
 	from_excel_date
 	register_functions
 	deregister_functions
-	get_excel_state
+	excel_state
 	insert_cell_image
 	use_com_lib
 	xloil.rtd.RtdSimplePublisher
@@ -39,7 +39,6 @@ xlOil Python Module Reference
 	xloil.pillow.ReturnImage
 	xloil.matplotlib.ReturnFigure
 
-	
 .. automodule:: xloil
 	:members:
 	:imported-members:

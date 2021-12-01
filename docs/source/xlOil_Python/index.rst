@@ -11,7 +11,7 @@ xlOil Python
     TypeConversion
     ExcelApplication
     CustomGUI
-    Pandas
+    ExternalPackages
     Jupyter
     Rtd
     Debugging

@@ -35,3 +35,9 @@ We lift some examples directly from `the comtypes help <https://pythonhosted.org
     # different syntax. We're calling the *Range* constructor so we use
     # round brackets.
     xlo.Range("A1:C1").value = (1, 2, 3)
+
+
+Troubleshooting
+---------------
+
+https://stackoverflow.com/questions/52889704/python-win32com-excel-com-model-started-generating-errors

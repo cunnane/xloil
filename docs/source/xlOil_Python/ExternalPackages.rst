@@ -1,6 +1,15 @@
 =================================
-xlOil Python Pandas Support
+xlOil External Package Support
 =================================
+
+xlOil has built-in converters for several external libraries
+
+.. contents::
+    :local:
+
+
+Pandas
+------
 
 Pandas support can be enabled in *xlOil* with:
 
@@ -28,3 +37,12 @@ For example,
         return data[columnName]
 
 See :doc:`Example` for more examples.
+
+Matplotlib
+----------
+
+
+
+PIL / pillow
+------------
+

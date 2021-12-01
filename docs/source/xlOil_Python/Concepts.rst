@@ -119,3 +119,9 @@ xloPyLoad: import and scan a python module (worksheet function)
     Imports the specifed python module and registers any it for xloil 
     functions it contains.  Leaving the argument blank loads or reloads the
     workbook module for the calling sheet, i.e. the file `WorkbookName.py`.
+
+
+
+Multiple addins and event loops
+-------------------------------
+
