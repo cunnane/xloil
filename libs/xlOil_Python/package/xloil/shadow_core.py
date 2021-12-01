@@ -20,7 +20,8 @@ if XLOIL_HAS_CORE:
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
-        workbooks, windows)
+        workbooks, windows, 
+        xlfunc, xlfunc_async)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -760,6 +761,12 @@ else:
             if True, compresses the resulting image before storing in the sheet
         """
         pass
+
+
+    def xlfunc(func, *args):
+        ...
+    async def xlfunc_async(func, *args):
+        ...
 
 
     class ExcelWorkbook:

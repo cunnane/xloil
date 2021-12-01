@@ -49,7 +49,6 @@ namespace xloil
 {
   namespace Python
   {
-
     class PyRtdServer
     {
       shared_ptr<IRtdServer> _impl;

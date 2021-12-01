@@ -91,13 +91,35 @@ namespace xloil
   }
 
   /// <summary>
-  /// A wrapper around the Excel12 call. Better to avoid using directly
-  /// unless for performance reasons.
+  /// A wrapper around the Excel12 call. Avoid using directly unless for 
+  /// performance reasons.
   /// </summary>
   XLOIL_EXPORT int callExcelRaw(
     int func, ExcelObj* result,
     size_t nArgs = 0,
     const ExcelObj** args = nullptr);
+
+
+  /// <summary>
+  /// 
+  /// </summary>
+  /// <typeparam name="T"></typeparam>
+  /// <param name="func"></param>
+  /// <param name="result"></param>
+  /// <param name="nArgs"></param>
+  /// <param name="firstArg"></param>
+  /// <returns></returns>
+  template <class T>
+  inline int callExcelRaw(
+    int func, ExcelObj* result,
+    size_t nArgs,
+    T firstArg)
+  {
+    const ExcelObj* pArgs[XL_MAX_UDF_ARGS];
+    for (auto i = 0; i < nArgs; ++i, ++firstArg)
+      pArgs[i] = &*firstArg;
+    return callExcelRaw(func, result, nArgs, pArgs);
+  }
 
   /// <summary>
   /// Convenience wrapper for <see cref="callExcelRaw"/> for 
@@ -164,7 +186,7 @@ namespace xloil
     tryCallExcel(int func)
   {
     auto result = std::make_pair(ExcelObj(), 0);
-    result.second = callExcelRaw(func, &result.first, 0, 0);
+    result.second = callExcelRaw(func, &result.first);
     result.first.fromExcel();
     return result;
   }
@@ -192,5 +214,19 @@ namespace xloil
   public:
     ExcelAbort() : std::runtime_error("Excel abort") {}
   };
+
+  /// <summary>
+  /// Convert an Excel built-in function name to a number for use <see cref="callExcel"/>
+  /// </summary>
+  /// <param name="name"></param>
+  /// <returns>-1 if the name could not be found</returns>
+  XLOIL_EXPORT int excelFuncNumber(const char* name);
+
+  /// <summary>
+  /// Convert an Excel built-in function number used in <see cref="callExcel"/> to its name string.
+  /// </summary>
+  /// <param name="number"></param>
+  /// <returns>null if an invalid function number is passed</returns>
+  XLOIL_EXPORT const char* excelFuncName(const unsigned number) noexcept;
 }
 
