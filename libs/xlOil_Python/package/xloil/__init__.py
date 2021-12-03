@@ -31,5 +31,6 @@ from .type_converters import (
 
 from .excelgui import (
     CustomTaskPane,
-    find_task_pane
+    find_task_pane,
+    create_task_pane
     )

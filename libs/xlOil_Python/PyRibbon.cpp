@@ -5,6 +5,7 @@
 #include "PyEvents.h"
 #include "PyImage.h"
 #include "EventLoop.h"
+#include "PyFuture.h"
 #include <xloil/ExcelUI.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
@@ -173,21 +174,31 @@ namespace xloil
         return result;
       }
 
-      // TODO: attach task pane to any windowCaption
-      auto createTaskPane(IComAddin& addin, const std::wstring& name,
-        const py::object& progId, const py::object& window)
+      using CTPFuture = PyFuture<shared_ptr<ICustomTaskPane>,detail::CastFutureConverter>;
+
+      CTPFuture createPaneFrame(
+        IComAddin& comAddin, 
+        const std::wstring& name,
+        const py::object& window,
+        const py::object& progId)
       {
-        auto winPtr = window.is_none() ? nullptr : (IDispatch*)ExcelWindow(pyToWStr(window).c_str()).ptr();
         auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
+        auto winPtr    = window.is_none() ? nullptr   : window.cast<ExcelWindow>().basePtr();
 
-        auto fut = runExcelThread([&addin, name, winPtr, progIdStr]()
+        return runExcelThread([&comAddin, name, winPtr, progIdStr]()
         {
-          addin.connect();
-          return addin.createTaskPane(name.c_str(), winPtr, progIdStr.empty() ? nullptr : progIdStr.c_str());
+          comAddin.connect();
+          return comAddin.createTaskPane(name.c_str(), winPtr, progIdStr.empty() ? nullptr : progIdStr.c_str());
         });
+      }
 
-        py::gil_scoped_release releaseGil;
-        return fut.get();
+      auto createTaskPane(
+        IComAddin& comAddin, 
+        py::args args, 
+        py::kwargs kwargs)
+      {
+        kwargs["gui"] = py::cast(comAddin);
+        return py::module::import("xloil.excelgui").attr("create_task_pane")(*args, **kwargs);
       }
 
       class PyTaskPaneHandler : public ICustomTaskPaneHandler
@@ -238,6 +249,8 @@ namespace xloil
 
       static int theBinder = addBinder([](py::module& mod)
       {
+        CTPFuture::bind(mod, "CTPFuture");
+
         py::class_<RibbonControl>(mod, "RibbonControl")
           .def_readonly("id", &RibbonControl::Id)
           .def_readonly("tag", &RibbonControl::Tag);
@@ -258,20 +271,22 @@ namespace xloil
           .def("add_event_handler", 
             &addPaneEventHandler, py::arg("handler"));
 
-        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelUI")
-          .def(py::init(std::function(createRibbon)), py::arg("ribbon")=py::none(), py::arg("func_names")=py::none(), py::arg("name")=py::none())
-          .def("connect", 
+        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelGUI")
+          .def(py::init(std::function(createRibbon)), py::arg("ribbon") = py::none(), py::arg("func_names") = py::none(), py::arg("name") = py::none())
+          .def("connect",
             MainThreadWrap(&IComAddin::connect))
-          .def("disconnect", 
+          .def("disconnect",
             MainThreadWrap(&IComAddin::disconnect))
-          .def("ribbon", 
+          .def("ribbon",
             setRibbon, py::arg("xml"), py::arg("func_names"))
-          .def("invalidate", 
+          .def("invalidate",
             MainThreadWrap([](IComAddin* p, wstring id) { return p->ribbonInvalidate(id.c_str()); }), py::arg("id") = "")
-          .def("activate", 
+          .def("activate",
             MainThreadWrap([](IComAddin* p, wstring id) { return p->ribbonActivate(id.c_str()); }), py::arg("id"))
-          .def("add_task_pane", 
-            createTaskPane, py::arg("name"), py::arg("progid")=py::none(), py::arg("window")=py::none())
+          .def("task_pane_frame",
+            createPaneFrame, py::arg("name"), py::arg("progid") = py::none(), py::arg("window") = py::none())
+          .def("create_task_pane", 
+            createTaskPane)
           .def_property_readonly("name", 
             &IComAddin::progid);
       });

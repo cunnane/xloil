@@ -58,15 +58,10 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<ExcelObjFuture::Iter>(mod, "FutureIter")
-          .def("__next__", &ExcelObjFuture::Iter::next)
-          .def("__iter__", [](py::object self) { return self; });
+        ExcelObjFuture::bind(mod, "ExcelObjFuture");
 
-        py::class_<PyFuture<ExcelObj, PyFromAny>>(mod, "Future")
-          .def("__await__", &PyFuture<ExcelObj, PyFromAny>::await, py::return_value_policy::reference_internal);
-
-        mod.def("xlfunc", callExcel, py::arg("func"));
-        mod.def("xlfunc_async", callExcelAsync, py::arg("func"));
+        mod.def("excel_func", callExcel, py::arg("func"));
+        mod.def("excel_func_async", callExcelAsync, py::arg("func"));
       });
     }
   }

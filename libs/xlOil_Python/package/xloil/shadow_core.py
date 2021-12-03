@@ -13,7 +13,7 @@ if XLOIL_HAS_CORE:
         CellError, Range, ExcelArray, in_wizard, 
         event, cache, RtdServer, RtdPublisher,
         deregister_functions, get_async_loop,
-        ExcelUI, excel_run, excel_state,
+        ExcelGUI, excel_run, excel_state,
         Caller,
         CannotConvert, 
         from_excel_date,
@@ -21,7 +21,7 @@ if XLOIL_HAS_CORE:
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
         workbooks, windows, 
-        xlfunc, xlfunc_async)
+        excel_func, excel_func_async)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -610,7 +610,7 @@ else:
         def add_event_handler(self, handler):
             ...
 
-    class ExcelUI:
+    class ExcelGUI:
         """
         Controls an Ribbon and it's associated COM addin. The methods of this object are safe
         to call from any thread.  COM must be used on Excel's main thread, so the methods all wrap
@@ -680,15 +680,32 @@ else:
             there is no Ribbon or the Ribbon is collapsed.
             """
             pass
-        def add_task_pane(self, name, progid=None, window=None) -> TaskPaneFrame:
+        def create_task_pane(self, name, creator=None, window=None):
             """
-            Creates a custom task pane associated with the current active window,
-            with the title `name`. 
+            Returns a task pane with title <name> attached to the active window,
+            creating it if it does not already exist.  See `xloil.create_task_pane`.
 
+            Parameters
+            ----------
+
+            creator: 
+              a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+
+            window: 
+              a window title or `ExcelWindow` object to which the task pane should be
+              attached.  If None, the active window is used.
+
+            """
+            pass
+
+        def task_pane_frame(self, name, window=None, progid=None) -> TaskPaneFrame:
+            """
+            
             A COM `progid` can be specified, but this will prevent using a python GUI
             in the task pane. This is a specialised use case.
             """
-            pass
+            ...
+
         def com_control(self):
             """
             Returns a pointer to the ActiveX / COM control hosted by the task pane.

@@ -15,16 +15,14 @@ import asyncio
 # on the GUI thread or Qt _will abort_.  *This includes importing PyQt5* 
 #  `Use QtThread.run(...)` or `QtThread.send(...)`
 
-from xloil.qtgui import QtThreadTaskPane
+try:
+    from xloil.qtgui import QtThreadTaskPane
 
-_PANE_NAME="MyPane"
+    _PANE_NAME="MyPane"
 
-def make_task_pane(name, gui):
-    
-    
     from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
     from PyQt5.QtCore import pyqtSignal, Qt
-    
+
     class MyTaskPane(QWidget):
         progress = pyqtSignal(int)
         
@@ -43,11 +41,19 @@ def make_task_pane(name, gui):
             layout.addWidget(progress_bar)
             
             self.setLayout(layout)
+                
+    async def make_task_pane():
+        global _excelgui
+        return await _excelgui.create_task_pane(
+            name=_PANE_NAME, 
+            creator=lambda pane: QtThreadTaskPane(pane, MyTaskPane))
+        #return await xlo.create_task_pane(
+        #    name=_PANE_NAME, 
+        #    gui=_excelgui, 
+        #    creator=lambda pane: QtThreadTaskPane(pane, MyTaskPane))
             
-    def draw_task_pane():
-        return MyTaskPane()
-        
-    return QtThreadTaskPane(gui.add_task_pane(name), MyTaskPane)
+except ImportError:
+    pass
     
 #----------------------
 # GUI: Creating Ribbons
@@ -78,13 +84,10 @@ def button_image(ctrl):
 # Async callbacks cannot return values.
 # 
 async def pressOpenPane(ctrl):
-    global _excelgui
     
     xlo.log("Button Pressed")
-  
-    pane = xlo.find_task_pane(title=_PANE_NAME)
-    if not pane:
-        pane = make_task_pane(_PANE_NAME, _excelgui)
+    
+    pane = await make_task_pane()
     pane.visible = True
     
 def combo_change(ctrl, value):
@@ -98,10 +101,10 @@ def combo_change(ctrl, value):
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
 #
-# We construct the ExcelUI (actually a handle to a COM addin) using XML to describe 
+# We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
 #
-_excelgui = xlo.ExcelUI(ribbon=r'''
+_excelgui = xlo.ExcelGUI(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
