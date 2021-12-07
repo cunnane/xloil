@@ -45,12 +45,7 @@ try:
     async def make_task_pane():
         global _excelgui
         return await _excelgui.create_task_pane(
-            name=_PANE_NAME, 
-            creator=lambda pane: QtThreadTaskPane(pane, MyTaskPane))
-        #return await xlo.create_task_pane(
-        #    name=_PANE_NAME, 
-        #    gui=_excelgui, 
-        #    creator=lambda pane: QtThreadTaskPane(pane, MyTaskPane))
+            name=_PANE_NAME, creator=MyTaskPane)
             
 except ImportError:
     pass
@@ -104,7 +99,7 @@ def combo_change(ctrl, value):
 # We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
 #
-_excelgui = xlo.ExcelGUI(ribbon=r'''
+_excelgui = xlo.create_gui(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -129,7 +124,7 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
         'comboChange': combo_change,
         'buttonLabel': button_label,
         'buttonImg': button_image
-    })
+    }).result()
     
 #-----------------------------------------
 # Images: returning images from functions

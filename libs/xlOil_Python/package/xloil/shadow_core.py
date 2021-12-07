@@ -13,14 +13,15 @@ if XLOIL_HAS_CORE:
         CellError, Range, ExcelArray, in_wizard, 
         event, cache, RtdServer, RtdPublisher,
         deregister_functions, get_async_loop,
-        ExcelGUI, excel_run, excel_state,
+        ExcelGUI, create_gui, 
+        excel_run, excel_state,
         Caller,
         CannotConvert, 
         from_excel_date,
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
-        workbooks, windows, 
+        workbooks, windows, ExcelWindow, ExcelWorkbook,
         excel_func, excel_func_async)
 
 else:
@@ -528,8 +529,9 @@ else:
 
     def get_async_loop():
         """
-        Returns the asyncio event loop assoicated with the async background
-        worker thread.
+        Returns the asyncio event loop associated with the async background
+        worker thread.  All async / RTD worksheet functions are executed 
+        on this event loop.
         """
         pass
 
@@ -563,7 +565,7 @@ else:
 
     class TaskPaneFrame:
         """
-            References Excel's internal task pane object into which the python GUI can be drawn.
+            References Excel's base task pane object into which the python GUI can be drawn.
             The methods of this object are safe to call from any thread.  COM must be used on Excel's
             main thread, so the methods all wrap their calls to ensure to this happens. This could lead 
             to deadlocks if the call triggers event  handlers on the main thread, which in turn block 
@@ -610,6 +612,30 @@ else:
         def add_event_handler(self, handler):
             ...
 
+    VT = typing.TypeVar('VT')
+    class _Future(typing.Generic[VT]):
+        """
+        An ``asyncio.Future`` like object which can be awaited and supports
+        the `result()` method. This class actually wraps a C++ future so does 
+        executes in a separate thread unrelated to an `asyncio` event loop. 
+        """
+        def __await__(self):
+            """
+            Returns an iterator which conforms to the async protocol
+            """
+            ...
+        def result(self) -> VT:
+            """
+            Returns the result of the future or throws the resulting excetion.
+            Blocking.
+            """
+            ...
+        def done(self) -> bool:
+            """
+            Returns True if the future has completed
+            """
+            ...
+
     class ExcelGUI:
         """
         Controls an Ribbon and it's associated COM addin. The methods of this object are safe
@@ -617,37 +643,7 @@ else:
         their calls to ensure to this happens. This could lead to deadlocks if the call triggers event 
         handlers on the main thread, which in turn block waiting for the thread originally calling ExcelUI.
         """
-        def __init__(self, ribbon:str, func_names:dict, name:str=None):
-            """
-            Returns a (connected) ExcelUI object which passes the specified ribbon
-            customisation XML to Excel.  When the returned object is deleted, it 
-            unloads the Ribbon customisation and the associated COM add-in.
-
-            Parameters
-            ----------
-
-            ribbon: str
-                A Ribbon XML string, most easily created with a specialised editor.
-                The XML format is documented on Microsoft's website
-
-            func_names: Func[str -> callable] or Dict[str, callabe]
-                The ``func_names`` mapper links callbacks named in the Ribbon XML to
-                python functions. It can be either a dictionary containing named 
-                functions or any callable which returns a function given a string.
-                Each return handler should take a single ``RibbonControl``
-                argument which describes the control which raised the callback.
-
-                Callbacks declared async will be executed in the addin's event loop. 
-                Other callbacks are executed in Excel's main thread. Async callbacks 
-                cannot return values.
-
-            name: str
-                If None, uses the filename at the call site
-
-            """
-            pass
-
-        def connect(self):
+        async def connect(self) -> _Future[None]:
             """
             Connects this COM add-in underlying this Ribbon to Excel. Any specified 
             ribbon XML will be passed to Excel.
@@ -658,9 +654,9 @@ else:
             Unloads the underlying COM add-in and any ribbon customisation.
             """
             pass
-        def ribbon(self, xml:str, func_names:dict):
+        async def ribbon(self, xml:str, func_names:dict) -> _Future[None]:
             """
-            See the constructor. This function can only be called when the Ribbon
+            See ``create_gui``. This function can only be called when the Ribbon
             is disconnected.
             """
             pass
@@ -689,18 +685,21 @@ else:
             ----------
 
             creator: 
-              a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+                * a subclass of `QWidget` or
+                * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
 
             window: 
-              a window title or `ExcelWindow` object to which the task pane should be
-              attached.  If None, the active window is used.
+                a window title or `ExcelWindow` object to which the task pane should be
+                attached.  If None, the active window is used.
 
             """
             pass
 
         def task_pane_frame(self, name, window=None, progid=None) -> TaskPaneFrame:
             """
-            
+            Used internally to create a custom task pane window which can be populated
+            with a python GUI.  Most users should use `create_task_pane(...)` instead.
+
             A COM `progid` can be specified, but this will prevent using a python GUI
             in the task pane. This is a specialised use case.
             """
@@ -714,7 +713,39 @@ else:
             """
             ...
 
-  
+    async def create_gui(ribbon:str="", func_names:dict=None, name:str=None) -> _Future[ExcelGUI]:
+        """
+        Returns an ExcelUI object which passes the specified ribbon
+        customisation XML to Excel.  When the returned object is deleted, it 
+        unloads the Ribbon customisation and the associated COM add-in.  If ribbon
+        XML is specfied the ExcelGUI object will be connected, otherwise the 
+        user must call the `connect()` method to active the object.
+
+        Parameters
+        ----------
+
+        ribbon: str
+            A Ribbon XML string, most easily created with a specialised editor.
+            The XML format is documented on Microsoft's website
+
+        func_names: Func[str -> callable] or Dict[str, callabe]
+            The ``func_names`` mapper links callbacks named in the Ribbon XML to
+            python functions. It can be either a dictionary containing named 
+            functions or any callable which returns a function given a string.
+            Each return handler should take a single ``RibbonControl``
+            argument which describes the control which raised the callback.
+
+            Callbacks declared async will be executed in the addin's event loop. 
+            Other callbacks are executed in Excel's main thread. Async callbacks 
+            cannot return values.
+
+        name: str
+            The addin name which will appear in Excel's COM addin list.
+            If None, uses the filename at the call site as the addin name.
+
+        """
+        pass
+
     class Caller:
         """
         Captures the caller information for a worksheet function. On construction
@@ -779,34 +810,42 @@ else:
         """
         pass
 
-
-    def xlfunc(func, *args):
-        ...
-    async def xlfunc_async(func, *args):
-        ...
-
-
     class ExcelWorkbook:
         @property
-        def name(self):
+        def name(self) -> str:
+            """
+            The workbook name
+            """
             ...
 
         @property
-        def path(self):
+        def path(self) -> str:
+            """
+            The full path to the workbook, including the filename
+            """
             ...
 
     class ExcelWindow:
         @property
-        def name(self):
+        def name(self) -> str:
+            """
+            The window name / title / caption
+            """
             ...
         @property
-        def hwnd(self):
+        def hwnd(self) -> int:
+            """
+            The Win32 API window handle as an integer
+            """
             ...
         @property
         def workbook(self) -> ExcelWorkbook:
+            """
+            The workbook being displayed by this window
+            """
             ...
 
-    VT = typing.TypeVar('VT')
+    
     class _Collection(typing.Generic[VT]):
         def __iter__(self):
             ...
@@ -869,3 +908,22 @@ else:
             the specified number of milliseconds
             """
             ...
+
+    def excel_func(func, *args):
+        """
+            Calls the specified Excel built-in function number with the given arguments.
+            The number and order of arguments depends on the function being called.  
+            ``func`` can be a function number or a case-insensitive function name.
+        """
+        ...
+
+    async def excel_func_async(func, *args):
+        """
+            Calls the specified Excel built-in function number with the given arguments.
+            The number and order of arguments depends on the function being called.  
+            ``func`` can be a function number or a case-insensitive function name.
+
+            Since calls to the Excel API must be done on Excel's main thread, this 
+            async version exists to prevent possible blocking.
+        """
+        ...

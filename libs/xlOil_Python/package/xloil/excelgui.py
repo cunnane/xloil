@@ -1,11 +1,12 @@
-from .shadow_core import TaskPaneFrame
+from .shadow_core import TaskPaneFrame, ExcelGUI, ExcelWindow, ExcelWorkbook
 
 _task_panes = set()
  
 class CustomTaskPane:
     """
-        Base class for custom task pane event handler. Can be sub-classes to 
-        implement task panes with different GUI toolkits
+        Base class for custom task panes. Can be sub-classed to implement
+        task panes with different GUI toolkits.  Subclasses should implement
+        at least the `on_visible` and `on_size` events.
     """
 
     def __init__(self, pane: TaskPaneFrame):
@@ -34,19 +35,27 @@ class CustomTaskPane:
         _task_panes.remove(self)
 
     @property
-    def pane(self):
+    def pane(self) -> TaskPaneFrame:
         return self._pane
 
     @property
-    def visible(self):
+    def visible(self) -> bool:
         return self._pane.visible
 
     @visible.setter
     def visible(self, value: bool):
         self._pane.visible = value
 
+    @property
+    def size(self) -> tuple:
+        return self._pane.size
 
-def find_task_pane(title=None, workbook=None, window=None):
+    @size.setter
+    def size(self, value:tuple):
+        self._pane.size = value
+
+
+def find_task_pane(title:str=None, workbook=None, window=None):
     """
         Finds all xlOil python task panes associated with the active window, 
         optionally filtering by the pane `title`. 
@@ -80,7 +89,8 @@ def find_task_pane(title=None, workbook=None, window=None):
         return next((x for x in found if x.pane.title == title), None)
 
 
-async def create_task_pane(name, creator=None, window=None, gui=None):
+async def create_task_pane(
+    name:str, creator=None, window=None, gui:ExcelGUI=None, size=None, visible=True):
     """
         Returns a task pane with title <name> attached to the active window,
         creating it if it does not already exist.  This function is equivalent
@@ -90,7 +100,8 @@ async def create_task_pane(name, creator=None, window=None, gui=None):
         ----------
 
         creator: 
-            a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+            * a subclass of `QWidget` or
+            * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
 
         window: 
             a window title or `ExcelWindow` object to which the task pane should be
@@ -101,24 +112,23 @@ async def create_task_pane(name, creator=None, window=None, gui=None):
 
     """
     pane = find_task_pane(name)
-    if pane is not None or creator is None:
+    if pane is not None:
+        pane.visible = visible
         return pane
+    if creator is None:
+        return None
 
-    # Rather than a creator can just check the type of a passed object
-    # this needs more work - do we really want to import every GUI lib,
-    # better to check sys.modules for already loaded ConnectionRefusedError
-
-    try: 
-        from PyQt5.QtWidgets import QWidget
-        from qtgui import QtThreadTaskPane
-        if isinstance(creator, QWidget):
-            creator=lambda pane: QtThreadTaskPane(pane, MyTaskPane)
-    except ImportError:
-        pass
+    from .qtgui import _try_create_qt_pane
+    creator = _try_create_qt_pane(creator) or creator
 
     if isinstance(window, str):
         window = ExcelWindow(window)
 
     frame = await gui.task_pane_frame(name, window)
+    pane = creator(frame)
 
-    return creator(frame)
+    pane.visible = visible
+    if size is not None:
+        pane.size = size
+
+    return pane

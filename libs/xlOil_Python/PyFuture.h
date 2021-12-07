@@ -48,9 +48,6 @@ namespace xloil
 
       struct Iter
       {
-        //Iter(std::future<ExcelObj>&& future)
-        //  : _future(std::move(future))
-        //{}
         std::future<TValType> _future;
 
         /// <summary>
@@ -63,7 +60,7 @@ namespace xloil
             pybind11::gil_scoped_release releaseGil;
 
             if (!_future.valid())
-              throw py::value_error();
+              throw pybind11::value_error();
 
             if (!_future._Is_ready())
               return;
@@ -97,16 +94,95 @@ namespace xloil
         return PySteal(TConverter()(value));
       }
 
+      bool done()
+      {
+        return !_iter._future.valid() || _iter._future._Is_ready();
+      }
+
       Iter& await() { return _iter; }
 
       static void bind(pybind11::module& mod, const std::string& name)
       {
-        py::class_<Iter>(mod, (name + "Iter").c_str())
+        pybind11::class_<Iter>(mod, (name + "Iter").c_str())
           .def("__next__", &Iter::next)
-          .def("__iter__", [](py::object self) { return self; });
+          .def("__iter__", [](pybind11::object self) { return self; });
 
-        py::class_<this_type>(mod, name.c_str())
-          .def("__await__", &await, py::return_value_policy::reference_internal);
+        pybind11::class_<this_type>(mod, name.c_str())
+          .def("__await__", &await, pybind11::return_value_policy::reference_internal)
+          .def("result", &result)
+          .def("done", &done);
+      }
+    };
+
+    template <>
+    class PyFuture<void, void>
+    {
+    public:
+      using this_type = PyFuture<void, void>;
+
+      struct Iter
+      {
+        std::future<void> _future;
+
+        /// <summary>
+        /// Return None until the future is ready, then raises StopIteration, passing the result value 
+        /// </summary>
+        void next()
+        {
+          {
+            pybind11::gil_scoped_release releaseGil;
+
+            if (!_future.valid())
+              throw pybind11::value_error();
+
+            if (!_future._Is_ready())
+              return;
+            _future.get();
+          }
+          throw detail::StopIteration(Py_None);
+        };
+      };
+
+      Iter _iter;
+
+      /// <summary>
+      /// Consumes a std::future<T> to give a PyFuture<T>
+      /// </summary>
+      /// <param name="future"></param>
+      PyFuture(std::future<void>&& future)
+        : _iter{ std::move(future) }
+      {}
+
+      /// <summary>
+      /// Synchronously gets the result from the future. Blocking.
+      /// </summary>
+      /// <returns></returns>
+      pybind11::object result()
+      {
+        {
+          pybind11::gil_scoped_release releaseGil;
+          _iter._future.get();
+        }
+        return pybind11::none();
+      }
+
+      bool done()
+      {
+        return !_iter._future.valid() || _iter._future._Is_ready();
+      }
+
+      Iter& await() { return _iter; }
+
+      static void bind(pybind11::module& mod)
+      {
+        pybind11::class_<Iter>(mod, "_FutureIter")
+          .def("__next__", &Iter::next)
+          .def("__iter__", [](pybind11::object self) { return self; });
+
+        pybind11::class_<this_type>(mod, "_Future")
+          .def("__await__", &await, pybind11::return_value_policy::reference_internal)
+          .def("result", &result)
+          .def("done", &done);
       }
     };
   }

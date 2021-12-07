@@ -35,7 +35,8 @@ namespace xloil
           ? funcNameMap.attr("__getitem__")
           : funcNameMap;
         
-        return [pyMapper = PyObjectHolder(pyMapper), addin = &theCurrentAddin()](const wchar_t* name)
+        return [pyMapper = PyObjectHolder(pyMapper), addin = &theCurrentAddin()](
+          const wchar_t* name)
         {
           try
           {  
@@ -92,25 +93,28 @@ namespace xloil
         };
       }
 
-      auto setRibbon(IComAddin& addin, wstring xml, py::object mapper)
+      using AddinFuture = PyFuture<shared_ptr<IComAddin>, detail::CastFutureConverter>;
+      using VoidFuture = PyFuture<void, void>;
+
+      inline auto setRibbon(IComAddin& addin, const wstring& xml, const py::object& funcmap)
       {
-        auto fut = runExcelThread([&addin, xml, maps = makeRibbonNameMapper(mapper)]()
-        {
-          addin.setRibbon(xml.c_str(), maps);
-        });
-        py::gil_scoped_release release;
-        return fut.get();
+        return new VoidFuture(runExcelThread([
+            &addin, 
+            xml, 
+            mapper = funcmap.is_none() ? IComAddin::RibbonMap() : makeRibbonNameMapper(funcmap)]
+          () {
+            if (!xml.empty())
+              addin.setRibbon(xml.c_str(), mapper);
+            addin.connect();
+          }));
       }
 
       inline auto makeAddin(wstring&& name)
       {
-        auto fut = runExcelThread([name]()
+        return new AddinFuture(runExcelThread([name]()
         {
           return makeComAddin(name.c_str(), nullptr);
-        });
-
-        py::gil_scoped_release release;
-        return fut.get();
+        }));
       }
 
       inline auto makeAddin(
@@ -118,19 +122,16 @@ namespace xloil
         wstring&& xml,
         IComAddin::RibbonMap&& mapper)
       {
-        auto fut = runExcelThread([name, xml, mapper]()
+        return new AddinFuture(runExcelThread([name, xml, mapper]()
         {
-          auto addin =  makeComAddin(name.c_str(), nullptr);
+          auto addin = makeComAddin(name.c_str(), nullptr);
           addin->setRibbon(xml.c_str(), mapper);
           addin->connect();
           return addin;
-        });
-
-        py::gil_scoped_release release;
-        return fut.get();
+        }));
       }
 
-      shared_ptr<IComAddin> createRibbon(const py::object& xml, const py::object& funcNameMap, const py::object& name)
+      auto createRibbon(const py::object& xml, const py::object& funcNameMap, const py::object& name)
       {
         wstring addinName;
         if (name.is_none())
@@ -249,7 +250,9 @@ namespace xloil
 
       static int theBinder = addBinder([](py::module& mod)
       {
-        CTPFuture::bind(mod, "CTPFuture");
+        CTPFuture::bind(mod, "_CTPFuture");
+        AddinFuture::bind(mod, "_AddinFuture");
+        VoidFuture::bind(mod);
 
         py::class_<RibbonControl>(mod, "RibbonControl")
           .def_readonly("id", &RibbonControl::Id)
@@ -272,23 +275,22 @@ namespace xloil
             &addPaneEventHandler, py::arg("handler"));
 
         py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelGUI")
-          .def(py::init(std::function(createRibbon)), py::arg("ribbon") = py::none(), py::arg("func_names") = py::none(), py::arg("name") = py::none())
           .def("connect",
-            MainThreadWrap(&IComAddin::connect))
+            setRibbon, py::arg("xml")="", py::arg("func_names")=py::none())
           .def("disconnect",
             MainThreadWrap(&IComAddin::disconnect))
-          .def("ribbon",
-            setRibbon, py::arg("xml"), py::arg("func_names"))
           .def("invalidate",
-            MainThreadWrap([](IComAddin* p, wstring id) { return p->ribbonInvalidate(id.c_str()); }), py::arg("id") = "")
+            MainThreadWrap([](IComAddin* p, const wstring& id) { return p->ribbonInvalidate(id.c_str()); }), py::arg("id") = "")
           .def("activate",
-            MainThreadWrap([](IComAddin* p, wstring id) { return p->ribbonActivate(id.c_str()); }), py::arg("id"))
+            MainThreadWrap([](IComAddin* p, const wstring& id) { return p->ribbonActivate(id.c_str()); }), py::arg("id"))
           .def("task_pane_frame",
             createPaneFrame, py::arg("name"), py::arg("progid") = py::none(), py::arg("window") = py::none())
           .def("create_task_pane", 
             createTaskPane)
           .def_property_readonly("name", 
             &IComAddin::progid);
+
+        mod.def("create_gui", createRibbon, py::arg("ribbon") = py::none(), py::arg("func_names") = py::none(), py::arg("name") = py::none());
       });
     }
   }
