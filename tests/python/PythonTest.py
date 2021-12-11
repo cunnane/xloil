@@ -3,6 +3,8 @@ import xloil as xlo
 from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
+import os 
+
 
 #
 # Functions are registered by decorating them with xloil.func.  The function
@@ -492,9 +494,9 @@ except ImportError:
 #
 @xlo.func
 def getLinkedWbName():
-    return xloil.linked_workbook()
+    return xlo.linked_workbook()
     
-_workbook_name = os.basename(xloil.linked_workbook())
+_workbook_name = os.path.basename(xlo.linked_workbook())
 
 def event_writeTimeToA1():
     if xlo.app().ActiveWorkbook.Name != _workbook_name:
