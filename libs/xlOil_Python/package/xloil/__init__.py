@@ -8,7 +8,8 @@ from .register import (
     func,
     scan_module,
     register_functions,
-    Caller
+    Caller,
+    linked_workbook
     )
 
 from .com import (
