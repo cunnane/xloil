@@ -2,7 +2,6 @@ import inspect
 import functools
 import os
 import sys
-import traceback
 import importlib.util
 from .type_converters import *
 from .shadow_core import *
@@ -219,7 +218,7 @@ def _logged_wrapper(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            log(f"Error during {func.__name__}: {str(e)} : {traceback.format_exc()}", level='error')
+            log_except(f"Error during {func.__name__}")
     return logged_func
 
 async def _logged_wrapper_async(coro):
@@ -229,7 +228,7 @@ async def _logged_wrapper_async(coro):
     try:
         return await coro
     except Exception as e:
-        log(f"Error during coroutine: {str(e)} : {traceback.format_exc()}", level='error')
+        log_except(f"Error during coroutine")
 
 # This is a thread-local variable to get Caller to behave like a static
 # but work properly on different threads and when used in an async funcion
@@ -278,6 +277,7 @@ def async_wrapper(fn):
     """
 
     import asyncio
+    import traceback
 
     @functools.wraps(fn)
     def synchronised(xloil_thread_context, *args, **kwargs):
@@ -458,8 +458,7 @@ def func(fn=None,
                 spec.return_converter = find_return_converter(return_type)
 
             log(f"Found func: {str(spec)}", level="debug")
-
-                     
+  
             if register: # and inspect.isfunction(fn):
                 _add_pending_funcs(inspect.getmodule(fn), [spec])
 
@@ -467,7 +466,7 @@ def func(fn=None,
 
         except Exception as e:
             fn_name = getattr(fn, "__name__", str(fn))
-            log(f"Failed determing spec for '{fn_name}': {traceback.format_exc()}", level='error')
+            log_except(f"Failed determing spec for '{fn_name}'")
             return fn
 
     return decorate if fn is None else decorate(fn)
@@ -498,15 +497,15 @@ def scan_module(module):
     if pending_funcs is None or not any(pending_funcs):
         return 
 
-    # If events are not paused this function can be entered multiply for the same module
+    # If events are not paused this function can be re-entered for the same module
     with EventsPaused() as events_paused:
-
         log(f"Found xloil functions in {module}", level="debug")
 
-        xloil_core.register_functions(list(pending_funcs), module, _addin_context.get(), append=False)
+        xloil_core.register_functions(
+            list(pending_funcs), module, _addin_context.get(), append=False)
                                       
         pending_funcs.clear()
-        
+
 def register_functions(funcs, module=None, append=True):
     """
         Registers the provided callables and associates them with the given modeule
@@ -642,5 +641,5 @@ def import_file(path, workbook_name=None):
 
         except Exception as e:
 
-            log(f"Failed to load module {path}: {str(e)}", level='warning')
+            log_except(f"Failed to load module {path}")
             status.msg(f"Error loading {path}, see log")

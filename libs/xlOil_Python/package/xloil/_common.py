@@ -1,4 +1,5 @@
 import importlib.util
+import traceback
 
 XLOIL_HAS_CORE = importlib.util.find_spec("xloil_core") is not None
 
@@ -41,3 +42,9 @@ else:
     be seen with a debug build of xlOil.
 """
 log = LogWriter()
+
+def log_except(msg, level='error'):
+    """
+       Logs '{msg}: {stack trace}' with a default level of 'error'
+    """
+    log(f"{msg}: {traceback.format_exc()}", level='error')
