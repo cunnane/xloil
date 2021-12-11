@@ -5,8 +5,8 @@ from .shadow_core import event
 from .excelgui import CustomTaskPane
 import importlib
 import sys
-
-from collections.abc import Iterable
+import concurrent.futures as futures
+import concurrent.futures.thread
 
 def qt_import(sub, what):
     """
@@ -28,123 +28,105 @@ def qt_import(sub, what):
         return [getattr(mod, x) for x in what]
      
 
-class _QtThread:
+def _create_Qt_app():
+
+    # For some reason, my version of PyQt doesn't read the platform plugin
+    # path env var, so I need to explicitly pass it to the QApplication ctor
+    import os
+    ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH')
+
+    QApplication = qt_import('QtWidgets', 'QApplication')
+
+    app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
+
+    log(f"Started Qt on thread {threading.get_native_id()}" +
+        f"with libpaths={app.libraryPaths()}", level="info")
+
+    return app
+
+class QtExecutor(futures.Executor):
 
     def __init__(self):
-        self._thread = None
-        self._app = None
-        self._enqueued = None
-
-    def start(self):
-        if self._thread is not None:
-            return
+        self._work_queue = queue.SimpleQueue()
         self._thread = threading.Thread(target=self._main_loop, name="QtGuiThread")
-        self._queue = queue.Queue()
-        self._results = queue.Queue()
+        self._broken = False
+        self._work_signal = None
         self._thread.start()
-        # PyBye is called before `threading` module teardown, whereas `atexit` comes later
-        event.PyBye += self.stop
 
-    def stop(self):
-        if self.ready:
-            self._queue.put((False, self.app.quit))
-            self._enqueued.timeout.emit()
-        
-    def run(self, cmd):
-        """
-        Runs the given `cmd` function which takes no args on the Qt thread. Waits
-        for completion and returns the result.
-        """
-        self._queue.put((True, cmd))
-        if self.ready:
-            self._enqueued.timeout.emit()
+    def submit(self, fn, *args, **kwargs):
+        if self._broken:
+            raise futures.BrokenExecutor(self._broken)
 
-        result = self._results.get() # Blocks
-        if isinstance(result, Exception):
-            raise result
-        return result
+        f = futures.Future()
+        w = concurrent.futures.thread._WorkItem(f, fn, args, kwargs)
 
-    def send(self, cmd):
-        """
-        Runs the given `cmd` function which takes no args on the Qt thread. 
-        Does not block.
-        """
-        if self.stopped:
-            raise RuntimeError("Qt GUI Thread has stopped unexpectedly")
-        self._queue.put((False, cmd))
-        if self.ready:
-            self._enqueued.timeout.emit()
+        self._work_queue.put(w)
+        if self._work_signal is not None:
+            self._work_signal.timeout.emit()
+        return f
 
-    @property
-    def ready(self):
-        """
-            Returns True if the Qt thread is ready to accept commands
-        """
-        return not self.stopped and self._enqueued is not None
-    
-    @property
-    def stopped(self):
-        return not self._thread or not self._thread.is_alive()
-        
-    @property
-    def app(self):
-        """
-            Returns the QApplication object. This should not be used
-            outside the Qt thread (or Qt may abort).
-        """
-        return self._app
-        
-    def _main_loop(self):
- 
-        # For some reason, my version of PyQt doesn't read the platform plugin
-        # path env var, so I need to explicitly pass it to the QApplication ctor
+    def shutdown(self, wait=True, cancel_futures=False):
+        if not self._broken:
+            self.submit(self.app.quit)
+
+    def _do_work(self):
         try:
-            import os
-            ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH')
+            while True:
+                work_item = self._work_queue.get_nowait()
+                if work_item is not None:
+                    work_item.run()
+                    del work_item
+        except queue.Empty:
+            return
+            
+    def _main_loop(self):
 
-            QApplication = qt_import('QtWidgets', 'QApplication')
+        try:
+            self.app = _create_Qt_app()
+
             QTimer = qt_import('QtCore', 'QTimer')
 
-            self._app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
-
-            log(f"Started Qt on thread {threading.get_native_id()} with libpaths={self._app.libraryPaths()}", level="info")
-
-            def check_queue():
-                try:
-                    while True:
-                        keep, item = self._queue.get_nowait()
-                        try:
-                            result = item()
-                        except Exception as e:
-                            result = e
-                        if keep:
-                            self._results.put(result)
-                        self._queue.task_done()
-                except queue.Empty:
-                    return
-            
-            timer = QTimer() # Is there a better signal than this timer?
-            timer.timeout.connect(check_queue)
-            self._enqueued = timer
+            semaphore = QTimer()
+            semaphore.timeout.connect(self._do_work)
+            self._work_signal = semaphore
 
             # Trigger timer to run any pending queue items now
-            timer.timeout.emit() 
+            semaphore.timeout.emit() 
 
             # Thread main loop, run until quit
-            self._app.exec()
+            self.app.exec()
+
             # Thread cleanup
-            self._app = None
+            self.app = None
             self._enqueued = None
+            self._broken = True
+
         except Exception as e:
+            self._broken = True
             log(f"QtThread failed: {e}", level='error')
 
 
-"""
-    Since all Qt GUI interactions (except signals) must take place on the 
-    thread that the QApplication object was created on, we have a dedicated
-    thread with a work queue.
-"""
-QtThread = _QtThread() 
+_Qt_thread = None
+
+def Qt_thread():
+    """
+        Since all Qt GUI interactions (except signals) must take place on the 
+        thread that the QApplication object was created on, we have a dedicated
+        thread with a work queue.
+    """
+
+    global _Qt_thread
+
+    if _Qt_thread is None:
+        _Qt_thread = QtExecutor()
+        # PyBye is called before `threading` module teardown, whereas `atexit` comes later
+        event.PyBye += _Qt_thread.shutdown
+        # Send this blocking no-op to ensure QApplication is created on our thread
+        # before we proceed, otherwise Qt may try to create one elsewhere
+        _Qt_thread.submit(lambda: 0).result()
+
+    return _Qt_thread
+
 
 class QtThreadTaskPane(CustomTaskPane):
 
@@ -155,22 +137,17 @@ class QtThreadTaskPane(CustomTaskPane):
         """
         super().__init__(pane)
 
-        # Send this blocking no-op to ensure QApplication is created. Otherwise
-        # Qt will abort
-        QtThread.start()
-        QtThread.run(lambda: 0)
-
-        self.widget = QtThread.run(draw_widget)
-        QtThread.run(lambda: self._reparent_widget(self.widget, self.pane.parent_hwnd))
+        self.widget = Qt_thread().submit(draw_widget).result() # Blocks
+        Qt_thread().submit(lambda: self._reparent_widget(self.widget, self.pane.parent_hwnd))
 
     def on_size(self, width, height):
-        QtThread.send(lambda: self.widget.resize(width, height))
+        Qt_thread().submit(lambda: self.widget.resize(width, height))
              
     def on_visible(self, c):
-        QtThread.send(lambda: self.widget.show() if c else self.widget.hide())
+        Qt_thread().submit(lambda: self.widget.show() if c else self.widget.hide())
 
     def on_destroy(self):
-        QtThread.send(lambda: self.widget.destroy())
+        Qt_thread().submit(lambda: self.widget.destroy())
         super().on_destroy()
 
     def _reparent_widget(self, widget, hwnd):
