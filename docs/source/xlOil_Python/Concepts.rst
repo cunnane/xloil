@@ -28,8 +28,8 @@ Local functions have some limitations compared to global scope ones:
 Another way to package python code for distribution is to create an XLL, see
 :ref:`core-distributing-addins`
 
-xlOil sets the module-level variable `_xloil_workbook` to the workbook name in a 
-workbook module.
+The function `xloil.linked_workbook()` when called from a workbook module retrieves 
+the associated workbook path 
 
 (Technical note: It is possible to use the Application.MacroOptions call to add help to the 
 function wizard for VBA, but identically named functions will conflict which rather defeats 
@@ -125,3 +125,18 @@ xloPyLoad: import and scan a python module (worksheet function)
 Multiple addins and event loops
 -------------------------------
 
+*xlOil_Python* can be used by multiple add-ins, that is, more than one XLL
+loader with its own settings and python codebase can exist in the same Excel
+session.  
+
+   * Each add-in / XLL is loaded in its own thread and has its own `asyncio`
+     event loop in that thread. Get the loop using ``xloil.get_event_loop()``.
+   * All add-ins share the same python interpreter
+   * All add-ins share the python object cache
+   * Worksheet functions are executed in Excel's main thread or one of its 
+     worker threads for thread safe functions
+   * Async / RTD worksheet functions are executed in a dedicated xlOil Core
+     event loop which you can access with ``xloil.get_async_loop()``
+
+Although CPython supports subinterpreters, most C-based extensions, particularly
+*numpy* do not, so there are no plans to add subinterpreter support at this stage.

@@ -25,23 +25,23 @@ try:
 
     class MyTaskPane(QWidget):
         progress = pyqtSignal(int)
-        
+    
         def __init__(self):
             super().__init__()
             progress_bar = QProgressBar(self)
             progress_bar.setGeometry(200, 80, 250, 20)
             self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
-            
+        
             label = QLabel("Hello from Qt")
-            
+        
             layout = QHBoxLayout()
-            
+        
             layout.addWidget(label)
 
             layout.addWidget(progress_bar)
-            
+        
             self.setLayout(layout)
-                
+            
     async def make_task_pane():
         global _excelgui
         return await _excelgui.create_task_pane(
@@ -62,8 +62,7 @@ except ImportError:
  
 def get_icon_path():
     # Gets the path to an icon file to demonstrate PIL image handling
-    global _xloil_workbook_path
-    return os.path.join(os.path.dirname(_xloil_workbook_path), 'icon.bmp')
+    return os.path.join(os.path.dirname(xloil.linked_workbook()), 'icon.bmp')
     
 def button_label(ctrl, *args):
     return "Open Task Pane"

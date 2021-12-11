@@ -315,9 +315,7 @@ def pyTestIter(size:int, dims:int):
     elif dims == 2:
         return [[1] * size] * size
     else:
-        return [] 
-
-
+        return []
 
 #
 #
@@ -490,15 +488,16 @@ except ImportError:
 # use of of the app() object and using Range. 
 #
 # Currently event handlers are global, so for workbook local modules
-# such as this one, we check compare the the workbook name to the global
-# `_xloil_workbook` which is set by xlOil when the module is imported
+# such as this one, we compare the active workbook name to ours
 #
 @xlo.func
 def getLinkedWbName():
-    return _xloil_workbook
+    return xloil.linked_workbook()
     
+_workbook_name = os.basename(xloil.linked_workbook())
+
 def event_writeTimeToA1():
-    if xlo.app().ActiveWorkbook.Name != _xloil_workbook:
+    if xlo.app().ActiveWorkbook.Name != _workbook_name:
         return
         
     sheet_name = xlo.app().ActiveSheet.Name
@@ -513,7 +512,7 @@ def event_writeTimeToA1():
 # syntax `cancel.value = True`
 #
 def event_stopPrinting(wbName, cancel):
-    if wbName != _xloil_workbook:
+    if wbName != _workbook_name:
         return
     xlo.Range("B1").value = "Cancelled print for: " + wbName
     cancel.value = True

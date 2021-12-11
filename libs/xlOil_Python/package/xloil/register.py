@@ -569,11 +569,22 @@ class _ModuleFinder(importlib.abc.MetaPathFinder):
     def find_module(self, fullname, path):
         return None
 
-
 # We maintain a _ModuleFinder on sys.meta_path to catch any reloads of our non-standard 
 # loaded modules
 _module_finder = _ModuleFinder()
 sys.meta_path.append(_module_finder)
+
+def linked_workbook(mod=None):
+    """
+        Returns the full path of the workbook linked to the specified module
+        or None if the module was not loaded with an associated workbook.
+        If no module is specified, the calling module is used.
+    """
+    if mod is None:
+        # Get caller
+        frame = inspect.stack()[1]
+        mod = inspect.getmodule(frame[0])
+    return _module_finder.path_map.get(mod.__name__, None)
 
 def _reload_scan(what):
     """
@@ -621,11 +632,6 @@ def import_file(path, workbook_name=None):
                 _module_finder.path_map[module_name] = path
    
             module = importlib.import_module(module_name)
-
-            # Allows 'local' modules to know which workbook they link to
-            if workbook_name is not None:
-                module._xloil_workbook = workbook_name
-                module._xloil_workbook_path = os.path.join(directory, workbook_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
             scan_module(module)
