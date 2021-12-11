@@ -911,19 +911,31 @@ else:
 
     def excel_func(func, *args):
         """
-            Calls the specified Excel built-in function number with the given arguments.
-            The number and order of arguments depends on the function being called.  
-            ``func`` can be a function number or a case-insensitive function name.
+            Similar to VBA's `Application.Run`. If the `func` string name is recognised
+            as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
+            calls it, otherwise tries to call a user-defined function with the given name.
+            The name is case-insensitive.
+            
+            The type and order of arguments expected depends on the function being called.  
+
+            ``func`` can be a function name or an built-in function number as an int (which slightly 
+            reduces the lookup overhead)
         """
         ...
 
     async def excel_func_async(func, *args):
         """
-            Calls the specified Excel built-in function number with the given arguments.
-            The number and order of arguments depends on the function being called.  
-            ``func`` can be a function number or a case-insensitive function name.
+            Similar to VBA's `Application.Run`. If the `func` string name is recognised
+            as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
+            calls it, otherwise tries to call a user-defined function with the given name.
+            The name is case-insensitive.
+            
+            The type and order of arguments expected depends on the function being called.  
 
-            Since calls to the Excel API must be done on Excel's main thread, this 
-            async version exists to prevent possible blocking.
+            ``func`` can be a function name or an built-in function number as an int (which slightly 
+            reduces the lookup overhead).
+
+            Since calls to the Excel API must be done on Excel's main thread (which also runs
+            Excel's GUI), this async version exists to prevent blocking and responsiveness issues.
         """
         ...
