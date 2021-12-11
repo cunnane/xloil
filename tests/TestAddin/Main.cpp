@@ -1,4 +1,4 @@
-#include <xloil/Ribbon.h>
+#include <xloil/ExcelUI.h>
 #include <xloil/Log.h>
 #include <xlOil/ExcelApp.h>
 #include <xloil/DynamicRegister.h>
