@@ -44,6 +44,15 @@ def _create_Qt_app():
 
     return app
 
+def _reparent_widget(widget, hwnd):
+    QWindow = qt_import('QtGui', 'QWindow')
+    # windowHandle does not exist before show
+    widget.show()
+    nativeWindow = QWindow.fromWinId(hwnd)
+    widget.windowHandle().setParent(nativeWindow)
+    widget.update()
+    widget.move(0, 0)
+
 class QtExecutor(futures.Executor):
 
     def __init__(self):
@@ -137,8 +146,11 @@ class QtThreadTaskPane(CustomTaskPane):
         """
         super().__init__(pane)
 
-        self.widget = Qt_thread().submit(draw_widget).result() # Blocks
-        Qt_thread().submit(lambda: self._reparent_widget(self.widget, self.pane.parent_hwnd))
+        def draw_it(hwnd):
+            widget = draw_widget()
+            _reparent_widget(widget, hwnd)
+            return widget
+        self.widget = Qt_thread().submit(draw_it, self.pane.parent_hwnd).result() # Blocks
 
     def on_size(self, width, height):
         Qt_thread().submit(lambda: self.widget.resize(width, height))
@@ -150,14 +162,7 @@ class QtThreadTaskPane(CustomTaskPane):
         Qt_thread().submit(lambda: self.widget.destroy())
         super().on_destroy()
 
-    def _reparent_widget(self, widget, hwnd):
-        QWindow = qt_import('QtGui', 'QWindow')
-        # windowHandle does not exist before show
-        widget.show()
-        nativeWindow = QWindow.fromWinId(hwnd)
-        widget.windowHandle().setParent(nativeWindow)
-        widget.update()
-        widget.move(0, 0)
+    
 
 
 def _try_create_qt_pane(obj):
