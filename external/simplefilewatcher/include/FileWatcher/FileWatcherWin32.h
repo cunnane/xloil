@@ -33,6 +33,7 @@
 
 #if FILEWATCHER_PLATFORM == FILEWATCHER_PLATFORM_WIN32
 
+#include <memory>
 #include <map>
 
 namespace FW
@@ -43,7 +44,7 @@ namespace FW
 	{
 	public:
 		/// type for a map from WatchID to WatchStruct pointer
-		typedef std::map<WatchID, WatchStruct*> WatchMap;
+		typedef std::map<WatchID, std::shared_ptr<WatchStruct>> WatchMap;
 
 	public:
 		///

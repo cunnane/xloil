@@ -132,16 +132,13 @@ namespace FW
 			CloseHandle(pWatch->mOverlapped.hEvent);
 			CloseHandle(pWatch->mDirHandle);
 			delete [] pWatch->mDirName;
-			HeapFree(GetProcessHeap(), 0, pWatch);
 		}
 	}
 
 	/// Starts monitoring a directory.
-	WatchStruct* CreateWatch(LPCTSTR szDirectory, bool recursive, DWORD mNotifyFilter)
+	std::shared_ptr<WatchStruct> CreateWatch(LPCTSTR szDirectory, bool recursive, DWORD mNotifyFilter)
 	{
-		WatchStruct* pWatch;
-		size_t ptrsize = sizeof(*pWatch);
-		pWatch = static_cast<WatchStruct*>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, ptrsize));
+		auto pWatch = std::make_shared<WatchStruct>();
 
 		pWatch->mDirHandle = CreateFile(szDirectory, FILE_LIST_DIRECTORY,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, 
@@ -153,7 +150,7 @@ namespace FW
 			pWatch->mNotifyFilter = mNotifyFilter;
 			pWatch->mIsRecursive = recursive;
 
-			if (RefreshWatch(pWatch))
+			if (RefreshWatch(pWatch.get()))
 			{
 				return pWatch;
 			}
@@ -163,9 +160,7 @@ namespace FW
 				CloseHandle(pWatch->mDirHandle);
 			}
 		}
-
-		HeapFree(GetProcessHeap(), 0, pWatch);
-		return NULL;
+		return nullptr;
 	}
 
 #pragma endregion
@@ -179,11 +174,11 @@ namespace FW
 	//--------
 	FileWatcherWin32::~FileWatcherWin32()
 	{
-		WatchMap::iterator iter = mWatches.begin();
-		WatchMap::iterator end = mWatches.end();
+		auto iter = mWatches.begin();
+		auto end = mWatches.end();
 		for(; iter != end; ++iter)
 		{
-			DestroyWatch(iter->second);
+			DestroyWatch(iter->second.get());
 		}
 		mWatches.clear();
 	}
@@ -193,7 +188,7 @@ namespace FW
 	{
 		WatchID watchid = ++mLastWatchID;
 
-		WatchStruct* watch = CreateWatch(directory.c_str(), recursive,
+		auto watch = CreateWatch(directory.c_str(), recursive,
 			FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE);
 
 		using convert_type = std::codecvt_utf8<wchar_t>;
@@ -231,15 +226,15 @@ namespace FW
 	//--------
 	void FileWatcherWin32::removeWatch(WatchID watchid)
 	{
-		WatchMap::iterator iter = mWatches.find(watchid);
+		auto iter = mWatches.find(watchid);
 
 		if(iter == mWatches.end())
 			return;
 
-		WatchStruct* watch = iter->second;
+		auto watch = iter->second;
 		mWatches.erase(iter);
 
-		DestroyWatch(watch);
+		DestroyWatch(watch.get());
 	}
 
 	//--------
