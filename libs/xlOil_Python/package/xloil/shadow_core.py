@@ -847,6 +847,9 @@ else:
 
     
     class _Collection(typing.Generic[VT]):
+        """
+            An interable collection of workbooks, windows, sheets, etc.
+        """
         def __iter__(self):
             ...
         def __getitem__(self, i: str) -> VT:
@@ -855,36 +858,38 @@ else:
         def active(self) -> VT:
             ...
 
+
+    workbooks:_Collection[ExcelWorkbook] = _Collection()
     """
-    Collection of all open workbooks as ExcelWorkbook objects.
+        Collection of all open workbooks as ExcelWorkbook objects.
     
-    Example
-    -------
+        Examples
+        --------
 
-        workbooks['MyBook'].path
-        windows.active.workbook.path
+            workbooks['MyBook'].path
+            windows.active.workbook.path
 
     """
-    workbooks:_Collection[ExcelWorkbook] = None
+
+    windows:_Collection[ExcelWindow] = _Collection()
     """
-    Collection of all open windws as ExcelWindow objects.
+        Collection of all open windws as ExcelWindow objects.
     
-    Example
-    -------
+        Examples
+        --------
 
-        workbooks['CaptionMyCaption'].path
-        workbooks.active.name
+            workbooks['CaptionMyCaption'].path
+            workbooks.active.name
 
     """
-    windows:_Collection[ExcelWindow] = None
 
     class StatusBar:
         """
              Displays status bar messages and clears the status bar (after an optional delay) 
              on context exit.
 
-             Example
-             -------
+             Examples
+             --------
 
              with StatusBar(1000) as status:
                 status.msg('Doing slow thing')
@@ -918,7 +923,7 @@ else:
             
             The type and order of arguments expected depends on the function being called.  
 
-            ``func`` can be a function name or an built-in function number as an int (which slightly 
+            `func` can be a function name or an built-in function number as an int (which slightly 
             reduces the lookup overhead)
         """
         ...
@@ -932,7 +937,7 @@ else:
             
             The type and order of arguments expected depends on the function being called.  
 
-            ``func`` can be a function name or an built-in function number as an int (which slightly 
+            `func` can be a function name or an built-in function number as an int (which slightly 
             reduces the lookup overhead).
 
             Since calls to the Excel API must be done on Excel's main thread (which also runs

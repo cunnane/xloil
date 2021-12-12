@@ -12,6 +12,7 @@ Status Bar
 Possibly the simplest Excel GUI interaction: writing messages to Excel's status bar:
 
 ::
+
     from xloil import StatusBar
 
     with StatusBar(1000) as status:
@@ -20,18 +21,18 @@ Possibly the simplest Excel GUI interaction: writing messages to Excel's status 
         status.msg('Done slow thing')
 
 The `StatusBar` object clears the status bar after the specified number of milliseconds
-at the end of the `with` context.
+once the `with` context ends
 
 
 Ribbon
 ------
 
 xlOil allows dynamic creation of Excel Ribbon components. See :any:`concepts-ribbon` for 
-background.  To customise the ribbon, run the following:
+background.
 
 ::
 
-    ribbon = xlo.ExcelUI(r'''<customUI xmlns=...>....</<customUI>''', 
+    gui = xlo.create_gui(r'''<customUI xmlns=...>....</<customUI>''', 
         mapper={
             'onClick1': run_click,
             'onClick2': run_click,
@@ -68,41 +69,77 @@ Instead of using a `getImage` per control, a single `loadImage` attribute can be
         ...
         <button id="AButton" image="icon.jpg" />
 
-The `MyImageLoader` function will be called with the argument `icon.jpg` as be expected to return a 
-*PIL Image*.
+The `MyImageLoader` function will be called with the argument `icon.jpg` and be expected to return
+a *PIL Image*.
 
 Instead of a dictionary, the `mapper` object can be a function which takes any string and returns a 
 callback handler.
 
-The ``ribbon`` object returned above is actually a handle to the COM addin created to support
+The ``gui`` object returned above is actually a handle to a COM addin created to support
 the ribbon customisation.  If the object goes out of scope and is deleted by python or if you call 
 ``ribbon.disconnect()``, the add-in is unloaded along with the ribbon customisation.
 
-See :doc:`Example` for an example of ribbon customisation.
+See :doc:`ExampleGUI` for an example of ribbon customisation.
 
 Custom Task Panes
 -----------------
 
-`Custom task panes <https://docs.microsoft.com/en-us/visualstudio/vsto/custom-task-panes>` are user 
+`Custom task panes <https://docs.microsoft.com/en-us/visualstudio/vsto/custom-task-panes>`_ are user 
 interface panels that are typically docked to one side of a window in Excel application.
 
-Custom task panes can be created using the `ExcelUI` object. There is no need to create a ribbon as
-well, but task panes are normally opened using a ribon button.
+Custom task panes are created using the `ExcelGUI` object. There is no need to create a ribbon as
+well, but task panes are normally opened using a ribbon button.
+
+Currently only Qt is supported using ``PyQt5`` or ``PySide2``. Additional support may be added.
 
 ::
 
-    excelui = xlo.ExcelUI(...)
-    frame = add_task_pane('MyPane')
-
-To populate the frame, we use a python GUI toolkit (currently only Qt is supported) to draw a pane
-
-::
-
-    from PyQt5.QtWidgets import QWidget
+    from PyQt5.QtWidgets import QWidget     # could use PySide2 instead
     class MyTaskPane(QWidget):
-        ...
+        def __init__(self): # Must have no args
+            ... # some code to draw the widget
+        def send_signal(int):
+            ... # some code to emit a Qt signal
 
-    pane = QtThreadTaskPane(frame, MyTaskPane)
+    excelui = xlo.create_gui(...)
+    pane = excelui.create_task_pane('MyPane', creator=MyTaskPane)
 
-To make Qt happy (and not abort), all GUI interaction, other than emitting signals must take place 
-in the same thread. `QtThreadTaskPane` creates a dedicated Qt GUI thread for this purpose.
+    pane.widget.send_signal(3)
+
+The ``create_task_pane`` call first looks for a pane with the specified name which is already 
+attached to the active window, returning a reference to it if found.  Otherwise the ``creator``
+is used.  If ``creator`` inherits from `QWidget`, it is constructed and attached to a new
+custom task pane
+
+With Qt, all GUI interactions (other than signals) must take place in the same thread, or 
+Qt will abort.  To achieve this xlOil creates a special Qt-only thread, constructs ``MyTaskPane`` 
+on that thread, then starts the Qt event loop to run the GUI.
+
+It is also possible to pass a function as the ``creator`` argument.  The function should take an
+:obj:`xloil.TaskPaneFrame` and return a :obj:`xloil.CustomTaskPane`.
+
+To talk to your widget, it's best to set up a system of Qt 
+`signals <https://wiki.qt.io/Qt_for_Python_Signals_and_Slots>`_. 
+(the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_). It's 
+also possible to run GUI commands on xlOil's Qt thread in the following way:
+
+::
+
+    from xloil.qtgui import Qt_thread
+    future = Qt_thread.submit(func, args) # Qt_thread is a concurrent.futures.Executor
+    future.result()                       # Blocks, no need to do this if result is discarded
+
+The ``pane`` object is automatically stored to a registry so there is no need to hold a reference.
+Task panes are attached by default to the active window and it is possible to have multiple 
+windows per open workbook.  xlOil will free the panes when the parent workbook closes.
+
+To look for a task pane without having a :obj:`xloil.ExcelGUI` object:
+
+::
+
+    pane = xloil.find_task_pane("MyPane")
+
+
+
+
+

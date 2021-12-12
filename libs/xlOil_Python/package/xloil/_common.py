@@ -32,6 +32,7 @@ else:
             """
             pass
 
+log = LogWriter()
 """
     Instance of `xloil.LogWriter` which writes a log message to xlOil's log.  The level 
     parameter can be a integer constant from the ``logging`` module or one of the strings
@@ -41,7 +42,6 @@ else:
     in the xlOil settings file will be output to the log file. Trace output can only
     be seen with a debug build of xlOil.
 """
-log = LogWriter()
 
 def log_except(msg, level='error'):
     """

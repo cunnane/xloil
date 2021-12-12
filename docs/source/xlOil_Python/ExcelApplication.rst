@@ -2,14 +2,30 @@
 xlOil Python Excel.Application object
 =====================================
 
-The `Excel.Application` object is the root of the Excel COM interface.  If you have used VBA you 
+The `Excel.Application` object is the root of Excel's COM interface.  If you have used VBA you 
 will likely have come accross it.  In xlOil, you can get a reference to this object with 
-`xloil.app()`. From there the `comtypes` library provides syntax similar to VBA to call methods
-on the object.
+`xloil.app()`. From there the `comtypes <https://pythonhosted.org/comtypes/>`_ or `pywin32 <http://timgolden.me.uk/pywin32-docs/html/com/win32com/HTML/QuickStartClientCom.html>`_ 
+libraries provides syntax similar to VBA to call methods on the object.
 
 The available methods are documented extensively at `Excel object model overview <https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview>`_
 and `Application Object <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)>`_
 
+COM support can be provided by 'comtypes', a newer pure python package or 'win32com' 
+a well-established more C++ based library. You can choose using:
+
+::
+
+    # Run this before any calls to xloil.app()
+    xloil.use_com_lib("win32com") # run this to select win32com
+    xloil.use_com_lib("comtypes") # the default, no need to run this explicitly
+
+
+
+Application.Run
+---------------
+
+In VBA this takes a function name and a variable argument list and attempts to call the specified
+function dynamically.  In xlOil, use :obj:`xloil.excel_func` and :obj:`xloil.excel_func_async`.
 
 Examples
 --------

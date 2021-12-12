@@ -16,4 +16,5 @@ xlOil Python
     Rtd
     Debugging
     Example
+    ExampleGUI
     ModuleReference

@@ -12,25 +12,36 @@ xlOil Python Module Reference
 	ExcelArray
 	AllowRange
 	Range
-	ExcelUI
-	RibbonControl
 	RtdPublisher
 	RtdServer
 	Cache
 	SingleValue
+	RibbonControl
 	func
 	converter
 	returner
-	app
 	in_wizard
 	log
 	LogWriter
-	excel_run
 	get_async_loop
 	from_excel_date
 	register_functions
 	deregister_functions
+	linked_workbook
+	excel_run
 	excel_state
+	excel_func
+	excel_func_async
+	app
+	windows
+	workbooks
+	ExcelWindow
+	ExcelWorkbook
+	ExcelGUI
+	CustomTaskPane
+	TaskPaneFrame
+	find_task_pane
+    create_task_pane
 	insert_cell_image
 	use_com_lib
 	xloil.rtd.RtdSimplePublisher
@@ -38,6 +49,14 @@ xlOil Python Module Reference
 	xloil.pandas.PDFrame
 	xloil.pillow.ReturnImage
 	xloil.matplotlib.ReturnFigure
+
+.. autodata:: log
+
+.. autodata:: AllowRange
+
+.. autodata:: windows
+	
+.. autodata:: workbooks
 
 .. automodule:: xloil
 	:members:

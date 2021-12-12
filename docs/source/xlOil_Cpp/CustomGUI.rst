@@ -2,9 +2,12 @@
 xlOil C++ GUI Customisation
 ==============================
 
-xlOil allows dynamic creation of Excel Ribbon components. See :any:`concepts-ribbon` for 
-background. The code differs slightly depending on whether you are writing a static XLL or
-an xlOil plugin.
+.. contents::
+    :local:
+
+xlOil allows dynamic creation of Excel Ribbon components and custom task panes. See 
+:any:`concepts-ribbon` for background. The code differs slightly depending on whether 
+you are writing a static XLL or an xlOil plugin.
 
 Creating a ribbon in a static XLL
 ---------------------------------
@@ -68,3 +71,20 @@ Creating a ribbon in an xlOil plugin
 
         return 0;
     }
+
+    
+Creating a Custom Task Pane
+---------------------------
+
+After a COM addin has been created using the ribbon examples above, a custom task pane
+can be added in the following way.
+
+.. highlight:: c++
+
+:: 
+    
+    std::shared_ptr<ICustomTaskPane> taskPane(theComAddin->createTaskPane(L"xloil"));
+    taskPane->setVisible(true);
+
+An option progid can be passed to `createTaskPane` to create a specific COM object 
+as the root of the task pane, if omitted, xlOil uses a simple default object.
