@@ -30,15 +30,8 @@ def qt_import(sub, what):
 
 def _create_Qt_app():
 
-    # For some reason, my version of PyQt doesn't read the platform plugin
-    # path env var, so I need to explicitly pass it to the QApplication ctor
-    import os
-    ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH')
-
     QApplication = qt_import('QtWidgets', 'QApplication')
-
-    app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
-
+    app = QApplication([])
     log(f"Started Qt on thread {threading.get_native_id()}" +
         f"with libpaths={app.libraryPaths()}", level="info")
 

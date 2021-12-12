@@ -165,7 +165,7 @@ namespace xloil
       {
 #if PY_VERSION_HEX < 0x03080000
         auto result = PyObject_CallFunctionObjArgs(callable, arg, nullptr);
-#elseif PY_VERSION_HEX < 0x03090000
+#elif PY_VERSION_HEX < 0x03090000
           PyObject * args[] = { nullptr, arg };
         auto result = _PyObject_Vectorcall(callable, args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #else

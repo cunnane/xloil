@@ -127,7 +127,10 @@ namespace xloil
             auto value = expandWindowsRegistryStrings(
               expandEnvironmentStrings(val));
             XLO_DEBUG(L"Setting environment variable: {}='{}'", key, value);
+            // getenv makes a copy of the environment variable block of the 
+            // process on startup, so we need to set both these blocks!
             SetEnvironmentVariable(key.c_str(), value.c_str());
+            _putenv_s(utf16ToUtf8(key).c_str(), utf16ToUtf8(value).c_str());
           }
           // Load the plugin
           const auto lib = LoadLibrary(pluginPath.c_str());
