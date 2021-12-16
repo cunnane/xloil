@@ -107,8 +107,7 @@ namespace xloil
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const
   {
-    // TODO: not the best implementation. May even crash Excel.
-    return refFromComRange(Excel::RangePtr(ptr()->Cells->Item[i][j])).value();
+    return COM::variantToExcelObj(ptr()->Cells->Item[i][j]);
   }
 
   void ExcelRange::set(const ExcelObj& value)
