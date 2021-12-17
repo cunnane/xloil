@@ -21,7 +21,7 @@ if XLOIL_HAS_CORE:
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
-        workbooks, windows, ExcelWindow, ExcelWorkbook,
+        workbooks, windows, ExcelWindow, , Workbook, Worksheet, active_worksheet, active_workbook,
         excel_func, excel_func_async)
 
 else:

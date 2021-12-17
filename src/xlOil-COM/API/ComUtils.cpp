@@ -1,7 +1,8 @@
-#include "..\..\..\include\xloil\AppObjects.h"
+#include <xloil/AppObjects.h>
 #include <xlOil/ExcelApp.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/WindowsSlim.h>
+#include <xlOil/ExcelRange.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComAddin.h>
 #include <xlOil-COM/ComVariant.h>
@@ -17,6 +18,32 @@ using std::vector;
 
 namespace xloil
 {
+  namespace
+  {
+    template <class T>
+    struct CollectionToVector
+    {
+      template <class V>
+      vector<T> operator()(const V& collection) const
+      {
+        try
+        {
+          vector<T> result;
+          const auto N = collection->Count;
+          for (auto i = 1; i <= N; ++i)
+            result.emplace_back(collection->GetItem(i));
+          return std::move(result);
+        }
+        XLO_RETHROW_COM_ERROR;
+      }
+    };
+
+    _variant_t stringToVariant(const std::wstring_view& str)
+    {
+      auto variant = COM::stringToVariant(str);
+      return _variant_t(variant, false);
+    }
+  }
   Excel::_Application& excelApp() noexcept
   {
     return COM::excelApp();
@@ -37,14 +64,14 @@ namespace xloil
     COM::excelObjToVariant(v, obj);
   }
   
-  ExcelWindow::ExcelWindow(const wchar_t* caption)
+  ExcelWindow::ExcelWindow(const std::wstring_view& caption)
   {
     try
     {
-      auto winptr = caption
-        ? excelApp().Windows->GetItem(caption)
-        : excelApp().ActiveWindow;
-      init(winptr);
+      if (caption.empty())
+        init(excelApp().ActiveWindow);
+      else
+        init(excelApp().Windows->GetItem(stringToVariant(caption)));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -92,14 +119,14 @@ namespace xloil
     _ptr->AddRef();
   }
 
-  ExcelWorkbook::ExcelWorkbook(const wchar_t* name)
+  ExcelWorkbook::ExcelWorkbook(const std::wstring_view& name)
   {
     try
     {
-      auto ptr = name
-        ? excelApp().Workbooks->GetItem(name)
-        : excelApp().ActiveWorkbook;
-      init(ptr);
+      if (name.empty())
+        init(excelApp().ActiveWorkbook);
+      else
+        init(excelApp().Workbooks->GetItem(stringToVariant(name)));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -115,14 +142,7 @@ namespace xloil
   }
   std::vector<ExcelWindow> ExcelWorkbook::windows() const
   {
-    try
-    {
-      vector<ExcelWindow> result;
-      for (auto i = 1; i <= ptr()->Windows->Count; ++i)
-        result.emplace_back(ptr()->Windows->GetItem(i));
-      return result;
-    }
-    XLO_RETHROW_COM_ERROR;
+    return CollectionToVector<ExcelWindow>()(ptr()->Windows);
   }
 
   void ExcelWorkbook::activate() const
@@ -130,39 +150,119 @@ namespace xloil
     ptr()->Activate();
   }
 
+  vector<ExcelWorksheet> ExcelWorkbook::worksheets() const
+  {
+    try
+    {
+      vector<ExcelWorksheet> result;
+      const auto N = ptr()->Worksheets->Count;
+      for (auto i = 1; i <= N; ++i)
+        result.push_back((Excel::_Worksheet*)(IDispatch*)ptr()->Worksheets->GetItem(i));
+      return std::move(result);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+  ExcelWorksheet ExcelWorkbook::worksheet(const std::wstring_view& name) const
+  {
+    try
+    {
+      return (Excel::_Worksheet*)(IDispatch*)(ptr()->Worksheets->GetItem(stringToVariant(name)));
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  std::wstring ExcelWorksheet::name() const
+  {
+    return ptr()->Name.GetBSTR();
+  }
+
+  ExcelWorkbook ExcelWorksheet::parent() const
+  {
+    return ExcelWorkbook((Excel::_Workbook*)(IDispatch*)ptr()->Parent);
+  }
+
+  ExcelRange ExcelWorksheet::range(
+    int fromRow, int fromCol,
+    int toRow, int toCol) const
+  {
+    try
+    {
+      if (toRow == Range::TO_END)
+        toRow = ptr()->Rows->GetCount();
+      if (toCol == Range::TO_END)
+        toCol = ptr()->Columns->GetCount();
+
+      auto r = ptr()->GetRange(
+        ptr()->Cells->Item[fromRow - 1][fromCol - 1],
+        ptr()->Cells->Item[toRow - 1][toCol - 1]);
+      return ExcelRange(r);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelRange ExcelWorksheet::range(const std::wstring_view& address) const
+  {
+    auto fullAddress = std::wstring(ptr()->Name);
+    fullAddress += '!';
+    fullAddress += address;
+    return ExcelRange(fullAddress.c_str());
+  }
+  ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
+  {
+    return COM::variantToExcelObj(ptr()->Cells->Item[i][j]);
+  }
+  void ExcelWorksheet::activate()
+  {
+    try
+    {
+      ptr()->Activate();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+  void ExcelWorksheet::calculate()
+  {
+    try
+    {
+      ptr()->Calculate();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
   namespace App
   {
-    ExcelWorkbook activeWorkbook()
+    ExcelWorkbook Workbooks::active()
     {
       return ExcelWorkbook();
     }
-
-    std::vector<ExcelWorkbook> workbooks()
+    std::vector<ExcelWorkbook> Workbooks::list()
     {
-      try
-      {
-        auto& app = excelApp();
-        vector<ExcelWorkbook> result;
-        for (auto i = 1; i <= app.Workbooks->Count; ++i)
-          result.emplace_back(app.Workbooks->GetItem(i));
-        return std::move(result);
-      }
-      XLO_RETHROW_COM_ERROR;
+      return CollectionToVector<ExcelWorkbook>()(excelApp().Workbooks);
+    }
+    size_t Workbooks::count()
+    {
+      return excelApp().Workbooks->Count;
     }
 
-    ExcelWindow activeWindow()
+    ExcelWindow Windows::active()
     {
       return ExcelWindow();
     }
-    std::vector<ExcelWindow> windows()
+    std::vector<ExcelWindow> Windows::list()
+    {
+      return CollectionToVector<ExcelWindow>()(excelApp().Windows);
+    }
+    size_t Windows::count()
+    {
+      return excelApp().Windows->Count;
+    }
+
+    ExcelWorksheet Worksheets::active()
     {
       try
       {
-        auto& app = excelApp();
-        vector<ExcelWindow> result;
-        for (auto i = 1; i <= app.Windows->Count; ++i)
-          result.emplace_back(app.Windows->GetItem(i));
-        return std::move(result);
+        Excel::_Worksheet* sheet = nullptr;
+        excelApp().ActiveSheet->QueryInterface(&sheet);
+        return ExcelWorksheet(sheet);
       }
       XLO_RETHROW_COM_ERROR;
     }

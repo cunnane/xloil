@@ -36,6 +36,7 @@
     </ClCompile>
     <ClCompile Include="TypeConversion\Numpy.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
+    <ClCompile Include="PyAppObjects.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncFunctions.h" />

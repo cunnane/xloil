@@ -1,6 +1,8 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
 
+namespace Excel { struct Range; }
+
 namespace xloil
 {
   /// <summary>
@@ -127,4 +129,6 @@ namespace xloil
   /// interface is available.
   /// </summary>
   XLOIL_EXPORT Range* newRange(const wchar_t* address);
+
+  ExcelRef refFromComRange(Excel::Range* range);
 }

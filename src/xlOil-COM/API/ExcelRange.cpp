@@ -15,37 +15,37 @@ namespace xloil
       return new ExcelRange(address);
   }
 
-  namespace
-  {
-    ExcelRef refFromComRange(Excel::Range* range)
-    {
-      try
-      {
-        const auto nCols = range->Columns->Count;
-        const auto nRows = range->Rows->Count;
 
-        // Excel uses 1-based indexing for these, so we adjust
-        const auto fromRow = range->Row - 1;
-        const auto fromCol = range->Column - 1;
-
-        // Convert to an XLL SheetId
-        auto wb = (Excel::_WorkbookPtr)range->Worksheet->Parent;
-        const auto sheetId =
-          callExcel(msxll::xlSheetId, fmt::format(L"[{0}]{1}",
-            wb->Name, range->Worksheet->Name));
-
-        return ExcelRef(sheetId.val.mref.idSheet,
-          fromRow, fromCol, fromRow + nRows - 1, fromCol + nCols - 1);
-      }
-      XLO_RETHROW_COM_ERROR;
-    }
-  }
-
-  ExcelRange::ExcelRange(const wchar_t* address)
+  ExcelRef refFromComRange(Excel::Range* range)
   {
     try
     {
-      auto rangePtr = excelApp().GetRange(_variant_t(address));
+      const auto nCols = range->Columns->Count;
+      const auto nRows = range->Rows->Count;
+
+      // Excel uses 1-based indexing for these, so we adjust
+      const auto fromRow = range->Row - 1;
+      const auto fromCol = range->Column - 1;
+
+      // Convert to an XLL SheetId
+      auto wb = (Excel::_WorkbookPtr)range->Worksheet->Parent;
+      const auto sheetId =
+        callExcel(msxll::xlSheetId, fmt::format(L"[{0}]{1}",
+          wb->Name, range->Worksheet->Name));
+
+      return ExcelRef(sheetId.val.mref.idSheet,
+        fromRow, fromCol, fromRow + nRows - 1, fromCol + nCols - 1);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+
+  ExcelRange::ExcelRange(const std::wstring_view& address)
+  {
+    try
+    {
+      auto addressStr = COM::stringToVariant(address);
+      auto rangePtr = excelApp().GetRange(_variant_t(addressStr, false));
       init(rangePtr);
     }
     XLO_RETHROW_COM_ERROR;

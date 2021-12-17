@@ -7,7 +7,7 @@
 #include <vector>
 
 struct IDispatch;
-namespace Excel { struct Window; struct _Workbook; struct Range; }
+namespace Excel { struct Window; struct _Workbook; struct _Worksheet; struct Range; }
 
 namespace xloil
 {
@@ -34,6 +34,7 @@ namespace xloil
   };
 
   class ExcelWindow;
+  class ExcelWorksheet;
 
   /// <summary>
   /// Wraps a Workbook (https://docs.microsoft.com/en-us/office/vba/api/excel.workbook) in
@@ -46,7 +47,7 @@ namespace xloil
     /// Gives the ExcelWorkbook object associated with the given workbookb name, or the active workbook
     /// </summary>
     /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
-    explicit ExcelWorkbook(const wchar_t* name = nullptr);
+    explicit ExcelWorkbook(const std::wstring_view& name = std::wstring_view());
     /// <summary>
     /// Constructs an ExcelWorkbook from a COM pointer
     /// </summary>
@@ -71,6 +72,11 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     std::vector<ExcelWindow> windows() const;
+
+
+    std::vector<ExcelWorksheet> worksheets() const;
+
+    ExcelWorksheet worksheet(const std::wstring_view& name) const;
 
     /// <summary>
     /// Makes this the active workbook
@@ -97,7 +103,7 @@ namespace xloil
     /// Gives the ExcelWindow object associated with the given window caption, or the active window
     /// </summary>
     /// <param name="windowCaption">The name of the window to find, or the active window if null</param>
-    explicit ExcelWindow(const wchar_t* windowCaption = nullptr);
+    explicit ExcelWindow(const std::wstring_view& caption = std::wstring_view());
 
     ExcelWindow& operator=(const ExcelWindow& that) { assign(that); return *this; }
     ExcelWindow(ExcelWindow&& that) noexcept { std::swap(_ptr, that._ptr); }
@@ -128,7 +134,7 @@ namespace xloil
     /// Constructs a Range from a address. A local address (not qualified with
     /// a workbook name) will refer to the active workbook
     /// </summary>
-    explicit ExcelRange(const wchar_t* address);
+    explicit ExcelRange(const std::wstring_view& address);
     ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
     ExcelRange(ExcelRange&& that) noexcept { std::swap(_ptr, that._ptr); }
     ExcelRange(const ExcelRange& that) : IAppObject(that._ptr) {}
@@ -182,13 +188,80 @@ namespace xloil
     Excel::Range* ptr()       { return (Excel::Range*)_ptr; }
   };
 
+  /// <summary>
+  /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
+  /// </summary>
+  class XLOIL_EXPORT ExcelWorksheet : public IAppObject
+  {
+  public:
+    /// <summary>
+    /// Constructs an ExcelWindow from a COM pointer
+    /// </summary>
+    /// <param name="p"></param>
+    ExcelWorksheet(Excel::_Worksheet* p) : IAppObject((IDispatch*)p) {}
+
+    //explicit ExcelWorksheet(const std::wstring_view& name = nullptr);
+
+    ExcelWorksheet& operator=(const ExcelWorksheet& that) { assign(that); return *this; }
+    ExcelWorksheet(ExcelWorksheet&& that) noexcept { std::swap(_ptr, that._ptr); }
+    ExcelWorksheet(const ExcelWorksheet& that) : IAppObject(that._ptr) {}
+
+    /// <summary>
+    /// Returns the window title
+    /// </summary>
+    /// <returns></returns>
+    std::wstring name() const override;
+
+    /// <summary>
+    /// Gives the name of the workbook which owns this sheet
+    /// </summary>
+    ExcelWorkbook parent() const;
+
+    ExcelRange range(const std::wstring_view& address) const;
+
+    ExcelRange range(int fromRow, int fromCol,
+      int toRow = ExcelRange::TO_END, int toCol = ExcelRange::TO_END) const;
+
+    ExcelRange cell(int i, int j) const
+    {
+      return range(i, j, i, j);
+    }
+    /// <summary>
+    /// Convenience wrapper for cell(i,j)->value()
+    /// </summary>
+    ExcelObj value(Range::row_t i, Range::col_t j) const;
+
+    std::tuple<Range::row_t, Range::col_t> shape() const { return std::make_tuple(XL_MAX_ROWS, XL_MAX_COLS); }
+
+    void activate();
+    void calculate();
+
+    Excel::_Worksheet* ptr() const { return (Excel::_Worksheet*)_ptr; }
+  };
+
+
   namespace App
   {
-    XLOIL_EXPORT ExcelWorkbook activeWorkbook();
-    XLOIL_EXPORT std::vector<ExcelWorkbook> workbooks();
+    struct XLOIL_EXPORT Workbooks
+    {
+      static ExcelWorkbook active();
+      inline ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name); }
+      static std::vector<ExcelWorkbook> list();
+      static size_t count();
+    };
 
-    XLOIL_EXPORT ExcelWindow activeWindow();
-    XLOIL_EXPORT std::vector<ExcelWindow> windows();
+    struct XLOIL_EXPORT Windows
+    {
+      static ExcelWindow active();
+      inline ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name); }
+      static std::vector<ExcelWindow> list();
+      static size_t count();
+    };
+
+    struct XLOIL_EXPORT Worksheets
+    {
+      static ExcelWorksheet active();
+    };
 
     struct ExcelInternals
     {

@@ -501,11 +501,14 @@ _workbook_name = os.path.basename(xlo.linked_workbook())
 def event_writeTimeToA1():
     if xlo.app().ActiveWorkbook.Name != _workbook_name:
         return
-        
-    sheet_name = xlo.app().ActiveSheet.Name
+    
+    ws = xlo.active_worksheet()
+    wb = xlo.active_workbook()
+    range = wb[ws.name]["A1"]
+    
     time = str(dt.datetime.now())
-    range = xlo.Range("A1")
-    range.value = f"Calc on {sheet_name} finished at: {time}"
+
+    range.value = f"Calc on {ws.name} finished at: {time}"
 
 #
 # This handler is for the WorkbookBeforePrint event. If the `cancel` parameter
