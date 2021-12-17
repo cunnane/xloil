@@ -572,6 +572,7 @@ class _ModuleFinder(importlib.abc.MetaPathFinder):
 # loaded modules
 _module_finder = _ModuleFinder()
 sys.meta_path.append(_module_finder)
+_linked_workbooks = dict()
 
 def linked_workbook(mod=None):
     """
@@ -583,7 +584,7 @@ def linked_workbook(mod=None):
         # Get caller
         frame = inspect.stack()[1]
         mod = inspect.getmodule(frame[0])
-    return _module_finder.path_map.get(mod.__name__, None)
+    return _linked_workbooks.get(mod.__name__, None)
 
 def _reload_scan(what):
     """
@@ -622,14 +623,17 @@ def import_file(path, workbook_name=None):
         try:
             status.msg(f"Loading {path}...")
             directory, filename = os.path.split(path)
-            filename = filename.replace('.py', '')
-
+            filename = os.path.splitext(filename)[0]
+            
             # avoid name collisions when loading workbook modules
-            module_name = filename if workbook_name is None else "xloil_wb_" + filename
+            module_name = filename
+            if workbook_name is not None:
+                module_name = "xloil_wb_" + filename
+                _linked_workbooks[module_name] = workbook_name
 
             if len(directory) > 0 or workbook_name is not None:
                 _module_finder.path_map[module_name] = path
-   
+
             module = importlib.import_module(module_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
