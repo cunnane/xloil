@@ -136,11 +136,14 @@ namespace xloil
       template<class T, class U, class D>
       auto weakBind(std::weak_ptr<U>&& wptr, const D T::* func)
       {
+        if (wptr.expired())
+          XLO_THROW("Internal: weakBind called with null pointer");
         return bind([=] (Args&&... args)
         {
           auto ptr = std::static_pointer_cast<T>(wptr.lock());
           if (ptr)
             ((*ptr).*func)(std::forward<Args>(args)...);
+          // TODO: schedule an unbind?
         });
       }
 

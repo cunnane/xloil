@@ -362,9 +362,9 @@ namespace xloil
           registerLocal(localFuncs, append);
       }
 
-      void reload()
+      void reload() override
       {
-        auto[source, addin] = Python::findFileContext(sourcePath().c_str());
+        auto[source, addin] = Python::findSource(sourcePath().c_str());
         if (source.get() != this)
           XLO_THROW(L"Error reloading '{0}': source ptr mismatch", sourcePath());
         
@@ -387,7 +387,7 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto[source, addin] = FileSource::findFileContext(modulePath.c_str());
+      auto[source, addin] = FileSource::findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
@@ -435,7 +435,7 @@ namespace xloil
 
       const auto modulePath = getModulePath(moduleHandle);
 
-      auto[foundSource, foundAddin] = FileSource::findFileContext(
+      auto[foundSource, foundAddin] = FileSource::findSource(
         modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
 
       if (!foundSource)

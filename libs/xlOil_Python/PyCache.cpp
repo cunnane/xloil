@@ -6,8 +6,9 @@
 
 namespace py = pybind11;
 using std::wstring;
+using std::shared_ptr;
 
-namespace xloil 
+namespace xloil
 {
   template<>
   struct CacheUniquifier<py::object>
@@ -27,19 +28,21 @@ namespace xloil
       // Only a single instance of this class is created
       struct PyCache
       {
+        using cache_type = ObjectCache<py::object, CacheUniquifier<py::object>>;
+
         PyCache()
-          : _cache(false)
+          : _cache(cache_type::create(false))
         {
-          static_assert(CACHE_KEY_MAX_LEN == decltype(PyCache::_cache)::KEY_MAX_LEN);
+          static_assert(CACHE_KEY_MAX_LEN == cache_type::KEY_MAX_LEN);
 
           thePythonObjCache = this;
           _workbookCloseHandler = std::static_pointer_cast<const void>(
             xloil::Event::WorkbookAfterClose().bind(
               [this](auto wbName)
-              { 
-                py::gil_scoped_acquire getGil;
-                _cache.onWorkbookClose(wbName); 
-              }));
+          {
+            py::gil_scoped_acquire getGil;
+            _cache->onWorkbookClose(wbName);
+          }));
         }
 
         // Just to prevent any potential errors!
@@ -51,15 +54,15 @@ namespace xloil
           XLO_TRACE("Python object cache destroyed");
         }
 
-        py::object add(py::object obj, const wchar_t* tag=nullptr)
+        py::object add(py::object obj, const wchar_t* tag = nullptr)
         {
           // The cache expects callers to be of the form [.]xxx, so we add
           // a prefix if a custom tag is specified. Note the forward slash
           // cannot appear in a workbook name so this tag never collides with
           // the caller-based default
-          const auto cacheKey = _cache.add(std::move(obj), tag 
-              ? CallerLite(ExcelObj(tag))
-              : CallerLite());
+          const auto cacheKey = _cache->add(std::move(obj), tag
+            ? CallerLite(ExcelObj(tag))
+            : CallerLite());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object getitem(const std::wstring_view& str)
@@ -69,35 +72,35 @@ namespace xloil
             throw pybind11::key_error(utf16ToUtf8(str));
           return result;
         }
-        py::object get(const std::wstring_view& str, const py::object& default=py::none())
+        py::object get(const std::wstring_view& str, const py::object& default = py::none())
         {
           const ExcelObj* xlObj = getCached<ExcelObj>(str);
           if (xlObj)
             return PySteal(PyFromAny()(*xlObj));
 
-          auto* obj = _cache.fetch(str);
+          auto* obj = _cache->fetch(str);
           return obj ? *obj : default;
         }
         bool remove(const std::wstring& cacheRef)
         {
-          return _cache.erase(cacheRef);
+          return _cache->erase(cacheRef);
         }
         bool contains(const std::wstring_view& str)
         {
-          return _cache.fetch(str);
+          return _cache->fetch(str);
         }
 
         py::list keys() const
         {
           py::list out;
-          for (auto&[key, cellCache] : _cache)
+          for (auto& [key, cellCache] : *_cache)
             for (auto i = 0u; i < cellCache.count(); ++i)
-              out.append(py::wstr(_cache.writeKey(key, i)));
+              out.append(py::wstr(_cache->writeKey(key, i)));
           return out;
         }
 
-        ObjectCache<py::object, CacheUniquifier<py::object>> _cache;
-        std::shared_ptr<const void> _workbookCloseHandler;
+        shared_ptr<cache_type> _cache;
+        shared_ptr<const void> _workbookCloseHandler;
       };
     }
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
@@ -105,7 +108,7 @@ namespace xloil
       if (!thePythonObjCache)
         XLO_THROW("Fatal: Python object cache not available");
       auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
-      return thePythonObjCache->_cache.add(
+      return thePythonObjCache->_cache->add(
         py::object(obj),
         caller ? CallerLite(ExcelObj(caller)) : CallerLite(),
         name.c_str(),
@@ -115,7 +118,7 @@ namespace xloil
     {
       if (!thePythonObjCache)
         XLO_THROW("Fatal: Python object cache not available");
-      const auto* p = thePythonObjCache->_cache.fetch(str);
+      const auto* p = thePythonObjCache->_cache->fetch(str);
       if (p)
         obj = *p;
       return p;
@@ -126,7 +129,7 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyCache>(mod, "ObjectCache")
-          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag")=nullptr)
+          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr)
           .def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
@@ -137,4 +140,5 @@ namespace xloil
         mod.add_object("cache", py::cast(new PyCache()));
       });
     }
-} }
+  }
+}

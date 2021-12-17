@@ -18,10 +18,10 @@ namespace Tests
 
     TEST_METHOD(ReverseLookupCacheTest)
     {
-      ObjectCache<
-        std::unique_ptr<int>, 
-        CacheUniquifier<std::unique_ptr<int>>, 
-        true> cache;
+      auto cache = ObjectCache<
+        std::unique_ptr<int>,
+        CacheUniquifier<std::unique_ptr<int>>,
+        true>::create();
       const int N = 100;
 
       vector<ExcelObj> callers;
@@ -30,16 +30,16 @@ namespace Tests
         callers.emplace_back(ExcelObj(format(L"Key_{0}", i)));
 
       for (auto i = 0; i < N; ++i)
-        keys[i] = cache.add(make_unique<int>(i), CallerInfo(callers[i]));
+        keys[i] = cache->add(make_unique<int>(i), CallerInfo(callers[i]));
 
       for (auto i = 0; i < N; ++i)
-        cache.add(make_unique<int>(i), CallerInfo(callers[i]));
+        cache->add(make_unique<int>(i), CallerInfo(callers[i]));
 
       for (auto i = 0; i < N; ++i)
       {
-        auto* val = cache.fetch(keys[i].asPString().view());
+        auto* val = cache->fetch(keys[i].asPString().view());
         Assert::AreEqual<int>(i, **val);
-        auto* key = cache.findKey(val);
+        auto* key = cache->findKey(val);
         Assert::AreEqual(keys[i].toString(), *key);
       }
 

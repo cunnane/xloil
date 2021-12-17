@@ -32,7 +32,7 @@ namespace xloil
   }
 
   FileSource::FileSource(
-    const wchar_t* sourcePath, 
+    const wchar_t* sourcePath,
     const wchar_t* linkedWorkbook)
     : _sourcePath(sourcePath)
   {
@@ -92,10 +92,9 @@ namespace xloil
     }
   }
 
-  void
-    FileSource::registerFuncs(
-      const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& funcSpecs,
-      const bool append)
+  void FileSource::registerFuncs(
+    const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& funcSpecs,
+    const bool append)
   {
     runExcelThread([append, specs = funcSpecs, self = shared_from_this()]() mutable
     {
@@ -124,7 +123,7 @@ namespace xloil
       self->_functions = newFuncs;
     }, ExcelRunQueue::XLL_API);
   }
-  
+
   bool FileSource::deregister(const std::wstring& name)
   {
     auto iFunc = _functions.find(name);
@@ -153,7 +152,7 @@ namespace xloil
   }
 
   std::pair<shared_ptr<FileSource>, shared_ptr<AddinContext>>
-    FileSource::findFileContext(const wchar_t* source)
+    FileSource::findSource(const wchar_t* source)
   {
     auto found = xloil::findFileSource(source);
     if (found.first)
@@ -163,38 +162,40 @@ namespace xloil
       const auto& wbName = found.first->_workbookName;
       if (!wbName.empty() && !COM::checkWorkbookIsOpen(wbName.c_str()))
       {
-        deleteFileContext(found.first);
+        deleteSource(found.first);
         return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
       }
     }
     return found;
   }
 
-  void
-    FileSource::deleteFileContext(const shared_ptr<FileSource>& source)
+  void FileSource::deleteSource(const shared_ptr<FileSource>& source)
   {
     xloil::deleteFileSource(source);
   }
 
-  WatchedSource::WatchedSource(
-    const wchar_t* sourceName,
-    const wchar_t* linkedWorkbook)
-    : FileSource(sourceName, linkedWorkbook)
+  void FileSource::startWatch()
   {
-    auto path = fs::path(sourceName);
+    if (!linkedWorkbook().empty())
+      _workbookWatcher = Event::WorkbookAfterClose().weakBind(weak_from_this(), &FileSource::handleClose);
+  }
+
+  void WatchedSource::reload()
+  {}
+
+  void WatchedSource::startWatch()
+  {
+    auto path = fs::path(sourcePath());
     auto dir = path.remove_filename();
     if (!dir.empty())
       _fileWatcher = Event::DirectoryChange(dir)->weakBind(weak_from_this(), &WatchedSource::handleDirChange);
-
-    if (linkedWorkbook)
-      _workbookWatcher = Event::WorkbookAfterClose().weakBind(weak_from_this(), &WatchedSource::handleClose);
   }
 
-  void WatchedSource::handleClose(
-    const wchar_t* wbName)
+
+  void FileSource::handleClose(const wchar_t* wbName)
   {
     if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
-      FileSource::deleteFileContext(shared_from_this());
+      FileSource::deleteSource(shared_from_this());
   }
 
   void WatchedSource::handleDirChange(
@@ -225,15 +226,14 @@ namespace xloil
         case Event::FileAction::Delete:
         {
           XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
-          FileSource::deleteFileContext(self);
+          FileSource::deleteSource(self);
           break;
         }
         }
       }, ExcelRunQueue::ENQUEUE);
   }
 
-  void 
-    AddinContext::removeSource(ContextMap::const_iterator which)
+  void AddinContext::removeSource(ContextMap::const_iterator which)
   {
     _files.erase(which);
   }

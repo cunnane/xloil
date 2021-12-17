@@ -149,7 +149,7 @@ namespace xloil
   /// </code>
   /// </summary>
   template<class TObj, class TUniquifier, bool TReverseLookup = false>
-  class ObjectCache : public std::enable_shared_from_this<void>
+  class ObjectCache
   {
   private:
     typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
@@ -180,29 +180,34 @@ namespace xloil
     /// Used to append cell count to end of reference
     /// </summary>
     static constexpr uint8_t PADDING = 2;
-    
-  public:
+  
     TUniquifier _uniquifier;
+
+    ObjectCache()
+      : _calcId(1)
+    {}
+
+  public:
 
     /// <summary>
     /// Max length of a cache key. Because keys are derived from CallerLite using internal 
     /// references or otherwise, this length can be guaranteed
     /// </summary>
     static constexpr uint16_t KEY_MAX_LEN = 1 + CallerLite::INTERNAL_REF_MAX_LEN + PADDING;
-    
-    ObjectCache(bool reapOnWorkbookClose = true)
-      : _calcId(1)
-    {
-      using namespace std::placeholders;
 
-      _calcEndHandler =
-        xloil::Event::AfterCalculate().weakBind(weak_from_this(), &self::onAfterCalculate);
-      
+    static auto create(bool reapOnWorkbookClose = true)
+    {
+      auto p = std::shared_ptr<ObjectCache>(new ObjectCache);
+      p->_calcEndHandler =
+        xloil::Event::AfterCalculate().weakBind(std::weak_ptr<ObjectCache>(p), &self::onAfterCalculate);
+
       if (reapOnWorkbookClose)
-        _workbookCloseHandler =
-          xloil::Event::WorkbookAfterClose().weakBind(weak_from_this(), &self::onWorkbookClose);
+        p->_workbookCloseHandler =
+          xloil::Event::WorkbookAfterClose().weakBind(std::weak_ptr<ObjectCache>(p), &self::onWorkbookClose);
+
+      return p;
     }
-   
+
     const TObj* fetch(const std::wstring_view& key) const
     {
       const auto iResult = readCount(key[key.size() - 1]);
@@ -370,8 +375,8 @@ namespace xloil
   struct ObjectCacheFactory
   {
     static auto& cache() {
-      static ObjectCache<T, CacheUniquifier<T>, false> theInstance;
-      return theInstance;
+      static auto theInstance = ObjectCache<T, CacheUniquifier<T>, false>::create();
+      return *theInstance;
     }
   };
 

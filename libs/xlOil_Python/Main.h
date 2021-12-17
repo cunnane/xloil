@@ -39,7 +39,7 @@ namespace xloil
     /// <param name="sourcePath"></param>
     /// <returns></returns>
     std::pair<std::shared_ptr<FileSource>, PyAddin*> 
-      findFileContext(const wchar_t* sourcePath);
+      findSource(const wchar_t* sourcePath);
 
    }
 }

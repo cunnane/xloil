@@ -15,7 +15,8 @@ namespace xloil {
 
 namespace xloil
 {
- 
+  class AddinContext;
+
   /// <summary>
   /// A file source collects Excel UDFs created from a single file.
   /// The file could be a plugin DLL or source file. You can inherit
@@ -33,9 +34,8 @@ namespace xloil
     /// <param name="sourcePath">Should be a full pathname</param>
     /// <param name="linkedWorkbook">Name of linked workbook, required for local functions</param>
     FileSource(
-      const wchar_t* sourcePath, 
-      const wchar_t* linkedWorkbook=nullptr);
-
+      const wchar_t* sourcePath,
+      const wchar_t* linkedWorkbook = nullptr);
     virtual ~FileSource();
 
     /// <summary>
@@ -49,8 +49,7 @@ namespace xloil
     /// </summary>
     /// <param name="specs">functions to register</param>
     /// <param name="append">if false, replacess all currently registered functions</param>
-    void
-      registerFuncs(
+    void registerFuncs(
         const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs,
         const bool append = false);
 
@@ -59,17 +58,14 @@ namespace xloil
     /// </summary>
     /// <param name="name"></param>
     /// <returns></returns>
-    bool
-      deregister(const std::wstring& name);
-    
+    bool deregister(const std::wstring& name);
     /// <summary>
     /// Registers the given functions as local functions in the specified
     /// workbook
     /// </summary>
     /// <param name="funcSpecs"></param>
     /// <param name="append">if false, replacess all currently registered functions</param>
-    void 
-      registerLocal(
+    void registerLocal(
         const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
         const bool append);
 
@@ -80,18 +76,22 @@ namespace xloil
     /// <param name="sourcePath"></param>
     /// <returns></returns>
     static std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
-      findFileContext(const wchar_t* sourcePath);
+      findSource(const wchar_t* sourcePath);
 
     /// <summary>
     /// Removes the specified source from all add-in contexts
     /// </summary>
     /// <param name="context"></param>
     static void
-      deleteFileContext(const std::shared_ptr<FileSource>& context);
+      deleteSource(const std::shared_ptr<FileSource>& context);
 
     const std::wstring& sourcePath() const { return _sourcePath; }
     const std::wstring& linkedWorkbook() const { return _workbookName; }
     const wchar_t* sourceName() const { return _sourceName; }
+
+  protected:
+    friend class AddinContext;
+    virtual void startWatch();
 
   private:
     std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>> _functions;
@@ -99,26 +99,30 @@ namespace xloil
     const wchar_t* _sourceName;
     std::wstring _workbookName;
 
+    std::shared_ptr<const void> _workbookWatcher;
+
+    void handleClose(const wchar_t* wbName);
     // TODO: implement std::string _functionPrefix;
-  };
+  };;
 
   class WatchedSource : public FileSource
   {
   public:
-    XLOIL_EXPORT WatchedSource(
+    WatchedSource(
       const wchar_t* sourceName,
-      const wchar_t* linkedWorkbook = nullptr);
+      const wchar_t* linkedWorkbook = nullptr)
+      : FileSource(sourceName, linkedWorkbook)
+    {}
 
+  protected:
+    XLOIL_EXPORT virtual void startWatch();
     /// <summary>
     /// Invoked when the watched file is modified, but not deleted
     /// </summary>
     virtual void reload() = 0;
-
   private:
     std::shared_ptr<const void> _fileWatcher;
-    std::shared_ptr<const void> _workbookWatcher;
 
-    void handleClose(const wchar_t* wbName);
     void handleDirChange(
       const wchar_t* dirName,
       const wchar_t* fileName,
@@ -152,10 +156,10 @@ namespace xloil
       tryAdd(
         const wchar_t* sourcePath, Args&&... args)
     {
-      auto found = FileSource::findFileContext(sourcePath).first;
+      auto found = FileSource::findSource(sourcePath).first;
       if (found)
       {
-        addSource(found);
+        addSource(found, false);
         return std::make_pair(std::static_pointer_cast<TSource>(found), false);
       }
       else
@@ -193,6 +197,7 @@ namespace xloil
     void addSource(const std::shared_ptr<FileSource>& source)
     {
       _files.emplace(std::make_pair(source->sourcePath(), source));
+      source->startWatch();
     }
 
     void removeSource(ContextMap::const_iterator which);
