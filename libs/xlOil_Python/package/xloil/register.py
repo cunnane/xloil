@@ -4,7 +4,7 @@ import os
 import sys
 import importlib.util
 from .type_converters import *
-from .shadow_core import *
+from ._core import *
 from .com import EventsPaused
 from ._common import *
 import contextvars

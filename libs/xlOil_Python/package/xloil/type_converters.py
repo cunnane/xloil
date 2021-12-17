@@ -4,7 +4,7 @@ import typing
 import numpy as np
 import functools
 
-from .shadow_core import Range, CellError, CannotConvert
+from ._core import Range, CellError, CannotConvert
 from ._common import *
 
 if XLOIL_HAS_CORE:

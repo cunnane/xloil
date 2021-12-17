@@ -86,7 +86,7 @@
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="package\xloil\shadow_core.py">
+    <CopyFileToFolders Include="package\xloil\_core.py">
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>

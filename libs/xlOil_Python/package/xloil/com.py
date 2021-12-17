@@ -1,4 +1,4 @@
-from .shadow_core import event
+from . import _core
 
 COM_LIB = "win32com"
 
@@ -87,9 +87,9 @@ class EventsPaused():
     the context is in scope
     """
     def __enter__(self):
-        event.pause()
+        _core.event.pause()
         return self
     def __exit__(self, type, value, traceback):
-        event.allow()
+        _core.event.allow()
 
     

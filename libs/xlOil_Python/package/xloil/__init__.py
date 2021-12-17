@@ -1,7 +1,7 @@
 
 from ._common import *
 
-from .shadow_core import *
+from ._core import *
 
 from .register import (
     Arg, 

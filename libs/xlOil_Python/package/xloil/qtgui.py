@@ -1,7 +1,7 @@
 import threading
 import queue
 from ._common import *
-from .shadow_core import event
+from . import _core
 from .excelgui import CustomTaskPane
 import importlib
 import sys
@@ -122,7 +122,7 @@ def Qt_thread():
     if _Qt_thread is None:
         _Qt_thread = QtExecutor()
         # PyBye is called before `threading` module teardown, whereas `atexit` comes later
-        event.PyBye += _Qt_thread.shutdown
+        _core.event.PyBye += _Qt_thread.shutdown
         # Send this blocking no-op to ensure QApplication is created on our thread
         # before we proceed, otherwise Qt may try to create one elsewhere
         _Qt_thread.submit(lambda: 0).result()
