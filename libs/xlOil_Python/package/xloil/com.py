@@ -1,43 +1,8 @@
 from . import _core
 
-COM_LIB = "win32com"
-
-def use_com_lib(name:str):
-    """
-        Selects the library used for COM support.  This impacts how the properties 
-        and methods of the *Excel.Application* object returned by xloil.app() are 
-        resolved.  THe choices are:
-
-           * comtypes: a newer pure python package (which uses `ctypes`)
-           * win32com: a well-established more C++ based library
-
-        You must call this *before* any call to xloil.app()
-    """
-    global COM_LIB
-    COM_LIB = name
-
 _excel_application_obj = None
 
-def _get_excel_application_win32com():
-    import xloil_core
-    import pythoncom
-    import win32com.client
-
-    punk = xloil_core.get_excel_app_pycom(pythoncom.__file__)
-    return win32com.client.CastTo(punk, '_Application')
-
-
-def _get_excel_application_comtypes():
-    import xloil_core
-    import comtypes
-    import comtypes.client
-    import ctypes
-
-    clsid = comtypes.GUID.from_progid("Excel.Application")
-    ptr = ctypes.POINTER(comtypes.IUnknown)(xloil_core.application())
-    return comtypes.client._manage(ptr, clsid, None)
-
-def app():
+def app(lib=None):
     """
         Returns a handle to the *Excel.Application* object.  This object is the root of 
         Excel's COM interface and supports a wide range of operations; it will be familiar 
@@ -63,21 +28,19 @@ def app():
             
             @func(macro=True)
             def sheetName():
-                return xlo.app().ActiveSheet.Name
+                return xlo.app().ActiveWorksheet.Name
 
     """
-    global _excel_application_obj, COM_LIB
+    global _excel_application_obj
+
+    if lib is not None:
+        import xloil_core
+        return xloil_core.application(lib)
 
     if _excel_application_obj is None:
-        choices = {
-            "comtypes" : _get_excel_application_comtypes,
-            "win32com" : _get_excel_application_win32com
-        }
-        try:
-            _excel_application_obj = choices[COM_LIB]()
-        except KeyError:
-            raise KeyError(f"Unknown COM support library '{COM_LIB}', must be one of {choices.keys()}")
-
+        import xloil_core
+        _excel_application_obj = xloil_core.application()
+       
     return _excel_application_obj
 
 

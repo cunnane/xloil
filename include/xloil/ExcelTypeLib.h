@@ -44,17 +44,26 @@
   rename("CopyFile", "ExcelCopyFile" ) \
   rename("ReplaceText", "ExcelReplaceText" )
 
-// FM20.dll - Microsoft Forms 2.0
-//#import "libid:0D452EE1-E08F-101A-852E-02608C4D0BB4"
+// Add-in designer C:\\Program Files\\Common Files\\Designer\\MSADDNDR.OLB
+#import "libid:AC0714F2-3D04-11D1-AE7D-00A0C90F26F4"
 
+/// <summary>
+/// The Excel Typelib LibID GUID as a string
+/// </summary>
+constexpr wchar_t* const LIBID_STR_Excel = L"{00020813-0000-0000-C000-000000000046}";
+
+/// <summary>
+/// The Excel Typelib LibID
+/// </summary>
 extern "C" const GUID __declspec(selectany) LIBID_Excel =
   { 0x00020813,0x0000,0x0000,{0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46} };
 
+/// <summary>
+/// The AddInDesigner Typelib LibID
+/// </summary>
 extern "C" const GUID __declspec(selectany) LIBID_AddInDesigner =
   { 0xAC0714F2,0x3D04,0x11D1, {0xAE,0x7D,0x00,0xA0,0xC9,0x0F,0x26,0xF4} };
 
-// C:\\Program Files\\Common Files\\Designer\\MSADDNDR.OLB
-#import "libid:AC0714F2-3D04-11D1-AE7D-00A0C90F26F4"
 
 
 /// <summary>

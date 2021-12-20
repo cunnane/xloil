@@ -99,6 +99,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EventLoop.h" />
+    <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="TypeConversion\ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />

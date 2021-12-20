@@ -334,7 +334,6 @@ def pyTestWorkbooks():
 # a newer pure python package or 'win32com' a well-established more C++ based
 # library.
 #
-xlo.use_com_lib("win32com")
 
 @xlo.func(macro=True)
 def pyTestCom():
@@ -499,12 +498,12 @@ def getLinkedWbName():
 _workbook_name = os.path.basename(xlo.linked_workbook())
 
 def event_writeTimeToA1():
-    if xlo.app().ActiveWorkbook.Name != _workbook_name:
+    if xlo.app("win32com").ActiveWorkbook.Name != _workbook_name:
         return
     
     ws = xlo.active_worksheet()
     wb = xlo.active_workbook()
-    range = wb[ws.name]["A1"]
+    range = wb[ws.to_com().Name]["A1"]
     
     time = str(dt.datetime.now())
 

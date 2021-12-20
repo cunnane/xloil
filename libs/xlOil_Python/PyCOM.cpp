@@ -1,18 +1,23 @@
+
+#include "PyHelpers.h"
+#include "PyCore.h"
+#include "PyImage.h"
+#include "PyEvents.h"
+#include "Main.h"
 #include <xlOil/ExcelTypeLib.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xlOil/ExcelApp.h>
 #include <xlOilHelpers/Environment.h>
-#include "PyHelpers.h"
-#include "PyCore.h"
-#include "PyImage.h"
-#include "PyEvents.h"
 #include <fcntl.h>
 
 using std::vector;
 using std::string;
 using std::wstring;
 using std::make_pair;
+using std::to_string;
+
+
 namespace py = pybind11;
 
 namespace xloil
@@ -160,33 +165,101 @@ namespace xloil
       }
       XLO_RETHROW_COM_ERROR;
     }
+
     namespace
     {
-      py::object getExcelApp()
+      constexpr auto EXCEL_TLB_LCID = 0;
+      constexpr auto EXCEL_TLB_MAJOR = 1;
+      constexpr auto EXCEL_TLB_MINOR = 4;
+
+      py::object comObjectWithComtypes(IUnknown* p, const char* iface, const wchar_t* clsid)
       {
-        return PySteal<py::object>(PyLong_FromVoidPtr(&excelApp()));
+        auto comtypes = py::module::import("comtypes.client");
+
+        auto libidVer = py::tuple(3);
+        libidVer[0] = LIBID_STR_Excel;
+        libidVer[1] = EXCEL_TLB_MAJOR;
+        libidVer[2] = EXCEL_TLB_MINOR;
+        auto typelib = comtypes.attr("GetModule")(libidVer);
+
+        auto ptrType = typelib.attr(iface);
+
+        auto ctypesPtr = py::module::import("ctypes").attr("POINTER")(ptrType)(
+          PySteal<py::object>(PyLong_FromVoidPtr(p)));
+
+        return comtypes.attr("_manage")(ctypesPtr, clsid, 1);
       }
 
-      /// <summary>
-      /// Support win32com by calling PyCom_PyObjectFromIUnknown in pythoncom
-      /// to get suitable IDispatch object. This can be cast to Excel::Application
-      /// by win32com
-      /// </summary>
-      /// <param name="pythoncomDLL">the pythoncom DLL name</param>
-      /// <returns></returns>
-      py::object getExcelAppAsPyComObject(const std::wstring& pythoncomDLL)
+      auto find_PyCom_PyObjectFromIUnknown()
       {
-        static auto pythoncom = LoadLibrary(pythoncomDLL.c_str());
+        const std::wstring pythoncomDLL = py::module::import("pythoncom").attr("__file__").cast<std::wstring>();
+        auto pythoncom = LoadLibrary(pythoncomDLL.c_str());
         if (!pythoncom)
           XLO_THROW(L"Failed to load pythoncom DLL '{}'", pythoncomDLL);
-
-        typedef PyObject* (*FuncType)(IUnknown*, REFIID riid, BOOL);
-        static auto PyCom_PyObjectFromIUnknown = (FuncType)GetProcAddress(pythoncom, "PyCom_PyObjectFromIUnknown");
-        if (!PyCom_PyObjectFromIUnknown)
+        
+        auto funcAddress = GetProcAddress(pythoncom, "PyCom_PyObjectFromIUnknown");
+        if (!funcAddress)
           XLO_THROW(L"Failed to find PyCom_PyObjectFromIUnknown in pythoncom DLL '{}'", pythoncomDLL);
 
-        return PySteal<py::object>(PyCom_PyObjectFromIUnknown(&excelApp(), IID_IDispatch, true));
+        typedef PyObject* (*FuncType)(IUnknown*, REFIID riid, BOOL);
+        return (FuncType)funcAddress;
       }
+
+      py::object comObjectWithPyCom(IUnknown* p, const char* iface, const wchar_t* clsid)
+      {
+        static auto bindFunction = find_PyCom_PyObjectFromIUnknown();
+        auto dispatchPtr = PySteal<py::object>(bindFunction(p, IID_IDispatch, true));
+
+        auto targetType =
+          py::module::import("win32com.client.gencache").attr("GetModuleForCLSID")(clsid).attr(iface);
+
+        return targetType(dispatchPtr);
+      }
+
+      py::object marshalCom(const char* binder, IUnknown* p, const char* iface, const GUID& clsid)
+      {
+        if (!binder || binder[0] == 0)
+          return marshalCom(theCoreAddin().comBinder.c_str(), p, iface, clsid);
+        
+        wchar_t clsidStr[128];
+        StringFromGUID2(clsid, clsidStr, _countof(clsidStr));
+
+        if (_stricmp(binder, "comtypes") == 0)
+          return comObjectWithComtypes(p, iface, clsidStr);
+        else if (_stricmp(binder, "win32com") == 0)
+          return comObjectWithPyCom(p, iface, clsidStr);
+        XLO_THROW("Unsupported COM lib {}", binder);
+      }
+    }
+
+    py::object comToPy(Excel::_Application* p, const char* binder)
+    {
+      return marshalCom(binder, p, "_Application", __uuidof(Excel::_Application));
+    }
+    pybind11::object comToPy(Excel::Window* p, const char* binder)
+    {
+      return marshalCom(binder, p, "Window", __uuidof(Excel::Window));
+    }
+    pybind11::object comToPy(Excel::_Workbook* p, const char* binder)
+    {
+      return marshalCom(binder, p, "_Workbook", __uuidof(Excel::_Workbook));
+    }
+    pybind11::object comToPy(Excel::_Worksheet* p, const char* binder)
+    {
+      return marshalCom(binder, p, "_Worksheet", __uuidof(Excel::_Worksheet));
+    }
+    pybind11::object comToPy(Excel::Range* p, const char* binder)
+    {
+      return marshalCom(binder, p, "Range", __uuidof(Excel::Range));
+    }
+
+    namespace
+    {
+      py::object getExcelApp(const char* comlib)
+      {
+        return comToPy(&excelApp(), comlib);
+      }
+
       static int theBinder = addBinder([](py::module& mod)
       {
         mod.def("insert_cell_image", writeCellImage, 
@@ -196,8 +269,7 @@ namespace xloil
           py::arg("origin") = py::none(),
           py::arg("compress") = true);
 
-        mod.def("application", getExcelApp);
-        mod.def("get_excel_app_pycom", getExcelAppAsPyComObject);
+        mod.def("application", getExcelApp, py::arg("comlib")="");
       });
     }
   }

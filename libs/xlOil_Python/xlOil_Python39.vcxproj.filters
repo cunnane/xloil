@@ -70,6 +70,7 @@
     </ClInclude>
     <ClInclude Include="EventLoop.h" />
     <ClInclude Include="PyFuture.h" />
+    <ClInclude Include="PyCOM.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">

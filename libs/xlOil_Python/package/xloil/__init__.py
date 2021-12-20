@@ -13,7 +13,6 @@ from .register import (
     )
 
 from .com import (
-    use_com_lib,
     app,
     EventsPaused
     )

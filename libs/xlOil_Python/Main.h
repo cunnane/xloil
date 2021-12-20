@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <string>
 
 namespace xloil
 {
@@ -19,6 +20,7 @@ namespace xloil
       PyAddin(AddinContext&);
       AddinContext& context;
       std::unique_ptr<EventLoop> thread;
+      std::string comBinder;
     };
 
     PyAddin& findAddin(const wchar_t* xllPath);

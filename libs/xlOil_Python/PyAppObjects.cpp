@@ -1,6 +1,7 @@
 #include "PyCore.h"
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
+#include "PyCOM.h"
 #include <xlOil/ExcelRange.h>
 #include <xlOil/AppObjects.h>
 
@@ -135,6 +136,11 @@ namespace xloil
       }
     };
 
+    template<class T>
+    auto toCom(T& p, const char* binder) 
+    { 
+      return comToPy(p.ptr(), binder); 
+    }
 
     static int theBinder = addBinder([](pybind11::module& mod)
     {
@@ -174,6 +180,7 @@ namespace xloil
           {
             return r.shape();
           });
+        // TODO: .def("to_com", [](Range& p) { return toComtypes(p.ptr()); });
 
       // TODO: do we need main thread synchronisation on all this?
       py::class_<ExcelWorksheet>(mod, "Worksheet")
@@ -189,19 +196,23 @@ namespace xloil
           py::arg("num_cols") = nullptr)
         .def("at_address", (ExcelRange(ExcelWorksheet::*)(const wstring_view&) const)& ExcelWorksheet::range, py::arg("address"))
         .def("calculate", &ExcelWorksheet::calculate)
-        .def("activate", &ExcelWorksheet::activate);
+        .def("activate", &ExcelWorksheet::activate)
+        .def("to_com", toCom<ExcelWorksheet>, py::arg("lib")="");
 
       py::class_<ExcelWorkbook>(mod, "Workbook")
         .def_property_readonly("name", &ExcelWorkbook::name)
         .def_property_readonly("path", &ExcelWorkbook::path)
         .def_property_readonly("worksheets", &ExcelWorkbook::worksheets)
+        .def_property_readonly("windows", &ExcelWorkbook::windows)
         .def("worksheet", &ExcelWorkbook::worksheet, py::arg("name"))
-        .def("__getitem__", &ExcelWorkbook::worksheet);
+        .def("__getitem__", &ExcelWorkbook::worksheet)
+        .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "");
 
       py::class_<ExcelWindow>(mod, "ExcelWindow")
         .def_property_readonly("hwnd", &ExcelWindow::hwnd)
         .def_property_readonly("name", &ExcelWindow::name)
-        .def_property_readonly("workbook", &ExcelWindow::workbook);
+        .def_property_readonly("workbook", &ExcelWindow::workbook)
+        .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
       using Workbooks = Collection<App::Workbooks>;
       using Windows = Collection<App::Windows>;
