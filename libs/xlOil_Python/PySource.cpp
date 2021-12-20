@@ -22,20 +22,6 @@ namespace xloil
 {
   namespace Python
   {
-    void scanModule(const py::object& mod)
-    {
-      py::gil_scoped_acquire getGil;
-      try
-      {
-        py::module::import("xloil").attr("scan_module")(mod);
-      }
-      catch (const std::exception& e)
-      {
-        auto pyPath = (string)py::str(PyBorrow<py::list>(PySys_GetObject("path")));
-        XLO_ERROR("Error reading module {0}: {1}\nsys.path={2}", 
-          (string)py::str(mod), e.what(), pyPath);
-      }
-    }
     bool unloadModule(const py::handle& module)
     {
       py::gil_scoped_acquire get_gil;
@@ -92,14 +78,15 @@ namespace xloil
           std::error_code err;
           if (!fs::exists(modulePath, err))
             return;
-
+          
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
           // TODO: ideally wouldn't need to hold the gil for this
           FunctionRegistry::addModule(_loadContext.context, modulePath, wbName);
           py::gil_scoped_acquire getGil;
-          _loadContext.thread->callback("xloil.register", "import_file", modulePath, wbName);
+          _loadContext.thread->callback("xloil.importer", "_import_file", 
+            modulePath, _loadContext.pathName(), (fs::path(wbPath) / wbName).wstring());
         }
       };
 
@@ -109,7 +96,8 @@ namespace xloil
           handler(wb.path().c_str(), wb.name().c_str());
       }
     }
-    std::shared_ptr<const void> createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
+    std::shared_ptr<const void> 
+      createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
     {
       if (!wcschr(starredPattern, L'*'))
       {

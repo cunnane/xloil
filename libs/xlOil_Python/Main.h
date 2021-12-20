@@ -17,14 +17,19 @@ namespace xloil
     /// </summary>
     struct PyAddin
     {
-      PyAddin(AddinContext&);
+      PyAddin(AddinContext&, bool);
       AddinContext& context;
-      std::unique_ptr<EventLoop> thread;
+      std::shared_ptr<EventLoop> thread;
       std::string comBinder;
+      const std::wstring& pathName() const;
     };
 
     PyAddin& findAddin(const wchar_t* xllPath);
-    PyAddin& theCurrentAddin();
+    /// <summary>
+    /// Gets the event loop associated with the current thread or throws
+    /// </summary>
+    /// <returns></returns>
+    std::shared_ptr<EventLoop> getEventLoop();
 
     /// <summary>
     /// The core context corresponds to xlOil.dll - it always exists and is

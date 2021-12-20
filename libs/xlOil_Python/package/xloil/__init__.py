@@ -9,7 +9,11 @@ from .register import (
     scan_module,
     register_functions,
     Caller,
-    linked_workbook
+    )
+
+from .importer import (
+    linked_workbook,
+    source_addin
     )
 
 from .com import (

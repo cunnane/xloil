@@ -29,9 +29,16 @@ def qt_import(sub, what):
      
 
 def _create_Qt_app():
-
+    
     QApplication = qt_import('QtWidgets', 'QApplication')
-    app = QApplication([])
+
+    # Qt seems to really battle with reading environment variables.  So we must 
+    # read the variable ourselves, then pass it as an argument. It's unclear what
+    # alchemy is required to make Qt do this seeminly simple thing.
+    import os
+    ppp = os.getenv('QT_QPA_PLATFORM_PLUGIN_PATH', None)
+    app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
+
     log(f"Started Qt on thread {threading.get_native_id()}" +
         f"with libpaths={app.libraryPaths()}", level="info")
 

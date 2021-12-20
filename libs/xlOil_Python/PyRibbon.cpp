@@ -35,7 +35,7 @@ namespace xloil
           ? funcNameMap.attr("__getitem__")
           : funcNameMap;
         
-        return [pyMapper = PyObjectHolder(pyMapper), addin = &theCurrentAddin()](
+        return [pyMapper = PyObjectHolder(pyMapper), eventLoop = getEventLoop()](
           const wchar_t* name)
         {
           try
@@ -63,7 +63,7 @@ namespace xloil
                   {
                     if (vRet)
                       XLO_THROW("Ribbon callback functions which return a value cannot be async");
-                    addin->thread->runAsync(pyRet);
+                    eventLoop->runAsync(pyRet);
                   }
                   else if (vRet && !pyRet.is_none())
                   {
@@ -96,7 +96,7 @@ namespace xloil
       using AddinFuture = PyFuture<shared_ptr<IComAddin>, detail::CastFutureConverter>;
       using VoidFuture = PyFuture<void, void>;
 
-      inline auto setRibbon(IComAddin& addin, const wstring& xml, const py::object& funcmap)
+      inline auto comAddin_connect(IComAddin& addin, const wstring& xml, const py::object& funcmap)
       {
         return new VoidFuture(runExcelThread([
             &addin, 
@@ -276,7 +276,7 @@ namespace xloil
 
         py::class_<IComAddin, shared_ptr<IComAddin>>(mod, "ExcelGUI")
           .def("connect",
-            setRibbon, py::arg("xml")="", py::arg("func_names")=py::none())
+            comAddin_connect, py::arg("xml")="", py::arg("func_names")=py::none())
           .def("disconnect",
             MainThreadWrap(&IComAddin::disconnect))
           .def("invalidate",

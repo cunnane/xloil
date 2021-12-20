@@ -2,7 +2,6 @@ import inspect
 import functools
 import os
 import sys
-import importlib.util
 from .type_converters import *
 from ._core import *
 from .com import EventsPaused
@@ -480,12 +479,7 @@ def _clear_pending_registrations(module):
         delattr(module, _LANDMARK_TAG)
 
 
-_addin_context = contextvars.ContextVar("Addin", default=None)
-
-def _set_addin_context(ctx):
-    _addin_context.set(ctx)
-
-def scan_module(module):
+def scan_module(module, addin=None):
     """
         Parses a specified module to look for functions with with the xloil.func 
         decorator and register them. Rather than call this manually, it is easer
@@ -501,10 +495,15 @@ def scan_module(module):
     with EventsPaused() as events_paused:
         log(f"Found xloil functions in {module}", level="debug")
 
+        if addin is None:
+            from .importer import source_addin
+            addin = source_addin()
+
         xloil_core.register_functions(
-            list(pending_funcs), module, _addin_context.get(), append=False)
+            list(pending_funcs), module, addin, append=False)
                                       
         pending_funcs.clear()
+
 
 def register_functions(funcs, module=None, append=True):
     """
@@ -542,108 +541,10 @@ def register_functions(funcs, module=None, append=True):
     # Registering the same function twice is optimised by xlOil to avoid overhead
     # TODO: check we are called from exec_module for the matching module object
     _add_pending_funcs(module, to_register)
-    xloil_core.register_functions(to_register, module, _addin_context.get(), append)
+
+    from .importer import source_addin
+    addin = source_addin()
+
+    xloil_core.register_functions(to_register, module, addin, append)
 
 
-import importlib
-import importlib.util
-import importlib.abc
-
-class _ModuleFinder(importlib.abc.MetaPathFinder):
-
-    """
-    Allows importing a module from a path specified in path_map
-    without needing to add it to sys.paths - essentially a private
-    set of import paths, indexed by module name
-    """
-
-    path_map = dict()
-
-    def find_spec(self, fullname, path, target=None):
-        path = self.path_map.get(fullname, None)
-        if path is None:
-            return None
-        return importlib.util.spec_from_file_location(fullname, self.path_map[fullname])
-
-    def find_module(self, fullname, path):
-        return None
-
-# We maintain a _ModuleFinder on sys.meta_path to catch any reloads of our non-standard 
-# loaded modules
-_module_finder = _ModuleFinder()
-sys.meta_path.append(_module_finder)
-_linked_workbooks = dict()
-
-def linked_workbook(mod=None):
-    """
-        Returns the full path of the workbook linked to the specified module
-        or None if the module was not loaded with an associated workbook.
-        If no module is specified, the calling module is used.
-    """
-    if mod is None:
-        # Get caller
-        frame = inspect.stack()[1]
-        mod = inspect.getmodule(frame[0])
-    return _linked_workbooks.get(mod.__name__, None)
-
-def _reload_scan(what):
-    """
-    Loads or reloads the specifed module, which can be a string name
-    or module object, then calls scan_module.
-
-    Internal use only, users should prefer to import "xloil.importers"
-    which hooks import/reload to trigger a module scan.
-    """
-
-    if isinstance(what, str):
-        module = importlib.import_module(what)
-    elif inspect.ismodule(what):
-        module = importlib.reload(what) # can we avoid calling our hooked reload?
-    else:
-        # We don't care about the return value currently
-        result = []
-        with StatusBar(3000) as status:
-            for m in what:
-                status.msg(f"Loading {m}")
-                result.append(_reload_scan(m))
-        return result
-    
-    scan_module(module)
-    return module
-
-def import_file(path, workbook_name=None):
-
-    """
-    Imports the specifed py file as a module without adding its path to sys.modules.
-
-    Optionally also adds xlOil linked workbook name information.
-    """
-
-    with StatusBar(3000) as status:
-        try:
-            status.msg(f"Loading {path}...")
-            directory, filename = os.path.split(path)
-            filename = os.path.splitext(filename)[0]
-            
-            # avoid name collisions when loading workbook modules
-            module_name = filename
-            if workbook_name is not None:
-                module_name = "xloil_wb_" + filename
-                _linked_workbooks[module_name] = workbook_name
-
-            if len(directory) > 0 or workbook_name is not None:
-                _module_finder.path_map[module_name] = path
-
-            module = importlib.import_module(module_name)
-
-            # Calling import_module will bypass our import hook, so scan_module explicitly
-            scan_module(module)
-
-            status.msg(f"Finished loading {path}")
-
-            return module
-
-        except Exception as e:
-
-            log_except(f"Failed to load module {path}")
-            status.msg(f"Error loading {path}, see log")
