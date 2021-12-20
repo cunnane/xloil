@@ -1,4 +1,6 @@
-from ._core import TaskPaneFrame, ExcelGUI, ExcelWindow, Workbook
+from ._core import TaskPaneFrame, ExcelGUI, ExcelWindow
+from . import _core
+
 
 _task_panes = set()
  
@@ -75,9 +77,9 @@ def find_task_pane(title:str=None, workbook=None, window=None):
 
     if window is None:
         if workbook is None:
-            hwnds = [windows.active.hwnd]
+            hwnds = [_core.windows.active.hwnd]
         else:
-            workbook = ExcelWorkbook(workbook) # TODO: string or obj....
+            workbook = _core.Workbook(workbook) # TODO: string or obj....
             hwnds = [x.hwnd for x in _core.windows]
     else:
             hwnds = [ExcelWindow(window).hwnd]

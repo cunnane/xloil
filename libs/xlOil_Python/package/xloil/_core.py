@@ -21,7 +21,7 @@ if XLOIL_HAS_CORE:
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
-        workbooks, windows, ExcelWindow, , Workbook, Worksheet, active_worksheet, active_workbook,
+        workbooks, windows, ExcelWindow, Workbook, Worksheet, active_worksheet, active_workbook,
         excel_func, excel_func_async)
 
 else:
@@ -810,7 +810,34 @@ else:
         """
         pass
 
-    class ExcelWorkbook:
+    class Worksheet:
+
+        @property
+        def name(self) -> str:
+            ...
+
+        @property
+        def parent(self):
+            ...
+
+        def __getitem__(self, address):
+            ...
+
+        def range(self, from_row, from_col, 
+                  num_rows=None, num_cols=None, 
+                  to_row=None, to_col=None) -> Range:
+            ...
+
+        def at_address(self, address) -> Range:
+            ...
+
+        def calculate(self):
+            ...
+
+        def activate(self):
+            ...
+
+    class Workbook:
         @property
         def name(self) -> str:
             """
@@ -822,6 +849,23 @@ else:
         def path(self) -> str:
             """
             The full path to the workbook, including the filename
+            """
+            ...
+
+        def __getitem__(self, sheet_name):
+            ...
+
+        def worksheet(self, name):
+            ...
+
+        @property
+        def worksheets(self) -> list:
+            ...
+
+        @property
+        def windows(self) -> list:
+            """
+            The workbook being displayed by this window
             """
             ...
 
@@ -839,11 +883,12 @@ else:
             """
             ...
         @property
-        def workbook(self) -> ExcelWorkbook:
+        def workbook(self) -> Workbook:
             """
             The workbook being displayed by this window
             """
             ...
+
 
     
     class _Collection(typing.Generic[VT]):
