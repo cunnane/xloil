@@ -371,7 +371,7 @@ namespace xloil
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         if (_module && !_module.is_none())
-          addin->thread->callback("xloil.importer", "_import_scan", _module);
+          addin->thread->callback("xloil.importer", "_import_scan", _module, addin->pathName());
         else
           addin->thread->callback("xloil.importer", "_import_file", sourcePath(), addin->pathName(), linkedWorkbook());
       }

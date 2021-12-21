@@ -86,7 +86,7 @@ def _import_scan(what, addin):
         with StatusBar(3000) as status:
             for m in what:
                 status.msg(f"Loading {m}")
-                result.append(_import_scan(m))
+                result.append(_import_scan(m, addin))
         return result
     
     scan_module(module, addin)
