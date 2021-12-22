@@ -1,7 +1,3 @@
-"""
-Importing this module hooks the import and reload functions
-"""
-
 import importlib
 import importlib.util
 import importlib.abc
@@ -14,8 +10,8 @@ from .register import scan_module, _clear_pending_registrations
 from ._core import StatusBar
 from ._common import log, log_except
 
-_module_addin_map = dict() # Keeps track of which addin loads a particular source file
-_linked_workbooks = dict()
+_module_addin_map = dict() # Stores which addin loads a particular source file
+_linked_workbooks = dict() # Stores the workbooks associated with an source file 
 
 class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
     """
@@ -57,6 +53,12 @@ def linked_workbook(mod=None):
 
 
 def source_addin(mod=None):
+    """
+        Returns the full path of the source add-in (XLL file) assoicated with
+        the current code. That is the add-in which has caused the current code
+        to be executed
+    """
+
     if mod is None:
         # Get the highest level caller we recognise
         for frame in inspect.stack()[::-1]:
@@ -64,6 +66,17 @@ def source_addin(mod=None):
             if addin is not None:
                 return addin
     return None
+
+
+def get_event_loop():
+    """
+        Returns the background asyncio event loop used to load the current add-in. 
+        Unless specified in the settings, all add-ins are loaded in the same thread  
+        and event loop.
+    """
+    import xloil_core
+    addin = source_addin()
+    return xloil_core.get_event_loop(addin)
 
 
 def _import_scan(what, addin):

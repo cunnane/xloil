@@ -13,7 +13,8 @@ from .register import (
 
 from .importer import (
     linked_workbook,
-    source_addin
+    source_addin,
+    get_event_loop
     )
 
 from .com import (

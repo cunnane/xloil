@@ -1,6 +1,7 @@
 #include "PyCore.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
+#include "EventLoop.h"
 #include <TypeConversion/BasicTypes.h>
 #include <xlOil/ExcelApp.h>
 #include <xloil/Log.h>
@@ -263,6 +264,8 @@ namespace xloil
 
           cellErrorType = (PyTypeObject*)eType.ptr();
         }
+
+        mod.def("get_event_loop", [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
       }
     }
 } }
