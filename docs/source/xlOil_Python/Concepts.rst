@@ -129,14 +129,17 @@ Multiple addins and event loops
 loader with its own settings and python codebase can exist in the same Excel
 session.  
 
-   * Each add-in / XLL is loaded in its own thread and has its own `asyncio`
-     event loop in that thread. Get the loop using ``xloil.get_event_loop()``.
+   * Each add-in / XLL is loaded in a background thread equipped with an `asyncio`  
+     event loop.  Get the loop using :any:`xloil.get_event_loop`.
+   * You can find the addin associated with the currently running code with 
+     :any:`xloil.source_addin` .
    * All add-ins share the same python interpreter
    * All add-ins share the python object cache
    * Worksheet functions are executed in Excel's main thread or one of its 
      worker threads for thread safe functions
    * Async / RTD worksheet functions are executed in a dedicated xlOil Core
      event loop which you can access with ``xloil.get_async_loop()``
+   * You can ask xlOil to create a separate thread & event loop for an addin.     
 
 Although CPython supports subinterpreters, most C-based extensions, particularly
 *numpy* do not, so there are no plans to add subinterpreter support at this stage.

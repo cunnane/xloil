@@ -21,15 +21,17 @@ namespace pybind11
     wstr(const wchar_t *c, size_t n)
       : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{}) 
     {
-      if (!m_ptr) pybind11_fail("Could not allocate string object!");
+      if (!m_ptr) 
+        pybind11_fail("Could not allocate string object!");
     }
 
-    // 'explicit' is explicitly omitted from the following constructors to allow implicit 
+    // 'explicit' is omitted from the following constructors to allow implicit 
     // conversion to py::str from C++ string-like objects
     wstr(const wchar_t *c = L"")
       : object(PyUnicode_FromWideChar(c, -1), stolen_t{})
     {
-      if (!m_ptr) pybind11_fail("Could not allocate string object!");
+      if (!m_ptr) 
+        pybind11_fail("Could not allocate string object!");
     }
 
     wstr(const std::wstring &s) : wstr(s.data(), s.size()) { }
@@ -94,20 +96,33 @@ namespace xloil
         throw pybind11::error_already_set();
       return pybind11::reinterpret_borrow<TType>(obj);
     }
+
+    /// <summary>
+    /// If PyErr_Occurred is true, returns the error message, else an empty string
+    /// </summary>
     inline std::wstring pyErrIfOccurred()
     {
       return PyErr_Occurred() 
         ? utf8ToUtf16(pybind11::detail::error_string().c_str()) 
         : std::wstring();
     }
+
+    /// <summary>
+    /// Converts a PyObject to a str, then to a C++ string
+    /// </summary>
     inline auto pyToStr(const PyObject* p)
     {
       // Is morally const: py::handle doesn't change refcount
       return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
     }
 
+    /// <summary>
+    /// Converts a PyObject to a str, then to a C++ wstring
+    /// </summary>
     std::wstring pyToWStr(const PyObject* p);
-    inline std::wstring pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
+
+    inline std::wstring 
+      pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
 
     /// <summary>
     /// Reads an argument to __getitem__ i.e. [] using the following rules
@@ -146,9 +161,9 @@ namespace xloil
       size_t& toRow, size_t& toCol);
 
     /// <summary>
-      /// Holds a py::object and ensures the GIL is held when the holder is destroyed
-      /// and the underlying py::object is decref'd 
-      /// </summary>
+    /// Holds a py::object and ensures the GIL is held when the holder is destroyed
+    /// and the underlying py::object is decref'd 
+    /// </summary>
     class PyObjectHolder : public pybind11::detail::object_api<PyObjectHolder>
     {
       pybind11::object _obj;
@@ -168,6 +183,10 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
+    /// <summary>
+    /// Wraps a class member function to ensure the GIL is released before it
+    /// is called.  Used for pybind: e.g. mod.def("bar", wrapNoGil(&Foo::bar))
+    /// </summary>
     template<class Return, class Class, class... Args>
     constexpr auto wrapNoGil(Return(Class::* f)(Args...) const)
     {
@@ -188,6 +207,10 @@ namespace xloil
       };
     }
 
+    /// <summary>
+    /// Wraps a class member function to ensure it is executed on Excel's main
+    /// thread (with no GIL) Used for pybind: e.g. mod.def("bar", MainThreadWrap(&Foo::bar))
+    /// </summary>
     template<class Return, class Class, class... Args>
     constexpr auto MainThreadWrap(Return(Class::* f)(Args...) const)
     {

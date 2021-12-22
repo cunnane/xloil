@@ -24,10 +24,12 @@ xlOil Python Module Reference
 	log
 	LogWriter
 	get_async_loop
+	get_event_loop
 	from_excel_date
 	register_functions
 	deregister_functions
 	linked_workbook
+	source_addin
 	excel_run
 	excel_state
 	excel_func
@@ -36,7 +38,10 @@ xlOil Python Module Reference
 	windows
 	workbooks
 	ExcelWindow
-	ExcelWorkbook
+	Workbook
+	Worksheet
+	active_worksheet
+	active_workbook
 	ExcelGUI
 	CustomTaskPane
 	TaskPaneFrame
@@ -55,7 +60,7 @@ xlOil Python Module Reference
 .. autodata:: AllowRange
 
 .. autodata:: windows
-	
+
 .. autodata:: workbooks
 
 .. automodule:: xloil

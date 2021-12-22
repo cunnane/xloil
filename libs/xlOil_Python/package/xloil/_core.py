@@ -818,23 +818,63 @@ else:
 
         @property
         def parent(self):
+            """
+            Returns the parent Workbook for this Worksheet
+            """
             ...
 
         def __getitem__(self, address):
+            """
+            Returns the range specified by the local address, equivalent to ``at_address``.
+            """
             ...
 
         def range(self, from_row, from_col, 
                   num_rows=None, num_cols=None, 
                   to_row=None, to_col=None) -> Range:
+
+            """ 
+            Specifies a range in this worksheet.
+
+            Parameters
+            ----------
+
+            from_row: int
+                Starting row offset from the top left of the parent range. Zero-based.
+
+            from_col: int
+                Starting row offset from the top left of the parent range. Zero-based.
+
+            to_row: int
+                End row offset from the top left of the parent range. This row will be included in 
+                the range. The offset is zero-based. Do not specify both `to_row` and `num_rows`.
+
+            to_col: int
+                End column offset from the top left of the parent range. This column will be included in 
+                the range. The offset is zero-based. Do not specify both `to_col` and `num_cols`.
+
+            num_rows: int
+                Number of rows in output range. Must be positive. If neither `num_rows` or `to_rows` 
+                are specified, the range ends at the end of the sheet.
+
+            num_cols: int
+                Number of columns in output range. Must be positive. If neither `num_cols` or `to_cols` 
+                are specified, the range ends at the end of the sheet.
+            """
             ...
 
         def at_address(self, address) -> Range:
+            """
+            Returns the range specified by the local address, e.g. ``at_address('B3')``
+            """
             ...
 
         def calculate(self):
+            # Calculates this worksheet
             ...
 
         def activate(self):
+            # Makes this worksheet the active sheet
             ...
 
     class Workbook:
@@ -852,14 +892,23 @@ else:
             """
             ...
 
-        def __getitem__(self, sheet_name):
+        def __getitem__(self, sheet_name) -> Worksheet:
+            """
+            Returns the named worksheet which is part of this workbook (if it exists)
+            """
             ...
 
-        def worksheet(self, name):
+        def worksheet(self, name) -> Worksheet:
+            """
+            Returns the named worksheet which is part of this workbook (if it exists)
+            """
             ...
 
         @property
         def worksheets(self) -> list:
+            """
+            A list of all worksheets which are part of this workbook
+            """
             ...
 
         @property
@@ -888,8 +937,6 @@ else:
             The workbook being displayed by this window
             """
             ...
-
-
     
     class _Collection(typing.Generic[VT]):
         """
@@ -928,6 +975,14 @@ else:
 
     """
 
+    def active_workbook() -> Workbook:
+        # Returns the currently active workbook
+        ...
+
+    def active_worksheet() -> Worksheet:
+        # Returns the currently active worksheet
+        ...
+    
     class StatusBar:
         """
              Displays status bar messages and clears the status bar (after an optional delay) 
