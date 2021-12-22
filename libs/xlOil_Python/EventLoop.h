@@ -64,8 +64,15 @@ namespace xloil
       }
       ~EventLoop()
       {
-        if (active())
-          shutdown();
+        try
+        {
+          if (active())
+            shutdown();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Failed to shutdown python worker thread: {0}", e.what());
+        }
       }
       template <class...Args>
       void callback(const pybind11::object& func, Args&&... args)
