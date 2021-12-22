@@ -77,7 +77,7 @@ namespace xloil
         , _waitTime(waitTime)
       {}
 
-      void operator()(Messenger& messenger) noexcept;
+      void operator()(Messenger& messenger);
     };
 
     static constexpr unsigned WINDOW_MESSAGE = 666;
@@ -206,7 +206,7 @@ namespace xloil
     Messenger::instance();
   }
 
-  void Messenger::QueueItem::operator()(Messenger& messenger) noexcept
+  void Messenger::QueueItem::operator()(Messenger& messenger)
   {
     if (_nComRetries > 0 && (_flags & ExcelRunQueue::COM_API) != 0 && !COM::isComApiAvailable())
     {
