@@ -12,5 +12,6 @@
     <ClCompile Include="TestCache.cpp" />
     <ClCompile Include="TestSimpleAllocator.cpp" />
     <ClCompile Include="TestTempFile.cpp" />
+    <ClCompile Include="TestExcelCall.cpp" />
   </ItemGroup>
 </Project>

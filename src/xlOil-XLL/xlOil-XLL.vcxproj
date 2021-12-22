@@ -124,6 +124,7 @@
     <ClCompile Include="XllEvents.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ExcelCallMapping.h" />
     <ClInclude Include="FuncRegistry.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
