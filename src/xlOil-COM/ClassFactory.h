@@ -115,13 +115,15 @@ namespace xloil
       return detail::regWriteImpl<REG_SZ>(hive, path, name, 
         (BYTE*)value, (wcslen(value) + 1) * sizeof(wchar_t));
     }
+
     HRESULT inline regWrite(
       HKEY hive,
       const wchar_t* path,
       const wchar_t* name,
       DWORD value)
     {
-      return detail::regWriteImpl<REG_DWORD>(hive, path, name, (BYTE*)&value, sizeof(DWORD));
+      return detail::regWriteImpl<REG_DWORD>(hive, path, name, 
+        (BYTE*)&value, sizeof(DWORD));
     }
 
     /// <summary>
@@ -213,12 +215,13 @@ namespace xloil
           _progId = progId;
         }
   
+        // Ensure we populate the clsid GUID and the assoicated _clsid string. If 
+        // this value has not been provided or read from the registry above, we
+        // create a new GUID.
 
-        // If no CLSID, generate one
         if (fixedClsid)
           _clsid = fixedClsid;
          
-        
         if (!_clsid.empty())
         {
            CLSIDFromString(_clsid.c_str(), &clsid);
@@ -226,15 +229,17 @@ namespace xloil
         else
         {
           auto fail = CoCreateGuid(&clsid) != 0;
-          LPOLESTR clsidStr = nullptr;
+
           // This generates the string '{W-X-Y-Z}'
-          fail = fail || StringFromCLSID(clsid, &clsidStr) != 0;
+          wchar_t clsidStr[128];
+          fail = fail || StringFromGUID2(clsid, clsidStr, _countof(clsidStr)) == 0;
           if (fail)
             XLO_THROW("Failed to create CLSID for COM Server");
+
           _clsid = clsidStr;
-          CoTaskMemFree(clsidStr);
         }
 
+        // If no progId has been specified, use 'XlOil.<Clsid>'
         if (!progId)
         {
           // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
@@ -242,9 +247,13 @@ namespace xloil
           std::replace(_progId.begin(), _progId.end(), L'-', L'.');
         }
 
+        // Create the COM 'server' and a class factory which returns it.  Normally
+        // a class factory creates the COM object on demand, so we are subverting
+        // the pattern slightly!
         _server  = createServer(_progId.c_str(), clsid);
         _factory = new ClassFactory((IDispatch*)_server.p);
 
+        // Register our class factory in the Registry
         HRESULT res;
         res = CoRegisterClassObject(
           clsid,                     // the CLSID to register
@@ -280,7 +289,7 @@ namespace xloil
       }
 
       const wchar_t* progid() const { return _progId.c_str(); }
-      const wchar_t* clsid() const { return _clsid.c_str(); }
+      const wchar_t* clsid()  const { return _clsid.c_str(); }
       const CComPtr<TComServer>& server() const { return _server; }
 
       HRESULT writeRegistry(
