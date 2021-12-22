@@ -113,7 +113,7 @@ namespace xloil
         if (pluginData == loadedPlugins.end())
         {
           // First load the plugin using any settings that have been specified in the
-          // core config file, otherwise the ones in the add-ins ini file. This avoids
+          // core config file, otherwise the ones in the add-in's ini file. This avoids
           // race conditions with different add-in load orders.
 
           auto loadSettings = theCoreContext().settings()
@@ -127,10 +127,14 @@ namespace xloil
             auto value = expandWindowsRegistryStrings(
               expandEnvironmentStrings(val));
             XLO_DEBUG(L"Setting environment variable: {}='{}'", key, value);
-            // getenv makes a copy of the environment variable block of the 
-            // process on startup, so we need to set both these blocks!
+
+            // The CRT (getenv) makes a copy of the environment variable block of the process , 
+            // on startup so we need ensure both the getenv block and Win32 environment are .
+            // modified. The CRT actually maintains a wchar and a char enviroment block.
+            // See some of the remarks here
+            // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv
             SetEnvironmentVariable(key.c_str(), value.c_str());
-            _putenv_s(utf16ToUtf8(key).c_str(), utf16ToUtf8(value).c_str());
+            _wputenv_s(key.c_str(), value.c_str());
           }
           // Load the plugin
           const auto lib = LoadLibrary(pluginPath.c_str());
