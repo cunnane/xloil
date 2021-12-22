@@ -141,6 +141,11 @@ namespace xloil
     { 
       return comToPy(p.ptr(), binder); 
     }
+    template<>
+    auto toCom(Range& range, const char* binder)
+    {
+      return comToPy(ExcelRange(range).ptr(), binder);
+    }
 
     static int theBinder = addBinder([](pybind11::module& mod)
     {
@@ -179,8 +184,8 @@ namespace xloil
           [](const Range& r)
           {
             return r.shape();
-          });
-        // TODO: .def("to_com", [](Range& p) { return toComtypes(p.ptr()); });
+          })
+        .def("to_com", toCom<Range>, py::arg("lib") = "");
 
       // TODO: do we need main thread synchronisation on all this?
       py::class_<ExcelWorksheet>(mod, "Worksheet")

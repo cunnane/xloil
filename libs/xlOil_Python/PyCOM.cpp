@@ -168,12 +168,14 @@ namespace xloil
 
     namespace
     {
-      constexpr auto EXCEL_TLB_LCID = 0;
+      constexpr auto EXCEL_TLB_LCID  = 0;
       constexpr auto EXCEL_TLB_MAJOR = 1;
       constexpr auto EXCEL_TLB_MINOR = 4;
 
-      py::object comObjectWithComtypes(IUnknown* p, const char* iface, const wchar_t* clsid)
+      py::object comObjectWithComtypes(
+        IUnknown* p, const char* iface, const wchar_t* clsid)
       {
+        // Important note: does not call QI on provided IUnknown, assumes it is a hanging reference
         auto comtypes = py::module::import("comtypes.client");
 
         auto libidVer = py::tuple(3);
@@ -192,6 +194,8 @@ namespace xloil
 
       auto find_PyCom_PyObjectFromIUnknown()
       {
+        // Do a GetProcAddress for 'PyCom_PyObjectFromIUnknown' in pythoncom.dll
+
         const std::wstring pythoncomDLL = py::module::import("pythoncom").attr("__file__").cast<std::wstring>();
         auto pythoncom = LoadLibrary(pythoncomDLL.c_str());
         if (!pythoncom)
@@ -205,8 +209,10 @@ namespace xloil
         return (FuncType)funcAddress;
       }
 
-      py::object comObjectWithPyCom(IUnknown* p, const char* iface, const wchar_t* clsid)
+      py::object comObjectWithPyCom(
+        IUnknown* p, const char* iface, const wchar_t* clsid)
       {
+        // Calls QI on provided IUnknown
         static auto bindFunction = find_PyCom_PyObjectFromIUnknown();
         auto dispatchPtr = PySteal<py::object>(bindFunction(p, IID_IDispatch, true));
 
@@ -216,19 +222,26 @@ namespace xloil
         return targetType(dispatchPtr);
       }
 
-      py::object marshalCom(const char* binder, IUnknown* p, const char* iface, const GUID& clsid)
+      py::object marshalCom(
+        const char* binderLib, IUnknown* p, const char* interfaceName, const GUID& clsid)
       {
-        if (!binder || binder[0] == 0)
-          return marshalCom(theCoreAddin().comBinder.c_str(), p, iface, clsid);
+        if (!binderLib || binderLib[0] == 0)
+          return marshalCom(theCoreAddin().comBinder.c_str(), p, interfaceName, clsid);
         
         wchar_t clsidStr[128];
         StringFromGUID2(clsid, clsidStr, _countof(clsidStr));
 
-        if (_stricmp(binder, "comtypes") == 0)
-          return comObjectWithComtypes(p, iface, clsidStr);
-        else if (_stricmp(binder, "win32com") == 0)
-          return comObjectWithPyCom(p, iface, clsidStr);
-        XLO_THROW("Unsupported COM lib {}", binder);
+        if (_stricmp(binderLib, "comtypes") == 0)
+        {
+          // Must pass a appropriately QI'd hanging ref for comtypes
+          IUnknown* q;
+          if (p->QueryInterface(clsid, (void**)&q) != 0)
+            XLO_THROW("Internal: failed to find COM interface '{}' for '{}'", interfaceName, binderLib);
+          return comObjectWithComtypes(q, interfaceName, clsidStr);
+        }
+        else if (_stricmp(binderLib, "win32com") == 0)
+          return comObjectWithPyCom(p, interfaceName, clsidStr);
+        XLO_THROW("Unsupported COM lib '{}'", binderLib);
       }
     }
 

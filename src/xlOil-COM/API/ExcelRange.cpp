@@ -39,7 +39,6 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-
   ExcelRange::ExcelRange(const std::wstring_view& address)
   {
     try
@@ -49,6 +48,18 @@ namespace xloil
       init(rangePtr);
     }
     XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelRange::ExcelRange(const Range& range)
+  {
+    auto excelRange = dynamic_cast<const ExcelRange*>(&range);
+    if (excelRange)
+      init(excelRange->ptr());
+    else
+    {
+      init(nullptr);
+      *this = ExcelRange(range.address());
+    }
   }
 
   Range* ExcelRange::range(
@@ -128,5 +139,14 @@ namespace xloil
   std::wstring ExcelRange::name() const
   {
     return address(false);
+  }
+
+  ExcelWorksheet ExcelRange::parent() const
+  {
+    try
+    {
+      return ExcelWorksheet(ptr()->Worksheet);
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 }

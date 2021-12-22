@@ -347,8 +347,14 @@ def pyTestCom():
 #
 @xlo.func(macro=True)
 def pyTestRange(r: xlo.Range):
-    r2 = r.cells(0, 0).value
-    return r.cells(1, 1).address()
+    
+    # This gives the same value as the statement below
+    addy = r.cells(1, 1).address()
+    
+    # Perhaps should call xlo.app('comtypes') before this to ensure that
+    # comtypes has generated this module from the typelib
+    from comtypes.gen import Excel
+    return r.to_com().Cells[2, 2].Address(False, False, Excel.xlA1, True)
 
 @xlo.func
 async def pyTestCaller():
