@@ -168,6 +168,25 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
+    template<class Return, class Class, class... Args>
+    constexpr auto wrapNoGil(Return(Class::* f)(Args...) const)
+    {
+      return [f](Class* self, Args... args)
+      {
+        py::gil_scoped_release release;
+        return (self->*f)(args...);
+      };
+    }
+
+    template<class Return, class Class, class... Args>
+    constexpr auto wrapNoGil(Return(Class::* f)(Args...))
+    {
+      return [f](Class* self, Args... args)
+      {
+        py::gil_scoped_release release;
+        return (self->*f)(args...);
+      };
+    }
 
     template<class Return, class Class, class... Args>
     constexpr auto MainThreadWrap(Return(Class::* f)(Args...) const)
@@ -182,6 +201,7 @@ namespace xloil
         return fut.get();
       };
     }
+
     template<class Return, class Class, class... Args>
     constexpr auto MainThreadWrap(Return(Class::* f)(Args...))
     {

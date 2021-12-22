@@ -228,6 +228,7 @@ namespace xloil
         if (!binderLib || binderLib[0] == 0)
           return marshalCom(theCoreAddin().comBinder.c_str(), p, interfaceName, clsid);
         
+        // Convert our CLSID to a string, 128 chars should be plenty
         wchar_t clsidStr[128];
         StringFromGUID2(clsid, clsidStr, _countof(clsidStr));
 
@@ -241,6 +242,7 @@ namespace xloil
         }
         else if (_stricmp(binderLib, "win32com") == 0)
           return comObjectWithPyCom(p, interfaceName, clsidStr);
+
         XLO_THROW("Unsupported COM lib '{}'", binderLib);
       }
     }
