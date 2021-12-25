@@ -4,21 +4,17 @@ xlOil Python Excel.Application object
 
 The `Excel.Application` object is the root of Excel's COM interface.  If you have used VBA you 
 will likely have come accross it.  In xlOil, you can get a reference to this object with 
-`xloil.app()`. From there the `comtypes <https://pythonhosted.org/comtypes/>`_ or `pywin32 <http://timgolden.me.uk/pywin32-docs/html/com/win32com/HTML/QuickStartClientCom.html>`_ 
+`xloil.app()`. From there the `comtypes <https://pythonhosted.org/comtypes/>`_ or
+`pywin32 <http://timgolden.me.uk/pywin32-docs/html/com/win32com/HTML/QuickStartClientCom.html>`_ 
 libraries provides syntax similar to VBA to call methods on the object.
 
 The available methods are documented extensively at `Excel object model overview <https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview>`_
 and `Application Object <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)>`_
 
-COM support can be provided by 'comtypes', a newer pure python package or 'win32com' 
-a well-established more C++ based library. You can choose using:
-
-::
-
-    # Run this before any calls to xloil.app()
-    xloil.use_com_lib("win32com") # run this to select win32com
-    xloil.use_com_lib("comtypes") # the default, no need to run this explicitly
-
+COM support can be provided by 'comtypes', a newer pure python package or 'win32com' (also called
+`pywin32`) a well-established more C++ based library. You can pass a ``lib`` argument to 
+:any:`xloil.app` or the ``to_com`` method.  If omitted, the default is 'comtypes', unless changed 
+in the XLL's ini file.
 
 
 Application.Run

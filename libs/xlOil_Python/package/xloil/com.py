@@ -13,8 +13,7 @@ def app(lib=None):
         Properties and methods of the `app()` object are resolved dynamically at runtime
         so cannot be seen by python inspection/completion tools.  xlOil uses a 3rd party
         library to do this resolution and handle all interation with the *Excel.Application*
-        object.  This library defaults to `comtypes` but `win32com` can be choosen by
-        calling `xloil.use_com_lib('win32com')` before any call to `xloil.app()`.
+        object.  The ``lib`` defaults to `comtypes` but `win32com` can be choosen.
 
         Many operations using the Application object will only work in 
         functions declared as **macro type**.

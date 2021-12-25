@@ -17,19 +17,21 @@ class CustomTaskPane:
         _task_panes.add(self)
 
     def on_size(self, width, height):
-        # Called when the task pane is resized
+        """
+        Called when the task pane is resized
+        """
         ...
              
     def on_visible(self, value):
-        # Called when the visible state changes, passes the new state
+        """ Called when the visible state changes, passes the new state """
         ...
 
     def on_docked(self):
-        # Called when the pane is docked to a new location or undocked
+        """ Called when the pane is docked to a new location or undocked """
         ...
 
     def on_destroy(self):
-        # Called before the pane is destroyed to release any resources
+        """ Called before the pane is destroyed to release any resources """
 
         # Release internal task pane pointer
         self._pane = None
@@ -38,10 +40,12 @@ class CustomTaskPane:
 
     @property
     def pane(self) -> TaskPaneFrame:
+        """Returns the TaskPaneFrame a reference to the window holding the python GUI"""
         return self._pane
 
     @property
     def visible(self) -> bool:
+        """Returns True if the pane is currently shown"""
         return self._pane.visible
 
     @visible.setter
@@ -50,6 +54,7 @@ class CustomTaskPane:
 
     @property
     def size(self) -> tuple:
+        """Returns a tuple (width, height)"""
         return self._pane.size
 
     @size.setter

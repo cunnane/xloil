@@ -105,7 +105,8 @@ Examples
 Looking for xlOil functions in imported modules
 -----------------------------------------------
 
-This happens automatically when a module is imported or reloaded.  
+This happens automatically when a module is imported or reloaded as xlOil
+hooks python's import mechanism.  
 
 If you load a module outside the normal ``import`` mechanism, you can tell 
 xlOil to look for functions to register with ``xloil.scan_module(module)``. 

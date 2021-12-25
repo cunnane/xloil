@@ -400,10 +400,10 @@ class Array(np.ndarray):
         def array3(z: xlo.Array(str, trim=False)):
             pass
     
-    Methods
-    -------
+    Parameters
+    ----------
 
-    **(dtype, dims, trim)** :    
+    *(dtype, dims, trim)* :
         Element types are converted to numpy dtypes, which means the only supported types are: 
         int, float, bool, str, datetime, object.
         (Numpy has a richer variety of dtypes than this but Excel does not.) 

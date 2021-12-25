@@ -82,11 +82,31 @@ else:
         """
         pass
 
-    class Range:
+    class _AppObject:
+
+        @property
+        def name(self) -> str:
+            """
+            A name for the object. e.g. range address, window caption, workbook name
+            """
+            ...
+
+        def to_com(lib=None):
+            """
+            Returns a managed COM object which can be used to invoke Excel's full 
+            object model. For details of the available calls see the Microsoft 
+            documentation on the Excel Object Model. The ``lib`` used to provide COM
+            support can be 'comtypes' or 'win32com'. If omitted, the default is 'comtypes'
+            unless changed in the XLL's ini file.
+            """
+            ...
+
+    class Range(_AppObject):
         """
         Similar to the `Excel.Range <https://docs.microsoft.com/en-us/office/vba/api/excel.range(object)> 
-        object, this class allows direct access to an area on a worksheet. It uses similar syntax to Excel's object, 
-        supporting the ``cell`` and ``range`` functions, however they are zero-based as per python's standard.
+        object, this class allows direct access to an area on a worksheet. It uses similar 
+        syntax to Excel's object, supporting the ``cell`` and ``range`` functions, however 
+        they are zero-based as per python's standard.
 
         A Range can be accessed and sliced using the usual syntax (the slice step must be 1):
 
@@ -120,9 +140,9 @@ else:
                 parent range. Do not specify both `to_row` and `num_rows`.
 
             to_col: int
-                End column offset from the top left of the parent range. This column will be included in 
-                the range. The offset is zero-based and can be negative to select ranges outside the
-                parent range. Do not specify both `to_col` and `num_cols`.
+                End column offset from the top left of the parent range. This column will be included 
+                in the range. The offset is zero-based and can be negative to select ranges outside 
+                the parent range. Do not specify both `to_col` and `num_cols`.
 
             num_rows: int
                 Number of rows in output range. Must be positive. If neither `num_rows` or `to_rows` 
@@ -307,6 +327,9 @@ else:
         """
 
         AfterCalculate= _Event()
+        """
+        Called after a calculation whether or not it completed or was interrupted
+        """
         CalcCancelled= _Event()
         """
         Called when the user interrupts calculation by interacting with Excel.
@@ -337,12 +360,12 @@ else:
         WorkbookAddinInstall= _Event()
         WorkbookAddinUninstall= _Event()
 
+        PyBye= _Event()
         """
         Called just before xlOil finalises the python interpreter. All python and xlOil
         functionality is still available. This event is useful to stop threads as it is 
         called before threading module teardown, whereas `atexit` is not.
         """
-        PyBye= _Event()
 
     event = Event()
 
@@ -810,11 +833,7 @@ else:
         """
         pass
 
-    class Worksheet:
-
-        @property
-        def name(self) -> str:
-            ...
+    class Worksheet(_AppObject):
 
         @property
         def parent(self):
@@ -850,8 +869,8 @@ else:
                 the range. The offset is zero-based. Do not specify both `to_row` and `num_rows`.
 
             to_col: int
-                End column offset from the top left of the parent range. This column will be included in 
-                the range. The offset is zero-based. Do not specify both `to_col` and `num_cols`.
+                End column offset from the top left of the parent range. This column will be included  
+                in the range. The offset is zero-based. Do not specify both `to_col` and `num_cols`.
 
             num_rows: int
                 Number of rows in output range. Must be positive. If neither `num_rows` or `to_rows` 
@@ -877,13 +896,7 @@ else:
             # Makes this worksheet the active sheet
             ...
 
-    class Workbook:
-        @property
-        def name(self) -> str:
-            """
-            The workbook name
-            """
-            ...
+    class Workbook(_AppObject):
 
         @property
         def path(self) -> str:
@@ -918,13 +931,8 @@ else:
             """
             ...
 
-    class ExcelWindow:
-        @property
-        def name(self) -> str:
-            """
-            The window name / title / caption
-            """
-            ...
+    class ExcelWindow(_AppObject):
+
         @property
         def hwnd(self) -> int:
             """
@@ -951,7 +959,7 @@ else:
             ...
 
 
-    workbooks:_Collection[ExcelWorkbook] = _Collection()
+    workbooks:_Collection[Workbook] = _Collection()
     """
         Collection of all open workbooks as ExcelWorkbook objects.
     
@@ -976,11 +984,15 @@ else:
     """
 
     def active_workbook() -> Workbook:
-        # Returns the currently active workbook
+        """
+        Returns the currently active workbook
+        """
         ...
 
     def active_worksheet() -> Worksheet:
-        # Returns the currently active worksheet
+        """
+        Returns the currently active worksheet
+        """
         ...
     
     class StatusBar:

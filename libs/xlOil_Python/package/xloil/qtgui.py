@@ -8,7 +8,7 @@ import sys
 import concurrent.futures as futures
 import concurrent.futures.thread
 
-def qt_import(sub, what):
+def _qt_import(sub, what):
     """
         Helper function to import Q objects from PyQt or PySide depending
         on which framework had already been imported
@@ -30,7 +30,7 @@ def qt_import(sub, what):
 
 def _create_Qt_app():
     
-    QApplication = qt_import('QtWidgets', 'QApplication')
+    QApplication = _qt_import('QtWidgets', 'QApplication')
 
     # Qt seems to really battle with reading environment variables.  So we must 
     # read the variable ourselves, then pass it as an argument. It's unclear what
@@ -45,7 +45,7 @@ def _create_Qt_app():
     return app
 
 def _reparent_widget(widget, hwnd):
-    QWindow = qt_import('QtGui', 'QWindow')
+    QWindow = _qt_import('QtGui', 'QWindow')
     # windowHandle does not exist before show
     widget.show()
     nativeWindow = QWindow.fromWinId(hwnd)
@@ -93,7 +93,7 @@ class QtExecutor(futures.Executor):
         try:
             self.app = _create_Qt_app()
 
-            QTimer = qt_import('QtCore', 'QTimer')
+            QTimer = _qt_import('QtCore', 'QTimer')
 
             semaphore = QTimer()
             semaphore.timeout.connect(self._do_work)
@@ -117,11 +117,21 @@ class QtExecutor(futures.Executor):
 
 _Qt_thread = None
 
-def Qt_thread():
+def Qt_thread() -> futures.Executor:
     """
-        Since all Qt GUI interactions (except signals) must take place on the 
-        thread that the QApplication object was created on, we have a dedicated
-        thread with a work queue.
+        All Qt GUI interactions (except signals) must take place on the thread
+        that the *QApplication* object was created on. This object is a 
+        *concurrent.futures.Executor* which executes commands on the dedicated
+        Qt thread.  **All Qt interaction must take place via this thread**.
+
+        Examples
+        --------
+            
+        ::
+            
+            future = Qt_thread().submit(my_func, my_args)
+            future.result() # blocks
+
     """
 
     global _Qt_thread
@@ -138,11 +148,14 @@ def Qt_thread():
 
 
 class QtThreadTaskPane(CustomTaskPane):
+    """
+        Wraps a Qt QWidget to create a CustomTaskPane object. 
+    """
 
     def __init__(self, pane, draw_widget):
         """
-        Wraps a QWidget to create a CustomTaskPane object. The `draw_widget` function
-        is executed on the QtThread and is expected to return a QWidget object.
+        Wraps a QWidget to create a CustomTaskPane object. The ``draw_widget`` function
+        is executed on the `xloil.qtgui.Qt_thread` and is expected to return a *QWidget* object.
         """
         super().__init__(pane)
 
@@ -167,7 +180,7 @@ class QtThreadTaskPane(CustomTaskPane):
 
 def _try_create_qt_pane(obj):
     try:
-        QWidget = qt_import('QtWidgets', 'QWidget')
+        QWidget = _qt_import('QtWidgets', 'QWidget')
         if issubclass(obj, QWidget):
             return lambda pane: QtThreadTaskPane(pane, obj)
     except ImportError:

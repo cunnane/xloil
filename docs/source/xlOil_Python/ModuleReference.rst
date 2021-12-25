@@ -2,6 +2,9 @@
 xlOil Python Module Reference
 =================================
 
+.. contents::
+    :local:
+
 .. currentmodule:: xloil
 
 .. autosummary::
@@ -11,7 +14,6 @@ xlOil Python Module Reference
 	Event
 	ExcelArray
 	AllowRange
-	Range
 	RtdPublisher
 	RtdServer
 	Cache
@@ -35,11 +37,12 @@ xlOil Python Module Reference
 	excel_func
 	excel_func_async
 	app
+	Range
+	Worksheet
+	Workbook
+	ExcelWindow
 	windows
 	workbooks
-	ExcelWindow
-	Workbook
-	Worksheet
 	active_worksheet
 	active_workbook
 	ExcelGUI
@@ -48,35 +51,116 @@ xlOil Python Module Reference
 	find_task_pane
     create_task_pane
 	insert_cell_image
-	use_com_lib
 	xloil.rtd.RtdSimplePublisher
 	xloil.debug.exception_debug
+	xloil.qtgui.Qt_thread
 	xloil.pandas.PDFrame
 	xloil.pillow.ReturnImage
 	xloil.matplotlib.ReturnFigure
+..
+	[comment]: need to patch is_filtered_inherited_member in autodoc/__init__.py to get 
+	[comment]: inherited-members to work, then can remove this horrible explict list
 
-.. autodata:: log
+
+Declaring Worksheet Functions
+-----------------------------
+
+.. automodule:: xloil
+	:members: Arg,CannotConvert,CellError,ExcelArray,Cache,SingleValue,func,converter,returner,register_functions,deregister_functions
+	:imported-members:
+	:undoc-members:
 
 .. autodata:: AllowRange
+
+Excel Object Model
+------------------
+
+.. currentmodule:: xloil
 
 .. autodata:: windows
 
 .. autodata:: workbooks
+	
+.. autofunction:: app
 
-.. automodule:: xloil
-	:members:
-	:imported-members:
+.. autofunction:: active_worksheet
+
+.. autofunction:: active_workbook
+
+.. autoclass:: Range
+	:members: 
+	:inherited-members:
 	:undoc-members:
+
+.. autoclass:: Workbook
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
+.. autoclass:: Worksheet
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
+.. autoclass:: ExcelWindow
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
+
+RTD Functions
+-------------
+
+.. currentmodule:: xloil
+
+.. autoclass:: RtdPublisher
+
+.. autoclass:: RtdServer
 
 .. automodule:: xloil.rtd
 	:members:
+
+
+GUI Interaction
+---------------
+
+.. currentmodule:: xloil
+
+.. autoclass:: ExcelGUI
+.. autoclass:: CustomTaskPane 
+.. autoclass:: TaskPaneFrame
+.. autoclass:: RibbonControl
+.. autofunction:: find_task_pane
+.. autofunction:: create_task_pane
+
+.. automodule:: xloil.qtgui
+	:members: Qt_thread, QtThreadTaskPane	
+
+
+Everything else
+---------------
+
+.. automodule:: xloil
+	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_run,excel_state,excel_func,excel_func_async
+	:imported-members:
+	:undoc-members:
+
+.. autodata:: log
+
 .. automodule:: xloil.debug
 	:members:
+
+External libraries
+------------------
+
+.. currentmodule:: xloil
+
+.. autofunction:: insert_cell_image
+
 .. automodule:: xloil.pandas
 	:members: PDFrame
 .. automodule:: xloil.pillow
 	:members: ReturnImage
 .. automodule:: xloil.matplotlib
 	:members: ReturnFigure
-	
 

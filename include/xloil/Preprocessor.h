@@ -17,7 +17,7 @@ namespace xloil { class ExcelObj; }
 #define XLO_WSTR(s) BOOST_PP_CAT(L,BOOST_PP_CAT(BOOST_PP_EMPTY(),BOOST_PP_STRINGIZE(s)))
 
 /// <summary>
-///  Stringifies the given argument to a narrow string literal
+/// Stringifies the given argument to a narrow string literal
 /// </summary>
 #define XLO_STR(s) BOOST_PP_STRINGIZE(s)
 
@@ -47,7 +47,7 @@ namespace xloil { class ExcelObj; }
 #define XLO_WRITE_ARG_HELP_I(z, N, data) .arg(XLO_WSTR(BOOST_PP_CAT(BOOST_PP_TUPLE_ELEM(0, data),N)), BOOST_PP_TUPLE_ELEM(1, data))
 
 /// <summary>
-/// As <see ref="XLO_ARG_PTRS"/>, but runs <see ref="xloil::objectCacheExpand"/> on each argument.
+/// As <see cref="XLO_ARG_PTRS"/>, but runs <see ref="xloil::objectCacheExpand"/> on each argument.
 /// Useful to create an array of function arguments.
 /// </summary>
 #define XLO_CACHE_ARG_PTRS_I(z, N, data) &xloil::objectCacheExpand(BOOST_PP_CAT(data ## N)) BOOST_PP_COMMA_IF(N)
