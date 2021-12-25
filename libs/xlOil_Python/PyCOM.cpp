@@ -243,7 +243,8 @@ namespace xloil
         else if (_stricmp(binderLib, "win32com") == 0)
           return comObjectWithPyCom(p, interfaceName, clsidStr);
 
-        XLO_THROW("Unsupported COM lib '{}'", binderLib);
+        throw py::key_error(formatStr(
+          "Unsupported COM lib '%s', supported: 'win32com', 'comtypes'", binderLib));
       }
     }
 
