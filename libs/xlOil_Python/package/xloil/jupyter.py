@@ -172,7 +172,12 @@ class _VariableWatcher(xlo.RtdPublisher):
 class JupyterNotReadyError(Exception):
     pass
 
-_rtd_server = xlo.RtdServer()
+_rtd_server_object = None
+
+def _rtd_server():
+    if _rtd_server_object is None:
+        _rtd_server_object = xlo.RtdServer()
+    return _rtd_server_object
 
 class _JupyterConnection:
     
@@ -255,8 +260,6 @@ class _JupyterConnection:
 
     def close(self):
 
-        global _rtd_server
-
         # If still ready, i.e. not triggered by a kernel restart, clean up our variables
         if self._ready:
             self._client.execute("_xloil_vars.close()\ndel _xloil_vars")
@@ -268,7 +271,7 @@ class _JupyterConnection:
         variable_topics = [x.topic() for x in self._watched_variables.values()]
         
         for topic in variable_topics:
-            _rtd_server.drop(topic)
+            _rtd_server().drop(topic)
         
         # Remove any stragglers
         self._watched_variables.clear()
@@ -330,8 +333,6 @@ class _JupyterConnection:
 
     def watch_variable(self, name):
         
-        global _rtd_server
-
         if not self._ready:
             raise JupyterNotReadyError()
 
@@ -344,9 +345,9 @@ class _JupyterConnection:
             self._watched_variables[name] = watcher
 
             xlo.log(f"Starting variable watch {name}", level='debug')
-            _rtd_server.start(watcher)
+            _rtd_server().start(watcher)
 
-        return _rtd_server.subscribe(topic)
+        return _rtd_server().subscribe(topic)
 
     def stop_watch_variable(self, name):
         try:
@@ -355,10 +356,8 @@ class _JupyterConnection:
             pass
 
     def publish_variables(self, updates:dict):
-        global _rtd_server
-
         for name, value in updates.items():
-            _rtd_server.publish(self._watch_prefix(name), value)
+            _rtd_server().publish(self._watch_prefix(name), value)
 
     async def process_messages(self):
    
@@ -464,17 +463,17 @@ class _JupyterTopic(xlo.RtdPublisher):
                         # TODO: use a customer converter for this publish() to stop xloil 
                         # unpacking the cacheref, this would save needing to create a 
                         # cache object
-                        _rtd_server.publish(self._topic, self._cacheRef)
+                        _rtd_server().publish(self._topic, self._cacheRef)
                         restart = await conn.process_messages()
                         conn.close()
                         if not restart:
                             break
                         await conn.wait_for_restart()
 
-                    _rtd_server.publish(self._topic, "KernelShutdown")
+                    _rtd_server().publish(self._topic, "KernelShutdown")
 
                 except Exception as e:
-                    _rtd_server.publish(self._topic, e)
+                    _rtd_server().publish(self._topic, e)
 
             self._task = conn._loop.create_task(run())
 
@@ -553,11 +552,11 @@ def xloJpyConnect(ConnectInfo):
         raise Exception(f"Could not find connection for {ConnectInfo}")
 
     topic = connection_file.lower()
-    if _rtd_server.peek(topic) is None:
+    if _rtd_server().peek(topic) is None:
         conn = _JupyterTopic(topic, connection_file, 
                              os.path.join(os.path.dirname(__file__), os.pardir))
-        _rtd_server.start(conn)
-    return _rtd_server.subscribe(topic)
+        _rtd_server().start(conn)
+    return _rtd_server().subscribe(topic)
 
 
 @xlo.func(
