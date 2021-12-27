@@ -7,7 +7,7 @@
 #include <xlOil/ExcelTypeLib.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/AppObjects.h>
 #include <xlOilHelpers/Environment.h>
 #include <fcntl.h>
 

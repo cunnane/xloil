@@ -2,7 +2,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyFuture.h"
 #include <xloil/ExcelCall.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <future>
 
 using std::shared_ptr;

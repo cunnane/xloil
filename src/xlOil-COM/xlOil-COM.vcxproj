@@ -128,11 +128,12 @@
     <ClInclude Include="XllContextInvoke.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="API\ApiCall.cpp" />
+    <ClCompile Include="API\ExcelThread.cpp" />
     <ClCompile Include="API\ComUtils.cpp" />
     <ClCompile Include="API\Events.cpp" />
     <ClCompile Include="API\ExcelRange.cpp" />
     <ClCompile Include="API\RtdServer.cpp" />
+    <ClCompile Include="AppObjects.cpp" />
     <ClCompile Include="ComAddin.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
     <ClCompile Include="ComVariant.cpp" />

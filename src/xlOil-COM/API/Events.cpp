@@ -1,6 +1,6 @@
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil-COM/Connect.h>

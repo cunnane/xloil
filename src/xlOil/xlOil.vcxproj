@@ -61,7 +61,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\xloil\AppObjects.h" />
-    <ClInclude Include="..\..\include\xloil\ExcelApp.h" />
+    <ClInclude Include="..\..\include\xloil\ExcelThread.h" />
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
     <ClInclude Include="..\..\include\xloil\Async.h" />
     <ClInclude Include="..\..\include\xloil\Date.h" />

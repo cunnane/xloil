@@ -6,11 +6,25 @@
 #include <memory>
 #include <vector>
 
+
+// Forward Declarations from Typelib
 struct IDispatch;
-namespace Excel { struct Window; struct _Workbook; struct _Worksheet; struct Range; }
+
+namespace Excel { 
+  struct _Application;
+  struct Window; 
+  struct _Workbook; 
+  struct _Worksheet; 
+  struct Range; 
+}
 
 namespace xloil
 {
+  /// <summary>
+  /// Gets the Excel.Application object which is the root of the COM API 
+  /// </summary>
+  XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
+
   /// <summary>
   /// Base class for objects in the object model, not very usefuly directly.
   /// </summary>

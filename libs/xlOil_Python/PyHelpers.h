@@ -1,6 +1,7 @@
 #pragma once
 #include "CPython.h"
 #include <xloil/StringUtils.h>
+#include <xloil/ExcelThread.h>
 #include <xloil/Throw.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>

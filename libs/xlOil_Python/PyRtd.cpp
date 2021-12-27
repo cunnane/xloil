@@ -2,7 +2,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include <xloil/RtdServer.h>
-#include <xloil/ExcelApp.h>
+#include <xloil/ExcelThread.h>
 #include <pybind11/pybind11.h>
 #include <future>
 #include <chrono>

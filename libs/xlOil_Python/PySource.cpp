@@ -6,7 +6,7 @@
 #include "EventLoop.h"
 
 #include <xloil/Log.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/Events.h>
 #include <xlOil/ExcelUI.h>
 #include <filesystem>

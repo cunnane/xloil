@@ -124,7 +124,7 @@
     <ClInclude Include="..\..\include\xloil\DynamicRegister.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ExcelApp.h">
+    <ClInclude Include="..\..\include\xloil\ExcelThread.h">
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xlOil\XllEntryPoint.h">

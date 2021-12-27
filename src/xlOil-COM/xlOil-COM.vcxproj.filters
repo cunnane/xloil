@@ -31,11 +31,14 @@
     <ClCompile Include="API\RtdServer.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\ApiCall.cpp">
+    <ClCompile Include="API\ExcelThread.cpp">
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="CustomTaskPane.cpp" />
     <ClCompile Include="API\ComUtils.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="AppObjects.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>

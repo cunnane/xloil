@@ -4,16 +4,8 @@
 #include <future>
 #include <memory>
 
-namespace Excel { struct _Application; }
-
-
 namespace xloil
 {
-  /// <summary>
-  /// Gets the Excel.Application object which is the root of the COM API 
-  /// </summary>
-  XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
-
   /// <summary>
   /// Returns true if the current thread is the main Excel thread
   /// </summary>

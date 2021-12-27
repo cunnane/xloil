@@ -8,7 +8,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/State.h>
 #include <xlOil/ExcelTypeLib.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/AppObjects.h>
 #include <vector>
 #include <memory>

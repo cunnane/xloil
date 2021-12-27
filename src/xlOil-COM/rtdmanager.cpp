@@ -2,7 +2,7 @@
 #include "ComVariant.h"
 #include "ClassFactory.h"
 
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>

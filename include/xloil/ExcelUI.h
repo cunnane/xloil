@@ -1,7 +1,6 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
-#include <xlOil/ExcelApp.h>
 #include <xlOil/AppObjects.h>
 #include <functional>
 #include <memory>
@@ -45,11 +44,15 @@ namespace xloil
     /// after this amount of time since the class is destroyed.
     /// </summary>
     /// <param name="finalTimeout"></param>
-    StatusBar(size_t finalTimeout = 0) : _timeout(finalTimeout) {}
+    StatusBar(size_t finalTimeout = 0) 
+      : _timeout(finalTimeout) 
+    {}
+
     void msg(const std::wstring_view& msg, size_t timeout = 0)
     {
       statusBarMsg(msg, timeout);
     }
+
     ~StatusBar()
     {
       statusBarMsg(L"", _timeout);
@@ -237,6 +240,15 @@ namespace xloil
     return addin;
   }
 
+  /// <summary>
+  /// Converts a variant to an ExcelObj.
+  /// </summary>
+  /// <param name="variant"></param>
+  /// <param name="allowRange">If true, a variant Range will be converted to an xlRef,
+  /// otherwise it will become an array of ExcelObj.
+  /// </param>
+  /// <returns></returns>
   XLOIL_EXPORT ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange = false);
+
   XLOIL_EXPORT void excelObjToVariant(VARIANT* v, const ExcelObj& obj);
 }

@@ -5,7 +5,7 @@
 #include "Connect.h"
 #include "XllContextInvoke.h"
 #include <xlOil/Events.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <set>
 
 using std::set;

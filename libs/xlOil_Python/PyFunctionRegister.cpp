@@ -12,7 +12,7 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
 #include <xloil/RtdServer.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/Interface.h>
 #include <pybind11/stl.h>
 

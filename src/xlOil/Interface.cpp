@@ -5,7 +5,7 @@
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
 #include <xlOil-COM/Connect.h>
@@ -58,7 +58,7 @@ namespace xloil
     if (!workbookName.empty())
       clearLocalFunctions(workbookName.c_str());
 
-    runExcelThread([=]() // TODO: move semanatics rather than copy functions?
+    runExcelThread([functions = std::move(functions)]()
     {
       for (auto& f : functions)
         f.second->deregister();

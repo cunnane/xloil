@@ -2,7 +2,7 @@
 #include <xlOil/ExcelTypeLib.h>
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/AppObjects.h>
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Log.h>

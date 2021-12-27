@@ -1,5 +1,4 @@
-#include <xlOil/ExcelApp.h>
-#include <xloil/AppObjects.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/Connect.h>
@@ -227,7 +226,6 @@ namespace xloil
       XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
     }
   }
-
 
   bool isMainThread()
   {

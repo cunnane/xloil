@@ -3,7 +3,7 @@
 #include "PyEvents.h"
 #include "EventLoop.h"
 #include <TypeConversion/BasicTypes.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
 #include <xloil/AppObjects.h>

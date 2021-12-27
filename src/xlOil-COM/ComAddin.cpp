@@ -6,7 +6,7 @@
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/ExcelUI.h>
 #include <xlOil/Events.h>
 #include <map>

@@ -7,6 +7,7 @@
 #include "EventLoop.h"
 #include "PyFuture.h"
 #include <xloil/ExcelUI.h>
+#include <xloil/ExcelThread.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
 #include <filesystem>
