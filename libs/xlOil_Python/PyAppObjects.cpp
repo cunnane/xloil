@@ -79,7 +79,8 @@ namespace xloil
       struct RangeIter
       {
         Range& _range;
-        size_t _i, _j;
+        Range::row_t _i;
+        Range::col_t _j;
 
         RangeIter(Range& r) : _range(r), _i(0), _j(0) 
         {}

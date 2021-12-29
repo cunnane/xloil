@@ -60,29 +60,38 @@ namespace xloil
       int arrayCount = 0; // see comment in 'getValue()'
     };
 
-    shared_ptr<IRtdServer> _mgr;
-    std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
-
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
     {
       GUID guid;
-      CoCreateGuid(&guid);
+      wchar_t guidStr[64];
 
-      // TODO: make exception safe
-      LPOLESTR guidStr;
-      StringFromCLSID(guid, &guidStr);
+      if (CoCreateGuid(&guid) != 0 || StringFromGUID2(guid, guidStr, _countof(guidStr)) == 0)
+        XLO_THROW("Internal: RtdAsyncManager failed to create GUID");
 
-      auto topic = make_shared<AsyncTaskPublisher>(guidStr, *_mgr, task, tasks);
-      CoTaskMemFree(guidStr);
+      tasks.emplace_back(new AsyncTaskPublisher(guidStr, *_mgr, task, tasks));
 
-      _mgr->start(topic);
+      _mgr->start(tasks.back());
+    }
 
-      tasks.emplace_back(topic);
+  private:
+    shared_ptr<IRtdServer> _mgr;
+    std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
+
+    RtdAsyncManager() : _mgr(newRtdServer())
+    {
+      // We're a singleton so guaranteed to still exist at autoclose
+      Event::AutoClose() += [this]() { 
+        clear(); 
+        _mgr.reset(); 
+      };
     }
 
   public:
-    RtdAsyncManager() : _mgr(newRtdServer())
-    {}
+    static RtdAsyncManager& instance()
+    {
+      static RtdAsyncManager mgr;
+      return mgr;
+    }
 
     shared_ptr<const ExcelObj> getValue(
       shared_ptr<IRtdAsyncTask> task)
@@ -137,27 +146,17 @@ namespace xloil
     }
   };
 
-  auto* getRtdAsyncManager()
-  {
-    // TODO: I guess we should create a mutex here, although calling
-    // RTD functions from a multithreaded function is not likely to 
-    // end well. Can we check for that in a non-expensive way?
-    static auto ptr = make_shared<RtdAsyncManager>();
-    static auto deleter = Event::AutoClose() += [&]() { ptr.reset(); };
-    return ptr.get();
-  }
-
   shared_ptr<ExcelObj> rtdAsync(const shared_ptr<IRtdAsyncTask>& task)
   {
     // This cast is OK because if we are returning a non-null value we
     // will have cancelled the producer and nothing else will need the
     // ExcelObj
     return std::const_pointer_cast<ExcelObj>(
-      getRtdAsyncManager()->getValue(task));
+      RtdAsyncManager::instance().getValue(task));
   }
 
   void rtdAsyncServerClear()
   {
-    getRtdAsyncManager()->clear();
+    RtdAsyncManager::instance().clear();
   }
 }

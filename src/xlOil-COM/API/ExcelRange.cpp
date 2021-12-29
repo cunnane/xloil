@@ -111,8 +111,6 @@ namespace xloil
 
   ExcelObj ExcelRange::value() const
   {
-    // TODO: not the best implementation. May even crash Excel.
-    // On the other hand, it's not ideal to marshal COM -> ExcelObj -> Other language
     return refFromComRange(ptr()).value();
   }
 

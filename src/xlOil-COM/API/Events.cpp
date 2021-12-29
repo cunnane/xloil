@@ -68,7 +68,7 @@ namespace xloil
       }
     private:
       FW::WatchID _watchId;
-      size_t _lastTickCount;
+      decltype(GetTickCount64()) _lastTickCount;
     };
 
 

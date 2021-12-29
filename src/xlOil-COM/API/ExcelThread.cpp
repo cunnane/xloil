@@ -17,8 +17,6 @@ using std::scoped_lock;
 using std::shared_ptr;
 using std::make_shared;
 
-//TODO: rename this file
-
 namespace xloil
 {
 
@@ -102,7 +100,14 @@ namespace xloil
     void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs) noexcept
     {
       scoped_lock lock(_lock);
-      _timerQueue[item.get()] = item; // TODO: the [] is not really noexcept
+      try
+      {
+        _timerQueue[item.get()] = item;
+      }
+      catch (const std::exception& e)
+      {
+        XLO_ERROR("Internal: error running queue item '{}'", e.what());
+      }  
       SetTimer(_hiddenWindow, (UINT_PTR)item.get(), millisecs, TimerCallback);
     }
 
@@ -113,14 +118,15 @@ namespace xloil
       try
       {
         auto& self = instance();
-        auto retKill = KillTimer(hwnd, idEvent);
+        if (KillTimer(hwnd, idEvent) != 0)
+          XLO_ERROR("Internal: failed to kill window timer");
         shared_ptr<QueueItem> item;
         {
           scoped_lock lock(self._lock);
           auto found = self._timerQueue.find((QueueItem*)idEvent);
           if (found == self._timerQueue.end())
           {
-            XLO_ERROR("Internal error: bad window timer");
+            XLO_ERROR("Internal: bad window timer");
             return;
           }
           item = found->second;

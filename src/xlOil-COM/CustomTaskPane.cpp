@@ -169,7 +169,7 @@ namespace xloil
         return hwndParent;  
       }
 
-      HRESULT OnSize(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
+      HRESULT OnSize(UINT /*message*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
       {
         try
         {
@@ -238,7 +238,6 @@ namespace xloil
         else
         {
           IOleWindowPtr oleWin(_pane->ContentControl);
-          HWND result;
           oleWin->GetWindow(&parent);
         }
         constexpr wchar_t target[] = L"NUIPane";   // TODO: could be MsoWorkPane or NetUIHWND

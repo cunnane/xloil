@@ -153,7 +153,7 @@ namespace xloil
         {
           return onLoadHandler(rgvarg[0].pdispVal);
         }
-        else if (dispidMember - theFirstDispid < _functions.size())
+        else if (dispidMember - theFirstDispid < (int)_functions.size())
         {
           const auto nArgs = pdispparams->cArgs;
 
