@@ -511,20 +511,10 @@ namespace xloil
     public:
       RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
         : _registrar(
-          [](const wchar_t*, const GUID&) { return new ComObject<RtdServerImpl<ExcelObj>>(); }, 
+          [](const wchar_t*, const GUID&) { return new CComObject<RtdServerImpl<ExcelObj>>(); },
           progId, 
           fixedClsid)
       {
-#ifdef _DEBUG
-        //void* testObj;
-        //res = CoCreateInstance(
-        //  clsid, NULL,
-        //  CLSCTX_INPROC_SERVER,
-        //  __uuidof(Excel::IRtdServer),
-        //  &testObj);
-        //if (res != S_OK)
-        //  XLO_ERROR(L"Failed to create com object '{0}'", _progId);
-#endif
         // TODO: why doesn't this work?
         //_registrar.cleanRegistry();
       }

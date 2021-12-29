@@ -17,10 +17,8 @@ namespace xloil
 {
   namespace COM
   {
-    class __declspec(novtable)
-      RibbonImpl :
-        public CComObjectRootEx<CComSingleThreadModel>,
-        public NoIDispatchImpl<IRibbonExtensibility>
+    class RibbonImpl :
+        public NoIDispatchImpl<ComObject<IRibbonExtensibility>>
     {
     private:
 
@@ -84,7 +82,7 @@ namespace xloil
         return dispid;
       }
 
-      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
+      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == IID_IDispatch
@@ -206,7 +204,7 @@ namespace xloil
         const wchar_t* xml, 
         const std::function<RibbonCallback(const wchar_t*)>& handler)
       {
-        _ribbon = new ComObject<RibbonImpl>();
+        _ribbon = new RibbonImpl();
         _ribbon->setRibbon(xml, handler);
       }
       void invalidate(const wchar_t* controlId) const override
@@ -232,7 +230,7 @@ namespace xloil
         return _ribbon;
       }
 
-      CComPtr<ComObject<RibbonImpl>> _ribbon;
+      CComPtr<RibbonImpl> _ribbon;
     };
     shared_ptr<IRibbon> createRibbon(
       const wchar_t* xml,

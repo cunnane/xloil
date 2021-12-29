@@ -15,6 +15,12 @@ namespace xloil
 {
   namespace COM
   {
+    /// <summary>
+    /// Maintains a list of open workbooks and fires the WorkbookAfterClose
+    /// event if entries drop off that list.  Excel's built-in 
+    /// WorkbookBeforeClose fires before the user gets a chance to cancel
+    /// the closure, so should not be used to run clean-up actions.
+    /// </summary>
     class WorkbookMonitor
     {
     public:
@@ -29,32 +35,34 @@ namespace xloil
         else
           check();
       }
+
       static void check()
       {
-        set<wstring> workbooks;
+        set<wstring> openWorkbooks;
         auto& app = excelApp();
         auto numWorkbooks = app.Workbooks->Count;
         for (auto i = 1; i <= numWorkbooks; ++i)
-          workbooks.emplace(app.Workbooks->Item[i]->Name);
+          openWorkbooks.emplace(app.Workbooks->Item[i]->Name);
 
         std::vector<wstring> closedWorkbooks;
         std::set_difference(_workbooks.begin(), _workbooks.end(),
-          workbooks.begin(), workbooks.end(), std::back_inserter(closedWorkbooks));
+          openWorkbooks.begin(), openWorkbooks.end(), std::back_inserter(closedWorkbooks));
 
         for (auto& wb : closedWorkbooks)
           Event::WorkbookAfterClose().fire(wb.c_str());
 
-        _workbooks = workbooks;
+        _workbooks = openWorkbooks;
       }
+
     private:
       static set<wstring> _workbooks;
     };
 
     set<wstring> WorkbookMonitor::_workbooks;
 
-   
 
-    class EventHandler : public Excel::AppEvents
+    class EventHandler :
+      public ComEventHandler<NoIDispatchImpl<ComObject<Excel::AppEvents>>, Excel::AppEvents>
     {
     public:
       using Workbook = Excel::_Workbook;
@@ -62,25 +70,8 @@ namespace xloil
       using Range = Excel::Range;
 
       EventHandler(Excel::_Application* source)
-        : _cRef(1)
       {
-        connectSourceToSink(__uuidof(Excel::AppEvents), source, this, _pIConnectionPoint, _dwEventCookie);
-      }
-
-      virtual ~EventHandler()
-      {
-        close();
-      }
-
-      void close()
-      {
-        if (_pIConnectionPoint)
-        {
-          _pIConnectionPoint->Unadvise(_dwEventCookie);
-          _dwEventCookie = 0;
-          _pIConnectionPoint->Release();
-          _pIConnectionPoint = NULL;
-        }
+        connect(source);
       }
 
       void NewWorkbook(Workbook* Wb)
@@ -306,67 +297,22 @@ namespace xloil
         return S_OK;
       }
 
-      STDMETHOD_(ULONG, AddRef)()
-      {
-        InterlockedIncrement(&_cRef);
-        return _cRef;
-      }
-
-      STDMETHOD_(ULONG, Release)()
-      {
-        InterlockedDecrement(&_cRef);
-        if (_cRef == 0)
-        {
-          delete this;
-          return 0;
-        }
-        return _cRef;
-      }
-
-      STDMETHOD(QueryInterface)(REFIID riid, void ** ppvObject)
-      {
-        if (riid == IID_IUnknown)
-        {
-          *ppvObject = (IUnknown*)this;
-          AddRef();
-          return S_OK;
-        }
-        else if ((riid == IID_IDispatch) || (riid == __uuidof(Excel::AppEvents)))
-        {
-          *ppvObject = (IDispatch*)this;
-          AddRef();
-          return S_OK;
-        }
-
-        return E_NOINTERFACE;
-      }
-
-      STDMETHOD(GetTypeInfoCount)(UINT* /*pctinfo*/)
-      {
-        return E_NOTIMPL;
-      }
-
-      STDMETHOD(GetTypeInfo)(UINT /*itinfo*/, LCID /*lcid*/, ITypeInfo** /*pptinfo*/)
-      {
-        return E_NOTIMPL;
-      }
-
-      STDMETHOD(GetIDsOfNames)(REFIID /*riid*/, LPOLESTR* /*rgszNames*/, 
-        UINT /*cNames*/, LCID /*lcid*/, DISPID* /*rgdispid*/)
-      {
-        return E_NOTIMPL;
-      }
-
     private:
-      IConnectionPoint* _pIConnectionPoint;
-      DWORD	_dwEventCookie;
-      LONG _cRef;
       bool _enableAfterCalculate = true;
     };
 
     std::shared_ptr<Excel::AppEvents> createEventSink(Excel::_Application* source)
     {
-      return std::make_shared<EventHandler>(source);
+      // We manage the COM object with a shared_ptr to avoid exporting ComPtr
+      // everywhere. This means we need to AddRef/Release in the COM way.
+      auto p = std::shared_ptr<EventHandler>(new EventHandler(source),
+        [](auto* p)
+        { 
+          p->disconnect();
+          p->Release(); 
+        }); 
+      p->AddRef();
+      return p;
     }
   }
 }

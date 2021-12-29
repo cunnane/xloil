@@ -1,10 +1,11 @@
-
 #include "ClassFactory.h"
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelUI.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
+#include <atlbase.h>
 #include <atlctl.h>
+
 using std::shared_ptr;
 using std::make_shared;
 
@@ -12,50 +13,17 @@ namespace xloil
 {
   namespace COM
   {
-    // TODO: I don't think we need one of these per pane, just one global one, although we'd have to map back to ICustomTaskPane objects
-    class __declspec(novtable) CustomTaskPaneEventHandler
-      : public CComObjectRootEx<CComSingleThreadModel>,
-      public NoIDispatchImpl<Office::_CustomTaskPaneEvents>
+    class CustomTaskPaneEventHandler
+      : public ComEventHandler<
+          NoIDispatchImpl<ComObject<Office::_CustomTaskPaneEvents>>, Office::_CustomTaskPaneEvents>
     {
     public:
-      CustomTaskPaneEventHandler(ICustomTaskPane& parent, shared_ptr<ICustomTaskPaneHandler> handler)
+      CustomTaskPaneEventHandler(
+        ICustomTaskPane& parent, 
+        shared_ptr<ICustomTaskPaneHandler> handler)
         : _parent(parent)
         , _handler(handler)
       {}
-
-      void connect(Office::_CustomTaskPane* source)
-      {
-        connectSourceToSink(__uuidof(Office::_CustomTaskPaneEvents),
-          source, this, _pIConnectionPoint, _dwEventCookie);
-      }
-      virtual ~CustomTaskPaneEventHandler()
-      {
-        close();
-      }
-
-      void close()
-      {
-        if (_pIConnectionPoint)
-        {
-          _pIConnectionPoint->Unadvise(_dwEventCookie);
-          _dwEventCookie = 0;
-          _pIConnectionPoint->Release();
-          _pIConnectionPoint = NULL;
-        }
-      }
-
-      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
-      {
-        *ppv = NULL;
-        if (riid == IID_IUnknown || riid == IID_IDispatch
-          || riid == __uuidof(Office::_CustomTaskPaneEvents))
-        {
-          *ppv = this;
-          AddRef();
-          return S_OK;
-        }
-        return E_NOINTERFACE;
-      }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
@@ -99,10 +67,7 @@ namespace xloil
       }
 
     private:
-      IConnectionPoint* _pIConnectionPoint;
-      DWORD	_dwEventCookie;
       ICustomTaskPane& _parent;
-
       shared_ptr<ICustomTaskPaneHandler> _handler;
     };
 
@@ -123,9 +88,12 @@ namespace xloil
       unsigned n_bWindowOnly = 1;
 
     public:
-      CustomTaskPaneCtrl(const wchar_t* progId, const GUID& clsid)
-        : _clsid(clsid)
+      CustomTaskPaneCtrl() noexcept
+      { }
+
+      void init(const GUID& clsid) noexcept
       {
+        _clsid = clsid;
       }
       static const CLSID& WINAPI GetObjectCLSID()
       {
@@ -147,10 +115,8 @@ namespace xloil
         COM_INTERFACE_ENTRY(IViewObjectEx)
         COM_INTERFACE_ENTRY(IViewObject2)
         COM_INTERFACE_ENTRY(IViewObject)
-        //COM_INTERFACE_ENTRY(IOleInPlaceObjectWindowless)
         COM_INTERFACE_ENTRY(IOleInPlaceObject)
         COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObject)
-        //COM_INTERFACE_ENTRY2(IOleWindow, IOleInPlaceObjectWindowless)
         COM_INTERFACE_ENTRY(IOleInPlaceActiveObject)
         COM_INTERFACE_ENTRY(IOleControl)
         COM_INTERFACE_ENTRY(IOleObject)
@@ -203,7 +169,6 @@ namespace xloil
         return hwndParent;  
       }
 
-
       HRESULT OnSize(UINT message, WPARAM wParam, LPARAM lParam, BOOL& /*bHandled*/)
       {
         try
@@ -224,7 +189,7 @@ namespace xloil
     class CustomTaskPaneCreator : public ICustomTaskPane
     {
       Office::_CustomTaskPanePtr _pane;
-      std::list<CComPtr<ComObject<CustomTaskPaneEventHandler>>> _paneEvents;
+      std::list<CComPtr<CustomTaskPaneEventHandler>> _paneEvents;
       CComPtr<CustomTaskPaneCtrl> _customCtrl;
 
     public:
@@ -241,7 +206,9 @@ namespace xloil
           RegisterCom<CustomTaskPaneCtrl> registrar(
             [](const wchar_t* progId, const GUID& clsid)
             {
-              return new ComObject<CustomTaskPaneCtrl>(progId, clsid);
+              auto p = new CComObject<CustomTaskPaneCtrl>;
+              p->init(clsid);
+              return p;
             },
             formatStr(L"%s.CTP", name ? name : L"xlOil").c_str());
           _pane = ctpFactory.CreateCTP(registrar.progid(), name, targetWindow);
@@ -330,7 +297,7 @@ namespace xloil
       }
       void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) override
       {
-        _paneEvents.push_back(new ComObject<CustomTaskPaneEventHandler>(*this, events));
+        _paneEvents.push_back(new CustomTaskPaneEventHandler(*this, events));
         _paneEvents.back()->connect(_pane);
         if (_customCtrl)
           _customCtrl->addHandler(events);

@@ -30,10 +30,8 @@ namespace xloil
       void OnBeginShutdown() {}
     };
 
-    class __declspec(novtable)
-      CustomTaskPaneConsumerImpl :
-        public CComObjectRootEx<CComSingleThreadModel>,
-        public NoIDispatchImpl<ICustomTaskPaneConsumer>
+    class CustomTaskPaneConsumerImpl :
+        public NoIDispatchImpl< ComObject<ICustomTaskPaneConsumer>>
     {
     public:
       HRESULT __stdcall raw_CTPFactoryAvailable(ICTPFactory* ctpfactory) override
@@ -42,7 +40,7 @@ namespace xloil
         return S_OK;
       }
 
-      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
+      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == IID_IDispatch
@@ -81,18 +79,16 @@ namespace xloil
     };
 
     // This class does not need a disp-interface
-    class __declspec(novtable)
-      ComAddinImpl :
-        public CComObjectRootEx<CComSingleThreadModel>,
-        public NoIDispatchImpl<AddInDesignerObjects::IDTExtensibility2>
+    class ComAddinImpl :
+        public NoIDispatchImpl<ComObject<AddInDesignerObjects::IDTExtensibility2>>
     {
     public:
       ComAddinImpl()
-        : _customTaskPane(new ComObject<CustomTaskPaneConsumerImpl>())
+        : _customTaskPane(new CustomTaskPaneConsumerImpl())
         , ribbon(nullptr)
       {}
 
-      HRESULT _InternalQueryInterface(REFIID riid, void** ppv) throw()
+      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown 
@@ -151,7 +147,7 @@ namespace xloil
       }
 
       IRibbonExtensibility* ribbon;
-      CComPtr<ComObject<CustomTaskPaneConsumerImpl>> _customTaskPane;
+      CComPtr<CustomTaskPaneConsumerImpl> _customTaskPane;
       unique_ptr<ComAddinEvents> events;
     };
 
@@ -192,7 +188,7 @@ namespace xloil
     
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
         : _registrar(
-          [](const wchar_t*, const GUID&) { return new CComObject<ComAddinImpl>(); },
+          [](const wchar_t*, const GUID&) { return new ComAddinImpl(); },
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         // TODO: hook OnDisconnect to stop user from disabling COM stub.

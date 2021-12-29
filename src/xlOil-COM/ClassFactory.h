@@ -1,8 +1,6 @@
 #pragma once
-#include <atlbase.h>
-#include <atlcom.h>
-#include <atlwin.h>
 #include <Objbase.h>
+#include <atlcomcli.h>
 #include <xloil/Throw.h>
 #include <xlOilHelpers/Environment.h>
 #include <string>
@@ -12,14 +10,57 @@ namespace xloil
 {
   namespace COM
   {
-    class ClassFactory : public IClassFactory
+    /// <summary>
+    /// Simple thread-safe COM-style reference count which statisfies IUnknown.
+    /// </summary>
+    /// <typeparam name="Base"></typeparam>
+    template <class Base>
+    class ComObject : public Base
+    {
+    public:
+      template<class...Args>
+      ComObject(Args&&...args)
+        : Base(std::forward<Args>(args)...)
+        , m_dwRef(0)
+      {}
+
+      virtual ~ComObject()
+      {
+#ifdef _DEBUG
+        if (m_dwRef > 0)
+          _ASSERTE(0 && "Destructor called on object with positive ref count");
+#endif
+        // Set refcount to -(LONG_MAX/2) to protect destruction and
+        // also catch mismatched Release in debug builds
+        this->m_dwRef = -(LONG_MAX / 2);
+      }
+      ULONG AddRef() noexcept
+      {
+        return ::InterlockedIncrement(&m_dwRef);
+      }
+      ULONG Release() noexcept
+      {
+        ::InterlockedDecrement(&m_dwRef);
+#ifdef _DEBUG
+        if (m_dwRef < -(LONG_MAX / 2))
+          _ASSERTE(0 && "Release called on a pointer that has already been released");
+#endif
+        if (m_dwRef == 0)
+          delete this;
+        return (ULONG)m_dwRef;
+      }
+
+    private:
+      long m_dwRef;
+    };
+
+    class ClassFactory : public ComObject<IClassFactory>
     {
     public:
       IUnknown* _instance;
 
       ClassFactory(IUnknown* p)
         : _instance(p)
-        , _cRef(0)
       {}
 
       HRESULT STDMETHODCALLTYPE CreateInstance(
@@ -49,25 +90,6 @@ namespace xloil
         }
         return E_NOINTERFACE;
       }
-
-      STDMETHOD_(ULONG, AddRef)() override
-      {
-        InterlockedIncrement(&_cRef);
-        return _cRef;
-      }
-
-      STDMETHOD_(ULONG, Release)() override
-      {
-        InterlockedDecrement(&_cRef);
-        if (_cRef == 0)
-        {
-          delete this;
-          return 0;
-        }
-        return _cRef;
-      }
-    private:
-      LONG _cRef;
     };
 
     namespace detail
@@ -125,61 +147,6 @@ namespace xloil
       return detail::regWriteImpl<REG_DWORD>(hive, path, name, 
         (BYTE*)&value, sizeof(DWORD));
     }
-
-    /// <summary>
-    /// A copy of CComObject from ATL but with a modern forwarding constructor
-    /// </summary>
-    /// <typeparam name="Base"></typeparam>
-    template <class Base>
-    class ComObject : public Base
-    {
-    public:
-      typedef Base _BaseClass;
-
-      template<class...Args>
-      ComObject(Args&&...args)
-        : Base(std::forward<Args>(args)...)
-      {
-        _pAtlModule->Lock();
-      }
-
-      virtual ~ComObject()
-      {
-        // Set refcount to -(LONG_MAX/2) to protect destruction and
-        // also catch mismatched Release in debug builds
-        this->m_dwRef = -(LONG_MAX / 2);
-        this->FinalRelease();
-        _pAtlModule->Unlock();
-      }
-      STDMETHOD_(ULONG, AddRef)()
-      {
-        return this->InternalAddRef();
-      }
-      STDMETHOD_(ULONG, Release)()
-      {
-        ULONG l = this->InternalRelease();
-        if (l == 0)
-        {
-          // Lock the module to avoid DLL unload when destruction of member variables take a long time
-          ModuleLockHelper lock;
-          delete this;
-        }
-        return l;
-      }
-      STDMETHOD(QueryInterface)(
-        REFIID iid,
-        _COM_Outptr_ void** ppvObject) throw()
-      {
-        return this->_InternalQueryInterface(iid, ppvObject);
-      }
-      // TODO: doesnt this exist in IUnk?
-      /*template <class Q>
-      HRESULT STDMETHODCALLTYPE QueryInterface(
-        _COM_Outptr_ Q** pp) throw()
-      {
-        return QueryInterface(__uuidof(Q), (void**)pp);
-      }*/
-    };
 
     template <class TComServer>
     class RegisterCom
@@ -326,72 +293,115 @@ namespace xloil
       }
     };
   
-    template <class T>
-      class __declspec(novtable) NoIDispatchImpl :
-      public T
+    /// <summary>
+    /// Null implementation of all IDispatch functionality. Returns E_NOTIMPL
+    /// for every call.
+    /// </summary>
+    /// <typeparam name="TBase"></typeparam>
+    template <class TBase>
+    class NoIDispatchImpl : public TBase
     {
     public:
       // IDispatch
-      STDMETHOD(GetTypeInfoCount)(_Out_ UINT* /*pctinfo*/)
+      STDMETHOD(GetTypeInfoCount)(UINT* /*pctinfo*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(GetTypeInfo)(
         UINT /*itinfo*/,
         LCID /*lcid*/,
-        _Outptr_result_maybenull_ ITypeInfo** /*pptinfo*/)
+        ITypeInfo** /*pptinfo*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(GetIDsOfNames)(
-        _In_ REFIID /*riid*/,
-        _In_reads_(cNames) _Deref_pre_z_ LPOLESTR* /*rgszNames*/,
-        _In_range_(0, 16384) UINT /*cNames*/,
+        REFIID /*riid*/,
+        LPOLESTR* /*rgszNames*/,
+        UINT /*cNames*/,
         LCID /*lcid*/,
-        _Out_ DISPID* /*rgdispid*/)
+        DISPID* /*rgdispid*/)
       {
         return E_NOTIMPL;
       }
       STDMETHOD(Invoke)(
-        _In_ DISPID /*dispidMember*/,
-        _In_ REFIID /*riid*/,
-        _In_ LCID /*lcid*/,
-        _In_ WORD /*wFlags*/,
-        _In_ DISPPARAMS* /*pdispparams*/,
-        _Out_opt_ VARIANT* /*pvarResult*/,
-        _Out_opt_ EXCEPINFO* /*pexcepinfo*/,
-        _Out_opt_ UINT* /*puArgErr*/)
+        DISPID /*dispidMember*/,
+        REFIID /*riid*/,
+        LCID /*lcid*/,
+        WORD /*wFlags*/,
+        DISPPARAMS* /*pdispparams*/,
+        VARIANT* /*pvarResult*/,
+        EXCEPINFO* /*pexcepinfo*/,
+        UINT* /*puArgErr*/)
       {
         return E_NOTIMPL;
       }
     };
 
-    template<class TSource>
-      void connectSourceToSink(
-        const IID& iid,
-        TSource* source,
-        IDispatch* sink,
-        IConnectionPoint*& connectionPoint,
-        DWORD& eventCookie)
-      {
-        IConnectionPointContainer* pContainer;
-        IUnknown* pIUnknown = nullptr;
+    /// <summary>
+    /// Base class for a COM event sink which binds to a single source and responds
+    /// to QueryInterface for the TSource interface.
+    /// </summary>
+    /// <typeparam name="TBase">Base class, must inherit from TSource</typeparam>
+    /// <typeparam name="TSource">Interface for target connection point</typeparam>
+    template<class TBase, class TSource>
+    class ComEventHandler : public TBase
+    {
+    public:
+      ComEventHandler() noexcept 
+        : _pIConnectionPoint(nullptr)
+      {}
 
-        // Get IUnknown for sink
-        sink->QueryInterface(IID_IUnknown, (void**)(&pIUnknown));
+      virtual ~ComEventHandler() noexcept
+      {
+        // We do not disconnect as should never enter the dtor while connected
+      }
+
+      bool connect(IUnknown* source) noexcept
+      {
+        IConnectionPointContainer* pContainer = nullptr;
 
         // Get connection point for source
         source->QueryInterface(IID_IConnectionPointContainer, (void**)&pContainer);
         if (pContainer)
         {
-          pContainer->FindConnectionPoint(iid, &connectionPoint);
+          pContainer->FindConnectionPoint(__uuidof(TSource), &_pIConnectionPoint);
           pContainer->Release();
         }
 
-        if (connectionPoint)
-          connectionPoint->Advise(pIUnknown, &eventCookie);
+        return _pIConnectionPoint && (S_OK == _pIConnectionPoint->Advise(this, &_dwEventCookie));
+      }
 
-        pIUnknown->Release();
-    }
+      /// <summary>
+      /// Must be called to destroy this object because the connection creats 
+      /// a reference to this class, preventing it from being destroyed.
+      /// </summary>
+      void disconnect() noexcept
+      {
+        if (_pIConnectionPoint)
+        {
+          _pIConnectionPoint->Unadvise(_dwEventCookie);
+          _dwEventCookie = 0;
+          _pIConnectionPoint->Release();
+          _pIConnectionPoint = NULL;
+        }
+      }
+
+      HRESULT QueryInterface(REFIID riid, void** ppvObject) noexcept
+      {
+        if (riid == IID_IUnknown)
+          *ppvObject = (IUnknown*)this;
+        else if ((riid == IID_IDispatch) || (riid == __uuidof(TSource)))
+          *ppvObject = (IDispatch*)this;
+        else
+          return E_NOINTERFACE;
+
+        AddRef();
+        return S_OK;
+      }
+
+    private:
+      IConnectionPoint* _pIConnectionPoint;
+      DWORD	_dwEventCookie;
+    };
   }
 }
