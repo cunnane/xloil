@@ -3,7 +3,7 @@
 #include <Windows.h>
 
 #include <xloil/LogWindow.h>
-#include <xloil/ExcelApp.h>
+#include <xloil/ExcelThread.h>
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
 #include <xlOilHelpers/Exception.h>
@@ -11,6 +11,8 @@
 
 using std::wstring;
 using std::string;
+using std::shared_ptr;
+using std::make_shared;
 
 namespace xloil 
 {
@@ -25,7 +27,36 @@ namespace xloil
       std::list<string> _messages;
       wstring _windowText;
       size_t _maxSize;
-      const wchar_t* theWindowClass = L"xlOil_Log";
+      shared_ptr<ATOM> _windowClass;
+      static constexpr wchar_t* theWindowClass = L"xlOil_Log";
+
+      static auto createWindowClass(HINSTANCE hInstance, const wchar_t* windowClass)
+      {
+        // Define the main window class
+        WNDCLASSEX win;
+        win.cbSize = sizeof(WNDCLASSEX);
+        win.hInstance = hInstance;
+        win.lpszClassName = windowClass;
+        win.lpfnWndProc = StaticWindowProc;
+        win.style = CS_HREDRAW | CS_VREDRAW;
+
+        // Use default icons and mouse pointer
+        win.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+        win.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+        win.hCursor = LoadCursor(NULL, IDC_ARROW);
+
+        win.lpszMenuName = NULL;
+        win.cbClsExtra = 0;  // No extra bytes after the window class
+        win.cbWndExtra = sizeof(void*);
+        win.hbrBackground = GetSysColorBrush(COLOR_3DFACE); // Use default colour
+
+        auto atom = RegisterClassEx(&win);
+
+        return std::shared_ptr<ATOM>(new ATOM(atom), [](ATOM* atom) {
+          UnregisterClass((LPCWSTR)LOWORD(*atom), nullptr);
+          delete atom;
+        });
+      }
 
     public:
       LogWindow(
@@ -37,9 +68,12 @@ namespace xloil
         size_t maxSize)
         : _maxSize(maxSize)
       {
-        // TODO: remove window class on xloil shutdown?
-        static auto win = createWindowClass(hInstance, theWindowClass);
-        
+        static auto winClass = createWindowClass(hInstance, theWindowClass);
+
+        // Take a reference to the window class so we never try to unregister the
+        // class while there are open windows remaining.
+        _windowClass = winClass;
+
         // If we try to create a window from our class during xlAutoOpen, we will get
         // the cryptic "ntdll.dll (EXCEL.EXE) RangeChecks instrumentation code detected 
         // an out of range array access".  Whatever Excel gets up to during start-up
@@ -154,30 +188,6 @@ namespace xloil
         SendMessage(theTextControl, EM_LINESCROLL, 0, numLines);
       }
 
-      static ATOM createWindowClass(HINSTANCE hInstance, const wchar_t* windowClass)
-      {
-        // Define the main window class
-        WNDCLASSEX win;
-        win.cbSize = sizeof(WNDCLASSEX);
-        win.hInstance = hInstance;
-        win.lpszClassName = windowClass;
-        win.lpfnWndProc = StaticWindowProc;
-        win.style = CS_HREDRAW | CS_VREDRAW;
-
-        // Use default icons and mouse pointer
-        win.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        win.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
-        win.hCursor = LoadCursor(NULL, IDC_ARROW);
-
-        win.lpszMenuName = NULL;
-        win.cbClsExtra = 0;  // No extra bytes after the window class
-        win.cbWndExtra = sizeof(void*);
-        win.hbrBackground = GetSysColorBrush(COLOR_3DFACE); // Use default colour
-
-        auto res = RegisterClassEx(&win);
-        return res;
-      }
-
       void showWindow() noexcept
       {
         ShowWindow(theMainWindow, SW_SHOWNORMAL);
@@ -249,7 +259,7 @@ namespace xloil
       }
     };
 
-    std::shared_ptr<ILogWindow> createLogWindow(
+    shared_ptr<ILogWindow> createLogWindow(
       HWND parentWindow,
       HINSTANCE parentInstance,
       const wchar_t* winTitle,
@@ -259,12 +269,12 @@ namespace xloil
     {
       try
       {
-        return std::make_shared<LogWindow>(
+        return make_shared<LogWindow>(
           parentWindow, parentInstance, winTitle, menuBar, menuHandler, historySize);
       }
       catch (...)
       {
-        return std::shared_ptr<ILogWindow>();
+        return shared_ptr<ILogWindow>();
       }
     }
 
@@ -275,7 +285,7 @@ namespace xloil
 
     void writeLogWindow(const char* msg) noexcept
     {
-      // TODO: mutex!
+      // Thread safe since C++11
       static auto logWindow = createLogWindow(
         0, (HINSTANCE)State::coreModuleHandle(), L"xlOil Load Failure", 0, 0, 100);
 
