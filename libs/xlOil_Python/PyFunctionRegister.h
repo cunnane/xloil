@@ -96,6 +96,8 @@ namespace xloil
       bool isAsync;
       bool isRtdAsync;
       bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
+      bool isCommand()   const  { return (_info->options & FuncInfo::COMMAND) != 0; }
+
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
 
       static std::shared_ptr<const DynamicSpec> createSpec(

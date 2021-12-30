@@ -154,6 +154,20 @@ def pyTestDate(x: dt.datetime) -> dt.datetime:
 def pyTestKwargs(**kwargs) -> dict:
     return kwargs
 
+
+#------------------------------
+# Macros and Excel.Application
+#------------------------------
+
+@xlo.func(command=True)
+def pyPressRunTests():
+
+    xlo.Range("TestArea").clear()
+    
+    r1 = xlo.Range("G1")
+    r1.value = "Spam"
+   
+        
 #------------------
 # Async functions
 #------------------

@@ -327,8 +327,9 @@ def func(fn=None,
          group="", 
          local=None,
          rtd=None,
-         macro=False, 
-         threaded=False, 
+         macro=True, 
+         command=False,
+         threaded=False,
          volatile=False,
          is_async=False,
          register=True):
@@ -382,22 +383,28 @@ def func(fn=None,
         can override this behaviour with this parameter. It has no effect outside 
         workbook-linked modules.
     macro: bool
-        If True, registers the function as Macro Type. This grants the function
-        extra priveledges, such as the ability to see un-calced cells and 
-        call the full range of Excel.Application functions. Functions which will
-        be invoked as Excel macros, i.e. not functions called from a cell, should
-        be declared with this attribute.
+        If True, registers the function as *Macro Sheet Type*. This grants the 
+        function extra priveledges, such as the ability to see un-calced cells  
+        and call Excel.Application functions. This is not the same as a 'VBA Macro' 
+        which is a *command*.  *Threaded* functions cannot be declared as macro type.
+    command: bool
+        If True, registers this as a *Command*.  Commands are run outside the 
+        calculation cycle on Excel's main thread,, have full permissions on the Excel
+        object model and do not return a value. They correspond to VBA's 'Macros' or
+        'Subroutines'.  Unless declared *local*,  XLL commands are hidden and 
+        not displayed in dialog boxes for running macros, although their names 
+        can be entered anywhere a valid command name is required.
     rtd: bool
         Determines whether a function declared as async uses native or RTD async.
         Only RTD functions are calculated in the background in Excel, native async
         functions will be stopped if calculation is interrupted. Default is True.
     threaded: bool
         Declares the function as safe for multi-threaded calculation. The
-        function must be careful when accessing global objects. 
-        Since python (at least CPython) is single-threaded there is
-        no direct performance benefit from enabling this. However, if you make 
-        frequent calls to C-based libraries like numpy or pandas you make
-        be able to realise speed gains.
+        function must be careful when accessing global objects.  Since python
+        (at least CPython) is single-threaded there is no direct performance
+        benefit from enabling this. However, if you make frequent calls to
+        C-based libraries like numpy or pandas you make be able to realise
+        speed gains.
     volatile: bool
         Tells Excel to recalculate this function on every calc cycle: the same
         behaviour as the NOW() and INDIRECT() built-ins.  Due to the performance 
@@ -422,14 +429,18 @@ def func(fn=None,
             elif is_async:
                 func_args = func_args[1:]
 
-            # RTD-async is default unless rtd=False was explicitly specified.
+            # Determine the 'features' string based on our bool flags
             features=""
-            if is_async or async_def:
+
+            # RTD-async is default unless rtd=False was explicitly specified.
+            if is_async or async_def: 
                 features=("rtd" if rtd is None or rtd else "async")
-            elif macro:
-                features="macro"
             elif threaded:
                 features="threaded"
+            elif command:
+                features="command"
+            elif macro:
+                features="macro"
 
             # Default to true unless overriden - the parameter is ignored if a workbook
             # has not been linked

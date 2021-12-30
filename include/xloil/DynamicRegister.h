@@ -7,28 +7,47 @@ namespace xloil
   template<typename TRet, typename TData> using DynamicCallback
     = TRet(*)(const TData* data, const ExcelObj**) noexcept;
 
+  class RegisteredCallback;
+
+  /// <summary>
+  /// Holds a run-time specified function spec. Can call the underlying function 
+  /// or write a runtime thunk and register with UDF with Excel. Although the 
+  /// ctor is templated on return type, only 3 return types are supported:
+  ///   * ExcelObj* - normal worksheet functions
+  ///   * void      - async function
+  ///   * int       - commands
+  /// </summary>
   class DynamicSpec : public WorksheetFuncSpec
   {
+    friend class RegisteredCallback;
+
   public:
     template <class TRet, class TData>
     DynamicSpec(
       const std::shared_ptr<const FuncInfo>& info,
       DynamicCallback<TRet, TData> callback,
       const std::shared_ptr<const TData>& context)
-      : DynamicSpec(
-          info,
-          (DynamicCallback<TRet, void>) callback,
-          std::static_pointer_cast<const void>(context))
-    {}
-
-    std::shared_ptr<const void> _context;
+      : WorksheetFuncSpec(info)
+      , _callback(callback)
+      , _context(context)
+      , _hasReturn(!std::is_same_v<TRet, void>)
+      , _returnNull(!std::is_same_v<TRet, ExcelObj*>)
+    {
+      static_assert(std::is_same_v<TRet, void>
+                 || std::is_same_v<TRet, ExcelObj*>
+                 || std::is_same_v<TRet, int>);
+    }
 
     ExcelObj* call(const ExcelObj** args) const override
     {
       if (_hasReturn)
-        return static_cast<DynamicCallback<ExcelObj*, void>>(_callback)(_context.get(), args);
+      {
+        auto ret = static_cast<DynamicCallback<ExcelObj*, void>>(_callback)(_context.get(), args);
+        return  _returnNull ? nullptr : ret;
+      }
       else
       {
+        // Only async functions can get here, it's not clear we would to call them ourselves
         static_cast<DynamicCallback<void, void>>(_callback)(_context.get(), args);
         return nullptr;
       }
@@ -37,30 +56,11 @@ namespace xloil
     XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
   private:
-    DynamicSpec(
-      const std::shared_ptr<const FuncInfo>& info,
-      DynamicCallback<void, void> callback,
-      const std::shared_ptr<const void>& context)
-      : WorksheetFuncSpec(info)
-      , _callback(callback)
-      , _context(context)
-      , _hasReturn(false)
-    {}
-
-    DynamicSpec(
-      const std::shared_ptr<const FuncInfo>& info,
-      DynamicCallback<ExcelObj*, void> callback,
-      const std::shared_ptr<const void>& context)
-      : WorksheetFuncSpec(info)
-      , _callback(callback)
-      , _context(context)
-      , _hasReturn(true)
-    {}
-
+    std::shared_ptr<const void> _context;
     void* _callback;
     bool _hasReturn;
+    bool _returnNull;
   };
-
 
   namespace detail
   {
@@ -147,13 +147,19 @@ namespace xloil
 
     XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
-    ExcelObj* call(const ExcelObj** args) const override;
+    ExcelObj* call(const ExcelObj** args) const;
     DynamicExcelFunc<TRet> function;
   };
 
   inline ExcelObj* LambdaSpec<ExcelObj*>::call(const ExcelObj** args) const
   {
     return function(*info(), args);
+  }
+
+  inline ExcelObj* LambdaSpec<int>::call(const ExcelObj** args) const
+  {
+    function(*info(), args);
+    return nullptr;
   }
 
   inline ExcelObj* LambdaSpec<void>::call(const ExcelObj** args) const

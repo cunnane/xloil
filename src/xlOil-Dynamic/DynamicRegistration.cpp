@@ -32,108 +32,110 @@ extern "C"  __declspec(dllexport) void* __stdcall XLOIL_STUB_NAME()
 
 namespace xloil
 {
-  constexpr char* XLOIL_STUB_NAME_STR = XLO_STR(XLOIL_STUB_NAME);
-
-  class PageUnlock
+  namespace
   {
-  public:
-    PageUnlock(void* address, size_t size)
-      : _address(address)
-      , _size(size)
+    constexpr char* XLOIL_STUB_NAME_STR = XLO_STR(XLOIL_STUB_NAME);
+
+    class PageUnlock
     {
-      if (!VirtualProtect(address, size, PAGE_READWRITE, &_permission))
-        XLO_THROW(Helpers::writeWindowsError());
-    }
-    ~PageUnlock()
+    public:
+      PageUnlock(void* address, size_t size)
+        : _address(address)
+        , _size(size)
+      {
+        if (!VirtualProtect(address, size, PAGE_READWRITE, &_permission))
+          XLO_THROW(Helpers::writeWindowsError());
+      }
+      ~PageUnlock()
+      {
+        VirtualProtect(_address, _size, _permission, &_permission);
+      }
+    private:
+      void* _address;
+      size_t _size;
+      DWORD _permission;
+    };
+
+    class ThunkHolder
     {
-      VirtualProtect(_address, _size, _permission, &_permission);
-    }
-  private:
-    void* _address;
-    size_t _size;
-    DWORD _permission;
-  };
+      unique_ptr<DllExportTable> theExportTable;
+      int theFirstStub;
 
-  class ThunkHolder
-  {
-    unique_ptr<DllExportTable> theExportTable;
-    int theFirstStub;
+      ThunkHolder()
+        : theExportTable(new DllExportTable((HMODULE)State::coreModuleHandle()))
+        , theAllocator(theExportTable->imageBase(), (BYTE*)theExportTable->imageBase() + DWORD(-1))
+      {
+        theCoreDllName = State::coreDllName();
+        theFirstStub = theExportTable->findOrdinal(
+          decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
+        if (theFirstStub < 0)
+          XLO_THROW("Could not find xlOil stub");
+      }
 
-    ThunkHolder()
-      : theExportTable(new DllExportTable((HMODULE)State::coreModuleHandle()))
-      , theAllocator(theExportTable->imageBase(), (BYTE*)theExportTable->imageBase() + DWORD(-1))
-    {
-      theCoreDllName = State::coreDllName();
-      theFirstStub = theExportTable->findOrdinal(
-        decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
-      if (theFirstStub < 0)
-        XLO_THROW("Could not find xlOil stub");
-    }
+    public:
+      const wchar_t* theCoreDllName;
+      ExternalRegionAllocator theAllocator;
 
-  public:
-    const wchar_t* theCoreDllName;
-    ExternalRegionAllocator theAllocator;
+      static ThunkHolder& get() {
+        static ThunkHolder instance;
+        return instance;
+      }
 
-    static ThunkHolder& get() {
-      static ThunkHolder instance;
-      return instance;
-    }
+      auto callBuildThunk(
+        const void* callback,
+        const void* contextData,
+        const size_t numArgs,
+        const bool hasReturnVal)
+      {
+        // TODO: cache thunks with same number of args and callback?
+        ThunkWriter writer(callback, contextData, numArgs, hasReturnVal);
 
-    auto callBuildThunk(
-      const void* callback,
-      const void* contextData,
-      const size_t numArgs,
-      const bool hasReturnVal)
-    {
-      // TODO: cache thunks with same number of args and callback?
-      ThunkWriter writer(callback, contextData, numArgs, hasReturnVal);
-    
-      auto codeBytesNeeded = writer.codeSize();
+        auto codeBytesNeeded = writer.codeSize();
 
-      // We use a custom allocator for the thunks, which must have
-      // addresses in the range to be [imageBase, imageBase + DWORD_MAX]
-      // described in the DLL export table. Using VirtualAlloc with
-      // MEM_TOP_DOWN for some reason is not guaranteed to return
-      // addresses above imageBase.
-      auto* thunk = theAllocator.alloc((unsigned)codeBytesNeeded);
+        // We use a custom allocator for the thunks, which must have
+        // addresses in the range to be [imageBase, imageBase + DWORD_MAX]
+        // described in the DLL export table. Using VirtualAlloc with
+        // MEM_TOP_DOWN for some reason is not guaranteed to return
+        // addresses above imageBase.
+        auto* thunk = theAllocator.alloc((unsigned)codeBytesNeeded);
 
-      DWORD dummy;
-      if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_READWRITE, &dummy))
-        XLO_THROW(Helpers::writeWindowsError());
+        DWORD dummy;
+        if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_READWRITE, &dummy))
+          XLO_THROW(Helpers::writeWindowsError());
 
-      // TODO: compact the alloc if codeBytesWritten < codeBytesNeeded?
-      auto codeBytesWritten = writer.writeCode((char*)thunk, codeBytesNeeded);
+        // TODO: compact the alloc if codeBytesWritten < codeBytesNeeded?
+        auto codeBytesWritten = writer.writeCode((char*)thunk, codeBytesNeeded);
 
-      // It's good security practice to remove write permissions if we're
-      // giving execute permissions, which the thunk code clearly requires
-      if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_EXECUTE_READ, &dummy))
-        XLO_THROW(Helpers::writeWindowsError());
+        // It's good security practice to remove write permissions if we're
+        // giving execute permissions, which the thunk code clearly requires
+        if (!VirtualProtect(thunk, codeBytesNeeded, PAGE_EXECUTE_READ, &dummy))
+          XLO_THROW(Helpers::writeWindowsError());
 
-      return std::make_pair(thunk, codeBytesWritten);
-    }
+        return std::make_pair(thunk, codeBytesWritten);
+      }
 
-    /// <summary>
-    /// Locates a suitable entry point in our DLL and hooks the specifed thunk to it
-    /// </summary>
-    /// <returns>The name of the entry point selected</returns>
-    auto hookEntryPoint(const void* thunk)
-    {
-      // Hook the thunk by modifying the export address table
-      theExportTable->hook(theFirstStub, (void*)thunk);
+      /// <summary>
+      /// Locates a suitable entry point in our DLL and hooks the specifed thunk to it
+      /// </summary>
+      /// <returns>The name of the entry point selected</returns>
+      auto hookEntryPoint(const void* thunk)
+      {
+        // Hook the thunk by modifying the export address table
+        theExportTable->hook(theFirstStub, (void*)thunk);
 
-      const auto entryPoint = decorateCFunction(XLOIL_STUB_NAME_STR, 0);
+        const auto entryPoint = decorateCFunction(XLOIL_STUB_NAME_STR, 0);
 
 #ifdef _DEBUG
-      // Check the thunk is hooked to Windows' satisfaction
-      void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(),
-        entryPoint.c_str());
-      XLO_ASSERT(procNew == thunk);
+        // Check the thunk is hooked to Windows' satisfaction
+        void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(),
+          entryPoint.c_str());
+        XLO_ASSERT(procNew == thunk);
 #endif
 
-      return entryPoint;
-    }
-  };
-
+        return entryPoint;
+      }
+    };
+  }
 
   class RegisteredCallback : public RegisteredWorksheetFunc
   {

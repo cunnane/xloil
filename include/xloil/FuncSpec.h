@@ -41,6 +41,12 @@ namespace xloil
     /// <returns></returns>
     const std::wstring& name() const { return _info->name; }
 
+    /// <summary>
+    /// This call is used for local functions. It does not necessarily equal the
+    /// callback used for Excel UDFs set by *registerFunc*
+    /// </summary>
+    /// <param name="args"></param>
+    /// <returns></returns>
     virtual ExcelObj* call(const ExcelObj** args) const = 0;
 
   private:

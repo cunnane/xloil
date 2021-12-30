@@ -133,10 +133,14 @@ int __stdcall localFunctionEntryPoint(
 
     auto* result = func.call(xllArgPtr);
 
-    COM::excelObjToVariant(returnVal, *result);
+    // Commands (subroutines) can return a null pointer
+    if (result)
+    {
+      COM::excelObjToVariant(returnVal, *result);
 
-    if ((result->xltype & msxll::xlbitDLLFree) != 0)
-      delete result;
+      if ((result->xltype & msxll::xlbitDLLFree) != 0)
+        delete result;
+    }
 
     return S_OK;
   }

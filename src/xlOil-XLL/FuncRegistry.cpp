@@ -64,7 +64,7 @@ namespace xloil
       // Build the argument type descriptor
       string argTypes;
       if (opts & FuncInfo::COMMAND)
-        argTypes += '>';  // Commands always return void
+        argTypes += 'A';  // Commands always return int
       else
         argTypes += 'U';  // Otherwise return an XLOPER12 unless overridden below
 

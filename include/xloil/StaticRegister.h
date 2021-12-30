@@ -77,6 +77,10 @@ namespace xloil
   {
     return returnValue(e.what());
   }
+  inline ExcelObj* returnValue(ExcelObj* p)
+  {
+    return p;
+  }
   inline ExcelObj* returnReference(const ExcelObj& obj)
   {
     return const_cast<ExcelObj*>(&obj);

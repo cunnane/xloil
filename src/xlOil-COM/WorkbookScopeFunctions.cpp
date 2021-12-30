@@ -39,14 +39,11 @@ namespace xloil
     {
       int line;
       VBIDE::_CodeModulePtr mod;
-      void write(const wchar_t* str)
-      {
-        mod->InsertLines(line++, str);
-      }
 
-      void write(const wstring& str)
+      template <typename S, typename... Args>
+      void write(const S& fmtStr, Args&&... args)
       {
-        mod->InsertLines(line++, str.c_str());
+        mod->InsertLines(line++, fmt::format(fmtStr, std::forward<Args>(args)...).c_str());
       }
     };
 
@@ -110,18 +107,27 @@ namespace xloil
           if (!args.empty()) args.pop_back();
 
           // We write:
+          // 
           // Public Function name(Optional arg0, Optional arg1,...)
           //   Dim args: args = Array(arg0, arg1, ...)
           //   localFunctionEntryPoint workbook, name, name, args
           // End Function
+          // 
+          // For a command we replace Function with Sub and add a dummy return
+          // as localFunctionEntryPoint expects a return value
+          //
+          const bool isSub = (func.options & FuncInfo::COMMAND) != 0;
+          const auto& name = func.name;
+          const auto declaration = isSub ? L"Sub" : L"Function";
+          const auto retVar = isSub ? L"dummy" : name;
 
-          auto& name = func.name;
-
-          writer.write(fmt::format(L"Public Function {0}({1})", name, optionalArgs).c_str());
-          writer.write(fmt::format(L"  Dim args: args=Array({0})", args));
-          writer.write(fmt::format(L"  localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
-            name, workbookName, name));
-          writer.write(L"End Function");
+          writer.write(L"Public {2} {0}({1})", name, optionalArgs, declaration);
+          writer.write(L"  Dim args: args=Array({0})", args);
+          if (isSub)
+            writer.write(L"  Dim dummy");
+          writer.write(L"  localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
+            retVar, workbookName, name);
+          writer.write(L"End {0}", declaration);
         }
       }
       XLO_RETHROW_COM_ERROR;

@@ -39,7 +39,7 @@ namespace xloil
     constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
-    void setFuncType(PyFuncInfo& info, const string& features, bool isVolatile)
+    void setFuncType(PyFuncInfo& info, const string& features, bool isVolatile, bool& isLocalFunc)
     {
       unsigned base = isVolatile ? FuncInfo::VOLATILE : 0;
       if (features.empty())
@@ -51,7 +51,7 @@ namespace xloil
       else if (features == "threaded")
       {
         info.setFuncOptions(FuncInfo::THREAD_SAFE | base);
-        // turn off local?
+        isLocalFunc = false;
       }
       else if (features == "rtd")
       {
@@ -60,8 +60,10 @@ namespace xloil
       else if (features == "async")
       {
         info.isAsync = true;
-        // turn off local!
+        isLocalFunc = false;
       }
+      else if (features == "command")
+        info.setFuncOptions(FuncInfo::COMMAND | base);
       else
         throw py::value_error(formatStr("FuncSpec: Unknown function features '%s'", features.c_str()));
     }
@@ -93,7 +95,7 @@ namespace xloil
       if (!func.ptr() || func.is_none())
         XLO_THROW(L"No python function specified for {0}", name);
 
-      setFuncType(*this, features, isVolatile);
+      setFuncType(*this, features, isVolatile, isLocalFunc);
 
       if (isAsync)
       {
@@ -204,8 +206,30 @@ namespace xloil
       }
     }
 
-    template<bool TThreadSafe>
-    ExcelObj* pythonCallback(
+    struct CommandReturn
+    {
+      template<class T> int operator()(T*) const
+      {
+        return 1;
+      }
+
+      template<class T> int operator()(T&& x) const
+      {
+        XLO_WARN("Command returned: {0}", std::forward<T>(x));
+        return 1;
+      }
+    };
+
+    struct NormalReturn
+    {
+      template<class T> ExcelObj* operator()(T&& x) const
+      {
+        return returnValue(std::forward<T>(x));
+      }
+    };
+
+    template<bool TThreadSafe=false, class TReturn = NormalReturn>
+    decltype(TReturn()(0)) pythonCallback(
       const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
@@ -244,21 +268,21 @@ namespace xloil
           // enough: registration with Excel will fail otherwise.
           static ExcelObj result;
           info->invoke(result, argsArray, kwargs.ptr());
-          return &result;
+          return TReturn()(&result);
         }
       }
       catch (const py::error_already_set& e)
       {
         raiseUserException(e);
-        return returnValue(e.what());
+        return TReturn()(e.what());
       }
       catch (const std::exception& e)
       {
-        return returnValue(e.what());
+        return TReturn()(e.what());
       }
       catch (...)
       {
-        return returnValue(CellError::Null);
+        return TReturn()(CellError::Null);
       }
     }
 
@@ -274,19 +298,19 @@ namespace xloil
         return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, func);
       else if (func->isThreadSafe())
         return make_shared<DynamicSpec>(func->info(), &pythonCallback<true>, func);
+      else if (func->isCommand())
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false, CommandReturn>, func);
       else
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false>, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<>, func);
     }
 
     void PyFuncInfo::checkArgConverters() const
     {
-      // TODO: handle kwargs#
+      // TODO: handle kwargs
       for (auto i = 0u; i < _args.size() - (_hasKeywordArgs ? 1u : 0); ++i)
         if (!_args[i].converter)
           XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
     }
-
-   
 
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed
