@@ -74,4 +74,12 @@ namespace xloil
         std::swap(array(j, i), array(i, j));
   }
   XLO_REGISTER_FUNC(testTranspose).threadsafe();
+
+  XLO_ENTRY_POINT(int) testCommand(
+    const ExcelObj*, const ExcelObj*
+  )
+  {
+    return 1;
+  }
+  XLO_REGISTER_FUNC(testCommand).command();
 }

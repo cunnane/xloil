@@ -5,7 +5,8 @@
 #include <xloil/Events.h>
 #include <xloil/ExcelRef.h>
 #include <xloil/Date.h>
-#include <xloil/ExcelApp.h>
+#include <xloil/ExcelThread.h>
+#include <xloil/AppObjects.h>
 
 using std::shared_ptr;
 

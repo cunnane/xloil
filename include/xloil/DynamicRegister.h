@@ -84,6 +84,7 @@ namespace xloil
       {
         return [func](const FuncInfo& info, const ExcelObj** args)
         {
+          (void)info;
           try
           {
             if constexpr (decltype(hasInfo<TFunc>(0))::value)
@@ -93,29 +94,10 @@ namespace xloil
           }
           catch (const std::exception& e)
           {
-            return returnValue(e);
-          }
-        };
-      }
-    };
-
-    template<>
-    struct DynamicCallbackFromLambda<void>
-    {
-      template<typename TFunc, size_t... ArgIndices >
-      auto operator()(TFunc func, std::index_sequence<ArgIndices...>)
-      {
-        return [func](const FuncInfo& info, const ExcelObj** args)
-        {
-          try
-          {
-            if constexpr (decltype(hasInfo<TFunc>(0))::value)
-              func(info, (ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
+            if constexpr(std::is_same_v<TRet, ExcelObj*>)
+              return returnValue(e);
             else
-              func((ArgTypes<TFunc>::arg<ArgIndices>::type)(*args[ArgIndices])...);
-          }
-          catch (...)
-          {
+              XLO_WARN(e.what());
           }
         };
       }

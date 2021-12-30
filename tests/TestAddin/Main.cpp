@@ -1,6 +1,6 @@
 #include <xloil/ExcelUI.h>
 #include <xloil/Log.h>
-#include <xlOil/ExcelApp.h>
+#include <xlOil/ExcelThread.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/Async.h>
 #include <xloil/XllEntryPoint.h>
@@ -40,6 +40,15 @@ struct MyAddin
       })
       .name(L"testDynamicAsync")
       .arg(L"Arg1")
+      .registerFunc());
+    theFuncs.push_back(RegisterLambda<int>(
+      [](const FuncInfo& info, const ExcelObj& arg1)
+      {
+        return 1;
+      })
+      .name(L"testDynamicAsync")
+      .arg(L"Arg1")
+      .command()
       .registerFunc());
 
     runComSetupOnXllOpen([this]()

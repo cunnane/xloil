@@ -67,7 +67,7 @@ namespace xloil
       auto* srv = getAnotherRtdServer();
       if (!srv->peek(topic.c_str()))
         srv->start(topic.c_str(),
-          [](RtdNotifier&) { return std::future<void>(); });
+          [](RtdNotifier) { return std::future<void>(); });
       srv->publish(topic.c_str(), ExcelObj(val));
       return returnValue(tag);
     }

@@ -158,7 +158,22 @@ def pyTestKwargs(**kwargs) -> dict:
 #------------------------------
 # Macros and Excel.Application
 #------------------------------
+# 'Macros' in VBA are subroutines which do not return a value. These are 
+# called 'commands' in the XLL interface and hence in xlOil.
+#
+# Unless declared *local*,  XLL commands are hidden and not displayed 
+# in dialog boxes for running macros, although their names can be 
+# entered anywhere a valid command name is required.
+#
 
+@xlo.func(command=True, local=False)
+def pyRunTestsNonLocal():
+
+    r1 = xlo.Range("G1")
+    if r1.value == "Spam":
+        r1.value = "Ham"
+    
+    
 @xlo.func(command=True)
 def pyPressRunTests():
 
@@ -166,6 +181,8 @@ def pyPressRunTests():
     
     r1 = xlo.Range("G1")
     r1.value = "Spam"
+    
+    xlo.app().Run("pyRunTestsNonLocal")
    
         
 #------------------

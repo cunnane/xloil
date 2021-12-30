@@ -235,8 +235,9 @@ namespace xloil
 
   namespace
   {
-    ExcelObj* invokeLambda(
-      const LambdaSpec<ExcelObj*>* data,
+    template<class TRet>
+    TRet invokeLambda(
+      const LambdaSpec<TRet>* data,
       const ExcelObj** args) noexcept
     {
       try
@@ -245,20 +246,14 @@ namespace xloil
       }
       catch (const std::exception& e)
       {
-        return returnValue(e);
-      }
-    }
-
-    void invokeVoidLambda(
-      const LambdaSpec<void>* data,
-      const ExcelObj** args) noexcept
-    {
-      try
-      {
-        data->function(*data->info(), args);
-      }
-      catch (...)
-      {
+        if constexpr (std::is_same_v<TRet, ExcelObj*>)
+          return returnValue(e);
+        else
+        {
+          XLO_WARN(e.what());
+          if constexpr (std::is_same_v<TRet, int>)
+            return 0;
+        }
       }
     }
   }
@@ -266,13 +261,19 @@ namespace xloil
   std::shared_ptr<RegisteredWorksheetFunc> LambdaSpec<ExcelObj*>::registerFunc() const
   {
     auto thisPtr = std::static_pointer_cast<const LambdaSpec<ExcelObj*>>(this->shared_from_this());
-    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda, thisPtr);
+    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda<ExcelObj*>, thisPtr);
+    return thatPtr->registerFunc();
+  }
+  std::shared_ptr<RegisteredWorksheetFunc> LambdaSpec<int>::registerFunc() const
+  {
+    auto thisPtr = std::static_pointer_cast<const LambdaSpec<int>>(this->shared_from_this());
+    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda<int>, thisPtr);
     return thatPtr->registerFunc();
   }
   std::shared_ptr<RegisteredWorksheetFunc> LambdaSpec<void>::registerFunc() const
   {
     auto thisPtr = std::static_pointer_cast<const LambdaSpec<void>>(this->shared_from_this());
-    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeVoidLambda, thisPtr);
+    auto thatPtr = make_shared<DynamicSpec>(info(), &invokeLambda<void>, thisPtr);
     return thatPtr->registerFunc();
   }
 }
