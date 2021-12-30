@@ -118,7 +118,7 @@ namespace xloil
       try
       {
         auto& self = instance();
-        if (KillTimer(hwnd, idEvent) != 0)
+        if (KillTimer(hwnd, idEvent) == 0)
           XLO_ERROR("Internal: failed to kill window timer");
         shared_ptr<QueueItem> item;
         {
