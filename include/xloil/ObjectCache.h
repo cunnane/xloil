@@ -61,7 +61,7 @@ namespace xloil
         size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
         for (auto _Where = begin(_Bucket); _Where != end(_Bucket); ++_Where)
           if (_Where->first == _Keyval)
-              return _Where;
+            return _Where;
         return (end());
       }
       template <class T>
@@ -180,7 +180,7 @@ namespace xloil
     /// Used to append cell count to end of reference
     /// </summary>
     static constexpr uint8_t PADDING = 2;
-  
+
     TUniquifier _uniquifier;
 
     ObjectCache()
@@ -203,16 +203,18 @@ namespace xloil
 
       if (reapOnWorkbookClose)
         p->_workbookCloseHandler =
-          xloil::Event::WorkbookAfterClose().weakBind(std::weak_ptr<ObjectCache>(p), &self::onWorkbookClose);
+        xloil::Event::WorkbookAfterClose().weakBind(std::weak_ptr<ObjectCache>(p), &self::onWorkbookClose);
 
       return p;
     }
 
     const TObj* fetch(const std::wstring_view& key) const
     {
+      if (key.size() < PADDING) return nullptr;
+
       const auto iResult = readCount(key[key.size() - 1]);
       const auto cacheKey = key.substr(0, key.size() - PADDING);
-      
+
       std::scoped_lock lock(_cacheLock);
       const auto found = _cache.search(cacheKey);
 
@@ -222,8 +224,8 @@ namespace xloil
     }
 
     ExcelObj add(
-      TObj&& obj, 
-      const CallerLite& caller = CallerLite(), 
+      TObj&& obj,
+      const CallerLite& caller = CallerLite(),
       const wchar_t* name = nullptr,
       const size_t nameLength = 0
     )
@@ -245,7 +247,7 @@ namespace xloil
         {
           found = _cache.emplace(
             std::make_pair(
-              std::wstring(cacheKey), 
+              std::wstring(cacheKey),
               CellCache(std::forward<TObj>(obj), _calcId))).first;
         }
         else
@@ -254,7 +256,7 @@ namespace xloil
             found->second.getStaleObjects(_calcId, staleObjects);
 
           iPos = (uint8_t)found->second.add(std::forward<TObj>(obj), _calcId);
-        }      
+        }
       }
 
       writeCount(fullKey.end() - PADDING, iPos);
@@ -265,7 +267,7 @@ namespace xloil
         for (auto& x : staleObjects)
           _reverseLookup.map.erase(&x);
         _reverseLookup.map.insert(std::make_pair(
-          found->second.fetch(iPos), 
+          found->second.fetch(iPos),
           fullKey.string()));
       }
 
@@ -291,13 +293,13 @@ namespace xloil
       _cache.erase(found);
       return true;
     }
-    
+
     void onWorkbookClose(const wchar_t* wbName)
     {
       // Called by Excel Event so will always be synchonised
       const auto len = wcslen(wbName);
       auto i = _cache.begin();
-      while (i != _cache.end()) 
+      while (i != _cache.end())
       {
         // Key looks like [WbName]BlahBlah - check for match
         if (wcsncmp(wbName, i->first.c_str() + 1, len) == 0)
@@ -398,7 +400,7 @@ namespace xloil
   // TODO: consider abrogated caching where simple types are just returned un-cached
   template<typename T>
   inline auto addCached(
-    const T* ptr, 
+    const T* ptr,
     const wchar_t* name = nullptr,
     const size_t nameLength = 0)
   {
