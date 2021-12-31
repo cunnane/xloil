@@ -18,7 +18,7 @@ namespace xloil
     switch (ret)
     {
     case xlretSuccess:    return L"success";
-    case xlretAbort:      return L"macro was stopped by the user ";
+    case xlretAbort:      return L"macro was stopped by the user";
     case xlretInvXlfn:    return L"invalid function number, or calling function does not have permission to call the function or command";
     case xlretInvCount:   return L"invalid number of arguments";
     case xlretInvXloper:  return L"invalid XLOPER structure";
