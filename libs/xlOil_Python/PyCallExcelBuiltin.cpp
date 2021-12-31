@@ -12,7 +12,7 @@ using std::string;
 
 namespace py = pybind11;
 
-namespace xloil 
+namespace xloil
 {
   namespace Python
   {
@@ -42,7 +42,7 @@ namespace xloil
         if (funcNum < 0)
         {
           funcNum = msxll::xlUDF;
-          xlArgs.emplace_back(ExcelObj(funcName));
+          xlArgs.insert(xlArgs.begin(), ExcelObj(funcName));
         }
       }
 
@@ -52,11 +52,12 @@ namespace xloil
       py::gil_scoped_release releaseGil;
 
       // Run the function on the main thread
-      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]() {
+      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]()
+      {
         ExcelObj result;
         auto ret = xloil::callExcelRaw(funcNum, &result, args.size(), args.begin());
         if (ret != 0)
-          result = CellError::Value;
+          result = std::wstring(L"#") + xlRetCodeToString(ret);
         return std::move(result);
       }, ExcelRunQueue::XLL_API));
     }
