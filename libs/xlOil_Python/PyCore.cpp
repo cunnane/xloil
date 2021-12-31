@@ -2,6 +2,7 @@
 #include "PyHelpers.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyFuture.h"
 #include <TypeConversion/BasicTypes.h>
 #include <xlOil/ExcelThread.h>
 #include <xloil/Log.h>
@@ -141,14 +142,14 @@ namespace xloil
         }
       };
 
-      void runLater(const py::object& callable, int nRetries, int retryPause, int delay)
+      auto runLater(const py::object& callable, int nRetries, int retryPause, int delay)
       {
-        runExcelThread([callable]()
+        return PyFuture<PyObject*>(runExcelThread([callable=PyObjectHolder(callable)]()
           {
             py::gil_scoped_acquire getGil;
             try
             {
-              callable();
+              return callable().release().ptr();
             }
             catch (py::error_already_set& err)
             {
@@ -160,7 +161,7 @@ namespace xloil
           ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
           nRetries,
           retryPause,
-          delay);
+          delay));
       }
 
       void setReturnConverter(const shared_ptr<const IPyToExcel>& conv)
@@ -208,13 +209,12 @@ namespace xloil
           .def("__call__", &LogWriter::writeToLog, py::arg("msg"), py::arg("level") = 20)
           .def_property("level", &LogWriter::getLogLevel, &LogWriter::setLogLevel);
 
-        // TODO: consider rename to app_run ?
-        mod.def("excel_run",
+        mod.def("excel_callback",
           &runLater,
           py::arg("func"),
-          py::arg("num_retries") = 10,
+          py::arg("retries") = 10,
           py::arg("retry_delay") = 500,
-          py::arg("wait_time") = 0);
+          py::arg("wait") = 0);
 
         py::class_<App::ExcelInternals>(mod, "ExcelState")
           .def_readonly("version", &App::ExcelInternals::version)
@@ -222,7 +222,6 @@ namespace xloil
           .def_readonly("hwnd", &App::ExcelInternals::hWnd)
           .def_readonly("main_thread_id", &App::ExcelInternals::mainThreadId);
 
-        // TODO: rename to app_state? (also in xloil.py)
         mod.def("excel_state", App::internals);
 
         py::class_<CallerInfo>(mod, "Caller")

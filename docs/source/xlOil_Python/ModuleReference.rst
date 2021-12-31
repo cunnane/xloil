@@ -32,10 +32,10 @@ xlOil Python Module Reference
 	deregister_functions
 	linked_workbook
 	source_addin
-	excel_run
+	excel_callback
 	excel_state
-	excel_func
-	excel_func_async
+	run
+	run_async
 	app
 	Range
 	Worksheet

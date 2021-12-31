@@ -47,12 +47,13 @@ namespace xloil
       }
 
       for (auto i = 0; i < nArgs; ++i)
-        xlArgs.emplace_back(FromPyObj<false>()(args[i].ptr()));
+        xlArgs.emplace_back(FromPyObj<false, ExcelType::Missing>()(args[i].ptr()));
 
       py::gil_scoped_release releaseGil;
 
       // Run the function on the main thread
-      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]() {
+      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]() 
+      {
         ExcelObj result;
         auto ret = xloil::callExcelRaw(funcNum, &result, args.size(), args.begin());
         if (ret != 0)
@@ -72,8 +73,8 @@ namespace xloil
       {
         ExcelObjFuture::bind(mod, "ExcelObjFuture");
 
-        mod.def("excel_func", callExcel, py::arg("func"));
-        mod.def("excel_func_async", callExcelAsync, py::arg("func"));
+        mod.def("run", callExcel, py::arg("func"));
+        mod.def("run_async", callExcelAsync, py::arg("func"));
       });
     }
   }

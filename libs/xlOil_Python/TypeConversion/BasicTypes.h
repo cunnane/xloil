@@ -334,7 +334,7 @@ namespace xloil
     };
 
    
-    template<bool TUseCache = true, CellError TFailure=CellError::Value>
+    template<bool TUseCache = true, ExcelType TNone=ExcelType::Err>
     struct FromPyObj
     {
       template <class TAlloc = PStringAllocator<wchar_t>>
@@ -346,7 +346,10 @@ namespace xloil
         if (p == Py_None)
         {
           // Return #N/A here as xltypeNil is turned to zero by Excel
-          return ExcelObj(CellError::NA);
+          if constexpr (TNone == ExcelType::Err)
+            return ExcelObj(CellError::NA);
+          else
+            return ExcelObj(TNone);
         }
         else if (PyLong_Check(p))
         {
@@ -393,7 +396,7 @@ namespace xloil
           return pyCacheAdd(PyBorrow<>(p));
         }
         else
-          return ExcelObj(TFailure);
+          return ExcelObj(CellError::Value);
       }
     };
 

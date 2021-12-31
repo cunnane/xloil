@@ -173,7 +173,7 @@ def pyRunTestsNonLocal():
     if r1.value == "Spam":
         r1.value = "Ham"
     
-    
+      
 @xlo.func(command=True)
 def pyPressRunTests():
 
@@ -182,8 +182,9 @@ def pyPressRunTests():
     r1 = xlo.Range("G1")
     r1.value = "Spam"
     
+    # VBA's Application.Run
     xlo.app().Run("pyRunTestsNonLocal")
-   
+
         
 #------------------
 # Async functions
@@ -221,6 +222,19 @@ async def pyTestAsyncGen(secs):
     while True:
         await asyncio.sleep(secs)
         yield dt.datetime.now()
+
+
+#---------------------------------
+# Calling Excel built-in functions
+#---------------------------------
+
+@xlo.func
+async def pyTestExcelFuncAsync(x, y, z):
+    return await xlo.run_async("sum", x, y, z)
+
+@xlo.func   
+def pyTestExcelFunc(func, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None):
+    return xlo.run(func, arg1, arg2, arg3, arg4, arg5)
 
 
 #---------------------------------

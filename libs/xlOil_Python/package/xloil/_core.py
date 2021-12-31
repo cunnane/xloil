@@ -14,7 +14,7 @@ if XLOIL_HAS_CORE:
         event, cache, RtdServer, RtdPublisher,
         deregister_functions, get_async_loop,
         ExcelGUI, create_gui, 
-        excel_run, excel_state,
+        excel_callback, excel_state,
         Caller,
         CannotConvert, 
         from_excel_date,
@@ -22,10 +22,34 @@ if XLOIL_HAS_CORE:
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
         workbooks, windows, ExcelWindow, Workbook, Worksheet, active_worksheet, active_workbook,
-        excel_func, excel_func_async)
+        run, run_async)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
+
+    VT = typing.TypeVar('VT')
+    class _Future(typing.Generic[VT]):
+        """
+        An ``asyncio.Future`` like object which can be awaited and supports
+        the `result()` method. This class actually wraps a C++ future so does 
+        executes in a separate thread unrelated to an `asyncio` event loop. 
+        """
+        def __await__(self):
+            """
+            Returns an iterator which conforms to the async protocol
+            """
+            ...
+        def result(self) -> VT:
+            """
+            Returns the result of the future or throws the resulting excetion.
+            Blocking.
+            """
+            ...
+        def done(self) -> bool:
+            """
+            Returns True if the future has completed
+            """
+            ...
 
     def in_wizard():
         """ 
@@ -35,10 +59,10 @@ else:
         """
         pass
 
-    def excel_run(func,
-            num_retries = 10,
+    def excel_callback(func,
+            retries = 10,
             retry_delay = 500,
-            wait_time = 0):
+            wait = 0) -> _Future[object]:
         """
         Schedules a callback to be run in the COM API context. Much of the COM API in unavailable
         during the calc cycle, in particular anything which involves writing to the sheet.
@@ -49,14 +73,14 @@ else:
         func: callable
             A callable which takes no arguments and returns nothing
 
-        num_retries: int
+        retries: int
             Number of times to retry the call if Excel's COM API is busy, e.g. a dialog box
             is open or it is running a calc cycle
 
         retry_delay: int
             Millisecond delay between retries
 
-        wait_time: int
+        wait: int
             Number of milliseconds to wait before first attempting to run this function
 
         """
@@ -181,8 +205,8 @@ else:
             """
             pass
         def clear(self):
-            """
-            Sets all values in the range to the Nil/Empty type
+            """ 
+            Clears all values and formatting.  Any cell in the range will then have Empty type.
             """
             pass
         def address(self,local=False):
@@ -635,29 +659,7 @@ else:
         def add_event_handler(self, handler):
             ...
 
-    VT = typing.TypeVar('VT')
-    class _Future(typing.Generic[VT]):
-        """
-        An ``asyncio.Future`` like object which can be awaited and supports
-        the `result()` method. This class actually wraps a C++ future so does 
-        executes in a separate thread unrelated to an `asyncio` event loop. 
-        """
-        def __await__(self):
-            """
-            Returns an iterator which conforms to the async protocol
-            """
-            ...
-        def result(self) -> VT:
-            """
-            Returns the result of the future or throws the resulting excetion.
-            Blocking.
-            """
-            ...
-        def done(self) -> bool:
-            """
-            Returns True if the future has completed
-            """
-            ...
+    
 
     class ExcelGUI:
         """
@@ -1026,7 +1028,7 @@ else:
             """
             ...
 
-    def excel_func(func, *args):
+    def run(func, *args):
         """
             Similar to VBA's `Application.Run`. If the `func` string name is recognised
             as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
@@ -1040,7 +1042,7 @@ else:
         """
         ...
 
-    async def excel_func_async(func, *args):
+    async def run_async(func, *args) -> _Future[object]:
         """
             Similar to VBA's `Application.Run`. If the `func` string name is recognised
             as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
