@@ -84,6 +84,8 @@ namespace xloil
       
       ~PyFuncInfo();
 
+      const auto& name() const { return _info->name; }
+
       auto& args() { return _args; }
       const auto& constArgs() const { return _args; }
 
@@ -128,13 +130,13 @@ namespace xloil
       void invoke(
         ExcelObj& result,
         PyObject* const* args,
-        PyObject* kwargsDict) const noexcept;
+        PyObject* kwargsDict) const;
 
       template <class TArray>
       void invoke(
         ExcelObj& result,
         const TArray& args,
-        PyObject* kwargsDict) const noexcept
+        PyObject* kwargsDict) const
       {
         assert(args.size() >= argArraySize());
         invoke(result, (PyObject* const*)args.data(), kwargsDict);
@@ -155,7 +157,7 @@ namespace xloil
       /// through the API. For Py 3.7 and earlier vector call is not
       /// available so this is not required.  See <see cref="theVectorCallOffset"/>
       /// </summary>
-      size_t argArraySize() const { return _numPositionalArgs + theVectorCallOffset; }
+      size_t argArraySize() const noexcept { return _numPositionalArgs + theVectorCallOffset; }
 
 #if PY_VERSION_HEX < 0x03080000
       static constexpr auto theVectorCallOffset = 0u;

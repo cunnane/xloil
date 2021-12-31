@@ -163,7 +163,8 @@ namespace xloil
       }
     }
 
-    py::object PyFuncInfo::invoke(PyObject* const* args, const size_t nArgs, PyObject* kwargs) const
+    py::object PyFuncInfo::invoke(
+      PyObject* const* args, const size_t nArgs, PyObject* kwargs) const
     {
 #if PY_VERSION_HEX < 0x03080000
       auto argTuple = PySteal<py::tuple>(PyTuple_New(nArgs));
@@ -183,47 +184,43 @@ namespace xloil
     void PyFuncInfo::invoke(
       ExcelObj& result, 
       PyObject* const* args,
-      PyObject* kwargsDict) const noexcept
+      PyObject* kwargsDict) const
     {
-      try
-      {
-        assert(!!kwargsDict == _hasKeywordArgs);
+      assert(!!kwargsDict == _hasKeywordArgs);
 
-        auto retVal = invoke(args, _numPositionalArgs, kwargsDict);
+      auto retVal = invoke(args, _numPositionalArgs, kwargsDict);
 
-        result = returnConverter
-          ? (*returnConverter)(*retVal.ptr())
-          : FromPyObj()(retVal.ptr());
-      }
-      catch (const py::error_already_set& e)
-      {
-        raiseUserException(e);
-        result = e.what();
-      }
-      catch (const std::exception& e)
-      {
-        result = e.what();
-      }
+      result = returnConverter
+        ? (*returnConverter)(*retVal.ptr())
+        : FromPyObj()(retVal.ptr());
     }
 
     struct CommandReturn
     {
-      template<class T> int operator()(T*) const
+      int operator()(ExcelObj*) const
       {
-        return 1;
+        return 1; // Ignore return value
       }
 
-      template<class T> int operator()(T&& x) const
+      int operator()(const char* err, const PyFuncInfo* info) const
       {
-        XLO_WARN("Command returned: {0}", std::forward<T>(x));
-        return 1;
+        XLO_ERROR(L"{0}: {1}", info->name(), utf8ToUtf16(err));
+        return 0;
+      }
+
+      int operator()(CellError, const PyFuncInfo* info) const
+      {
+        XLO_ERROR(L"{0}: unknown error", info->name());
+        return 0;
       }
     };
 
     struct NormalReturn
     {
-      template<class T> ExcelObj* operator()(T&& x) const
+      template<class T> ExcelObj* operator()(T&& x, const PyFuncInfo* = nullptr) const
       {
+        // No need to include function name in error messages since the calling function
+        // is usually clear in a worksheet
         return returnValue(std::forward<T>(x));
       }
     };
@@ -238,21 +235,25 @@ namespace xloil
         py::gil_scoped_acquire gilAcquired;
         PyErr_Clear();
 
+        // Save some stack space for the converted arguments. We use raw PyObject*
+        // As an array<py::object> would result in 256 dtor calls every invocation.
+        // The 'finally' block below cleans up only the args we created
         std::array<PyObject*, PyFuncInfo::theVectorCallOffset + XL_MAX_UDF_ARGS> argsArray;
         py::object kwargs;
 
+        // Although PyObject* is not exception safe, convertArgs will destroy any
+        // processed args if it fails part way.
         info->convertArgs(xlArgs, argsArray, kwargs);
 
-        // This finally block seems pretty heavy, but an array<py::object> would result in 
-        // 256 dtor calls every invocation. This approach does just what is required.
+        // The construction of 'cleanup' is all noexcept
         auto finally = [
-          begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
-          end = argsArray.begin() + info->argArraySize()
-        ](void*)
-        {
-          for (auto i = begin; i != end; ++i)
-            Py_DECREF(*i);
-        };
+            begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
+            end = argsArray.begin() + info->argArraySize()
+          ](void*)
+          {
+            for (auto i = begin; i != end; ++i)
+              Py_DECREF(*i);
+          };
         unique_ptr<void, decltype(finally)> cleanup(0, finally);
 
         if constexpr (TThreadSafe)
@@ -263,9 +264,9 @@ namespace xloil
         }
         else
         {
-          // Static OK since we have the GIL and are single-threaded so can
-          // only be called on Excel's main thread. The args array is large 
-          // enough: registration with Excel will fail otherwise.
+          // Static is OK since we have the GIL and are single-threaded so can
+          // must be on Excel's main thread. The args array is large enough:
+          // we cannot register a function with more arguments than that.
           static ExcelObj result;
           info->invoke(result, argsArray, kwargs.ptr());
           return TReturn()(&result);
@@ -274,15 +275,15 @@ namespace xloil
       catch (const py::error_already_set& e)
       {
         raiseUserException(e);
-        return TReturn()(e.what());
+        return TReturn()(e.what(), info);
       }
       catch (const std::exception& e)
       {
-        return TReturn()(e.what());
+        return TReturn()(e.what(), info);
       }
       catch (...)
       {
-        return TReturn()(CellError::Null);
+        return TReturn()(CellError::Value, info);
       }
     }
 
