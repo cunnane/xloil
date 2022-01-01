@@ -19,7 +19,7 @@ namespace xloil
     using col_t = ExcelObj::col_t;
 
     static constexpr int TO_END = INT_MAX;
-    virtual ~Range();
+    virtual ~Range() {}
 
     /// <summary>
     /// Gives a subrange relative to the current range.  Similar to Excel's function, 
@@ -129,14 +129,4 @@ namespace xloil
     /// </summary>
     virtual void clear() = 0;
   };
-
-  XLOIL_EXPORT Range* newXllRange(const ExcelObj& xlRef);
-
-  /// <summary>
-  /// Creates an appropriate range type depending on whether the XLL
-  /// interface is available.
-  /// </summary>
-  XLOIL_EXPORT Range* newRange(const wchar_t* address);
-
-  ExcelRef refFromComRange(Excel::Range* range);
 }

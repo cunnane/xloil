@@ -17,7 +17,7 @@ namespace Tests
     TEST_METHOD(TestExcelRef)
     {
       msxll::IDSHEET sheet = nullptr;
-      auto rng = newXllRange(ExcelRef(sheet, 1, 1, 10, 10));
+      auto rng = new XllRange(ExcelRef(sheet, 1, 1, 10, 10));
 
       // We can only use local addresses as getting the sheet name requires an API call
       {

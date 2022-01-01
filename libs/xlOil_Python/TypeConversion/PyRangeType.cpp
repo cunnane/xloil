@@ -1,7 +1,7 @@
 #include "PyCore.h"
 #include "PyHelpers.h"
 #include "BasicTypes.h"
-#include <xlOil/ExcelRange.h>
+#include <xlOil/ExcelRef.h>
 
 using std::shared_ptr;
 using std::vector;
@@ -21,7 +21,7 @@ namespace xloil
 
         PyObject* operator()(RefVal obj) const 
         {
-          return pybind11::cast(newXllRange(obj)).release().ptr();
+          return pybind11::cast((Range*)new XllRange(obj)).release().ptr();
         }
         constexpr wchar_t* failMessage() const { return L"Expected range"; }
       };

@@ -9,6 +9,7 @@
 #include "PyCore.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
+#include <xlOil/ExcelRef.h>
 #include <xlOil/TypeConverters.h>
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
@@ -153,7 +154,7 @@ namespace xloil
         }
         PyObject* operator()(RefVal ref) const
         {
-          return pybind11::cast(newXllRange(ref)).release().ptr();
+          return pybind11::cast((Range*)new XllRange(ref)).release().ptr();
         }
 
         constexpr wchar_t* failMessage() const { return L"Unknown type"; }
@@ -334,7 +335,7 @@ namespace xloil
     };
 
    
-    template<bool TUseCache = true, ExcelType TNone=ExcelType::Err>
+    template<bool TUseCache = true>
     struct FromPyObj
     {
       template <class TAlloc = PStringAllocator<wchar_t>>
@@ -346,10 +347,7 @@ namespace xloil
         if (p == Py_None)
         {
           // Return #N/A here as xltypeNil is turned to zero by Excel
-          if constexpr (TNone == ExcelType::Err)
-            return ExcelObj(CellError::NA);
-          else
-            return ExcelObj(TNone);
+          return ExcelObj(CellError::NA);
         }
         else if (PyLong_Check(p))
         {

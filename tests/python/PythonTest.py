@@ -185,6 +185,14 @@ def pyPressRunTests():
     # VBA's Application.Run
     xlo.app().Run("pyRunTestsNonLocal")
 
+    r2 = xlo.Range("H1")
+    r2.formula = "=G1"
+    
+    ws = xlo.active_worksheet()
+    ws.calculate()
+    
+    if r2.value != r1.value:
+        ws['H1'].value = 'Oh dear'
         
 #------------------
 # Async functions
@@ -227,15 +235,23 @@ async def pyTestAsyncGen(secs):
 #---------------------------------
 # Calling Excel built-in functions
 #---------------------------------
-
+#
+# This can be done asynchronously as Excel built-ins can only be called on the 
+# main thread.
+#
 @xlo.func
-async def pyTestExcelFuncAsync(x, y, z):
+async def pyTestExcelCallAsync(x, y, z):
     return await xlo.run_async("sum", x, y, z)
 
 @xlo.func   
-def pyTestExcelFunc(func, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None):
-    return xlo.run(func, arg1, arg2, arg3, arg4, arg5)
-
+def pyTestExcelCall(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:xlo.AllowRange=None):
+    # We pop the trailing missing args so the called function 
+    # receives the correct number of arguments. None is converted
+    # to Missing when calling Excel built-ins
+    args = [arg1, arg2, arg3]
+    while args[-1] is None:
+        args.pop()
+    return xlo.run(func, *args)
 
 #---------------------------------
 # RTD functions and the RTD server
@@ -401,6 +417,22 @@ def pyTestRange(r: xlo.Range):
     from comtypes.gen import Excel
     return r.to_com().Cells[2, 2].Address(False, False, Excel.xlA1, True)
 
+#
+# We check we can retrieve the formula from a cell using both local and 
+# non-local functions 
+#
+@xlo.func(macro=True)
+def pyTestRangeFormula(r: xlo.Range):
+    return r.formula
+
+@xlo.func(macro=True, local=False)
+def pyTestRangeFormula2(r: xlo.Range):
+    return r.formula
+  
+#
+# Retrieve the address of calling cell (assuming we are called from a sheet)
+# Note we don't need macro permissions to do this.
+#  
 @xlo.func
 async def pyTestCaller():
     return xlo.Caller().address()
@@ -421,7 +453,8 @@ def pysysmodules():
     return sys.modules
     
 #
-# Threads
+# Threads: we can declare threadsafe functions which will be executed on
+# Excel's calculation threads
 # 
 import numpy as np
 import ctypes

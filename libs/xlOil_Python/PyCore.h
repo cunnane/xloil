@@ -52,6 +52,7 @@ namespace xloil
     }
 
     extern _typeobject* cellErrorType;
+    extern _typeobject* rangeType; // in PyAppObjects.cpp
     extern PyObject*    comBusyException;
     extern PyObject*    cannotConvertException;
     extern std::shared_ptr<const IPyToExcel> theCustomReturnConverter;

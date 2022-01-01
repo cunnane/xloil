@@ -15,6 +15,8 @@ namespace xloil
 {
   namespace Python
   {
+    PyTypeObject* rangeType;
+
     namespace
     {
       Range* range_Construct(const wchar_t* address) 

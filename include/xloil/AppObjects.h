@@ -2,6 +2,7 @@
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
 #include <xloil/ExcelRange.h>
+#include <xloil/ExcelRef.h>
 #include <string>
 #include <memory>
 #include <vector>
@@ -10,12 +11,12 @@
 // Forward Declarations from Typelib
 struct IDispatch;
 
-namespace Excel { 
+namespace Excel {
   struct _Application;
-  struct Window; 
-  struct _Workbook; 
-  struct _Worksheet; 
-  struct Range; 
+  struct Window;
+  struct _Workbook;
+  struct _Worksheet;
+  struct Range;
 }
 
 namespace xloil
@@ -70,13 +71,13 @@ namespace xloil
 
     ExcelWorkbook(ExcelWorkbook&& that) noexcept { std::swap(_ptr, that._ptr); }
     ExcelWorkbook(const ExcelWorkbook& that) : IAppObject(that._ptr) {}
-    
+
     ExcelWorkbook& operator=(const ExcelWorkbook& that) noexcept { assign(that); return *this; }
     ExcelWorkbook& operator=(ExcelWorkbook&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
 
     /// <inheritdoc />
     std::wstring name() const override;
-    
+
     /// <summary>
     /// Returns the full file path and file name for this workbook
     /// </summary>
@@ -108,7 +109,7 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::_Workbook* ptr() const { return (Excel::_Workbook * )_ptr; }
+    Excel::_Workbook* ptr() const { return (Excel::_Workbook*)_ptr; }
   };
 
 
@@ -155,7 +156,7 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::Window* ptr() const { return (Excel::Window * )_ptr; }
+    Excel::Window* ptr() const { return (Excel::Window*)_ptr; }
   };
 
   class XLOIL_EXPORT ExcelRange : public Range, public IAppObject
@@ -237,8 +238,19 @@ namespace xloil
     /// and dec ref any use of it.
     /// </summary>
     Excel::Range* ptr() const { return (Excel::Range*)_ptr; }
-    Excel::Range* ptr()       { return (Excel::Range*)_ptr; }
+    Excel::Range* ptr() { return (Excel::Range*)_ptr; }
   };
+
+  XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range* range);
+
+  inline ExcelRef refFromRange(const Range& range)
+  {
+    auto excelRange = dynamic_cast<const ExcelRange*>(&range);
+    if (excelRange)
+      return refFromComRange(excelRange->ptr());
+    else
+      return static_cast<const XllRange&>(range).asRef();
+  }
 
   /// <summary>
   /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
@@ -257,7 +269,7 @@ namespace xloil
 
     ExcelWorksheet& operator=(const ExcelWorksheet& that) noexcept { assign(that); return *this; }
     ExcelWorksheet& operator=(ExcelWorksheet&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
-    
+
     /// <summary>
     /// Returns the window title
     /// </summary>
@@ -299,9 +311,9 @@ namespace xloil
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
     /// This function exists mainly to provide some polymorphism with Range.
     /// </summary>
-    std::tuple<Range::row_t, Range::col_t> shape() const 
-    { 
-      return std::make_tuple(XL_MAX_ROWS, XL_MAX_COLS); 
+    std::tuple<Range::row_t, Range::col_t> shape() const
+    {
+      return std::make_tuple(XL_MAX_ROWS, XL_MAX_COLS);
     }
 
     /// <summary>

@@ -3,6 +3,7 @@
 #include "PyFuture.h"
 #include <xloil/ExcelCall.h>
 #include <xlOil/ExcelThread.h>
+#include <xlOil/AppObjects.h>
 #include <future>
 
 using std::shared_ptr;
@@ -16,6 +17,30 @@ namespace xloil
 {
   namespace Python
   {
+    /// <summary>
+    /// Wraps the usual FromPyObj but converts None to Missing, which seems
+    /// more useful in the context and Range to ExcelRef which is necessary to
+    /// call many of the macro sheet commands.
+    /// </summary>
+    struct ArgFromPyObj
+    {
+      auto operator()(const py::object& obj) const
+      {
+        auto p = (PyObject*)obj.ptr();
+        if (p == Py_None)
+        {
+          return ExcelObj(ExcelType::Missing);
+        }
+        else if (Py_TYPE(p) == rangeType)
+        {
+          auto* range = obj.cast<Range*>();
+          return ExcelObj(refFromRange(*range));
+        }
+        else
+          return FromPyObj<false>()(p);
+      }
+    };
+
     using ExcelObjFuture = PyFuture<ExcelObj, PyFromAny>;
 
     auto callExcelAsync(const py::object& func, const py::args& args)
@@ -46,18 +71,19 @@ namespace xloil
         }
       }
 
-      for (auto i = 0; i < nArgs; ++i)
-        xlArgs.emplace_back(FromPyObj<false, ExcelType::Missing>()(args[i].ptr()));
+      // Convert args with None->Missing Arg and Range->ExcelRef
+      for (auto i = 0u; i < nArgs; ++i)
+        xlArgs.emplace_back(ArgFromPyObj()(args[i]));
 
       py::gil_scoped_release releaseGil;
 
       // Run the function on the main thread
-      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]() 
+      return ExcelObjFuture(runExcelThread([funcNum, args = std::move(xlArgs)]()
       {
         ExcelObj result;
         auto ret = xloil::callExcelRaw(funcNum, &result, args.size(), args.begin());
         if (ret != 0)
-          result = std::wstring(L"#") + xlRetCodeToString(ret);
+          result = wstring(L"#") + xlRetCodeToString(ret);
         return std::move(result);
       }, ExcelRunQueue::XLL_API));
     }

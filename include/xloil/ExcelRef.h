@@ -303,30 +303,51 @@ namespace xloil
     explicit XllRange(ExcelRef&& ref)      : _ref(ref) {}
     explicit XllRange(const ExcelObj& ref) : _ref(ExcelRef(ref)) {}
 
-    virtual Range* range(
+    Range* range(
       int fromRow, int fromCol,
-      int toRow = TO_END, int toCol = TO_END) const final override;
+      int toRow = TO_END, int toCol = TO_END) const final override
+    {
+      return new XllRange(_ref.range(fromRow, fromCol, toRow, toCol));
+    }
 
-    virtual std::tuple<row_t, col_t> shape() const final override;
+    std::tuple<row_t, col_t> shape() const final override
+    {
+      return { _ref.nRows(), _ref.nCols() };
+    }
 
-    virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
+    std::tuple<row_t, col_t, row_t, col_t> bounds() const final override
+    {
+      return _ref.bounds();
+    }
 
     /// <summary>
     /// Returns the address of the range in the form
     /// 'SheetNm!A1:Z5'
     /// </summary>
-    virtual std::wstring address(bool local = false) const final override;
+    std::wstring address(bool local = false) const final override
+    {
+      return _ref.address(local);
+    }
 
     /// <summary>
     /// Converts the referenced range to an ExcelObj. 
     /// References to single cells return an ExcelObj of the
     /// appropriate type. Multicell refernces return an array.
     /// </summary>
-    ExcelObj value() const final override;
+    ExcelObj value() const final override
+    {
+      return _ref.value();
+    }
 
-    ExcelObj value(row_t i, col_t j) const final override;
+    ExcelObj value(row_t i, col_t j) const final override
+    {
+      return _ref.range(i, j, i + 1, j + 1).value();
+    }
 
-    void set(const ExcelObj& value) final override;
+    void set(const ExcelObj& value) final override
+    {
+      _ref.set(value);
+    }
 
     /// <summary>
     /// Sets the formula if the range is a cell or an array formula for a 
@@ -336,12 +357,20 @@ namespace xloil
     /// </summary>
     void setFormula(const std::wstring_view& formula);
 
-    std::wstring formula() final override;
+    std::wstring formula() final override
+    {
+      // xlfGetFormula always returns RC references, but GetCell uses the
+      // workspace settings to return RC or A1 style.
+      return callExcel(msxll::xlfGetCell, 6, _ref).toString();
+    }
 
     /// <summary>
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
-    virtual void clear() final;
+    void clear() final
+    {
+      _ref.clear();
+    }
 
     const ExcelRef& asRef() const { return _ref; }
 
