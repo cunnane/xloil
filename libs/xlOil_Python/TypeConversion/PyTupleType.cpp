@@ -61,6 +61,11 @@ namespace xloil
 
       Py_DECREF(iter);
 
+      // Python supports an empty tuple, but Excel doesn't support an
+      // empty array, so return a Missing type
+      if (nRows == 0)
+        return ExcelObj(ExcelType::Missing);
+
       ExcelArrayBuilder builder(nRows, nCols, stringLength);
 
       // Second loop to fill in array values
