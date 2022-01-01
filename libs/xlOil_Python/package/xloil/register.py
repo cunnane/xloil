@@ -93,34 +93,31 @@ class Arg:
 
         arg_type = self.typeof
         converter = 0
-        # If a typing annotation is None or not a type, ignore it.
-        # The default option is the generic converter which gives a python 
-        # type based on the provided Excel type
+
+        # If a typing annotation is None or not a type, ignore it and use the
+        # generic converter which gives a python type based on the Excel type
         if not isinstance(arg_type, type):
-            converter = _Read_object()
+            # if arg_type is ExcelValue: ExcelValue is just the explicit generic 
+            # type available for linting, so do nothing. AllowRange adds range
+            # support. It's a typing.Union so not an instance of type.
+            if arg_type is AllowRange:
+                converter = _Read_object()
+                this_arg.allow_range = True
+            else:
+                converter = _Read_object()
         else:
-            # The ordering of these cases is based on presumed likeliness.
-            # First try an internal converter e.g. Read_str, Read_float, etc.
             converter = get_internal_converter(arg_type.__name__)
 
             # xloil_core.Range is special: the only core class in typing annotations
             if arg_type is Range:
                 this_arg.allow_range = True
-
+            
             # If internal converter was found, nothing more to do
             if converter is not None:
                 pass
             # A designated xloil @converter type contains the internal converter
             elif unpack_arg_converter(arg_type) is not None:
                 converter, this_arg.allow_range = unpack_arg_converter(arg_type)
-                #if converter is None:
-                #    raise TypeError(f"The annotation for {this_arg.name} is an xlOil converter but does not define an arg converter")
-            # ExcelValue is just the explicit generic type, so do nothing
-            elif arg_type is ExcelValue:
-                pass 
-            elif arg_type is AllowRange:
-                converter = _Read_object(), 
-                this_arg.allow_range = True
             # Attempt to find a registered user-converter, otherwise assume the object
             # should be read from the cache 
             else:
@@ -389,11 +386,13 @@ def func(fn=None,
         which is a *command*.  *Threaded* functions cannot be declared as macro type.
     command: bool
         If True, registers this as a *Command*.  Commands are run outside the 
-        calculation cycle on Excel's main thread,, have full permissions on the Excel
+        calculation cycle on Excel's main thread, have full permissions on the Excel
         object model and do not return a value. They correspond to VBA's 'Macros' or
         'Subroutines'.  Unless declared *local*,  XLL commands are hidden and 
         not displayed in dialog boxes for running macros, although their names 
-        can be entered anywhere a valid command name is required.
+        can be entered anywhere a valid command name is required.  Commands cannot
+        currently be run async since their primary use is writing to the workbook
+        which requires running on Excel's main thread.
     rtd: bool
         Determines whether a function declared as async uses native or RTD async.
         Only RTD functions are calculated in the background in Excel, native async
