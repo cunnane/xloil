@@ -14,7 +14,7 @@ namespace xloil
     try
     {
       auto lastSlash = strrchr(path, '\\');
-      XLO_INFO("{0} (in {2}:{3} during {1})",
+      XLO_DEBUG("{0} (in {2}:{3} during {1})",
         msg, func, lastSlash ? lastSlash + 1 : path, line);
     }
     catch (...)
