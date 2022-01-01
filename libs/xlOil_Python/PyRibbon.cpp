@@ -94,7 +94,7 @@ namespace xloil
         };
       }
 
-      using AddinFuture = PyFuture<shared_ptr<IComAddin>, detail::CastFutureConverter>;
+      using AddinFuture = PyFuture<shared_ptr<IComAddin>>;
       using VoidFuture = PyFuture<void, void>;
 
       inline auto comAddin_connect(IComAddin& addin, const wstring& xml, const py::object& funcmap)
@@ -176,7 +176,7 @@ namespace xloil
         return result;
       }
 
-      using CTPFuture = PyFuture<shared_ptr<ICustomTaskPane>,detail::CastFutureConverter>;
+      using CTPFuture = PyFuture<shared_ptr<ICustomTaskPane>>;
 
       CTPFuture createPaneFrame(
         IComAddin& comAddin, 

@@ -82,11 +82,12 @@ namespace xloil
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
-          // TODO: ideally wouldn't need to hold the gil for this
           FunctionRegistry::addModule(_loadContext.context, modulePath, wbName);
+          auto wbPathName = (fs::path(wbPath) / wbName).wstring();
+
           py::gil_scoped_acquire getGil;
           _loadContext.thread->callback("xloil.importer", "_import_file", 
-            modulePath, _loadContext.pathName(), (fs::path(wbPath) / wbName).wstring());
+            modulePath, _loadContext.pathName(), wbPathName);
         }
       };
 
