@@ -96,7 +96,7 @@ namespace xloil
 
       if (byRow)
       {
-        for (auto i = 0; i < found.size(); ++i)
+        for (size_t i = 0; i < found.size(); ++i)
         {
           if (found[i].empty()) // No tokens or was not a string
             builder(i, 0) = inputArray(i);
@@ -107,21 +107,21 @@ namespace xloil
             // in the builder to avoid a copy. The emplacement uses move ctors
             // so the PString dtor will not be called on the 'owned' sub-string
             auto pStr = inputArray(i).asPString();
-            for (auto j = 0; j < found[i].size(); ++j)
+            for (size_t j = 0; j < found[i].size(); ++j)
               builder(i, j).emplace_pstr(pStr.data() + found[i][j]);
           }
         }
       }
       else
       {
-        for (auto i = 0; i < found.size(); ++i)
+        for (size_t i = 0; i < found.size(); ++i)
         {
           if (found[i].empty()) // No tokens or was not a string
             builder(0, i) = inputArray(i);
           else
           {
             auto pStr = inputArray(i).asPString();
-            for (auto j = 0; j < found[i].size(); ++j)
+            for (size_t j = 0; j < found[i].size(); ++j)
               builder(j, i).emplace_pstr(pStr.data() + found[i][j]);
           }
         }
@@ -137,7 +137,7 @@ namespace xloil
       findSplitPoints(found, pStr, sep, consecutive);
 
       ExcelArrayBuilder builder((uint32_t)found.size(), 1, pStr.length());
-      for (auto i = 0; i < found.size(); ++i)
+      for (size_t i = 0; i < found.size(); ++i)
         builder(i).emplace_pstr(pStr.data() + found[i]);
 
       return returnValue(builder.toExcelObj());

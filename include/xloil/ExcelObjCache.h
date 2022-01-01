@@ -60,7 +60,7 @@ namespace xloil
   }
 
   /// <summary>
-  /// Function object which runs <see ref="xloil::cacheCheck"/>
+  /// Function object which runs <see cref="xloil::cacheCheck"/>
   /// </summary>
   struct CacheCheck
   {
@@ -68,7 +68,6 @@ namespace xloil
     template<class...Args>
     void operator()(Args&&... args) { cacheCheck(std::forward<Args>(args)...); }
   };
-
 
   /// <summary>
   /// Wraps a type conversion functor, interepting the string conversion to
