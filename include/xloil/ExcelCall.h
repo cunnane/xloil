@@ -116,7 +116,7 @@ namespace xloil
     T firstArg)
   {
     const ExcelObj* pArgs[XL_MAX_UDF_ARGS];
-    for (auto i = 0; i < nArgs; ++i, ++firstArg)
+    for (size_t i = 0; i < nArgs; ++i, ++firstArg)
       pArgs[i] = &*firstArg;
     return callExcelRaw(func, result, nArgs, pArgs);
   }
