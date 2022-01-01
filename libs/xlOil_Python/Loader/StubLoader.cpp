@@ -51,8 +51,7 @@ namespace xloil
         }
 
         // Forward the request to the real python plugins 
-        theInitFunc(context, plugin);
-        return 0;
+        return theInitFunc(context, plugin);
       }
       catch (const std::exception& e)
       {
