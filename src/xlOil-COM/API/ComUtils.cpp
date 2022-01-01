@@ -41,6 +41,6 @@ namespace xloil
     if (timeout > 0)
       runExcelThread(
         []() { excelApp().PutStatusBar(0, _bstr_t()); }, 
-        ExcelRunQueue::COM_API, 10, 200, (unsigned)timeout);
+        ExcelRunQueue::COM_API, 1000, 400, (unsigned)timeout);
   }
 }
