@@ -22,7 +22,7 @@ if XLOIL_HAS_CORE:
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
         workbooks, windows, ExcelWindow, Workbook, Worksheet, active_worksheet, active_workbook,
-        run, run_async)
+        run, run_async, call, call_async)
 
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
@@ -1046,34 +1046,50 @@ else:
 
     def run(func, *args):
         """
-            Similar to VBA's `Application.Run`. If the `func` string name is recognised
-            as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
-            calls it, otherwise tries to call a user-defined function with the given name.
-            The name is case-insensitive.
-            
-            The type and order of arguments expected depends on the function being called.  
+            Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+            This can call any user-defined function or macro but not built-in functions.
 
-            `func` can be a function name or an built-in function number as an int (which slightly 
-            reduces the lookup overhead)
+            The type and order of arguments expected depends on the function being called.
 
-            *run* can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf`>`_
-            from non-local functions.
+            Must be called on Excel's main thread, for example in worksheet function or 
+            command.
         """
         ...
 
-    async def run_async(func, *args) -> _Future[object]:
+    def run_async(func, *args) -> _Future[object]:
         """
-            Similar to VBA's `Application.Run`. If the `func` string name is recognised
-            as an Excel built-in function, i.e. available via VBA's `Application.WorksheetFunctions`,
-            calls it, otherwise tries to call a user-defined function with the given name.
-            The name is case-insensitive.
+            Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+            This can call any user-defined function or macro but not built-in functions.
+
+            Calls to the Excel API must be done on Excel's main thread: this async function
+            can be called from any thread but will require the main thread to be available
+            to return a result.
+        """
+        ...
+
+    def call(func, *args):
+        """
+            Calls a built-in worksheet function or command or a user-defined function with the 
+            given name. The name is case-insensitive; built-in functions take priority in a name
+            clash.
             
             The type and order of arguments expected depends on the function being called.  
 
-            `func` can be a function name or an built-in function number as an int (which slightly 
-            reduces the lookup overhead).
+            `func` can be built-in function number (as an int) which slightly reduces the lookup overhead
 
-            Since calls to the Excel API must be done on Excel's main thread (which also runs
-            Excel's GUI), this async version exists to prevent blocking and responsiveness issues.
+            Must be called from a non-local worksheet function on the main thread.
+
+            *call* can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf`>`_
+        """
+        ...
+
+    async def call_async(func, *args) -> _Future[object]:
+        """
+            Calls a built-in worksheet function or command or a user-defined function with the 
+            given name.  See ``xloil.call``.
+
+            Calls to the Excel API must be done on Excel's main thread: this async function
+            can be called from any thread but will require the main thread to be available
+            to return a result.
         """
         ...

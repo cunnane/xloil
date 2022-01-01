@@ -241,7 +241,7 @@ async def pyTestAsyncGen(secs):
 #
 @xlo.func
 async def pyTestExcelCallAsync(x, y, z):
-    return await xlo.run_async("sum", x, y, z)
+    return await xlo.call_async("sum", x, y, z)
 
 @xlo.func   
 def pyTestExcelCall(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:xlo.AllowRange=None):
@@ -251,8 +251,11 @@ def pyTestExcelCall(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, ar
     args = [arg1, arg2, arg3]
     while args[-1] is None:
         args.pop()
-    return xlo.run(func, *args)
-
+    return xlo.call(func, *args)
+    
+@xlo.func   
+def pyTestAppRun(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:xlo.AllowRange=None):
+    return xlo.run(func, arg1, arg2, arg3)
 #---------------------------------
 # RTD functions and the RTD server
 #---------------------------------

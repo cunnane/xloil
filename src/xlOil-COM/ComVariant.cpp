@@ -5,6 +5,7 @@
 #include <xloil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 
 using std::shared_ptr;
 using std::unique_ptr;
@@ -13,6 +14,7 @@ namespace xloil
 {
   namespace COM
   {
+    template<bool TAllowRange>
     class ToVariant : public FromExcelBase<VARIANT>
     {
     public:
@@ -89,7 +91,13 @@ namespace xloil
       }
       result_t operator()(RefVal ref) const
       {
-        return operator()(ExcelRef(ref.obj).value());
+        if constexpr (TAllowRange)
+        {
+          const auto range = ExcelRange(ExcelRef(ref.obj));
+          return _variant_t(range.basePtr()).Detach();
+        }
+        else
+          return operator()(ExcelRef(ref.obj).value());
       }
 
       // Not part of the usual FromExcel interface, just to aid cascading
@@ -99,10 +107,13 @@ namespace xloil
       }
     };
 
-    void excelObjToVariant(VARIANT* v, const ExcelObj& obj)
+    void excelObjToVariant(VARIANT* v, const ExcelObj& obj, bool allowRange)
     {
       VariantClear(v);
-      *v = FromExcelDefaulted<ToVariant>(&vtMissing)(obj);
+      *v = allowRange
+        ? FromExcelDefaulted<ToVariant<true>>(&vtMissing)(obj)
+        : FromExcelDefaulted<ToVariant<false>>(&vtMissing)(obj);
+
     }
 
     // Small helper function for array conversion

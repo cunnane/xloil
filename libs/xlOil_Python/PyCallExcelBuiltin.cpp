@@ -43,9 +43,9 @@ namespace xloil
 
     using ExcelObjFuture = PyFuture<ExcelObj, PyFromAny>;
 
-    auto callExcelAsync(const py::object& func, const py::args& args)
+    auto callXllAsync(const py::object& func, const py::args& args)
     {
-      // Convert all args to Excel objects
+      // Space to convert all args to Excel objects
       auto nArgs = args.size();
       vector<ExcelObj> xlArgs;
       xlArgs.reserve(nArgs);
@@ -88,9 +88,42 @@ namespace xloil
       }, ExcelRunQueue::XLL_API));
     }
 
-    auto callExcel(const py::object& func, const py::args& args)
+    auto callXll(const py::object& func, const py::args& args)
     {
-      return callExcelAsync(func, args).result();
+      return callXllAsync(func, args).result();
+    }
+
+    auto appRunAsync(const py::object& func, const py::args& args)
+    {
+      // Convert all args to Excel objects
+      auto nArgs = args.size();
+      if (nArgs > 30)
+        throw py::value_error();
+
+      vector<ExcelObj> xlArgs;
+      xlArgs.reserve(nArgs);
+
+      // Convert args with None->Missing Arg and Range->ExcelRef
+      for (auto i = 0u; i < nArgs; ++i)
+        xlArgs.emplace_back(ArgFromPyObj()(args[i]));
+
+      py::gil_scoped_release releaseGil;
+
+      return ExcelObjFuture(runExcelThread([
+          func = pyToWStr(func), 
+          args = std::move(xlArgs)
+        ]()
+        {
+          const ExcelObj* argsP[30];
+          for (size_t i = 0; i < args.size(); ++i)
+            argsP[i] = &args[i];
+          return App::Run(func, args.size(), argsP);
+        }));
+    }
+
+    auto appRun(const py::object& func, const py::args& args)
+    {
+      return appRunAsync(func, args).result();
     }
 
     namespace
@@ -99,8 +132,10 @@ namespace xloil
       {
         ExcelObjFuture::bind(mod, "ExcelObjFuture");
 
-        mod.def("run", callExcel, py::arg("func"));
-        mod.def("run_async", callExcelAsync, py::arg("func"));
+        mod.def("run", appRun, py::arg("func"));
+        mod.def("run_async", appRunAsync, py::arg("func"));
+        mod.def("call", callXll, py::arg("func"));
+        mod.def("call_async", callXllAsync, py::arg("func"));
       });
     }
   }

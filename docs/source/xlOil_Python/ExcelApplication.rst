@@ -17,11 +17,51 @@ COM support can be provided by 'comtypes', a newer pure python package or 'win32
 in the XLL's ini file.
 
 
-Application.Run
----------------
+Commands, Macros & Subroutines
+------------------------------
 
-In VBA this takes a function name and a variable argument list and attempts to call the specified
-function dynamically.  In xlOil, use :obj:`xloil.excel_func` and :obj:`xloil.excel_func_async`.
+'Macros' in VBA are declared as subroutines (``Sub``/``End Sub``) and do not return a value. 
+These functions are run outside the calculation cycle triggered by some user interaction such
+as a button.  They are run on Excel's main thread and have full permissions on the Excel object 
+model.  In the XLL interface, these are called 'commands' in the XLL interface and xlOil uses 
+this terminology.
+
+Programs which heavily use the `Excel.Application` object model are usually written as 
+macros / commands.
+
+Unless declared *local*, XLL commands are hidden and not displayed in dialog boxes for running 
+macros, such as Excel's macro viewer (Alt+F8). However their names can be entered anywhere a 
+valid command name is required, including in the macro viewer.
+
+
+Calling Worksheet Functions and Application.Run
+-----------------------------------------------
+
+In VBA, ``Application.Run`` takes a function name and a variable argument list and attempts
+to call the specified user-defined function.  In xlOil, use :obj:`xloil.run` to make the same 
+call or go via the COM library with ``xloil.app().Run(...)``. Like all COM calls, they must be
+invoked on the main thread.
+
+To call a worksheet function, use :obj:`xloil.call`. This can also invoke old-style 
+`macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf>`_.
+It must be called from a non-local worksheet function on the main thread.  To access a worksheet
+function from COM use ``xloil.app().WorksheetFunction.Sum(...)`.
+
+:obj:`xloil.run` and :obj:`xloil.call` have async flavours :obj:`xloil.run_async` and 
+:obj:`xloil.call_async` which return a future and can be called from any thread.
+
++------------------------+---------------------------------------------------------+-------------+
+| Function               |  Use                                                    | Call from   |
++========================+=========================================================+=============+
+| :obj:`xloil.run`       | Calls user-defined functions as per `Application.Run`   | Main thread |
++------------------------+---------------------------------------------------------+-------------+
+| :obj:`xloil.run_async` |                                                         | Anywhere    |
++------------------------+---------------------------------------------------------+-------------+
+| :obj:`xloil.call`      | Calls worksheet functions, UDFs or macro sheet commands | Non-local worksheet function |
++------------------------+---------------------------------------------------------+-------------+
+| :obj:`xloil.run_async` |                                                         | Anywhere    |
++------------------------+---------------------------------------------------------+-------------+
+
 
 Examples
 --------

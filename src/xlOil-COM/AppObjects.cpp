@@ -209,6 +209,52 @@ namespace xloil
 
   namespace App
   {
+    namespace
+    {
+      template <typename F, typename T, std::size_t N, std::size_t... Idx>
+      decltype(auto) appRun_impl(F func, T(&args)[N], std::index_sequence<Idx...>) {
+        return excelApp().Run(func, args[Idx]...);
+      }
+
+      template <typename T, std::size_t N>
+      decltype(auto) appRun(const wchar_t* func, T(&args)[N]) {
+        return appRun_impl(func, args, std::make_index_sequence<N>{});
+      }
+    }
+
+    ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[])
+    {
+      if (nArgs > 30)
+        XLO_THROW("Application::Run maximum number of args is 30");
+
+      static _variant_t vArgs[30] = {
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing
+      };
+
+      // The construction of 'cleanup' is all noexcept
+      auto finally = [begin = vArgs, end = vArgs + nArgs](void*)
+        {
+          for (auto i = begin; i != end; ++i)
+            *i = vtMissing;
+        };
+      std::unique_ptr<void, decltype(finally)> cleanup(0, finally);
+
+      for (size_t i = 0; i < nArgs; ++i)
+        COM::excelObjToVariant(&vArgs[i], *args[i], true);
+
+      try
+      {
+        auto result = appRun(func.c_str(), vArgs);
+        return COM::variantToExcelObj(result);
+      }
+      XLO_RETHROW_COM_ERROR;
+    }
+
     ExcelWorkbook Workbooks::active()
     {
       return ExcelWorkbook();

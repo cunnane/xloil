@@ -168,8 +168,9 @@ namespace xloil
     /// </summary>
     explicit ExcelRange(const std::wstring_view& address);
     ExcelRange(const Range& range);
-
     ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
+    ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
+
     ExcelRange(ExcelRange&& that) noexcept { std::swap(_ptr, that._ptr); }
     ExcelRange(const ExcelRange& that) : IAppObject(that._ptr) {}
 
@@ -336,6 +337,8 @@ namespace xloil
 
   namespace App
   {
+    XLOIL_EXPORT ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
+    
     struct XLOIL_EXPORT Workbooks
     {
       static ExcelWorkbook active();
