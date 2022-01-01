@@ -129,6 +129,10 @@ namespace xloil
       : _obj(from._obj)
     {}
 
+    ExcelRef(ExcelRef&& from)
+      : _obj(std::move(from._obj))
+    {}
+
     ~ExcelRef()
     {
       reset();
@@ -295,40 +299,51 @@ namespace xloil
   class XllRange : public Range
   {
   public:
-    explicit XllRange(const ExcelRef& ref);
-    explicit XllRange(const ExcelObj& ref);
+    explicit XllRange(const ExcelRef& ref) : _ref(ref) {}
+    explicit XllRange(ExcelRef&& ref)      : _ref(ref) {}
+    explicit XllRange(const ExcelObj& ref) : _ref(ExcelRef(ref)) {}
 
     virtual Range* range(
       int fromRow, int fromCol,
-      int toRow = TO_END, int toCol = TO_END) const final;
+      int toRow = TO_END, int toCol = TO_END) const final override;
 
-    virtual std::tuple<row_t, col_t> shape() const final;
+    virtual std::tuple<row_t, col_t> shape() const final override;
 
-    virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const final;
+    virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
 
     /// <summary>
     /// Returns the address of the range in the form
     /// 'SheetNm!A1:Z5'
     /// </summary>
-    virtual std::wstring address(bool local = false) const final;
+    virtual std::wstring address(bool local = false) const final override;
 
     /// <summary>
     /// Converts the referenced range to an ExcelObj. 
     /// References to single cells return an ExcelObj of the
     /// appropriate type. Multicell refernces return an array.
     /// </summary>
-    virtual ExcelObj value() const final;
+    ExcelObj value() const final override;
 
-    virtual ExcelObj value(row_t i, col_t j) const final;
+    ExcelObj value(row_t i, col_t j) const final override;
 
-    virtual void set(const ExcelObj& value) final;
+    void set(const ExcelObj& value) final override;
+
+    /// <summary>
+    /// Sets the formula if the range is a cell or an array formula for a 
+    /// larger range. Formulae must use RC-style references. This is not
+    /// a common style, so there is no setFormula on the base 
+    /// <see cref="xloil::Range"> class.
+    /// </summary>
+    void setFormula(const std::wstring_view& formula);
+
+    std::wstring formula() final override;
 
     /// <summary>
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
     virtual void clear() final;
 
-    const ExcelRef& native() const { return _ref; }
+    const ExcelRef& asRef() const { return _ref; }
 
   private:
     ExcelRef _ref;

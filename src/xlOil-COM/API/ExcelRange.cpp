@@ -7,6 +7,14 @@
 
 namespace xloil
 {
+  namespace
+  {
+    _variant_t stringToVariant(const std::wstring_view& str)
+    {
+      auto variant = COM::stringToVariant(str);
+      return _variant_t(variant, false);
+    }
+  }
   Range* newRange(const wchar_t* address)
   {
     if (InXllContext::check())
@@ -14,8 +22,6 @@ namespace xloil
     else
       return new ExcelRange(address);
   }
-
-
   ExcelRef refFromComRange(Excel::Range* range)
   {
     try
@@ -129,6 +135,28 @@ namespace xloil
     }
     XLO_RETHROW_COM_ERROR;
   }
+
+  void ExcelRange::setFormula(const std::wstring_view& formula)
+  {
+    try
+    {
+      if (size() > 1)
+        ptr()->FormulaArray = stringToVariant(formula);
+      else
+        ptr()->Formula = stringToVariant(formula);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  std::wstring ExcelRange::formula()
+  {
+    try
+    {
+      return ((_bstr_t)ptr()->Formula).GetBSTR();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
   void ExcelRange::clear()
   {
     ptr()->Clear();

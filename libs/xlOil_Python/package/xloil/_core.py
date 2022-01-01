@@ -127,7 +127,7 @@ else:
 
     class Range(_AppObject):
         """
-        Similar to the `Excel.Range <https://docs.microsoft.com/en-us/office/vba/api/excel.range(object)> 
+        Similar to the `Excel.Range <https://docs.microsoft.com/en-us/office/vba/api/excel.range(object)>`_ 
         object, this class allows direct access to an area on a worksheet. It uses similar 
         syntax to Excel's object, supporting the ``cell`` and ``range`` functions, however 
         they are zero-based as per python's standard.
@@ -195,6 +195,9 @@ else:
             rectangular range you want to put it in, that range is padded with #N/As.
             """
             pass
+        @value.setter
+        def value(self, value):
+            ....
         def set(self, val):
             """
             Sets the data in the range to the provided value. If a single value is passed
@@ -230,6 +233,19 @@ else:
             normal python slicing conventions.
             """
             pass
+        @property
+        def formula(self):
+            """
+            Property which returns or sets the cell formula if the range is a single cell 
+            or returns the array formula if the entire range contains one. Returns an empty
+            string if the range does not contain a formula or array formula.
+            """
+            ...
+
+        @formula.setter
+        def formula(self, value):
+            ...
+
 
     class ExcelArray:
         """
@@ -1039,6 +1055,9 @@ else:
 
             `func` can be a function name or an built-in function number as an int (which slightly 
             reduces the lookup overhead)
+
+            *run* can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf`>`_
+            from non-local functions.
         """
         ...
 

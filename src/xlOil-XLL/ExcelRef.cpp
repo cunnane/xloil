@@ -66,12 +66,6 @@ namespace xloil
     _obj = ExcelObj(sheetId, msxll::xlref12{ fromRow,  toRow, fromCol, toCol });
   }
 
-  XllRange::XllRange(const ExcelRef& ref)
-    : _ref(ref)
-  {}
-  XllRange::XllRange(const ExcelObj& ref)
-    : _ref(ExcelRef(ref))
-  {}
 
   Range* XllRange::range(int fromRow, int fromCol, int toRow, int toCol) const
   {
@@ -108,13 +102,24 @@ namespace xloil
     _ref.set(value);
   }
 
+  void XllRange::setFormula(const std::wstring_view& formula)
+  {
+    // Formulae must use RC style references
+    if (size() > 1)
+      callExcel(msxll::xlcFormulaArray, formula, _ref);
+    else
+      callExcel(msxll::xlcFormula, formula, _ref);
+  }
+
+  std::wstring XllRange::formula()
+  {
+    // xlfGetFormula always returns RC references, but GetCell uses the
+    // workspace settings to return RC or A1 style.
+    return callExcel(msxll::xlfGetCell, 6, _ref).toString();
+  }
+
   void XllRange::clear()
   {
     _ref.clear();
-  }
-
-  Range* newXllRange(const ExcelObj& xlRef)
-  {
-    return new XllRange(xlRef);
   }
 }

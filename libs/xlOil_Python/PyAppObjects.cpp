@@ -17,6 +17,12 @@ namespace xloil
   {
     namespace
     {
+      Range* range_Construct(const wchar_t* address) 
+      {
+        py::gil_scoped_release noGil; 
+        return new ExcelRange(address);
+      }
+
       // Works like the Range.Range function in VBA except is zero-based
       template <class T>
       inline auto range_subRange(const T& r,
@@ -56,6 +62,20 @@ namespace xloil
         r.clear();
       }
       
+      auto range_GetFormula(Range& r)
+      {
+        // XllRange::formula only works from non-local functions so to 
+        // minimise surpise, we convert to a COM range and call 'formula'
+        py::gil_scoped_release noGil;
+        return ExcelRange(r).formula();
+      }
+
+      void range_SetFormula(Range& r, const wstring& val) 
+      { 
+        py::gil_scoped_release noGil;
+        ExcelRange(r).setFormula(val);
+      }
+
       template<class T>
       py::object getItem(const T& range, py::object loc)
       {
@@ -154,8 +174,8 @@ namespace xloil
         .def("__next__", &RangeIter::next);
 
       // Bind Range class from xloil::ExcelRange
-      py::class_<Range>(mod, "Range")
-        .def(py::init([](const wchar_t* x) { py::gil_scoped_release noGil; return newRange(x); }),
+      auto rangeClass = py::class_<Range>(mod, "Range")
+        .def(py::init(std::function(range_Construct)), 
           py::arg("address"))
         .def("range", range_subRange<Range>,
           py::arg("from_row"),
@@ -180,7 +200,10 @@ namespace xloil
         .def_property_readonly("nrows", &Range::nRows)
         .def_property_readonly("ncols", &Range::nCols)
         .def_property_readonly("shape", &Range::shape)
+        .def_property("formula", range_GetFormula, range_SetFormula)
         .def("to_com", toCom<Range>, py::arg("lib") = "");
+
+      rangeType = (PyTypeObject*)rangeClass.ptr();
 
       // TODO: do we need main thread synchronisation on all this?
       py::class_<ExcelWorksheet>(mod, "Worksheet")

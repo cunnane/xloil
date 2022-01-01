@@ -213,16 +213,23 @@ namespace xloil
     /// </summary>
     void set(const ExcelObj& value) final override;
 
+    void setFormula(const std::wstring_view& formula);
+
+    std::wstring formula() final override;
+
     /// <summary>
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
     void clear() final override;
 
     /// <summary>
-    /// Returns the range address
+    /// The range address
     /// </summary>
     std::wstring name() const override;
 
+    /// <summary>
+    /// The worksheet which contains this range
+    /// </summary>
     ExcelWorksheet parent() const;
 
     /// <summary>

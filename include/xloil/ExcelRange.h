@@ -110,6 +110,14 @@ namespace xloil
     /// </summary>
     virtual void set(const ExcelObj& value) = 0;
 
+    /// <summary>
+    /// Returns the cell formula if the range is a single cell or the 
+    /// array formula if the entire range contains one. Returns an empty
+    /// string if there is no formula or array formula.
+    /// </summary>
+    /// <returns></returns>
+    virtual std::wstring formula() = 0;
+
     Range& operator=(const ExcelObj& value)
     {
       set(value);
