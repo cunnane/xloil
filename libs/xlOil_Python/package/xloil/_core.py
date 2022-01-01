@@ -197,7 +197,7 @@ else:
             pass
         @value.setter
         def value(self, value):
-            ....
+            ...
         def set(self, val):
             """
             Sets the data in the range to the provided value. If a single value is passed
