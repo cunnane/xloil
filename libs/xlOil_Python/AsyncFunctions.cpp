@@ -225,14 +225,14 @@ namespace xloil
     {
       const PyFuncInfo& _info;
       vector<py::object> _args;
-      PyObject *_kwargs;
+      py::object _kwargs;
       shared_ptr<RtdReturn> _returnObj;
       CallerInfo _caller;
 
       /// <summary>
       /// Steals references to PyObjects
       /// </summary>
-      RtdAsyncTask(const PyFuncInfo& info, vector<py::object>&& args, PyObject* kwargs)
+      RtdAsyncTask(const PyFuncInfo& info, vector<py::object>&& args, py::object&& kwargs)
         : _info(info)
         , _args(args)
         , _kwargs(kwargs)
@@ -242,7 +242,7 @@ namespace xloil
       {
         py::gil_scoped_acquire gilAcquired;
         _args.clear();
-        Py_XDECREF(_kwargs);
+        _kwargs = py::none();
         _returnObj.reset();
       }
 
@@ -254,7 +254,7 @@ namespace xloil
         PyErr_Clear();
 
         _args[PyFuncInfo::theVectorCallOffset] = py::cast(_returnObj);
-        _info.invoke(_args, _kwargs);
+        _info.invoke(_args, _kwargs.ptr());
       }
       bool done() noexcept override
       {
@@ -295,8 +295,8 @@ namespace xloil
         if (!_kwargs)
           return !that->_kwargs;
         
-        auto kwargs = PyBorrow<py::dict>(_kwargs);
-        auto that_kwargs = PyBorrow<py::dict>(that->_kwargs);
+        auto kwargs = py::dict(_kwargs);
+        auto that_kwargs = py::dict(that->_kwargs);
         
         if (kwargs.size() != that_kwargs.size())
           return false;
@@ -317,23 +317,20 @@ namespace xloil
       try
       {
         // TODO: consider argument capture and equality check under c++
-        PyObject *kwargsP;
+        py::object kwargs;
 
         // Array size +1 to allow for RtdReturn argument
         vector<py::object> args(1 + info->argArraySize());
         {
           py::gil_scoped_acquire gilAcquired;
-
-          py::object kwargs;
+          
           // +1 to skip the RtdReturn argument
           info->convertArgs(xlArgs, (PyObject**)(args.data() + 1), kwargs);
-
-          // TODO: not sure of the need for this
-          kwargsP = kwargs.release().ptr();
         }
 
+        // Moving a py::object means we don't need the GIL
         auto value = rtdAsync(
-          std::make_shared<RtdAsyncTask>(*info, std::move(args), kwargsP));
+          std::make_shared<RtdAsyncTask>(*info, std::move(args), std::move(kwargs)));
 
         return returnValue(value ? *value : CellError::NA);
       }
