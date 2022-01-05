@@ -41,9 +41,6 @@ namespace xloil
     /// Returns a 1x1 subrange containing the specified cell. Uses zero-based
     /// indexing unlike Excel's VBA Range.Cells function.
     /// </summary>
-    /// <param name="i"></param>
-    /// <param name="j"></param>
-    /// <returns></returns>
     Range* cell(int i, int j) const
     {
       return range(i, j, i, j);

@@ -172,8 +172,8 @@ namespace xloil
         toCol = ptr()->Columns->GetCount();
 
       auto r = ptr()->GetRange(
-        ptr()->Cells->Item[fromRow - 1][fromCol - 1],
-        ptr()->Cells->Item[toRow - 1][toCol - 1]);
+        ptr()->Cells->Item[fromRow + 1][fromCol + 1],
+        ptr()->Cells->Item[toRow + 1][toCol + 1]);
       return ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;
@@ -242,7 +242,7 @@ namespace xloil
           for (auto i = begin; i != end; ++i)
             *i = vtMissing;
         };
-      std::unique_ptr<void, decltype(finally)> cleanup(0, finally);
+      std::unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
 
       for (size_t i = 0; i < nArgs; ++i)
         COM::excelObjToVariant(&vArgs[i], *args[i], true);

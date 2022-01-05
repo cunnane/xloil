@@ -79,14 +79,16 @@ namespace xloil
       if (toCol == Range::TO_END)
         toCol = ptr()->Column + ptr()->Columns->GetCount();
 
-      auto r = ptr()->GetRange(
-        ptr()->Cells->Item[fromRow - 1][fromCol - 1],
-        ptr()->Cells->Item[toRow - 1][toCol - 1]);
+      // Caling range->GetRange(cell1, cell2) does a very weird thing
+      // which I can't make sense of. Better to call ws.range(...)
+      auto ws = (Excel::_WorksheetPtr)ptr()->Parent;
+      auto r = ws->GetRange(
+        ptr()->Cells->Item[fromRow + 1][fromCol + 1],
+        ptr()->Cells->Item[toRow + 1][toCol + 1]);
       return new ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;
   }
-
 
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
   {
@@ -122,7 +124,7 @@ namespace xloil
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const
   {
-    return COM::variantToExcelObj(ptr()->Cells->Item[i][j]);
+    return COM::variantToExcelObj(ptr()->Cells->Item[i + 1][j + 1]);
   }
 
   void ExcelRange::set(const ExcelObj& value)

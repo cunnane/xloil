@@ -206,7 +206,7 @@ namespace xloil
     ExcelObj value() const final override;
 
     /// <summary>
-    /// Gets the value at (i, j) as an ExcelObj
+    /// Gets the value at (i, j) as an ExcelObj (zero-based)
     /// </summary>
     ExcelObj value(row_t i, col_t j) const final override;
 
@@ -296,7 +296,7 @@ namespace xloil
       int toRow = ExcelRange::TO_END, int toCol = ExcelRange::TO_END) const;
 
     /// <summary>
-    /// Returns a Range referring to the single cell (i, j)
+    /// Returns a Range referring to the single cell (i, j) (zero-based indexing)
     /// </summary>
     ExcelRange cell(int i, int j) const
     {

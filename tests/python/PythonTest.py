@@ -167,32 +167,64 @@ def pyTestKwargs(**kwargs) -> dict:
 #
 
 @xlo.func(command=True, local=False)
-def pyRunTestsNonLocal():
+def pyRunTestsNonLocal(address):
 
-    r1 = xlo.Range("G1")
-    if r1.value == "Spam":
-        r1.value = "Ham"
-    
+    xlo.Range(address).value = "Ham"
       
 @xlo.func(command=True)
 def pyPressRunTests():
 
-    xlo.Range("TestArea").clear()
+    r_test = xlo.Range("TestArea")
+    r_test.clear()
     
-    r1 = xlo.Range("G1")
-    r1.value = "Spam"
+    # Write a "result" to the top left of test area
+    r_res = r_test.cell(0, 0) 
+    r_res.value = "OK"
     
-    # VBA's Application.Run
-    xlo.app().Run("pyRunTestsNonLocal")
+    # Ranges can be accessed using an address or offset from an existing range
+    r_h1 = xlo.Range("H1")
+    r_h1.value = "Spam"
+    
+    if r_test[0, 1] != 'Spam':
+        r_res.value = "Fail 1"
+    
+    # Like VBA's Application.Run or the COM xlo.app().Run, we can
+    # call user defined functions
+    xlo.run("pyRunTestsNonLocal", "H1")
 
-    r2 = xlo.Range("H1")
-    r2.formula = "=G1"
+    if r_h1.value != 'Ham':
+        r_res.value = "Fail 2"
     
+    # Setting the formula property and calculating the worksheet
+    # should work as expected 
+    r_test.cell(0, 2).formula = "=H1"
+   
     ws = xlo.active_worksheet()
+    wb = xlo.active_workbook()
+    
     ws.calculate()
     
-    if r2.value != r1.value:
-        ws['H1'].value = 'Oh dear'
+    if r_test[0, 2] != xlo.Range("H1").value:
+        r_res.value = "Fail 3"
+        
+    # There are several ways to select sub-ranges: 
+    #   * by address with '[]'
+    #   * by python slicing with '[]' (zero-based)
+    #   * with the `range` method
+    #
+    wb[ws.name]['H1:K1'].set('Pythian')
+    
+    if r_h1.value != 'Pythian':
+        r_res.value = "Fail 4"
+        
+    arr1 = r_test[0, 1:4].value
+    arr2 = r_test.range(0, 1, num_rows=1, num_cols=3).value
+    if (arr1 != arr2).any():
+        r_res.value = "Fail 5"
+    
+    
+    
+
         
 #------------------
 # Async functions
@@ -590,11 +622,11 @@ def event_writeTimeToA1():
     
     ws = xlo.active_worksheet()
     wb = xlo.active_workbook()
-    range = wb[ws.to_com().Name]["A1"]
+    rng = wb[ws.to_com().Name]["A1"]
     
     time = str(dt.datetime.now())
 
-    range.value = f"Calc on {ws.name} finished at: {time}"
+    rng.value = f"Calc on {ws.name} finished at: {time}"
 
 #
 # This handler is for the WorkbookBeforePrint event. If the `cancel` parameter

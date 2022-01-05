@@ -29,13 +29,21 @@ namespace xloil
       template <class T>
       inline auto range_subRange(const T& r,
         int fromR, int fromC,
-        int* toR = nullptr, int* toC = nullptr,
-        size_t* nRows = nullptr, size_t* nCols = nullptr)
+        const py::object& toR, const py::object& toC,
+        const py::object& nRows, const py::object& nCols)
       {
         py::gil_scoped_release noGil;
-        const auto toRow = toR ? *toR : (nRows ? fromR + (int)*nRows - 1 : Range::TO_END);
-        const auto toCol = toC ? *toC : (nCols ? fromC + (int)*nCols - 1 : Range::TO_END);
+        const auto toRow = !toR.is_none() ? toR.cast<int>() : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
+        const auto toCol = !toC.is_none() ? toC.cast<int>() : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
         return r.range(fromR, fromC, toRow, toCol);
+      }
+
+      inline Range* worksheet_subRange(const ExcelWorksheet& ws,
+        int fromR, int fromC,
+        const py::object& toR, const py::object& toC,
+        const py::object& nRows, const py::object& nCols)
+      {
+        return new ExcelRange(range_subRange<ExcelWorksheet>(ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
       inline auto convertExcelObj(ExcelObj&& val)
@@ -87,7 +95,7 @@ namespace xloil
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
-          : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow, (int)toCol));
+          : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
       }
 
       py::object worksheet_GetItem(const ExcelWorksheet& ws, py::object loc)
@@ -182,11 +190,11 @@ namespace xloil
         .def("range", range_subRange<Range>,
           py::arg("from_row"),
           py::arg("from_col"),
-          py::arg("to_row") = nullptr,
-          py::arg("to_col") = nullptr,
-          py::arg("num_rows") = nullptr,
-          py::arg("num_cols") = nullptr)
-        .def("cells", wrapNoGil(&Range::cell),
+          py::arg("to_row")   = py::none(),
+          py::arg("to_col")   = py::none(),
+          py::arg("num_rows") = py::none(),
+          py::arg("num_cols") = py::none())
+        .def("cell", wrapNoGil(&Range::cell),
           py::arg("row"),
           py::arg("col"))
         .def("__iter__", [](Range& self) { return new RangeIter(self); })
@@ -212,14 +220,17 @@ namespace xloil
         .def_property_readonly("name", wrapNoGil(&ExcelWorksheet::name))
         .def_property_readonly("parent", wrapNoGil(&ExcelWorksheet::parent))
         .def("__getitem__", worksheet_GetItem)
-        .def("range", range_subRange<ExcelWorksheet>,
+        .def("range", worksheet_subRange,
           py::arg("from_row"),
           py::arg("from_col"),
-          py::arg("to_row") = nullptr,
-          py::arg("to_col") = nullptr,
-          py::arg("num_rows") = nullptr,
-          py::arg("num_cols") = nullptr)
-        .def("at_address", 
+          py::arg("to_row") = py::none(),
+          py::arg("to_col") = py::none(),
+          py::arg("num_rows") = py::none(),
+          py::arg("num_cols") = py::none())
+        .def("cell", wrapNoGil(&ExcelWorksheet::cell),
+          py::arg("row"),
+          py::arg("col"))
+        .def("at", 
           wrapNoGil((ExcelRange(ExcelWorksheet::*)(const wstring_view&) const) &ExcelWorksheet::range),
           py::arg("address"))
         .def("calculate", wrapNoGil(&ExcelWorksheet::calculate))
