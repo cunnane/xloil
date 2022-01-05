@@ -222,14 +222,14 @@ namespace xloil
         // This finally block seems pretty heavy, but an array<py::object> would result in 
         // 256 dtor calls every invocation. This approach does just what is required.
         auto finally = [
-          begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
-          end = argsArray.begin() + info->argArraySize()
-        ](void*)
-        {
-          for (auto i = begin; i != end; ++i)
-            Py_DECREF(*i);
-        };
-        unique_ptr<void, decltype(finally)> cleanup(0, finally);
+            begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
+            end = argsArray.begin() + info->argArraySize()
+          ](void*)
+          {
+            for (auto i = begin; i != end; ++i)
+              Py_DECREF(*i);
+          };
+        unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
 
         if constexpr (TThreadSafe)
         {
