@@ -254,7 +254,7 @@ namespace xloil
             for (auto i = begin; i != end; ++i)
               Py_DECREF(*i);
           };
-        unique_ptr<void, decltype(finally)> cleanup(0, finally);
+        unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
 
         if constexpr (TThreadSafe)
         {
