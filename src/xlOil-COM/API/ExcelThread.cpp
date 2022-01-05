@@ -16,6 +16,7 @@
 using std::scoped_lock;
 using std::shared_ptr;
 using std::make_shared;
+using std::vector;
 
 namespace xloil
 {
@@ -97,42 +98,54 @@ namespace xloil
         PostMessage(_hiddenWindow, WINDOW_MESSAGE, (WPARAM)this, 0);
     }
 
+    // Entirely arbitrary ID number
+    static constexpr size_t IDT_TIMER1 = 1001;
+
     void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs) noexcept
     {
-      scoped_lock lock(_lock);
       try
       {
-        _timerQueue[item.get()] = item;
+        long long now = GetTickCount64();
+        {
+          scoped_lock lock(_lock);
+          _timerQueue.emplace(now + millisecs, item);
+        }
+        // Set timer to the offset between now and the next queue item. The queue is 
+        // a sorted map so first element is due first.
+        SetTimer(_hiddenWindow, IDT_TIMER1, 
+          std::max(0u, unsigned(_timerQueue.begin()->first - now)), TimerCallback);
       }
       catch (const std::exception& e)
       {
         XLO_ERROR("Internal: error running queue item '{}'", e.what());
       }  
-      SetTimer(_hiddenWindow, (UINT_PTR)item.get(), millisecs, TimerCallback);
     }
 
   private:
     static void CALLBACK TimerCallback(
-      HWND hwnd, UINT /*uMsg*/, UINT_PTR idEvent, DWORD /*dwTime*/) noexcept
+      HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
     {
       try
       {
         auto& self = instance();
-        if (KillTimer(hwnd, idEvent) == 0)
-          XLO_ERROR("Internal: failed to kill window timer");
-        shared_ptr<QueueItem> item;
+        auto now = GetTickCount64();
+        vector<shared_ptr<QueueItem>> items;
         {
           scoped_lock lock(self._lock);
-          auto found = self._timerQueue.find((QueueItem*)idEvent);
-          if (found == self._timerQueue.end())
-          {
-            XLO_ERROR("Internal: bad window timer");
-            return;
+          auto i = self._timerQueue.begin();
+          auto end = self._timerQueue.end();
+          // Find all the queue items with a due time before now and copy them
+          // to our pending vector.
+          while (i != end && i->first <= now) {
+            items.push_back(i->second);
+            ++i;
           }
-          item = found->second;
-          self._timerQueue.erase(found);
+          // Erase all the items copied to the pending vector
+          self._timerQueue.erase(self._timerQueue.begin(), i);
         }
-        (*item)(self);
+        // Drop mutex and run pending queue items
+        for (auto& item : items)
+          (*item)(self);
       }
       catch (const std::exception& e)
       {
@@ -199,7 +212,7 @@ namespace xloil
 
     std::deque<shared_ptr<QueueItem>> _windowQueue;
     std::deque<shared_ptr<QueueItem>> _apcQueue;
-    std::unordered_map<QueueItem*, shared_ptr<QueueItem>> _timerQueue;
+    std::multimap<size_t, shared_ptr<QueueItem>> _timerQueue;
     std::mutex _lock;
 
     HWND _hiddenWindow;
