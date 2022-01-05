@@ -8,6 +8,7 @@ xlOil Python
 
     GettingStarted
     Concepts
+    Functions
     TypeConversion
     ExcelApplication
     CustomGUI

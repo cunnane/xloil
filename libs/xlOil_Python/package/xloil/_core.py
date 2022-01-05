@@ -159,12 +159,12 @@ else:
                 Starting row offset from the top left of the parent range. Zero-based. Can be negative
 
             to_row: int
-                End row offset from the top left of the parent range. This row will be included in 
+                End row offset from the top left of the parent range. This row will be *included* in 
                 the range. The offset is zero-based and can be negative to select ranges outside the
                 parent range. Do not specify both `to_row` and `num_rows`.
 
             to_col: int
-                End column offset from the top left of the parent range. This column will be included 
+                End column offset from the top left of the parent range. This column will be *included*
                 in the range. The offset is zero-based and can be negative to select ranges outside 
                 the parent range. Do not specify both `to_col` and `num_cols`.
 
@@ -177,10 +177,10 @@ else:
                 are specified, the range ends at the last column of the parent range.
             """
             pass
-        def cell(self, row, col):
+        def cell(self, row:int, col:int) -> Range:
             """ 
-            Returns a Range object which consists of the single cell specified. Note the indices
-            are zero-based from the top left of the parent range.
+            Returns a Range object which consists of a single cell. The indices are zero-based 
+            from the top left of the parent range.
             """
             pass
         @property
@@ -212,7 +212,7 @@ else:
             Clears all values and formatting.  Any cell in the range will then have Empty type.
             """
             pass
-        def address(self,local=False):
+        def address(self, local=False) -> str:
             """
             Gets the range address in A1 format. The `local` parameter specifies whether
             the workbook and sheet name should be included. For example `local=True` gives
@@ -220,21 +220,23 @@ else:
             """
             pass
         @property
-        def nrows(self):
+        def nrows(self) -> int:
             """ Returns the number of rows in the range """
             pass
         @property
-        def ncols(self):
+        def ncols(self) -> int:
             """ Returns the number of columns in the range """
             pass
-        def __getitem__(self, tuple):
+        def __getitem__(self, at):
             """ 
             Given a 2-tuple, slices the range to return a sub Range or a single element. Uses
-            normal python slicing conventions.
+            normal python slicing conventions i.e [left included, right excluded), negative
+            numbers are offset from the end.  If the tuple specifies a single cell, returns 
+            the value in that cell, otherwise returns a Range object.
             """
             pass
         @property
-        def formula(self):
+        def formula(self) -> str:
             """
             Property which returns or sets the cell formula if the range is a single cell 
             or returns the array formula if the entire range contains one. Returns an empty
@@ -243,7 +245,7 @@ else:
             ...
 
         @formula.setter
-        def formula(self, value):
+        def formula(self, value:str):
             ...
 
 
@@ -860,9 +862,14 @@ else:
             """
             ...
 
-        def __getitem__(self, address):
+        def __getitem__(self, at):
             """
-            Returns the range specified by the local address, equivalent to ``at_address``.
+            If the argument is a string, returns the range specified by the local address, 
+            equivalent to ``at_address``.  
+            
+            If the argument is a 2-tuple, slices the sheet to return a Range or a single element. 
+            Uses normal python slicing conventions, i.e [left included, right excluded), negative
+            numbers are offset from the end.
             """
             ...
 
@@ -883,11 +890,11 @@ else:
                 Starting row offset from the top left of the parent range. Zero-based.
 
             to_row: int
-                End row offset from the top left of the parent range. This row will be included in 
+                End row offset from the top left of the parent range. This row will be *included* in 
                 the range. The offset is zero-based. Do not specify both `to_row` and `num_rows`.
 
             to_col: int
-                End column offset from the top left of the parent range. This column will be included  
+                End column offset from the top left of the parent range. This column will be *included*  
                 in the range. The offset is zero-based. Do not specify both `to_col` and `num_cols`.
 
             num_rows: int
@@ -899,10 +906,15 @@ else:
                 are specified, the range ends at the end of the sheet.
             """
             ...
-
-        def at_address(self, address) -> Range:
+        def cell(self, row:int, col:int) -> Range:
+            """ 
+            Returns a Range object which consists of a single cell. The indices are zero-based 
+            from the top left of the parent range.
             """
-            Returns the range specified by the local address, e.g. ``at_address('B3')``
+            pass
+        def at(self, address:str) -> Range:
+            """
+            Returns the range specified by the local address, e.g. ``at('B3:D6')``
             """
             ...
 

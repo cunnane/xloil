@@ -36,6 +36,8 @@ xlOil Python Module Reference
 	excel_state
 	run
 	run_async
+	call
+	call_async	
 	app
 	Range
 	Worksheet
@@ -141,7 +143,7 @@ Everything else
 ---------------
 
 .. automodule:: xloil
-	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_run,excel_state,excel_func,excel_func_async
+	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_run,excel_state,run,run_async,call,call_async
 	:imported-members:
 	:undoc-members:
 

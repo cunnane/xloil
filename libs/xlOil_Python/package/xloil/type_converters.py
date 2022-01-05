@@ -53,8 +53,7 @@ _RETURN_CONVERTER_PREFIX = "Return_"
 
 def get_internal_converter(type_name, read_excel_value=True):
     """
-    Attempt to find converter with standardised name like `Read_int`. Falls back
-    to Read_cache if none found
+    Attempt to find converter with standardised name like `Read_int`.
     """
     to_from = _READ_CONVERTER_PREFIX if read_excel_value else _RETURN_CONVERTER_PREFIX
     name    = f"{to_from}{type_name}"
