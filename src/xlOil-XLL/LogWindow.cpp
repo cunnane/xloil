@@ -205,7 +205,7 @@ namespace xloil
         while ((pos = wmsg.find(L'\n', pos + 1)) != string::npos)
         {
           if (wmsg[pos - 1] != L'\r')
-            wmsg.replace(pos, 2, L"\r\n");
+            wmsg.replace(pos, 1, L"\r\n");
         }
 
         _windowText.append(wmsg).append(L"\r\n");
