@@ -97,7 +97,11 @@ namespace xloil
             if constexpr(std::is_same_v<TRet, ExcelObj*>)
               return returnValue(e);
             else
+            {
               XLO_WARN(e.what());
+              if constexpr (std::is_same_v<TRet, int>)
+                return 0;
+            }
           }
         };
       }

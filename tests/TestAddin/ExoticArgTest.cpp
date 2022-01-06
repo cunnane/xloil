@@ -81,5 +81,5 @@ namespace xloil
   {
     return 1;
   }
-  XLO_REGISTER_FUNC(testCommand).command();
+  XLO_REGISTER_FUNC(testCommand);
 }

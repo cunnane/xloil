@@ -95,6 +95,10 @@ namespace xloil
         ++iArg;
       }
 
+      if ((opts & (FuncInfo::MACRO_TYPE | FuncInfo::THREAD_SAFE | FuncInfo::COMMAND))
+        + (argTypes[0] == '>' ? 1 : 0) > 1)
+        XLO_THROW("Macro, Threadsafe, Command and Async are exclusive");
+
       // Set function option suffixes
       if (opts & FuncInfo::VOLATILE)
         argTypes += '!';
@@ -103,8 +107,6 @@ namespace xloil
       else if (opts & FuncInfo::THREAD_SAFE)
       {
         argTypes += '$';
-        if (opts & FuncInfo::MACRO_TYPE)
-          XLO_THROW("Cannot declare function thread-safe and macro-type");
         if (opts & FuncInfo::VOLATILE)
           XLO_THROW("Cannot declare function thread-safe and volatile");
       }

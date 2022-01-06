@@ -190,6 +190,11 @@ namespace xloil
       return cast();
     }
 
+    /// <summary>
+    /// Marks the function as a command, i.e. a macro triggered by the user
+    /// instead of by Excel's calculation cycle. You don't neeed to explicitly
+    /// specify a command, it is implied your function returns an int.
+    /// </summary>
     self& command()
     {
       _info->options |= FuncInfo::COMMAND;
@@ -230,9 +235,10 @@ namespace xloil
   struct StaticRegistrationBuilder : public FuncInfoBuilderT<StaticRegistrationBuilder>
   {
     StaticRegistrationBuilder(
-      const char* entryPoint_, size_t nArgs, const int* type)
+      const char* entryPoint_, int funcOpts, size_t nArgs, const int* type)
       : FuncInfoBuilderT(nArgs, type)
     {
+      _info->options = funcOpts;
       entryPoint = entryPoint_;
       name(utf8ToUtf16(entryPoint_));
     }
@@ -242,7 +248,7 @@ namespace xloil
 
   XLOIL_EXPORT StaticRegistrationBuilder& 
     createRegistrationMemo(
-      const char* entryPoint_, size_t nArgs, const int* types);
+      const char* entryPoint_, int funcOpts, size_t nArgs, const int* types);
 
 #if DOXYGEN
 /// <summary>
@@ -289,6 +295,8 @@ namespace xloil
 #define XLOIL_STDCALL
 #endif
 
+    template<class T> struct ReturnType { static constexpr auto value = 0; };
+    template<> struct ReturnType<int> { static constexpr auto value = FuncInfo::COMMAND; };
     /// <summary>
     /// Ultimately inherits from Defs<ReturnType, Args...> but due to the myriad
     /// ways which a callable can be expressed in C++, has a lot of specialisations
@@ -324,11 +332,12 @@ namespace xloil
     struct FunctionTraits<Defs, T, decltype((void)&T::operator())>
       : FunctionTraitsFilter<Defs, decltype(&T::operator())> {};
 
-    template <typename ReturnType, typename... Args>
+    template <typename TReturnType, typename... Args>
     struct ArgTypesDefs
     {
       static constexpr std::array<int, sizeof...(Args)> types = { ArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
+      static constexpr auto funcOpts = ReturnType<TReturnType>::value;
       template <size_t i> struct arg
       {
         using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
@@ -339,6 +348,7 @@ namespace xloil
     {
       static constexpr std::array<int, sizeof...(Args)> types = { VoidArgType<Args>::value ... };
       static constexpr size_t nArgs = sizeof...(Args);
+      static constexpr auto funcOpts = 0;
       template <size_t i> struct arg
       {
         using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
@@ -353,9 +363,9 @@ namespace xloil
   template <class TFunc> inline StaticRegistrationBuilder&
     registrationMemo(const char* name, TFunc)
   {
-    auto argTypes = detail::ArgTypes<TFunc>();
+    using argTypes = detail::ArgTypes<TFunc>;
     return createRegistrationMemo(
-      name, argTypes.nArgs, argTypes.types.data());
+      name, argTypes::funcOpts, argTypes::nArgs, argTypes::types.data());
   }
 
   std::vector<std::shared_ptr<const WorksheetFuncSpec>>

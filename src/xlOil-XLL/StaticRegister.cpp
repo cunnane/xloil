@@ -39,9 +39,9 @@ namespace xloil
   }
 
   XLOIL_EXPORT StaticRegistrationBuilder& createRegistrationMemo(
-    const char* entryPoint_, size_t nArgs, const int* types)
+    const char* entryPoint_, int funcOpts, size_t nArgs, const int* types)
   {
-    getFuncRegistryQueue().emplace_back(entryPoint_, nArgs, types);
+    getFuncRegistryQueue().emplace_back(entryPoint_, funcOpts, nArgs, types);
     return getFuncRegistryQueue().back();
   }
 
