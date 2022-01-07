@@ -12,30 +12,35 @@ namespace xloil
       ctpl::thread_pool _thread;
       pybind11::object _eventLoop;
       pybind11::object _callSoonFunction;
+      pybind11::object _pumpFunction;
+      unsigned _asyncioTimeout;
+      unsigned _sleepTime;
+      bool _stopped;
 
     public:
-      EventLoop()
-        : EventLoop([]() {})
-      {}
-
-      EventLoop(std::function<void()> init)
-        : _thread(1)
+      EventLoop(unsigned asyncioTimeout = 200, unsigned sleepTime = 200)
+        : _thread(1) 
+        , _stopped(false)
+        , _asyncioTimeout(asyncioTimeout)
+        , _sleepTime(sleepTime)
       {
 #ifdef _DEBUG
         if (PyGILState_Check() == 1)
           XLO_THROW("Release GIL before constructing an EventLoop");
 #endif
 
-        _thread.push([this, init](int) mutable
+        _thread.push([this](int) mutable
         {
           try
           {
-            init();
             pybind11::gil_scoped_acquire getGil;
+            // Create a hanging ref to the python thread state, to avoid all context vars,
+            // particularly the asyncio loop, being deleted at the end of this function.
             getGil.inc_ref();
+
             _eventLoop = pybind11::module::import("asyncio").attr("new_event_loop")();
+            _pumpFunction = pybind11::module::import("xloil.register").attr("_pump_message_loop");
             _callSoonFunction = _eventLoop.attr("call_soon_threadsafe");
-   
           }
           catch (const std::exception& e)
           {
@@ -50,11 +55,32 @@ namespace xloil
         {
           try
           {
-            pybind11::gil_scoped_acquire getGil;
-            getGil.dec_ref();
-            _eventLoop.attr("run_forever")();
-            _eventLoop = pybind11::object();
-            _callSoonFunction = pybind11::object();
+            // Resolve hanging reference to python thread state
+            {
+              pybind11::gil_scoped_acquire getGil;
+              getGil.dec_ref();
+            }
+            
+            // Pump the asyncio loop for a specified number of milliseconds, release Gil
+            // and Sleep.  If the event loop has no active tasks, sleep for 4x as long.
+            size_t nTasks = 0;
+            while (!_stopped)
+            {
+              {
+                pybind11::gil_scoped_acquire getGil;
+                nTasks = _pumpFunction(_eventLoop, _asyncioTimeout / 1000).cast<size_t>();
+              }
+              Sleep(nTasks > 0 ? _sleepTime : _sleepTime * 4);
+            }
+
+            // Aquire GIL to decref our python objects and close the event loop
+            {
+              pybind11::gil_scoped_acquire getGil;
+              _eventLoop.attr("close");
+              _pumpFunction     = pybind11::object();
+              _callSoonFunction = pybind11::object();
+              _eventLoop        = pybind11::object();
+            }
           }
           catch (const std::exception& e)
           {
@@ -99,8 +125,7 @@ namespace xloil
       }
       void stop()
       {
-        pybind11::gil_scoped_acquire getGil;
-        callback(_eventLoop.attr("stop"));
+        _stopped = true;
       }
       void shutdown()
       {
