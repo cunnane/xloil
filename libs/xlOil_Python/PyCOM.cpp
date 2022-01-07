@@ -205,6 +205,9 @@ namespace xloil
         if (!funcAddress)
           XLO_THROW(L"Failed to find PyCom_PyObjectFromIUnknown in pythoncom DLL '{}'", pythoncomDLL);
 
+        auto gencache = py::module::import("win32com.client.gencache");
+        gencache.attr("EnsureModule")(LIBID_STR_Excel, EXCEL_TLB_LCID, EXCEL_TLB_MAJOR, EXCEL_TLB_MINOR);
+
         typedef PyObject* (*FuncType)(IUnknown*, REFIID riid, BOOL);
         return (FuncType)funcAddress;
       }
