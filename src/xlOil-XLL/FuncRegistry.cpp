@@ -95,8 +95,10 @@ namespace xloil
         ++iArg;
       }
 
-      if ((opts & (FuncInfo::MACRO_TYPE | FuncInfo::THREAD_SAFE | FuncInfo::COMMAND))
-        + (argTypes[0] == '>' ? 1 : 0) > 1)
+      if (((opts & FuncInfo::MACRO_TYPE) > 0)
+        + ((opts & FuncInfo::THREAD_SAFE) > 0)
+        + ((opts & FuncInfo::COMMAND) > 0)
+        + (argTypes[0] == '>') > 1)
         XLO_THROW("Macro, Threadsafe, Command and Async are exclusive");
 
       // Set function option suffixes
