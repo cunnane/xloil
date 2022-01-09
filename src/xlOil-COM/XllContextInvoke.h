@@ -20,17 +20,6 @@ namespace xloil
     static int _count;
   };
 
-  class InComContext
-  {
-  public:
-    InComContext();
-    ~InComContext();
-    static bool check();
-  private:
-    static int _count;
-    friend InXllContext;
-  };
-
   /// <summary>
   /// Calling XLL specific functions is generally not allowed unless you
   /// are on the main thread and are in an XLL function called by Excel.

@@ -226,8 +226,6 @@ namespace xloil
 
           // These dispids are copied from oleview and are in the same order as listed there
 
-          InComContext scope;
-
           switch (dispidMember)
           {
           case 0x0000061d:

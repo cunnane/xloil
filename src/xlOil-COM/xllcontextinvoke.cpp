@@ -54,25 +54,10 @@ namespace xloil
   }
   bool InXllContext::check()
   {
-    return InComContext::_count > 0 ? false : _count > 0;
+    return _count > 0;
   }
 
   int InXllContext::_count = 0;
-
-  InComContext::InComContext()
-  {
-    ++_count;
-  }
-  InComContext::~InComContext()
-  {
-    --_count;
-  }
-  bool InComContext::check()
-  {
-    return !InXllContext::check();
-  }
-
-  int InComContext::_count = 0;
 
   bool runInXllContext(const std::function<void()>& f)
   {
