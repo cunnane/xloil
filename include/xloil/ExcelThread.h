@@ -19,16 +19,17 @@ namespace xloil
   {
     enum QueueTypeValues
     {
-      /// Run item via a hidden window message (default)
+      /// Run item via a hidden window message (this doesn't need to be specified).
       WINDOW  = 1 << 0,
-      /// Run item via an APC call (use in special cases)
-      APC     = 1 << 1, 
       /// Always queue item, do not try to run immediately if on main thread
       ENQUEUE = 1 << 2, 
       /// Item uses XLL API functions
       XLL_API = 1 << 3, 
       /// Item uses COM API functions (default)
-      COM_API = 1 << 4  
+      COM_API = 1 << 4,
+      /// Functions requiring COM are continually retried until COM is available.
+      /// This disables that functionality.
+      NO_RETRY = 1 << 5
     };
   }
 
@@ -54,9 +55,8 @@ namespace xloil
     runExcelThreadImpl(
       std::function<void()>&& func,
       int flags,
-      int nComRetries,
-      unsigned waitBetweenRetries,
-      unsigned waitBeforeCall);
+      unsigned waitBeforeCall,
+      unsigned waitBetweenRetries);
 
   /// <summary>
   /// Excel's COM interface, that is any called based on the Excel::Application object,
@@ -75,19 +75,7 @@ namespace xloil
   /// 
   /// </summary>
   /// <param name="func"></param>
-  /// <param name="flags">
-  ///   The callback can be schedule via an asynchronous procedure call (APC)
-  ///   or a message to a hidden window which will be executed.  APC is generally 
-  ///   executed when the user interacts with Excel and window messages immediately 
-  ///   after calculation. Generally the Windows message (the default) is the more 
-  ///   responsive choice.
-  /// </param>
-  /// <param name="nComRetries">
-  ///   If non zero, xlOil will check if the COM API is available before
-  ///   invoking `func`. If unavailable, the retry count is decremented and xlOil
-  ///   tries again in <param ref="waitBetweenRetries"/> milliseconds.  If you do
-  ///   not intend to call any COM functions, this can be set to zero.
-  /// </param>
+  /// <param name="flags"></param>
   /// <param name="waitBetweenRetries">
   ///   The number of milliseconds to wait between COM retries if Excel reports
   ///   that the COM API is not available.
@@ -99,14 +87,13 @@ namespace xloil
   /// 
   template<typename F>
   inline auto runExcelThread(F&& func,
-    int flags = ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
-    int nComRetries = 10,
-    unsigned waitBetweenRetries = 200,
-    unsigned waitBeforeCall = 0) -> std::future<decltype(func())>
+    int flags = ExcelRunQueue::COM_API,
+    unsigned waitBeforeCall = 0,
+    unsigned waitBetweenRetries = 200) -> std::future<decltype(func())>
   {
     auto task = std::make_shared<std::packaged_task<decltype(func())()>>(std::forward<F>(func));
     auto voidFunc = std::function<void()>( [task]() { (*task)(); });
-    runExcelThreadImpl(std::move(voidFunc), flags, nComRetries, waitBetweenRetries, waitBeforeCall);
+    runExcelThreadImpl(std::move(voidFunc), flags, waitBeforeCall, waitBetweenRetries);
     return task->get_future();
   }
 

@@ -163,8 +163,8 @@ namespace xloil
         {
           // Wait 2s, then check if the workbook was actually closed. If the 
           // user still has the save/close dialog open, the COM call will fail
-          // so we retry 10 times every two seconds.
-          runExcelThread([]() { WorkbookMonitor::check(); }, ExcelRunQueue::WINDOW, 10, 2000, 2000);
+          // so we retry every 1 sec after that
+          runExcelThread([]() { WorkbookMonitor::check(); }, ExcelRunQueue::COM_API, 2000, 1000);
         }
       }
       void WorkbookBeforeSave(

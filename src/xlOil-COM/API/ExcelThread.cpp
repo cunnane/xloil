@@ -56,52 +56,76 @@ namespace xloil
       return obj;
     }
 
-    struct QueueItem : std::enable_shared_from_this<QueueItem>
+    struct QueueItem
     {
       std::function<void()> _func;
       int _flags;
-      int _nComRetries;
       unsigned _waitTime;
-      
 
       QueueItem(
         const std::function<void()>& func, 
         int flags,
-        int nComRetries, 
         unsigned waitTime)
         : _func(func)
         , _flags(flags)
-        , _nComRetries(nComRetries)
         , _waitTime(waitTime)
       {}
 
-      void operator()(Messenger& messenger);
+      bool useCOM() const noexcept 
+      {
+        return (_flags & ExcelRunQueue::COM_API) != 0;
+      }
+      bool useXLL() const noexcept 
+      {
+        return (_flags & ExcelRunQueue::XLL_API) != 0;
+      }
+      bool operator()(bool comAvailable, bool xllAvailable) noexcept
+      {
+        if (useCOM() && !comAvailable)
+          return false;
+        if (useXLL() && !(xllAvailable || comAvailable))
+          return false;
+        // The _func should be a packaged task which is noexcept, so the only errors we catch
+        // should come from runInXllContext.
+        try
+        {
+          if (useXLL())
+            runInXllContext(_func);
+          else
+            _func();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("Error running on main thread: {}", e.what());
+        }
+        catch (...)
+        {
+          XLO_ERROR("Error running on main thread: unknown");
+        }
+        return true;
+      }
     };
 
+    // Entirely arbitrary ID numbers
+    static constexpr unsigned IDT_TIMER1     = 101;
     static constexpr unsigned WINDOW_MESSAGE = 666;
-   
-    void QueueAPC(const shared_ptr<QueueItem>& item)
+
+    auto firstJobTime() 
     {
-      scoped_lock lock(_lock);
-      const bool emptyQueue = _apcQueue.empty();
-      _apcQueue.emplace_back(item);
-      if (emptyQueue)
-        QueueUserAPC(processAPCQueue, _threadHandle, (ULONG_PTR)this);
+      // The queue is a sorted map so first element is due first.
+      long long now = GetTickCount64();
+      return std::max(0u, unsigned(_timerQueue.begin()->first - now));
     }
 
-    void QueueWindow(const shared_ptr<QueueItem>& item)
+    void startTimer(unsigned millisecs)
     {
-      scoped_lock lock(_lock);
-      const bool emptyQueue = _windowQueue.empty();
-      _windowQueue.emplace_back(item);
-      if (emptyQueue)
-        PostMessage(_hiddenWindow, WINDOW_MESSAGE, (WPARAM)this, 0);
+      if (millisecs == 0)
+        PostMessage(_hiddenWindow, WINDOW_MESSAGE, 0, 0);
+      else
+        SetTimer(_hiddenWindow, IDT_TIMER1, millisecs, TimerCallback);
     }
 
-    // Entirely arbitrary ID number
-    static constexpr size_t IDT_TIMER1 = 1001;
-
-    void queueWindowTimer(const shared_ptr<QueueItem>& item, int millisecs) noexcept
+    void enqueue(const shared_ptr<QueueItem>& item, unsigned millisecs) noexcept
     {
       try
       {
@@ -109,16 +133,19 @@ namespace xloil
         {
           scoped_lock lock(_lock);
           _timerQueue.emplace(now + millisecs, item);
+          if (millisecs > 0)
+            millisecs = firstJobTime();
         }
-        // Set timer to the offset between now and the next queue item. The queue is 
-        // a sorted map so first element is due first.
-        SetTimer(_hiddenWindow, IDT_TIMER1, 
-          std::max(0u, unsigned(_timerQueue.begin()->first - now)), TimerCallback);
+        startTimer(millisecs);
       }
       catch (const std::exception& e)
       {
-        XLO_ERROR("Internal: error running queue item '{}'", e.what());
-      }  
+        XLO_ERROR("Internal error adding main thread queue item: '{}'", e.what());
+      }
+      catch (...)
+      {
+        XLO_ERROR("Internal error adding main thread queue item");
+      }
     }
 
   private:
@@ -143,28 +170,56 @@ namespace xloil
           // Erase all the items copied to the pending vector
           self._timerQueue.erase(self._timerQueue.begin(), i);
         }
-        // Drop mutex and run pending queue items
-        for (auto& item : items)
-          (*item)(self);
+
+        // Nothing to do, then exit
+        if (items.empty())
+          return;
+
+        // We have released mutex, now run pending queue items
+        const auto comAvailable = COM::isComApiAvailable();
+        const auto xllAvailable = InXllContext::check();
+
+        items.erase(std::remove_if(items.begin(), items.end(),
+          [=](auto& pJob)
+          {
+              return (*pJob)(comAvailable, xllAvailable);
+          }), items.end());
+
+        // Any remaining items failed due to COM/XLL availability
+        // so are requeued.
+        if (!items.empty())
+        {
+          now = GetTickCount64();
+          unsigned startTime;
+          {
+            scoped_lock lock(self._lock);
+            for (auto& item : items)
+              if ((item->_flags & ExcelRunQueue::NO_RETRY) == 0)
+                self._timerQueue.emplace(now + item->_waitTime, item);
+            startTime = self.firstJobTime();
+          }
+          self.startTimer(startTime);
+        }
       }
       catch (const std::exception& e)
       {
-        XLO_ERROR("Error running timed callback: {}", e.what());
+        XLO_ERROR("Internal error processing main thread queue: {}", e.what());
       }
       catch (...)
       {
-        XLO_ERROR("Error running timed callback: unknown");
+        XLO_ERROR("Internal error running main thread queue: unknown");
       }
     }
 
     static LRESULT CALLBACK WindowProc(
       HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
     {
+      // TODO: handle WM_TIMER here rather than allowing DefWindowProc to do it?
       switch (uMsg)
       {
       case WINDOW_MESSAGE:
       {
-        processWindowQueue((ULONG_PTR)wParam);
+        TimerCallback(hwnd, uMsg, wParam, 0);
         return S_OK;
       }
       default:
@@ -172,46 +227,6 @@ namespace xloil
       }
     }
 
-    static void processWindowQueue(ULONG_PTR ptr) noexcept
-    {
-      auto& self = *(Messenger*)ptr;
-      processQueue(self, self._windowQueue);
-    }
-
-    static void __stdcall processAPCQueue(ULONG_PTR ptr) noexcept
-    {
-      auto& self = *(Messenger*)ptr;
-      processQueue(self, self._apcQueue);
-    }
-
-    static void processQueue(Messenger& self, std::deque<shared_ptr<QueueItem>>& queue) noexcept
-    {
-      try
-      {
-        std::remove_reference<decltype(queue)>::type jobs;
-        {
-          scoped_lock lock(self._lock);
-          jobs.assign(queue.begin(), queue.end());
-          queue.clear();
-        }
-
-        for (auto& job : jobs)
-        {
-          (*job)(self);
-        }
-      }
-      catch (const std::exception& e)
-      {
-        XLO_ERROR("Error running on main thread: {}", e.what());
-      }
-      catch (...)
-      {
-        XLO_ERROR("Error running on main thread: unknown");
-      }
-    }
-
-    std::deque<shared_ptr<QueueItem>> _windowQueue;
-    std::deque<shared_ptr<QueueItem>> _apcQueue;
     std::multimap<size_t, shared_ptr<QueueItem>> _timerQueue;
     std::mutex _lock;
 
@@ -224,28 +239,6 @@ namespace xloil
     Messenger::instance();
   }
 
-  void Messenger::QueueItem::operator()(Messenger& messenger)
-  {
-    if (_nComRetries > 0 && (_flags & ExcelRunQueue::COM_API) != 0 && !COM::isComApiAvailable())
-    {
-      --_nComRetries;
-      //TODO: if _isAPC, then use SetWaitableTimer
-      messenger.queueWindowTimer(shared_from_this(), _waitTime);
-      return;
-    }
-    try
-    {
-      if ((_flags & ExcelRunQueue::XLL_API) != 0)
-        runInXllContext(_func);
-      else
-        _func();
-    }
-    catch (_com_error& error)
-    {
-      XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
-    }
-  }
-
   bool isMainThread()
   {
     // TODO: would a thread-local bool be quicker here?
@@ -255,33 +248,27 @@ namespace xloil
   void runExcelThreadImpl(
     std::function<void()>&& func,
     int flags, 
-    int nRetries, 
-    unsigned waitBetweenRetries,
-    unsigned waitBeforeCall)
+    unsigned waitBeforeCall,
+    unsigned waitBetweenRetries)
   {
     auto queueItem = make_shared<Messenger::QueueItem>(func,
       flags,
-      nRetries,
       waitBetweenRetries);
 
-    auto& messenger = Messenger::instance();
-
     // Try to run immediately if possible
-    if (waitBeforeCall == 0 && (flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread())
-      (*queueItem)(messenger);
-    else
+    const bool canRunNow = waitBeforeCall == 0 && (flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread();
+    if (canRunNow)
     {
-      // Otherwise for XLL API usage we also need the COM API to switch to XLL context
-      if ((flags & ExcelRunQueue::XLL_API) != 0)
-        queueItem->_flags |= ExcelRunQueue::COM_API;
-
-      if (waitBeforeCall > 0)
-        messenger.queueWindowTimer(queueItem, waitBeforeCall);
-      else if ((flags & ExcelRunQueue::APC) != 0)
-        messenger.QueueAPC(queueItem);
-      else
-        messenger.QueueWindow(queueItem);
+      // TODO: avoid running isComApiAvailable if we don't need it? 
+      // Generally functions scheduled for the main thread do need the COM or XLL interface
+      const auto comAvailable = COM::isComApiAvailable();
+      const auto xllAvailable = InXllContext::check();
+      if ((*queueItem)(comAvailable, xllAvailable))
+        return;
     }
+
+    auto& messenger = Messenger::instance();
+    messenger.enqueue(queueItem, waitBeforeCall);
   }
 
   struct RetryAtStartup
@@ -297,11 +284,8 @@ namespace xloil
       {
         runExcelThread(
           RetryAtStartup{ func },
-          ExcelRunQueue::WINDOW | ExcelRunQueue::ENQUEUE,
-          0, // no retry
-          0,
-          1000 // wait 1 second before call
-        );
+          ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,
+          1000); // wait 1 second before call
       }
       catch (const std::exception& e)
       {

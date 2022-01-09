@@ -90,6 +90,7 @@ namespace xloil
         TValType value;
         {
           pybind11::gil_scoped_release releaseGil;
+          _iter._future.wait();
           value = _iter._future.get();
         }
         return PySteal(TConverter()(value));

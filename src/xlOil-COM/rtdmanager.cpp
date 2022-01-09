@@ -386,6 +386,7 @@ namespace xloil
       unordered_map<wstring, TopicRecord> _records;
 
       list<pair<wstring, shared_ptr<TValue>>> _newValues;
+      std::future<void> _updateNotifyTask;
       list<shared_ptr<IRtdPublisher>> _cancelledPublishers;
 
       std::atomic<Excel::IRTDUpdateEvent*> _updateCallback;
@@ -442,16 +443,17 @@ namespace xloil
 
         _newValues.push_back(make_pair(wstring(topic), value));
 
-        // We only need to notify Excel about new data once. Excel will
+        // We only need to notify Excel about new data once, so check if
+        // our notify task has successfully completed. Excel will
         // only callback RefreshData every 2 seconds (unless someone fiddled 
         // with the throttle interval)
-        if (_newValues.size() == 1)
+        if (!_updateNotifyTask.valid() || _updateNotifyTask._Is_ready())
         {
-          runExcelThread([this]()
+          _updateNotifyTask = runExcelThread([this]()
           {
             if (isServerRunning())
-              (*_updateCallback).raw_UpdateNotify();
-          }, ExcelRunQueue::WINDOW, 100);
+              (*_updateCallback).raw_UpdateNotify(); // Does this really need the COM API?
+          }, ExcelRunQueue::COM_API, 0, 1000); // 1 sec between retries
         }
       }
 

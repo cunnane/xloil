@@ -284,4 +284,9 @@ namespace xloil
     std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
     return str;
   }
+  template <class Elem> inline
+    void toLower(std::basic_string<Elem>& str)
+  {
+    std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
+  }
 }

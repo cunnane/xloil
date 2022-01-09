@@ -59,12 +59,9 @@ else:
         """
         pass
 
-    def excel_callback(func,
-            retries = 10,
-            retry_delay = 500,
-            wait = 0) -> _Future[object]:
+    def excel_callback(func, wait = 0, retry_pause = 500) -> _Future[object]:
         """
-        Schedules a callback to be run in the COM API context. Much of the COM API in unavailable
+        Schedules a callback to be run in the main thread. Much of the COM API in unavailable
         during the calc cycle, in particular anything which involves writing to the sheet.
 
         Parameters
@@ -73,16 +70,16 @@ else:
         func: callable
             A callable which takes no arguments and returns nothing
 
-        retries: int
-            Number of times to retry the call if Excel's COM API is busy, e.g. a dialog box
-            is open or it is running a calc cycle
-
-        retry_delay: int
-            Millisecond delay between retries
+        retry: int
+            Millisecond delay between retries if Excel's COM API is busy, e.g. a dialog box
+            is open or it is running a calc cycle.  If zero, does no retry
 
         wait: int
             Number of milliseconds to wait before first attempting to run this function
 
+        api: str
+            Specify 'xll' or 'com' or both to indicate which add-in APIs the call requires.
+            The default is 'com' and changing this would only be required in rare cases.
         """
         pass
 

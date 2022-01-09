@@ -37,10 +37,10 @@ namespace xloil
   void statusBarMsg(const std::wstring_view& msg, size_t timeout)
   {
     if (!msg.empty())
-      runExcelThread([str = std::wstring(msg)](){excelApp().PutStatusBar(0, str.c_str()); });
+      runExcelThread([msg = std::wstring(msg)](){ excelApp().PutStatusBar(0, msg.c_str()); });
     if (timeout > 0)
       runExcelThread(
         []() { excelApp().PutStatusBar(0, _bstr_t()); }, 
-        ExcelRunQueue::COM_API, 1000, 400, (unsigned)timeout);
+        ExcelRunQueue::COM_API, (unsigned)timeout);
   }
 }

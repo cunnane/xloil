@@ -31,7 +31,7 @@ namespace xloil
       runExcelThread([=]() mutable
       {
         handle.reset(); // Removes the SheetChange handler
-      }, ExcelRunQueue::WINDOW, 0, 0, milliSecsDelay);
+      }, ExcelRunQueue::WINDOW, milliSecsDelay);
     }
     std::tm buf; 
     auto now = std::time(0);

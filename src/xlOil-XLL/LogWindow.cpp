@@ -236,7 +236,7 @@ namespace xloil
         {
           setWindowText();
           showWindow();
-        });
+        }, 0);
       }
 
       void appendMessage(const string& msg) noexcept override
@@ -254,7 +254,7 @@ namespace xloil
           runExcelThread([this]
           {
             setWindowText();
-          });
+          }, 0);
         }
       }
     };

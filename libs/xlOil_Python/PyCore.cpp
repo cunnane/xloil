@@ -142,8 +142,20 @@ namespace xloil
         }
       };
 
-      auto runLater(const py::object& callable, int nRetries, int retryPause, int delay)
+      auto runLater(
+        const py::object& callable, 
+        const unsigned delay, 
+        const unsigned retryPause, 
+        wstring& api)
       {
+        int flags = 0;
+        toLower(api);
+        if (api.empty() || api.find(L"com") != wstring::npos)
+          flags |= ExcelRunQueue::COM_API;
+        if (api.find(L"xll") != wstring::npos)
+          flags |= ExcelRunQueue::XLL_API;
+        if (retryPause == 0)
+          flags |= ExcelRunQueue::NO_RETRY;
         return PyFuture<PyObject*>(runExcelThread([callable=PyObjectHolder(callable)]()
           {
             py::gil_scoped_acquire getGil;
@@ -158,10 +170,9 @@ namespace xloil
               throw;
             }
           },
-          ExcelRunQueue::WINDOW | ExcelRunQueue::COM_API,
-          nRetries,
-          retryPause,
-          delay));
+          flags,
+          delay,
+          retryPause));
       }
 
       void setReturnConverter(const shared_ptr<const IPyToExcel>& conv)
@@ -212,9 +223,9 @@ namespace xloil
         mod.def("excel_callback",
           &runLater,
           py::arg("func"),
-          py::arg("retries") = 10,
-          py::arg("retry_delay") = 500,
-          py::arg("wait") = 0);
+          py::arg("wait") = 0,
+          py::arg("retry") = 500,
+          py::arg("api") = "");
 
         py::class_<App::ExcelInternals>(mod, "ExcelState")
           .def_readonly("version", &App::ExcelInternals::version)

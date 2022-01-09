@@ -59,20 +59,20 @@ namespace xloil
         {
           State::initAppContext();
           State::initCoreContext(XllInfo::moduleHandle);
-          // Handle this event even if we have no registered async funcions as they could be 
+          // Handle this event even if we have no registered async functions as they could be 
           // dynamically registered later
           tryCallExcel(msxll::xlEventRegister,
             "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
 
           theAddin.reset(new T());
 
+          // Do this safely in single-thread mode
+          initMessageQueue();
+
           std::wstring errorMessages;
           theFunctions = xloil::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
           if (!errorMessages.empty())
             writeLogWindow(errorMessages.c_str());
-
-          // Do now this safely in single-thread mode
-          initMessageQueue();
 
           theXllIsOpen = true;
         }
