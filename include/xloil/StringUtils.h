@@ -253,6 +253,20 @@ namespace xloil
       s.resize(s.data()[len - 1] == '\0' ? len - 1 : len);
       return s;
     }
+
+    template <class TChar>
+    struct char_traits : public std::char_traits<TChar>
+    {};
+    template <>
+    struct char_traits<wchar_t> : public std::char_traits<wchar_t>
+    {
+      static wchar_t tolower(wchar_t c) { return ::towlower(c); }
+    };
+    template <>
+    struct char_traits<char> : public std::char_traits<wchar_t>
+    {
+      static char tolower(char c) { return (char)::tolower(c); }
+    };
   }
   /// <summary>
   /// Helper function to capture C++ strings from Windows Api functions which have
@@ -281,12 +295,12 @@ namespace xloil
   template <class Elem> inline
    std::basic_string<Elem>& toLower(std::basic_string<Elem>&& str)
   {
-    std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
+    std::transform(str.begin(), str.end(), str.begin(), detail::char_traits<Elem>::tolower);
     return str;
   }
   template <class Elem> inline
     void toLower(std::basic_string<Elem>& str)
   {
-    std::transform(str.begin(), str.end(), str.begin(), [](char c) { return (char)std::tolower(c); });
+    std::transform(str.begin(), str.end(), str.begin(), detail::char_traits<Elem>::tolower);
   }
 }
