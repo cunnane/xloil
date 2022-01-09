@@ -445,7 +445,7 @@ def pyTestCom():
 def pyTestRange(r: xlo.Range):
     
     # This gives the same value as the statement below
-    addy = r.cells(1, 1).address()
+    addy = r.cell(1, 1).address()
     
     # Perhaps should call xlo.app('comtypes') before this to ensure that
     # comtypes has generated this module from the typelib
