@@ -73,6 +73,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
@@ -97,6 +98,8 @@
     <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EventLoop.h" />
+    <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />
