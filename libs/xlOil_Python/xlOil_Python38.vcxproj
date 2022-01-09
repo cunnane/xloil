@@ -98,7 +98,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PyFuture.h" />
-    <ClInclude Include="TypeConversion\ArrayHelpers.h" />
     <ClInclude Include="AsyncFunctions.h" />
     <ClInclude Include="CPython.h" />
     <ClInclude Include="PyCache.h" />

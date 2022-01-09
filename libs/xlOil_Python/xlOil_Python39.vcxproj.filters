@@ -65,9 +65,6 @@
       <Filter>TypeConversion</Filter>
     </ClInclude>
     <ClInclude Include="TypeConversion\Numpy.h" />
-    <ClInclude Include="TypeConversion\ArrayHelpers.h">
-      <Filter>TypeConversion</Filter>
-    </ClInclude>
     <ClInclude Include="EventLoop.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="PyCOM.h" />
