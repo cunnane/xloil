@@ -36,48 +36,75 @@ function from COM use ``xloil.app().WorksheetFunction.Sum(...)`.
 :obj:`xloil.run` and :obj:`xloil.call` have async flavours :obj:`xloil.run_async` and 
 :obj:`xloil.call_async` which return a future and can be called from any thread.
 
-+------------------------+---------------------------------------------------------+-------------+
-| Function               |  Use                                                    | Call from   |
-+========================+=========================================================+=============+
-| :obj:`xloil.run`       | Calls user-defined functions as per `Application.Run`   | Main thread |
-+------------------------+---------------------------------------------------------+-------------+
-| :obj:`xloil.run_async` |                                                         | Anywhere    |
-+------------------------+---------------------------------------------------------+-------------+
++------------------------+---------------------------------------------------------+------------------------------+
+| Function               |  Use                                                    | Call from                    |
++========================+=========================================================+==============================+
+| :obj:`xloil.run`       | Calls user-defined functions as per `Application.Run`   | Main thread                  |
++------------------------+---------------------------------------------------------+------------------------------+
+| :obj:`xloil.run_async` |                                                         | Anywhere                     |
++------------------------+---------------------------------------------------------+------------------------------+
 | :obj:`xloil.call`      | Calls worksheet functions, UDFs or macro sheet commands | Non-local worksheet function |
-+------------------------+---------------------------------------------------------+-------------+
-| :obj:`xloil.run_async` |                                                         | Anywhere    |
-+------------------------+---------------------------------------------------------+-------------+
++------------------------+---------------------------------------------------------+------------------------------+
+| :obj:`xloil.run_async` |                                                         | Anywhere                     |
++------------------------+---------------------------------------------------------+------------------------------+
 
 
 Accessing Sheets and Ranges
 ---------------------------
 
 xlOil mirrors a small part of the `Excel.Application` object model to provide easier
-access to sheets and ranges.
+access to sheets and ranges.  We compare the `comtypes <https://pythonhosted.org/comtypes/>`_ 
+syntax with the xlOil syntax.
 
-We take some examples for accessing Ranges directly from 
-`the comtypes help <https://pythonhosted.org/comtypes/>`_
+Reading from a range:
 
 ::
 
     xl = xloil.app()
 
-    # Accessing a range with empty index
+    # Using COM to access a range with empty index
     X = xl.Range["A1", "C1"].Value[:]
     # X now contains a tuple like (10, "20", 31.4)
 
-    # Alternative syntax, gives Y == X
+    # COM alternative syntax, gives Y == X
     Y = xl.Range["A1", "C1"].Value[()]
 
     # Using xlOil functions, gives Z == X
     Z = xloil.Range("A1:C1").value
 
-    # Writing to a range uses the same syntax
+
+Writing to a range:
+
+::
+
     xl.Range["A1", "C1"].Value[:] = (3, 2, 1)
     xl.Range["A1", "C1"].Value[()] = (1, 2, 3)
 
     # Using xlOil syntax
     xloil.Range("A1:C1").value = (1, 2, 3)
+
+xlOil supports several other functions to access ranges. The three examples below
+all refer to the same range.
+
+::
+
+    wb = xloil.active_workbook()
+
+    # Specify normal Excel range address
+    r1 = wb['Sheet1']['B2:D3']
+    
+    # The range function, like in Excel includes right and left hand ends
+    r2 = wb['Sheet1'].range(from_row=1, from_col=1, to_row=3, to_col=4)
+
+    # The python slice synax follows python conventions so only the 
+    # left hand end is included
+    r3 = wb['Sheet1'][1:3, 1:4]
+
+
+The square bracket operator for ranges behaves like numpy arrays in that if 
+the tuple specifies a single cell, it returns the value in that cell, otherwise 
+it returns a Range object.  To create a range consisting of a single cell
+use the :any:`xloil.Range.cells` method.
 
 
 Troubleshooting
@@ -87,8 +114,7 @@ Both *comtypes* and *win32com* have caches for the python code backing the Excel
 these caches somehow become corrupted, it can result in strange COM errors.  It is safe to delete 
 these caches and let the library regenerate them. The caches are at:
 
-   * *comtypes*: `...\site-packages\comtypes\gen`
+   * *comtypes*: `.../site-packages/comtypes/gen`
    * *win32com*: run ``import win32com; print(win32com.__gen_path__)``
 
 See `for example <https://stackoverflow.com/questions/52889704/python-win32com-excel-com-model-started-generating-errors>`_
-

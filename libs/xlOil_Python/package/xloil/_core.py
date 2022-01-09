@@ -59,7 +59,7 @@ else:
         """
         pass
 
-    def excel_callback(func, wait = 0, retry_pause = 500) -> _Future[object]:
+    def excel_callback(func, wait:int=0, retry:int=500, api:str="") -> _Future[object]:
         """
         Schedules a callback to be run in the main thread. Much of the COM API in unavailable
         during the calc cycle, in particular anything which involves writing to the sheet.
@@ -140,7 +140,10 @@ else:
             x[:-1, :-1] # A sub-range omitting the last row and column
 
         """
-        def range(self, from_row, from_col, num_rows=None, num_cols=None, to_row=None, to_col=None):
+        def range(self, 
+                  from_row:int, from_col:int, 
+                  num_rows:int=None, num_cols:int=None, 
+                  to_row:int=None, to_col:int=None):
             """ 
             Creates a subrange using offsets from the top left corner of the parent range.
             Like Excel's Range function, we allow negative offsets to select ranges outside the
@@ -174,7 +177,7 @@ else:
                 are specified, the range ends at the last column of the parent range.
             """
             pass
-        def cell(self, row:int, col:int) -> Range:
+        def cell(self, row:int, col:int) -> "Range":
             """ 
             Returns a Range object which consists of a single cell. The indices are zero-based 
             from the top left of the parent range.
@@ -870,9 +873,9 @@ else:
             """
             ...
 
-        def range(self, from_row, from_col, 
-                  num_rows=None, num_cols=None, 
-                  to_row=None, to_col=None) -> Range:
+        def range(self, from_row:int, from_col:int, 
+                  num_rows:int=None, num_cols:int=None, 
+                  to_row:int=None, to_col:int=None) -> Range:
 
             """ 
             Specifies a range in this worksheet.

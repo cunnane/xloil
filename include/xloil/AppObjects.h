@@ -127,7 +127,7 @@ namespace xloil
     /// <summary>
     /// Gives the ExcelWindow object associated with the given window caption, or the active window
     /// </summary>
-    /// <param name="windowCaption">The name of the window to find, or the active window if null</param>
+    /// <param name="caption">The name of the window to find, or the active window if null</param>
     explicit ExcelWindow(const std::wstring_view& caption = std::wstring_view());
 
     ExcelWindow(ExcelWindow&& that) noexcept { std::swap(_ptr, that._ptr); }

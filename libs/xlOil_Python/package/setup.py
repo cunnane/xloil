@@ -92,7 +92,7 @@ setup(
     url="https://gitlab.com/stevecu/xloil",
     download_url='https://gitlab.com/stevecu/xloil/-/releases/',
     project_urls = {
-      'Documentation': 'https://xloil.readthedocs.io',
+      'Documentation': 'https://xloil.readthedocs.io/en/stable',
     },
     license='Apache',
     
@@ -112,15 +112,17 @@ setup(
     ],
     
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         "Programming Language :: Python :: 3",
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Office/Business :: Financial :: Spreadsheet',
+        'Topic :: Software Development :: Libraries :: Application Frameworks',
         'Framework :: Jupyter',
         'Operating System :: Microsoft :: Windows'
     ]

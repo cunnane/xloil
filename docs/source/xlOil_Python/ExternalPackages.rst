@@ -66,7 +66,6 @@ Returning a figure requires setting ``macro=True`` in the :obj:`xloil.func` decl
 PIL / pillow
 ------------
 
-
 Importing ``xloil.pillow`` defines a return converter so PIL images
 can be returned from worksheet functions.  By default they are resized to the cell.
 Subseqent images returned from the same cell overwrite previous ones.

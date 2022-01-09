@@ -353,7 +353,7 @@ namespace xloil
     /// Sets the formula if the range is a cell or an array formula for a 
     /// larger range. Formulae must use RC-style references. This is not
     /// a common style, so there is no setFormula on the base 
-    /// <see cref="xloil::Range"> class.
+    /// <see cref="xloil::Range"\> class.
     /// </summary>
     void setFormula(const std::wstring_view& formula);
 

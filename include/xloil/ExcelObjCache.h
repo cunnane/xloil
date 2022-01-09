@@ -35,7 +35,7 @@ namespace xloil
   }
 
   /// <summary>
-  /// Runs <see ref="xloil::cacheCheck"/> on each supplied argument in-place. 
+  /// Runs <see cref="xloil::cacheCheck"/> on each supplied argument in-place. 
   /// Usage:
   /// <code>
   ///    ExcelObj *arg1, *arg2;

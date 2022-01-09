@@ -5,9 +5,9 @@ xlOil Python Async/Rtd
 Introduction
 ------------
 
-In Excel, RTD (real time data) functions are able to return values independently of Excel's 
-calculation cycle. The classic example of this is a stock ticker with live prices.  It is very 
-easy to create an RTD function in xlOil_Python -- the following will give you a ticking clock:
+RTD (real time data) functions are able to return values independently of Excel's  calculation
+cycle. The classic example of this is a stock ticker with live prices.  It is easy to create
+an RTD function in *xlOil_Python* -- the following gives a ticking clock:
 
 ::
 

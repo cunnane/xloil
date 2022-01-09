@@ -6,34 +6,18 @@ xlOil Python Concepts
     :local:
 
 
-Local Functions and Workbook Modules
-------------------------------------
+Workbook Modules
+----------------
 
 When an Excel workbook is opened, xlOil tries to load the module `<workbook_name>.py` 
-(this is configurable).
+(this is configurable).  When registering functions from workbook modules, xlOil defaults 
+to making any declared functions :ref:`Functions:Local Functions`
 
-When registering functions from such a workbook module, xlOil defaults to making
-any declared functions "local": this means their scope is limited to the workbook.
-It also means the function is automatically macro-type. (xlOil achieves this by 
-creating a VBA stub to invoke them).
-
-This behaviour can be overriden by `local` argument to the `func` decorator.
-
-Local functions have some limitations compared to global scope ones:
-- No native async or threadsafe, but RTD async is OK
-- Slower due to the VBA redirect
-- Workbook must be saved as macro-enabled (xlsm extension)
-- No function wizard help, but CTRL+SHIFT+A to show argument names is available
+The function :any:`xloil.linked_workbook()` when called from a workbook module retrieves 
+the associated workbook path.
 
 Another way to package python code for distribution is to create an XLL, see
 :ref:`core-distributing-addins`
-
-The function `xloil.linked_workbook()` when called from a workbook module retrieves 
-the associated workbook path 
-
-(Technical note: It is possible to use the Application.MacroOptions call to add help to the 
-function wizard for VBA, but identically named functions will conflict which rather defeats 
-the purpose of local functions).
 
 
 Array Functions

@@ -83,7 +83,7 @@ namespace xloil
   /// <param name="waitBeforeCall">
   ///   Wait for the specified number of milliseconds before executing the callback
   /// </param>
-  /// <returns>A std::future which contains the result of <param ref="func"/></returns>
+  /// <returns>A std::future which contains the result of the function</returns>
   /// 
   template<typename F>
   inline auto runExcelThread(F&& func,
