@@ -61,7 +61,11 @@ namespace xloil
     }
     std::pair<size_t, size_t> Settings::logRotation(const toml::view_node& root)
     {
-      return std::make_pair(root["LogMaxSize"].value_or<int>(1024), root["LogNumberOfFiles"].value_or<int>(2));
+      // (size_t) cast needed for 32-bit as TOML lib is hard-coded to 
+      // return int64 for all integer types
+      return std::make_pair(
+        (size_t)root["LogMaxSize"].value_or<unsigned>(1024),
+        (size_t)root["LogNumberOfFiles"].value_or<unsigned>(2));
     }
     std::vector<std::wstring> dateFormats(const toml::view_node& root)
     {

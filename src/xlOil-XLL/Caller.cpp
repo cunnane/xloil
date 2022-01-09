@@ -121,10 +121,10 @@ namespace xloil
     {
       uint16_t nWritten = 0;
       const auto wsName = sheetName.pstr();
-      const auto wsLength = sheetName.length();
+      const uint16_t wsLength = sheetName.length();
       if (wsLength > 0)
       {
-        if (bufLen <= wsLength + (wchar_t)1)
+        if (bufLen <= wsLength + 1)
           return 0;
         wmemcpy(buf, wsName, wsLength);
         buf += wsLength;
@@ -150,7 +150,7 @@ namespace xloil
     {
       const auto cellStart = sheetRef.rwFirst * XL_MAX_COLS + sheetRef.colFirst;
       const auto cellEnd   = sheetRef.rwLast * XL_MAX_COLS + sheetRef.colLast;
-      const auto  nWritten = _snwprintf_s(buf, bufLen, bufLen, L"[%p]%x:%x", sheetId, cellStart, cellEnd);
+      const auto nWritten  = _snwprintf_s(buf, bufLen, bufLen, L"[%p]%x:%x", sheetId, cellStart, cellEnd);
       return nWritten < 0 ? 0 : (uint16_t)nWritten;
     }
 

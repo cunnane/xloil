@@ -17,7 +17,7 @@ namespace xloil
     , _iArg(0)
   {
     _info->args.resize(nArgs);
-    for (auto i = 0; i < nArgs; ++i)
+    for (size_t i = 0; i < nArgs; ++i)
       _info->args[i].type = types[i];
   }
 
@@ -25,7 +25,7 @@ namespace xloil
   {
     auto nArgs = _info->args.size();
 
-    for (auto i = 0; i < nArgs; ++i)
+    for (size_t i = 0; i < nArgs; ++i)
       if (_info->args[i].name.empty())
         _info->args[i].name = fmt::format(L"Arg_{}", i);
 

@@ -75,7 +75,7 @@ bool xloil::DllExportTable::hook(size_t ordinal, void* hook)
 
 const char* xloil::DllExportTable::getName(size_t ordinal) const
 {
-  for (auto i = 0; i < _numNames; ++i)
+  for (size_t i = 0; i < _numNames; ++i)
     if (_namesToOrdinals[i] == ordinal)
       return (const char*)(size_t)_funcNames[i];
   return nullptr;

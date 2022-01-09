@@ -82,7 +82,7 @@ namespace xloil
         return dispid;
       }
 
-      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
+      STDMETHOD(QueryInterface)(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == IID_IDispatch

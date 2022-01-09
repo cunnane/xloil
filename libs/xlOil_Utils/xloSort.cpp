@@ -102,7 +102,7 @@ namespace xloil
 
     auto c = orderStr.begin();
     bool hasHeadings = false;
-    auto nOrders = 0;
+    size_t nOrders = 0;
 
     // If no orders provided, sort ascending (the default)
     if (c == orderStr.end())

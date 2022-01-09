@@ -34,11 +34,11 @@ namespace xloil
         // also catch mismatched Release in debug builds
         this->m_dwRef = -(LONG_MAX / 2);
       }
-      ULONG AddRef() noexcept
+      ULONG STDMETHODCALLTYPE AddRef() noexcept
       {
         return ::InterlockedIncrement(&m_dwRef);
       }
-      ULONG Release() noexcept
+      ULONG STDMETHODCALLTYPE Release() noexcept
       {
         ::InterlockedDecrement(&m_dwRef);
 #ifdef _DEBUG
@@ -63,7 +63,7 @@ namespace xloil
         : _instance(p)
       {}
 
-      HRESULT STDMETHODCALLTYPE CreateInstance(
+      STDMETHOD(CreateInstance)(
         IUnknown *pUnkOuter,
         REFIID riid,
         void **ppvObject) override
@@ -74,12 +74,12 @@ namespace xloil
         return ret;
       }
 
-      HRESULT STDMETHODCALLTYPE LockServer(BOOL /*fLock*/) override
+      STDMETHOD(LockServer)(BOOL /*fLock*/) override
       {
         return E_NOTIMPL;
       }
 
-      HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppv)
+      STDMETHOD(QueryInterface)(REFIID riid, void** ppv)
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == __uuidof(IClassFactory))
@@ -386,7 +386,7 @@ namespace xloil
         }
       }
 
-      HRESULT QueryInterface(REFIID riid, void** ppvObject) noexcept
+      STDMETHOD(QueryInterface)(REFIID riid, void** ppvObject) noexcept
       {
         if (riid == IID_IUnknown)
           *ppvObject = (IUnknown*)this;

@@ -147,7 +147,7 @@ namespace xloil
     // We copy each of the 4 register arguments to a array in our stack, then copy
     // the remaining stack arguments from earlier in the stack via rax. (rax is 
     // considered volatile so we can clobber it)
-    for (auto i = startArg; i < numArgs; ++i)
+    for (size_t i = startArg; i < numArgs; ++i)
     {
       const auto offset = (ptrSize * (i - (uint32_t)startArg));
       auto stackPos = localStack.cloneAdjusted(offset);

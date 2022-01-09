@@ -307,7 +307,7 @@ namespace xloil
           if constexpr (TReverseLookup)
           {
             auto& cellCache = i->second;
-            for (auto k = 0; k < cellCache.count(); ++k)
+            for (size_t k = 0; k < cellCache.count(); ++k)
               _reverseLookup.map.erase(cellCache.fetch(k));
           }
           i = _cache.erase(i);

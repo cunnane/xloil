@@ -40,7 +40,7 @@ namespace xloil
         return S_OK;
       }
 
-      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
+      STDMETHOD(QueryInterface)(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown || riid == IID_IDispatch
@@ -88,7 +88,7 @@ namespace xloil
         , ribbon(nullptr)
       {}
 
-      HRESULT QueryInterface(REFIID riid, void** ppv) noexcept
+      STDMETHOD(QueryInterface)(REFIID riid, void** ppv) noexcept
       {
         *ppv = NULL;
         if (riid == IID_IUnknown 

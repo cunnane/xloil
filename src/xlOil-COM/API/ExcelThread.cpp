@@ -227,7 +227,7 @@ namespace xloil
       }
     }
 
-    std::multimap<size_t, shared_ptr<QueueItem>> _timerQueue;
+    std::multimap<ULONGLONG, shared_ptr<QueueItem>> _timerQueue;
     std::mutex _lock;
 
     HWND _hiddenWindow;

@@ -45,18 +45,18 @@ namespace Tests
       const char* sample = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor";
       auto sampleLen = strlen(sample);
       vector<char*> ptrs;
-      for (auto i = 1; i < sampleLen; ++i)
+      for (auto i = 1u; i < sampleLen; ++i)
       {
         auto str = (char*)allocator.alloc(i + 1);
         strncpy_s(str, i + 1, sample, i);
         ptrs.push_back(str);
       }
-      for (auto i = 0; i < ptrs.size(); i += 4)
+      for (auto i = 0u; i < ptrs.size(); i += 4)
       {
         allocator.free(ptrs[i]);
         ptrs[i] = nullptr;
       }
-      for (auto i = 1; i < sampleLen; ++i)
+      for (auto i = 1u; i < sampleLen; ++i)
       {
         auto str = (char*)allocator.alloc(i + 1);
         strncpy_s(str, i + 1, sample, i);
