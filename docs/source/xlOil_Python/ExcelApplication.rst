@@ -83,4 +83,12 @@ We take some examples for accessing Ranges directly from
 Troubleshooting
 ---------------
 
-https://stackoverflow.com/questions/52889704/python-win32com-excel-com-model-started-generating-errors
+Both *comtypes* and *win32com* have caches for the python code backing the Excel object model. If 
+these caches somehow become corrupted, it can result in strange COM errors.  It is safe to delete 
+these caches and let the library regenerate them. The caches are at:
+
+   * *comtypes*: `...\site-packages\comtypes\gen`
+   * *win32com*: run ``import win32com; print(win32com.__gen_path__)``
+
+See `for example <https://stackoverflow.com/questions/52889704/python-win32com-excel-com-model-started-generating-errors>`_
+
