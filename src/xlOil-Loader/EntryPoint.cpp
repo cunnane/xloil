@@ -134,7 +134,8 @@ struct xlOilAddin
             fs::path(xllPath).replace_filename(xloil_dll).c_str());
           if (coreSettings)
           {
-            writeLog(formatStr("Found xloil.ini at '%s'", coreSettings->source().path->c_str()));
+            if (traceLoad)
+              writeLog(formatStr("Found xloil.ini at '%s'", coreSettings->source().path->c_str()));
             loadEnvironmentBlock(*settings);
           }
         }
