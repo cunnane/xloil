@@ -36,7 +36,7 @@ namespace xloil
       nWritten += caller.writeInternalAddress(buf, pstrLength - 1);
       // Check for a negative return condition from the above. This should not
       // be possible as we made the buffer larget than the max internal ref length
-      assert(nWritten - 1 > 0);
+      assert(nWritten - 1 > 0 && nWritten <= CallerLite::INTERNAL_REF_MAX_LEN + 1);
 
       if (optionalName)
         wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName, nameLength);
