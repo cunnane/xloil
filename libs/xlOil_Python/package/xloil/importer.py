@@ -96,10 +96,11 @@ def _import_scan(what, addin):
     else:
         # We don't care about the return value currently
         result = []
-        with StatusBar(3000) as status:
+        with StatusBar(2000) as status:
             for m in what:
                 status.msg(f"Loading {m}")
                 result.append(_import_scan(m, addin))
+            status.msg("xlOil load complete")
         return result
     
     scan_module(module, addin)
