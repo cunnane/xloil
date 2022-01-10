@@ -430,7 +430,7 @@ else:
 
         """
 
-        def add(self, obj):
+        def add(self, obj, tag:str="", key:str=""):
             """
             Adds an object to the cache and returns a reference string
             based on the currently calculating cell.
@@ -438,6 +438,22 @@ else:
             xlOil automatically adds unconvertible returned objects to the cache,
             so this function is useful to force a recognised object, such as an 
             iterable into the cache, or to return a list of cached objects.
+
+            Parameters
+            ----------
+
+            obj:
+              The object to cache.  Required.
+
+            tag: str
+              An optional string to append to the cache ref to make it more 
+              'friendly'. When returning python objects from functions, 
+              xlOil uses the object's type name as a tag
+
+            key: str
+              If specified, use the exact cache key (after prepending by
+              cache uniquifier). The user is responsible for ensuring 
+              uniqueness of the cache key.
             """
             pass
 

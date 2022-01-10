@@ -69,15 +69,14 @@ namespace xloil
           return *_theInstance;
         }
 
-        py::object add(py::object obj, const wchar_t* tag = nullptr)
+        py::object add(py::object& obj, const wstring& tag, const wstring& key)
         {
-          // The cache expects callers to be of the form [.]xxx, so we add
-          // a prefix if a custom tag is specified. Note the forward slash
-          // cannot appear in a workbook name so this tag never collides with
-          // the caller-based default
-          const auto cacheKey = _cache->add(std::move(obj), tag
-            ? CallerLite(ExcelObj(tag))
-            : CallerLite());
+          // The cache expects callers to be of the form Uniq[xxx, so we add
+          // a prefix if a custom key is specified.
+
+          const auto cacheKey = key.empty()
+            ? _cache->add(std::move(obj), CallerLite(), tag.empty() ? nullptr : tag.c_str(), tag.length())
+            : _cache->add(std::move(obj), CallerLite(ExcelObj(L"[")), key.c_str(), key.length());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object getitem(const std::wstring_view& str)
@@ -150,14 +149,14 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyCache>(mod, "ObjectCache")
-          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr)
+          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
           .def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::getitem)
-          .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag") = nullptr);
+          .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag")="", py::arg("key")="");
 
         mod.add_object("cache", py::cast(PyCache::construct()));
       });
