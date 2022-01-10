@@ -200,7 +200,7 @@ namespace xloil
         case CallerInfo::INTERNAL: maxLen = std::min(maxLen, CallerInfo::INTERNAL_REF_MAX_LEN); break;
         }
         wcsncpy_s(buf, bufLen, str.pstr(), maxLen);
-        return std::min<int>((int)bufLen, str.length());
+        return std::min<int>((int)bufLen, maxLen);
       }
       case ExcelType::Num: // DLL caller
       {
