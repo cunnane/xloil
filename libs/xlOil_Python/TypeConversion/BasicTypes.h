@@ -194,10 +194,12 @@ namespace xloil
     /// Checks all ExcelObj strings for both python and ExcelObj cache references.
     /// Throws an error if conversion fails. 
     /// </summary>
-    template<class TImpl>
+    template<class TImpl, bool TUseCache=true>
     struct PyFromExcel
     {
-      detail::PyFromCache<CacheConverter<TImpl>> _impl;
+      typename std::conditional_t<TUseCache,
+        detail::PyFromCache<CacheConverter<TImpl>>,
+        TImpl> _impl;
 
       template <class...Args>
       PyFromExcel(Args&&...args)
@@ -241,13 +243,18 @@ namespace xloil
       }
     };
 
-    using PyFromInt = PyFromExcel<detail::PyFromInt>;
-    using PyFromBool = PyFromExcel<detail::PyFromBool>;
-    using PyFromDouble = PyFromExcel<detail::PyFromDouble>;
-    using PyFromString = PyFromExcel<detail::PyFromString>;
-    using PyFromAny = PyFromExcel<detail::PyFromAny>;
-    using PyCacheObject = PyFromExcel<detail::PyCacheObject>;
+    using PyFromInt            = PyFromExcel<detail::PyFromInt>;
+    using PyFromBool           = PyFromExcel<detail::PyFromBool>;
+    using PyFromDouble         = PyFromExcel<detail::PyFromDouble>;
+    using PyFromString         = PyFromExcel<detail::PyFromString>;
+    using PyFromAny            = PyFromExcel<detail::PyFromAny>;
+    using PyCacheObject        = PyFromExcel<detail::PyCacheObject>;
 
+    using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
+    using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
+    using PyFromDoubleUncached = PyFromExcel<detail::PyFromDouble, false>;
+    using PyFromStringUncached = PyFromExcel<detail::PyFromString, false>;
+    using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny, false>;
 
     namespace detail
     {
@@ -256,8 +263,8 @@ namespace xloil
       /// </summary>
       template <class T>
       struct MakePyFromExcel { using type = PyFromExcel<T>; };
-      template <class T>
-      struct MakePyFromExcel<PyFromExcel<T>> { using type = PyFromExcel<T>; };
+      template <class T, bool TUseCache>
+      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> { using type = PyFromExcel<T, TUseCache>; };
     }
 
     /// <summary>

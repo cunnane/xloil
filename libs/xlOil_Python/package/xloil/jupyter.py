@@ -7,7 +7,6 @@ import pickle
 from IPython.display import publish_display_data
 import jupyter_client
 import os
-
 import re
 
 def _serialise(obj):
@@ -173,10 +172,18 @@ class JupyterNotReadyError(Exception):
     pass
 
 _rtd_server_object = None
+# We use the ipython kernel json filename as the object cache key for the 
+# connection object. To preserve this we need to provide a custom converter
+# otherwise RtdServer will resolve the cache reference when converting to 
+# a python object
+_uncached_convert = None
 
 def _rtd_server():
+    global _rtd_server_object, _uncached_convert
     if _rtd_server_object is None:
+        import xloil.type_converters
         _rtd_server_object = xlo.RtdServer()
+        _uncached_convert = xloil.type_converters.get_converter("object", read=True, cache=False)
     return _rtd_server_object
 
 class _JupyterConnection:
@@ -347,7 +354,7 @@ class _JupyterConnection:
             xlo.log(f"Starting variable watch {name}", level='debug')
             _rtd_server().start(watcher)
 
-        return _rtd_server().subscribe(topic)
+        return _rtd_server().subscribe(topic, _uncached_convert)
 
     def stop_watch_variable(self, name):
         try:
@@ -459,10 +466,7 @@ class _JupyterTopic(xlo.RtdPublisher):
                 try:
                     await conn.connect()
                     while True:
-                        self._cacheRef = xlo.cache.add(conn, tag=self._topic)
-                        # TODO: use a customer converter for this publish() to stop xloil 
-                        # unpacking the cacheref, this would save needing to create a 
-                        # cache object
+                        self._cacheRef = xlo.cache.add(conn, key=self._topic)
                         _rtd_server().publish(self._topic, self._cacheRef)
                         restart = await conn.process_messages()
                         conn.close()
@@ -556,7 +560,7 @@ def xloJpyConnect(ConnectInfo):
         conn = _JupyterTopic(topic, connection_file, 
                              os.path.join(os.path.dirname(__file__), os.pardir))
         _rtd_server().start(conn)
-    return _rtd_server().subscribe(topic)
+    return _rtd_server().subscribe(topic, _uncached_convert)
 
 
 @xlo.func(

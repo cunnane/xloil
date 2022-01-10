@@ -62,6 +62,12 @@ namespace xloil
       convertPy<PyFromAny>(mod, "object");
       convertPy<PyCacheObject>(mod, "Cache");
 
+      convertPy<PyFromIntUncached>(mod, XLOPY_UNCACHED_PREFIX "int");
+      convertPy<PyFromDoubleUncached>(mod, XLOPY_UNCACHED_PREFIX "float");
+      convertPy<PyFromBoolUncached>(mod, XLOPY_UNCACHED_PREFIX "bool");
+      convertPy<PyFromStringUncached>(mod, XLOPY_UNCACHED_PREFIX "str");
+      convertPy<PyFromAnyUncached>(mod, XLOPY_UNCACHED_PREFIX "object");
+
       convertXl<FromPyLong>(mod, "int");
       convertXl<FromPyFloat>(mod, "float");
       convertXl<FromPyBool>(mod, "bool");

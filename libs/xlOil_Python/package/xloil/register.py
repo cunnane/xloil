@@ -106,7 +106,7 @@ class Arg:
             else:
                 converter = _Read_object()
         else:
-            converter = get_internal_converter(arg_type.__name__)
+            converter = get_converter(arg_type.__name__)
 
             # xloil_core.Range is special: the only core class in typing annotations
             if arg_type is Range:
@@ -192,7 +192,7 @@ def find_return_converter(ret_type: type):
         ret_con = return_converters.create_returner(ret_type)
 
         if ret_con is None:
-            ret_con = get_internal_converter(ret_type.__name__, read_excel_value=False)
+            ret_con = get_converter(ret_type.__name__, read=False)
 
         if ret_con is None:
             ret_con = Return_object()

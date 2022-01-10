@@ -50,14 +50,17 @@ ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellErr
 
 _READ_CONVERTER_PREFIX   = "Read_"
 _RETURN_CONVERTER_PREFIX = "Return_"
+_UNCACHED_CONVERTER_PREFIX = "Uncached_"
 
-def get_internal_converter(type_name, read_excel_value=True):
+def get_converter(type_name, read=True, cache=True):
     """
-    Attempt to find converter with standardised name like `Read_int`.
+    Given a type name, attempt to find a type converter with standardised name 
+    like `Read_int`.The returned type converter cannot be invoked directly, only 
+    passed as a argument to xloil_core functions.
     """
-    to_from = _READ_CONVERTER_PREFIX if read_excel_value else _RETURN_CONVERTER_PREFIX
-    name    = f"{to_from}{type_name}"
-    found   = getattr(xloil_core, name, None)
+    direction = _READ_CONVERTER_PREFIX if read else _RETURN_CONVERTER_PREFIX
+    name     = f"{direction}{type_name}" if cache else f"{direction}{_UNCACHED_CONVERTER_PREFIX}{type_name}" 
+    found    = getattr(xloil_core, name, None)
     return None if found is None else found()
 
 def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, source=None):
