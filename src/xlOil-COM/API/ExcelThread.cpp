@@ -110,10 +110,9 @@ namespace xloil
     static constexpr unsigned IDT_TIMER1     = 101;
     static constexpr unsigned WINDOW_MESSAGE = 666;
 
-    auto firstJobTime() 
+    auto firstJobTime(ULONGLONG now) 
     {
       // The queue is a sorted map so first element is due first.
-      long long now = GetTickCount64();
       return std::max(0u, unsigned(_timerQueue.begin()->first - now));
     }
 
@@ -134,7 +133,7 @@ namespace xloil
           scoped_lock lock(_lock);
           _timerQueue.emplace(now + millisecs, item);
           if (millisecs > 0)
-            millisecs = firstJobTime();
+            millisecs = firstJobTime(now);
         }
         startTimer(millisecs);
       }
@@ -196,7 +195,7 @@ namespace xloil
             for (auto& item : items)
               if ((item->_flags & ExcelRunQueue::NO_RETRY) == 0)
                 self._timerQueue.emplace(now + item->_waitTime, item);
-            startTime = self.firstJobTime();
+            startTime = self.firstJobTime(now);
           }
           self.startTimer(startTime);
         }
