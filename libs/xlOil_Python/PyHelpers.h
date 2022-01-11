@@ -59,13 +59,79 @@ namespace pybind11
     /// Return string representation -- always returns a new reference, even if already a str
     static PyObject *raw_str(PyObject *op) {
       PyObject *str_value = PyObject_Str(op);
-#if PY_MAJOR_VERSION < 3
-      if (!str_value) throw error_already_set();
-      PyObject *unicode = PyUnicode_FromEncodedObject(str_value, "utf-8", nullptr);
-      Py_XDECREF(str_value); str_value = unicode;
-#endif
       return str_value;
     }
+  };
+
+
+  /// <summary>
+  /// Provides a replacement for pybind's detail::error_string which handles
+  /// the auxillary context and cause expceptions.
+  /// </summary>
+  /// <returns></returns>
+  PYBIND11_NOINLINE inline std::string error_full_traceback()
+  {
+    if (!PyErr_Occurred()) 
+    {
+      PyErr_SetString(PyExc_RuntimeError, "Attempt to throw python error without indicator set");
+      return "Unknown internal error occurred";
+    }
+
+    // We store the error indicator and restore it on exit. This allows the
+    // ctor of error_already_set to grab the indicator using PyErr_Fetch.
+    error_scope error;
+
+    // Python's error output from PyErr_Print is backwards, so we output the
+    // original error first at that's likely the most useful thing to see in the
+    // cell where the result is shown
+    std::string errorString;
+    if (error.type) 
+    {
+      errorString += handle(error.type).attr("__name__").cast<std::string>();
+      errorString += ": ";
+    }
+    if (error.value)
+    {
+      errorString += (std::string)str(error.value);
+      errorString += "\n";
+    }
+
+    // Python only provides a facility for writing an error to stderr via
+    // PyErr_Print. So we replace stderr with a StringIO stream
+    auto ioMod = PyImport_ImportModule("io");
+    auto stringIO = PyObject_CallMethod(ioMod, "StringIO", NULL);
+    Py_DECREF(ioMod);
+
+    auto previousStdErr = PySys_GetObject("stderr");
+    PySys_SetObject("stderr", stringIO);
+    
+    // Restore the error and call PyErr_Print which clears the error indicator.
+    // The dtor of error_scope will restore it again on exit from this function.
+    Py_INCREF(error.type);
+    Py_INCREF(error.value);
+    Py_INCREF(error.trace);
+    PyErr_Restore(error.type, error.value, error.trace);
+    PyErr_Print();
+
+    PySys_SetObject("stderr", previousStdErr);
+    Py_DECREF(previousStdErr);
+
+    // Grab the string output from stringIO and cleanup 
+    auto fullTrace = PyObject_CallMethod(stringIO, "getvalue", NULL);
+    errorString += (std::string)str(fullTrace);
+    Py_DECREF(stringIO);
+    Py_DECREF(fullTrace);
+
+    return errorString;
+  }
+
+  class error_traceback_set : public error_already_set 
+  {
+  public:
+    // Note: need to add a ctor to error_already_set which takes a string msg
+    error_traceback_set() 
+      : error_already_set(error_full_traceback())
+    {}
   };
 }
 
@@ -76,36 +142,39 @@ namespace xloil
     inline PyObject* PyCheck(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_already_set();
+        throw pybind11::error_traceback_set();
       return obj;
     }
     inline PyObject* PyCheck(int ret)
     {
       if (ret != 0)
-        throw pybind11::error_already_set();
+        throw pybind11::error_traceback_set();
       return 0;
     }
     template<class TType = pybind11::object> inline TType PySteal(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_already_set();
+        throw pybind11::error_traceback_set();
       return pybind11::reinterpret_steal<TType>(obj);
     }
     template<class TType = pybind11::object> inline TType PyBorrow(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_already_set();
+        throw pybind11::error_traceback_set();
       return pybind11::reinterpret_borrow<TType>(obj);
     }
 
     /// <summary>
     /// If PyErr_Occurred is true, returns the error message, else an empty string
     /// </summary>
-    inline std::wstring pyErrIfOccurred()
+    inline std::wstring pyErrIfOccurred(bool clear=true)
     {
-      return PyErr_Occurred() 
-        ? utf8ToUtf16(pybind11::detail::error_string().c_str()) 
+      const auto result = PyErr_Occurred()
+        ? utf8ToUtf16(pybind11::error_full_traceback())
         : std::wstring();
+      if (clear)
+        PyErr_Clear();
+      return result;
     }
 
     /// <summary>

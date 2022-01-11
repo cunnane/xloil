@@ -327,6 +327,10 @@ public:
         PyErr_Fetch(&m_type.ptr(), &m_value.ptr(), &m_trace.ptr());
     }
 
+    error_already_set(const std::string& msg) : std::runtime_error(msg) {
+      PyErr_Fetch(&m_type.ptr(), &m_value.ptr(), &m_trace.ptr());
+    }
+
     error_already_set(const error_already_set &) = default;
     error_already_set(error_already_set &&) = default;
 
