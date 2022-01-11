@@ -143,7 +143,7 @@ Everything else
 ---------------
 
 .. automodule:: xloil
-	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_run,excel_state,run,run_async,call,call_async,excel_callback
+	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
 	:imported-members:
 	:undoc-members:
 
