@@ -142,7 +142,7 @@ def _import_file(path, addin, workbook_name=None):
         except Exception as e:
 
             status.msg(f"Error loading {path}, see log")
-            raise ImportError(path=path, name=module_name) from e
+            raise ImportError(f"{str(e)} whilst loading {path}", path=path, name=module_name) from e
 
 
 def _install_hook():
