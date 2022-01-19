@@ -1,5 +1,5 @@
 import xloil
-import xloil.tkinter
+
 
 class _Handler_ptvsd:
 
@@ -87,6 +87,7 @@ class _Handler_pdb_window:
                 line = self.stdin_buffer.get()
                 return line
 
+        import xloil.tkinter
         top_level = tk.Toplevel(xloil.tkinter.tk_root())
 
         def disable_debugging():
