@@ -107,9 +107,9 @@ namespace pybind11
     
     // Restore the error and call PyErr_Print which clears the error indicator.
     // The dtor of error_scope will restore it again on exit from this function.
-    Py_INCREF(error.type);
-    Py_INCREF(error.value);
-    Py_INCREF(error.trace);
+    if (error.type) Py_INCREF(error.type);
+    if (error.value) Py_INCREF(error.value);
+    if (error.trace) Py_INCREF(error.trace);
     PyErr_Restore(error.type, error.value, error.trace);
     PyErr_Print();
 
@@ -330,6 +330,5 @@ namespace xloil
     {
       return MainThreadWrap(f, (decltype(&F::operator())) nullptr);
     }
-
   }
 }

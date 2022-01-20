@@ -234,8 +234,8 @@ namespace xloil
       /// </summary>
       RtdAsyncTask(const PyFuncInfo& info, vector<py::object>&& args, py::object&& kwargs)
         : _info(info)
-        , _args(args)
-        , _kwargs(kwargs)
+        , _args(std::move(args))
+        , _kwargs(std::move(kwargs))
       {}
 
       virtual ~RtdAsyncTask()

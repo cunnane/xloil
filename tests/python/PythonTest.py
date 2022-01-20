@@ -1,6 +1,6 @@
 
 import xloil as xlo
-from xloil.pandas import PDFrame
+
 import datetime as dt
 import asyncio
 import os 
@@ -472,20 +472,14 @@ def pyTestRangeFormula2(r: xlo.Range):
 async def pyTestCaller():
     return xlo.Caller().address()
     
-#
-# Displays python's sys.path. Useful for debugging some module loads
-# 
-import sys        
-@xlo.func(local=False)
-def pysyspath():
-    return sys.path
 
 #
-# Displays python's sys.modules. Useful for debugging some module loads
+# Displays python's sys.XXX. Useful for debugging some module loads
 # 
 @xlo.func(local=False)
-def pysysmodules():
-    return sys.modules
+def pysys(attr):
+    return getattr(sys, attr)
+    
     
 #
 # Threads: we can declare threadsafe functions which will be executed on
@@ -547,7 +541,8 @@ def pyTestDateConv(dates: date_row):
 
 try:
     import pandas as pd
-
+    from xloil.pandas import PDFrame
+    
     #
     # xlo.PDFrame converts a block to a pandas DataFrame. Because it registers
     # the type pd.DataFrame, we can just use that in typing annotations. The block 

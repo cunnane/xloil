@@ -244,7 +244,7 @@ class _JupyterConnection:
         # a shame as it would be rather nicer than this loop.
         msg = None
         while True:
-            if not self._client.is_alive():
+            if not await self._client.is_alive():
                 raise Exception("Jupyter client died")
 
             try:
