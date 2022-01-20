@@ -25,7 +25,7 @@ include_dir = soln_dir / "include"
 
 architectures = ["x64", "Win32"]
 
-python_versions = ["3.6", "3.7", "3.8", "3.9"]
+python_versions = ["3.6", "3.7", "3.8", "3.9", "3.10"]
 python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
