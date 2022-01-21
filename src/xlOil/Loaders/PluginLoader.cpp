@@ -34,10 +34,12 @@ using std::map;
 
 namespace xloil
 {
+  constexpr const wchar_t* XLOIL_PLUGIN_EXT = L".dll";
   namespace
   {
     static auto emptyTomlTable = toml::table();
   }
+
   struct LoadedPlugin
   {
     AddinContext* Context;
@@ -78,7 +80,7 @@ namespace xloil
           if (_wcsicmp(fileData.cFileName, State::coreDllName()) == 0)
             continue;
 
-          plugins.emplace(fs::path(fileData.cFileName).stem()); // TODO: remove extn?
+          plugins.emplace(fs::path(fileData.cFileName).stem());
         } while (FindNextFile(fileHandle, &fileData));
       }
     }
@@ -90,13 +92,13 @@ namespace xloil
       // Look for the plugin in the same directory as xloil.dll, 
       // otherwise check the directory of the XLL
       std::error_code fsErr;
-      const auto pluginDir = fs::exists(coreDir / (pluginName + L".dll"), fsErr)
+      const auto pluginDir = fs::exists(coreDir / (pluginName + XLOIL_PLUGIN_EXT), fsErr)
         ? coreDir
         : xllDir;
 
       SetDllDirectory(pluginDir.c_str());
 
-      const auto pluginPath = pluginDir / (pluginName + L".dll");
+      const auto pluginPath = pluginDir / (pluginName + XLOIL_PLUGIN_EXT);
 
       const auto pluginNameUtf8 = utf16ToUtf8(pluginName);
 

@@ -379,7 +379,7 @@ namespace xloil
   }
   inline ExcelArrayIterator& ExcelArrayIterator::operator--()
   {
-    if (_pRowEnd - _p == _nCols)
+    if (_pRowEnd - _p == (ptrdiff_t)_nCols)
     {
       _pRowEnd -= _baseNumCols;
       _p = _pRowEnd - 1;

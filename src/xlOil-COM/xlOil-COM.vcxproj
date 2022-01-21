@@ -123,7 +123,6 @@
     <ClInclude Include="CustomTaskPane.h" />
     <ClInclude Include="RibbonExtensibility.h" />
     <ClInclude Include="RtdManager.h" />
-    <ClInclude Include="RtdServer.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
   </ItemGroup>

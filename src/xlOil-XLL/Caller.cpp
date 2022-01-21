@@ -124,14 +124,14 @@ namespace xloil
       const uint16_t wsLength = sheetName.length();
       if (wsLength > 0)
       {
-        if (bufLen <= wsLength + 1)
+        if (bufLen <= wsLength + 1u)
           return 0;
         wmemcpy(buf, wsName, wsLength);
         buf += wsLength;
         // Separator character
         *(buf++) = L'!';
 
-        nWritten += wsLength + 1;
+        nWritten += wsLength + 1u;
         bufLen -= nWritten;
       }
 
