@@ -69,61 +69,7 @@ namespace pybind11
   /// the auxillary context and cause expceptions.
   /// </summary>
   /// <returns></returns>
-  PYBIND11_NOINLINE inline std::string error_full_traceback()
-  {
-    if (!PyErr_Occurred()) 
-    {
-      PyErr_SetString(PyExc_RuntimeError, "Attempt to throw python error without indicator set");
-      return "Unknown internal error occurred";
-    }
-
-    // We store the error indicator and restore it on exit. This allows the
-    // ctor of error_already_set to grab the indicator using PyErr_Fetch.
-    error_scope error;
-
-    // Python's error output from PyErr_Print is backwards, so we output the
-    // original error first at that's likely the most useful thing to see in the
-    // cell where the result is shown
-    std::string errorString;
-    if (error.type) 
-    {
-      errorString += handle(error.type).attr("__name__").cast<std::string>();
-      errorString += ": ";
-    }
-    if (error.value)
-    {
-      errorString += (std::string)str(error.value);
-      errorString += "\n";
-    }
-
-    // Python only provides a facility for writing an error to stderr via
-    // PyErr_Print. So we replace stderr with a StringIO stream
-    auto ioMod = PyImport_ImportModule("io");
-    auto stringIO = PyObject_CallMethod(ioMod, "StringIO", NULL);
-    Py_DECREF(ioMod);
-
-    auto previousStdErr = PySys_GetObject("stderr");
-    PySys_SetObject("stderr", stringIO);
-    
-    // Restore the error and call PyErr_Print which clears the error indicator.
-    // The dtor of error_scope will restore it again on exit from this function.
-    if (error.type) Py_INCREF(error.type);
-    if (error.value) Py_INCREF(error.value);
-    if (error.trace) Py_INCREF(error.trace);
-    PyErr_Restore(error.type, error.value, error.trace);
-    PyErr_Print();
-
-    PySys_SetObject("stderr", previousStdErr);
-    Py_DECREF(previousStdErr);
-
-    // Grab the string output from stringIO and cleanup 
-    auto fullTrace = PyObject_CallMethod(stringIO, "getvalue", NULL);
-    errorString += (std::string)str(fullTrace);
-    Py_DECREF(stringIO);
-    Py_DECREF(fullTrace);
-
-    return errorString;
-  }
+  std::string error_full_traceback();
 
   class error_traceback_set : public error_already_set 
   {
