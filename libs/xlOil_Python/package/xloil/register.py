@@ -13,18 +13,28 @@ if XLOIL_HAS_CORE:
     from xloil_core import (
         Read_object as _Read_object,
         Read_Cache as _Read_Cache,
-        FuncSpec as _FuncSpec
+        FuncSpec as _FuncSpec,
+        FuncArg as _FuncArg
     )
 else:
     def _Read_object():
         pass
+
     def _Read_Cache():
         pass
+
     class _FuncSpec:
         def __init__(self, *args, **kwargs):
             pass
         help = ""
         name = ""
+
+    class _FuncArg:
+        name:str
+        help:str
+        converter 
+        default;
+        allow_range = False
 
 """
 Tag used to mark modules which contain functions to register. It is added 
@@ -77,19 +87,21 @@ class Arg:
         """
         return self.default is not inspect._empty
 
-    def write_spec(self, this_arg):
+    def to_core_argspec(self) -> _FuncArg:
 
         # Set the arg converters based on the typeof provided for 
         # each argument. If 'typeof' is a xloil typeconverter object
         # it's passed through.  If it is a general python type, we
         # attempt to create a suitable typeconverter
         # Determine the internal C++ arg converter to run on the Excel values
-        # before they are passed to python.  
+        # before they are passed to python.
+
+        this_arg = _FuncArg()
         this_arg.name = self.name
         this_arg.help = self.help
 
         if self.is_keywords:
-            return
+            return this_arg
 
         arg_type = self.typeof
         converter = 0
@@ -130,6 +142,7 @@ class Arg:
         assert converter is not None
         this_arg.converter = converter
 
+        return this_arg
 
     @staticmethod
     def override_arglist(arglist, replacements):
@@ -470,9 +483,14 @@ def func(fn=None,
             if local == True and is_local == False:
                 raise ValueError(f"'threaded' or 'async' functions cannot be 'local'")
 
+            # Optional overrides of function arg information that we read
+            # by reflection
+            func_args = Arg.override_arglist(func_args, args)
+            core_argspec = [arg.to_core_argspec() for arg in func_args]
+
             spec = _FuncSpec(
                 func = fn,
-                nargs = len(func_args),
+                args = core_argspec,
                 name = name if name else "",
                 features = ','.join(features),
                 help = help if help else "",
@@ -480,11 +498,6 @@ def func(fn=None,
                 volatile = volatile,
                 local = is_local,
                 has_kwargs = has_kwargs)
-
-            func_args = Arg.override_arglist(func_args, args)
-
-            for i, arg in enumerate(func_args):
-                arg.write_spec(spec.args[i])
 
             if return_type is not inspect._empty:
                 spec.return_converter = find_return_converter(return_type)

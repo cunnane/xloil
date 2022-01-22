@@ -36,39 +36,13 @@ namespace xloil
           const wchar_t* workbookName);
     };
 
-    class PyFuncArg
+    struct PyFuncArg
     {
-    private:
-      // We hold a ptr to the info as we take a FuncArg ref
-      std::shared_ptr<FuncInfo> _info;
-      pybind11::object _default;
-
-    public:
-      PyFuncArg(const std::shared_ptr<FuncInfo>& info, unsigned i)
-        : _info(info)
-        , arg(_info->args[i])
-      {}
-
-      FuncArg& arg;
-
       std::shared_ptr<IPyFromExcel> converter;
-      
-      void setName(const std::wstring& value) { arg.name = value; }
-      const auto& getName() const { return arg.name; }
-
-      void setHelp(const std::wstring& value) { arg.help = value; }
-      const auto& getHelp() const { return arg.help; }
-
-      void setDefault(const pybind11::object& value) 
-      {
-        arg.type |= FuncArg::Optional;
-        _default = value; 
-      }
-      const auto& getDefault() const 
-      { 
-        // what to return if this is null???
-        return _default; 
-      }
+      std::wstring name;
+      std::wstring help;
+      pybind11::object default;
+      bool allowRange;
     };
 
     class PyFuncInfo
@@ -76,8 +50,8 @@ namespace xloil
     public:
       PyFuncInfo(
         const pybind11::function& func,
+        const std::vector<PyFuncArg> args,
         const std::wstring& name,
-        const unsigned numArgs,
         const std::string& features,
         const std::wstring& help,
         const std::wstring& category,
@@ -92,8 +66,6 @@ namespace xloil
       auto& args() { return _args; }
       const auto& constArgs() const { return _args; }
 
-      void setFuncOptions(unsigned val);
-
       auto getReturnConverter() const { return returnConverter; }
       void setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv);
 
@@ -104,9 +76,10 @@ namespace xloil
       bool isCommand()   const  { return (_info->options & FuncInfo::COMMAND) != 0; }
 
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
+      const pybind11::function& func() const { return _func; }
 
       static std::shared_ptr<const DynamicSpec> createSpec(
-        const std::shared_ptr<const PyFuncInfo>& funcInfo);
+        const std::shared_ptr<PyFuncInfo>& funcInfo);
   
       /// <summary>
       /// Convert the array of ExcelObj arguments to PyObject values, with 
@@ -128,7 +101,7 @@ namespace xloil
         {
           for (; i < _numPositionalArgs; ++i)
           {
-            auto* defaultValue = _args[i].getDefault().ptr();
+            auto* defaultValue = _args[i].default.ptr();
             pyArgs.push_back((*_args[i].converter)(xlArgs(i), defaultValue));
           }
           if (_hasKeywordArgs)
@@ -138,11 +111,9 @@ namespace xloil
         {
           // We give the arg number 1-based as it's more natural
           XLO_THROW(L"Error in arg {1} '{0}': {2}",
-            _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
+            _args[i].name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
         }
       }
-
-      const pybind11::function& func() const { return _func; }
 
       ExcelObj convertReturn(PyObject* retVal) const;
 
@@ -170,7 +141,7 @@ namespace xloil
       bool _hasKeywordArgs;
       uint16_t _numPositionalArgs;
 
-      void checkArgConverters() const;
+      void describeFuncArgs();
     };
   }
 }

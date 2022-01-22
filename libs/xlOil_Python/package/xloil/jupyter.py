@@ -83,16 +83,15 @@ class _FuncDescription:
         async def shim(*args, **kwargs):
             return await connection.invoke(func_name, *args, **kwargs)
 
+        core_argspec = [arg.to_core_argspec() for arg in self.args]
+
         # TODO: can we avoid using the core?
         spec = xloil_core.FuncSpec(shim, 
-            nargs = len(self.args),
+            args = core_argspec,
             name = self.name,
             features = "rtd",
             help = self.help,
             category = "xlOil Jupyter")
-
-        for i, arg in enumerate(self.args):
-            arg.write_spec(spec.args[i])
 
         if self.return_type is not inspect._empty:
             spec.return_converter = xloil.register.find_return_converter(return_type)
@@ -231,7 +230,7 @@ class _JupyterConnection:
         xlo.log(f"Initialising Jupyter connection {self._connection_file}", level='debug')
         
         msg_id = self._client.execute(
-            "import sys, importlib, IPython\n" + 
+            "import sys, IPython\n" + 
             f"if not '{self._xloil_path}' in sys.path: sys.path.append('{self._xloil_path}')\n" + 
             "import xloil\n"
             "import xloil.jupyter\n"

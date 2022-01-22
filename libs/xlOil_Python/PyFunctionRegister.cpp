@@ -39,7 +39,7 @@ namespace xloil
     constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
-    void processFuncFeatures(
+    unsigned readFuncFeatures(
       const string& features,
       PyFuncInfo& info, 
       bool isVolatile, 
@@ -68,13 +68,13 @@ namespace xloil
           XLO_THROW("Async cannot be used with other function features like command, macro, etc");
       }
 
-      info.setFuncOptions(funcOpts);
+      return funcOpts;
     }
 
     PyFuncInfo::PyFuncInfo(
       const pybind11::function& func,
+      const std::vector<PyFuncArg> args,
       const std::wstring& name,
-      const unsigned numArgs,
       const std::string& features,
       const std::wstring& help,
       const std::wstring& category,
@@ -83,6 +83,7 @@ namespace xloil
       bool hasKeywordArgs)
       : _info(new FuncInfo())
       , _func(func)
+      , _args(args)
       , _hasKeywordArgs(hasKeywordArgs)
       , isLocalFunc(isLocal)
       , isRtdAsync(false)
@@ -98,26 +99,10 @@ namespace xloil
       if (!func.ptr() || func.is_none())
         XLO_THROW(L"No python function specified for {0}", name);
 
-      processFuncFeatures(features, *this, isVolatile, isLocalFunc);
-
-      if (isAsync)
-      {
-        _info->args.resize(numArgs + 1);
-        _info->args[0] = FuncArg(nullptr, nullptr, FuncArg::AsyncHandle);
-        for (auto i = 1u; i < numArgs + 1; ++i)
-          _args.push_back(PyFuncArg(_info, i));
-      }
-      else
-      {
-        _info->args.resize(numArgs);
-        for (auto i = 0u; i < numArgs; ++i)
-          _args.push_back(PyFuncArg(_info, i));
-      }
+      _info->options = readFuncFeatures(features, *this, isVolatile, isLocalFunc);
 
       if (!_info->isValid())
         XLO_THROW("Invalid combination of function features: '{}'", features);
-
-      _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
     }
 
     PyFuncInfo::~PyFuncInfo()
@@ -126,11 +111,6 @@ namespace xloil
       returnConverter.reset();
       _args.clear();
       _func = py::object();
-    }
-
-    void PyFuncInfo::setFuncOptions(unsigned val)
-    {
-      _info->options = val;
     }
 
     void PyFuncInfo::setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv)
@@ -213,30 +193,51 @@ namespace xloil
       }
     }
 
-    shared_ptr<const DynamicSpec> PyFuncInfo::createSpec(const std::shared_ptr<const PyFuncInfo>& func)
+    shared_ptr<const DynamicSpec> 
+      PyFuncInfo::createSpec(
+        const std::shared_ptr<PyFuncInfo>& func)
     {
       // We implement this as a static function taking a shared_ptr rather than using 
       // shared_from_this with PyFuncInfo as the latter causes pybind to catch a 
       // std::bad_weak_ptr during construction which seems rather un-C++ like and irksome
-      func->checkArgConverters();
+      func->describeFuncArgs();
+      auto cfunc = std::const_pointer_cast<const PyFuncInfo>(func);
       if (func->isAsync)
-        return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, cfunc);
       else if (func->isRtdAsync)
-        return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, cfunc);
       else if (func->isThreadSafe())
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<true>, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<true>, cfunc);
       else if (func->isCommand())
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false, CommandReturn>, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false, CommandReturn>, cfunc);
       else
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<>, func);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<>, cfunc);
     }
 
-    void PyFuncInfo::checkArgConverters() const
+    void PyFuncInfo::describeFuncArgs()
     {
+      const auto numArgs = _args.size();
+
+      auto& infoArgs = _info->args;
+
+      infoArgs.reserve(numArgs + isAsync ? 1 : 0);
+      if (isAsync)
+        infoArgs.emplace_back(nullptr, nullptr, FuncArg::AsyncHandle);
+
+      for (auto& arg : _args)
+        infoArgs.emplace_back(
+          arg.name.c_str(), 
+          arg.help.c_str(), 
+          FuncArg::Obj 
+            | (arg.default ? FuncArg::Optional : 0) 
+            | (arg.allowRange ? FuncArg::Range : 0));
+
+      _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
+
       // TODO: handle kwargs
       for (auto i = 0u; i < _args.size() - (_hasKeywordArgs ? 1u : 0); ++i)
         if (!_args[i].converter)
-          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].getName());
+          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].name);
     }
 
     //TODO: Refactor Python FileSource
@@ -410,19 +411,11 @@ namespace xloil
 
     namespace
     {
-      void bitSet(int& x, int mask, bool val)
-      {
-        if (val)
-          x |= mask;
-        else
-          x &= ~mask;
-      }
-
       string pyFuncInfoToString(const PyFuncInfo& info)
       {
         string result = utf16ToUtf8(info.info()->name) + "(";
         for (auto& arg : info.constArgs())
-          result += utf16ToUtf8(arg.getName()) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
+          result += utf16ToUtf8(arg.name) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
         if (!info.constArgs().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
@@ -434,23 +427,18 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyFuncArg>(mod, "FuncArg")
-          .def_property("name", &PyFuncArg::getName, &PyFuncArg::setName)
-          .def_property("help", &PyFuncArg::getHelp, &PyFuncArg::setHelp)
+          .def(py::init<>())
+          .def_readwrite("name", &PyFuncArg::name)
+          .def_readwrite("help", &PyFuncArg::help)
           .def_readwrite("converter", &PyFuncArg::converter)
-          .def_property("default", &PyFuncArg::getDefault, &PyFuncArg::setDefault)
-          .def_property("allow_range",
-            [](PyFuncArg& x) { return (x.arg.type & FuncArg::Range) != 0; },
-            [](PyFuncArg& x, bool v)
-            {
-              bitSet(x.arg.type, FuncArg::Range, v);
-            }
-        );
+          .def_readwrite("default", &PyFuncArg::default)
+          .def_readwrite("allow_range", &PyFuncArg::allowRange);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncSpec")
-          .def(py::init<py::function, wstring, unsigned, string, wstring, wstring, bool, bool, bool>(),
+          .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool, bool>(),
             py::arg("func"),
+            py::arg("args"),
             py::arg("name") = "",
-            py::arg("nargs"),
             py::arg("features") = py::none(),
             py::arg("help") = "",
             py::arg("category") = "",
