@@ -5,6 +5,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/ExcelThread.h>
 #include <combaseapi.h>
+#include <shared_mutex>
 
 using std::wstring;
 using std::shared_ptr;
@@ -14,9 +15,9 @@ using std::scoped_lock;
 
 namespace
 {
-
   /// <summary>
-  /// Like a std::scoped_lock but uses a std::atomic_flag rather than a mutex
+  /// Like a std::scoped_lock but uses a std::atomic_flag rather than a mutex.
+  /// Note it busy-waits for the lock!
   /// </summary>
   struct scoped_atomic_flag
   {
@@ -111,7 +112,7 @@ namespace xloil
   private:
     shared_ptr<IRtdServer> _mgr;
     std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
-    std::mutex _lock;
+    std::shared_mutex _mutex;
 
     RtdAsyncManager() : _mgr(newRtdServer())
     {
@@ -132,16 +133,8 @@ namespace xloil
     shared_ptr<const ExcelObj> getValue(
       shared_ptr<IRtdAsyncTask> task)
     {
-      // If the caller is an array formula, when RTD is called in the subscribe()
-      // method, it will return xlretUncalced, but will trigger the calling
-      // function to be called again for each cell in the array. The caller
-      // will remain as the top left-cell except for the first call which will 
-      // be an array.
-      // 
-      // We want to start the task only once for the first call, with subsequent
-      // calls ignored until the last one which must call subscribe (and hence 
-      // RTD) for Excel to make the RTD connection.
-      //
+      // Protects agains a null-deref and allows starting up the RTD server
+      // without running anything
       if (!task)
         return shared_ptr<const ExcelObj>();
 
@@ -155,19 +148,52 @@ namespace xloil
       if (arraySize > 1)
         address.erase(address.rfind(':'));
   
-      // TODO: shared_mutex here
-      _lock.lock();
-      auto& tasksInCell = _tasksPerCell[address];
-      scoped_atomic_flag lockCell(tasksInCell.busy);
-      _lock.unlock();
+      // The value we need to populate
+      CellTaskHolder* tasksInCell;
 
-      if (tasksInCell.arrayCount > 1)
+      // Read-lock the dictionary of cell tasks and look for the address
+      std::shared_lock readLock(_mutex);
+      const auto iTasks = _tasksPerCell.find(address);
+      if (iTasks == _tasksPerCell.end())
       {
-        --tasksInCell.arrayCount;
+        // Not found, release read-lock and acquire write-lock
+        readLock.unlock();
+        
+        std::unique_lock writeLock(_mutex);
+        // Emplace may not succeed if another thread has added the key whilst
+        // we waited for the lock
+        tasksInCell = &_tasksPerCell.try_emplace(address).first->second;
+      }
+      else
+      {
+        // Found: use the iterator *before* unlock as inserts may invalidate it
+        tasksInCell = &iTasks->second;
+        readLock.unlock();
+      }
+      
+      // Now lock 'tasksInCell' in case there is more than one RTD function in the cell
+      // This is unlikely, so we use a lightweight atomic_flag which implies a spin wait
+      // (before C++20).
+      scoped_atomic_flag lockCell(tasksInCell->busy);
+
+      // If the caller is an array formula, when RTD is called in the subscribe()
+      // method, it will return xlretUncalced, but will trigger the calling
+      // function to be called again for each cell in the array. The caller
+      // will remain as the top left-cell except for the first call which will 
+      // be an array.
+      // 
+      // We want to start the task only once for the first call, with subsequent
+      // calls ignored until the last one which must call subscribe (and hence 
+      // RTD) for Excel to make the RTD connection.
+      if (tasksInCell->arrayCount > 1)
+      {
+        --tasksInCell->arrayCount;
         return shared_ptr<const ExcelObj>();
       }
 
-      for (auto& t: tasksInCell.tasks)
+      // Compare our task to all other running tasks in the cell to see if we
+      // already have the answer
+      for (auto& t: tasksInCell->tasks)
         if (*task == (const IRtdAsyncTask&)*t->task())
         {
           auto value = _mgr->peek(t->topic());
@@ -176,16 +202,16 @@ namespace xloil
             : _mgr->subscribe(t->topic());
         }
 
-      // Couldn't find matching task so start it up
-      start(tasksInCell.tasks, task);
-      tasksInCell.arrayCount = arraySize;
-      auto result = _mgr->subscribe(tasksInCell.tasks.back()->topic());
+      // Couldn't find a matching task so start a new one
+      start(tasksInCell->tasks, task);
+      tasksInCell->arrayCount = arraySize;
+      auto result = _mgr->subscribe(tasksInCell->tasks.back()->topic());
       return result;
     }
 
     void clear()
     {
-      std::scoped_lock lock(_lock);
+      std::unique_lock lock(_mutex);
       _mgr->clear();
       _tasksPerCell.clear();
     }
