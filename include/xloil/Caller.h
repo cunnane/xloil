@@ -24,6 +24,7 @@ namespace xloil
     static constexpr uint16_t INTERNAL_REF_MAX_LEN = 1 + _MAX_U64TOSTR_BASE16_COUNT + 1 + _MAX_ULTOSTR_BASE16_COUNT * 2 + 1;
 
     CallerLite();
+
     /// <summary>
     /// Provide custom caller information. The <paramref name="address"/> is
     /// interpreted as per the return from xlfCaller. In particular, a string
@@ -33,6 +34,7 @@ namespace xloil
     /// <param name="sheetId">Optional C API sheet ID. Only used for display so does 
     /// not have to be a valid pointer.</param>
     CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId = nullptr);
+
     /// <summary>
     /// Writes the caller address to the provided buffer, returning the number
     /// of characters written on success or a negative number or on failure. 
@@ -43,12 +45,30 @@ namespace xloil
     /// <param name="bufLen"></param>
     /// <returns></returns>
     int writeInternalAddress(wchar_t* buf, size_t bufLen) const;
+
     /// <summary>
     /// As per <see cref="writeInternalAddress"/>, but returns a string rather than writing
     /// to a buffer
     /// </summary>
     /// <returns></returns>
     std::wstring writeInternalAddress() const;
+
+    /// <summary>
+    /// Returns a pointer to al XLREF12 sheet reference if caller was a 
+    /// worksheet, else returns nullptr.
+    /// </summary>
+    const msxll::XLREF12* sheetRef() const
+    {
+      switch (_address.type())
+      {
+      case ExcelType::SRef: return &_address.val.sref.ref;
+      case ExcelType::Ref: return &_address.val.mref.lpmref->reftbl[0];
+      default:
+        return nullptr;
+      }
+    }
+
+    msxll::IDSHEET sheetId() const { return _sheetId; }
   };
 
   /// <summary>
@@ -134,21 +154,7 @@ namespace xloil
     {
       return _fullSheetName.asPString();
     }
-    /// <summary>
-    /// Returns a pointer to al XLREF12 sheet reference if caller was a 
-    /// worksheet, else returns nullptr.
-    /// </summary>
-    const msxll::XLREF12* sheetRef() const
-    {
-      switch (_address.type())
-      {
-      case ExcelType::SRef: return &_address.val.sref.ref;
-      case ExcelType::Ref: return &_address.val.mref.lpmref->reftbl[0];
-      default:
-        return nullptr;
-      }
-    }
-
+   
     /// <summary>
     /// Returns a view containing only the sheet name.
     /// </summary>

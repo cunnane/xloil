@@ -4,6 +4,7 @@
 #include <xlOil/Caller.h>
 #include <xlOil/Events.h>
 #include <xlOil/ExcelThread.h>
+#include <xloil/StringUtils.h>
 #include <combaseapi.h>
 #include <shared_mutex>
 
@@ -41,6 +42,14 @@ namespace
     ~scoped_atomic_flag()
     {
       _flag.clear(std::memory_order_release);
+    }
+  };
+
+  template<class A, class B>
+  struct pair_hash {
+    size_t operator()(std::pair<A, B> p) const noexcept
+    {
+      return xloil::boost_hash_combine(377, p.first, p.second);;
     }
   };
 }
@@ -111,7 +120,7 @@ namespace xloil
 
   private:
     shared_ptr<IRtdServer> _mgr;
-    std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
+    std::unordered_map<std::pair<unsigned, unsigned>, CellTaskHolder, pair_hash<unsigned, unsigned>> _tasksPerCell;
     std::shared_mutex _mutex;
 
     RtdAsyncManager() : _mgr(newRtdServer())
@@ -138,16 +147,14 @@ namespace xloil
       if (!task)
         return shared_ptr<const ExcelObj>();
 
-      const auto caller = CallerInfo();
+      const auto caller = CallerLite();
       const auto ref = caller.sheetRef();
       const auto arraySize = (ref->colLast - ref->colFirst + 1) 
         * (ref->rwLast - ref->rwFirst + 1);
-      auto address = caller.writeAddress(CallerInfo::RC);
+      // This is the cell number of the top-left cell for array callers
+      const unsigned cellNumber = ref->rwFirst * XL_MAX_COLS + ref->colFirst;
+      const auto address = std::make_pair((unsigned)caller.sheetId(), cellNumber);
 
-      // Turn array address into top left cell
-      if (arraySize > 1)
-        address.erase(address.rfind(':'));
-  
       // The value we need to populate
       CellTaskHolder* tasksInCell;
 

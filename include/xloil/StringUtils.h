@@ -303,4 +303,14 @@ namespace xloil
   {
     std::transform(str.begin(), str.end(), str.begin(), detail::char_traits<Elem>::tolower);
   }
+
+  // Borrowed from Boost. Doesn't logically live in this header file, but 
+  // lacks another home
+  inline size_t boost_hash_combine(size_t seed) { return seed; }
+
+  template <typename T, typename... Rest>
+  inline size_t boost_hash_combine(size_t seed, const T& v, Rest... rest) {
+    seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return boost_hash_combine(seed, rest...);
+  }
 }

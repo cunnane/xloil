@@ -9,12 +9,12 @@
 #include <xlOil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
+#include <xloil/StringUtils.h>
 #include <array>
 #include <algorithm>
 #include <cstring>
 #include <vector>
 #include <string>
-
 
 using std::string;
 using std::wstring;
@@ -640,19 +640,6 @@ namespace
   }
 }
 
-namespace
-{
-  // Boost hash_combine
-  inline void hash_combine(size_t& /*seed*/) { }
-
-  template <typename T, typename... Rest>
-  inline void hash_combine(size_t& seed, const T& v, Rest... rest) {
-    std::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    hash_combine(seed, rest...);
-  }
-}
-
 namespace std
 {
   size_t hash<xloil::ExcelObj>::operator ()(const xloil::ExcelObj& value) const
@@ -668,19 +655,15 @@ namespace std
     case xltypeErr: return hash<int>()(value.val.err);
     case xltypeSRef:
     {
-      size_t seed = 377;
-      hash_combine(seed,
+      return xloil::boost_hash_combine(377,
         value.val.sref.ref.colFirst,
         value.val.sref.ref.colLast,
         value.val.sref.ref.rwFirst,
         value.val.sref.ref.rwLast);
-      return seed;
     }
     case xltypeRef:
     {
-      size_t seed = 377;
-      hash_combine(seed, value.val.mref.idSheet, value.val.mref.lpmref);
-      return seed;
+      return xloil::boost_hash_combine(377, value.val.mref.idSheet, value.val.mref.lpmref);
     }
     case xltypeMulti:
       return hash<void*>()(value.val.array.lparray);
