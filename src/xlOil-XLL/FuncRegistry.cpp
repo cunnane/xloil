@@ -35,6 +35,17 @@ namespace xloil
     return name == that.name && help == that.help && category == that.category
       && options == that.options && std::equal(args.begin(), args.end(), that.args.begin(), that.args.end());
   }
+  XLOIL_EXPORT bool FuncInfo::isValid() const
+  {
+    bool async = false;
+    for (auto& arg : args)
+      if (arg.type & FuncArg::AsyncHandle)
+        async = true;
+    return (((options & FuncInfo::MACRO_TYPE) > 0)
+      + ((options & FuncInfo::THREAD_SAFE) > 0)
+      + ((options & FuncInfo::COMMAND) > 0)
+      + (async) <= 1);
+  }
 }
 
 namespace xloil
@@ -60,6 +71,9 @@ namespace xloil
       if (numArgs > XL_MAX_UDF_ARGS)
         XLO_THROW("Number of positional arguments ({}) exceeds maximum allowed by Excel ({})",
           numArgs, XL_MAX_UDF_ARGS);
+
+      if (!info->isValid())
+        XLO_THROW("Invalid combination of function options");
 
       // Build the argument type descriptor
       string argTypes;
@@ -95,11 +109,8 @@ namespace xloil
         ++iArg;
       }
 
-      if (((opts & FuncInfo::MACRO_TYPE) > 0)
-        + ((opts & FuncInfo::THREAD_SAFE) > 0)
-        + ((opts & FuncInfo::COMMAND) > 0)
-        + (argTypes[0] == '>') > 1)
-        XLO_THROW("Macro, Threadsafe, Command and Async are exclusive");
+
+
 
       // Set function option suffixes
       if (opts & FuncInfo::VOLATILE)

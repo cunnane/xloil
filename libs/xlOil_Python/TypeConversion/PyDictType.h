@@ -1,6 +1,5 @@
 #pragma once
-#include <Python.h>
-#include <xlOil/ExcelObj.h>
+#include "CPython.h"
 
 namespace xloil
 {

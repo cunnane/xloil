@@ -19,23 +19,23 @@ namespace pybind11
   public:
     PYBIND11_OBJECT_CVT(wstr, object, detail::PyUnicode_Check_Permissive, raw_str)
 
-    wstr(const wchar_t *c, size_t n)
-      : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{}) 
+      wstr(const wchar_t* c, size_t n)
+      : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
     {
-      if (!m_ptr) 
+      if (!m_ptr)
         pybind11_fail("Could not allocate string object!");
     }
 
     // 'explicit' is omitted from the following constructors to allow implicit 
     // conversion to py::str from C++ string-like objects
-    wstr(const wchar_t *c = L"")
+    wstr(const wchar_t* c = L"")
       : object(PyUnicode_FromWideChar(c, -1), stolen_t{})
     {
-      if (!m_ptr) 
+      if (!m_ptr)
         pybind11_fail("Could not allocate string object!");
     }
 
-    wstr(const std::wstring &s) : wstr(s.data(), s.size()) { }
+    wstr(const std::wstring& s) : wstr(s.data(), s.size()) { }
 
     // Not sure how to implement
     //explicit str(const bytes &b);
@@ -57,8 +57,8 @@ namespace pybind11
 
   private:
     /// Return string representation -- always returns a new reference, even if already a str
-    static PyObject *raw_str(PyObject *op) {
-      PyObject *str_value = PyObject_Str(op);
+    static PyObject* raw_str(PyObject* op) {
+      PyObject* str_value = PyObject_Str(op);
       return str_value;
     }
   };
@@ -71,11 +71,11 @@ namespace pybind11
   /// <returns></returns>
   std::string error_full_traceback();
 
-  class error_traceback_set : public error_already_set 
+  class error_traceback_set : public error_already_set
   {
   public:
     // Note: need to add a ctor to error_already_set which takes a string msg
-    error_traceback_set() 
+    error_traceback_set()
       : error_already_set(error_full_traceback())
     {}
   };
@@ -90,12 +90,6 @@ namespace xloil
       if (!obj)
         throw pybind11::error_traceback_set();
       return obj;
-    }
-    inline PyObject* PyCheck(int ret)
-    {
-      if (ret != 0)
-        throw pybind11::error_traceback_set();
-      return 0;
     }
     template<class TType = pybind11::object> inline TType PySteal(PyObject* obj)
     {
@@ -113,7 +107,7 @@ namespace xloil
     /// <summary>
     /// If PyErr_Occurred is true, returns the error message, else an empty string
     /// </summary>
-    inline std::wstring pyErrIfOccurred(bool clear=true)
+    inline std::wstring pyErrIfOccurred(bool clear = true)
     {
       const auto result = PyErr_Occurred()
         ? utf8ToUtf16(pybind11::error_full_traceback())
@@ -137,7 +131,7 @@ namespace xloil
     /// </summary>
     std::wstring pyToWStr(const PyObject* p);
 
-    inline std::wstring 
+    inline std::wstring
       pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
 
     /// <summary>
@@ -276,5 +270,77 @@ namespace xloil
     {
       return MainThreadWrap(f, (decltype(&F::operator())) nullptr);
     }
+
+    /// <summary>
+
+    /// </summary>
+    PyObject* fastCall(
+      PyObject* func, PyObject* const* args, size_t nArgs, PyObject* kwargs) noexcept;
+
+    /// <summary>
+    /// Manages an array of args suitable for a Python FastCall, this includes the 
+    /// leading offset to allow easy fiddling of the 'self' parameter for onward calls.
+    /// Python can optimise onward calls to PyObject_Vectorcall if we leave a free 
+    /// entry at the start of the arg array For Py 3.7 and earlier, vector call is not
+    /// available.
+    /// 
+    /// The array is held on the stack, so a maximum size must be specified. 
+    /// </summary>
+    template<
+      size_t TSize = 255, // = XL_MAX_UDF_ARGS
+#if PY_VERSION_HEX < 0x03080000
+      size_t TOffset = 1u
+#else
+      size_t TOffset = 0u
+#endif
+    >
+    class PyCallArgs
+    {
+      // Use array<PyObject*> as an array<py::object> would result in TSize dtor calls
+      std::array<PyObject*, TSize + TOffset>  _store;
+      size_t _size = TOffset;
+
+    public:
+      ~PyCallArgs()
+      {
+        clear();
+      }
+
+      /// <summary>
+      /// Steals a ref
+      /// </summary>
+      void push_back(PyObject* p)
+      {
+        assert(_size <= TSize);
+        _store[_size++] = p;
+      }
+
+      constexpr auto begin() const
+      {
+        return _store.begin();
+      }
+
+      auto end() const
+      {
+        return begin() + _size;
+      }
+
+      size_t nArgs() const { return _size - TOffset; }
+
+      constexpr size_t capacity() const { return TSize; }
+
+      void clear()
+      {
+        const auto last = end();
+        for (auto p = _store.begin() + TOffset; p != last; ++p)
+          Py_DECREF(*p);
+        _size = 0;
+      }
+
+      PyObject* call(PyObject* func, PyObject* kwargs) noexcept
+      {
+        return fastCall(func, _store.data() + TOffset, nArgs(), kwargs);
+      }
+    };
   }
 }

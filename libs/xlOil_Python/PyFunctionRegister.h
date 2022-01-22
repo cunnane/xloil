@@ -1,6 +1,8 @@
 #pragma once
 #include "PyCore.h"
+#include "TypeConversion/PyDictType.h"
 #include <xlOil/Register.h>
+#include <xlOil/Throw.h>
 #include <map>
 #include <string>
 #include <pybind11/pybind11.h>
@@ -37,11 +39,12 @@ namespace xloil
     class PyFuncArg
     {
     private:
+      // We hold a ptr to the info as we take a FuncArg ref
       std::shared_ptr<FuncInfo> _info;
       pybind11::object _default;
 
     public:
-      PyFuncArg(std::shared_ptr<FuncInfo> info, unsigned i)
+      PyFuncArg(const std::shared_ptr<FuncInfo>& info, unsigned i)
         : _info(info)
         , arg(_info->args[i])
       {}
@@ -110,61 +113,54 @@ namespace xloil
       /// option kwargs.
       /// </summary>
       /// <param name="xlArgs">Size must be equal to `args().size()`</param>
-      /// <param name="args">Size must equal `argArraySize()`</param>
+      /// <param name="pyArgs">Size must equal `argArraySize()`</param>
       /// <param name="kwargs"></param>
+      template<class TXlArgs, class TPyArgs>
       void convertArgs(
-        const ExcelObj** xlArgs,
-        PyObject** args,
-        pybind11::object& kwargs) const;
-
-      template <class TArray>
-      void convertArgs(
-        const ExcelObj** xlArgs,
-        TArray& args,
-        pybind11::object& kwargsDict) const
+        TXlArgs xlArgs,
+        TPyArgs& pyArgs,
+        pybind11::object& kwargs) const
       {
-        assert(args.size() >= argArraySize());
-        convertArgs(xlArgs, (PyObject**)args.data(), kwargsDict);
+        assert(pyArgs.capacity() >= _numPositionalArgs + (isRtdAsync || isAsync ? 1 : 0));
+
+        size_t i = 0;
+        try
+        {
+          for (; i < _numPositionalArgs; ++i)
+          {
+            auto* defaultValue = _args[i].getDefault().ptr();
+            pyArgs.push_back((*_args[i].converter)(xlArgs(i), defaultValue));
+          }
+          if (_hasKeywordArgs)
+            kwargs = PySteal<>(readKeywordArgs(xlArgs(_numPositionalArgs)));
+        }
+        catch (const std::exception& e)
+        {
+          // We give the arg number 1-based as it's more natural
+          XLO_THROW(L"Error in arg {1} '{0}': {2}",
+            _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
+        }
       }
 
-      void invoke(
-        ExcelObj& result,
-        PyObject* const* args,
-        PyObject* kwargsDict) const;
+      const pybind11::function& func() const { return _func; }
 
-      template <class TArray>
-      void invoke(
-        ExcelObj& result,
-        const TArray& args,
-        PyObject* kwargsDict) const
+      ExcelObj convertReturn(PyObject* retVal) const;
+
+      template<class TXlArgs> 
+      ExcelObj invoke(TXlArgs&& xlArgs) const
       {
-        assert(args.size() >= argArraySize());
-        invoke(result, (PyObject* const*)args.data(), kwargsDict);
+        PyCallArgs<> pyArgs;
+        py::object kwargs;
+
+        convertArgs(
+          std::forward<TXlArgs>(xlArgs),
+          pyArgs,
+          kwargs);
+
+        auto ret = PySteal<>(pyArgs.call(_func.ptr(), kwargs.ptr()));
+
+        return std::move(convertReturn(ret.ptr()));
       }
-
-      pybind11::object invoke(
-        PyObject* const* args, const size_t nArgs, PyObject* kwargsDict) const;
-
-      pybind11::object invoke(
-        const std::vector<pybind11::object>& args, PyObject* kwargsDict) const
-      {
-        return invoke((PyObject* const*)args.data(), args.size() - theVectorCallOffset, kwargsDict);
-      }
-
-      /// <summary>
-      /// Python can optimise onward calls to PyObject_Vectorcall if we
-      /// leave a free entry at the start of the args array passed 
-      /// through the API. For Py 3.7 and earlier vector call is not
-      /// available so this is not required.  See <see cref="theVectorCallOffset"/>
-      /// </summary>
-      size_t argArraySize() const noexcept { return _numPositionalArgs + theVectorCallOffset; }
-
-#if PY_VERSION_HEX < 0x03080000
-      static constexpr auto theVectorCallOffset = 0u;
-#else
-
-      static constexpr auto theVectorCallOffset = 1u;
-#endif
 
     private:
       std::shared_ptr<const IPyToExcel> returnConverter;

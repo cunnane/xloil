@@ -130,6 +130,24 @@ namespace xloil {
       return wstring(wstr, len);
     }
 
-    
+    PyObject* fastCall(
+      PyObject* func, PyObject* const* args, size_t nArgs, PyObject* kwargs) noexcept
+    {
+#if PY_VERSION_HEX < 0x03080000
+      auto argTuple = PyTuple_New(nArgs);
+      for (auto i = 0u; i < nArgs; ++i)
+        PyTuple_SET_ITEM(argTuple, i, args[i]);
+
+      auto retVal = kwargs
+        ? PyObject_Call(func, argTuple, kwargs)
+        : PyObject_CallObject(func, argTuple);
+
+      Py_XDECREF(argTuple);
+#else
+      auto retVal = _PyObject_FastCallDict(
+        func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs);
+#endif
+      return retVal;
+    }
   }
 }

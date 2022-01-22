@@ -114,6 +114,8 @@ namespace xloil
     /// Returns the number of function arguments 
     /// </summary>
     size_t numArgs() const { return args.size(); }
+
+    XLOIL_EXPORT bool isValid() const;
   };
 
   template<class TRet = ExcelObj*> using DynamicExcelFunc

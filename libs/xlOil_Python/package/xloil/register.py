@@ -435,37 +435,46 @@ def func(fn=None,
             func_args, return_type = function_arg_info(fn)
             has_kwargs = any(func_args) and func_args[-1].is_keywords
 
-            async_def = False
+            is_coroutine = False
             if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
                 fn = async_wrapper(fn)
-                async_def = True
+                is_coroutine = True
             elif is_async:
                 func_args = func_args[1:]
 
             # Determine the 'features' string based on our bool flags
-            features=""
+            features = []
 
-            # RTD-async is default unless rtd=False was explicitly specified.
-            if is_async or async_def: 
-                features=("rtd" if rtd is None or rtd else "async")
-            elif threaded:
-                features="threaded"
-            elif command:
-                features="command"
-            elif macro:
-                features="macro"
+            # is_local defaults to true unless overridden - the parameter is 
+            # ignored if a workbook has not been linked
+            is_local = True if local is None else local
 
-            # Default to true unless overriden - the parameter is ignored if a workbook
-            # has not been linked
-            is_local = True if (local is None and not features == "async") else local
-            if local and len(features) > 0:
-                log(f"Ignoring func options for local function {self.name}", level='info')
+            if threaded:
+                features.append("threaded")
+                is_local = False
+
+            if (is_async or is_coroutine):
+                # RTD-async is default unless rtd=False was explicitly specified.
+                if rtd == False:
+                    features.append("async")
+                    is_local = False
+                else:
+                    features.append("rtd")
+
+            if command: 
+                features.append("command")
+
+            if macro and not any(features):
+                features.append("macro")
+
+            if local == True and is_local == False:
+                raise ValueError(f"'threaded' or 'async' functions cannot be 'local'")
 
             spec = _FuncSpec(
                 func = fn,
                 nargs = len(func_args),
                 name = name if name else "",
-                features = features,
+                features = ','.join(features),
                 help = help if help else "",
                 category = group if group else "",
                 volatile = volatile,

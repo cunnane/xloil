@@ -39,33 +39,36 @@ namespace xloil
     constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
-    void setFuncType(PyFuncInfo& info, const string& features, bool isVolatile, bool& isLocalFunc)
+    void processFuncFeatures(
+      const string& features,
+      PyFuncInfo& info, 
+      bool isVolatile, 
+      bool& isLocalFunc)
     {
-      unsigned base = isVolatile ? FuncInfo::VOLATILE : 0;
-      if (features.empty())
-        return;
-      else if(features == "macro")
+      unsigned funcOpts = isVolatile ? FuncInfo::VOLATILE : 0;
+
+      if (features.find("macro") != string::npos)
+        funcOpts |= FuncInfo::MACRO_TYPE;
+      if (features.find("command") != string::npos)
+        funcOpts |= FuncInfo::COMMAND;
+      if (features.find("threaded") != string::npos)
       {
-        info.setFuncOptions(FuncInfo::MACRO_TYPE | base);
-      }
-      else if (features == "threaded")
-      {
-        info.setFuncOptions(FuncInfo::THREAD_SAFE | base);
+        funcOpts |= FuncInfo::THREAD_SAFE;
         isLocalFunc = false;
       }
-      else if (features == "rtd")
+      if (features.find("rtd") != string::npos)
       {
         info.isRtdAsync = true;
       }
-      else if (features == "async")
+      if (features.find("async") != string::npos)
       {
         info.isAsync = true;
         isLocalFunc = false;
+        if (funcOpts > 0)
+          XLO_THROW("Async cannot be used with other function features like command, macro, etc");
       }
-      else if (features == "command")
-        info.setFuncOptions(FuncInfo::COMMAND | base);
-      else
-        throw py::value_error(formatStr("FuncSpec: Unknown function features '%s'", features.c_str()));
+
+      info.setFuncOptions(funcOpts);
     }
 
     PyFuncInfo::PyFuncInfo(
@@ -95,7 +98,7 @@ namespace xloil
       if (!func.ptr() || func.is_none())
         XLO_THROW(L"No python function specified for {0}", name);
 
-      setFuncType(*this, features, isVolatile, isLocalFunc);
+      processFuncFeatures(features, *this, isVolatile, isLocalFunc);
 
       if (isAsync)
       {
@@ -110,6 +113,9 @@ namespace xloil
         for (auto i = 0u; i < numArgs; ++i)
           _args.push_back(PyFuncArg(_info, i));
       }
+
+      if (!_info->isValid())
+        XLO_THROW("Invalid combination of function features: '{}'", features);
 
       _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
     }
@@ -131,70 +137,12 @@ namespace xloil
     {
       returnConverter = conv;
     }
-
-    void PyFuncInfo::convertArgs(
-      const ExcelObj** xlArgs, 
-      PyObject** args,
-      py::object& kwargs) const
+    ExcelObj PyFuncInfo::convertReturn(PyObject* retVal) const
     {
-      args = args + theVectorCallOffset;
-      uint16_t i = 0;
-      try
-      {
-        for (; i < _numPositionalArgs; ++i)
-        {
-          auto* defaultValue = _args[i].getDefault().ptr();
-          auto* pyObj = (*_args[i].converter)(*xlArgs[i], defaultValue);
-          args[i] = pyObj;
-        }
-
-        if (_hasKeywordArgs)
-          kwargs = PySteal<py::object>(readKeywordArgs(*xlArgs[_numPositionalArgs]));
-      }
-      catch (const std::exception& e)
-      {
-        // Unwind any args already written
-        for (auto j = 0u; j < i; ++j)
-          Py_DECREF(args[j]);
-        
-        // We give the arg number 1-based as it's more natural
-        XLO_THROW(L"Error in arg {1} '{0}': {2}",
-          _args[i].arg.name, std::to_wstring(i + 1), utf8ToUtf16(e.what()));
-      }
+      return returnConverter
+        ? (*returnConverter)(*retVal)
+        : FromPyObj()(retVal);
     }
-
-    py::object PyFuncInfo::invoke(
-      PyObject* const* args, const size_t nArgs, PyObject* kwargs) const
-    {
-#if PY_VERSION_HEX < 0x03080000
-      auto argTuple = PySteal<py::tuple>(PyTuple_New(nArgs));
-      for (auto i = 0u; i < nArgs; ++i)
-        PyTuple_SET_ITEM(argTuple.ptr(), i, args[i]);
-
-      auto retVal = _hasKeywordArgs
-        ? PyObject_Call(_func.ptr(), argTuple.ptr(), kwargs)
-        : PyObject_CallObject(_func.ptr(), argTuple.ptr());
-#else
-      auto retVal = _PyObject_FastCallDict(
-        _func.ptr(), args + theVectorCallOffset, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs);
-#endif
-      return PySteal<>(retVal);
-    }
-
-    void PyFuncInfo::invoke(
-      ExcelObj& result, 
-      PyObject* const* args,
-      PyObject* kwargsDict) const
-    {
-      assert(!!kwargsDict == _hasKeywordArgs);
-
-      auto retVal = invoke(args, _numPositionalArgs, kwargsDict);
-
-      result = returnConverter
-        ? (*returnConverter)(*retVal.ptr())
-        : FromPyObj()(retVal.ptr());
-    }
-
     struct CommandReturn
     {
       int operator()(ExcelObj*) const
@@ -233,33 +181,11 @@ namespace xloil
       try
       {
         py::gil_scoped_acquire gilAcquired;
-        PyErr_Clear();
-
-        // Save some stack space for the converted arguments. We use raw PyObject*
-        // As an array<py::object> would result in 256 dtor calls every invocation.
-        // The 'finally' block below cleans up only the args we created
-        std::array<PyObject*, PyFuncInfo::theVectorCallOffset + XL_MAX_UDF_ARGS> argsArray;
-        py::object kwargs;
-
-        // Although PyObject* is not exception safe, convertArgs will destroy any
-        // processed args if it fails part way.
-        info->convertArgs(xlArgs, argsArray, kwargs);
-
-        // The construction of 'cleanup' is all noexcept
-        auto finally = [
-            begin = argsArray.begin() + PyFuncInfo::theVectorCallOffset, 
-            end = argsArray.begin() + info->argArraySize()
-          ](void*)
-          {
-            for (auto i = begin; i != end; ++i)
-              Py_DECREF(*i);
-          };
-        unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
+        PyErr_Clear(); // TODO: required?
 
         if constexpr (TThreadSafe)
         {
-          ExcelObj result;
-          info->invoke(result, argsArray, kwargs.ptr());
+          auto result = info->invoke([&](auto i) { return *xlArgs[i]; });
           return returnValue(std::move(result));
         }
         else
@@ -268,7 +194,7 @@ namespace xloil
           // must be on Excel's main thread. The args array is large enough:
           // we cannot register a function with more arguments than that.
           static ExcelObj result;
-          info->invoke(result, argsArray, kwargs.ptr());
+          result = info->invoke([&](auto i) { return *xlArgs[i]; });
           return TReturn()(&result);
         }
       }

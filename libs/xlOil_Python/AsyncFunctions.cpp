@@ -105,7 +105,7 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        vector<py::object> args(1 + info->argArraySize());
+        PyCallArgs<> pyArgs;
 
         // Raw ptr, but we take ownership in the next line
         auto* asyncReturn = new AsyncReturn(
@@ -113,13 +113,15 @@ namespace xloil
           info->getReturnConverter(),
           CallerInfo());
 
-        args[PyFuncInfo::theVectorCallOffset] = py::cast(asyncReturn,
-          py::return_value_policy::take_ownership);
+        pyArgs.push_back(py::cast(asyncReturn,
+          py::return_value_policy::take_ownership).release().ptr());
 
         py::object kwargs;
-        info->convertArgs(xlArgs + 1, (PyObject**)(args.data() + 1), kwargs);
+        info->convertArgs([&](auto i) { return *xlArgs[1 + i]; },
+          pyArgs,
+          kwargs);
 
-        info->invoke(args, kwargs.ptr());
+        pyArgs.call(info->func().ptr(), kwargs.ptr());
       }
       catch (const py::error_already_set& e)
       {
@@ -209,6 +211,7 @@ namespace xloil
       {
         return _caller;
       }
+
     private:
       IRtdPublish& _notify;
       shared_ptr<const IPyToExcel> _returnConverter;
@@ -224,25 +227,21 @@ namespace xloil
     struct RtdAsyncTask : public IRtdAsyncTask
     {
       const PyFuncInfo& _info;
-      vector<py::object> _args;
-      py::object _kwargs;
+      vector<ExcelObj> _xlArgs;
       shared_ptr<RtdReturn> _returnObj;
       CallerInfo _caller;
 
-      /// <summary>
-      /// Steals references to PyObjects
-      /// </summary>
-      RtdAsyncTask(const PyFuncInfo& info, vector<py::object>&& args, py::object&& kwargs)
+      RtdAsyncTask(const PyFuncInfo& info, const ExcelObj** xlArgs)
         : _info(info)
-        , _args(std::move(args))
-        , _kwargs(std::move(kwargs))
-      {}
+      {
+        const auto nArgs = info.info()->numArgs();
+        _xlArgs.reserve(nArgs);
+        for (auto i = 0u; i < nArgs; ++i)
+          _xlArgs.emplace_back(ExcelObj(*xlArgs[i]));
+      }
 
       virtual ~RtdAsyncTask()
       {
-        py::gil_scoped_acquire gilAcquired;
-        _args.clear();
-        _kwargs = py::none();
         _returnObj.reset();
       }
 
@@ -250,11 +249,18 @@ namespace xloil
       {
         _returnObj.reset(new RtdReturn(publish, _info.getReturnConverter(), _caller));
         py::gil_scoped_acquire gilAcquired;
+        
+        PyErr_Clear(); // TODO: required?
+        py::object kwargs;
+        PyCallArgs<> pyArgs;
 
-        PyErr_Clear();
+        pyArgs.push_back(py::cast(_returnObj).release().ptr());
 
-        _args[PyFuncInfo::theVectorCallOffset] = py::cast(_returnObj);
-        _info.invoke(_args, _kwargs.ptr());
+        _info.convertArgs([&](auto i) -> const ExcelObj& { return _xlArgs[i]; }, 
+          pyArgs,
+          kwargs);
+        
+        pyArgs.call(_info.func().ptr(), kwargs.ptr());
       }
       bool done() noexcept override
       {
@@ -276,36 +282,17 @@ namespace xloil
         if (!that)
           return false;
 
-        py::gil_scoped_acquire gilAcquired;
-
-        if (_args.size() != that->_args.size())
+        if (_xlArgs.size() != that->_xlArgs.size())
           return false;
 
-        // Skip first argument as that contains the the RtdReturn object which will
-        // be different (set to None in unstarted tasks)
-        auto nSkip = 1 + PyFuncInfo::theVectorCallOffset;
-        for (auto i = _args.begin() + nSkip, j = that->_args.begin() + nSkip;
-          i != _args.end();
+        for (auto i = _xlArgs.begin(), j = that->_xlArgs.begin();
+          i != _xlArgs.end();
           ++i, ++j)
         {
-          if (!i->equal(*j))
+          if (!(*i == *j))
             return false;
         }
 
-        if (!_kwargs)
-          return !that->_kwargs;
-        
-        auto kwargs = py::dict(_kwargs);
-        auto that_kwargs = py::dict(that->_kwargs);
-        
-        if (kwargs.size() != that_kwargs.size())
-          return false;
-
-        for (auto i = kwargs.begin(); i != kwargs.end(); ++i)
-        {
-          if (!i->second.equal(that_kwargs[i->first]))
-            return false;
-        }
         return true;
       }
     };
@@ -316,21 +303,8 @@ namespace xloil
     {
       try
       {
-        // TODO: consider argument capture and equality check under c++
-        py::object kwargs;
-
-        // Array size +1 to allow for RtdReturn argument
-        vector<py::object> args(1 + info->argArraySize());
-        {
-          py::gil_scoped_acquire gilAcquired;
-          
-          // +1 to skip the RtdReturn argument
-          info->convertArgs(xlArgs, (PyObject**)(args.data() + 1), kwargs);
-        }
-
-        // Moving a py::object means we don't need the GIL
         auto value = rtdAsync(
-          std::make_shared<RtdAsyncTask>(*info, std::move(args), std::move(kwargs)));
+          std::make_shared<RtdAsyncTask>(*info, xlArgs));
 
         return returnValue(value ? *value : CellError::NA);
       }
@@ -365,7 +339,6 @@ namespace xloil
           .def("set_task", &RtdReturn::set_task)
           .def_property_readonly("caller", &RtdReturn::caller)
           .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
-
 
         mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });
       });
