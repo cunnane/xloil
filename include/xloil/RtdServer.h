@@ -366,7 +366,11 @@ namespace xloil
   /// Can be called from a worksheet function to run the given task asynchronously 
   /// in the context of Excel using the RTD machinery. This function does not 
   /// ensure the task will be run on another thread or process - the task must 
-  /// ensure it is not blocking the calling (main) thread.
+  /// ensure it does not blocking the calling thread.
+  /// 
+  /// Passing a null ptr causes a null ptr to be returned. The useful side-effect
+  /// is that it initialises the RTD server. Otherwise the server will be started
+  /// on-demand in the calc cycle.
   /// </summary>
   XLOIL_EXPORT std::shared_ptr<ExcelObj> rtdAsync(
     const std::shared_ptr<IRtdAsyncTask>& task);

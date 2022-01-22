@@ -297,6 +297,8 @@ namespace xloil
         _module = py::reinterpret_steal<py::object>(pyModule);
         vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
 
+        bool usesRtdAsync = false;
+
         for (auto& f : functions)
         {
           if (!_linkedWorkbook)
@@ -307,7 +309,15 @@ namespace xloil
             localFuncs.emplace_back(std::move(spec));
           else
             nonLocal.emplace_back(std::move(spec));
+
+          if (f->isRtdAsync)
+            usesRtdAsync = true;
         }
+
+        // Prime the RTD pump now as a background task to avoid it blocking 
+        // in calculation later.
+        if (usesRtdAsync)
+          runExcelThread([]() { rtdAsync(shared_ptr<IRtdAsyncTask>()); });
 
         registerFuncs(nonLocal, append);
         if (!localFuncs.empty())

@@ -3,6 +3,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/Caller.h>
 #include <xlOil/Events.h>
+#include <xlOil/ExcelThread.h>
 #include <combaseapi.h>
 
 using std::wstring;
@@ -10,6 +11,38 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::make_shared;
 using std::scoped_lock;
+
+namespace
+{
+
+  /// <summary>
+  /// Like a std::scoped_lock but uses a std::atomic_flag rather than a mutex
+  /// </summary>
+  struct scoped_atomic_flag
+  {
+    std::atomic_flag& _flag;
+
+    scoped_atomic_flag(std::atomic_flag& flag)
+      : _flag(flag)
+    {
+      while (flag.test_and_set(std::memory_order_acquire))
+      {
+        // Since C++20, it is possible to update atomic_flag's
+        // value only when there is a chance to acquire the lock.
+        // See also: https://stackoverflow.com/questions/62318642
+#if defined(__cpp_lib_atomic_flag_test)
+        while (lock.test(std::memory_order_relaxed))
+#else
+        // spin
+#endif
+      }
+    }
+    ~scoped_atomic_flag()
+    {
+      _flag.clear(std::memory_order_release);
+    }
+  };
+}
 
 namespace xloil
 {
@@ -54,10 +87,12 @@ namespace xloil
 
   class RtdAsyncManager
   {
+  private:
     struct CellTaskHolder
     {
       CellTasks tasks;
       int arrayCount = 0; // see comment in 'getValue()'
+      std::atomic_flag busy = ATOMIC_FLAG_INIT;
     };
 
     void start(CellTasks& tasks, const shared_ptr<IRtdAsyncTask>& task)
@@ -76,6 +111,7 @@ namespace xloil
   private:
     shared_ptr<IRtdServer> _mgr;
     std::unordered_map<wstring, CellTaskHolder> _tasksPerCell;
+    std::mutex _lock;
 
     RtdAsyncManager() : _mgr(newRtdServer())
     {
@@ -89,8 +125,8 @@ namespace xloil
   public:
     static RtdAsyncManager& instance()
     {
-      static RtdAsyncManager mgr;
-      return mgr;
+      static RtdAsyncManager* mgr = runExcelThread([]() { return new RtdAsyncManager(); }).get();
+      return *mgr;
     }
 
     shared_ptr<const ExcelObj> getValue(
@@ -106,6 +142,9 @@ namespace xloil
       // calls ignored until the last one which must call subscribe (and hence 
       // RTD) for Excel to make the RTD connection.
       //
+      if (!task)
+        return shared_ptr<const ExcelObj>();
+
       const auto caller = CallerInfo();
       const auto ref = caller.sheetRef();
       const auto arraySize = (ref->colLast - ref->colFirst + 1) 
@@ -116,8 +155,12 @@ namespace xloil
       if (arraySize > 1)
         address.erase(address.rfind(':'));
   
+      // TODO: shared_mutex here
+      _lock.lock();
       auto& tasksInCell = _tasksPerCell[address];
-      
+      scoped_atomic_flag lockCell(tasksInCell.busy);
+      _lock.unlock();
+
       if (tasksInCell.arrayCount > 1)
       {
         --tasksInCell.arrayCount;
@@ -136,11 +179,13 @@ namespace xloil
       // Couldn't find matching task so start it up
       start(tasksInCell.tasks, task);
       tasksInCell.arrayCount = arraySize;
-      return _mgr->subscribe(tasksInCell.tasks.back()->topic());
+      auto result = _mgr->subscribe(tasksInCell.tasks.back()->topic());
+      return result;
     }
 
     void clear()
     {
+      std::scoped_lock lock(_lock);
       _mgr->clear();
       _tasksPerCell.clear();
     }
