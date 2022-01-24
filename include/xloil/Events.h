@@ -315,8 +315,12 @@ namespace xloil
       void(const wchar_t* directory, const wchar_t* filename, FileAction)>>
       DirectoryChange(const std::wstring& path);
 
+    /// <summary>
+    /// Must be run on the main thread
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
     XLOIL_EXPORT void allowEvents(bool value);
-
   }
 
  

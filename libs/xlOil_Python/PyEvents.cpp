@@ -211,8 +211,9 @@ namespace xloil
 
       void setAllowEvents(bool value)
       {
-        Event::allowEvents(value);
+        runExcelThread([=]() { Event::allowEvents(value); });
       }
+
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         auto eventMod = mod.def_submodule("event");
