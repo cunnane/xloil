@@ -512,6 +512,9 @@ def _clear_pending_registrations(module):
         delattr(module, _LANDMARK_TAG)
 
 
+import threading
+_scan_module_mutex = threading.Lock()
+
 def scan_module(module, addin=None):
     """
         Parses a specified module to look for functions with with the xloil.func 
@@ -524,8 +527,15 @@ def scan_module(module, addin=None):
     if pending_funcs is None or not any(pending_funcs):
         return 
 
-    # If events are not paused this function can be re-entered for the same module
-    with EventsPaused() as events_paused:
+    with _scan_module_mutex:
+        # Check the pending funcs haven't been processed by another thread
+        # then copy and clear. Other threads can enter this function triggered
+        # by Excel's events
+        if not any(pending_funcs):
+            return 
+        func_list = list(pending_funcs)
+        pending_funcs.clear()
+
         log(f"Found xloil functions in {module}", level="debug")
 
         if addin is None:
@@ -533,9 +543,7 @@ def scan_module(module, addin=None):
             addin = source_addin()
 
         xloil_core.register_functions(
-            list(pending_funcs), module, addin, append=False)
-                                      
-        pending_funcs.clear()
+            func_list, module, addin, append=False)
 
 
 def register_functions(funcs, module=None, append=True):
@@ -579,5 +587,4 @@ def register_functions(funcs, module=None, append=True):
     addin = source_addin()
 
     xloil_core.register_functions(to_register, module, addin, append)
-
 
