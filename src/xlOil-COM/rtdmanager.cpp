@@ -22,11 +22,14 @@
 #include <memory>
 #include <atomic>
 #include <mutex>
+#include <shared_mutex>
 
 using std::vector;
 using std::shared_ptr;
 using std::make_shared;
 using std::scoped_lock;
+using std::unique_lock;
+using std::shared_lock;
 using std::wstring;
 using std::unique_ptr;
 using std::future_status;
@@ -155,7 +158,7 @@ namespace xloil
         if (!callback || !result)
           return E_POINTER;
         
-        std::scoped_lock lock(_lockSubscribers);
+        unique_lock lock(_lockSubscribers);
 
         _updateCallback = callback;
 
@@ -185,7 +188,7 @@ namespace xloil
           shared_ptr<IRtdPublisher> publisher;
           size_t numSubscribers;
           {
-            scoped_lock lock(_lockSubscribers);
+            unique_lock lock(_lockSubscribers);
 
             // Find subscribers for this topic and link to the topic ID
             _activeTopicIds.emplace(topicId, topic);
@@ -283,7 +286,7 @@ namespace xloil
           // first handle the topic lookup and removing subscribers before
           // releasing the lock and notifying the publisher.
           {
-            std::scoped_lock lock(_lockSubscribers);
+            unique_lock lock(_lockSubscribers);
 
             XLO_DEBUG("RTD: disconnect topicId {}", topicId);
 
@@ -322,7 +325,7 @@ namespace xloil
             if (!done)
               publisher->stop();
             {
-              std::scoped_lock lock(_lockSubscribers);
+              unique_lock lock(_lockSubscribers);
 
               if (!done)
                 _cancelledPublishers.emplace_back(publisher);
@@ -393,9 +396,10 @@ namespace xloil
 
       // We use a separate lock for the newValues to avoid blocking too 
       // often: value updates are likely to come from other threads and 
-      // just need to write into newValues without accessing pub/sub info
+      // simply need to write into newValues without accessing pub/sub info.
+      // We use _lockSubscribers for all other synchronisation
       mutable std::mutex _lockNewValues;
-      mutable std::mutex _lockSubscribers;
+      mutable std::shared_mutex _lockSubscribers;
 
       bool isServerRunning() const
       {
@@ -410,7 +414,7 @@ namespace xloil
 
         list<shared_ptr<IRtdPublisher>> publishers;
         {
-          scoped_lock lock(_lockSubscribers);
+          unique_lock lock(_lockSubscribers);
 
           for (auto& record : _records)
             if (record.second.publisher)
@@ -449,18 +453,20 @@ namespace xloil
         // with the throttle interval)
         if (!_updateNotifyTask.valid() || _updateNotifyTask._Is_ready())
         {
+          // Must Enqueue the update notify call as if it is called from another RTD
+          // entry point, Excel will ignore it. 1 sec between retries.
           _updateNotifyTask = runExcelThread([this]()
           {
             if (isServerRunning())
               (*_updateCallback).raw_UpdateNotify(); // Does this really need the COM API?
-          }, ExcelRunQueue::COM_API, 0, 1000); // 1 sec between retries
+          }, ExcelRunQueue::COM_API | ExcelRunQueue::ENQUEUE, 0, 1000); 
         }
       }
 
       void addProducer(shared_ptr<IRtdPublisher> job)
       {
         {
-          std::scoped_lock lock(_lockSubscribers);
+          unique_lock lock(_lockSubscribers);
           auto& record = _records[job->topic()];
           std::swap(record.publisher, job);
           if (job)
@@ -476,7 +482,7 @@ namespace xloil
         // as they may try to call other functions on the RTD server. 
         shared_ptr<IRtdPublisher> publisher;
         {
-          std::scoped_lock lock(_lockSubscribers);
+          unique_lock lock(_lockSubscribers);
           auto i = _records.find(topic);
           if (i == _records.end())
             return false;
@@ -495,7 +501,7 @@ namespace xloil
       }
       bool value(const wchar_t* topic, shared_ptr<const TValue>& val) const
       {
-        std::scoped_lock lock(_lockSubscribers);
+        shared_lock lock(_lockSubscribers);
         auto found = _records.find(topic);
         if (found == _records.end())
           return false;
