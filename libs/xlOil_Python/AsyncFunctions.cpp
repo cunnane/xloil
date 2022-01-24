@@ -245,22 +245,35 @@ namespace xloil
         _returnObj.reset();
       }
 
-      void start(IRtdPublish& publish) override
+      void start(IRtdPublish& publisher) override
       {
-        _returnObj.reset(new RtdReturn(publish, _info.getReturnConverter(), _caller));
+        _returnObj.reset(new RtdReturn(publisher, _info.getReturnConverter(), _caller));
         py::gil_scoped_acquire gilAcquired;
         
         PyErr_Clear(); // TODO: required?
         py::object kwargs;
         PyCallArgs<> pyArgs;
 
-        pyArgs.push_back(py::cast(_returnObj).release().ptr());
+        try
+        {
+          pyArgs.push_back(py::cast(_returnObj).release().ptr());
 
-        _info.convertArgs([&](auto i) -> const ExcelObj& { return _xlArgs[i]; }, 
-          pyArgs,
-          kwargs);
-        
-        pyArgs.call(_info.func().ptr(), kwargs.ptr());
+          _info.convertArgs([&](auto i) -> const ExcelObj& { return _xlArgs[i]; },
+            pyArgs,
+            kwargs);
+
+          pyArgs.call(_info.func().ptr(), kwargs.ptr());
+        }
+        catch (const py::error_already_set& e)
+        {
+          // TODO: publish directly through the argument to this function!
+          raiseUserException(e);
+          publisher.publish(ExcelObj(e.what()));
+        }
+        catch (const std::exception& e)
+        {
+          publisher.publish(ExcelObj(e.what()));
+        }
       }
       bool done() noexcept override
       {
@@ -282,9 +295,15 @@ namespace xloil
         if (!that)
           return false;
 
+        // First check we both agree on the function.
+        if (&_info != &that->_info)
+          return false;
+
+        // Check number of args match
         if (_xlArgs.size() != that->_xlArgs.size())
           return false;
 
+        // Check each arg is equal
         for (auto i = _xlArgs.begin(), j = that->_xlArgs.begin();
           i != _xlArgs.end();
           ++i, ++j)
