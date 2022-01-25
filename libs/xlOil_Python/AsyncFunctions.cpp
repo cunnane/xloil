@@ -177,7 +177,7 @@ namespace xloil
 
         // If nil, conversion wasn't possible, so use the cache
         if (result.isType(ExcelType::Nil))
-          result = pyCacheAdd(value, _caller.writeInternalAddress().c_str());
+          result = pyCacheAdd(value, _caller.writeAddress().c_str());
 
         _notify.publish(std::move(result));
       }

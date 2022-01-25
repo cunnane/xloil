@@ -54,13 +54,6 @@ namespace Tests
 
       Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(CallerInfo::RC));
       Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(CallerInfo::A1));
-      {
-        const auto cellStart = 2* XL_MAX_COLS + 5;
-        const auto cellEnd = 3 * XL_MAX_COLS + 6;
-        auto expected = formatStr(L"[%p]%x:%x", nullptr, cellStart, cellEnd);
-
-        Assert::AreEqual(expected, caller.writeAddress(CallerInfo::INTERNAL));
-      }
     }
     TEST_METHOD(CacheSpeedTest1)
     {

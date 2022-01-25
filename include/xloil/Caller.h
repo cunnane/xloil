@@ -9,57 +9,15 @@
 namespace xloil
 {
   /// <summary>
-  /// Captures caller information suitable for when only an internal-style sheet address is required
-  /// </summary>
-  class XLOIL_EXPORT CallerLite
-  {
-  protected:
-    ExcelObj _address;
-    msxll::IDSHEET _sheetId;
-
-  public:
-    /// <summary>
-    /// Max string length for an internal sheet ref
-    /// </summary>
-    static constexpr uint16_t INTERNAL_REF_MAX_LEN = 1 + _MAX_U64TOSTR_BASE16_COUNT + 1 + _MAX_ULTOSTR_BASE16_COUNT * 2 + 1;
-
-    CallerLite();
-    /// <summary>
-    /// Provide custom caller information. The <paramref name="address"/> is
-    /// interpreted as per the return from xlfCaller. In particular, a string
-    /// address will be returned by <see cref="writeAddress"/> unmodified.
-    /// </summary>
-    /// <param name="address"></param>
-    /// <param name="sheetId">Optional C API sheet ID. Only used for display so does 
-    /// not have to be a valid pointer.</param>
-    CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId = nullptr);
-    /// <summary>
-    /// Writes the caller address to the provided buffer, returning the number
-    /// of characters written on success or a negative number or on failure. 
-    /// Sheet address will be in the form [000000000]0000:0000,A, non-sheet addresses
-    /// have different forms
-    /// </summary>
-    /// <param name="buf"></param>
-    /// <param name="bufLen"></param>
-    /// <returns></returns>
-    int writeInternalAddress(wchar_t* buf, size_t bufLen) const;
-    /// <summary>
-    /// As per <see cref="writeInternalAddress"/>, but returns a string rather than writing
-    /// to a buffer
-    /// </summary>
-    /// <returns></returns>
-    std::wstring writeInternalAddress() const;
-  };
-
-  /// <summary>
   /// Captures and writes information about the calling cell or context 
   /// provided by xlfCaller. Only returns useful information when the
   /// caller was a worksheet
   /// </summary>
-  class XLOIL_EXPORT CallerInfo : public CallerLite
+  class XLOIL_EXPORT CallerInfo
   {
-  private:
-    ExcelObj _fullSheetName;
+  private:    
+    ExcelObj _address;
+    ExcelObj _sheetName;
 
   public:
 
@@ -76,12 +34,7 @@ namespace xloil
       /// RC Format: [Book1]Sheet1!R1C1:R2C2
       /// </summary>
       RC,
-      /// <summary>
-      /// Internal format: [0004A8000A]800A1:91AC
-      /// </summary>
-      INTERNAL
     };
-
 
     /// <summary>
     /// Constructor which makes calls to xlfCaller and xlfSheetName to
@@ -132,7 +85,7 @@ namespace xloil
     /// <returns></returns>
     PStringView<> fullSheetName() const
     {
-      return _fullSheetName.asPString();
+      return _sheetName.asPString();
     }
     /// <summary>
     /// Returns a pointer to al XLREF12 sheet reference if caller was a 
