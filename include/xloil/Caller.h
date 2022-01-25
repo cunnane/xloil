@@ -110,6 +110,20 @@ namespace xloil
         return std::wstring_view();
       return std::wstring_view(sName.begin() + 1, sName.rfind(L']') - 1);
     }
+
+    /// <summary>
+    /// Returns a pointer to a XLREF12 sheet reference if caller was a 
+    /// worksheet, else returns nullptr.
+    /// </summary>
+    const msxll::XLREF12* sheetRef() const
+    {
+      switch (_address.type())
+      {
+      case ExcelType::SRef: return &_address.val.sref.ref;
+      default:
+        return nullptr;
+      }
+    }
   };
 
   /// <summary>

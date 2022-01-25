@@ -3,6 +3,7 @@
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/Caller.h>
 #include <xlOil/Events.h>
+#include <xlOil/ExcelCall.h>
 #include <xlOil/ExcelThread.h>
 #include <xloil/StringUtils.h>
 #include <combaseapi.h>
@@ -207,7 +208,7 @@ namespace xloil
       if (!task)
         return shared_ptr<const ExcelObj>();
 
-      const auto caller = CallerLite();
+      const auto caller = CallerInfo();
       const auto ref = caller.sheetRef();
 
       // Sometimes fetching the caller fails - give up 
@@ -223,7 +224,7 @@ namespace xloil
       // It's OK to cast away half the sheetref ptr: it's likely the detail
       // is in the lower part and it doesn't matter if we have collisions
       // in the map since we check for explicit equality later.
-      const auto sheetId = (unsigned)(intptr_t)caller.sheetId();
+      const auto sheetId = (unsigned)(intptr_t)callExcel(msxll::xlSheetId, caller.fullSheetName()).val.mref.idSheet;
       const auto address = std::make_pair(sheetId, cellNumber);
 
       // The value we need to populate
