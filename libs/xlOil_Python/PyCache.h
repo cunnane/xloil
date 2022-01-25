@@ -19,6 +19,6 @@ namespace xloil
     /// </summary>
     bool pyCacheGet(const std::wstring_view& cacheStr, pybind11::object& obj);
 
-    static constexpr uint16_t CACHE_KEY_MAX_LEN = 1 + CallerInfo::INTERNAL_REF_MAX_LEN + 2;
+    static constexpr uint16_t CACHE_KEY_MAX_LEN = XL_FULL_ADDRESS_RC_MAX_LEN;
   }
 }

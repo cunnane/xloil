@@ -25,18 +25,18 @@ namespace xloil
   {
     template<uint16_t NPadding>
     inline auto writeCacheId(
-      const CallerLite& caller, const wchar_t* optionalName, size_t nameLength)
+      const CallerInfo& caller, const wchar_t* optionalName, size_t nameLength)
     {
-      auto pstrLength = CallerLite::INTERNAL_REF_MAX_LEN + nameLength + NPadding + 1u;
+      auto pstrLength = caller.addressLength(CallerInfo::RC) + nameLength + NPadding + 1u;
       PString<> pascalStr((uint16_t)pstrLength);
       auto* buf = pascalStr.pstr() + 1;
 
       int nWritten = 1; // Leave space for uniquifier
 
-      nWritten += caller.writeInternalAddress(buf, pstrLength - 1);
+      nWritten += caller.writeAddress(buf, pstrLength - 1);
       // Check for a negative return condition from the above. This should not
-      // be possible as we made the buffer larget than the max internal ref length
-      assert(nWritten - 1 > 0 && nWritten <= CallerLite::INTERNAL_REF_MAX_LEN + 1);
+      // be possible as we made the buffer larger than the addres length
+      assert(nWritten - 1 > 0 && nWritten <= caller.addressLength(CallerInfo::RC) + 1);
 
       if (optionalName)
         wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName, nameLength);
@@ -188,13 +188,6 @@ namespace xloil
     {}
 
   public:
-
-    /// <summary>
-    /// Max length of a cache key. Because keys are derived from CallerLite using internal 
-    /// references or otherwise, this length can be guaranteed
-    /// </summary>
-    static constexpr uint16_t KEY_MAX_LEN = 1 + CallerLite::INTERNAL_REF_MAX_LEN + PADDING;
-
     static auto create(bool reapOnWorkbookClose = true)
     {
       auto p = std::shared_ptr<ObjectCache>(new ObjectCache);
@@ -225,7 +218,7 @@ namespace xloil
 
     ExcelObj add(
       TObj&& obj,
-      const CallerLite& caller = CallerLite(),
+      const CallerInfo& caller = CallerInfo(),
       const wchar_t* name = nullptr,
       const size_t nameLength = 0
     )
@@ -301,8 +294,8 @@ namespace xloil
       auto i = _cache.begin();
       while (i != _cache.end())
       {
-        // Key looks like [WbName]BlahBlah - check for match
-        if (wcsncmp(wbName, i->first.c_str() + 1, len) == 0)
+        // Key looks like UNIQ[WbName]BlahBlah, so skip 2 chars and check for match
+        if (wcsncmp(wbName, i->first.c_str() + 2, len) == 0)
         {
           if constexpr (TReverseLookup)
           {
@@ -405,7 +398,7 @@ namespace xloil
     const size_t nameLength = 0)
   {
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
-      std::unique_ptr<const T>(ptr), CallerLite(), name, nameLength);
+      std::unique_ptr<const T>(ptr), CallerInfo(), name, nameLength);
   }
 
   /// <summary>

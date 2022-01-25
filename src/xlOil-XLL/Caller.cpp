@@ -159,7 +159,6 @@ namespace xloil
       size_t bufLen,
       const ExcelObj& address,
       const PString<>& sheetName,
-      msxll::IDSHEET sheetId,
       CallerInfo::AddressStyle style)
     {
       switch (address.type())
@@ -172,8 +171,6 @@ namespace xloil
         case CallerInfo::A1:
           return writeSheetRef(buf, bufLen, address.val.sref.ref,
             sheetName, style == CallerInfo::A1);
-        case CallerInfo::INTERNAL:
-          return writeInternal(buf, bufLen, address.val.sref.ref, sheetId);
         }
       }
       case ExcelType::Ref:
@@ -184,8 +181,6 @@ namespace xloil
         case CallerInfo::A1:
           return writeSheetRef(buf, bufLen, address.val.mref.lpmref->reftbl[0],
             sheetName, style == CallerInfo::A1);
-        case CallerInfo::INTERNAL:
-          return writeInternal(buf, bufLen, address.val.mref.lpmref->reftbl[0], sheetId);
         }
       }
       case ExcelType::Str: // Graphic object or Auto_XXX macro caller
@@ -197,7 +192,6 @@ namespace xloil
         {
         case CallerInfo::RC:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
         case CallerInfo::A1:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
-        case CallerInfo::INTERNAL: maxLen = std::min(maxLen, CallerInfo::INTERNAL_REF_MAX_LEN); break;
         }
         wcsncpy_s(buf, bufLen, str.pstr(), maxLen);
         return std::min<int>((int)bufLen, maxLen);
@@ -229,62 +223,18 @@ namespace xloil
     }
   }
 
-  CallerLite::CallerLite()
+  CallerInfo::CallerInfo()
   {
     callExcelRaw(xlfCaller, &_address);
-    switch (_address.type())
-    {
-    case ExcelType::SRef:
-    {
-      const auto activeSheet = callExcel(xlSheetId);
-      _sheetId = activeSheet.val.mref.idSheet;
-      break;
-    }
-    case ExcelType::Ref:
-      _sheetId = _address.val.mref.idSheet;
-      break;
-    default:
-      _sheetId = nullptr;
-      break;
-    }
-  }
-  CallerLite::CallerLite(const ExcelObj& address, msxll::IDSHEET sheetId)
-    : _address(address)
-    , _sheetId(sheetId)
-  {
-  }
-  int CallerLite::writeInternalAddress(wchar_t* buf, size_t bufLen) const
-  {
-    return writeAddressImpl(buf, bufLen, _address, PString<>(), _sheetId, CallerInfo::INTERNAL);
-  }
-  std::wstring CallerLite::writeInternalAddress() const
-  {
-    std::wstring result;
-    result.resize(INTERNAL_REF_MAX_LEN);
-    const auto nChars = writeInternalAddress(result.data(), result.size());
-    result.resize(nChars);
-    return result;
-  }
-  CallerInfo::CallerInfo()
-    : CallerLite()
-  {
     if (_address.isType(ExcelType::RangeRef))
-      callExcelRaw(xlSheetNm, &_fullSheetName, &_address);
+      callExcelRaw(xlSheetNm, &_sheetName, &_address);
   }
   CallerInfo::CallerInfo(
     const ExcelObj& address, const wchar_t* fullSheetName)
-    : CallerLite(address)
+    : _address(address)
   {
     if (fullSheetName)
-    {
-      if (fullSheetName[0] == L'[')
-      {
-        auto[sheetId, ret] = tryCallExcel(xlSheetId, fullSheetName);
-        if (ret == 0 && sheetId.isType(ExcelType::Ref))
-          _sheetId = sheetId.val.mref.idSheet;
-      }
-      _fullSheetName = fullSheetName;
-    }
+      _sheetName = fullSheetName;
   }
   uint16_t CallerInfo::addressLength(AddressStyle style) const
   {
@@ -296,7 +246,6 @@ namespace xloil
       {
         case RC: return sheetName.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
         case A1: return sheetName.length() + 1 + XL_CELL_ADDRESS_A1_MAX_LEN;
-        case INTERNAL: return INTERNAL_REF_MAX_LEN;
       }
     }
 
@@ -318,7 +267,7 @@ namespace xloil
   }
   int CallerInfo::writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style) const
   {
-    return writeAddressImpl(buf, bufLen, _address, _fullSheetName.asPString(), _sheetId, style);
+    return writeAddressImpl(buf, bufLen, _address, _sheetName.asPString(), style);
   }
   std::wstring CallerInfo::writeAddress(AddressStyle style) const
   {

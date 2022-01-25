@@ -33,8 +33,6 @@ namespace xloil
         PyCache()
           : _cache(cache_type::create(false))
         {
-          static_assert(CACHE_KEY_MAX_LEN == cache_type::KEY_MAX_LEN);
-
           _workbookCloseHandler = std::static_pointer_cast<const void>(
             xloil::Event::WorkbookAfterClose().bind(
               [this](auto wbName)
@@ -75,8 +73,8 @@ namespace xloil
           // a prefix if a custom key is specified.
 
           const auto cacheKey = key.empty()
-            ? _cache->add(std::move(obj), CallerLite(), tag.empty() ? nullptr : tag.c_str(), tag.length())
-            : _cache->add(std::move(obj), CallerLite(ExcelObj(L"[")), key.c_str(), key.length());
+            ? _cache->add(std::move(obj), CallerInfo(), tag.empty() ? nullptr : tag.c_str(), tag.length())
+            : _cache->add(std::move(obj), CallerInfo(ExcelObj(L"[")), key.c_str(), key.length());
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object getitem(const std::wstring_view& str)
@@ -125,7 +123,7 @@ namespace xloil
       auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
       return PyCache::instance()._cache->add(
         py::object(obj),
-        caller ? CallerLite(ExcelObj(caller)) : CallerLite(),
+        caller ? CallerInfo(ExcelObj(caller)) : CallerInfo(),
         name.c_str(),
         name.size());
     }
