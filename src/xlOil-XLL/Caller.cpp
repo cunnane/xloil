@@ -124,14 +124,14 @@ namespace xloil
       const uint16_t wsLength = sheetName.length();
       if (wsLength > 0)
       {
-        if (bufLen <= wsLength + 1)
+        if (bufLen <= wsLength + 1u)
           return 0;
         wmemcpy(buf, wsName, wsLength);
         buf += wsLength;
         // Separator character
         *(buf++) = L'!';
 
-        nWritten += wsLength + 1;
+        nWritten += wsLength + 1u;
         bufLen -= nWritten;
       }
 
@@ -405,6 +405,91 @@ namespace xloil
       ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d",
         ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
     return ret < 0 ? 0 : (uint16_t)ret;
+  }
+
+  namespace
+  {
+    struct DoNothing
+    {
+      constexpr auto operator()(wchar_t c) { return c; }
+    };
+
+    struct ToUpper
+    {
+      wchar_t operator()(wchar_t c) { return ::towupper(c); }
+    };
+
+    /// <summary>
+    /// Parses a number expressed as characters in the range [Low, High]. Increments the
+    /// given char ptr as characters are read.  Will not read more than MaxLength characters.
+    /// Optional function to transform the characters (e.g. case conversion) prior to reading.
+    /// </summary>
+    template<class Char, Char Low, Char High, bool HasZero, unsigned MaxLength, class CaseConv = DoNothing>
+    auto parseSymbols(const Char*& str, const Char* end)
+    {
+      constexpr auto base = size_t(High - Low) + (HasZero ? 1 : 0);
+      size_t val = 0;
+      end = std::min(end, MaxLength + str);
+      Char c = CaseConv()(*str);
+      for (; str < end && (c <= High && c >= Low); ++str, c = CaseConv()(*str))
+        val = val * base + (c - Low);
+      return val;
+    }
+
+    template<class Char, Char What>
+    void skipOne(const Char*& c)
+    {
+      if (*c == What) ++c;
+    }
+
+    auto parseRow(const wchar_t*& c, const wchar_t* end)
+    {
+      // Skip the dollar symbol as it doesn't impact address conversion
+      skipOne<wchar_t, L'$'>(c);
+      // Look for a base-10 number as the row number. We only read 7 digits so
+      // there is no chance of overflow. We subtract 1 as A1-refs are 1-based 
+      // but XLREF12 is zero based. This means failure to read anything will 
+      // return -1, which gives an error condition later.
+      int val = (int)parseSymbols<wchar_t, L'0', L'9', true, 7>(c, end) - 1; 
+      return val > XL_MAX_ROWS ? -1 : val;
+    }
+    auto parseCol(const wchar_t*& c, const wchar_t* end)
+    {
+      // See notes above
+      skipOne<wchar_t, L'$'>(c);
+      // Parse a column name like 'AZB'. There is no zero character in the symbol 
+      // set so the lower symbol is '@' which is before 'A'.
+      int val = (int)parseSymbols<wchar_t, L'@', L'Z', false, 3, ToUpper>(c, end) - 1;
+      return val > XL_MAX_COLS ? -1 : val;
+    }
+  }
+  
+  bool localAddressToXlRef(msxll::XLREF12& r, const std::wstring_view& address)
+  {
+    const wchar_t* c = address.data();
+    const wchar_t* end = c + address.size();
+    memset(&r, 0, sizeof(decltype(r)));
+
+    r.colFirst = parseCol(c, end);
+    r.rwFirst = parseRow(c, end);
+
+    // Look for the address separator
+    if (c < end && *c == L':')
+    {
+      ++c;
+      r.colLast = parseCol(c, end);
+      r.rwLast = parseRow(c, end);
+    }
+    else if (c == end) 
+    {
+      r.colLast = r.colFirst;
+      r.rwLast  = r.rwFirst;
+    }
+    else
+      return false; // Trailing unparsable characters
+
+    // Return true if parsing was successful
+    return r.colFirst >= 0 && r.rwFirst >= 0 && r.rwLast >= 0 && r.colLast >= 0;
   }
 
   bool inFunctionWizard()

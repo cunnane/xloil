@@ -26,7 +26,7 @@ namespace xloil
     public:
       static void checkOnOpenWorkbook(struct Excel::_Workbook* Wb)
       {
-        auto numWorkbooks = excelApp().Workbooks->Count;
+        size_t numWorkbooks = excelApp().Workbooks->Count;
 
         // If workbook collection has grown by one, nothing was closed
         // and we just add the workbook name

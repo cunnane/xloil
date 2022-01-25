@@ -42,11 +42,16 @@ namespace xloil
     if (ret != 0 || !sheetId.isType(ExcelType::Ref))
       XLO_THROW(L"Could not find sheet name from address {}", address);
 
-    // Indirect only returns an sref, even if the address contains a sheet name
-    // TODO: parse address without calling xll api?
-    auto addressAsSref = callExcel(msxll::xlfIndirect, address);
-
-    _obj = ExcelObj(sheetId.val.mref.idSheet, addressAsSref.val.sref.ref);
+    msxll::XLREF12 sref;
+    if (!localAddressToXlRef(sref, address.substr(pling + 1)))
+    {
+      // If the address cannot be parsed, it may be RC format or an Excel
+      // range name, so we call the API to resolve it. Note, indirect only  
+      // returns an sref, even if the address contains a sheet name.
+      sref = callExcel(msxll::xlfIndirect, address).val.sref.ref;
+    }
+  
+    _obj = ExcelObj(sheetId.val.mref.idSheet, sref);
   }
 
   XLOIL_EXPORT ExcelRef::ExcelRef(
