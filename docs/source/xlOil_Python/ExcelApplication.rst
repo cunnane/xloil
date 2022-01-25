@@ -16,9 +16,11 @@ and `Application Object <https://docs.microsoft.com/en-us/office/vba/api/excel.a
 
 COM support can be provided by 'comtypes', a newer pure python package or 'win32com'
 a well-established more C++ based library.  :any:`xloil.app` or the :any:`xloil.Worksheet.to_com` 
-method accept a 'lib' argument  If omitted, the default is 'comtypes'.  The default can 
+method accept a 'lib' argument  If omitted, the default is 'win32com'.  The default can 
 be changed in the XLL's ini file.
 
+Note: as of 25-Jan-2022, *comtypes* has been observed to give the wrong answer for a call to
+`xloil.app().Workbooks(...)` so it no longer used as the default whilst this is investigated.
 
 Calling Worksheet Functions and Application.Run
 -----------------------------------------------

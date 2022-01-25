@@ -11,7 +11,7 @@ class RtdSimplePublisher(xlo.RtdPublisher):
     def __init__(self, topic):
         # Must call this ctor explicitly or the pybind will crash
         super().__init__()  
-        self._url = topic
+        self._topic = topic
         self._task = None
     
     async def run_task(topic):
