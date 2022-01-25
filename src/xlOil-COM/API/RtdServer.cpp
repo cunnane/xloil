@@ -74,24 +74,21 @@ namespace xloil
 
   struct CellTasks
   {
-    //CellTasks(const msxll::XLREF12& caller_)
-    //  : caller(caller_)
-    //{}
     std::list<shared_ptr<AsyncTaskPublisher>> tasks;
     int arrayCount = 0; // see comment in 'getValue()'
     const wchar_t* arrayTopic = nullptr;
     msxll::XLREF12 caller;
     std::atomic_flag busy = ATOMIC_FLAG_INIT;
-    bool isMaster(const msxll::XLREF12& ref) const
-    {
-      return ref.rwFirst == caller.rwFirst && ref.colFirst == caller.colFirst;
-    }
-    bool isSlave(const msxll::XLREF12& ref) const
+
+    bool isSubarray(const msxll::XLREF12& ref) const
     {
       return ref.rwFirst >= caller.rwFirst && ref.rwLast <= caller.rwLast
         && ref.colFirst >= caller.colFirst && ref.colLast <= caller.colLast;
     }
-
+    void setCaller(const msxll::XLREF12& ref)
+    {
+      memcpy(&caller, &ref, sizeof(msxll::XLREF12));
+    }
   };
 
   // TODO: could we just create a forwarding IRtdAsyncTask which intercepts 'cancel'
@@ -163,8 +160,7 @@ namespace xloil
       //const unsigned sheetId = address.first;
       auto [iTask, success] = _tasksPerCell.try_emplace(address, new CellTasks());
       auto* tasksInCell = &iTask->second;
-      //if (success && (ref.colLast > ref.colFirst || ref.rwLast > ref.rwFirst))
-      memcpy(&(*tasksInCell)->caller, &ref, sizeof(msxll::XLREF12));
+      (*tasksInCell)->setCaller(ref);
       return tasksInCell;
     }
 
@@ -227,113 +223,111 @@ namespace xloil
       const auto sheetId = (unsigned)(intptr_t)callExcel(msxll::xlSheetId, caller.fullSheetName()).val.mref.idSheet;
       const auto address = std::make_pair(sheetId, cellNumber);
 
-      // The value we need to populate
+      // The values we need to populate
       shared_ptr<CellTasks>* pTasksInCell;
+      CellTasks* tasksInCell;
 
-      // Read-lock the dictionary of cell tasks and look for the address
-      unique_lock writeLock(_mutex);
-      const auto found = _tasksPerCell.find(address);
-      if (found == _tasksPerCell.end())
-      {
-        // Not found, release read-lock and acquire write-lock
-        //readLock.unlock();
-        pTasksInCell = newCellTasks(address, *ref);
-      }
-      else
-      {
-        // Found: use the iterator *before* unlock as inserts may invalidate it
-        pTasksInCell = &found->second;
-        //readLock.unlock();
-        
-        auto* tasksInCell = pTasksInCell->get();
-
-        if (!(*pTasksInCell)->isSlave(*ref))
-        {
-          pTasksInCell = newCellTasks(address, *ref);
-        }
-        else if (arraySize == 1 && tasksInCell->arrayCount > 0)
-        {
-          --tasksInCell->arrayCount;
-          return _mgr->subscribe(tasksInCell->arrayTopic);
-        }
-        else
-        {
-          memcpy(&(tasksInCell->caller), ref, sizeof(msxll::XLREF12));
-        }
-      }
-
-      if (arraySize > 1)
-        writeArray(*pTasksInCell, sheetId, *ref);
-
-      auto* tasksInCell = pTasksInCell->get();
-
+      // Lock the dictionary of cell tasks and look for the address
       // (1) New master (no previous record)
       // (2) New master (former slave)
       //     (a) Shares top left
       //     (b) Doesn't
       // (3) Slave increment (arraySize = 1, arrayCount > 0)
-   
 
-      // If the caller is an array formula, when RTD is called in the subscribe()
-      // method, it will return xlretUncalced, but will trigger the calling
-      // function to be called again for each cell in the array. The caller
-      // will remain as the top left-cell except for the first call which will 
-      // be an array.
-      // 
-      // We want to start the task only once for the first call, with subsequent
-      // calls ignored until the last one which must call subscribe (and hence 
-      // RTD) for Excel to make the RTD connection.
 
-      writeLock.unlock();
-      // Now lock 'tasksInCell' in case there is more than one RTD function in the cell
-      // This is unlikely, so we use a lightweight atomic_flag which implies a spin wait
-      // (before C++20).
-      scoped_atomic_flag lockCell(tasksInCell->busy);
-
-      // Compare our task to all other running tasks in the cell to see if we
-      // already have the answer
-
-      shared_ptr<const ExcelObj> result;
-      const wchar_t* arrayTopic;
-
-      tasksInCell->tasks.remove_if([&](auto& t) {
-        if (t->disconnected())
-          return true;
-        else if (!result && t->taskMatches(*task))
-        {
-          arrayTopic = t->topic();
-          result = _mgr->peek(arrayTopic);
-          // If we don't have a result or we got a result, but the task isn't 
-          // done (e.g. it's a clock) then subscribe
-          if (!result)
-            result = _mgr->subscribe(arrayTopic);
-          else if (!t->done())
-            _mgr->subscribe(arrayTopic);
-        }
-        return false;
-      });
-
-      if (!result)
+      unique_lock writeLock(_mutex);
+      const auto found = _tasksPerCell.find(address);
+      if (found == _tasksPerCell.end())
       {
-        // Couldn't find a matching task so start a new one
-        start(tasksInCell->tasks, task);
-        //tasksInCell->arrayCount = arraySize;
-        arrayTopic = tasksInCell->tasks.back()->topic();
-        result = _mgr->subscribe(arrayTopic);
-      }
-
-      if (arraySize > 1)
-      {
-        tasksInCell->arrayCount = arraySize;
-        tasksInCell->arrayTopic = arrayTopic;
+        pTasksInCell = newCellTasks(address, *ref);
+        tasksInCell = pTasksInCell->get();
       }
       else
       {
-        tasksInCell->arrayCount = 0;
-        tasksInCell->arrayTopic = nullptr;
+        pTasksInCell = &found->second;
+        
+        tasksInCell = pTasksInCell->get();
+
+        if (!(*pTasksInCell)->isSubarray(*ref))
+        {
+          pTasksInCell = newCellTasks(address, *ref);
+        }
+        else if (arraySize == 1 && tasksInCell->arrayCount > 0)
+        {
+          // Do nothing for now
+        }
+        else
+        {
+          tasksInCell->setCaller(*ref);
+        }
       }
 
-      return result;
+      // If the caller is an array formula, when RTD is called in the subscribe()
+      // method, it will return xlretUncalced, but will trigger the calling
+      // function to be called again for each cell in the array. The caller in these
+      // subsequent calls will sometimes remain as the top left-cell and will sometimes 
+      // cycle through the cells of the array.
+      // 
+      // We want to start the task only once for the first call, with subsequent
+      // calls invoking subscribe quickly without needing to compare all function args.
+
+      if (arraySize > 1)
+        writeArray(*pTasksInCell, sheetId, *ref);
+
+      // We've finished with the task-per-cell lookup
+      writeLock.unlock();
+
+      // Now populate these variables
+      shared_ptr<const ExcelObj> result;
+      const wchar_t* foundTopic = nullptr;
+      {
+        // Lock 'tasksInCell' in case there is more than one RTD function in the cell
+        // This is unlikely, so we use a lightweight atomic_flag which implies a spin wait
+        // (before C++20).
+        scoped_atomic_flag lockCell(tasksInCell->busy);
+
+        if (arraySize == 1 && tasksInCell->arrayCount > 0)
+        {
+          --tasksInCell->arrayCount;
+          foundTopic = tasksInCell->arrayTopic;
+        }
+        else
+        {
+          // Compare our task to all other running tasks in the cell to see if we
+          // already have the answer
+          tasksInCell->tasks.remove_if([&](auto& t) {
+            if (t->disconnected())
+              return true;
+            else if (!foundTopic && t->taskMatches(*task))
+            {
+              foundTopic = t->topic();
+              if (t->done())
+                result = _mgr->peek(foundTopic);
+            }
+            return false;
+          });
+
+          if (!foundTopic)
+          {
+            // Couldn't find a matching task so start a new one
+            start(tasksInCell->tasks, task);
+            foundTopic = tasksInCell->tasks.back()->topic();
+          }
+
+          if (arraySize > 1)
+          {
+            tasksInCell->arrayCount = arraySize;
+            tasksInCell->arrayTopic = foundTopic;
+          }
+          else
+          {
+            tasksInCell->arrayCount = 0;
+            tasksInCell->arrayTopic = nullptr;
+          }
+        }
+      }
+      assert(foundTopic);
+      return result ? result : _mgr->subscribe(foundTopic);
     }
 
     void clear()
