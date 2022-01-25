@@ -256,14 +256,16 @@ async def pyTestAsync(x, time:int):
     await asyncio.sleep(time)
     return x
 
-
 @xlo.func
 async def pyTestAsyncGen(secs):
     while True:
         await asyncio.sleep(secs)
         yield dt.datetime.now()
 
-
+@xlo.func
+async def pyRtdArray(values):
+    return np.sum(values)
+    
 #---------------------------------
 # Calling Excel built-in functions
 #---------------------------------
@@ -447,12 +449,10 @@ def pyTestRange(r: xlo.Range):
     # This gives the same value as the statement below
     addy = r.cell(1, 1).address()
     
-    # Perhaps should call xlo.app('comtypes') before this to ensure that
-    # comtypes has generated this module from the typelib
     from comtypes.gen import Excel
-    return r.to_com().Cells[2, 2].Address(False, False, Excel.xlA1, True)
+    return r.to_com('comtypes').Cells[2, 2].Address(False, False, Excel.xlA1, True)
 
-#
+#  
 # We check we can retrieve the formula from a cell using both local and 
 # non-local functions 
 #
