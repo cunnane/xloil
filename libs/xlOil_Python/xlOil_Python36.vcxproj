@@ -98,6 +98,7 @@
     <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="EventLoop.h" />
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyFuture.h" />
