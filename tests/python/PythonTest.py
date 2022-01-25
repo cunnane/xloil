@@ -675,17 +675,21 @@ import xloil.debug
 def pyTestDebug(x):
     """ Running this function should trigger pdb """
     return (2 * x) ^ (x + 1)
-
+  
 @xlo.func(macro=True)
 def pyWbPath():
 
     """Returns the full workbook path"""
 
     caller = xlo.Caller()
-    full_path = xlo.app().Workbooks(caller.workbook).FullName
     
-    return full_path.replace(caller.workbook,"")
+    # Cautionary note: the following can return the wrong answer, but 
+    # the same call via 'win32com' works correctly. Treat comtypes with
+    # caution
+    #full_path = xlo.app('comtypes').Workbooks(caller.workbook).FullName
+    full_path3 = xlo.workbooks[caller.workbook].path 
 
+    return full_path3.replace(caller.workbook,"")
 
 #-----------------------------------------
 # On demand function registration
