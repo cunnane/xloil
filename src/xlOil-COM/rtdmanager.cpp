@@ -228,12 +228,14 @@ namespace xloil
 
         unordered_set<long> readyTopicIds;
         {
-          scoped_lock lock(_lockSubscribers);
+          shared_lock lock(_lockSubscribers);
           for (auto&[topic, value] : newValues)
           {
-            auto& record = _records[topic];
-            record.value = value;
-            readyTopicIds.insert(record.subscribers.begin(), record.subscribers.end());
+            auto record = _records.find(topic);
+            if (record == _records.end())
+              continue;
+            record->second.value = value;
+            readyTopicIds.insert(record->second.subscribers.begin(), record->second.subscribers.end());
           }
         }
 
@@ -542,7 +544,8 @@ namespace xloil
       {
         shared_ptr<const ExcelObj> value;
         // If there is a producer, but no value yet, put N/A
-        if (callRtd(topic) && server().value(topic, value) && !value)
+        callRtd(topic);
+        if (server().value(topic, value) && !value)
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
