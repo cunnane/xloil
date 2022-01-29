@@ -226,7 +226,7 @@ namespace xloil
   class IRtdServer;
 
   /// <summary>
-  /// Concrete implementation of <see cref="IRtdTopc"/> which can be overriden to 
+  /// Concrete implementation of <see cref="IRtdPublisher"/> which can be overriden to 
   /// hook the virtual methods. 
   /// </summary>
   class XLOIL_EXPORT RtdPublisher : public IRtdPublisher, public IRtdPublish

@@ -106,6 +106,7 @@
     <ClInclude Include="CPython.h" />
     <ClInclude Include="PyCache.h" />
     <ClInclude Include="PyImage.h" />
+    <ClInclude Include="PyRtd.h" />
     <ClInclude Include="PySource.h" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="TypeConversion\PyDateType.h" />

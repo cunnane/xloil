@@ -1,11 +1,10 @@
-
 import xloil as xlo
 import sys
 import datetime as dt
 import asyncio
 import os 
 
-
+ 
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -262,6 +261,12 @@ async def pyTestAsyncGen(secs):
         await asyncio.sleep(secs)
         yield dt.datetime.now()
 
+@xlo.func(local=False, threaded=True)
+async def pyTestAsyncThreaded(secs):
+    while True:
+        await asyncio.sleep(secs)
+        yield dt.datetime.now()
+        
 @xlo.func
 async def pyRtdArray(values):
     return np.sum(values)
@@ -294,8 +299,35 @@ def pyTestAppRun(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:
 # RTD functions and the RTD server
 #---------------------------------
 #
-# We try a slightly more practical usage of RTD async: fetching URLs.  
-# (We need the aiohttp package for this)
+# Registering an `async def` function has a certain overhead:
+# Excel will call your function multiple times to fetch the result
+# So xlOil must store and compare all the function arguments to figure
+# out if Excel wants the result of a previous calculation or to start
+# a new calculation with new arguments.
+# 
+# If the RTD `topic`, i.e. the unique identifier, is easy to determine
+# we can take over responsibility for generating it ourselves.
+#  
+# First create a new RTD COM server so the `topic` strings don't collide
+_rtdServer = xlo.RtdServer()
+  
+@xlo.func
+def pyTestRtdManual(secs):
+
+    # This coroutine will be run if  we don't already have a 
+    # publisher for the specified number of seconds.
+    async def fetch() -> dt.datetime:
+        while True:
+            await asyncio.sleep(secs)
+            yield dt.datetime.now()
+        
+    return xlo.rtd.subscribe(_rtdServer, "Time:" + str(secs), fetch)
+
+#
+# Now try a slightly more practical usage of RTD async: fetching URLs.  
+# (We need the aiohttp package for this).  Here we use the RTD machinery
+# in full-manual mode, defining the publishing object explicitly. This
+# is not necessary, it's just illustrative.
 #
 try:
     import aiohttp
@@ -327,9 +359,6 @@ try:
     # to show how to use the full RTD functionality: in general it is 
     # better to let xlOil handle things and use an async generator.
     # 
-    
-    # We create a new RTD COM server
-    _rtdServer = xlo.RtdServer()
 
     # 
     # RTD servers use a publisher/subscriber model with the 'topic' as the
@@ -489,9 +518,12 @@ import numpy as np
 import ctypes
 
 @xlo.func(local=False, threaded=True)
-def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int) -> int:
+def pyThreadTest(x: float, y: float, a: int, b: int, u:int, v:int):
     # Do something numpy intensive to allow thread switching
     np.sum(np.ones((a, b)) * x ** (np.ones((u, v)) / y))
+    
+    caller = xlo.Caller() # We can even do this from a threaded function!
+    
     # Return the thread ID to prove the functions were executed on different threads
     return ctypes.windll.kernel32.GetCurrentThreadId(None)
     
