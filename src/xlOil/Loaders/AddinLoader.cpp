@@ -41,7 +41,7 @@ namespace xloil
       if (!settings)
         return settings;
 
-      XLO_DEBUG("Found core settings file '{0}'",
+      XLO_INFO("Found core settings file '{0}'",
         *settings->source().path);
 
       auto addinRoot = (*settings)["Addin"];
