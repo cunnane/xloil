@@ -53,6 +53,7 @@ xlOil Python Module Reference
 	find_task_pane
     create_task_pane
 	insert_cell_image
+	xloil.rtd.subscribe
 	xloil.rtd.RtdSimplePublisher
 	xloil.debug.exception_debug
 	xloil.qtgui.Qt_thread

@@ -35,3 +35,28 @@ class RtdSimplePublisher(xlo.RtdPublisher):
             
     def topic(self):
         return self._topic
+
+
+def subscribe(server:xlo.RtdServer, topic:str, coro):
+    """
+    Subscribes to `topic` on the given RtdServer, starting the publishing
+    task `coro` if no publisher for `topic` is currently running.
+
+    `coro` must be a coroutine and the string `topic` must be derived from
+    the function's arguments in a way which uniquely identifies the data to 
+    be published 
+    """
+    if server.peek(topic) is None:
+        from .register import async_wrapper, find_return_converter, function_arg_info
+
+        func_args, return_type = function_arg_info(coro)
+        if any(func_args):
+            raise ValueError("Cororoutine should have zero args")
+
+        return_converter = find_return_converter(return_type)
+
+        wrapped = async_wrapper(coro)
+
+        server.start_task(topic, wrapped, return_converter)
+
+    return server.subscribe(topic)  

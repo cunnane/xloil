@@ -1,6 +1,7 @@
 #include "AsyncFunctions.h"
 #include "PyFunctionRegister.h"
 #include "PyCore.h"
+#include "PyRtd.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
@@ -140,86 +141,6 @@ namespace xloil
       }
     }
 
-    struct RtdReturn
-    {
-      RtdReturn(
-        IRtdPublish& notify,
-        const shared_ptr<const IPyToExcel>& returnConverter,
-        const CallerInfo& caller)
-        : _notify(notify)
-        , _returnConverter(returnConverter)
-        , _caller(caller)
-      {
-      }
-      ~RtdReturn()
-      {
-        if (!_running && !_task.ptr())
-          return;
-
-        py::gil_scoped_acquire gilAcquired;
-        _running = false;
-        _task = py::object();
-      }
-      void set_task(const py::object& task)
-      {
-        py::gil_scoped_acquire gilAcquired;
-        _task = task;
-        _running = true;
-      }
-      void set_result(const py::object& value) const
-      {
-        if (!_running)
-          return;
-        py::gil_scoped_acquire gilAcquired;
-
-        // Convert result to ExcelObj
-        ExcelObj result = _returnConverter
-          ? (*_returnConverter)(*value.ptr())
-          : FromPyObj<false>()(value.ptr());
-
-        // If nil, conversion wasn't possible, so use the cache
-        if (result.isType(ExcelType::Nil))
-          result = pyCacheAdd(value, _caller.writeAddress().c_str());
-
-        _notify.publish(std::move(result));
-      }
-      void set_done()
-      {
-        if (!_running)
-          return;
-        py::gil_scoped_acquire gilAcquired;
-        _running = false;
-        _task = py::object();
-      }
-      void cancel()
-      {
-        if (!_running)
-          return;
-        py::gil_scoped_acquire gilAcquired;
-        _running = false;
-        asyncEventLoop().callback(_task.attr("cancel"));
-      }
-      bool done() noexcept
-      {
-        return !_running;
-      }
-      void wait() noexcept
-      {
-        // asyncio.Future has no 'wait'
-      }
-      const CallerInfo& caller() const noexcept
-      {
-        return _caller;
-      }
-
-    private:
-      IRtdPublish& _notify;
-      shared_ptr<const IPyToExcel> _returnConverter;
-      py::object _task;
-      std::atomic<bool> _running = true;
-      const CallerInfo& _caller;
-    };
-
     /// <summary>
     /// Holder for python target function and its arguments.
     /// Able to compare arguments with another AsyncTask
@@ -350,13 +271,6 @@ namespace xloil
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)
           .def_property_readonly("caller", &AsyncReturn::caller)
-          .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
-
-        py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
-          .def("set_result", &RtdReturn::set_result)
-          .def("set_done", &RtdReturn::set_done)
-          .def("set_task", &RtdReturn::set_task)
-          .def_property_readonly("caller", &RtdReturn::caller)
           .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
 
         mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });

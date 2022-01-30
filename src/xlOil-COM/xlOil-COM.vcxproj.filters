@@ -11,6 +11,8 @@
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
     <ClInclude Include="CustomTaskPane.h" />
+    <ClInclude Include="RtdAsyncManager.h" />
+    <ClInclude Include="RtdServerWorker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ComAddin.cpp" />
@@ -40,6 +42,7 @@
     <ClCompile Include="AppObjects.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="RtdAsyncManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="API">

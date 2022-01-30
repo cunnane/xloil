@@ -5,7 +5,7 @@ xlOil Python Async/Rtd
 Introduction
 ------------
 
-RTD (real time data) functions are able to return values independently of Excel's  calculation
+RTD (real time data) functions are able to return values independently of Excel's calculation
 cycle. The classic example of this is a stock ticker with live prices.  It is easy to create
 an RTD function in *xlOil_Python* -- the following gives a ticking clock:
 
@@ -16,39 +16,71 @@ an RTD function in *xlOil_Python* -- the following gives a ticking clock:
     @xloil.func
     async def pyClock():
         while True:
-            await asyncio.sleep(2)
             yield datetime.datetime.now()
+            await asyncio.sleep(2)
+            
 
-Note that you need calculation on automatic mode or you will not see the updates. Also,
-whatever parameter is passed to `sleep` the clock will not tick faster than 2 seconds - this due 
+Note that calculation must be on automatic mode or you will not see the updates. 
+Whatever parameter is passed to `sleep` the clock will not tick faster than 2 seconds - this due 
 to the `RTD throttle interval <https://docs.microsoft.com/en-us/previous-versions/office/developer/office-xp/aa140060(v=office.10)>`_
 Which can bed changed via `xlo.app().RTD.ThrottleInterval = <milliseconds>`, however 
-reducing it below the default of 2000 may impair performance.  Since the change is global and
-persists when Excel is restarted, give some consideration to altering the value.
+reducing it below the default of 2000 may impair performance.  The change is global and
+persists when Excel is restarted, so give some consideration to altering the value.
 
-Any `async` function is handled in xlOil as an RTD function by default.  It is possible to 
+Any `async def` function is handled in xlOil as using RTD by default.  It is possible to 
 use Excel's native async support, but this has some drawbacks, discussed in :any:`concepts-rtd-async`
 
-There is another advantage of RTD for xlOil: RTD functions can be 'local', i.e. called through a 
+There is another advantage of RTD: RTD functions can be 'local', i.e. called through a 
 VBA stub associated with the workbook, which avoids cluttering the global function namespace.
 
+Improving RTD performance (specifying topics)
+---------------------------------------------
+
+Registering an `async def` function as described above has a certain overhead: excel will 
+call the function multiple times to fetch the result, so xlOil must store and compare all 
+the function arguments to figure out if Excel wants the result of a previous calculation 
+or to starta new calculation with new arguments.
+
+If an RTD `topic`, i.e. a unique string identifier, is easy to determine we can take over
+responsibility for generating it manually.
+
+::
+
+    # First create a new RTD COM server so the `topic` strings don't collide
+    _rtdServer = xlo.RtdServer()
+    
+    @xloil.func
+    def pyClock2(secs):
+
+        async def fetch() -> dt.datetime:
+            while True:
+                await asyncio.sleep(secs)
+                yield dt.datetime.now()
+            
+        return xloil.rtd.subscribe(_rtdServer, "Time:" + str(secs), fetch)
+
+The `subscribe` call will look for an existing publisher, i.e. a clock with `secs` interval,
+and return the value if one is found.  Otherwise it will run the coroutine and publish
+the value.  Note the coroute specifies a return type: this is handled with a return converter
+just like functions decorated with :any:`xloil.func`.
+
+The instance of the :obj:`xloil.RtdServer` object creates and registers a COM class. When xlOil is
+unloaded, the server will be unregistered and destroyed.  Since we created our own server the 
+server, we can choose the convention for these topic strings (i.e. the unique publisher ID).
+
+Note that we do not need to declare the outer function async, the `subscribe()` call notifies 
+Excel that this function should be treated as RTD.
 
 xlOil's RTD Interface
 ---------------------
 
-Below we explain the details of the RTD mechanism for cases where finer-grained control is
-required (such as in the `xloil_jupyter` module, :doc:`Jupyter`).
+If even finer-grained control of the RTD mechanism is required (such as in the `xloil_jupyter`
+module, :doc:`Jupyter`), we can specify the publisher as described below.
 
-We will follow the *UrlGetter* example in :doc:`Example`.
-
-First create an instance of the `RtdServer` object. This creates and registers a COM class.
-When xlOil is unloaded, the server will be unregistered and destroyed.
-
-The server mantains a dict of topic string to `IRtdPublisher` tasks. Since we control the 
-server, we choose the convention for these topic strings: in this case we make them URLs. 
+We will follow the *UrlGetter* example in :doc:`Example`.  In this case we make the topics URLs. 
 The RTD workflow is to first check if a given topic has a publisher using `peek()`. If not, 
-we spin one up with `start()`. Then we `subscribe()` to the topic which tells xlOil to called
-Excel's RTD function.
+we spin one up with :any:`xloil.RtdServer.start`. Then we :any:`xloil.RtdServer.subscribe` to 
+the topic which tells xlOil to call Excel's RTD function.
 
 :: 
 
@@ -61,8 +93,6 @@ Excel's RTD function.
             _rtdServer.start(publisher)
         return _rtdServer.subscribe(url)
 
-Note that we do not need to declare the function async, the `subscribe()` call notifies Excel
-that this function should be treated as RTD.
 
 The publisher is the class which does the work. Its `connect()` method is called when a 
 worksheet function calls `subscribe()` for its topic.  The publisher should then start

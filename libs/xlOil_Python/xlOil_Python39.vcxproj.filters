@@ -69,6 +69,7 @@
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="ArrayHelpers.h" />
+    <ClInclude Include="PyRtd.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">
