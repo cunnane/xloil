@@ -41,7 +41,7 @@ namespace xloil
     template <class TValue>
     struct IRtdPublishManager
     {
-      void update(const wchar_t* topic, const std::shared_ptr<TValue>& value);
+      void update(std::wstring&& topic, const std::shared_ptr<TValue>& value);
       void addPublisher(const std::shared_ptr<IRtdPublisher>& job);
       bool dropPublisher(const wchar_t* topic);
       bool value(const wchar_t* topic, std::shared_ptr<const TValue>& val) const;

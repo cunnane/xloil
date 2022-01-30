@@ -7,11 +7,9 @@
 
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelObj.h>
-#include <xloil/Caller.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Events.h>
 #include <xloil/Log.h>
-#include <xlOil/StringUtils.h>
 
 #include <atlbase.h>
 #include <atlcom.h>
@@ -24,14 +22,7 @@
 using std::vector;
 using std::shared_ptr;
 using std::make_shared;
-using std::scoped_lock;
-using std::unique_lock;
-using std::shared_lock;
 using std::wstring;
-using std::unique_ptr;
-using std::future_status;
-using std::pair;
-using std::list;
 using std::atomic;
 using std::mutex;
 
@@ -230,7 +221,7 @@ namespace xloil
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
-      bool publish(const wchar_t * topic, ExcelObj&& value) override
+      bool publish(const wchar_t* topic, ExcelObj&& value) override
       {
         server().update(topic, make_shared<ExcelObj>(value));
         return true;

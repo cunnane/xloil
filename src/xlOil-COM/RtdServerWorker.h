@@ -13,13 +13,10 @@
 
 using std::vector;
 using std::shared_ptr;
-using std::make_shared;
 using std::scoped_lock;
 using std::unique_lock;
 using std::shared_lock;
 using std::wstring;
-using std::unique_ptr;
-using std::future_status;
 using std::unordered_set;
 using std::unordered_map;
 using std::pair;
@@ -40,15 +37,15 @@ namespace xloil
       {
         _updateNotify = std::move(updateNotify);
         _isRunning = true;
-        _worker = std::thread([=]() { this->workerThreadMain(); });
+        _workerThread = std::thread([=]() { this->workerThreadMain(); });
       }
-      void connect(long topicId, std::wstring&& topic)
+      void connect(long topicId, wstring&& topic)
       {
         {
           unique_lock lock(_mutexNewSubscribers);
           _topicsToConnect.emplace_back(topicId, std::move(topic));
         }
-        notifyWorker();
+        notify();
       }
       void disconnect(long topicId)
       {
@@ -56,13 +53,13 @@ namespace xloil
           unique_lock lock(_mutexNewSubscribers);
           _topicIdsToDisconnect.emplace_back(topicId);
         }
-        notifyWorker();
+        notify();
       }
 
       SAFEARRAY* getUpdates() 
       { 
         auto updates = _readyUpdates.exchange(nullptr);
-        notifyWorker();
+        notify();
         return updates;
       }
 
@@ -71,35 +68,28 @@ namespace xloil
         if (!isServerRunning())
           return; // Already terminated, or never started
 
-        // Terminate is called when there are no subscribers to the server
-        // or the add-in is being closed. 
-        {
-          scoped_lock lock(_mutexNewValues);
-          setQuitFlag();
-          _newValues.clear();
-        }
-
-        // Let worker know we have set 'quit' flag
-        notifyWorker();
+        setQuitFlag();
+        // Let thread know we have set 'quit' flag
+        notify();
       }
 
       void join()
       {
         quit();
-        if (_worker.joinable())
-          _worker.join();
+        if (_workerThread.joinable())
+          _workerThread.join();
       }
 
-      void update(const wchar_t* topic, const shared_ptr<TValue>& value)
+      void update(wstring&& topic, const shared_ptr<TValue>& value)
       {
         if (!isServerRunning())
           return;
         {
           scoped_lock lock(_mutexNewValues);
           // TODO: can this be somehow lock free?
-          _newValues.push_back(make_pair(wstring(topic), value));
+          _newValues.emplace_back(make_pair(std::move(topic), value));
         }
-        notifyWorker();
+        notify();
       }
 
       void addPublisher(const shared_ptr<IRtdPublisher>& job)
@@ -135,7 +125,7 @@ namespace xloil
         // Destroy producer, the dtor of RtdPublisher waits for completion
         publisher.reset();
 
-        // Publish empty value
+        // Publish empty value (which triggers a notify)
         update(topic, shared_ptr<TValue>());
         return true;
       }
@@ -152,7 +142,7 @@ namespace xloil
       }
 
     private:
-      std::unordered_map<long, std::wstring> _activeTopicIds;
+      unordered_map<long, wstring> _activeTopicIds;
 
       struct TopicRecord
       {
@@ -182,11 +172,11 @@ namespace xloil
       mutable mutex _mutexNewSubscribers;
       mutable std::shared_mutex _lockRecords;
 
-      std::thread _worker;
+      std::thread _workerThread;
       std::condition_variable _workPendingNotifier;
       atomic<bool> _workPending = false;
 
-      void notifyWorker() noexcept
+      void notify() noexcept
       {
         _workPending = true;
         _workPendingNotifier.notify_one();
@@ -209,14 +199,15 @@ namespace xloil
         while (isServerRunning())
         {
           // The worker does all the work!  In this order
-          //   0) Wait for wake notification
-          //   1) Look for new values.
+          //   1) Wait for wake notification
+          //   2) Check if quit/stop has been sent
+          //   3) Look for new values.
           //      a) If any, put the matching topicIds in readyTopicIds
           //      b) If Excel has picked up previous values, create an array of 
           //         updates and send an UpdateNotify.
-          //   2) Run any topic connect requests
-          //   3) Run any topic disconnect requests
-          //   4) Repeat
+          //   4) Run any topic connect requests
+          //   5) Run any topic disconnect requests
+          //   6) Repeat
           //
           decltype(_newValues) newValues;
 
@@ -228,6 +219,9 @@ namespace xloil
             _workPendingNotifier.wait(lockValues, [&]() { return _workPending.load(); });
           _workPending = false;
 
+          if (!isServerRunning())
+            break;
+
           // Since _mutexNewValues is required to send updates, so we avoid holding it  
           // and quickly swap out the list of new values. 
           std::swap(newValues, _newValues);
@@ -236,7 +230,6 @@ namespace xloil
           if (!newValues.empty())
           {
             shared_lock lock(_lockRecords);
-            //auto count = 0;
             auto iValue = newValues.begin();
             for (; iValue != newValues.end(); ++iValue)
             {
@@ -274,7 +267,7 @@ namespace xloil
             std::swap(_topicsToConnect, topicsToConnect);
           }
           for (auto& [topicId, topic] : topicsToConnect)
-            connectTopic(topicId, topic);
+            connectTopic(topicId, std::move(topic));
           for (auto topicId : topicIdsToDisconnect)
             disconnectTopic(topicId);
         }
@@ -314,8 +307,10 @@ namespace xloil
         }
       }
 
-      void connectTopic(long topicId, const wstring& topic)
+      void connectTopic(long topicId, wstring&& topic)
       {
+        XLO_DEBUG(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
+
         // We need these values after we release the lock
         shared_ptr<IRtdPublisher> publisher;
         size_t numSubscribers;
@@ -324,11 +319,12 @@ namespace xloil
           unique_lock lock(_lockRecords);
 
           // Find subscribers for this topic and link to the topic ID
-          _activeTopicIds.emplace(topicId, topic);
           auto& record = _records[topic];
           record.subscribers.insert(topicId);
           publisher = record.publisher;
           numSubscribers = record.subscribers.size();
+
+          _activeTopicIds.emplace(topicId, std::move(topic));
         }
 
         // Let the publisher know how many subscribers they now have.
@@ -336,8 +332,6 @@ namespace xloil
         // as they may try to call other functions on the RTD server. 
         if (publisher)
           publisher->connect(numSubscribers);
-
-        XLO_DEBUG(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
       }
 
       void disconnectTopic(long topicId)
