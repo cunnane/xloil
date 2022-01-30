@@ -32,7 +32,9 @@ namespace
       auto* pyptr = pyobj.ptr();
       Py_INCREF(pyptr);
       shared_ptr<PyObject> pyObjPtr(
-        pyptr, [](PyObject *x) { Py_DECREF(x); });
+        pyptr, 
+        [](PyObject* x) { py::gil_scoped_acquire getGil; Py_XDECREF(x); }
+      );
       _impl = shared_ptr<T>(pyObjPtr, ptr);
     }
 
@@ -205,12 +207,18 @@ namespace xloil
         // interpreter, so capturing 'this' is safe.
         _cleanup = Event_PyBye().bind([this]
         { 
+          py::gil_scoped_release releaseGil;
           _impl.reset(); 
         });
       }
-
+      ~PyRtdServer()
+      {
+        py::gil_scoped_release releaseGil;
+        _impl.reset();
+      }
       void start(const py_shared_ptr<IRtdPublisher>& topic)
       {
+        py::gil_scoped_release releaseGil;
         impl().start(topic);
       }
       bool publish(
@@ -219,6 +227,8 @@ namespace xloil
         IPyToExcel* converter=nullptr)
       {
         auto ptr = value.ptr();
+        ExcelObj xlValue;
+
         if (PyExceptionInstance_Check(ptr))
         {
           auto tb = PySteal(PyException_GetTraceback(ptr));
@@ -232,15 +242,25 @@ namespace xloil
           PyErr_Clear();
 
           Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, tb);
-          return impl().publish(topic, ExcelObj(errStr));
+          xlValue = errStr;
         }
-        return impl().publish(topic, converter
+        else
+        {
+          xlValue = converter
             ? (*converter)(*ptr)
-            : FromPyObj()(ptr));
+            : FromPyObj()(ptr);
+        }
+
+        py::gil_scoped_release releaseGil;
+        return impl().publish(topic, std::move(xlValue));
       }
       py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
       {
-        auto value = impl().subscribe(topic);
+        shared_ptr<const ExcelObj> value;
+        {
+          py::gil_scoped_release releaseGil;
+          value = impl().subscribe(topic);
+        }
         if (!value)
           return py::none();
         return PySteal<>(converter
@@ -249,7 +269,11 @@ namespace xloil
       }
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
       {
-        auto value = impl().peek(topic);
+        shared_ptr<const ExcelObj> value;
+        {
+          py::gil_scoped_release releaseGil;
+          value = impl().peek(topic);
+        }
         if (!value)
           return py::none();
         return PySteal<>(converter
@@ -260,7 +284,10 @@ namespace xloil
       {
         // Don't throw if _impl has been destroyed, just ignore
         if (_impl)
+        {
+          py::gil_scoped_release releaseGil;
           _impl->drop(topic);
+        }
       }
 
       void startTask(
@@ -268,10 +295,12 @@ namespace xloil
         const py::object& func, 
         const shared_ptr<IPyToExcel>& converter = nullptr)
       {
+        auto task = make_shared<PyRtdTaskLauncher>(func, converter);
+
+        py::gil_scoped_release releaseGil;
         impl().start(
           make_shared<RtdPublisher>(
-            topic, impl(),
-            make_shared<PyRtdTaskLauncher>(func, converter)));
+            topic, impl(), task));
       }
     };
 
