@@ -152,46 +152,48 @@ namespace xloil
   };
 
 
-  /// <summary>
-  /// Concrete implemenation of <see cref="IRtdTask"/> which implements the
-  /// interface using a <code>std::future<void></code>.
-  /// </summary>
-  template <class TBase>
-  class RtdTaskBase : public TBase
+  namespace detail
   {
-  public:
-    virtual std::future<void> operator()(RtdNotifier notify) = 0;
+    /// <summary>
+    /// Concrete implemenation of <see cref="IRtdTask"/> which implements the
+    /// interface using a <code>std::future<void></code>.
+    /// </summary>
+    template <class TBase>
+    class RtdTaskBase : public TBase
+    {
+    public:
+      virtual std::future<void> operator()(RtdNotifier notify) = 0;
 
-    virtual void start(IRtdPublish& n) override
-    {
-      // The producer may be stopped and restarted, so wait for any prior
-      // future to exit
-      wait();
-      _cancel = false;
-      _future = (*this)(RtdNotifier(n, _cancel));
-    }
-    bool done() noexcept override
-    {
-      // The offical way to check readiness is 
-      // _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready
-      // But the clearly much more efficient _future._Is_ready seems to have appeared.
-      return !_future.valid() || _future._Is_ready();
-    }
-    void wait() override
-    {
-      if (_future.valid())
-        _future.wait();
-    }
-    void cancel() noexcept override
-    {
-      _cancel = true;
-    }
+      virtual void start(IRtdPublish& n) override
+      {
+        // The producer may be stopped and restarted, so wait for any prior
+        // future to exit
+        wait();
+        _cancel = false;
+        _future = (*this)(RtdNotifier(n, _cancel));
+      }
+      bool done() noexcept override
+      {
+        // The offical way to check readiness is 
+        // _future.wait_for(std::chrono::seconds(0)) == std::future_status::ready
+        // But the clearly much more efficient _future._Is_ready seems to have appeared.
+        return !_future.valid() || _future._Is_ready();
+      }
+      void wait() override
+      {
+        if (_future.valid())
+          _future.wait();
+      }
+      void cancel() noexcept override
+      {
+        _cancel = true;
+      }
 
-  private:
-    std::future<void> _future;
-    std::atomic<bool> _cancel = false;
-  };
-
+    private:
+      std::future<void> _future;
+      std::atomic<bool> _cancel = false;
+    };
+  }
   /// <summary>
   /// Wraps a <code>std::function</code> to make an IRtdTask. The function 
   /// should take an RtdNotifier and return a <code>std::future<void> </code>.
@@ -199,7 +201,7 @@ namespace xloil
   /// published through the RtdNotifier. The cancel flag in the notifier should be
   /// periodically checked.
   /// </summary>
-  class RtdTask : public RtdTaskBase<IRtdTask>
+  class RtdTask : public detail::RtdTaskBase<IRtdTask>
   {
   public:
     using Prototype = std::function<std::future<void>(RtdNotifier)>;
@@ -220,7 +222,7 @@ namespace xloil
   /// <summary>
   /// A base class for Rtd async tasks. 
   /// </summary>
-  struct RtdAsyncTask : public RtdTaskBase<IRtdAsyncTask>
+  struct RtdAsyncTask : public detail::RtdTaskBase<IRtdAsyncTask>
   {};
 
   class IRtdServer;
