@@ -177,7 +177,7 @@ namespace xloil
       }
 
       shared_ptr<const ExcelObj> RtdAsyncManager::getValue(
-        shared_ptr<IRtdAsyncTask> task)
+        const std::shared_ptr<IRtdAsyncTask>& task)
       {
         // Protects agains a null-deref and allows starting up the RTD server
         // without running anything

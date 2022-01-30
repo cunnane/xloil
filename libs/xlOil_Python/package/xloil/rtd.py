@@ -39,7 +39,7 @@ class RtdSimplePublisher(xlo.RtdPublisher):
 
 def subscribe(server:xlo.RtdServer, topic:str, coro):
     """
-    Subscribes to `topic` on the given Rtd Server, starting the publishing
+    Subscribes to `topic` on the given RtdServer, starting the publishing
     task `coro` if no publisher for `topic` is currently running.
 
     `coro` must be a coroutine and the string `topic` must be derived from
