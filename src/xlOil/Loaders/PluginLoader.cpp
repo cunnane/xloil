@@ -135,8 +135,11 @@ namespace xloil
             // modified. The CRT actually maintains a wchar and a char enviroment block.
             // See some of the remarks here
             // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv
-            SetEnvironmentVariable(key.c_str(), value.c_str());
-            _wputenv_s(key.c_str(), value.c_str());
+            if (!SetEnvironmentVariable(key.c_str(), value.c_str()))
+              XLO_WARN(L"Failed to set environment variable '{}': {}", key, writeWindowsError());
+
+            if (_wputenv_s(key.c_str(), value.c_str()) == EINVAL)
+              XLO_WARN(L"Failed to set environment variable '{}'");
           }
           // Load the plugin
           const auto lib = LoadLibrary(pluginPath.c_str());
