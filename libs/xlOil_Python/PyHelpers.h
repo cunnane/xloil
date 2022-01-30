@@ -183,8 +183,10 @@ namespace xloil
       {}
       ~PyObjectHolder()
       {
+        if (!_obj)
+          return;
         pybind11::gil_scoped_acquire getGil;
-        _obj = pybind11::none();
+        _obj = std::move(pybind11::object());
       }
       operator pybind11::object() const { return _obj; }
 
