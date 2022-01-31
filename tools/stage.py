@@ -84,18 +84,20 @@ def latest_file(dir):
 
 print("Soln dir: ", str(soln_dir))
 
+# Write the version file
+subprocess.run(f"powershell ./tools/WriteVersion.ps1", cwd=soln_dir, check=True)
+
 # Build the library
 for arch in architectures:
-    subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir)
+    subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir, check=True)
 
 # Write the combined include file
-subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", cwd=tools_dir)
-
-# Write the version file
-subprocess.run(f"powershell ./tools/WriteVersion.ps1", cwd=soln_dir)
+subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", cwd=tools_dir, check=True)
 
 # Build the docs
-subprocess.run(f"cmd /C make.bat html", cwd=doc_dir)
+# TODO: check=True should throw if the process exit code is != 0. Doesn't work.
+subprocess.run(f"cmd /C make.bat doxygen", cwd=doc_dir, check=True)
+subprocess.run(f"cmd /C make.bat html", cwd=doc_dir, check=True)
 
 #
 # Start of file copying

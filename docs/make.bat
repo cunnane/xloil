@@ -26,9 +26,21 @@ if errorlevel 9009 (
 )
 
 set PATH=%PATH%;C:\Program Files\doxygen\bin
+set SOLN_DIR=%~dp0..
 
-%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
+if "%1" == "doxygen" goto doxygen
+
+%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% -W --keep-going %O%
 goto end
+
+:doxygen
+pushd source
+set "XLO_SOLN_DIR=%SOLN_DIR:\=/%"
+
+doxygen xloil.doxyfile
+popd
+goto end
+
 
 :help
 %SPHINXBUILD% -M help %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
