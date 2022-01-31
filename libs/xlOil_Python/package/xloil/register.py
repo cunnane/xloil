@@ -32,8 +32,8 @@ else:
     class _FuncArg:
         name:str
         help:str
-        converter 
-        default;
+        converter=None
+        default=None
         allow_range = False
 
 """
