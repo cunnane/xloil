@@ -8,9 +8,17 @@ namespace xloil
   {
     XLO_PLUGIN_INIT(AddinContext* context, const PluginContext& plugin)
     {
-      throwIfNotExactVersion(plugin);
-      linkPluginToCoreLogger(context, plugin);
-      return 0;
+      try
+      {
+        linkPluginToCoreLogger(context, plugin);
+        throwIfNotExactVersion(plugin);
+        return 0;
+      }
+      catch (const std::exception& e)
+      {
+        XLO_ERROR(e.what());
+        return -1;
+      }
     }
   }
 }
