@@ -309,7 +309,7 @@ namespace xloil
 
       void connectTopic(long topicId, wstring&& topic)
       {
-        XLO_DEBUG(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
+        XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
 
         // We need these values after we release the lock
         shared_ptr<IRtdPublisher> publisher;
@@ -347,7 +347,7 @@ namespace xloil
         {
           unique_lock lock(_lockRecords);
 
-          XLO_DEBUG("RTD: disconnect topicId {}", topicId);
+          XLO_TRACE("RTD: disconnect topicId {}", topicId);
 
           std::swap(_cancelledPublishers, cancelledPublishers);
 
