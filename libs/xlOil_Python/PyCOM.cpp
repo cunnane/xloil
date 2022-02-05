@@ -118,27 +118,29 @@ namespace xloil
         else
           throw py::value_error("Coord argument is invalid");
 
-        // Create temp file and call the file write function. Temporarily release
-        // the GIL in case any file system issues cause a delay
-        wstring tempFileName;
-        {
-          py::gil_scoped_release releaseGil;
-          HANDLE tempFileHandle;
-          std::tie(tempFileHandle, tempFileName) = Helpers::makeTempFile();
-          CloseHandle(tempFileHandle);
-        }
 
-        checkUserException([&]() {saveFunction(tempFileName); });
-
-        // Release GIL before doing any more slow stuff
         py::gil_scoped_release releaseGil;
 
+        // Create temp file and call the file write function. Release
+        // the GIL in case any file system issues cause a delay
+        wstring tempFileName;
+        HANDLE tempFileHandle;
+        std::tie(tempFileHandle, tempFileName) = Helpers::makeTempFile();
+        CloseHandle(tempFileHandle);
+
+        // Need the GIL back again to call the provided saveFunction
+        {
+          py::gil_scoped_acquire getGil;
+          checkUserException([&]() {saveFunction(tempFileName); });
+        }
+
+
         auto shapes = caller->Worksheet->Shapes;
-        auto shapeName = wstring(L"XLOIMG_") + (const wchar_t*)(caller->GetAddressLocal(true, true, Excel::xlA1));
+        auto shapeName = wstring(L"XLOIMG_") + 
+          (const wchar_t*)(caller->GetAddressLocal(true, true, Excel::xlA1));
 
         // I don't think it's possible to check if the shape exists prior to deletion
-        // so we have to catch the error
-
+        // so we have to catch the error unfortunately.
         // TODO: copy size info from existing image?
         try
         {
@@ -157,9 +159,9 @@ namespace xloil
         newPic->Name = shapeName.c_str();
 
         // Remove temporary file in a separate thread.
-        std::thread([file = tempFileName]() {
+        std::async(std::launch::async, [file = std::move(tempFileName)]() {
           DeleteFile(file.c_str());
-        }).detach();
+        });
 
         return shapeName;
       }
