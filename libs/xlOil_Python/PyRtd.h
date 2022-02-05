@@ -17,9 +17,21 @@ namespace xloil
         const std::shared_ptr<const IPyToExcel>& returnConverter,
         const CallerInfo& caller);
       ~RtdReturn();
+      /// <summary>
+      /// Must hold GIL to call this
+      /// </summary>
       void set_task(const pybind11::object& task);
+      /// <summary>
+      /// Must hold GIL to call this
+      /// </summary>
       void set_result(const pybind11::object& value) const;
+      /// <summary>
+      /// Must hold GIL to call this
+      /// </summary>
       void set_done();
+      /// <summary>
+      /// Must hold GIL to call this
+      /// </summary>
       void cancel();
       bool done() noexcept;
       void wait() noexcept;

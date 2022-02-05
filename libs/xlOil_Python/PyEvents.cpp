@@ -211,6 +211,7 @@ namespace xloil
 
       void setAllowEvents(bool value)
       {
+        py::gil_scoped_release releaseGil;
         runExcelThread([=]() { Event::allowEvents(value); });
       }
 

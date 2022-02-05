@@ -79,18 +79,18 @@ namespace xloil
       py::gil_scoped_acquire gilAcquired;
       _task = py::object();
     }
+
     void RtdReturn::set_task(const py::object& task)
     {
-      py::gil_scoped_acquire gilAcquired;
       _task = task;
       _running = true;
     }
+
     void RtdReturn::set_result(const py::object& value) const
     {
       if (!_running)
         return;
-      py::gil_scoped_acquire gilAcquired;
-
+      
       // Convert result to ExcelObj
       ExcelObj result = _returnConverter
         ? (*_returnConverter)(*value.ptr())
@@ -106,15 +106,15 @@ namespace xloil
     {
       if (!_running)
         return;
-      py::gil_scoped_acquire gilAcquired;
       _running = false;
+
       _task = py::object();
     }
     void RtdReturn::cancel()
     {
       if (!_running)
         return;
-      py::gil_scoped_acquire gilAcquired;
+      
       _running = false;
       if (_task)
         asyncEventLoop().callback(_task.attr("cancel"));
@@ -174,8 +174,11 @@ namespace xloil
       }
       void cancel() override
       {
-        if (_returnObj)
+        if (_returnObj && !_returnObj->done())
+        {
+          py::gil_scoped_acquire gilAcquired;
           _returnObj->cancel();
+        }
       }
     };
 

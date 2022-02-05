@@ -60,7 +60,6 @@ namespace xloil
 
       void set_result(const py::object& value)
       {
-        py::gil_scoped_acquire gil;
         static ExcelObj obj = _returnConverter
           ? (*_returnConverter)(*value.ptr())
           : FromPyObj()(value.ptr());
@@ -207,8 +206,11 @@ namespace xloil
       }
       void cancel() override
       {
-        if (_returnObj)
+        if (_returnObj && !_returnObj->done())
+        {
+          py::gil_scoped_acquire gilAcquired;
           _returnObj->cancel();
+        }
       }
       bool operator==(const IRtdAsyncTask& that_) const override
       {

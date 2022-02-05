@@ -99,6 +99,8 @@ namespace xloil
       if (!func.ptr() || func.is_none())
         XLO_THROW(L"No python function specified for {0}", name);
 
+      py::gil_scoped_release releaseGil;
+
       _info->options = readFuncFeatures(features, *this, isVolatile, isLocalFunc);
 
       if (!_info->isValid())
