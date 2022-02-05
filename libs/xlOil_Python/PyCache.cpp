@@ -73,8 +73,8 @@ namespace xloil
           // a prefix if a custom key is specified.
 
           const auto cacheKey = key.empty()
-            ? _cache->add(std::move(obj), CallerInfo(), tag.empty() ? nullptr : tag.c_str(), tag.length())
-            : _cache->add(std::move(obj), CallerInfo(ExcelObj(L"[")), key.c_str(), key.length());
+            ? _cache->add(std::move(obj), CallerInfo(), tag)
+            : _cache->add(std::move(obj), CallerInfo(ExcelObj(L"[")), key);
           return PySteal(detail::PyFromString()(cacheKey.asPString()));
         }
         py::object getitem(const std::wstring_view& str)
@@ -120,12 +120,13 @@ namespace xloil
 
     ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
     {
+      // Decorate the cache ref with the python object name to 
+      // help users keep track
       auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
       return PyCache::instance()._cache->add(
         py::object(obj),
         caller ? CallerInfo(ExcelObj(caller)) : CallerInfo(),
-        name.c_str(),
-        name.size());
+        name);
     }
 
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)

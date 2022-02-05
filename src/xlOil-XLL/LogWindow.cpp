@@ -239,9 +239,9 @@ namespace xloil
         }, 0);
       }
 
-      void appendMessage(const string& msg) noexcept override
+      void appendMessage(string&& msg) noexcept override
       {
-        _messages.push_back(msg);
+        _messages.emplace_back(std::forward<string>(msg));
 
         if (_messages.size() > _maxSize)
           _messages.pop_front();
@@ -278,25 +278,25 @@ namespace xloil
       }
     }
 
-    void writeLogWindow(const wchar_t* msg) noexcept
+    void writeLogWindow(const std::wstring_view& msg) noexcept
     {
-      writeLogWindow(utf16ToUtf8(msg).c_str());
+      writeLogWindow(utf16ToUtf8(msg));
     }
 
-    void writeLogWindow(const char* msg) noexcept
+    void writeLogWindow(const std::string_view& msg) noexcept
     {
       // Thread safe since C++11
       static auto logWindow = createLogWindow(
         0, (HINSTANCE)State::coreModuleHandle(), L"xlOil Load Failure", 0, 0, 100);
 
-      if (!msg || !logWindow)
+      if (msg.empty() || !logWindow)
         return;
 
       auto t = std::time(nullptr);
       tm tm;
       localtime_s(&tm, &t);
-      logWindow->appendMessage(
-        formatStr("%d-%d-%d: %s", tm.tm_hour, tm.tm_min, tm.tm_sec, msg));
+      logWindow->appendMessage(std::move(
+        formatStr("%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg)));
       logWindow->openWindow();
     }
 }

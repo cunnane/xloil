@@ -124,9 +124,11 @@ namespace xloil
             source.filename = PyUnicode_AsUTF8(code->co_filename);
             source.funcname = PyUnicode_AsUTF8(code->co_name);
           }
+          const auto spdLevel = toSpdLogLevel(level);
+          py::gil_scoped_release releaseGil;
           spdlog::default_logger_raw()->log(
             source,
-            toSpdLogLevel(level),
+            spdLevel,
             message);
         }
 
@@ -191,10 +193,12 @@ namespace xloil
         {}
         void msg(const std::wstring& msg, size_t timeout)
         {
+          py::gil_scoped_release releaseGil;
           _bar->msg(msg, timeout);
         }
         void exit(py::args)
         {
+          py::gil_scoped_release releaseGil;
           _bar.reset();
         }
       };
@@ -241,13 +245,13 @@ namespace xloil
             [](const CallerInfo& self)
             {
               const auto name = self.sheetName();
-              return name.empty() ? py::none() : py::wstr(wstring(name));
+              return name.empty() ? py::none() : py::wstr(name);
             })
           .def_property_readonly("workbook",
             [](const CallerInfo& self)
             {
               const auto name = self.workbook();
-              return name.empty() ? py::none() : py::wstr(wstring(name));
+              return name.empty() ? py::none() : py::wstr(name);
             })
           .def("address",
             [](const CallerInfo& self, bool x)

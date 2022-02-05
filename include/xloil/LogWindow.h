@@ -22,7 +22,7 @@ namespace xloil
   {
   public:
     virtual void openWindow() noexcept = 0;
-    virtual void appendMessage(const std::string& msg) noexcept = 0;
+    virtual void appendMessage(std::string&& msg) noexcept = 0;
   };
 
   std::shared_ptr<ILogWindow> createLogWindow(
@@ -33,7 +33,7 @@ namespace xloil
     WNDPROC menuHandler,
     size_t historySize) noexcept;
 
-  void writeLogWindow(const wchar_t* msg) noexcept;
+  void writeLogWindow(const std::wstring_view& msg) noexcept;
 
-  void writeLogWindow(const char* msg) noexcept;
+  void writeLogWindow(const std::string_view& msg) noexcept;
 }

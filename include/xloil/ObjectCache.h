@@ -25,9 +25,13 @@ namespace xloil
   {
     template<uint16_t NPadding>
     inline auto writeCacheId(
-      const CallerInfo& caller, const wchar_t* optionalName, size_t nameLength)
+      const CallerInfo& caller, const std::wstring_view& optionalName)
     {
-      auto pstrLength = caller.addressLength(CallerInfo::RC) + nameLength + NPadding + 1u;
+      const auto nameLength = optionalName.size();
+      const auto pstrLength = 
+        caller.addressLength(CallerInfo::RC) 
+        + optionalName.size() 
+        + NPadding + 1u; // Padding for the ",XX" at the end and 1 for the uniquifier
       PString<> pascalStr((uint16_t)pstrLength);
       auto* buf = pascalStr.pstr() + 1;
 
@@ -38,8 +42,8 @@ namespace xloil
       // be possible as we made the buffer larger than the addres length
       assert(nWritten - 1 > 0 && nWritten <= caller.addressLength(CallerInfo::RC) + 1);
 
-      if (optionalName)
-        wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName, nameLength);
+      if (nameLength != 0)
+        wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName.data(), nameLength);
 
       // Fix up length
       pascalStr.resize(uint16_t(nWritten + nameLength + NPadding));
@@ -219,11 +223,9 @@ namespace xloil
     ExcelObj add(
       TObj&& obj,
       const CallerInfo& caller = CallerInfo(),
-      const wchar_t* name = nullptr,
-      const size_t nameLength = 0
-    )
+      const std::wstring_view& name = std::wstring_view())
     {
-      auto fullKey = detail::writeCacheId<PADDING>(caller, name, nameLength);
+      auto fullKey = detail::writeCacheId<PADDING>(caller, name);
       fullKey[0] = _uniquifier.value;
 
       auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
@@ -394,11 +396,10 @@ namespace xloil
   template<typename T>
   inline auto addCached(
     const T* ptr,
-    const wchar_t* name = nullptr,
-    const size_t nameLength = 0)
+    const std::wstring_view& name = std::wstring_view())
   {
     return ObjectCacheFactory<std::unique_ptr<const T>>::cache().add(
-      std::unique_ptr<const T>(ptr), CallerInfo(), name, nameLength);
+      std::unique_ptr<const T>(ptr), CallerInfo(), name);
   }
 
   /// <summary>

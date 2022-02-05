@@ -19,7 +19,7 @@ namespace pybind11
   public:
     PYBIND11_OBJECT_CVT(wstr, object, detail::PyUnicode_Check_Permissive, raw_str)
 
-      wstr(const wchar_t* c, size_t n)
+    wstr(const wchar_t* c, size_t n)
       : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
     {
       if (!m_ptr)
@@ -35,7 +35,7 @@ namespace pybind11
         pybind11_fail("Could not allocate string object!");
     }
 
-    wstr(const std::wstring& s) : wstr(s.data(), s.size()) { }
+    wstr(const std::wstring_view& s) : wstr(s.data(), s.size()) { }
 
     // Not sure how to implement
     //explicit str(const bytes &b);
