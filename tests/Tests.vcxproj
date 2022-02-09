@@ -79,6 +79,7 @@
     <ClCompile Include="TestExcelObj.cpp" />
     <ClCompile Include="TestRange.cpp" />
     <ClCompile Include="TestSimpleAllocator.cpp" />
+    <ClCompile Include="TestStringUtils.cpp" />
     <ClCompile Include="TestTempFile.cpp" />
     <ClCompile Include="TestThunker.cpp" />
   </ItemGroup>

@@ -1,6 +1,8 @@
 #include "CppUnitTest.h"
 #include <xlOil/ExcelRef.h>
 #include <xlOil/ExcelObj.h>
+#include <chrono>
+#include <iostream>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -8,6 +10,7 @@ using namespace xloil;
 using std::wstring;
 using std::unique_ptr;
 using std::to_string;
+using std::vector;
 
 bool operator==(const msxll::XLREF12& l, const msxll::XLREF12& r)
 {
@@ -93,6 +96,76 @@ namespace Tests
 
       Assert::IsTrue(localAddressToXlRef(outRef, L"$A1"));
       Assert::IsTrue(localAddressToXlRef(outRef, L"$A1:B$1"));
+    }
+
+    TEST_METHOD(TestAddressWriteA1)
+    {
+      uint8_t len;
+      char buf[4];
+      len = writeColumnName(1 - 1, buf);
+      buf[len] = '\0';
+      Assert::AreEqual("A", buf);
+      len = writeColumnName(27 - 1, buf);
+      buf[len] = '\0';
+      Assert::AreEqual("AA", buf);
+      len = writeColumnName(703 - 1, buf);
+      buf[len] = '\0';
+      Assert::AreEqual("AAA", buf);
+    }
+    TEST_METHOD(TestPerformanceAddressWriteA1)
+    {
+      using std::chrono::high_resolution_clock;
+      using std::chrono::duration_cast;
+      using std::chrono::duration;
+      using std::chrono::milliseconds;
+      using std::to_string;
+
+      constexpr size_t NRepeats = 1;
+      constexpr size_t N = 1000;
+      vector<unsigned> numbers(N, 0);
+
+      for (auto i = 0; i < N; ++i)
+      {
+        char s1[16], s2[16];
+        auto len = unsignedToString<10>(i, s1);
+        s1[len] = '\0';
+        _itoa_s(i, s2, 10);
+        Assert::AreEqual(s1, s2);
+
+        len = unsignedToString<16>(i, s1);
+        s1[len] = '\0';
+        _itoa_s(i, s2, 16);
+        Assert::AreEqual(s1, s2);
+      }
+
+      if constexpr (NRepeats > 1)
+      {
+        char buffer[16];
+
+        for (auto n : numbers)
+          _itoa_s(n, buffer, 10);
+
+        auto t1 = high_resolution_clock::now();
+
+        for (auto k = 0; k < NRepeats; ++k)
+          for (auto n : numbers)
+            unsignedToString<10>(n, buffer, _countof(buffer));
+
+        auto t2 = high_resolution_clock::now();
+
+        for (auto k = 0; k < NRepeats; ++k)
+          for (auto n : numbers)
+            _itoa_s(n, buffer, 10);
+
+        auto t3 = high_resolution_clock::now();
+
+        /* Getting number of milliseconds as a double. */
+        duration<double, std::milli> method1 = t2 - t1;
+        duration<double, std::milli> method2 = t3 - t2;
+
+        Logger::WriteMessage(("unsignedToString: " + to_string(method1.count()) + "ms\n").c_str());
+        Logger::WriteMessage(("_itoa_s: " + to_string(method2.count()) + "ms\n").c_str());
+      }
     }
   };
 }

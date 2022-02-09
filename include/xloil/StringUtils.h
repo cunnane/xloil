@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <codecvt>
+#include <algorithm>
 
 namespace xloil
 {
@@ -304,6 +305,163 @@ namespace xloil
     std::transform(str.begin(), str.end(), str.begin(), detail::char_traits<Elem>::tolower);
   }
 
+
+  /// <summary>
+  /// Writes an unsigned int64 to a char buffer for a fixed radix. Does not
+  /// write a null-terminator. Returns the length of the string written or
+  /// zero if the buffer is insufficient.  Essentially `itoa` where the 
+  /// compiler can optimise for the fixed radix.
+  /// </summary>
+  /// <typeparam name="TChar">char-type</typeparam>
+  /// <typeparam name="TRadix">
+  ///   Numbers above 32 will result in some pretty weird characters in the output
+  /// </typeparam>
+  /// <param name="value"></param>
+  /// <param name="result">Pointer to the start of the result buffer</param>
+  /// <param name="resultSize">Size of the result buffer in chars</param>
+  /// <returns></returns>
+  template<size_t TRadix, class TChar>
+  inline uint8_t unsignedToString(size_t value, TChar* result, size_t resultSize)
+  {
+    // Surely larger than this is just silly?
+    static_assert(TRadix <= 128);
+
+    // 64 chars should hold a 64-bit int in radix = 2
+    // TODO: could make this buffer smaller for bigger radix
+    constexpr auto bufSize = 64;
+
+    // The below division and remainder algorithm writes the string in reverse
+    // so we write to a separate buffer
+    TChar buf[bufSize];
+
+    // Current write position in the buffer
+    TChar* p = buf;
+    do {
+      // Integer divide value by radix 
+      const uint8_t rem = value % TRadix;
+      value = value / TRadix;
+
+      // Remainder determines the offset from the '0' or 'a' chars
+      if constexpr (TRadix <= 10)
+      {
+        *p = rem + '0';
+      }
+      else
+      {
+        *p = rem < 10
+          ? rem + '0'
+          : rem + 'a' - 10;
+      }
+      ++p;
+    } while (value > 0);
+
+    // Check how many chars we wrote
+    const auto len = uint8_t(p - buf);
+
+    // Check buffer size
+    if (len > resultSize)
+      return 0;
+
+    // Reverse the string back into the result array
+    std::reverse_copy(buf, p, result);
+    return len;
+  }
+
+  template<size_t TRadix, class TChar, size_t TResultSize>
+  inline size_t unsignedToString(size_t value, TChar(&result)[TResultSize])
+  {
+    return unsignedToString<TRadix, TChar>(value, result, TResultSize);
+  }
+
+  namespace detail
+  {
+    /// <summary>
+    /// Parses a uint64 expressed as characters in a given alphabet.
+    /// Stops parsing when `TAlphabet` assigns a value above `THigh`
+    /// Moves the `begin` iterator to just past the last correctly
+    /// parsed character.
+    /// </summary>
+    /// <typeparam name="TIter"></typeparam>
+    /// <typeparam name="TAlphabet">
+    ///   A trivially constructible class whose operator() returns 
+    ///   a uint value for a given character 
+    /// </typeparam>
+    /// <typeparam name="TRadix">
+    /// <typeparam name="THigh">
+    ///   Maxmium allowed symbol value, usually TRadix - 1
+    /// </typeparam>
+    /// <param name="begin"></param>
+    /// <param name="end"></param>
+    /// <returns></returns>
+    template<
+      class TIter,
+      class TAlphabet,
+      size_t TRadix,
+      size_t THigh = TRadix - 1>
+    inline auto parseUnsigned(
+      TIter& begin, 
+      const TIter end)
+    {
+      size_t val = 0;
+      do {
+        auto c = *begin;
+        auto v = TAlphabet()(c);
+        if (v > THigh)
+          break;
+        val = val * TRadix + v;
+      } while (++begin != end);
+      return val;
+    }
+
+    struct StandardAlphabet
+    {
+      static constexpr int8_t _alphabet[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        -1, -1, -1, -1, -1, -1, -1,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+        -1, -1, -1, -1, -1, -1,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+      };
+      auto operator()(int8_t c) const 
+      { 
+        if (c < '0' || c > 'z')
+          return (uint8_t)-1;
+        return (uint8_t)_alphabet[c - '0'];
+      }
+    };
+
+    struct DecimalAlphabet
+    {
+      auto operator()(int8_t c) const
+      {
+        if (c < '0' || c > '9')
+          return (uint8_t)-1;
+        return (uint8_t)(c - '0');
+      }
+    };
+  }
+
+  /// <summary>
+  /// Parses a uint64 expressed as characters with a given radix.
+  /// Essentially a templated version of `utoa`. Moves the `begin` 
+  /// iterator to just past the last correctly parsed character.
+  /// </summary>
+  template<size_t TRadix, class TIter>
+  inline auto parseUnsigned(TIter& begin, const TIter& end)
+  {
+    if constexpr (TRadix <= 10)
+      return detail::parseUnsigned<TIter, detail::DecimalAlphabet, TRadix>(begin, end);
+    else
+      return detail::parseUnsigned<TIter, detail::StandardAlphabet, TRadix>(begin, end);
+  }
+
+  template<size_t TRadix, class TIter>
+  inline auto parseUnsigned(const TIter& begin, const TIter& end)
+  {
+    auto i = begin;
+    return parseUnsigned<TRadix, TIter>(i, end);
+  }
+
   // Borrowed from Boost. Doesn't logically live in this header file, but 
   // lacks another home
   inline size_t boost_hash_combine(size_t seed) { return seed; }
@@ -313,4 +471,12 @@ namespace xloil
     seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return boost_hash_combine(seed, rest...);
   }
+
+  template<class A, class B>
+  struct pair_hash {
+    size_t operator()(std::pair<A, B> p) const noexcept
+    {
+      return boost_hash_combine(377, p.first, p.second);;
+    }
+  };
 }

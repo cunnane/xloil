@@ -11,7 +11,8 @@
 namespace xloil
 {
   /// <summary>
-  /// Max string length for an A1-style cell address
+  /// Max string length for an A1-style cell address. The largest address
+  /// is "AAA1000000:ZZZ1000001<null>"
   /// </summary>
   constexpr uint16_t XL_CELL_ADDRESS_A1_MAX_LEN = 3 + 7 + 1 + 3 + 7 + 1;
   /// <summary>

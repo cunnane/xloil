@@ -5,14 +5,6 @@
 
 namespace xloil
 {
-  template<class A, class B>
-  struct pair_hash {
-    size_t operator()(std::pair<A, B> p) const noexcept
-    {
-      return xloil::boost_hash_combine(377, p.first, p.second);;
-    }
-  };
-
   namespace COM
   {
     struct CellTasks;

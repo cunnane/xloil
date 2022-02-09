@@ -193,7 +193,7 @@ namespace xloil
         case CallerInfo::RC:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
         case CallerInfo::A1:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
         }
-        wcsncpy_s(buf, bufLen, str.pstr(), maxLen);
+        wmemcpy_s(buf, bufLen, str.pstr(), maxLen);
         return std::min<int>((int)bufLen, maxLen);
       }
       case ExcelType::Num: // DLL caller
@@ -303,55 +303,91 @@ namespace xloil
     }
 
     static auto theColumnNameCache = fillColumnNameCache();
+  }
 
-    void writeColumnName(size_t colIndex, char buf[4])
+  uint8_t writeColumnName(size_t colIndex, char buf[4])
+  {
+    // We cache everything from A to ZZ
+    if (colIndex < COL_NAME_CACHE_SIZE)
     {
-      if (colIndex < COL_NAME_CACHE_SIZE)
-      {
-        memcpy_s(buf, 4, &theColumnNameCache[colIndex * 2], 2);
-        buf[2] = '\0';
-      }
-      else
-      {
-        constexpr short Ato0 = 'A' - '0';
-        constexpr short Atoa = 'A' - 'a' + 10;
-
-        _itoa_s((int)colIndex - 26, buf, 4, 26);
-        buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
-        buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
-        buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
-      }
+      auto colName = &theColumnNameCache[colIndex * 2];
+      buf[0] = colName[0];
+      if (colIndex < 26)
+        return 1;
+      buf[1] = colName[1];
+      return 2;
     }
-
-    void writeColumnNameW(size_t colIndex, wchar_t buf[4])
+    else
     {
-      size_t dummy;
-      char colBuf[4];
-      writeColumnName(colIndex, colBuf);
-      mbstowcs_s(&dummy, buf, 4, colBuf, 4);
+      // If we get here we must have a 3 letter column name
+
+      constexpr short Ato0 = 'A' - '0';
+      constexpr short Atoa = 'A' - 'a' + 10;
+
+      // We write the number base-26, then shift the characters to bring
+      // them into the 'A-Z' rangee
+      _itoa_s((int)colIndex - 26, buf, 4, 26);
+      buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
+      buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
+      buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
+
+      return 3;
+    }
+  }
+
+  uint8_t writeColumnNameW(size_t colIndex, wchar_t buf[3])
+  {
+    if (colIndex < COL_NAME_CACHE_SIZE)
+    {
+      auto colName = &theColumnNameCache[colIndex * 2];
+      buf[0] = colName[0];
+      if (colIndex < 26)
+        return 1;
+      buf[1] = colName[1];
+      return 2;
+    }
+    else
+    {
+      char colName[4];
+      writeColumnName(colIndex, colName);
+      buf[0] = colName[0];
+      buf[1] = colName[1];
+      buf[2] = colName[2];
+      return 3;
     }
   }
 
   XLOIL_EXPORT uint16_t xlrefToLocalA1(
     const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
   {
-    int ret;
-    // Add one everywhere here as rwFirst is zero-based but A1 format is 1-based
+    // Rather than checking the bufSize at every step, just give up
+    // if it can't hold the maxiumum possible size
+    if (bufSize < XL_CELL_ADDRESS_A1_MAX_LEN)
+      return 0;
+
+    uint16_t nWritten;
+    // Note we add one everywhere here as rwFirst is zero-based but A1 format is 1-based
     if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
     {
-      wchar_t wcol[4];
-      writeColumnNameW(ref.colFirst, wcol);
-      ret = _snwprintf_s(buf, bufSize, bufSize, L"%s%d", wcol, ref.rwFirst + 1);
+      // Single cell address
+      nWritten = writeColumnNameW(ref.colFirst, buf);
+      nWritten += unsignedToString<10>((unsigned)ref.rwFirst + 1, buf + nWritten, bufSize - nWritten);
     }
     else
     {
-      wchar_t wcolFirst[4], wcolLast[4];
-      writeColumnNameW(ref.colFirst, wcolFirst);
-      writeColumnNameW(ref.colLast, wcolLast);
-      ret = _snwprintf_s(buf, bufSize, bufSize, L"%s%d:%s%d",
-        wcolFirst, ref.rwFirst + 1, wcolLast, ref.rwLast + 1);
+      // Range address
+      nWritten = writeColumnNameW(ref.colFirst, buf);
+      nWritten += unsignedToString<10>((unsigned)ref.rwFirst + 1, buf + nWritten, bufSize - nWritten);
+
+      buf[nWritten] = L':';
+      ++nWritten;
+
+      nWritten += writeColumnNameW(ref.colLast, buf + nWritten);
+      nWritten += unsignedToString<10>((unsigned)ref.rwLast + 1, buf + nWritten, bufSize - nWritten);
     }
-    return ret < 0 ? 0 : (uint16_t)ret;
+
+    buf[nWritten] = L'\0';
+    return nWritten;
   }
 
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
@@ -409,32 +445,18 @@ namespace xloil
 
   namespace
   {
-    struct DoNothing
+    struct ColumnNameAlphabet
     {
-      constexpr auto operator()(wchar_t c) { return c; }
+      static constexpr int8_t _alphabet[] = {
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+        -1, -1, -1, -1, -1, -1,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+      };
+      uint8_t operator()(int8_t c) const
+      {
+        return (uint8_t)((c < 'A' || c > 'z') ? -1 : _alphabet[c - 'A']);
+      }
     };
-
-    struct ToUpper
-    {
-      wchar_t operator()(wchar_t c) { return ::towupper(c); }
-    };
-
-    /// <summary>
-    /// Parses a number expressed as characters in the range [Low, High]. Increments the
-    /// given char ptr as characters are read.  Will not read more than MaxLength characters.
-    /// Optional function to transform the characters (e.g. case conversion) prior to reading.
-    /// </summary>
-    template<class Char, Char Low, Char High, bool HasZero, unsigned MaxLength, class CaseConv = DoNothing>
-    auto parseSymbols(const Char*& str, const Char* end)
-    {
-      constexpr auto base = size_t(High - Low) + (HasZero ? 1 : 0);
-      size_t val = 0;
-      end = std::min(end, MaxLength + str);
-      Char c = CaseConv()(*str);
-      for (; str < end && (c <= High && c >= Low); ++str, c = CaseConv()(*str))
-        val = val * base + (c - Low);
-      return val;
-    }
 
     template<class Char, Char What>
     void skipOne(const Char*& c)
@@ -450,16 +472,23 @@ namespace xloil
       // there is no chance of overflow. We subtract 1 as A1-refs are 1-based 
       // but XLREF12 is zero based. This means failure to read anything will 
       // return -1, which gives an error condition later.
-      int val = (int)parseSymbols<wchar_t, L'0', L'9', true, 7>(c, end) - 1; 
+      end = std::min(c + 7, end);
+      int val = (int)parseUnsigned<10>(c, end) - 1; 
       return val > XL_MAX_ROWS ? -1 : val;
     }
-    auto parseCol(const wchar_t*& c, const wchar_t* end)
+    auto parseCol(const wchar_t*& c, const wchar_t* last)
     {
       // See notes above
       skipOne<wchar_t, L'$'>(c);
-      // Parse a column name like 'AZB'. There is no zero character in the symbol 
-      // set so the lower symbol is '@' which is before 'A'.
-      int val = (int)parseSymbols<wchar_t, L'@', L'Z', false, 3, ToUpper>(c, end) - 1;
+      // Look for a 3 char string as the column number.  A=1 and Z=26 but
+      // there is no zero, so it is not base-27, hence we must use the 
+      // `THigh` parameter of parseUnsigned.
+      // 
+      // We subtract 1 as A1-refs are 1-based but XLREF12 is zero based. 
+      // This means failure to read anything will return -1, which gives an 
+      // error condition later.
+      auto end = std::min(c + 3, last);
+      auto val = (int)detail::parseUnsigned<decltype(c), ColumnNameAlphabet, 26, 26>(c, end) - 1;
       return val > XL_MAX_COLS ? -1 : val;
     }
   }

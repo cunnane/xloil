@@ -128,9 +128,10 @@ namespace xloil
 
   /// <summary>
   /// Returns the Excel A1-style column letter corresponding
-  /// to a given zero-based column index
+  /// to a given zero-based column index. Returns the number of
+  /// characters written (1, 2 or 3)
   /// </summary>
-  void writeColumnName(size_t colIndex, char buf[4]);
+  XLOIL_EXPORT uint8_t writeColumnName(size_t colIndex, char buf[3]);
 
   /// <summary>
   /// Writes a simple Excel ref including sheet name in either A1 or RxCy 
@@ -172,8 +173,11 @@ namespace xloil
 
   /// <summary>
   /// Writes a local Excel ref (not including sheet name) to 'A1' or 'A1:Z9' 
-  /// format in the provided string buffer.
-  /// <returns>The number of characters written</returns>
+  /// format in the provided string buffer. Writes a null-terminator.
+  /// <returns>
+  ///   The number of characters written not including the null terminator or zero
+  ///   if the bufSize is insufficient.
+  /// </returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefToLocalA1(
     const msxll::XLREF12& ref,
@@ -194,8 +198,8 @@ namespace xloil
 
   /// <summary>
   /// Returns true if the user is currently in the function wizard.
-  /// Quite an expensive check as Excel does not provide a built-in 
-  /// way to check this.
+  /// It's quite an expensive check involving looping through visible 
+  /// Windows as Excel does not provide a built-in way to check this.
   /// </summary>
   XLOIL_EXPORT bool inFunctionWizard();
 
