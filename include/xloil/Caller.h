@@ -149,18 +149,17 @@ namespace xloil
   /// Version of <see cref="xlrefToWorkbookAddress"/> which returns a string rather
   /// than writing to a buffer
   /// </summary>
-  XLOIL_EXPORT std::wstring xlrefToWorkbookAddress(
+  inline std::wstring xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
-    bool A1Style = true);
-
-  /// <summary>
-  /// Similar to <see cref="xlrefToWorkbookAddress"/>, but without the sheet name
-  /// </summary>
-  XLOIL_EXPORT std::wstring xlrefToLocalAddress(
-    const msxll::XLREF12& ref,
-    bool A1Style = true);
-
+    bool A1Style = true)
+  {
+    return captureWStringBuffer([&](auto buf, auto sz)
+    {
+      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style);
+    });
+  }
+  
   /// <summary>
   /// Writes a simple Excel ref (not including sheet name) to 'RxCy' or 
   /// 'RaCy:RxCy' format in the provided string buffer. 
@@ -183,6 +182,22 @@ namespace xloil
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize);
+
+  /// <summary>
+  /// Similar to <see cref="xlrefToWorkbookAddress"/>, but without the sheet name
+  /// </summary>
+  inline std::wstring xlrefToLocalAddress(
+    const msxll::XLREF12& ref,
+    bool A1Style = true)
+  {
+    return captureWStringBuffer([&](auto buf, auto sz)
+      {
+        return A1Style
+          ? xlrefToLocalA1(ref, buf, sz)
+          : xlrefToLocalRC(ref, buf, sz);
+      },
+      XL_CELL_ADDRESS_A1_MAX_LEN);
+  }
 
   /// <summary>
   /// Parses a local Excel ref (not including sheet name) such as 'A1' or 'A1:Z9'

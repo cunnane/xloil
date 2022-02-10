@@ -422,7 +422,7 @@ namespace xloil
         -1, -1, -1, -1, -1, -1,
         10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
       };
-      auto operator()(int8_t c) const 
+      auto operator()(int16_t c) const 
       { 
         if (c < '0' || c > 'z')
           return (uint8_t)-1;
@@ -432,7 +432,7 @@ namespace xloil
 
     struct DecimalAlphabet
     {
-      auto operator()(int8_t c) const
+      auto operator()(int16_t c) const
       {
         if (c < '0' || c > '9')
           return (uint8_t)-1;

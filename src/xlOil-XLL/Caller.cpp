@@ -112,7 +112,133 @@ namespace xloil
 {
   namespace
   {
-    uint16_t writeSheetRef(
+    // Max col is XFD, i.e 2^14, we run to XFZ
+    constexpr size_t COL_NAME_CACHE_SIZE = XL_MAX_COLS + 22;
+    constexpr size_t COL_NAME_WIDTH = 3;
+
+    auto fillColumnNameCache()
+    {
+      std::array<char, COL_NAME_CACHE_SIZE * COL_NAME_WIDTH> result;
+      auto* ptr = result.data();
+
+      for (auto d = 'A'; d <= 'Z'; ++d)
+      {
+        *ptr++ = d;
+        *ptr++ = 0;
+        *ptr++ = 0;
+      }
+
+      for (auto c = 'A'; c <= 'Z'; ++c)
+        for (auto d = 'A'; d <= 'Z'; ++d)
+        {
+          *ptr++ = c;
+          *ptr++ = d;
+          *ptr++ = 0;
+        }
+
+      for (auto c = 'A'; c <= 'X'; ++c)
+        for (auto d = 'A'; d <= (c == 'X' ? 'F' : 'Z'); ++d)
+          for (auto e = 'A'; e <= 'Z'; ++e)
+          {
+            *ptr++ = c;
+            *ptr++ = d;
+            *ptr++ = e;
+          }
+
+      assert(ptr == result.data() + result.size());
+
+      return result;
+    }
+
+    static auto theColumnNameCache = fillColumnNameCache();
+
+    template<class TChar>
+    uint8_t writeColumn(size_t colIndex, TChar buf[3])
+    {
+      auto colName = &theColumnNameCache[colIndex * COL_NAME_WIDTH];
+      buf[0] = colName[0];
+      if (colIndex < 26)
+        return 1;
+      buf[1] = colName[1];
+      if (colIndex < 26 + 26 * 26)
+        return 2;
+      buf[2] = colName[2];
+      return 3;
+    }
+
+    uint8_t writeColumnNameW(size_t colIndex, wchar_t buf[3])
+    {
+      return writeColumn(colIndex, buf);
+    }
+
+    void writeDecimal(size_t value, wchar_t*& buf, size_t& bufSize)
+    {
+      auto nWritten = unsignedToString<10>(value, buf, bufSize);
+      buf += nWritten;
+      bufSize -= nWritten;
+    }
+
+    struct WriteA1
+    {
+      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_A1_MAX_LEN;
+      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
+      {
+        auto nWritten = writeColumnNameW(col, buf);
+        buf += nWritten;
+        bufSize -= nWritten;
+
+        writeDecimal(row + 1u, buf, bufSize);
+      }
+    };
+
+    struct WriteRC
+    {
+      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_RC_MAX_LEN;
+      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize)
+      {
+        // Note we add one everywhere here as row/col is zero-based but 
+        // A1/RC format is 1-based
+
+        *buf++ = L'R';
+        bufSize -= 1;
+        writeDecimal(row + 1u, buf, bufSize);
+
+        *buf++ = L'C';
+        bufSize -= 1;
+        writeDecimal(col + 1u, buf, bufSize);
+      }
+    };
+
+    template<class TWriter>
+    uint16_t writeLocalAddress(
+      const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
+    {
+      // Rather than checking the bufSize at every step, just give up
+      // if it can't hold the maxiumum possible size
+      if (bufSize < TWriter::MAX_LEN)
+        return 0;
+
+      auto initialBuf = buf;
+      TWriter writer;
+      if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
+      {
+        // Single cell address
+        writer(ref.rwFirst, ref.colFirst, buf, bufSize);
+      }
+      else
+      {
+        // Range address
+        writer(ref.rwFirst, ref.colFirst, buf, bufSize);
+        *buf++ = L':';
+        --bufSize;
+        writer(ref.rwLast, ref.colLast, buf, bufSize);
+      }
+
+      *buf = L'\0'; // Don't increment so we don't count terminator
+      return (uint16_t)(buf - initialBuf);
+    }
+
+    uint16_t writeSheetAddress(
       wchar_t* buf,
       size_t bufLen,
       const msxll::XLREF12& sheetRef,
@@ -136,22 +262,10 @@ namespace xloil
       }
 
       nWritten += A1Style
-        ? xlrefToLocalA1(sheetRef, buf, bufLen)
-        : xlrefToLocalRC(sheetRef, buf, bufLen);
+        ? writeLocalAddress<WriteA1>(sheetRef, buf, bufLen)
+        : writeLocalAddress<WriteRC>(sheetRef, buf, bufLen);
 
       return nWritten;
-    }
-
-    uint16_t writeInternal(
-      wchar_t* buf,
-      size_t bufLen,
-      const msxll::XLREF12& sheetRef,
-      const msxll::IDSHEET sheetId)
-    {
-      const auto cellStart = sheetRef.rwFirst * XL_MAX_COLS + sheetRef.colFirst;
-      const auto cellEnd   = sheetRef.rwLast * XL_MAX_COLS + sheetRef.colLast;
-      const auto nWritten  = _snwprintf_s(buf, bufLen, bufLen, L"[%p]%x:%x", sheetId, cellStart, cellEnd);
-      return nWritten < 0 ? 0 : (uint16_t)nWritten;
     }
 
     int writeAddressImpl(
@@ -165,23 +279,13 @@ namespace xloil
       {
       case ExcelType::SRef:
       {
-        switch (style)
-        {
-        case CallerInfo::RC:
-        case CallerInfo::A1:
-          return writeSheetRef(buf, bufLen, address.val.sref.ref,
-            sheetName, style == CallerInfo::A1);
-        }
+        return writeSheetAddress(buf, bufLen, address.val.sref.ref,
+          sheetName, style == CallerInfo::A1);
       }
       case ExcelType::Ref:
       {
-        switch (style)
-        {
-        case CallerInfo::RC:
-        case CallerInfo::A1:
-          return writeSheetRef(buf, bufLen, address.val.mref.lpmref->reftbl[0],
-            sheetName, style == CallerInfo::A1);
-        }
+        return writeSheetAddress(buf, bufLen, address.val.mref.lpmref->reftbl[0],
+          sheetName, style == CallerInfo::A1);
       }
       case ExcelType::Str: // Graphic object or Auto_XXX macro caller
       {
@@ -190,8 +294,8 @@ namespace xloil
         uint16_t maxLen = str.length();
         switch (style)
         {
-        case CallerInfo::RC:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
-        case CallerInfo::A1:       maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
+        case CallerInfo::RC: maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
+        case CallerInfo::A1: maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
         }
         wmemcpy_s(buf, bufLen, str.pstr(), maxLen);
         return std::min<int>((int)bufLen, maxLen);
@@ -229,6 +333,7 @@ namespace xloil
     if (_address.isType(ExcelType::RangeRef))
       callExcelRaw(xlSheetNm, &_sheetName, &_address);
   }
+  
   CallerInfo::CallerInfo(
     const ExcelObj& address, const wchar_t* fullSheetName)
     : _address(address)
@@ -236,6 +341,7 @@ namespace xloil
     if (fullSheetName)
       _sheetName = fullSheetName;
   }
+
   uint16_t CallerInfo::addressLength(AddressStyle style) const
   {
     // Any value in more precise guess?
@@ -257,18 +363,11 @@ namespace xloil
     return 19; // Max is "Toolbar(<some int id>)"
   }
 
-  namespace
-  {
-    template<size_t N>
-    constexpr size_t wcslength(wchar_t const (&)[N])
-    {
-      return N - 1;
-    }
-  }
   int CallerInfo::writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style) const
   {
     return writeAddressImpl(buf, bufLen, _address, _sheetName.asPString(), style);
   }
+  
   std::wstring CallerInfo::writeAddress(AddressStyle style) const
   {
     std::wstring result;
@@ -278,116 +377,25 @@ namespace xloil
     return result;
   }
 
-  namespace
-  {
-    constexpr size_t COL_NAME_CACHE_SIZE = 26 + 26 * 26;
-
-    auto fillColumnNameCache()
-    {
-      static std::array<char, COL_NAME_CACHE_SIZE * 2> cache;
-      auto* pcolumns = cache.data();
-
-      for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
-      {
-        pcolumns[0] = d;
-        pcolumns[1] = 0;
-      }
-
-      for (auto c = 'A'; c <= 'Z'; ++c)
-        for (auto d = 'A'; d <= 'Z'; ++d, pcolumns += 2)
-        {
-          pcolumns[0] = c;
-          pcolumns[1] = d;
-        }
-      return cache;
-    }
-
-    static auto theColumnNameCache = fillColumnNameCache();
-  }
-
   uint8_t writeColumnName(size_t colIndex, char buf[4])
   {
-    // We cache everything from A to ZZ
-    if (colIndex < COL_NAME_CACHE_SIZE)
-    {
-      auto colName = &theColumnNameCache[colIndex * 2];
-      buf[0] = colName[0];
-      if (colIndex < 26)
-        return 1;
-      buf[1] = colName[1];
-      return 2;
-    }
-    else
-    {
-      // If we get here we must have a 3 letter column name
-
-      constexpr short Ato0 = 'A' - '0';
-      constexpr short Atoa = 'A' - 'a' + 10;
-
-      // We write the number base-26, then shift the characters to bring
-      // them into the 'A-Z' rangee
-      _itoa_s((int)colIndex - 26, buf, 4, 26);
-      buf[0] += (buf[0] < 'A' ? Ato0 : Atoa) - 1;
-      buf[1] += buf[1] < 'A' ? Ato0 : Atoa;
-      buf[2] += buf[2] < 'A' ? Ato0 : Atoa;
-
-      return 3;
-    }
-  }
-
-  uint8_t writeColumnNameW(size_t colIndex, wchar_t buf[3])
-  {
-    if (colIndex < COL_NAME_CACHE_SIZE)
-    {
-      auto colName = &theColumnNameCache[colIndex * 2];
-      buf[0] = colName[0];
-      if (colIndex < 26)
-        return 1;
-      buf[1] = colName[1];
-      return 2;
-    }
-    else
-    {
-      char colName[4];
-      writeColumnName(colIndex, colName);
-      buf[0] = colName[0];
-      buf[1] = colName[1];
-      buf[2] = colName[2];
-      return 3;
-    }
+    return writeColumn(colIndex, buf);
   }
 
   XLOIL_EXPORT uint16_t xlrefToLocalA1(
-    const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
+    const msxll::XLREF12& ref,
+    wchar_t* buf,
+    size_t bufSize)
   {
-    // Rather than checking the bufSize at every step, just give up
-    // if it can't hold the maxiumum possible size
-    if (bufSize < XL_CELL_ADDRESS_A1_MAX_LEN)
-      return 0;
+    return writeLocalAddress<WriteA1>(ref, buf, bufSize);
+  }
 
-    uint16_t nWritten;
-    // Note we add one everywhere here as rwFirst is zero-based but A1 format is 1-based
-    if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
-    {
-      // Single cell address
-      nWritten = writeColumnNameW(ref.colFirst, buf);
-      nWritten += unsignedToString<10>((unsigned)ref.rwFirst + 1, buf + nWritten, bufSize - nWritten);
-    }
-    else
-    {
-      // Range address
-      nWritten = writeColumnNameW(ref.colFirst, buf);
-      nWritten += unsignedToString<10>((unsigned)ref.rwFirst + 1, buf + nWritten, bufSize - nWritten);
-
-      buf[nWritten] = L':';
-      ++nWritten;
-
-      nWritten += writeColumnNameW(ref.colLast, buf + nWritten);
-      nWritten += unsignedToString<10>((unsigned)ref.rwLast + 1, buf + nWritten, bufSize - nWritten);
-    }
-
-    buf[nWritten] = L'\0';
-    return nWritten;
+  XLOIL_EXPORT uint16_t xlrefToLocalRC(
+    const msxll::XLREF12& ref,
+    wchar_t* buf,
+    size_t bufSize)
+  {
+    return writeLocalAddress<WriteRC>(ref, buf, bufSize);
   }
 
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
@@ -402,45 +410,7 @@ namespace xloil
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    return writeSheetRef(buf, bufSize, ref, sheetNm.asPString(), A1Style);
-  }
-
-  XLOIL_EXPORT std::wstring xlrefToWorkbookAddress(
-    const msxll::IDSHEET& sheet,
-    const msxll::XLREF12& ref,
-    bool A1Style)
-  {
-    return captureWStringBuffer([&](auto buf, auto sz)
-    {
-      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style);
-    });
-  }
-
-  XLOIL_EXPORT std::wstring xlrefToLocalAddress(
-    const msxll::XLREF12& ref,
-    bool A1Style)
-  {
-    return captureWStringBuffer([&](auto buf, auto sz)
-      {
-        return A1Style
-          ? xlrefToLocalA1(ref, buf, sz)
-          : xlrefToLocalRC(ref, buf, sz);
-      },
-      XL_CELL_ADDRESS_A1_MAX_LEN);
-  }
-
-  // Uses RxCy format as it's easier for the programmer 
-  // (see how much code is required above for A1 style!)
-  uint16_t xlrefToLocalRC(const XLREF12& ref, wchar_t* buf, size_t bufSize)
-  {
-    int ret;
-    // Add one everywhere here as rwFirst is zero-based but RxCy format is 1-based
-    if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
-      ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d", ref.rwFirst + 1, ref.colFirst + 1);
-    else
-      ret = _snwprintf_s(buf, bufSize, bufSize, L"R%dC%d:R%dC%d",
-        ref.rwFirst + 1, ref.colFirst + 1, ref.rwLast + 1, ref.colLast + 1);
-    return ret < 0 ? 0 : (uint16_t)ret;
+    return writeSheetAddress(buf, bufSize, ref, sheetNm.asPString(), A1Style);
   }
 
   namespace
@@ -452,7 +422,7 @@ namespace xloil
         -1, -1, -1, -1, -1, -1,
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
       };
-      uint8_t operator()(int8_t c) const
+      uint8_t operator()(int16_t c) const
       {
         return (uint8_t)((c < 'A' || c > 'z') ? -1 : _alphabet[c - 'A']);
       }
