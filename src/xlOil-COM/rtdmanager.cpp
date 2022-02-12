@@ -173,7 +173,7 @@ namespace xloil
           // Clearing _updateCallback prevents the sending of further updates 
           // which might crash Excel if sent during teardown.
           _updateCallback = nullptr;
-          _worker.quit();
+          _worker.join();
         }
         catch (const std::exception& e)
         {
