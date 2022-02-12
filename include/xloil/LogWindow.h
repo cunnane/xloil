@@ -2,6 +2,7 @@
 #include <xloil/State.h>
 #include <string>
 #include <memory>
+#include <functional>
 
 #ifndef _WINDOWS_
 #include <basetsd.h>
@@ -9,6 +10,10 @@
 DECLARE_HANDLE(HWND);
 DECLARE_HANDLE(HINSTANCE);
 DECLARE_HANDLE(HMENU);
+
+#ifndef CALLBACK
+#define CALLBACK __stdcall
+#endif
 
 typedef UINT_PTR WPARAM;
 typedef LONG_PTR LPARAM;
@@ -26,14 +31,18 @@ namespace xloil
   };
 
   std::shared_ptr<ILogWindow> createLogWindow(
-    HWND parentWindow,
+    HWND parentWindow, // can be zero
     HINSTANCE parentInstance,
     const wchar_t* winTitle,
     HMENU menuBar,
     WNDPROC menuHandler,
     size_t historySize) noexcept;
 
-  void writeLogWindow(const wchar_t* msg) noexcept;
-
-  void writeLogWindow(const char* msg) noexcept;
+  /// <summary>
+  /// Called from the XLL initialisation code to report errors before the
+  /// main logger has started.  Must be called on main thread - should be
+  /// the case since is is called from AutoOpen.
+  /// </summary>
+  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg) noexcept;
+  void loadFailureLogWindow(HINSTANCE parent, const std::string_view& msg) noexcept;
 }

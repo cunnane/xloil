@@ -26,9 +26,9 @@ using namespace std::string_literals;
 
 namespace
 {
-  void writeLog(const std::string& msg)
+  void writeLog(const string& msg) noexcept
   {
-    writeLogWindow(msg.c_str());
+    loadFailureLogWindow(XllInfo::dllHandle, msg);
   }
 }
 
@@ -83,9 +83,10 @@ namespace
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
       // TODO: add GetExceptionCode(), without using string
-      writeLogWindow("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
+      return false;
     }
     __pfnDliFailureHook2 = previousHook;
+    return true;
   }
 }
 
@@ -144,7 +145,8 @@ struct xlOilAddin
       if (traceLoad)
         writeLog(formatStr("Environment PATH=%s", getEnvVar("PATH").c_str()));
     
-      loadCore();
+      if (!loadCore())
+        writeLog("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
 
       SetDllDirectory(NULL);
 

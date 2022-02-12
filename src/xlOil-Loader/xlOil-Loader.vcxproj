@@ -59,7 +59,7 @@
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xlOil-XLL.lib;spdlog.lib;xlcall32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>xlOil.dll</DelayLoadDLLs>
       <ImportLibrary>$(OutDir)xlOil_Loader.lib</ImportLibrary>
       <ProgramDatabaseFile>$(OutDir)xlOil_Loader.pdb</ProgramDatabaseFile>
@@ -67,7 +67,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\xlOil-XLL\LogWindow.cpp" />
     <ClCompile Include="..\xlOil-XLL\XlCall.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
   </ItemGroup>
