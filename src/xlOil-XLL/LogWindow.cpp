@@ -299,15 +299,13 @@ namespace xloil
       writeLogWindow(utf16ToUtf8(msg));
     }
 
-    void writeLogWindow(const std::string_view& msg) noexcept
+  void loadFailureLogWindow(HINSTANCE parent, const std::string_view& msg) noexcept
+  {
+    // This function is always called from the main thread so can use
+    // statics and the single-threaded version of LogWindow. 
+    std::string msgStr;
+    try
     {
-      // Thread safe since C++11
-      static auto logWindow = createLogWindow(
-        0, (HINSTANCE)State::coreModuleHandle(), L"xlOil Load Failure", 0, 0, 100);
-
-      if (msg.empty() || !logWindow)
-        return;
-
       auto t = std::time(nullptr);
       tm tm;
       localtime_s(&tm, &t);
