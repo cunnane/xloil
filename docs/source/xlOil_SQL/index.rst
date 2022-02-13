@@ -39,8 +39,10 @@ appropriately.
 
 .. _xloSql:
 
-xloSql: executes a query on multiples data arrays
--------------------------------------------------
+xloSql
+------
+
+Executes a query on multiples data arrays
 
 .. function:: xloSql(Query, [Meta], [Table1], [Table2], [Table3], ...)
 
@@ -82,23 +84,23 @@ Stateful Database Functions
 
 This family of functions can be used to build up and repeatedly query an 
 in-memory database for cases where building the database on the fly using 
-:ref:`xloSql` is not performant.
+:ref:`xlOil_SQL/index:xloSql` is not performant.
 
 xloSqlDB
 ~~~~~~~~
 
 .. function:: xloSqlDB()
 
-    Returns a reference to a new database object. The functions :ref:`xloSqlDB`, :ref:`xloSqlTable`
-    and :ref:`xloSqlQuery` can be used to build up an in-memory database for the cases where
-    building these objects on the fly using :ref:`xloSql` is not performant.
+    Returns a reference to a new database object. The functions :ref:`xlOil_SQL/index:xloSqlDB`, :ref:`xlOil_SQL/index:xloSqlTable`
+    and :ref:`xlOil_SQL/index:xloSqlQuery` can be used to build up an in-memory database for the cases where
+    building these objects on the fly using :ref:`xlOil_SQL/index:xloSql` is not performant.
 
 xloSqlTable
 ~~~~~~~~~~~
 
 .. function:: xloSqlTable(Database, Data, Name, [Headings], [Query])
 
-    Creates a table in a database created with :ref:`xloSqlDB`.  The function returns a reference 
+    Creates a table in a database created with :ref:`xlOil_SQL/index:xloSqlDB`.  The function returns a reference 
     to the database: it is recommended to chain xloSqlTable calls to force execution order
     in Excel. This ensures tables are added to the database before any queries are run
 
@@ -125,12 +127,12 @@ xloSqlQuery
 .. function:: xloSqlQuery(Database, Query)
 
         Database:
-            A reference to a database originally created with :ref:`xloSqlDB` but which has
-            passed through calls to :ref:`xloSqlTable`.
+            A reference to a database originally created with :ref:`xlOil_SQL/index:xloSqlDB` but which has
+            passed through calls to :ref:`xlOil_SQL/index:xloSqlTable`.
 
         Query:
             A SQL query to execute. Tables referenced in the query must have been added 
-            to the database by :ref:`xloSqlTable` before this function is called.
+            to the database by :ref:`xlOil_SQL/index:xloSqlTable` before this function is called.
 
 
    **Examples**

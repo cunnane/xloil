@@ -33,7 +33,7 @@ invoked on the main thread.
 To call a worksheet function, use :obj:`xloil.call`. This can also invoke old-style 
 `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf>`_.
 It must be called from a non-local worksheet function on the main thread.  To access a worksheet
-function from COM use ``xloil.app().WorksheetFunction.Sum(...)`.
+function from COM use `xloil.app().WorksheetFunction.Sum(...)`.
 
 :obj:`xloil.run` and :obj:`xloil.call` have async flavours :obj:`xloil.run_async` and 
 :obj:`xloil.call_async` which return a future and can be called from any thread.
@@ -106,7 +106,7 @@ all refer to the same range.
 The square bracket operator for ranges behaves like numpy arrays in that if 
 the tuple specifies a single cell, it returns the value in that cell, otherwise 
 it returns a Range object.  To create a range consisting of a single cell
-use the :any:`xloil.Range.cells` method.
+use the `cells` method of :any:`xloil.Range`.
 
 
 Troubleshooting
