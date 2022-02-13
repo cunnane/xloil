@@ -65,7 +65,7 @@ sh.copyfile(bin_dir / 'xlOil.ini', ini_path)
 
 # Fix up the version number in the ini file
 ini_text = ini_path.read_text()
-ini_text = re.sub(r'(xlOilPythonVersion=\")[0-9.]+(\")', f"\\g<1>{target_py_ver}\\g<2>", ini_text)
+ini_text = re.sub(r'(PythonVersion=\")[0-9.]+(\")', f"\\g<1>{target_py_ver}\\g<2>", ini_text)
 ini_path.write_text(ini_text)
 
 data_files += [str(ini_path)]
