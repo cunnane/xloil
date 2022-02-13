@@ -538,14 +538,14 @@ def scan_module(module, addin=None):
     # We quickly discard modules which do not contain xloil declarations 
     pending_funcs = getattr(module, _LANDMARK_TAG, None) 
     if pending_funcs is None or not any(pending_funcs):
-        return 
+        return 0
 
     with _scan_module_mutex:
         # Check the pending funcs haven't been processed by another thread
         # then copy and clear. Other threads can enter this function triggered
         # by Excel's events
         if not any(pending_funcs):
-            return 
+            return 0
         func_list = list(pending_funcs)
         pending_funcs.clear()
 
@@ -557,6 +557,8 @@ def scan_module(module, addin=None):
 
         xloil_core.register_functions(
             func_list, module, addin, append=False)
+
+        return len(func_list)
 
 
 def register_functions(funcs, module=None, append=True):

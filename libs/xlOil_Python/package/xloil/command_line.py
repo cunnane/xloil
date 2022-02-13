@@ -97,8 +97,6 @@ def _write_python_path_to_ini(ini_txt):
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set xlOilPythonVersion
     do_replace(r'^(\s*PythonVersion\s*=).*', rf'\g<1>"{python_ver}"')
-    # Set xlOil_PythonVersion
-    do_replace(r'^(\s*xlOil_PythonVersion\s*=).*', rf'\g<1>"{python_ver}"')
     # Set XLOIL_PATH
     do_replace(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)))
 

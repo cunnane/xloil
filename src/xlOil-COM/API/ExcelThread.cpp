@@ -94,6 +94,12 @@ namespace xloil
           else
             _func();
         }
+        catch (const xloil::ComBusyException&)
+        {
+          // Even though we previously called the COM interface, it can still
+          // become 'busy' later
+          return false;
+        }
         catch (const std::exception& e)
         {
           XLO_ERROR("Error running on main thread: {}", e.what());

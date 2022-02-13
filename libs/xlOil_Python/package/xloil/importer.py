@@ -130,12 +130,21 @@ def _import_file(path, addin, workbook_name=None):
                 _module_finder.add_path(module_name, path)
 
             _module_addin_map[path] = addin
-            module = importlib.import_module(module_name)
+
+            # Force a reload if an attempt is made to load a module again.
+            # This can happen if a workbook is closed and reopened - it is
+            # difficult to get python to delete the module. Without a reload
+            # the 'pending funcs' won't be populated for the registration 
+            # machinery.
+            try:
+                module = importlib.reload(sys.modules[module_name])
+            except KeyError:
+                module = importlib.import_module(module_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
-            scan_module(module)
+            n_funcs = scan_module(module)
 
-            status.msg(f"Finished loading {path}")
+            status.msg(f"Registered {n_funcs} funcs for {path}")
 
             return module
 

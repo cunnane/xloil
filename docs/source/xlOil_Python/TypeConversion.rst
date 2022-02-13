@@ -52,20 +52,20 @@ xlOil has built-in support for the following annotations:
     * - *tuple*
       - Gives a tuple of tuple-of-tuples depending on number of input dimensions
     * - *datetime.date*
-      - See :ref:`Dates`
+      - See :ref:`xlOil_Python/TypeConversion:Dates`
     * - *datetime.datetime*
-      - See :ref:`Dates`
+      - See :ref:`xlOil_Python/TypeConversion:Dates`
     * - *pandas.DataFrame*
       - Can use the :py:class:`xloil.pandas.PDFrame` annotation for more conversion options. 
         Need to `import xloil.pandas` before use.
     * - *pandas.Timestamp*
       - Need to `import xloil.pandas` before use.
     * - :py:class:`xloil.Range`
-      - See :ref:`Range Arguments`
+      - See :ref:`xlOil_Python/TypeConversion:Range Arguments`
     * - :py:class:`xloil.AllowRange`
-      - See :ref:`Range Arguments` 
+      - See :ref:`xlOil_Python/TypeConversion:Range Arguments` 
     * - <AnyType>
-      - See :ref:`Custom Type Conversion`
+      - See :ref:`xlOil_Python/TypeConversion:Custom Type Conversion`
 
 Annotations which xlOil does not understand are ignored.
 
@@ -91,10 +91,10 @@ is specified xlOil tries the following conversions:
    * *datetime*
    * :py:class:`xloil.CellError`
    * *str*
-   * Registered custom return converters, see :ref:`Custom Return Conversion`
+   * Registered custom return converters, see :ref:`xlOil_Python/TypeConversion:Custom Return Conversion`
    * iterable
 
-If none of these succeeds, the object is placed in the cache, see :ref:`Cached Objects`
+If none of these succeeds, the object is placed in the cache, see :ref:`xlOil_Python/TypeConversion:Cached Objects`
 
 .. list-table:: Supported return type annotations
     :widths: 20 50
@@ -117,24 +117,24 @@ If none of these succeeds, the object is placed in the cache, see :ref:`Cached O
     * - *tuple*
       - A tuple of tuple-of-tuples produces a 1 or 2 dim array
     * - *datetime.date*
-      - See :ref:`Dates`
+      - See :ref:`xlOil_Python/TypeConversion:Dates`
     * - *datetime.datetime*
-      - See :ref:`Dates`
+      - See :ref:`xlOil_Python/TypeConversion:Dates`
     * - *pandas.DataFrame*
       - Can use the :py:class:`xloil.pandas.PDFrame` annotation for more conversion options. 
         Need to `import xloil.pandas` before use.
     * - *pandas.Timestamp*
       - Need to `import xloil.pandas` before use.
     * - *PIL.Image*
-      - See :ref:`Returning Images and Plots`
+      - See :ref:`xlOil_Python/TypeConversion:Returning Images and Plots`
     * - *matplotlib.pyplot.Figure*
-      - See :ref:`Returning Images and Plots`
+      - See :ref:`xlOil_Python/TypeConversion:Returning Images and Plots`
     * - :py:class:`xloil.Cache`
-      - Placed the return value in the python object cache, see :ref:`Cached Objects`.
+      - Placed the return value in the python object cache, see :ref:`xlOil_Python/TypeConversion:Cached Objects`.
     * - :py:class:`xloil.SingleValue`
       - Ensures the output will be a single cell value, not an array.
     * - <AnyType>
-      - See :ref:`Custom Return Conversion`
+      - See :ref:`xlOil_Python/TypeConversion:Custom Return Conversion`
 
 Cached Objects
 --------------
@@ -317,7 +317,7 @@ or :py:class:`xloil.converter`.
 
 A return converter can register as the handler for a specific type which enables that 
 type to be used in return annotations *and* allows xlOil to try to call 
-the converter for Excel functions with no return annotation, see :ref:`Return Types`.
+the converter for Excel functions with no return annotation, see :ref:`xlOil_Python/TypeConversion:Return Types`.
         
 
 ::

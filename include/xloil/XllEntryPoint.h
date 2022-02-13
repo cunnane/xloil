@@ -13,7 +13,7 @@ namespace xloil
 
   namespace XllInfo
   {
-    inline static HMODULE moduleHandle = NULL;
+    inline static HINSTANCE dllHandle = NULL;
     inline static std::wstring xllName;
     inline static std::wstring xllPath;
   }
@@ -58,7 +58,7 @@ namespace xloil
         try
         {
           State::initAppContext();
-          State::initCoreContext(XllInfo::moduleHandle);
+          State::initCoreContext(XllInfo::dllHandle);
           // Handle this event even if we have no registered async functions as they could be 
           // dynamically registered later
           tryCallExcel(msxll::xlEventRegister,
@@ -72,13 +72,13 @@ namespace xloil
           std::wstring errorMessages;
           theFunctions = xloil::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
           if (!errorMessages.empty())
-            writeLogWindow(errorMessages.c_str());
+            loadFailureLogWindow(XllInfo::dllHandle, errorMessages.c_str());
 
           theXllIsOpen = true;
         }
         catch (const std::exception& e)
         {
-          writeLogWindow(e.what());
+          loadFailureLogWindow(XllInfo::dllHandle, e.what());
         }
       }
       static void autoClose()
@@ -100,7 +100,7 @@ namespace xloil
   {
     if (fdwReason == DLL_PROCESS_ATTACH)
     {
-      XllInfo::moduleHandle = hinstDLL;
+      XllInfo::dllHandle = hinstDLL;
       detail::setDllPath(hinstDLL);
     }
     return TRUE;

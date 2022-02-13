@@ -9,9 +9,14 @@ namespace xloil
     {
     case ExcelType::SRef:
     {
-      // TODO: this may not work as expected in macro funcs
-      if (0 != callExcelRaw(msxll::xlSheetId, &_obj))
-        XLO_THROW("ExcelRef: call to xlSheetId failed");
+      // If we don't know th sheet ID, we first call xlSheetNm to get 
+      // the 'current' i.e. currently calculating sheet, then fetch 
+      // the sheet ID.  Calling xlSheetId directly with no argument 
+      // gets the front sheet, i.e. topmost window or 'active' sheet.
+      ExcelObj sheetName;
+      callExcelRaw(msxll::xlSheetNm, &sheetName, &from);
+      if (0 != callExcelRaw(msxll::xlSheetId, &_obj, &sheetName))
+        XLO_THROW("ExcelRef: could not determine sheet for local reference");
       const auto& r = from.val.sref.ref;
       create(_obj.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;
@@ -19,7 +24,7 @@ namespace xloil
     case ExcelType::Ref:
     {
       if (from.val.mref.lpmref->count != 1)
-        XLO_THROW("Only contiguous refs supported");
+        XLO_THROW("ExcelRef: only contiguous refs are supported");
       const auto& r = *from.val.mref.lpmref[0].reftbl;
       create(from.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
       break;
@@ -30,7 +35,6 @@ namespace xloil
   }
 
   XLOIL_EXPORT ExcelRef::ExcelRef(const std::wstring_view& address)
-    : ExcelRef(callExcel(msxll::xlfIndirect, address))
   {
     // If address contains a '!', get sheetId of that name otherwise use
     // the active sheet (which we get by passing no args)
