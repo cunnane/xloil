@@ -27,7 +27,7 @@ namespace xloil
   {
   public:
     virtual void openWindow() noexcept = 0;
-    virtual void appendMessage(const std::string& msg) noexcept = 0;
+    virtual void appendMessage(std::string&& msg) noexcept = 0;
   };
 
   std::shared_ptr<ILogWindow> createLogWindow(

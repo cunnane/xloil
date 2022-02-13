@@ -294,10 +294,10 @@ namespace xloil
     }
   }
 
-    void writeLogWindow(const std::wstring_view& msg) noexcept
-    {
-      writeLogWindow(utf16ToUtf8(msg));
-    }
+  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg) noexcept
+  {
+    loadFailureLogWindow(parent, utf16ToUtf8(msg));
+  }
 
   void loadFailureLogWindow(HINSTANCE parent, const std::string_view& msg) noexcept
   {
@@ -309,8 +309,12 @@ namespace xloil
       auto t = std::time(nullptr);
       tm tm;
       localtime_s(&tm, &t);
-      logWindow->appendMessage(std::move(
-        formatStr("%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg)));
+      msgStr = formatStr("%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg);
+
+      static auto logWindow = make_shared<LogWindow>(
+        (HWND)0, parent, L"xlOil Load Failure", (HMENU)0, (WNDPROC)0, 100);
+
+      logWindow->appendMessage(std::move(msgStr));
       logWindow->openWindow();
     }
     catch (...)
