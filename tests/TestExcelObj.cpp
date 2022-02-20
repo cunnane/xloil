@@ -63,6 +63,26 @@ namespace Tests
       Assert::IsTrue(values == vector<double>{ 1, 2, 3, 4, 5 });
     }
 
+    TEST_METHOD(TestArraySlice)
+    {
+      ExcelObj obj = { { 1, 2, 3 }, { 4, 5, 6} };
+      ExcelArray arr(obj);
+
+      {
+        auto negativeSlice = arr.slice(0, -2);
+        Assert::AreEqual(arr(0, 1).toInt(), negativeSlice(0, 0).toInt());
+      }
+
+      {
+        auto slice2d = arr.slice(0, 1, 2, 3);
+        Assert::AreEqual(arr(0, 1).toInt(), slice2d(0, 0).toInt());
+        Assert::AreEqual(2u, slice2d.nRows());
+        Assert::AreEqual(2u, slice2d.nCols());
+      }
+
+      // Out-of-bounds slice
+      Assert::ExpectException<std::out_of_range>([&]() { arr.slice(3, 0, 5, 0); });
+    }
     TEST_METHOD(TestCreateFromDate)
     {
       {

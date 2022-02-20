@@ -4,12 +4,11 @@
 
 namespace xloil
 {
-  XLOIL_EXPORT Exception::Exception(
+  XLOIL_EXPORT void logException(
     const char* path,
     const int line,
     const char* func,
     const char* msg) noexcept
-    : runtime_error(msg)
   {
     try
     {
@@ -21,7 +20,6 @@ namespace xloil
     {
     }
   }
-
 
   std::wstring writeWindowsError()
   {

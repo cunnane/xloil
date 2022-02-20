@@ -254,7 +254,7 @@ namespace xloil
 
     detail::ArrayBuilderElement operator()(size_t i)
     {
-      return detail::ArrayBuilderElement(element(i, 0), _allocator);
+      return detail::ArrayBuilderElement(_allocator.object(i), _allocator);
     }
 
     ExcelObj& element(size_t i, size_t j)

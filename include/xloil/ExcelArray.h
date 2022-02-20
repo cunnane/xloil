@@ -8,7 +8,7 @@ namespace xloil
   namespace detail
   {
     template <class TSize>
-    inline bool sliceIndices(int& from, const int to, TSize& size)
+    inline bool sliceIndices(int& from, int to, TSize& size)
     {
       if (from < 0)
       {
@@ -16,10 +16,19 @@ namespace xloil
         if (from < 0)
           return false;
       }
-      const auto end = to + (to < 0 ? size : 0);
-      const auto sz = end - from;
+      if (to < 0)
+      {
+        to += size;
+        if (to < 0)
+          return false;
+      }
+      else if (to > size)
+        return false;
+      const auto sz = to - from;
+      if (sz < 0)
+        return false;
       size = (TSize)sz;
-      return sz >= 0;
+      return true;
     }
   }
 
@@ -94,7 +103,11 @@ namespace xloil
     XLOIL_EXPORT explicit ExcelArray(const ExcelObj& obj, bool trim = true);
 
     /// <summary>
-    /// Creates an ExcelArray which is a subarry of a given one.
+    /// Creates an ExcelArray which is a subarry of a given one. It extends from 
+    /// (fromRow, fromCol) to (toRow, toCol) not including the right-hand ends.
+    /// 
+    /// Negative values for the parameters are interpreted as offsets from nRows and 
+    /// nCols respectively.
     /// </summary>
     /// <param name="arr">The parent array</param>
     /// <param name="fromRow">Starting row, included</param>
@@ -102,19 +115,22 @@ namespace xloil
     /// <param name="toRow">Ending row, not included</param>
     /// <param name="toCol">Ending column, not included</param>
     ExcelArray(const ExcelArray& arr,
-      row_t fromRow, col_t fromCol,
-      row_t toRow, col_t toCol)
+      int fromRow, int fromCol,
+      int toRow, int toCol)
       : _baseCols(arr._baseCols)
-      , _rows(toRow - fromRow)
-      , _columns(toCol - fromCol)
+      , _rows(arr.nRows())
+      , _columns(arr.nCols())
     {
-      if (!((arr.nRows() >= toRow) && (toRow > fromRow)))
-        XLO_THROW("ExcelArray row indices out of range");
-      if (!((arr.nCols() >= toCol) && (toCol > fromCol)))
-        XLO_THROW("ExcelArray column indices out of range");
-      _data = arr._data + fromRow * (row_t)_baseCols + (int)fromCol;
+      if (!detail::sliceIndices(fromRow, toRow, _rows))
+        XLO_THROW_TYPE(std::out_of_range, "Invalid sub-array row indices {0}, {1} in array of size ({2}, {3})",
+          fromRow, toRow, arr.nRows());
+      if (!detail::sliceIndices(fromCol, toCol, _columns))
+        XLO_THROW_TYPE(std::out_of_range, "Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
+          fromCol, toCol, arr.nCols());
+
+      _data = arr._data + (col_t)fromRow * _baseCols + fromCol;
     }
- 
+
     /// <summary>
     /// Retieves the i,j-th element from the array
     /// </summary>
@@ -184,16 +200,12 @@ namespace xloil
     /// Negative values for the parameters are interpreted as offsets from nRows and 
     /// nCols respectively.
     /// </summary>
-    /// <param name="fromRow"></param>
-    /// <param name="fromCol"></param>
-    /// <param name="toRow"></param>
-    /// <param name="toCol"></param>
     /// <returns></returns>
     ExcelArray slice(
       int fromRow, int fromCol,
       int toRow, int toCol) const
     {
-      return ExcelArray(fromRow, fromCol, toRow, toCol, *this);
+      return ExcelArray(*this, fromRow, fromCol, toRow, toCol);
     }
 
     row_t nRows() const { return _rows; }
@@ -320,37 +332,16 @@ namespace xloil
 
     friend class ExcelArrayIterator;
 
-    /// <summary>
-    /// Ctor used by subrange
-    /// </summary>
-    ExcelArray(
-      int fromRow, int fromCol,
-      int toRow, int toCol, const ExcelArray& arr)
-      : _baseCols(arr._baseCols)
-      , _rows(arr.nRows())
-      , _columns(arr.nCols())
-    {
-      if (!detail::sliceIndices(fromRow, toRow, _rows))
-        XLO_THROW("Invalid sub-array row indices {0}, {1} in array of size ({2}, {3})",
-          fromRow, toRow, arr.nRows());
-      if (!detail::sliceIndices(fromCol, toCol, _columns))
-        XLO_THROW("Invalid sub-array column indices {0}, {1} in array of size ({2}, {3})",
-          fromCol, toCol, arr.nCols());
-
-      _data = arr._data + (col_t)fromRow * _baseCols + fromCol;
-    }
-
-
     void checkRange(size_t row, size_t col) const
     {
       if (row >= nRows() || col >= nCols())
-        XLO_THROW("Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
+        XLO_THROW_TYPE(std::out_of_range, "Array access ({0}, {1}) out of range ({2}, {3})", row, col, nRows(), nCols());
     }
 
     void checkRange(size_t n) const
     {
       if (n >= size())
-        XLO_THROW("Array access {0} out of range {1}", n, size());
+        XLO_THROW_TYPE(std::out_of_range, "Array access {0} out of range {1}", n, size());
     }
   };
 

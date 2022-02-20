@@ -310,10 +310,13 @@ namespace xloil
     /// <summary>
     /// Construct from initialiser list
     /// </summary>
-    template <class TIter>
-    ExcelObj(std::initializer_list<TIter> vals)
+    template <class T>
+    ExcelObj(std::initializer_list<T> vals)
       : ExcelObj(vals.begin(), vals.end())
     {}
+
+    template <class T>
+    ExcelObj(std::initializer_list<std::initializer_list<T>> vals);
 
     explicit ExcelObj(const std::tm& datetime);
 
@@ -830,6 +833,35 @@ namespace xloil
     size_t idx = 0;
     for (auto i = begin; i != end; ++i, ++idx)
       builder(idx, 0) = *i;
+
+    xltype = msxll::xltypeNil;
+    *this = builder.toExcelObj();
+  }
+
+  template<class T>
+  ExcelObj::ExcelObj(std::initializer_list<std::initializer_list<T>> vals)
+  {
+    const auto nRows = vals.size();
+    const auto nCols = vals.begin()->size();
+
+    size_t stringLen = 0;
+    for (const auto& row : vals)
+    {
+      for (const auto& v : row)
+      {
+        stringLen += detail::stringLength(v);
+      }
+    }
+
+    ExcelArrayBuilder builder(nRows, nCols, stringLen);
+    size_t idx = 0;
+    for (const auto& row : vals)
+    {
+      for (const auto& v : row)
+      {
+        builder(idx++) = v;
+      }
+    }
 
     xltype = msxll::xltypeNil;
     *this = builder.toExcelObj();
