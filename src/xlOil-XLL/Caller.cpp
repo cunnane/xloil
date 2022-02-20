@@ -434,19 +434,7 @@ namespace xloil
       if (*c == What) ++c;
     }
 
-    auto parseRow(const wchar_t*& c, const wchar_t* end)
-    {
-      // Skip the dollar symbol as it doesn't impact address conversion
-      skipOne<wchar_t, L'$'>(c);
-      // Look for a base-10 number as the row number. We only read 7 digits so
-      // there is no chance of overflow. We subtract 1 as A1-refs are 1-based 
-      // but XLREF12 is zero based. This means failure to read anything will 
-      // return -1, which gives an error condition later.
-      end = std::min(c + 7, end);
-      int val = (int)parseUnsigned<10>(c, end) - 1; 
-      return val > XL_MAX_ROWS ? -1 : val;
-    }
-    auto parseCol(const wchar_t*& c, const wchar_t* last)
+    auto parseColLetters(const wchar_t*& c, const wchar_t* last)
     {
       // See notes above
       skipOne<wchar_t, L'$'>(c);
@@ -461,6 +449,36 @@ namespace xloil
       auto val = (int)detail::parseUnsigned<decltype(c), ColumnNameAlphabet, 26, 26>(c, end) - 1;
       return val > XL_MAX_COLS ? -1 : val;
     }
+    /// <summary>
+    /// Parse a number up to XL_MAX_COLS (16384), returning -1 on failure.
+    /// </summary>
+    template<size_t TNDigits, size_t TMaxVal>
+    auto readNumberPart(const wchar_t*& c, const wchar_t* end)
+    {
+      // Skip the dollar symbol as it doesn't impact address conversion
+      skipOne<wchar_t, L'$'>(c);
+      end = std::min(c + TNDigits, end);
+      int val = (int)parseUnsigned<10>(c, end) - 1;
+      return val > TMaxVal ? -1 : val;
+    }
+
+    template<wchar_t TPrefix, size_t TNDigits, size_t TMaxVal>
+    auto readPrefixedNumber(const wchar_t*& c, const wchar_t* end)
+    {
+      if (c == end)
+        return -1;
+      skipOne<wchar_t, L'$'>(c);
+      if (*c == TPrefix || *c == TPrefix + (L'a' - L'A'))
+      {
+        ++c;
+        return readNumberPart<TNDigits, TMaxVal>(c, end);
+      }
+      return -1;
+    }
+
+    constexpr auto(*parseR)(const wchar_t*&, const wchar_t*) = &readPrefixedNumber<L'R', 7, XL_MAX_ROWS>;
+    constexpr auto(*parseC)(const wchar_t*&, const wchar_t*) = &readPrefixedNumber<L'C', 5, XL_MAX_COLS>;
+    constexpr auto(*parseRowNumber)(const wchar_t*&, const wchar_t*) = &readNumberPart<7, XL_MAX_ROWS>;
   }
   
   bool localAddressToXlRef(msxll::XLREF12& r, const std::wstring_view& address)
@@ -469,23 +487,40 @@ namespace xloil
     const wchar_t* end = c + address.size();
     memset(&r, 0, sizeof(decltype(r)));
 
-    r.colFirst = parseCol(c, end);
-    r.rwFirst = parseRow(c, end);
-
-    // Look for the address separator
-    if (c < end && *c == L':')
-    {
-      ++c;
-      r.colLast = parseCol(c, end);
-      r.rwLast = parseRow(c, end);
-    }
-    else if (c == end) 
+    r.colFirst = parseColLetters(c, end);
+    r.rwFirst = parseRowNumber(c, end);
+    
+    if (c == end)
     {
       r.colLast = r.colFirst;
-      r.rwLast  = r.rwFirst;
+      r.rwLast = r.rwFirst;
+    } 
+    else if (*c == L':') // Look for the address separator
+    {
+      ++c;
+      r.colLast = parseColLetters(c, end);
+      r.rwLast = parseRowNumber(c, end);
     }
-    else
-      return false; // Trailing unparsable characters
+    else 
+    {
+      // Failed to read address as A1-type, try RC-type.  We know that 
+      // The first Rxxx will have been read by the A1-parser as the 
+      // row number.
+      r.colFirst = parseC(c, end);
+      if (c == end)
+      {
+        r.colLast = r.colFirst;
+        r.rwLast = r.rwFirst;
+      }
+      else if (*c == L':')
+      {
+        ++c;
+        r.rwLast = parseR(c, end);
+        r.colLast = parseC(c, end);
+      }
+      else
+        return false;
+    }
 
     // Return true if parsing was successful
     return r.colFirst >= 0 && r.rwFirst >= 0 && r.rwLast >= 0 && r.colLast >= 0;

@@ -200,15 +200,12 @@ namespace xloil
   }
 
   /// <summary>
-  /// Parses a local Excel ref (not including sheet name) such as 'A1' or 'A1:Z9'
-  /// to an XLREF12 object. Returns false if the string could not be parsed into
-  /// a valid XLREF12 and sets the offending members to -1.
+  /// Parses a local Excel ref (not including sheet name) from a string such as 
+  /// 'A1' or 'A1:Z9' or 'R1C4' to an XLREF12 object. Returns false if the string 
+  /// could not be parsed into a valid XLREF12 and sets the offending members to -1.
   /// </summary>
-  /// <param name="r"></param>
-  /// <param name="address"></param>
-  /// <returns></returns>
   XLOIL_EXPORT bool localAddressToXlRef(
-    msxll::XLREF12& r,
+    msxll::XLREF12& result,
     const std::wstring_view& address);
 
   /// <summary>

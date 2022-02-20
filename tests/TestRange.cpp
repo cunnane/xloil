@@ -63,16 +63,20 @@ namespace Tests
       }
     }
 
-    void xlRefRoundTrip(const msxll::XLREF12& ref, bool lowerCase = false)
+    void xlRefRoundTrip(const msxll::XLREF12& ref, bool lowerCase = false, bool a1style = true)
     {
-      wchar_t address[XL_FULL_ADDRESS_A1_MAX_LEN];
-      xlrefToLocalA1(ref, address, _countof(address));
+      wchar_t address[std::max(XL_FULL_ADDRESS_A1_MAX_LEN, XL_FULL_ADDRESS_RC_MAX_LEN)];
+      if (a1style)
+        xlrefToLocalA1(ref, address, _countof(address));
+      else
+        xlrefToLocalRC(ref, address, _countof(address));
       if (lowerCase)
         std::transform(address, address + _countof(address), address, towlower);
       msxll::XLREF12 outRef;
       localAddressToXlRef(outRef, address);
       Assert::AreEqual(ref, outRef);
     }
+
     TEST_METHOD(TestAddressParseA1)
     {
       for (auto i = 1; i < XL_MAX_ROWS; i += 100)
@@ -97,7 +101,28 @@ namespace Tests
       Assert::IsTrue(localAddressToXlRef(outRef, L"$A1"));
       Assert::IsTrue(localAddressToXlRef(outRef, L"$A1:B$1"));
     }
+    TEST_METHOD(TestAddressParseRC)
+    {
+      for (auto i = 1; i < XL_MAX_ROWS; i += 100)
+      {
+        xlRefRoundTrip(msxll::XLREF12{ 1, i, 1, 1 }, false, false);
+      }
+      for (auto j = 1; j < XL_MAX_COLS; j += 100)
+      {
+        xlRefRoundTrip(msxll::XLREF12{ 1, 1, j, j }, false, false);
+      }
+      for (auto j = 1; j < XL_MAX_COLS; j += 100)
+      {
+        xlRefRoundTrip(msxll::XLREF12{ 1, j, 1, j }, true, false);
+      }
 
+      msxll::XLREF12 outRef;
+
+      Assert::IsFalse(localAddressToXlRef(outRef, L"R1-C1"));
+
+      Assert::IsTrue(localAddressToXlRef(outRef, L"$R1C1"));
+      Assert::IsTrue(localAddressToXlRef(outRef, L"$R1C1:R2$C1"));
+    }
     TEST_METHOD(TestAddressWriteA1)
     {
       uint8_t len;
