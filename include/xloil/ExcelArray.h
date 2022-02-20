@@ -22,7 +22,7 @@ namespace xloil
         if (to < 0)
           return false;
       }
-      else if (to > size)
+      else if (to > (int)size)
         return false;
       const auto sz = to - from;
       if (sz < 0)
