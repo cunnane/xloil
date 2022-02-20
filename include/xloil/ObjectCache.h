@@ -5,6 +5,7 @@
 #include <xloil/Caller.h>
 #include <xloil/Throw.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <string_view>
 #include <mutex>
 
@@ -21,114 +22,23 @@ namespace xloil
     wchar_t value;
   };
 
+  template<wchar_t Value>
+  struct CacheUniquifierIs
+  {
+    static constexpr wchar_t value = Value;
+  };
+
   namespace detail
   {
-    template<uint16_t NPadding>
-    inline auto writeCacheId(
-      const CallerInfo& caller, const std::wstring_view& optionalName)
+    struct SharedPtrToPtr
     {
-      const auto nameLength = optionalName.size();
-      const auto pstrLength = 
-        caller.addressLength(CallerInfo::RC) 
-        + optionalName.size() 
-        + NPadding + 1u; // Padding for the ",XX" at the end and 1 for the uniquifier
-      PString<> pascalStr((uint16_t)pstrLength);
-      auto* buf = pascalStr.pstr() + 1;
-
-      int nWritten = 1; // Leave space for uniquifier
-
-      nWritten += caller.writeAddress(buf, pstrLength - 1);
-      // Check for a negative return condition from the above. This should not
-      // be possible as we made the buffer larger than the addres length
-      assert(nWritten - 1 > 0 && nWritten <= caller.addressLength(CallerInfo::RC) + 1);
-
-      if (nameLength != 0)
-        wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName.data(), nameLength);
-
-      // Fix up length
-      pascalStr.resize(uint16_t(nWritten + nameLength + NPadding));
-
-      return pascalStr;
-    }
-
-    // We need to explicitly define our own lookup function for undordered_map
-    // to use string_view objects without copying.  In std::map the find function 
-    // is templated on the key type so we're just replicating that behaviour.
-    template<class Val>
-    struct Lookup : public std::unordered_map<std::wstring, Val>
-    {
-      using base = typename std::unordered_map<std::wstring, Val>;
-
-      template <class T>
-      _NODISCARD typename base::const_iterator search(const T& _Keyval) const
+      template<class T>
+      intptr_t operator()(const T& obj)
       {
-        size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
-        for (auto _Where = begin(_Bucket); _Where != end(_Bucket); ++_Where)
-          if (_Where->first == _Keyval)
-            return _Where;
-        return (end());
-      }
-      template <class T>
-      _NODISCARD typename base::iterator search(const T& _Keyval)
-      {
-        size_type _Bucket = std::hash<T>()(_Keyval) & _Mask;
-        for (auto _Where = begin(_Bucket); _Where != end(_Bucket); ++_Where)
-          if (_Where->first == _Keyval)
-            return _Where;
-        return (end());
-      }
-    };
-
-    template<typename TObj>
-    class CellCache
-    {
-    private:
-      size_t _calcId;
-      std::vector<TObj> _objects;
-      TObj _obj;
-
-    public:
-      CellCache(TObj&& obj, size_t calcId)
-        : _calcId(calcId)
-        , _obj(std::move(obj))
-      {}
-
-      void getStaleObjects(size_t calcId, std::vector<TObj>& stale)
-      {
-        if (_calcId != calcId)
-        {
-          _objects.swap(stale);
-          stale.emplace_back(std::move(_obj));
-        }
-      }
-
-      size_t count() const { return _objects.size() + 1; }
-
-      size_t add(TObj&& obj, size_t calcId)
-      {
-        if (_calcId != calcId)
-        {
-          std::swap(_obj, obj);
-          _calcId = calcId;
-          _objects.clear();
-        }
-        else
-          _objects.emplace_back(std::forward<TObj>(obj));
-        return _objects.size();
-      }
-
-      const TObj* fetch(size_t i) const
-      {
-        if (i == 0)
-          return &_obj;
-        else if (i <= _objects.size())
-          return &_objects[i - 1];
-        else
-          return nullptr;
+        return (intptr_t)obj.get();
       }
     };
   }
-
   /// <summary>
   /// Creates a dictionary of TObj indexed by cell address.
   /// The cell address used is determined from the currently executing cell
@@ -152,27 +62,163 @@ namespace xloil
   /// PyObject* obj = theCache.fetch(refStr);
   /// </code>
   /// </summary>
-  template<class TObj, class TUniquifier, bool TReverseLookup = false>
+  /// 
+  template<class TObj, class TUniquifier, class ToPtr = detail::SharedPtrToPtr>
   class ObjectCache
   {
-  private:
-    typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
-    typedef detail::CellCache<TObj> CellCache;
-
-    detail::Lookup<CellCache> _cache;
-    mutable std::mutex _cacheLock;
-
-    size_t _calcId;
-
-    struct Reverse
+    template <class, class = void>
+    struct DefaultTag
     {
-      std::unordered_map<const TObj*, std::wstring> map;
-      mutable std::mutex lock;
+      static constexpr std::wstring_view value = std::wstring_view();
     };
-    typename std::conditional<TReverseLookup, Reverse, char>::type _reverseLookup;
+
+    template <class T>
+    struct DefaultTag<T, std::void_t<decltype(T::tag)>>
+    {
+      static constexpr std::wstring_view value = T::tag;
+    };
+
+  public:
+    using this_t = ObjectCache<TObj, TUniquifier, ToPtr>;
+    static constexpr auto defaultTag = DefaultTag<TUniquifier>::value;
+
+    struct Entry
+    {
+      TObj obj;
+      CallerInfo caller;
+    };
+
+    struct Key
+    {
+      intptr_t ptr;
+      uint32_t calcId;
+
+      auto operator==(const Key& that) const
+      {
+        return calcId == that.calcId && ptr == that.ptr;
+      }
+    };
+
+    struct KeyHash
+    {
+      size_t operator()(const Key& p) const noexcept
+      {
+        return boost_hash_combine(377, p.calcId, p.ptr);
+      }
+    };
+
+  private:
+    std::unordered_map<Key, Entry, KeyHash> _cache;
+
+    mutable std::mutex _cacheLock;
+    enum class Reaper { STOPPED = 0, PAUSED = 1, RUNNING = 2 };
+    mutable std::atomic<Reaper> _reaperState;
+    std::thread _reaper;
+    std::condition_variable _reaperCycle;
+
+    std::unordered_set<std::wstring> _closedWorkbooks;
+
+    uint32_t _calcId;
+    TUniquifier _uniquifier;
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
+    std::shared_ptr<const void> _workbookOpenHandler;
+
+    static constexpr uint8_t _PrefixLength = 2;
+    static constexpr uint8_t _KeyLength = _PrefixLength + sizeof(Key);
+    static constexpr auto _ReaperSleepTime = std::chrono::seconds(10);
+    static constexpr wchar_t _CachePrefix = L'©';
+    static constexpr uint16_t _CacheCharMask = 0x0100;
+
+    // Created via factory function
+    ObjectCache()
+      : _calcId(1)
+    {
+      _reaperState = Reaper::RUNNING;
+      _reaper = std::thread(&this_t::reaperMain, this);
+    }
+
+  public:
+    ~ObjectCache()
+    {
+      _reaperState = Reaper::STOPPED;
+      _reaperCycle.notify_one();
+      _reaper.join();
+    }
+
+    static auto create()
+    {
+      auto p = std::shared_ptr<this_t>(new this_t);
+
+      p->_calcEndHandler =
+        xloil::Event::AfterCalculate().weakBind(
+          std::weak_ptr<this_t>(p), &this_t::onAfterCalculate);
+
+      p->_workbookCloseHandler =
+        xloil::Event::WorkbookAfterClose().weakBind(
+          std::weak_ptr<this_t>(p), &this_t::onWorkbookClose);
+
+      p->_workbookOpenHandler =
+        xloil::Event::WorkbookOpen().weakBind(
+          std::weak_ptr<this_t>(p), &this_t::onWorkbookOpen);
+
+      return p;
+    }
+
+    bool valid(const std::wstring_view& cacheString) const
+    {
+      static_assert(_PrefixLength == 2);
+      return cacheString.size() >= _KeyLength
+        && cacheString[0] == _CachePrefix
+        && cacheString[1] == _uniquifier.value;
+    }
+
+    const TObj* fetch(const std::wstring_view& key) const
+    {
+      if (key.size() < _KeyLength)
+        return nullptr;
+
+      auto keyVal = strToKey(key);
+
+      std::scoped_lock lock(std::adopt_lock, signalAndLock());
+
+      const auto found = _cache.find(keyVal);
+      return found == _cache.end()
+        ? nullptr
+        : &found->second.obj;
+    }
+
+    PString<wchar_t> add(
+      TObj&& obj,
+      CallerInfo&& caller = CallerInfo(),
+      const std::wstring_view& tag = defaultTag)
+    {
+      Entry entry{ std::move(obj), std::move(caller) };
+      Key   key{ ToPtr()(entry.obj), _calcId };
+
+      decltype(_cache)::iterator i;
+      bool success;
+      {
+        std::scoped_lock lock(std::adopt_lock, signalAndLock());
+        std::tie(i, success) = _cache.try_emplace(std::move(key), std::move(entry));
+
+        assert(success);
+        assert(i->first.ptr == ToPtr()(i->second.obj));
+      }
+
+      return keyToStr(i->first, tag);
+    }
+
+    auto reap()
+    {
+      std::unique_lock<std::mutex> lock(_cacheLock);
+      lock.unlock();
+      _reaperCycle.notify_one();
+      Sleep(50);
+      lock.lock();
+      return _cache.size();
+    }
 
     void onAfterCalculate()
     {
@@ -180,191 +226,135 @@ namespace xloil
       ++_calcId; // Wraps at MAX_UINT - but this doesn't matter
     }
 
-    /// <summary>
-    /// Used to append cell count to end of reference
-    /// </summary>
-    static constexpr uint8_t PADDING = 2;
-
-    TUniquifier _uniquifier;
-
-    ObjectCache()
-      : _calcId(1)
-    {}
-
-  public:
-    static auto create(bool reapOnWorkbookClose = true)
-    {
-      auto p = std::shared_ptr<ObjectCache>(new ObjectCache);
-      p->_calcEndHandler =
-        xloil::Event::AfterCalculate().weakBind(std::weak_ptr<ObjectCache>(p), &self::onAfterCalculate);
-
-      if (reapOnWorkbookClose)
-        p->_workbookCloseHandler =
-        xloil::Event::WorkbookAfterClose().weakBind(std::weak_ptr<ObjectCache>(p), &self::onWorkbookClose);
-
-      return p;
-    }
-
-    const TObj* fetch(const std::wstring_view& key) const
-    {
-      if (key.size() < PADDING) return nullptr;
-
-      const auto iResult = readCount(key[key.size() - 1]);
-      const auto cacheKey = key.substr(0, key.size() - PADDING);
-
-      std::scoped_lock lock(_cacheLock);
-      const auto found = _cache.search(cacheKey);
-
-      return found == _cache.end()
-        ? nullptr
-        : found->second.fetch(iResult);
-    }
-
-    ExcelObj add(
-      TObj&& obj,
-      const CallerInfo& caller = CallerInfo(),
-      const std::wstring_view& name = std::wstring_view())
-    {
-      auto fullKey = detail::writeCacheId<PADDING>(caller, name);
-      fullKey[0] = _uniquifier.value;
-
-      auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
-
-      typename std::conditional<TReverseLookup, std::vector<TObj>, char>::type staleObjects;
-      decltype(_cache)::iterator found;
-
-      uint8_t iPos = 0;
-      {
-        std::scoped_lock lock(_cacheLock);
-
-        found = _cache.search(cacheKey);
-        if (found == _cache.end())
-        {
-          found = _cache.emplace(
-            std::make_pair(
-              std::wstring(cacheKey),
-              CellCache(std::forward<TObj>(obj), _calcId))).first;
-        }
-        else
-        {
-          if constexpr (TReverseLookup)
-            found->second.getStaleObjects(_calcId, staleObjects);
-
-          iPos = (uint8_t)found->second.add(std::forward<TObj>(obj), _calcId);
-        }
-      }
-
-      writeCount(fullKey.end() - PADDING, iPos);
-
-      if constexpr (TReverseLookup)
-      {
-        std::scoped_lock lock(_reverseLookup.lock);
-        for (auto& x : staleObjects)
-          _reverseLookup.map.erase(&x);
-        _reverseLookup.map.insert(std::make_pair(
-          found->second.fetch(iPos),
-          fullKey.string()));
-      }
-
-      return ExcelObj(std::move(fullKey));
-    }
-
-    /// <summary>
-    /// Remove the given cache reference and any associated objects
-    /// This should only be called with manually specifed cache reference
-    /// strings. Note the counter (,NNN) after the cache reference is ignored
-    /// if specifed and all matching objects are removed.
-    /// </summary>
-    /// <param name="key">cache reference to remove</param>
-    /// <returns>true if removal succeeded, otherwise false</returns>
-    bool erase(const std::wstring_view& key)
-    {
-      auto cacheKey = key.substr(0, key.length() - PADDING);
-
-      std::scoped_lock lock(_cacheLock);
-      auto found = _cache.search(cacheKey);
-      if (found == _cache.end())
-        return false;
-      _cache.erase(found);
-      return true;
-    }
-
     void onWorkbookClose(const wchar_t* wbName)
     {
-      // Called by Excel Event so will always be synchonised
-      const auto len = wcslen(wbName);
-      auto i = _cache.begin();
-      while (i != _cache.end())
+      // Called by Excel Event so will always be synchronised
+      std::scoped_lock lock(std::adopt_lock, signalAndLock());
+      _closedWorkbooks.insert(wbName);
+    }
+
+    void onWorkbookOpen(const wchar_t* /*wbPath*/, const wchar_t* wbName)
+    {
+      std::scoped_lock lock(std::adopt_lock, signalAndLock());
+      _closedWorkbooks.erase(wbName);
+    }
+
+    auto begin() const { return _cache.cbegin(); }
+
+    auto end() const { return _cache.cend(); }
+
+    PString<wchar_t> keyToStr(
+      const Key& key,
+      const std::wstring_view& tag = defaultTag) const
+    {
+      const auto tagLen = (uint8_t)tag.size();
+      PString<> result(_KeyLength + tagLen);
+
+      auto pStr = result.pstr();
+
+      *pStr++ = _CachePrefix;
+      *pStr++ = _uniquifier.value;
+
+      if (tagLen > 0)
       {
-        // Key looks like UNIQ[WbName]BlahBlah, so skip 2 chars and check for match
-        if (wcsncmp(wbName, i->first.c_str() + 2, len) == 0)
-        {
-          if constexpr (TReverseLookup)
-          {
-            auto& cellCache = i->second;
-            for (size_t k = 0; k < cellCache.count(); ++k)
-              _reverseLookup.map.erase(cellCache.fetch(k));
-          }
-          i = _cache.erase(i);
-        }
-        else
-          ++i;
+        wmemcpy(pStr, tag.data(), tagLen);
+        pStr += tagLen;
       }
-    }
 
-    auto begin() const
-    {
-      return _cache.cbegin();
-    }
+      auto pKey = (const char*)&key;
+      const auto pEnd = pKey + sizeof(Key);
+      for (; pKey != pEnd; ++pStr, ++pKey)
+        *pStr = (_CacheCharMask | *pKey);
 
-    auto end() const
-    {
-      return _cache.cend();
-    }
-
-    std::wstring writeKey(
-      const std::wstring_view& cacheKey,
-      size_t count) const
-    {
-      std::wstring key;
-      key.resize(cacheKey.length() + PADDING);
-      key = cacheKey;
-      writeCount(key.data() + cacheKey.length(), count);
-      return key;
-    }
-
-    bool valid(const std::wstring_view& cacheString)
-    {
-      return cacheString.size() > 4
-        && cacheString[0] == _uniquifier.value
-        && cacheString[1] == L'['
-        && cacheString[cacheString.length() - PADDING] == L',';
-    }
-
-    template<bool B = TReverseLookup>
-    std::enable_if_t<B, const std::wstring*>
-      findKey(const TObj* obj) const
-    {
-      if constexpr (TReverseLookup)
-      {
-        auto found = _reverseLookup.map.find(obj);
-        return found == _reverseLookup.map.end() ? nullptr : &found->second;
-      }
+      return std::move(result);
     }
 
   private:
 
-    size_t readCount(wchar_t count) const
+    Key strToKey(const std::wstring_view& str) const
     {
-      return (size_t)(count - 65);
+      Key key;
+      auto pStr = (char*)(str.data() + str.size() - _KeyLength + _PrefixLength);
+
+      auto pKey = (char*)&key;
+      const auto pEnd = pKey + sizeof(Key);
+      for (; pKey != pEnd; pStr += 2, ++pKey)
+        *pKey = *pStr;
+
+      return std::move(key);
     }
 
-    /// Add cell object count in form ",X"
-    void writeCount(wchar_t* key, size_t iPos) const
+    auto& signalAndLock() const
     {
-      key[0] = L',';
-      // An offset of 65 means we start with 'A'
-      key[1] = (wchar_t)(iPos + 65);
+      _reaperState = Reaper::PAUSED;
+      _cacheLock.lock();
+      _reaperState = Reaper::RUNNING;
+      return _cacheLock;
+    }
+
+    void reaperMain()
+    {
+      std::unordered_map<std::wstring, Key> lastCalcId;
+      std::unordered_set<Key, KeyHash> keysToRemove;
+      std::list<decltype(_cache)::node_type> nodesToDelete;
+
+      while (_reaperState != Reaper::STOPPED)
+      {
+        nodesToDelete.clear();
+
+        std::unique_lock<std::mutex> lock(_cacheLock);
+        _reaperCycle.wait_for(lock, _ReaperSleepTime);
+
+        if (_reaperState == Reaper::STOPPED)
+          break;
+
+        do
+        {
+          for (auto& k : keysToRemove)
+            nodesToDelete.emplace_back(_cache.extract(k));
+
+          keysToRemove.clear();
+
+          for (auto& [key, val] : _cache)
+          {
+            if (_reaperState <= Reaper::PAUSED)
+              break;
+
+            // TODO: in C++20 use 'contains' and avoid temp string
+            if (_closedWorkbooks.count(std::wstring(val.caller.workbook())))
+            {
+              keysToRemove.insert(key);
+            }
+            else
+            {
+              const auto address = val.caller.writeAddress();
+              auto found = lastCalcId.find(address);
+              if (found != lastCalcId.end())
+              {
+                auto& mostRecentKey = found->second;
+                if (key.calcId < mostRecentKey.calcId)
+                  keysToRemove.insert(key);
+                else if (key.calcId > mostRecentKey.calcId)
+                {
+                  keysToRemove.insert(mostRecentKey);
+                  lastCalcId.insert_or_assign(found, address, key);
+                }
+              }
+              else
+              {
+                lastCalcId[address] = key;
+                // TODO: lastCalcId.emplace(address, i->first.calcId);
+              }
+            }
+          }
+
+          // If we exited the above loop naturally, we've dealt with all the
+          // closed workbooks
+          if (_reaperState == Reaper::RUNNING)
+            _closedWorkbooks.clear();
+
+        } while (!keysToRemove.empty());
+      }
     }
   };
 
@@ -372,7 +362,7 @@ namespace xloil
   struct ObjectCacheFactory
   {
     static auto& cache() {
-      static auto theInstance = ObjectCache<T, CacheUniquifier<T>, false>::create();
+      static auto theInstance = ObjectCache<T, CacheUniquifier<T>>::create();
       return *theInstance;
     }
   };

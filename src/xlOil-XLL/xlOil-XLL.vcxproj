@@ -126,6 +126,7 @@
   <ItemGroup>
     <ClInclude Include="ExcelCallMapping.h" />
     <ClInclude Include="FuncRegistry.h" />
+    <ClInclude Include="ObjectCacheSingleThread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

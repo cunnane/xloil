@@ -38,15 +38,15 @@ namespace xloil
     template<class T> struct StringTraits {};
   }
 
-  template <class TChar = wchar_t>
+  template <class TChar>
   class PStringImpl
   {
   public:
     using size_type = TChar;
+    using char_type = TChar;
     static constexpr size_type npos = size_type(-1);
     static constexpr size_t max_length = (TChar)-1 - 1;
     using traits = std::char_traits<TChar>;
-
 
     /// <summary>
     /// Returns true if the string is empty
@@ -64,22 +64,22 @@ namespace xloil
     /// string::c_str, however, the string data is not guaranteed to be
     /// null-terminated.
     /// </summary>
-    const TChar* pstr() const { return _data + 1; }
-    TChar* pstr() { return _data + 1; }
+    const char_type* pstr() const { return _data + 1; }
+    char_type* pstr() { return _data + 1; }
 
     /// <summary>
     /// Returns an iterator (really a pointer) to the beginning of the 
     /// string data.
     /// </summary>
-    const TChar* begin() const { return _data + 1; }
-    TChar* begin() { return _data + 1; }
+    const char_type* begin() const { return _data + 1; }
+    char_type* begin() { return _data + 1; }
 
     /// <summary>
     /// Returns an iterator (really a pointer) to the end of the 
     /// string data (just past the last character).
     /// </summary>
-    const TChar* end() const { return _data + 1 + length(); }
-    TChar* end() { return _data + 1 + length(); }
+    const char_type* end() const { return _data + 1 + length(); }
+    char_type* end() { return _data + 1 + length(); }
 
     /// <summary>
     /// Copy the contents of another Pascal string into this one. Throws
@@ -117,16 +117,16 @@ namespace xloil
       return !(*this == that);
     }
 
-    wchar_t& operator[](const size_type i)
+    char_type& operator[](const size_type i)
     {
       return _data[i + 1];
     }
-    wchar_t operator[](const size_type i) const
+    char_type operator[](const size_type i) const
     {
       return _data[i + 1];
     }
 
-    operator std::basic_string_view<TChar>() const
+    operator std::basic_string_view<char_type>() const
     {
       return view();
     }
@@ -136,7 +136,7 @@ namespace xloil
     /// starting at <paramref name="start"/>. Returns true if successful or false
     /// if the internal buffer is too short.
     /// </summary>
-    bool replace(TChar start, size_t len, const TChar* str)
+    bool replace(char_type start, size_t len, const char_type* str)
     {
       if (start + len > length())
         return false;
@@ -150,7 +150,7 @@ namespace xloil
     /// starting at the beginning. Returns true if successful or false if the
     /// internal buffer is too short.
     /// </summary>
-    bool replace(size_t len, const TChar* str)
+    bool replace(size_t len, const char_type* str)
     {
       return replace(0, len, str);
     }
@@ -159,16 +159,16 @@ namespace xloil
     /// Returns an STL string representation of the pascal string. This
     /// copies the string data.
     /// </summary>
-    std::basic_string<TChar> string() const
+    std::basic_string<char_type> string() const
     {
-      return std::basic_string<TChar>(pstr(), pstr() + length());
+      return std::basic_string<char_type>(pstr(), pstr() + length());
     }
 
     /// <summary>
     /// Searches forward for the specified char returning its the offset
     /// of its first occurence or npos if not found.
     /// </summary>
-    size_type find(TChar needle, size_type pos = 0) const
+    size_type find(char_type needle, size_type pos = 0) const
     {
       auto p = traits::find(pstr() + pos, length(), needle);
       return p ? (size_type)(p - pstr()) : npos;
@@ -178,7 +178,7 @@ namespace xloil
     /// Searches backward for the specified char returning its the offset
     /// of its last occurence or npos if not found.
     /// </summary>
-    size_type rfind(TChar needle, size_type pos = npos) const
+    size_type rfind(char_type needle, size_type pos = npos) const
     {
       auto p = wmemrchr(
         pstr() + (pos == npos ? length() : pos), 
@@ -191,25 +191,33 @@ namespace xloil
     /// Returns a STL string_view of the string data or, optionally,
     /// a substring of it.
     /// </summary>
-    std::basic_string_view<TChar> view(size_type from = 0, size_type count = npos) const
+    std::basic_string_view<char_type> view(size_type from = 0, size_type count = npos) const
     {
-      return std::basic_string_view<TChar>(
+      return std::basic_string_view<char_type>(
         pstr() + from, count != npos ? count : length() - from);
     }
 
-    static TChar bound(size_t len)
+    static char_type bound(size_t len)
     {
-      return (TChar)(max_length < len ? max_length : len);
+      return (char_type)(max_length < len ? max_length : len);
     }
 
+    /// <summary>
+    /// Like strtok but for PString. Just like strtok the source string is modified.
+    /// Returns an empty PStringView when there are no more tokens.
+    /// </summary>
+    /// <param name="delims"></param>
+    /// <returns></returns>
+    PStringView<char_type> strtok(const char_type* delims);
+    
   protected:
-    TChar* _data;
+    char_type* _data;
 
-    PStringImpl(TChar* data)
+    PStringImpl(char_type* data)
       : _data(data)
     {}
 
-    void writeOrThrow(const TChar* str, size_t len)
+    void writeOrThrow(const char_type* str, size_t len)
     {
       if (!replace(len, str))
         throw std::out_of_range(
@@ -218,10 +226,13 @@ namespace xloil
       _data[0] = (TChar)len;
     }
 
-    void overwrite(const TChar* source, TChar len)
+    void overwrite(const char_type* source, TChar len)
     {
       traits::copy(_data + 1, source, len);
     }
+
+    //TSuper* cast()             { return (TSuper*)this; }
+    //const TSuper* cast() const { return (TSuper*)this; }
   };
 
   /// <summary>
@@ -320,6 +331,16 @@ namespace xloil
       _alloc.deallocate(_data, length() + (size_type)1);
     }
 
+    operator PStringView<char_type>() const
+    {
+      return PStringView<char_type>(_data);
+    }
+
+    operator PStringView<char_type>()
+    {
+      return PStringView<char_type>(_data);
+    }
+
     /// <summary>
     /// Take ownership of a Pascal string buffer, constructed externally, ideally
     /// with the same allocator
@@ -339,9 +360,9 @@ namespace xloil
     }
 
     /// <summary>
-  /// Writes the given null-terminated string into the buffer, raising an error
-  /// if the buffer is too short.
-  /// </summary>
+    /// Writes the given null-terminated string into the buffer, raising an error
+    /// if the buffer is too short.
+    /// </summary>
     PStringImpl& operator=(const TChar* str)
     {
       const auto len = bound(traits::length(str));
@@ -452,59 +473,53 @@ namespace xloil
       else
         throw std::out_of_range("Cannot increase size of PStringView");
     }
-
-    /// <summary>
-    /// Like strtok but for PString. Just like strtok the source string is modified.
-    /// Returns an empty PStringView when there are no more tokens.
-    /// </summary>
-    /// <param name="delims"></param>
-    /// <returns></returns>
-    PStringView strtok(const TChar* delims)
-    {
-      const auto nDelims = traits::length(delims);
-
-      // If a previous PString is passed in, we will have tokenised the string
-      // into [n]token[m]remaining, so the end() iterator should point to [m].
-      // Otherwise we start with our own _data buffer.
-      auto* p = _data;
-      if (!p)
-        return PStringView();
-
-      // First character is length
-      const auto stringLen = *p++;
-      const auto pEnd = p + stringLen;
-
-      // p points to the first char in the string, step until we are not
-      // pointing at a delimiter. If we hit the end of the string, there
-      // are no more tokens, so return a null PString.
-      while (traits::find(delims, nDelims, *p))
-        if (++p == pEnd)
-          return PStringView();
-
-      // p now points the first non-delimiter, the start of our token
-      auto* token = p;
-
-      // Find the next delimiter
-      while (p < pEnd && !traits::find(delims, nDelims, *p)) ++p;
-      const auto tokenLen = (TChar)(p - token);
-
-      // We know token[-1] must point to a delimiter or a length count,
-      // so it is safe to overwrite with the token length
-      token[-1] = tokenLen;
-
-      // If there still more string, overwrite p (which points to a delimiter)
-      // with the remaining length for subsequent calls to strtok.
-      if (p < pEnd)
-      {
-        *p = (TChar)(pEnd - p - 1);
-        _data = p;
-      }
-      else
-        _data = nullptr;
-      return PStringView(token - 1);
-    }
   };
 
+  template <class TChar>
+  PStringView<TChar> PStringImpl<TChar>::strtok(const TChar* delims)
+  {
+    const auto nDelims = traits::length(delims);
+
+    // If a previous PString is passed in, we will have tokenised the string
+    // into [n]token[m]remaining, so the end() iterator should point to [m].
+    // Otherwise we start with our own _data buffer.
+    auto* p = _data;
+    if (!p)
+      return PStringView();
+
+    // First character is length
+    const auto stringLen = *p++;
+    const auto pEnd = p + stringLen;
+
+    // p points to the first char in the string, step until we are not
+    // pointing at a delimiter. If we hit the end of the string, there
+    // are no more tokens, so return a null PString.
+    while (traits::find(delims, nDelims, *p))
+      if (++p == pEnd)
+        return PStringView();
+
+    // p now points the first non-delimiter, the start of our token
+    auto* token = p;
+
+    // Find the next delimiter
+    while (p < pEnd && !traits::find(delims, nDelims, *p)) ++p;
+    const auto tokenLen = (TChar)(p - token);
+
+    // We know token[-1] must point to a delimiter or a length count,
+    // so it is safe to overwrite with the token length
+    token[-1] = tokenLen;
+
+    // If there still more string, overwrite p (which points to a delimiter)
+    // with the remaining length for subsequent calls to strtok.
+    if (p < pEnd)
+    {
+      *p = (TChar)(pEnd - p - 1);
+      _data = p;
+    }
+    else
+      _data = nullptr;
+    return PStringView(token - 1);
+  }
   namespace detail
   {
     template <class TChar>

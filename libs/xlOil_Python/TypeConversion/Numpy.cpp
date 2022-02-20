@@ -510,7 +510,7 @@ namespace xloil
           builder(j, 0).emplace(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
         
         return _cache
-          ? makeCached<ExcelObj>(builder.toExcelObj())
+          ? ExcelObj(makeCached<ExcelObj>(builder.toExcelObj()))
           : builder.toExcelObj();
       }
     };
@@ -543,7 +543,7 @@ namespace xloil
             builder(i, j).emplace(converter.toExcelObj(builder, PyArray_GETPTR2(pyArr, i, j)));
 
         return _cache
-          ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
+          ? ExcelObj(xloil::makeCached<ExcelObj>(builder.toExcelObj()))
           : builder.toExcelObj();
       }
     };

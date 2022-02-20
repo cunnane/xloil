@@ -9,6 +9,7 @@ using std::make_unique;
 using fmt::format;
 using std::vector;
 using std::unique_ptr;
+using std::string;
 
 namespace Tests
 {
@@ -16,11 +17,11 @@ namespace Tests
   {
   public:
 
-    TEST_METHOD(ReverseLookupCacheTest)
+   /* TEST_METHOD(ReverseLookupCacheTest)
     {
       auto cache = ObjectCache<
         std::unique_ptr<int>,
-        CacheUniquifier<std::unique_ptr<int>>,
+        CacheUniquifier<std::unique_ptr<int>>::value,
         true>::create();
       const int N = 100;
 
@@ -42,8 +43,7 @@ namespace Tests
         auto* key = cache->findKey(val);
         Assert::AreEqual(keys[i].toString(), *key);
       }
-
-    }
+    }*/
 
     TEST_METHOD(CallerAddressTypes)
     {
@@ -55,6 +55,46 @@ namespace Tests
       Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(CallerInfo::RC));
       Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(CallerInfo::A1));
     }
+
+    TEST_METHOD(CacheV2Test)
+    {
+      auto cache = ObjectCache<unique_ptr<int>, CacheUniquifierIs<L'X'>>::create();
+      const int N = 100;
+      vector<ExcelObj> callers;
+      vector<ExcelObj> keys(N);
+
+      for (auto i = 0; i < N; ++i)
+        callers.emplace_back(ExcelObj(format(L"Key_{0}", i)));
+
+      for (auto i = 0; i < N; ++i)
+        keys[i] = cache->add(make_unique<int>(i), CallerInfo(callers[i]));
+
+      for (auto i = 0; i < N; ++i)
+      {
+        auto* val = cache->fetch(keys[i].asPString().view());
+        Assert::IsNotNull(val);
+        Assert::AreEqual<int>(i, **val);
+      }
+
+      vector<ExcelObj> keys2(N);
+
+      cache->onAfterCalculate();
+
+      for (auto i = 0; i < N; ++i)
+        keys2[i] = cache->add(make_unique<int>(i), CallerInfo(callers[i]));
+  
+      auto cacheSize = cache->reap();
+
+      Assert::AreEqual<size_t>(N, cacheSize);
+
+      for (auto i = 0; i < N; ++i)
+      {
+        auto* val = cache->fetch(keys2[i].asPString().view());
+        Assert::IsNotNull(val);
+        Assert::AreEqual<int>(i, **val);
+      }
+    }
+
     TEST_METHOD(CacheSpeedTest1)
     {
       auto& cache = ObjectCacheFactory<std::unique_ptr<int>>::cache();

@@ -48,7 +48,7 @@ namespace xloil
         ExcelObj excelObj(FromPyObj()(obj));
         if (excelObj.isType(ExcelType::ArrayValue))
           return std::move(excelObj);
-        return makeCached<ExcelObj>(std::move(excelObj));
+        return ExcelObj(makeCached<ExcelObj>(std::move(excelObj)));
       }
     };
 

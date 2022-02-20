@@ -11,7 +11,7 @@ namespace xloil
     /// Adds a python object to the cache, returning a cache reference
     /// string in an ExcelObj. Must hold the GIL to call.
     /// </summary>
-    ExcelObj pyCacheAdd(const pybind11::object& obj, const wchar_t* caller = nullptr);
+    ExcelObj pyCacheAdd(const pybind11::object& obj, CallerInfo&& caller = CallerInfo());
 
     /// <summary>
     /// Tries to fetch an object give a cache reference string, returning

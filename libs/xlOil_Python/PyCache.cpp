@@ -1,8 +1,8 @@
-#include <xlOil/ExcelObjCache.h>
-#include <xlOil/ObjectCache.h>
 #include "PyCore.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyCache.h"
+#include <xlOil/ExcelObjCache.h>
+#include <xlOil/ObjectCache.h>
 
 namespace py = pybind11;
 using std::wstring;
@@ -21,6 +21,14 @@ namespace xloil
 
     namespace
     {
+      struct PyObjToPtr
+      {
+        intptr_t operator()(const py::object& obj) const
+        {
+          return (intptr_t)obj.ptr();
+        }
+      };
+
       /// <summary>
       /// This odd singleton is constructed and owned by the core module which ensures
       /// deleted when the core module is garbage collected and the interpreter is 
@@ -28,10 +36,10 @@ namespace xloil
       /// </summary>
       class PyCache
       {
-        using cache_type = ObjectCache<py::object, CacheUniquifier<py::object>>;
+        using cache_type = ObjectCache<PyObjectHolder, CacheUniquifier<py::object>, PyObjToPtr>;
 
         PyCache()
-          : _cache(cache_type::create(false))
+          : _cache(cache_type::create())
         {
           _workbookCloseHandler = std::static_pointer_cast<const void>(
             xloil::Event::WorkbookAfterClose().bind(
@@ -67,15 +75,13 @@ namespace xloil
           return *_theInstance;
         }
 
-        py::object add(py::object& obj, const wstring& tag, const wstring& key)
+        py::object add(py::object& obj, const wstring& tag, const wstring& caller)
         {
           // The cache expects callers to be of the form Uniq[xxx, so we add
           // a prefix if a custom key is specified.
-
-          const auto cacheKey = key.empty()
-            ? _cache->add(std::move(obj), CallerInfo(), tag)
-            : _cache->add(std::move(obj), CallerInfo(ExcelObj(L"[")), key);
-          return PySteal(detail::PyFromString()(cacheKey.asPString()));
+          auto callerInfo = caller.empty() ? CallerInfo() : CallerInfo(ExcelObj(caller));
+          const auto cacheKey = _cache->add(std::move(obj), std::move(callerInfo), tag);
+          return PySteal(detail::PyFromString()((PStringView<>)cacheKey));
         }
         py::object getitem(const std::wstring_view& str)
         {
@@ -93,10 +99,6 @@ namespace xloil
           auto* obj = _cache->fetch(str);
           return obj ? *obj : default;
         }
-        bool remove(const std::wstring& cacheRef)
-        {
-          return _cache->erase(cacheRef);
-        }
         bool contains(const std::wstring_view& str)
         {
           return _cache->fetch(str);
@@ -105,9 +107,8 @@ namespace xloil
         py::list keys() const
         {
           py::list out;
-          for (auto& [key, cellCache] : *_cache)
-            for (auto i = 0u; i < cellCache.count(); ++i)
-              out.append(py::wstr(_cache->writeKey(key, i)));
+          for (auto& [key, val] : *_cache)
+            out.append(py::wstr(_cache->keyToStr(key).view()));
           return out;
         }
 
@@ -118,15 +119,15 @@ namespace xloil
       PyCache* PyCache::_theInstance = nullptr;
     }
 
-    ExcelObj pyCacheAdd(const py::object& obj, const wchar_t* caller)
+    ExcelObj pyCacheAdd(const py::object& obj, CallerInfo&& caller)
     {
       // Decorate the cache ref with the python object name to 
       // help users keep track
       auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
-      return PyCache::instance()._cache->add(
+      return ExcelObj(PyCache::instance()._cache->add(
         py::object(obj),
-        caller ? CallerInfo(ExcelObj(caller)) : CallerInfo(),
-        name);
+        std::move(caller),
+        name));
     }
 
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
@@ -149,7 +150,7 @@ namespace xloil
       {
         py::class_<PyCache>(mod, "ObjectCache")
           .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
-          .def("remove", &PyCache::remove, py::arg("ref"))
+          //.def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
@@ -157,7 +158,7 @@ namespace xloil
           .def("__getitem__", &PyCache::getitem)
           .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag")="", py::arg("key")="");
 
-        mod.add_object("cache", py::cast(PyCache::construct()));
+        mod.add_object("cache", py::cast(PyCache::construct(), py::return_value_policy::take_ownership));
       });
     }
   }

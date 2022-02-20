@@ -19,5 +19,6 @@
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="ExcelCallMapping.h" />
+    <ClInclude Include="ObjectCacheSingleThread.h" />
   </ItemGroup>
 </Project>
