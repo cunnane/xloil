@@ -5,10 +5,13 @@ using std::wstring;
 
 namespace pybind11
 {
-  namespace
-  {
-    static std::mutex theTracebackLock;
-  }
+  // Possible faster implementation using _PyErr_Display which is a hidden API function
+  // in Py 3.8+
+  //   auto stringIO = module::import("io").attr("StringIO")();
+  //   _PyErr_Display(stringIO, error.type, error.value, error.trace);
+  //   result = handle(error.type).attr("__name__") + ": " + (std::string)str(error.value)
+  //   result += stringIO("getvalue");
+  // 
   std::string error_full_traceback()
   {
     if (!PyErr_Occurred())
@@ -17,54 +20,23 @@ namespace pybind11
       return "Unknown internal error occurred";
     }
 
-    // We store the error indicator and restore it on exit. This allows the
-    // ctor of error_already_set to grab the indicator using PyErr_Fetch.
+    // Store the error indicator and restore it on exit. This allows the
+    // ctor of pybind11::error_already_set to grab the indicator using PyErr_Fetch.
     error_scope error;
 
-    // Python's error output from PyErr_Print is backwards, so we output the
-    // original error first at that's likely the most useful thing to see in the
-    // cell where the result is shown
-    std::string errorString;
-    if (error.type)
-    {
-      errorString += handle(error.type).attr("__name__").cast<std::string>();
-      errorString += ": ";
-    }
-    if (error.value)
-    {
-      errorString += (std::string)str(error.value);
-      errorString += "\n";
-    }
+    // Ensures calls to the traceback module succeed
+    PyErr_NormalizeException(&error.type, &error.value, &error.trace);
+    
+    // format_exception produces a list of strings
+    auto errs = list(module::import("traceback").attr("format_exception")(
+      handle(error.type), handle(error.value), handle(error.trace)));
 
-    // Python only provides a facility for writing an error to stderr via
-    // PyErr_Print. So we replace stderr with a StringIO stream
-    auto ioMod = PyImport_ImportModule("io");
-    auto stringIO = PyObject_CallMethod(ioMod, "StringIO", NULL);
-    Py_DECREF(ioMod);
+    // Python's error output is backwards, so we show the original error first 
+    // at that's likely the most useful thing to see in the cell 
+    auto errorString = (std::string)str(errs[errs.size() - 1]);
 
-    // Protect the change to stderr which is global - we only want one 
-    // thread trying this trick at a time!
-    std::scoped_lock lock(theTracebackLock);
-
-    auto previousStdErr = PySys_GetObject("stderr");
-    PySys_SetObject("stderr", stringIO);
-
-    // Restore the error and call PyErr_Print which clears the error indicator.
-    // The dtor of error_scope will restore it again on exit from this function.
-    if (error.type) Py_INCREF(error.type);
-    if (error.value) Py_INCREF(error.value);
-    if (error.trace) Py_INCREF(error.trace);
-    PyErr_Restore(error.type, error.value, error.trace);
-    PyErr_Print();
-
-    PySys_SetObject("stderr", previousStdErr);
-    Py_DECREF(previousStdErr);
-
-    // Grab the string output from stringIO and cleanup 
-    auto fullTrace = PyObject_CallMethod(stringIO, "getvalue", NULL);
-    errorString += (std::string)str(fullTrace);
-    Py_DECREF(stringIO);
-    Py_DECREF(fullTrace);
+    for (auto i = 0; i < errs.size(); ++i)
+      errorString += (std::string)str(errs[i]);
 
     return errorString;
   }
