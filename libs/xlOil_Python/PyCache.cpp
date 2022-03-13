@@ -77,8 +77,6 @@ namespace xloil
 
         py::object add(py::object& obj, const wstring& tag, const wstring& caller)
         {
-          // The cache expects callers to be of the form Uniq[xxx, so we add
-          // a prefix if a custom key is specified.
           auto callerInfo = caller.empty() ? CallerInfo() : CallerInfo(ExcelObj(caller));
           const auto cacheKey = _cache->add(std::move(obj), std::move(callerInfo), tag);
           return PySteal(detail::PyFromString()((PStringView<>)cacheKey));
@@ -122,8 +120,8 @@ namespace xloil
     ExcelObj pyCacheAdd(const py::object& obj, CallerInfo&& caller)
     {
       // Decorate the cache ref with the python object name to 
-      // help users keep track
-      auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
+      // help users keep track of their objects
+      auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name) + L' ';
       return ExcelObj(PyCache::instance()._cache->add(
         py::object(obj),
         std::move(caller),

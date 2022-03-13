@@ -8,7 +8,7 @@ namespace xloil
   struct CacheUniquifier<std::unique_ptr<const SQL::CacheObj>>
   {
     static constexpr wchar_t value = L'\x8449';
-    static constexpr auto tag = L"SQLDB";
+    static constexpr auto tag = L"SQLDB ";
   };
 
   namespace SQL
