@@ -126,11 +126,17 @@ namespace xloil
     std::shared_ptr<const void> _workbookOpenHandler;
 
     static constexpr uint8_t _PrefixLength = 2;
-    static constexpr uint8_t _KeyLength = _PrefixLength + sizeof(Key);
+    static constexpr uint8_t _NumKeyBytes = sizeof(Key);
+    static constexpr uint8_t _MinKeyLength = _NumKeyBytes + _PrefixLength;
     static constexpr auto _ReaperSleepTime = std::chrono::seconds(10);
     static constexpr wchar_t _CachePrefix = L'©';
     static constexpr uint16_t _CacheCharMask = 0x0100;
-
+    
+    // We save a comparison in valid() by comparing the first two wchars 
+    // which must be "<prefix><uniquifier>" as a single uint32. Note the
+    // endianness to get this the right way around.
+    uint32_t _prefixInt = _CachePrefix + (uint32_t)(_uniquifier.value << 16);
+    
     // Created via factory function
     ObjectCache()
       : _calcId(1)
@@ -168,15 +174,14 @@ namespace xloil
 
     bool valid(const std::wstring_view& cacheString) const
     {
-      static_assert(_PrefixLength == 2);
-      return cacheString.size() >= _KeyLength
-        && cacheString[0] == _CachePrefix
-        && cacheString[1] == _uniquifier.value;
+      // We compare the first two wchars to a single int constructed aboves
+      return cacheString.size() >= _MinKeyLength
+        && *(decltype(_prefixInt)*)cacheString.data() == _prefixInt;
     }
 
     const TObj* fetch(const std::wstring_view& key) const
     {
-      if (key.size() < _KeyLength)
+      if (key.size() < _MinKeyLength)
         return nullptr;
 
       auto keyVal = strToKey(key);
@@ -248,7 +253,7 @@ namespace xloil
       const std::wstring_view& tag = defaultTag) const
     {
       const auto tagLen = (uint8_t)tag.size();
-      PString<> result(_KeyLength + tagLen);
+      PString<> result(_MinKeyLength + tagLen);
 
       auto pStr = result.pstr();
 
@@ -274,7 +279,7 @@ namespace xloil
     Key strToKey(const std::wstring_view& str) const
     {
       Key key;
-      auto pStr = (char*)(str.data() + str.size() - _KeyLength + _PrefixLength);
+      auto pStr = (char*)(str.data() + str.size() - _NumKeyBytes);
 
       auto pKey = (char*)&key;
       const auto pEnd = pKey + sizeof(Key);
