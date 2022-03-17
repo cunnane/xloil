@@ -171,7 +171,9 @@ namespace xloil
   }
 
   /// <summary>
-  /// Constructs and allocates ExcelObj arrays. 
+  /// Constructs and allocates ExcelObj arrays. This class does 
+  /// not dynamically resize the array, you must know the size you
+  /// need (and the total length of contained strings) upfront.
   /// Usage:
   /// <code>
   ///    ExcelArrayBuilder builder(3, 1);
@@ -189,7 +191,8 @@ namespace xloil
     /// <summary>
     /// Creates an ArrayBuilder of specified size (it cannot be resized later).
     /// It does not default-initialise any ExcelObj in the array, so this must
-    /// be done by the user of the class.
+    /// be done by the user of the class. The fillNA() function can quickly
+    /// achieve this.
     /// </summary>
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>
