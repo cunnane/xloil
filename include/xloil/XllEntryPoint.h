@@ -48,7 +48,7 @@ namespace xloil
     }
 
     template<class T>
-    struct Reg
+    struct RegisterAddinBase
     {
       inline static std::unique_ptr<T> theAddin;
       inline static std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> theFunctions;
@@ -220,7 +220,7 @@ namespace xloil
     template<class T>
     auto callAutoOpen(T*, void*) 
     {
-      Reg<T>::autoOpen();
+      RegisterAddinBase<T>::autoOpen();
     }
     template<class T, std::enable_if_t<std::is_void<decltype(T::autoOpen())>::value, bool> = true>
     auto callAutoOpen(T*, T*)
@@ -231,7 +231,7 @@ namespace xloil
     template<class T>
     auto callAutoClose(T*, void*)
     {
-      Reg<T>::autoClose();
+      RegisterAddinBase<T>::autoClose();
     }
     template<class T, std::enable_if_t<std::is_void<decltype(T::autoClose())>::value, bool> = true>
     auto callAutoClose(T*, T*)

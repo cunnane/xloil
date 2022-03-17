@@ -99,7 +99,6 @@ namespace xloil
     size_t nArgs = 0,
     const ExcelObj** args = nullptr);
 
-
   /// <summary>
   /// 
   /// </summary>
