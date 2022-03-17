@@ -20,7 +20,8 @@ namespace xloil
       {}
       constexpr wchar_t* allocate(size_t n)
       {
-        assert(_stringData + n <= _endStringData);
+        if (_stringData + n > _endStringData)
+          throw std::runtime_error("ExcelArrayBuilder: string data buffer exhausted");
         auto ptr = _stringData;
         _stringData += n;
         return ptr;
