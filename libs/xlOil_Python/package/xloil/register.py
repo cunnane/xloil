@@ -332,8 +332,8 @@ def async_wrapper(fn):
 
 class _WorksheetFunc:
     """
-    Decorator class for functions declared using `func` which contains information
-    about the Excel function to be registered
+    Decorator class for functions declared using `func`. The class contains 
+    the descriptions of the Excel function to be registered
     """
     def __init__(self, func, spec):
         self.__wrapped__ = func
@@ -493,7 +493,7 @@ def func(fn=None,
                 args = core_argspec,
                 name = name if name else "",
                 features = ','.join(features),
-                help = help if help else "",
+                help = help if help else (fn.__doc__ if fn.__doc__ else ""),
                 category = group if group else "",
                 volatile = volatile,
                 local = is_local,
