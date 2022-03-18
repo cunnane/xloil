@@ -1,16 +1,16 @@
 import xloil
 
 
-class _Handler_ptvsd:
+class _Handler_debugpy:
 
     def __init__(self):    
-        import ptvsd
-        ptvsd.enable_attach()
+        import debugpy
+        debugpy.listen(5678)
     def call(self, type, value, trace):
-        import ptvsd
-        # Probably don't want to do this as it pauses Excel whilst waiting!
-        #ptvsd.wait_for_attach()
-        ptvsd.break_into_debugger()
+        import debugpy
+        # This doesn't actually do post-mortem debuggin so it fairly useless
+        # It just breaks on a different python thread!
+        debugpy.breakpoint()
 
 
 class _Handler_pdb_window:
@@ -152,7 +152,7 @@ def exception_debug(debugger):
 
     handlers = {
         'pdb': _Handler_pdb_window,
-        'vs': _Handler_ptvsd
+        'vs': _Handler_debugpy
     }
 
     if not debugger in handlers:
