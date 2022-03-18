@@ -41,7 +41,7 @@ namespace xloil
     }
     return &result;
   }
-  XLO_REGISTER_FUNC(xloRunInXLLContext)
+  auto dummy = XLO_REGISTER_LATER(xloRunInXLLContext)
     .macro().hidden();
 
   InXllContext::InXllContext()

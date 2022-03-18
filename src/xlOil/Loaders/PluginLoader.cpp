@@ -247,7 +247,7 @@ namespace xloil
 
   void StaticFunctionSource::registerQueue()
   {
-    auto specs = processRegistryQueue(sourcePath().c_str());
+    auto specs = detail::processRegistryQueue(sourcePath().c_str());
     registerFuncs(specs);
   }
 }

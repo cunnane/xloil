@@ -32,46 +32,48 @@ namespace xloil
     return _info;
   }
 
-  std::list<StaticRegistrationBuilder>& getFuncRegistryQueue()
+  namespace detail
   {
-    static std::list<StaticRegistrationBuilder> theQueue;
-    return theQueue;
-  }
-
-  XLOIL_EXPORT StaticRegistrationBuilder& createRegistrationMemo(
-    const char* entryPoint_, int funcOpts, size_t nArgs, const int* types)
-  {
-    getFuncRegistryQueue().emplace_back(entryPoint_, funcOpts, nArgs, types);
-    return getFuncRegistryQueue().back();
-  }
-
-  std::vector<std::shared_ptr<const WorksheetFuncSpec>>
-    processRegistryQueue(const wchar_t* moduleName)
-  {
-    std::vector<std::shared_ptr<const WorksheetFuncSpec>> result;
-    auto& queue = getFuncRegistryQueue();
-    for (auto f : queue)
-      result.emplace_back(make_shared<const StaticWorksheetFunction>(
-        f.getInfo(), moduleName, f.entryPoint));
-    
-    queue.clear();
-    return result;
-  }
-
-  std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
-    registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors)
-  {
-    const auto specs = processRegistryQueue(moduleName);
-    std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> result;
-    for (auto& spec : specs)
-      try
+    std::list<StaticRegistrationBuilder>& getFuncRegistryQueue()
     {
-      result.emplace_back(spec->registerFunc());
+      static std::list<StaticRegistrationBuilder> theQueue;
+      return theQueue;
     }
-    catch (const std::exception& e)
+
+    StaticRegistrationBuilder& createRegistrationMemo(
+      const char* entryPoint_, int funcOpts, size_t nArgs, const int* types)
     {
-      errors += fmt::format(L"{0}: {1}\n", spec->name(), utf8ToUtf16(e.what()));
+      getFuncRegistryQueue().emplace_back(entryPoint_, funcOpts, nArgs, types);
+      return getFuncRegistryQueue().back();
     }
-    return result;
+
+    std::vector<std::shared_ptr<const WorksheetFuncSpec>>
+      processRegistryQueue(const wchar_t* moduleName)
+    {
+      std::vector<std::shared_ptr<const WorksheetFuncSpec>> result;
+      auto& queue = getFuncRegistryQueue();
+      for (auto f : queue)
+        result.emplace_back(f.writeFuncSpec(moduleName));
+
+      queue.clear();
+      return result;
+    }
+
+    std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
+      registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors)
+    {
+      const auto specs = processRegistryQueue(moduleName);
+      std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> result;
+      for (auto& spec : specs)
+        try
+        {
+          result.emplace_back(spec->registerFunc());
+        }
+        catch (const std::exception& e)
+        {
+          errors += fmt::format(L"{0}: {1}\n", spec->name(), utf8ToUtf16(e.what()));
+        }
+      return result;
+    }
   }
 }
