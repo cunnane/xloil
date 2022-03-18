@@ -6,7 +6,6 @@
 #include <xlOil/Log.h>
 #include <xlOil/Throw.h>
 #include <xlOil/StaticRegister.h>
-#include <xloil/Loaders/EntryPoint.h>
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil-Dynamic/PEHelper.h>
 #include <xlOil-Dynamic/Thunker.h>

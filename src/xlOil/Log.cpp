@@ -2,7 +2,6 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xloil/AppObjects.h>
 #include <xloil/State.h>
 #include <xlOil/Throw.h>

@@ -3,7 +3,6 @@
 #include <xlOil-Dynamic/LocalFunctions.h>
 #include <xlOil/ObjectCache.h>
 #include <xlOilHelpers/Settings.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Loaders/AddinLoader.h>
