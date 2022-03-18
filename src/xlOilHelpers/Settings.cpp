@@ -129,7 +129,7 @@ namespace xloil
     }
     catch (const toml::parse_error& e)
     {
-      throw Exception("Error parsing '%s' at line %d:\n %s",
+      throw Exception("Error parsing settings file '%s' at line %d:\n %s",
         path.string().c_str(), e.source().begin.line, e.what());
     }
   }
