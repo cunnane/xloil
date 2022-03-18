@@ -69,6 +69,8 @@ namespace xloil
           // Do this safely in single-thread mode
           initMessageQueue();
 
+          registerIntellisenseHook(XllInfo::xllPath.c_str());
+
           std::wstring errorMessages;
           theFunctions = xloil::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
           if (!errorMessages.empty())

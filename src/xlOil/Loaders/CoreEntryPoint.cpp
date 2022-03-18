@@ -52,6 +52,10 @@ namespace xloil
 
         detail::loggerInitPopupWindow();
 
+        // Run *before* createCoreContext so the function registration memo gets
+        // picked up
+        registerIntellisenseHook(xllPath);
+
         createCoreContext();
 
         runComSetupOnXllOpen([&]() { loadPluginsForAddin(theCoreContext()); });

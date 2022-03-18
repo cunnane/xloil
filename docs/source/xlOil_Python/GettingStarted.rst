@@ -127,3 +127,10 @@ you where this file is.
 
 You may need to set the python paths, i.e. the `PATH` and `PYTHONPATH` values, in 
 the `xlOil.ini` file for xlOil to find your python distribution.
+
+
+
+Intellisense / Function Context Help
+------------------------------------
+
+To activate pop-up function help, follow the instructions here: :ref:`_concepts-intellisense`.

@@ -20,11 +20,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Environment.cpp" />
+    <ClCompile Include="GuidUtils.cpp" />
     <ClCompile Include="Settings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Environment.h" />
     <ClInclude Include="Exception.h" />
+    <ClInclude Include="GuidUtils.h" />
     <ClInclude Include="Settings.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
