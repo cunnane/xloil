@@ -53,7 +53,7 @@ namespace xloil {
   extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
 #endif // XLO_RETURN_COM_ERROR
 
-// TODO: why are we creating this extern auto?
+
 #define XLO_REGISTER_LATER(func) xloil::detail::registrationMemo(#func, func)
 
 #define XLO_START_REGISTER(func) xloil::StaticRegistrationBuilder(#func, func)

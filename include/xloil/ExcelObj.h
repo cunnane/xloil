@@ -774,7 +774,7 @@ namespace xloil
         overwriteComplex(to, from);
     }
 
-    ExcelObj* toExcel()
+    ExcelObj* setDllFreeFlag()
     {
       xltype |= msxll::xlbitDLLFree;
       return this;
@@ -842,8 +842,8 @@ namespace xloil
   template<class T>
   ExcelObj::ExcelObj(std::initializer_list<std::initializer_list<T>> vals)
   {
-    const row_t nRows = vals.size();
-    const col_t nCols = vals.begin()->size();
+    const auto nRows = (row_t)vals.size();
+    const auto nCols = (col_t)vals.begin()->size();
 
     size_t stringLen = 0;
     for (const auto& row : vals)
