@@ -1,7 +1,7 @@
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
-#include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/Loaders/CoreEntryPoint.h>
 #include <xlOil/ExportMacro.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
@@ -97,7 +97,6 @@ struct xlOilAddin
     try
     {
       using XllInfo::xllPath;
-
       
       // First we try to load a settings file to see if it tells us
       // to run a startup trace
@@ -163,12 +162,6 @@ struct xlOilAddin
 
       detail::RegisterAddinBase<xlOilAddin>::theAddin.reset(new xlOilAddin());
 
-      auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
-
-      if (ret == 1)
-        tryCallExcel(msxll::xlEventRegister,
-          "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
-
       detail::theXllIsOpen = true;
     }
     catch (const std::exception& e)
@@ -176,7 +169,16 @@ struct xlOilAddin
       writeLog(e.what());
     }
   }
-  xlOilAddin() {}
+  xlOilAddin() 
+  {
+    auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
+
+    if (ret == 1)
+    {
+      tryCallExcel(msxll::xlEventRegister,
+        "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    }
+  }
   ~xlOilAddin()
   {
     xloil::autoCloseHandler(XllInfo::xllPath.c_str());

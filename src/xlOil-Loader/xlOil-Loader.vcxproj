@@ -68,7 +68,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\xlOil-XLL\XlCall.cpp" />
-    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="LoaderEntryPoint.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="..\xloil.ini">

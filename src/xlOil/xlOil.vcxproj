@@ -99,14 +99,14 @@
     <ClInclude Include="..\..\include\xloil\XlCallSlim.h" />
     <ClInclude Include="..\..\include\xlOil\XllEntryPoint.h" />
     <ClInclude Include="LogWindowSink.h" />
-    <ClInclude Include="Loaders\EntryPoint.h" />
+    <ClInclude Include="Loaders\CoreEntryPoint.h" />
     <ClInclude Include="Loaders\PluginLoader.h" />
     <ClInclude Include="Loaders\AddinLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="Interface.cpp" />
-    <ClCompile Include="Loaders\EntryPoint.cpp" />
+    <ClCompile Include="Loaders\CoreEntryPoint.cpp" />
     <ClCompile Include="Loaders\PluginLoader.cpp" />
     <ClCompile Include="Loaders\AddinLoader.cpp" />
     <ClCompile Include="Log.cpp" />

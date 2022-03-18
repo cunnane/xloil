@@ -3,7 +3,6 @@
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/Date.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/Log.h>
 #include <xlOil/Events.h>
@@ -28,7 +27,7 @@ namespace xloil
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
 
     AddinContext* createAddinContext(
-        const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
+      const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
     {
       auto [ctx, isNew] = theAddinContexts.try_emplace(
         wstring(pathName), make_shared<AddinContext>(pathName, settings));
@@ -71,7 +70,7 @@ namespace xloil
   std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
     findFileSource(const wchar_t* source)
   {
-    for (auto&[addinName, addin] : theAddinContexts)
+    for (auto& [addinName, addin] : theAddinContexts)
     {
       auto found = addin->files().find(source);
       if (found != addin->files().end())
@@ -83,7 +82,7 @@ namespace xloil
   void
     deleteFileSource(const std::shared_ptr<FileSource>& context)
   {
-    for (auto[name, addinCtx] : theAddinContexts)
+    for (auto& [name, addinCtx] : theAddinContexts)
     {
       auto found = addinCtx->files().find(context->sourcePath());
       if (found != addinCtx->files().end())
@@ -93,16 +92,31 @@ namespace xloil
 
   namespace
   {
-    
+    AddinContext& createAddinContext(const wchar_t* addinPathName)
+    {
+      // Delete existing context if addin is reloaded
+      if (theAddinContexts.find(addinPathName) != theAddinContexts.end())
+        theAddinContexts.erase(addinPathName);
+
+      auto settings = processAddinSettings(addinPathName);
+      auto ctx = createAddinContext(addinPathName, settings);
+      if (!ctx)
+        XLO_THROW(L"Failed to create add-in context for {0}", addinPathName);
+
+      return *ctx;
+    }
   }
 
   void createCoreContext() 
   {
-    ourCoreContext = &openXll(State::coreDllPath());
+    ourCoreContext = &createAddinContext(State::coreDllPath());
+
+    const auto& coreAddinSettings = (*ourCoreContext->settings())["Addin"];
+
     // Can only do this once not per-addin
     setLogWindowPopupLevel(
       spdlog::level::from_str(
-        Settings::logPopupLevel((*ourCoreContext->settings())["Addin"]).c_str()));
+        Settings::logPopupLevel(coreAddinSettings).c_str()));
 
     auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
     staticSource->registerQueue();
@@ -115,23 +129,15 @@ namespace xloil
     loadPlugins(ctx, plugins);
   }
 
-  AddinContext& openXll(const wchar_t* xllPath)
+  AddinContext& addinOpenXll(const wchar_t* xllPath)
   {
-    // Delete existing context if addin is reloaded
-    if (theAddinContexts.find(xllPath) != theAddinContexts.end())
-      theAddinContexts.erase(xllPath);
-
-    auto settings = processAddinSettings(xllPath);
-    auto ctx = createAddinContext(xllPath, settings);
-    if (!ctx)
-      XLO_THROW(L"Failed to create add-in context for {0}", xllPath);
-    return *ctx;
+    auto& ctx = createAddinContext(xllPath);
+    return ctx;
   }
 
-  void closeXll(const wchar_t* xllPath)
+  void addinCloseXll(const wchar_t* xllPath)
   {
     theAddinContexts.erase(xllPath);
-
     // Check if only the core left
     if (theAddinContexts.size() == 1)
     {
@@ -142,7 +148,6 @@ namespace xloil
       // to keep track of which tasks were registered by which addin
       rtdAsyncServerClear();
 
-      // TODO: remove this event?
       Event::AutoClose().fire();
 
       unloadAllPlugins();
