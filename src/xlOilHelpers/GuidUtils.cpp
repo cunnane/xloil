@@ -1,7 +1,7 @@
 #include "GuidUtils.h"
+#include "Exception.h"
 
 #include <xloil/WindowsSlim.h>
-#include <xloil/Throw.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -11,6 +11,7 @@
 using std::string;
 using std::wstring;
 using std::make_shared;
+using xloil::Helpers::Exception;
 
 #define STATUS_UNSUCCESSFUL ((NTSTATUS)0xC0000001L)
 
@@ -37,7 +38,7 @@ namespace
         NULL,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptOpenAlgorithmProvider", status);
+        Exception(L"Error 0x{x} returned by BCryptOpenAlgorithmProvider", status);
       }
 
       //calculate the size of the buffer to hold the hash object
@@ -49,7 +50,7 @@ namespace
         &cbData,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptGetProperty", status);
+        Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
       }
 
       //allocate the hash object on the heap
@@ -64,7 +65,7 @@ namespace
         &cbData,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptGetProperty", status);
+        Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
       }
 
       //allocate the hash buffer on the heap
@@ -80,7 +81,7 @@ namespace
         0,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptCreateHash", status);
+        Exception(L"Error 0x{x} returned by BCryptCreateHash", status);
       }
     }
 
@@ -95,7 +96,7 @@ namespace
         dataBytes,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptHashData", status);
+        Exception(L"Error 0x{x} returned by BCryptHashData", status);
       }
     }
 
@@ -110,7 +111,7 @@ namespace
         cbHash,
         0)))
       {
-        XLO_THROW(L"Error 0x{x} returned by BCryptFinishHash", status);
+        Exception(L"Error 0x{x} returned by BCryptFinishHash", status);
       }
 
       return std::vector<BYTE>(pbHash, pbHash + cbHash);
@@ -193,8 +194,7 @@ namespace
   }
 
   const GUID theExcelDnaNamespaceGuid =
-  { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
-
+    { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
 }
 namespace xloil
 {
