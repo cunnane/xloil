@@ -133,4 +133,4 @@ the `xlOil.ini` file for xlOil to find your python distribution.
 Intellisense / Function Context Help
 ------------------------------------
 
-To activate pop-up function help, follow the instructions here: :ref:`_concepts-intellisense`.
+To activate pop-up function help, follow the instructions here: :any:`concepts-intellisense`.

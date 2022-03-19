@@ -11,9 +11,9 @@ Workbook Modules
 
 When an Excel workbook is opened, xlOil tries to load the module `<workbook_name>.py` 
 (this is configurable).  When registering functions from workbook modules, xlOil defaults 
-to making any declared functions :ref:`Functions:Local Functions`
+to making any declared functions :ref:`xlOil_Python/Functions:Local Functions`
 
-The function :any:`xloil.linked_workbook()` when called from a workbook module retrieves 
+The function :any:`xloil.linked_workbook` when called from a workbook module retrieves 
 the associated workbook path.
 
 Another way to package python code for distribution is to create an XLL, see

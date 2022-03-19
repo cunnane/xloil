@@ -117,8 +117,10 @@ RTD Functions
 .. currentmodule:: xloil
 
 .. autoclass:: RtdPublisher
-
+	:members:
+	
 .. autoclass:: RtdServer
+	:members:
 
 .. automodule:: xloil.rtd
 	:members:
