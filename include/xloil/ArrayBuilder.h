@@ -20,8 +20,10 @@ namespace xloil
       {}
       constexpr wchar_t* allocate(size_t n)
       {
+#ifdef _DEBUG
         if (_stringData + n > _endStringData)
           throw std::runtime_error("ExcelArrayBuilder: string data buffer exhausted");
+#endif
         auto ptr = _stringData;
         _stringData += n;
         return ptr;
@@ -86,8 +88,8 @@ namespace xloil
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
       void operator=(T x) 
       { 
-        // Note that _target is uninitialised memory, so we cannot call
-        // *_target = ExcelObj(x)
+        // Note that _target is uninitialised memory, so we cannot
+        // call *_target = ExcelObj(x)
         new (&_target) ExcelObj(x); 
       }
 
