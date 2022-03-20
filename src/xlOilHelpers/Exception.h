@@ -15,13 +15,13 @@ namespace xloil
     public:
       template<class... Args>
       Exception(
-        const char* str, Args &&... args)
+        const char* str, Args... args)
         : Exception(formatStr(str, std::forward<Args>(args)...))
       {}
 
       template<class... Args>
       Exception(
-        const wchar_t* str, Args &&... args)
+        const wchar_t* str, Args... args)
         : Exception(formatStr(str, std::forward<Args>(args)...))
       {}
 

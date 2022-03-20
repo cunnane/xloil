@@ -140,7 +140,7 @@ namespace xloil
 
     AddinContext(
       const wchar_t* pathName, 
-      std::shared_ptr<const toml::table> settings);
+      const std::shared_ptr<const toml::table>& settings);
 
     ~AddinContext();
 

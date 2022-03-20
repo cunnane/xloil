@@ -29,9 +29,9 @@ namespace xloil
     static FW::FileWatcher theFileWatcher;
 
     // Not exported, so separate
-    XLOIL_DEFINE_EVENT(AutoClose)
+    XLOIL_DEFINE_EVENT(AutoClose);
 
-#define XLO_DEF_EVENT(r, _, name) XLOIL_EXPORT XLOIL_DEFINE_EVENT(name)
+#define XLO_DEF_EVENT(r, _, name) XLOIL_EXPORT XLOIL_DEFINE_EVENT(name);
       BOOST_PP_SEQ_FOR_EACH(XLO_DEF_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_DEF_EVENT
 

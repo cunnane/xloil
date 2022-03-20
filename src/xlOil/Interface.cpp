@@ -3,7 +3,6 @@
 #include <xlOil-Dynamic/LocalFunctions.h>
 #include <xlOil/ObjectCache.h>
 #include <xlOilHelpers/Settings.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Loaders/AddinLoader.h>
@@ -21,7 +20,7 @@ namespace fs = std::filesystem;
 namespace xloil
 {
   AddinContext::AddinContext(
-    const wchar_t* pathName, std::shared_ptr<const toml::table> settings)
+    const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
     : _settings(settings)
     , _pathName(pathName)
   {

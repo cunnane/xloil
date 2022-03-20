@@ -6,7 +6,6 @@
 #include <xlOil/Throw.h>
 #include <xlOil/State.h>
 #include <xlOilHelpers/Settings.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil/StaticRegister.h>
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
@@ -248,7 +247,7 @@ namespace xloil
 
   void StaticFunctionSource::registerQueue()
   {
-    auto specs = processRegistryQueue(sourcePath().c_str());
+    auto specs = detail::processRegistryQueue(sourcePath().c_str());
     registerFuncs(specs);
   }
 }

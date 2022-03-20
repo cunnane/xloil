@@ -1,7 +1,6 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 
-
 namespace xloil
 {
   /// <summary>
@@ -15,5 +14,6 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT int 
     autoCloseHandler(const wchar_t* xllPath) noexcept;
+
   XLOIL_EXPORT void onCalculationCancelled() noexcept;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <xlOil/Register.h>
 #include <xlOil/ExcelObj.h>
+#include <xlOil/FuncSpec.h>
 #include <array>
 
 namespace xloil {
@@ -37,7 +38,7 @@ namespace xloil {
       return xloil::returnValue(xloil::CellError::Value); \
     } \
   } \
-  XLO_REGISTER_FUNC(func)
+  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
 #else
 #define XLO_FUNC_END(func) \
     catch (const std::exception& err) \
@@ -49,25 +50,26 @@ namespace xloil {
       return xloil::returnValue(xloil::CellError::Value); \
     } \
   } \
-  XLO_REGISTER_FUNC(func)
+  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
 #endif // XLO_RETURN_COM_ERROR
 
-#define XLO_RETURN_ERROR(err) 
 
-#define XLO_REGISTER_FUNC(func) extern auto _xlo_register_##func = xloil::registrationMemo(#func, func)
+#define XLO_REGISTER_LATER(func) xloil::detail::registrationMemo(#func, func)
+
+#define XLO_START_REGISTER(func) xloil::StaticRegistrationBuilder(#func, func)
 
 namespace xloil
 {
   /// <summary>
-   /// Constructs an ExcelObj from the given arguments, setting a flag to tell 
-   /// Excel that xlOil will need a callback to free the memory. **This method must
-   /// be used for final object passed back to Excel. It must not be used anywhere
-   /// else**.
-   /// </summary>
+  /// Constructs an ExcelObj from the given arguments, setting a flag to tell 
+  /// Excel that xlOil will need a callback to free the memory. **This method must
+  /// be used for final object passed back to Excel. It must not be used anywhere
+  /// else**.
+  /// </summary>
   template<class... Args>
   inline ExcelObj* returnValue(Args&&... args)
   {
-    return (new ExcelObj(std::forward<Args>(args)...))->toExcel();
+    return (new ExcelObj(std::forward<Args>(args)...))->setDllFreeFlag();
   }
   inline ExcelObj* returnValue(CellError err)
   {
@@ -235,20 +237,33 @@ namespace xloil
   struct StaticRegistrationBuilder : public FuncInfoBuilderT<StaticRegistrationBuilder>
   {
     StaticRegistrationBuilder(
-      const char* entryPoint_, int funcOpts, size_t nArgs, const int* type)
+      const char* entryPoint, int funcOpts, size_t nArgs, const int* type)
       : FuncInfoBuilderT(nArgs, type)
     {
       _info->options = funcOpts;
-      entryPoint = entryPoint_;
-      name(utf8ToUtf16(entryPoint_));
+      _entryPoint = entryPoint;
+      name(utf8ToUtf16(entryPoint));
     }
 
-    std::string entryPoint;
-  };
+    template <class TFunc>
+    StaticRegistrationBuilder(const char* entryPoint, TFunc)
+      : StaticRegistrationBuilder(
+          entryPoint,
+          detail::ArgTypes<TFunc>::funcOpts,
+          detail::ArgTypes<TFunc>::nArgs,
+          detail::ArgTypes<TFunc>::types.data()
+        )
+    {
+    }
 
-  XLOIL_EXPORT StaticRegistrationBuilder& 
-    createRegistrationMemo(
-      const char* entryPoint_, int funcOpts, size_t nArgs, const int* types);
+    auto writeFuncSpec(const std::wstring_view& dllName)
+    {
+      return std::make_shared<const StaticWorksheetFunction>(
+        getInfo(), dllName, _entryPoint);
+    }
+
+    std::string _entryPoint;
+  };
 
 #if DOXYGEN
 /// <summary>
@@ -311,7 +326,7 @@ namespace xloil
 
     template <template<typename, typename...> typename Defs,
       typename ReturnType, typename... Args>
-      struct FunctionTraitsFilter<Defs, ReturnType(XLOIL_STDCALL *)(Args...)>
+      struct FunctionTraitsFilter<Defs, ReturnType(XLOIL_STDCALL*)(Args...)>
       : Defs<ReturnType, Args...> {};
 
     template <template<typename, typename...> typename Defs,
@@ -358,19 +373,24 @@ namespace xloil
     template<class T> struct ArgTypes
       : FunctionTraits<ArgTypesDefs, T>
     {};
+
+
+    XLOIL_EXPORT StaticRegistrationBuilder&
+      createRegistrationMemo(
+        const char* entryPoint_, int funcOpts, size_t nArgs, const int* types);
+
+    template <class TFunc> inline StaticRegistrationBuilder&
+      registrationMemo(const char* name, TFunc)
+    {
+      using argTypes = detail::ArgTypes<TFunc>;
+      return createRegistrationMemo(
+        name, argTypes::funcOpts, argTypes::nArgs, argTypes::types.data());
+    }
+
+    std::vector<std::shared_ptr<const WorksheetFuncSpec>>
+      processRegistryQueue(const wchar_t* moduleName);
+
+    std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
+      registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors);
   }
-
-  template <class TFunc> inline StaticRegistrationBuilder&
-    registrationMemo(const char* name, TFunc)
-  {
-    using argTypes = detail::ArgTypes<TFunc>;
-    return createRegistrationMemo(
-      name, argTypes::funcOpts, argTypes::nArgs, argTypes::types.data());
-  }
-
-  std::vector<std::shared_ptr<const WorksheetFuncSpec>>
-    processRegistryQueue(const wchar_t* moduleName);
-
-  XLOIL_EXPORT std::vector<std::shared_ptr<const RegisteredWorksheetFunc>>
-    registerStaticFuncs(const wchar_t* moduleName, std::wstring& errors);
 }

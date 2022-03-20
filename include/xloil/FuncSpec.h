@@ -60,8 +60,8 @@ namespace xloil
   public:
     StaticWorksheetFunction(
       const std::shared_ptr<const FuncInfo>& info, 
-      const std::wstring& dllName,
-      const std::string& entryPoint)
+      const std::wstring_view& dllName,
+      const std::string_view& entryPoint)
       : WorksheetFuncSpec(info)
       , _dllName(dllName)
       , _entryPoint(entryPoint)

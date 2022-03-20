@@ -18,4 +18,5 @@ xlOil Python
     Debugging
     Example
     ExampleGUI
+    FAQ
     ModuleReference

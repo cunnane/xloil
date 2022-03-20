@@ -1,4 +1,6 @@
 #include "FuncRegistry.h"
+#include "Intellisense.h"
+
 #include <xlOil/Register.h>
 #include <xlOil/ExcelCall.h>
 
@@ -7,7 +9,6 @@
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/State.h>
-#include <xlOil/Loaders/EntryPoint.h>
 #include <xlOil-Dynamic/PEHelper.h>
 
 #include <codecvt>
@@ -109,9 +110,6 @@ namespace xloil
         ++iArg;
       }
 
-
-
-
       // Set function option suffixes
       if (opts & FuncInfo::VOLATILE)
         argTypes += '!';
@@ -199,6 +197,10 @@ namespace xloil
         unpack(argHelp));
       if (registerId.type() != ExcelType::Num)
         XLO_THROW(L"Register '{0}' failed", info->name);
+
+      // We must be in XLL context to register a function, so can call this:
+      publishIntellisenseInfo(info);
+
       return registerId.toInt();
     }
 
@@ -229,10 +231,9 @@ namespace xloil
       theRegistry.clear();
     }
 
-    auto find(const wchar_t* name)
+    auto& all()
     {
-      auto found = theRegistry.find(name);
-      return found != theRegistry.end() ? found->second : RegisteredFuncPtr();
+      return theRegistry;
     }
 
   private:
@@ -357,8 +358,8 @@ namespace xloil
     return registry.registerWithExcel(info, entryPoint, moduleName);
   }
 
-  RegisteredFuncPtr findRegisteredFunc(const wchar_t * name)
+  const map<wstring, RegisteredFuncPtr>& registeredFuncsByName()
   {
-    return FunctionRegistry::get().find(name);
+    return FunctionRegistry::get().all();
   }
 }

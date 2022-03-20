@@ -20,7 +20,10 @@ namespace xloil
       {}
       constexpr wchar_t* allocate(size_t n)
       {
-        assert(_stringData + n <= _endStringData);
+#ifdef _DEBUG
+        if (_stringData + n > _endStringData)
+          throw std::runtime_error("ExcelArrayBuilder: string data buffer exhausted");
+#endif
         auto ptr = _stringData;
         _stringData += n;
         return ptr;
@@ -85,8 +88,8 @@ namespace xloil
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
       void operator=(T x) 
       { 
-        // Note that _target is uninitialised memory, so we cannot call
-        // *_target = ExcelObj(x)
+        // Note that _target is uninitialised memory, so we cannot
+        // call *_target = ExcelObj(x)
         new (&_target) ExcelObj(x); 
       }
 
@@ -170,7 +173,9 @@ namespace xloil
   }
 
   /// <summary>
-  /// Constructs and allocates ExcelObj arrays. 
+  /// Constructs and allocates ExcelObj arrays. This class does 
+  /// not dynamically resize the array, you must know the size you
+  /// need (and the total length of contained strings) upfront.
   /// Usage:
   /// <code>
   ///    ExcelArrayBuilder builder(3, 1);
@@ -188,7 +193,8 @@ namespace xloil
     /// <summary>
     /// Creates an ArrayBuilder of specified size (it cannot be resized later).
     /// It does not default-initialise any ExcelObj in the array, so this must
-    /// be done by the user of the class.
+    /// be done by the user of the class. The fillNA() function can quickly
+    /// achieve this.
     /// </summary>
     /// <param name="nRows"></param>
     /// <param name="nCols"></param>

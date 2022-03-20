@@ -1,6 +1,6 @@
-=================================
-xlOil External Package Support
-=================================
+=============================
+xlOil Python Package Support
+=============================
 
 xlOil has built-in converters for several external libraries
 

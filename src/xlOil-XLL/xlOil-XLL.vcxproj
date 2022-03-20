@@ -111,6 +111,7 @@
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="Intellisense.cpp" />
     <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="ExcelArray.cpp" />
@@ -127,6 +128,7 @@
     <ClInclude Include="ExcelCallMapping.h" />
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="ObjectCacheSingleThread.h" />
+    <ClInclude Include="Intellisense.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

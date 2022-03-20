@@ -10,9 +10,10 @@ namespace xloil
   ))
   {
     const auto funcName = function.toString();
-    const auto func = findRegisteredFunc(funcName.c_str());
-    if (!func)
+    const auto found = registeredFuncsByName().find(funcName.c_str());
+    if (found == registeredFuncsByName().end())
       XLO_THROW(L"Function '{0}' not found", funcName);
+    const auto func = found->second;
     const auto info = func->info();
 
     size_t stringLen = info->name.size() + info->help.size();

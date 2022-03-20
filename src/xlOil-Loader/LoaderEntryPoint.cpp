@@ -1,7 +1,7 @@
 #include <xloilHelpers/Environment.h>
 #include <xloilHelpers/Settings.h>
 #include <xlOil/XlCallSlim.h>
-#include <xlOil/Loaders/EntryPoint.h>
+#include <xlOil/Loaders/CoreEntryPoint.h>
 #include <xlOil/ExportMacro.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/WindowsSlim.h>
@@ -97,19 +97,27 @@ struct xlOilAddin
     try
     {
       using XllInfo::xllPath;
-      // We need to find xloil.dll. 
-      const auto ourXllDir = fs::path(xllPath).remove_filename();
-
+      
+      // First we try to load a settings file to see if it tells us
+      // to run a startup trace
       const auto settings = findSettingsFile(xllPath.c_str());
       auto traceLoad = false;
       std::error_code fsErr;
       if (settings)
       {
         traceLoad = (*settings)["Addin"]["StartupTrace"].value_or(false);
-        //ourLogFilePath = Settings::logFilePath(*settings);
         if (traceLoad)
           writeLog(formatStr("Found ini file at '%s'", settings->source().path->c_str()));
       }
+
+      // Next we need to find xloil.dll. The strategy is
+      //   1. Is it already loaded?
+      //   2. Is it in the same directory as the XLL? Then use SetDllDirectory
+      //   3. Apply any environment variables (in particular PATH) which
+      //      are specifed in the ini file
+      //   4. Look for xloil.ini and apply those env vars as well
+      // Hope the above has setup the environment in the right way!
+      const auto ourXllDir = fs::path(xllPath).remove_filename();
       if (GetModuleHandle(xloil_dll) != 0) // Is it already loaded?
       {
         if (traceLoad)
@@ -152,13 +160,7 @@ struct xlOilAddin
 
       State::initAppContext();
 
-      detail::Reg<xlOilAddin>::theAddin.reset(new xlOilAddin());
-
-      auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
-
-      if (ret == 1)
-        tryCallExcel(msxll::xlEventRegister,
-          "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+      detail::RegisterAddinBase<xlOilAddin>::theAddin.reset(new xlOilAddin());
 
       detail::theXllIsOpen = true;
     }
@@ -167,7 +169,16 @@ struct xlOilAddin
       writeLog(e.what());
     }
   }
-  xlOilAddin() {}
+  xlOilAddin() 
+  {
+    auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
+
+    if (ret == 1)
+    {
+      tryCallExcel(msxll::xlEventRegister,
+        "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+    }
+  }
   ~xlOilAddin()
   {
     xloil::autoCloseHandler(XllInfo::xllPath.c_str());

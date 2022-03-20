@@ -9,6 +9,8 @@
 #include <xloil/FuncSpec.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xlOil-COM/WorkbookScopeFunctions.h>
+#include <xlOil-XLL/Intellisense.h>
+#include <xloil/ExcelThread.h>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 #include <boost/preprocessor/repetition/enum_params.hpp>
 #include <oleacc.h>
@@ -51,14 +53,18 @@ namespace xloil
   {
     auto& wbFuncs = theRegistry[workbookName];
     wbFuncs.clear();
-    vector<shared_ptr<const FuncInfo>> funcInfo;
+    vector<shared_ptr<const FuncInfo>> funcInfos;
     for (auto& spec: funcSpecs)
     {
-     // auto spec = make_shared<LambdaSpec<>>(info, funcs[i]);
-      funcInfo.push_back(spec->info());
+      funcInfos.push_back(spec->info());
       wbFuncs[spec->name()] = spec;
     }
-    COM::writeLocalFunctionsToVBA(workbookName, funcInfo, append);
+    COM::writeLocalFunctionsToVBA(workbookName, funcInfos, append);
+
+    runExcelThread([funcInfos]()
+    {
+      publishIntellisenseInfo(funcInfos);
+    }, ExcelRunQueue::XLL_API | ExcelRunQueue::ENQUEUE);
   }
 
   void clearLocalFunctions(const wchar_t* workbookName)

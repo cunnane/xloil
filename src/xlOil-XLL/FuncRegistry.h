@@ -2,6 +2,7 @@
 #include <xlOil/Register.h>
 #include <xlOil/FuncSpec.h>
 #include <memory>
+#include <map>
 
 namespace xloil
 {
@@ -38,6 +39,11 @@ namespace xloil
 
   using RegisteredFuncPtr = std::shared_ptr<RegisteredWorksheetFunc>;
 
+  /// <summary>
+  /// Will fail unless called in XLL context
+  /// </summary>
+  /// <param name="info"></param>
+  /// <returns></returns>
   RegisteredFuncPtr
     registerFunc(
       const std::shared_ptr<const WorksheetFuncSpec>& info) noexcept;
@@ -48,6 +54,6 @@ namespace xloil
       const char* entryPoint,
       const wchar_t* moduleName);
 
-  RegisteredFuncPtr
-    findRegisteredFunc(const wchar_t* name);
+  const std::map<std::wstring, RegisteredFuncPtr>& 
+    registeredFuncsByName();
 }

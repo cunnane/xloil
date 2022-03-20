@@ -147,7 +147,7 @@ namespace xloil
         });
       }
 
-      R fire(Args&&... args) const
+      R fire(Args... args) const
       {
         if (_handlers.empty())
           return R();
@@ -368,5 +368,5 @@ namespace xloil
       static auto e = std::make_shared<std::remove_reference_t<\
         decltype(name())>>(BOOST_PP_STRINGIZE(name)); \
       return *e; \
-    };
+    }
 }

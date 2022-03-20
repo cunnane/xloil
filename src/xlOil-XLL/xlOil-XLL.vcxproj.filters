@@ -15,10 +15,12 @@
     <ClCompile Include="XllEvents.cpp" />
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="Intellisense.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="ExcelCallMapping.h" />
+    <ClInclude Include="Intellisense.h" />
     <ClInclude Include="ObjectCacheSingleThread.h" />
   </ItemGroup>
 </Project>

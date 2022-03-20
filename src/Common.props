@@ -14,6 +14,9 @@
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
       <ConformanceMode>false</ConformanceMode>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
