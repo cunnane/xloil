@@ -14,7 +14,6 @@ namespace xloil
 {
   namespace COM
   {
-    template<bool TAllowRange>
     class ToVariant : public FromExcelBase<VARIANT>
     {
     public:
@@ -91,13 +90,7 @@ namespace xloil
       }
       result_t operator()(RefVal ref) const
       {
-        if constexpr (TAllowRange)
-        {
-          const auto range = ExcelRange(ExcelRef(ref.obj));
-          return _variant_t(range.basePtr()).Detach();
-        }
-        else
-          return operator()(ExcelRef(ref.obj).value());
+        return operator()(ExcelRef(ref.obj).value());
       }
 
       // Not part of the usual FromExcel interface, just to aid cascading
@@ -107,12 +100,24 @@ namespace xloil
       }
     };
 
+    class ToVariantWithRange : public ToVariant
+    {
+    public:
+      using ToVariant::operator();
+
+      result_t operator()(RefVal ref) const
+      {
+        const auto range = ExcelRange(ExcelRef(ref.obj));
+        return _variant_t(range.basePtr()).Detach();
+      }
+    };
+
     void excelObjToVariant(VARIANT* v, const ExcelObj& obj, bool allowRange)
     {
       VariantClear(v);
       *v = allowRange
-        ? FromExcelDefaulted<ToVariant<true>>(&vtMissing)(obj)
-        : FromExcelDefaulted<ToVariant<false>>(&vtMissing)(obj);
+        ? FromExcelDefaulted<ToVariantWithRange>(&vtMissing)(obj)
+        : FromExcelDefaulted<ToVariant>(&vtMissing)(obj);
 
     }
 
