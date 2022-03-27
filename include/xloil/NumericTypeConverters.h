@@ -11,7 +11,7 @@ namespace xloil
     struct ToDouble : public FromExcelBase<TResult>
     {
       using result_t = TResult;
-      using FromExcelBase::operator();
+      using FromExcelBase<TResult>::operator();
       result_t operator()(int x) const { return double(x); }
       result_t operator()(bool x) const { return double(x); }
       result_t operator()(double x) const { return x; }
@@ -27,7 +27,7 @@ namespace xloil
     struct ToInt : public FromExcelBase<TResult>
     {
       using result_t = TResult;
-      using FromExcelBase::operator();
+      using FromExcelBase<TResult>::operator();
 
       result_t operator()(int x) const { return x; }
       result_t operator()(bool x) const { return int(x); }
@@ -45,7 +45,7 @@ namespace xloil
     struct ToBool : public FromExcelBase<TResult>
     {
       using result_t = TResult;
-      using FromExcelBase::operator();
+      using FromExcelBase<TResult>::operator();
       result_t operator()(int x) const { return x != 0; }
       result_t operator()(bool x) const { return x; }
       result_t operator()(double x) const { return x != 0.0; }

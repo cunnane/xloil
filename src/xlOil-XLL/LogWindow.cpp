@@ -28,7 +28,7 @@ namespace xloil
     wstring _windowText;
     size_t _maxSize;
     shared_ptr<ATOM> _windowClass;
-    static constexpr wchar_t* theWindowClass = L"xlOil_Log";
+    static constexpr const wchar_t* theWindowClass = L"xlOil_Log";
 
     static auto createWindowClass(HINSTANCE hInstance, const wchar_t* windowClass)
     {

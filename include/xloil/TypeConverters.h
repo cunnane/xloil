@@ -177,7 +177,7 @@ namespace xloil
     /// If provided, the default value is returned if the ExcelObj is of
     /// type Missing.
     /// </summary>
-    auto operator()(const ExcelObj& xl) const
+    return_type operator()(const ExcelObj& xl) const
     {
       return visitExcelObj(xl, _impl);
     }

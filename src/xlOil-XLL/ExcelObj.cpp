@@ -634,7 +634,7 @@ namespace
     }
     const ExcelObj& EmptyStr()
     {
-      static ExcelObj obj(PString<>::steal(L"\0"));
+      static ExcelObj obj(PString<>(L"\0"));
       return obj;
     }
   }

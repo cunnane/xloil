@@ -11,6 +11,8 @@
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
 #include <filesystem>
+#include <OleAuto.h>
+
 namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;

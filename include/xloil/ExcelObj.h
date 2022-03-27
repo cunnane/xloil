@@ -362,7 +362,7 @@ namespace xloil
     /// <param name="ref"></param>
     ExcelObj(msxll::IDSHEET sheet, const msxll::xlref12& ref);
 
-    ExcelObj::~ExcelObj()
+    ~ExcelObj()
     {
       reset();
     }
@@ -506,7 +506,7 @@ namespace xloil
     /// <summary>
     /// Returns true if this ExcelObj has ExcelType::Missing type.
     /// </summary>
-    bool ExcelObj::isMissing() const
+    bool isMissing() const
     {
       return (xtype() & msxll::xltypeMissing) != 0;
     }
@@ -516,7 +516,7 @@ namespace xloil
     /// error \#N/A or an empty string.
     /// </summary>
     /// <returns></returns>
-    bool ExcelObj::isNonEmpty() const
+    bool isNonEmpty() const
     {
       using namespace msxll;
       switch (xtype())
@@ -546,7 +546,7 @@ namespace xloil
     /// Get an enum describing the data contained in the ExcelObj
     /// </summary>
     /// <returns></returns>
-    ExcelType ExcelObj::type() const
+    ExcelType type() const
     {
       return ExcelType(xtype());
     }
@@ -608,7 +608,7 @@ namespace xloil
     /// 
     /// Other types will throw an exception.
     /// </summary>
-    double toDouble(const std::optional<double> default = std::optional<double>()) const;
+    double toDouble(const std::optional<double> defaultVal = std::optional<double>()) const;
 
     /// <summary>
     /// Returns a int from the object value type with some conversions:
@@ -619,7 +619,7 @@ namespace xloil
     /// 
     /// Other types will throw an exception.
     /// </summary>
-    int toInt(const std::optional<int> default = std::optional<int>()) const;
+    int toInt(const std::optional<int> defaultVal = std::optional<int>()) const;
 
     /// <summary>
     /// Returns a bool from the object value type with some conversions:
@@ -629,7 +629,7 @@ namespace xloil
     /// 
     /// Other types will throw an exception.
     /// </summary>
-    bool toBool(const std::optional<bool> default = std::optional<bool>()) const;
+    bool toBool(const std::optional<bool> defaultVal = std::optional<bool>()) const;
 
     /// <summary>
     /// Returns the value in the ExcelObj assuming it is a double.
@@ -868,19 +868,19 @@ namespace xloil
     *this = builder.toExcelObj();
   }
 
-  inline double ExcelObj::toDouble(const std::optional<double> default) const
+  inline double ExcelObj::toDouble(const std::optional<double> defaultVal) const
   {
-    return ToDouble(default.has_value() ? &default.value() : nullptr)(*this);
+    return ToDouble(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
   }
 
-  inline int ExcelObj::toInt(const std::optional<int> default) const
+  inline int ExcelObj::toInt(const std::optional<int> defaultVal) const
   {
-    return ToInt(default.has_value() ? &default.value() : nullptr)(*this);
+    return ToInt(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
   }
 
-  inline bool ExcelObj::toBool(const std::optional<bool> default) const
+  inline bool ExcelObj::toBool(const std::optional<bool> defaultVal) const
   {
-    return ToBool(default.has_value() ? &default.value() : nullptr)(*this);
+    return ToBool(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
   }
 
   inline bool ExcelObj::operator==(double that) const
