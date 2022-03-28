@@ -88,7 +88,7 @@ namespace xloil
     PStringImpl& operator=(const PStringImpl& that)
     {
       if (this != &that)
-        writeOrThrow(that.pstr(), that.length());
+        writeOrThrow(that);
       return *this;
     }
 
@@ -99,9 +99,9 @@ namespace xloil
     template <class T>
     PStringImpl& operator=(T str)
     {
-      writeOrThrow(
+      writeOrThrow(std::basic_string_view<char_type>(
         detail::StringTraits<T>::data(str),
-        detail::StringTraits<T>::length(str));
+        detail::StringTraits<T>::length(str)));
       return *this;
     }
 
@@ -217,13 +217,13 @@ namespace xloil
       : _data(data)
     {}
 
-    void writeOrThrow(const char_type* str, size_t len)
+    void writeOrThrow(std::basic_string_view<char_type> str)
     {
-      if (!replace(len, str))
+      if (!replace(str))
         throw std::out_of_range(
           formatStr("PString buffer too short: %u required, %u available",
-            len, length()));
-      _data[0] = (TChar)len;
+            str.length(), length()));
+      _data[0] = (TChar)str.length();
     }
 
     void overwrite(const char_type* source, TChar len)

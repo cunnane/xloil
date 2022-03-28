@@ -116,7 +116,7 @@ namespace xloil
       return false;
     }
 
-    inline bool getWindowsRegistryValue(
+    bool getWindowsRegistryValue(
       const std::wstring_view& hive,
       const std::wstring_view& location,
       unsigned long& result)
