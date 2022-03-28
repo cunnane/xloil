@@ -51,13 +51,9 @@
     <Import Project="..\..\src\BuildPaths.props" />
     <Import Project="..\..\libs\xlOilPlugin.props" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
+    <Import Project="..\..\src\Release.props" />
+  </ImportGroup>
   <ItemGroup>
     <ClCompile Include="Loader\StubLoader.cpp" />
   </ItemGroup>
@@ -134,6 +130,11 @@
       <FileType>Document</FileType>
       <DestinationFolders>$(OutDir)\xloil</DestinationFolders>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
+      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

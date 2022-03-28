@@ -7,15 +7,15 @@
   </PropertyGroup>
   <PropertyGroup>
     <LibraryPath>$(xlOilRoot)\build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
-  </PropertyGroup>  
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>FMT_HEADER_ONLY;_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING;SPDLOG_COMPILED_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
     </ClCompile>
-	<Link>
-	  <AdditionalDependencies>xloil.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <Link>
+      <AdditionalDependencies>xloil.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />

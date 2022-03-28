@@ -30,6 +30,9 @@
     <ClCompile Include="xloSplit.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
+      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
