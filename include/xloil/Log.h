@@ -1,53 +1,83 @@
 #pragma once
 
-// TODO: slim down this header!
-
-#ifdef XLOIL_NO_SPDLOG
-
-#define XLO_TRACE(...) 
-#define XLO_DEBUG(...) 
-#define XLO_INFO(...) 
-#define XLO_WARN(...) 
-#define XLO_ERROR(...) 
-
-#else
-
 #include <xloil/ExportMacro.h>
+#include <xloil/StringUtils.h>
+#include <xloil/FmtStr.h>
 #include <string>
 
-#ifdef _DEBUG
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-#else
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
-#endif 
 
-#define SPDLOG_WCHAR_TO_UTF8_SUPPORT
-#include <xlOil/WindowsSlim.h>
-#include <spdlog/spdlog.h> 
+#define XLO_LOGGER_CALL(level, ...) { xloil::Logger::instance().log(\
+     xloil::Logger::Location{ __FILE__, __LINE__, __FUNCTION__ }, \
+     level, XLO_FMT_((__VA_ARGS__))); }
 
-
-#define XLO_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
-#define XLO_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
-#define XLO_INFO(...) SPDLOG_INFO(__VA_ARGS__)
-#define XLO_WARN(...) SPDLOG_WARN(__VA_ARGS__)
-#define XLO_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
+#define XLO_TRACE(...) XLO_LOGGER_CALL(xloil::LogLevel::LOG_TRACE, __VA_ARGS__)
+#define XLO_DEBUG(...) XLO_LOGGER_CALL(xloil::LogLevel::LOG_DEBUG, __VA_ARGS__)
+#define XLO_INFO(...)  XLO_LOGGER_CALL(xloil::LogLevel::LOG_INFO,  __VA_ARGS__)
+#define XLO_WARN(...)  XLO_LOGGER_CALL(xloil::LogLevel::LOG_WARN,  __VA_ARGS__)
+#define XLO_ERROR(...) XLO_LOGGER_CALL(xloil::LogLevel::LOG_ERROR, __VA_ARGS__)
 
 namespace xloil
 {
   namespace detail
   {
-    void loggerInitialise(spdlog::level::level_enum level);
+    //void loggerInitialise(spdlog::level::level_enum level);
     void loggerInitPopupWindow();
     void loggerAddFile(
       const wchar_t* logFilePath, const char* logLevel, 
       size_t maxFileSizeKb, size_t numFiles = 1);
   }
 
-  /// <summary>
-  /// Gets the logger registry for the core dll so plugins can output to the same
-  /// log file
-  /// </summary>
-  XLOIL_EXPORT spdlog::details::registry& loggerRegistry();
-}
+  enum class LogLevel
+  {
+    LOG_TRACE = 0,
+    LOG_DEBUG = 1,
+    LOG_INFO = 2,
+    LOG_WARN = 3,
+    LOG_ERROR = 4,
+    LOG_CRITICAL = 5,
+    LOG_OFF = 6
+  };
 
-#endif
+  class Logger
+  {
+  public:
+    Logger();
+
+    struct Location
+    {
+      const char* filename;
+      int line;
+      const char* funcname;
+    };
+
+    template<class Str>
+    void log(Location location, LogLevel level, Str&& msg)
+    {
+      if (level < _minLevel)
+        return;
+      
+      doLog(location, level, std::move(msg));
+    }
+
+    void setLevel(LogLevel level)
+    {
+      _minLevel = level;
+    }
+
+    XLOIL_EXPORT void doLog(
+      const Location& location, 
+      const LogLevel level, 
+      std::wstring&& msg);
+
+    XLOIL_EXPORT void doLog(
+      const Location& location,
+      const LogLevel level,
+      std::string&& msg);
+
+    XLOIL_EXPORT static Logger& instance();
+
+  private:
+    LogLevel _minLevel;
+  };
+
+}

@@ -10,6 +10,7 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
 #include <xloil/StringUtils.h>
+#include <xloil/WindowsSlim.h>
 #include <array>
 #include <algorithm>
 #include <cstring>
@@ -364,7 +365,7 @@ namespace
         return range.address();
       }
       case xltypeMulti:
-        return fmt::format(L"[{0} x {1}]", val.array.rows, val.array.columns);
+        return XLO_FMT(L"[{0} x {1}]", val.array.rows, val.array.columns);
       default:
         return toString();
       }

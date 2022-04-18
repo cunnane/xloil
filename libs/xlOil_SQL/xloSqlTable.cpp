@@ -45,7 +45,7 @@ namespace xloil
 
       // Attempt to drop table if it already exists, e.g. function called 
       // again, but ignore return code
-      sqlExec(db.get(), fmt::format(L"DROP TABLE {0}", tableName));
+      sqlExec(db.get(), XLO_FMT(L"DROP TABLE {0}", tableName));
 
       createVTable(
         db.get(),
@@ -55,13 +55,13 @@ namespace xloil
 
       wstring select = query.isNonEmpty()
         ? query.toString()
-        : fmt::format(L"SELECT * FROM {0}", tableName);
+        : XLO_FMT(L"SELECT * FROM {0}", tableName);
 
       // We do this little rename so the table can have the 
       // expected name in the query even though it is just
       // the temporary vtable.
       auto tempName = wstring(L"xloil_temp");
-      auto sql = fmt::format(
+      auto sql = XLO_FMT(
         L"CREATE TABLE {0} AS {1};"
         "DROP TABLE {2};"
         "ALTER TABLE {0} RENAME TO {2};",

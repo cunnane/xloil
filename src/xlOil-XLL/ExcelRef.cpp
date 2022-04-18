@@ -44,7 +44,7 @@ namespace xloil
       : tryCallExcel(msxll::xlSheetId);
 
     if (ret != 0 || !sheetId.isType(ExcelType::Ref))
-      XLO_THROW(L"Could not find sheet name from address {}", address);
+      XLO_THROW(L"Could not find sheet name from address {}", std::wstring(address));
 
     msxll::XLREF12 sref;
     if (!localAddressToXlRef(sref, address.substr(pling + 1)))

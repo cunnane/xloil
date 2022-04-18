@@ -25,7 +25,7 @@ namespace xloil
     bool checkRegistryKeys()
     {
       auto excelVersion = App::internals().version;
-      auto regKey = fmt::format(L"Software\\Microsoft\\Office\\{0}.0\\Excel\\Security\\AccessVBOM", excelVersion);
+      auto regKey = XLO_FMT(L"Software\\Microsoft\\Office\\{0}.0\\Excel\\Security\\AccessVBOM", excelVersion);
       DWORD currentUser = 666, localMachine = 666;
       getWindowsRegistryValue(L"HKCU", regKey.c_str(), currentUser);
       getWindowsRegistryValue(L"HKLM", regKey.c_str(), localMachine);
@@ -40,10 +40,13 @@ namespace xloil
       int line;
       VBIDE::_CodeModulePtr mod;
 
-      template <typename S, typename... Args>
-      void write(const S& fmtStr, Args&&... args)
+      void write(const wstring& str)
       {
-        mod->InsertLines(line++, fmt::format(fmtStr, std::forward<Args>(args)...).c_str());
+        mod->InsertLines(line++, str.c_str());
+      }
+      void write(const wchar_t* str)
+      {
+        mod->InsertLines(line++, str);
       }
     };
 
@@ -121,13 +124,13 @@ namespace xloil
           const auto declaration = isSub ? L"Sub" : L"Function";
           const auto retVar = isSub ? L"dummy" : name;
 
-          writer.write(L"Public {2} {0}({1})", name, optionalArgs, declaration);
-          writer.write(L"  Dim args: args=Array({0})", args);
+          writer.write(XLO_FMT(L"Public {2} {0}({1})", name, optionalArgs, declaration));
+          writer.write(XLO_FMT(L"  Dim args: args=Array({0})", args));
           if (isSub)
             writer.write(L"  Dim dummy");
-          writer.write(L"  localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
-            retVar, workbookName, name);
-          writer.write(L"End {0}", declaration);
+          writer.write(XLO_FMT(L"  localFunctionEntryPoint \"{1}\", \"{2}\", {0}, args",
+            retVar, workbookName, name));
+          writer.write(XLO_FMT(L"End {0}", declaration));
         }
       }
       XLO_RETHROW_COM_ERROR;

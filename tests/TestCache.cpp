@@ -6,7 +6,6 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace xloil;
 using std::wstring;
 using std::make_unique;
-using fmt::format;
 using std::vector;
 using std::unique_ptr;
 
@@ -27,7 +26,7 @@ namespace Tests
       vector<ExcelObj> callers;
       vector<ExcelObj> keys(N);
       for (auto i = 0; i < N; ++i)
-        callers.emplace_back(ExcelObj(format(L"Key_{0}", i)));
+        callers.emplace_back(ExcelObj(XLO_FMT(L"Key_{0}", i)));
 
       for (auto i = 0; i < N; ++i)
         keys[i] = cache->add(make_unique<int>(i), CallerInfo(callers[i]));
@@ -64,7 +63,7 @@ namespace Tests
       vector<ExcelObj> callers;
       vector<ExcelObj> keys(N);
       for (auto i = 0; i < N; ++i)
-        callers.emplace_back(ExcelObj(format(L"Key_{0}", i)));
+        callers.emplace_back(ExcelObj(XLO_FMT(L"Key_{0}", i)));
       
       auto t1 = std::chrono::high_resolution_clock::now();
 
@@ -90,7 +89,7 @@ namespace Tests
       auto t3 = std::chrono::high_resolution_clock::now();
       auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
       auto duration2 = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-      Logger::WriteMessage(format("CacheSpeedTest1 - Time 1: {0},   Time 2: {1}", duration1, duration2).c_str());
+      Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(XLO_FMT("CacheSpeedTest1 - Time 1: {0},   Time 2: {1}", duration1, duration2).c_str());
 #endif
     }
   };

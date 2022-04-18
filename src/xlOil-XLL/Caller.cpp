@@ -446,7 +446,7 @@ namespace xloil
       // This means failure to read anything will return -1, which gives an 
       // error condition later.
       auto end = std::min(c + 3, last);
-      auto val = (int)detail::parseUnsigned<decltype(c), ColumnNameAlphabet, 26, 26>(c, end) - 1;
+      auto val = (int)detail::parseUnsignedImpl<decltype(c), ColumnNameAlphabet, 26, 26>(c, end) - 1;
       return val > XL_MAX_COLS ? -1 : val;
     }
     /// <summary>

@@ -112,6 +112,7 @@
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Intellisense.cpp" />
+    <ClCompile Include="Log.cpp" />
     <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="ExcelArray.cpp" />

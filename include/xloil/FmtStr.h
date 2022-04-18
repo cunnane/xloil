@@ -1,15 +1,6 @@
-#include "CppUnitTest.h"
-#include <xlOil/StringUtils.h>
-//#include <xloil/FmtStr.h>
-#include <tuple>
+#pragma once
+#include <string>
 #include <array>
-
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
-
-using namespace xloil;
-using std::wstring;
-using std::string;
-
 
 /// <summary>
 /// Takes a format *string literal* of char or wchar_t and arguments to insert, 
@@ -113,7 +104,7 @@ namespace xloil
     {
       for (; *str != 0; ++str)
         if (*str == what) return str;
-
+      
       return (const TCharL*)0;
     }
 
@@ -125,7 +116,7 @@ namespace xloil
     {
       for (; first != last; ++dest, ++first)
         *dest = *first;
-
+      
       return dest;
     }
 
@@ -190,13 +181,13 @@ namespace xloil
       /// Expects `str` to point to the *end* of the format string
       /// </summary>
       template<class TChar>
-      constexpr auto suffix_match(size_t iArg, TChar suffix) const
+      constexpr auto suffix_match(size_t iArg, const TChar* str) const
       {
         for (auto i = 0; i < formats[iArg].size; ++i)
         {
           auto fmt = formats[iArg].data[i];
           auto len = std::char_traits<char>::length(fmt);
-          if (suffix == fmt[len - 1])
+          if (str[-1] == fmt[len - 1])
             return i;
         }
         return -1;
@@ -220,14 +211,10 @@ namespace xloil
       size_t count = 0;
     };
 
-    template<class TChar, class TIter1, class TIter2, class TFmts>
-    constexpr auto write_fmtstr(
-      const TChar* str, 
-      TIter1 dest, 
-      TIter2 arg_nums, 
-      TFmts arg_fmts)
+    template<class TChar, class TIter, class TFmts>
+    constexpr auto write_fmtstr(const TChar* str, TIter destination, TFmts arg_fmts)
     {
-      //auto dest = destination;
+      auto dest = destination;
       auto source = str;
 
       // Copy up to the first '{' or the end of str
@@ -257,7 +244,7 @@ namespace xloil
         auto close_brace = find_next_chr(source, '}');
         if (!close_brace) throw "No close brace";
 
-        *dest++ = (TChar)'%';
+        (*dest++) = (TChar)'%';
 
         // Has format specifier been provided?
         if (close_brace - source > 0)
@@ -279,18 +266,16 @@ namespace xloil
           else
           {
             ++source; // eat colon
-            auto i_fmt = arg_fmts.suffix_match(arg_num, close_brace[-1]);
+            auto i_fmt = arg_fmts.suffix_match(arg_num, close_brace);
             if (i_fmt < 0)
               throw "Format specifier doesn't match type";
             dest = iter_copy(source, close_brace - 1, dest);
             dest = str_copy(arg_fmts.get(arg_num, i_fmt), dest);
           }
-          *arg_nums++ = arg_num;
         }
         else
         {
           dest = str_copy(arg_fmts.get(i_arg), dest);
-          *arg_nums++ = i_arg;
           ++i_arg;
         }
 
@@ -301,7 +286,7 @@ namespace xloil
       // Add terminator
       (*dest++) = (TChar)0;
 
-      return std::pair(dest, arg_nums); //dest - destination; // std::distance(destination, dest);
+      return dest - destination; // std::distance(destination, dest);
     }
 
     /// <summary>
@@ -313,15 +298,10 @@ namespace xloil
     {
       using char_type = typename std::decay_t<decltype(*TStr::str())>;
       constexpr ArgFormats<Args...> arg_fmts{};
-
-      constexpr auto count_results = write_fmtstr(
-        TStr::str(), CountingIterator(), CountingIterator(), arg_fmts);
-
-      std::array<char_type, count_results.first.count> fmt_str{ 0 };
-      std::array<size_t, count_results.second.count> arg_map{ 0 };
-      write_fmtstr(TStr::str(), fmt_str.begin(), arg_map.begin(), arg_fmts);
-
-      return std::pair(fmt_str, arg_map);
+      constexpr auto length = write_fmtstr(TStr::str(), CountingIterator(), arg_fmts);
+      std::array<char_type, length> result{ 0 };
+      write_fmtstr(TStr::str(), result.begin(), arg_fmts);
+      return result;
     }
 
     template<typename...Args>
@@ -388,30 +368,6 @@ namespace xloil
       return std::move(result);
     }
 
-    template<typename Tuple, std::size_t... Ints>
-    constexpr auto select_tuple(Tuple&& tuple, std::index_sequence<Ints...>)
-    {
-      return std::make_tuple(
-        std::get<Ints>(std::forward<Tuple>(tuple))...);
-    }
-
-    template <const auto& arr, std::size_t... Is>
-    constexpr auto as_seq_impl(std::index_sequence<Is...>)
-    {
-      return std::index_sequence<std::get<Is>(arr)...>();
-    }
-    template <const auto& arr>
-    constexpr auto as_seq()
-    {
-      return as_seq_impl<arr>(std::make_index_sequence<arr.size()>{});
-    }
-
-    template <const auto& arr, class...Args>
-    constexpr auto reindex_array(Args... args)
-    {
-      return select_tuple(std::make_tuple(args...), as_seq<arr>());
-    }
-
     /// <summary>
     /// Takes a literal format string, provided by the constexpr return value of 
     /// TStr::str(), transforms it to printf style and invokes sprintf. See `XLO_FMT`. 
@@ -419,13 +375,8 @@ namespace xloil
     template<class TStr, typename...Args>
     inline auto fmtstr(TStr, Args... args)
     {
-      static constexpr auto fmt_result = build_fmtstr<TStr, Args...>();
-      static constexpr auto arr = fmt_result.second;
-      static constexpr auto arg_pack = as_tuple<arr>(args...);
-      return stringprintf(
-        fmt_result.first.data(), 
-        fmt_result.first.size(), 
-        arg_pack);
+      static constexpr auto printf_fmt = build_fmtstr<TStr, Args...>();
+      return stringprintf(printf_fmt.data(), printf_fmt.size(), std::forward<Args>(args)...);
     }
 
     template<class TChar>
@@ -439,124 +390,4 @@ namespace xloil
       return str;
     }
   }
-}
-
-namespace Tests
-{
-  TEST_CLASS(StringUtils)
-  {
-  public:
-    template<int Radix>
-    void parseRoundTrip(size_t value)
-    {
-      char buffer[65], buf_itoa[65];
-
-      auto len = unsignedToString<Radix>(value, buffer, sizeof(buffer));
-      auto parsed = (size_t)parseUnsigned<Radix>(buffer + 0, buffer + len);
-
-      _ui64toa_s(value, buf_itoa, _countof(buf_itoa), Radix);
-      buffer[len] = '\0';
-      Assert::AreEqual<string>(buf_itoa, buffer);
-      Assert::AreEqual(value, parsed);
-    }
-
-    TEST_METHOD(TestIntStringParse)
-    {
-      const int N = 63;
-      for (size_t i = 1; i < 32; ++i)
-      {
-        size_t value = 1ull << i;
-        parseRoundTrip<2>(value);
-        parseRoundTrip<7>(value);
-        parseRoundTrip<10>(value);
-        parseRoundTrip<16>(value);
-        parseRoundTrip<32>(value);
-      }
-      for (size_t i = 1; i < 2000; ++i)
-      {
-        parseRoundTrip<2>(i);
-        parseRoundTrip<7>(i);
-        parseRoundTrip<10>(i);
-        parseRoundTrip<16>(i);
-        parseRoundTrip<32>(i);
-      }
-    }
-  };
-
-//  void TWO() {}
-//  void THREE() {}
-//
-//#define GET_MACRO(_1,_2,_3,NAME,...) NAME
-//#define GET_MACRO_(args) GET_MACRO args
-//#define FOO(...) GET_MACRO_((__VA_ARGS__, FOO3, FOO2))(__VA_ARGS__)
-//
-//#define FOO2(a,b) TWO()
-//#define FOO3(a,b,c) THREE()
-//
-//  FOO(1, 2);
-//  FOO(1, 2, 3);
-//#ifdef _MSVC_TRADITIONAL
-//#error blob
-//#endif
-  TEST_CLASS(PrintF)
-  {
-    //using arse = std::decay_t < std::rem<const char*>>;
-
-    auto inAFunc(int x, int y, const char* s)
-    {
-      return XLO_FMT("X = {}, Y = {}, {}", x, y, s);
-    }
-    TEST_METHOD(Magic)
-    {
-
-      constexpr const char* number = "x999";
-      constexpr auto parsed = (size_t)parseUnsigned<10>(number, number + 3);
-
-      int x=1, y=2;
-      std::string s("foobar");
-      {
-        auto str = XLO_FMT("X = {}, Y = {}, {}", x, y, s);
-        Assert::AreEqual(str.c_str(), "X = 1, Y = 2, foobar");
-      }
-      {
-        auto str = inAFunc(x, y, s.c_str());
-        Assert::AreEqual(str.c_str(), "X = 1, Y = 2, foobar");
-      }
-      {
-        auto str = XLO_FMT("X = {2}, Y = {1}, {1}", x, y, s);
-        Assert::AreEqual(str.c_str(), "X = foobar, Y = 2, 2");
-      }
-      {
-        auto str = XLO_FMT("X = Y");
-        Assert::AreEqual(str.c_str(), "X = Y");
-      }
-      {
-        auto str = XLO_FMT(std::string("X = Y"));
-        Assert::AreEqual(str.c_str(), "X = Y");
-      }
-      {
-        auto str = XLO_FMT("X = {1:5d}, Y = {1:-5d}, {1:.5d}", x, y);
-        Assert::AreEqual(str.c_str(), "X =     2, Y = 2    , 00002");
-      }
-      {
-        auto sql = XLO_FMT(
-          "CREATE TABLE {0} AS {1};"
-          "DROP TABLE {2};"
-          "ALTER TABLE {0} RENAME TO {2};",
-          x, y, s);
-      }
-      {
-        unsigned long a = 91, b = 42;
-        auto wstr2 = XLO_FMT(L"X = {0:#x}, Y = {1}, {1}", a, b, s);
-      }
-      //using arse = std::remove_const<std::remove_pointer<const char* const>::type>::type;
-
-      // X = 1, Y = 2, foobar
-      /*struct Str { static constexpr auto str() { return "X = {}, Y = {}, {} "; } };
-      static constexpr auto jiggered = detail::doit<Str, int, int, int>();*/
-      //constexpr auto ret = doit3("X = {}, Y = {}, {} ", x, y, z);
-      //const auto f = fmtstr("X = {}, Y = {}, {} ", x, y, z);
-      //make_foo(strprov(), std::make_index_sequence<len>{});
-    }
-  };
 }

@@ -23,7 +23,7 @@ namespace Microsoft {
     {
       template<> inline std::wstring ToString<msxll::XLREF12>(const msxll::XLREF12& r) 
       { 
-        return fmt::format(L"(row=[{},{}], col=[{},{}])", r.rwFirst, r.rwLast, r.colFirst, r.colLast);
+        return XLO_FMT(L"(row=[{},{}], col=[{},{}])", r.rwFirst, r.rwLast, r.colFirst, r.colLast);
       }
     }
   }

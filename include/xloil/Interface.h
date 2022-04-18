@@ -3,6 +3,7 @@
 #include <xloil/Register.h>
 #include <xloil/FuncSpec.h>
 #include <xloil/Version.h>
+#include <xloil/StringUtils.h>
 #include <memory>
 #include <map>
 
@@ -226,7 +227,7 @@ namespace xloil
   /// </summary>
   /// 
   // TODO: rename to maybe PluginAction?  Also maybe Extensions rather than plugin?
-  struct PluginContext
+  struct XLOIL_EXPORT PluginContext
   {
     enum Action
     {
@@ -262,6 +263,21 @@ namespace xloil
         && coreMinorVersion == XLOIL_MINOR_VERSION 
         && corePatchVersion == XLOIL_PATCH_VERSION;
     }
+
+    bool failIfNotExactVersion() const
+    {
+      if (action == PluginContext::Load && !checkExactVersion())
+      {
+        error(formatStr(
+          L"Plugin '%s' expected xlOil %d.%d.%d but was loaded by %d.%d.%d",
+          pluginName, XLOIL_MAJOR_VERSION, XLOIL_MINOR_VERSION, XLOIL_PATCH_VERSION,
+          coreMajorVersion, coreMinorVersion, corePatchVersion));
+        return false;
+      }
+      return true;
+    }
+
+    void error(const std::wstring_view& msg) const;
   };
 
   /// <summary>

@@ -36,8 +36,8 @@ namespace xloil
       // Convert to an XLL SheetId
       auto wb = (Excel::_WorkbookPtr)range->Worksheet->Parent;
       const auto sheetId =
-        callExcel(msxll::xlSheetId, fmt::format(L"[{0}]{1}",
-          wb->Name, range->Worksheet->Name));
+        callExcel(msxll::xlSheetId, XLO_FMT(L"[{0}]{1}",
+          (const char*)wb->Name, (const char*)range->Worksheet->Name));
 
       return ExcelRef(sheetId.val.mref.idSheet,
         fromRow, fromCol, fromRow + nRows - 1, fromCol + nCols - 1);

@@ -64,9 +64,4 @@ namespace xloil
         logger->set_level(fileWrite->level());
     }
   }
-
-  XLOIL_EXPORT spdlog::details::registry& loggerRegistry()
-  {
-    return spdlog::details::registry::instance();
-  }
 }

@@ -94,9 +94,9 @@ namespace xloil
         {
           using namespace spdlog::level;
           int iLevel = 0;
-          for (const auto& level_str : level_string_views)
+          for (const auto& level_str : SPDLOG_LEVEL_NAMES)
           {
-            if (strncmp(target.c_str(), level_str.data(), target.length()) == 0)
+            if (strncmp(target.c_str(), level_str, target.length()) == 0)
               return static_cast<level_enum>(iLevel);
             iLevel++;
           }
@@ -116,7 +116,7 @@ namespace xloil
         void writeToLog(const char* message, const py::object& level)
         {
           auto frame = PyEval_GetFrame();
-          spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
+          Logger::Location source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
           if (frame)
           {
             auto code = frame->f_code; // Guaranteed never null
@@ -124,11 +124,11 @@ namespace xloil
             source.filename = PyUnicode_AsUTF8(code->co_filename);
             source.funcname = PyUnicode_AsUTF8(code->co_name);
           }
-          const auto spdLevel = toSpdLogLevel(level);
+          const auto logLevel = toSpdLogLevel(level);
           py::gil_scoped_release releaseGil;
-          spdlog::default_logger_raw()->log(
+          Logger::instance().log(
             source,
-            spdLevel,
+            logLevel,
             message);
         }
 
@@ -140,7 +140,7 @@ namespace xloil
 
         void setLogLevel(const py::object& level)
         {
-          spdlog::default_logger()->set_level(toSpdLogLevel(level));
+          Logger::instance().setLevel(toSpdLogLevel(level));
         }
       };
 

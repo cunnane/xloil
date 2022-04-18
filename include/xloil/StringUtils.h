@@ -187,16 +187,30 @@ namespace xloil
     return true;
   }
 
+  namespace detail
+  {
+    template<class T>
+    struct ReplaceStringWithCStr
+    {
+      auto operator()(T x) const { return x; }
+    };
+    template<class TChar>
+    struct ReplaceStringWithCStr<std::basic_string<TChar>>
+    {
+      auto operator()(const std::basic_string<TChar>& x) const { return x.c_str(); }
+    };
+  }
+
   /// <summary>
   /// Wraps sprintf and returns a wstring
   /// </summary>
   template<class...Args>
   inline std::wstring
-    formatStr(const wchar_t* fmt, Args&&...args)
+    formatStr(const wchar_t* fmt, Args...args)
   {
-    const auto size = (size_t)_scwprintf(fmt, args...);
+    const auto size = (size_t)_scwprintf(fmt, detail::ReplaceStringWithCStr<Args>()(args)...);
     std::wstring result(size + 1, 0);
-    swprintf_s(&result[0], size + 1, fmt, args...);
+    swprintf_s(&result[0], size + 1, fmt, detail::ReplaceStringWithCStr<Args>()(args)...);
     result.pop_back();
     return result;
   }
@@ -206,11 +220,11 @@ namespace xloil
   /// </summary>
   template<class...Args>
   inline std::string
-    formatStr(const char* fmt, Args&&...args)
+    formatStr(const char* fmt, Args...args)
   {
-    const auto size = (size_t)_scprintf(fmt, args...);
+    const auto size = (size_t)_scprintf(fmt, detail::ReplaceStringWithCStr<Args>()(args)...);
     std::string result(size + 1, 0);
-    sprintf_s(&result[0], size + 1, fmt, args...);
+    sprintf_s(&result[0], size + 1, fmt, detail::ReplaceStringWithCStr<Args>()(args)...);
     result.pop_back();
     return result;
   }
@@ -398,7 +412,7 @@ namespace xloil
       class TAlphabet,
       size_t TRadix,
       size_t THigh = TRadix - 1>
-    inline auto parseUnsigned(
+    constexpr auto parseUnsignedImpl(
       TIter& begin, 
       const TIter end)
     {
@@ -422,7 +436,7 @@ namespace xloil
         -1, -1, -1, -1, -1, -1,
         10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
       };
-      auto operator()(int16_t c) const 
+      constexpr auto operator()(int16_t c) const
       { 
         if (c < '0' || c > 'z')
           return (uint8_t)-1;
@@ -432,7 +446,7 @@ namespace xloil
 
     struct DecimalAlphabet
     {
-      auto operator()(int16_t c) const
+      constexpr auto operator()(int16_t c) const
       {
         if (c < '0' || c > '9')
           return (uint8_t)-1;
@@ -447,16 +461,16 @@ namespace xloil
   /// iterator to just past the last correctly parsed character.
   /// </summary>
   template<size_t TRadix, class TIter>
-  inline auto parseUnsigned(TIter& begin, const TIter& end)
+  constexpr auto parseUnsigned(TIter& begin, const TIter& end)
   {
     if constexpr (TRadix <= 10)
-      return detail::parseUnsigned<TIter, detail::DecimalAlphabet, TRadix>(begin, end);
+      return detail::parseUnsignedImpl<TIter, detail::DecimalAlphabet, TRadix>(begin, end);
     else
-      return detail::parseUnsigned<TIter, detail::StandardAlphabet, TRadix>(begin, end);
+      return detail::parseUnsignedImpl<TIter, detail::StandardAlphabet, TRadix>(begin, end);
   }
 
   template<size_t TRadix, class TIter>
-  inline auto parseUnsigned(const TIter& begin, const TIter& end)
+  constexpr auto parseUnsigned(const TIter& begin, const TIter& end)
   {
     auto i = begin;
     return parseUnsigned<TRadix, TIter>(i, end);

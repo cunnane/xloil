@@ -236,4 +236,9 @@ namespace xloil
   {
     _files.erase(which);
   }
+
+  void PluginContext::error(const std::wstring_view& msg) const
+  {
+
+  }
 }

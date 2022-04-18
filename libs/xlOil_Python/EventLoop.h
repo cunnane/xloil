@@ -2,6 +2,7 @@
 #include "PyEvents.h"
 #include <CTPL/ctpl_stl.h>
 #include <xlOil/Log.h>
+#include <xlOil/WindowsSlim.h>
 
 namespace xloil
 {

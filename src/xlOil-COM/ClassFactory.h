@@ -158,6 +158,8 @@ namespace xloil
       std::wstring _progId;
       std::list<std::wstring> _regKeysAdded;
 
+      static constexpr const wchar_t* _RegPathProgId = L"Software\\Classes";
+      static constexpr const wchar_t* _RegPathClsId  = L"Software\\Classes\\CLSID";
     public:
       template<class TCreatorFunc>
       RegisterCom(
@@ -170,7 +172,7 @@ namespace xloil
         if (progId)
         {
           // Check if ProgId is already registered by trying to find its CLSID
-          auto clsidKey = fmt::format(L"Software\\Classes\\{0}\\CLSID", progId);
+          auto clsidKey = XLO_FMT(L"{0}\\{1}\\CLSID", _RegPathProgId, progId);
           if (getWindowsRegistryValue(L"HKCU", clsidKey.c_str(), _clsid))
           {
             if (fixedClsid && _wcsicmp(_clsid.c_str(), fixedClsid) != 0)
@@ -231,22 +233,22 @@ namespace xloil
 
         writeRegistry(
           HKEY_CURRENT_USER,
-          fmt::format(L"Software\\Classes\\{0}\\CLSID", _progId).c_str(),
+          XLO_FMT(L"{0}\\{1}\\CLSID", _RegPathProgId, _progId).c_str(),
           0,
           _clsid.c_str());
 
         // Add to our list of added keys, to ensure outer key is deleted
-        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\{0}", _progId));
+        _regKeysAdded.emplace_back(XLO_FMT(L"{0}\\{1}", _RegPathProgId, _progId));
 
         // This registry entry is not needed to call CLSIDFromProgID, nor
         // to call CoCreateInstance, but for some reason the RTD call to
         // Excel will fail without it.
         writeRegistry(
           HKEY_CURRENT_USER,
-          fmt::format(L"Software\\Classes\\CLSID\\{0}\\InProcServer32", _clsid).c_str(),
+          XLO_FMT(L"{0}\\{1}\\InProcServer32", _RegPathClsId, _clsid).c_str(),
           0,
           L"xlOil.dll"); // Name of dll isn't actually used.
-        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\CLSID\\{0}", _clsid));
+        _regKeysAdded.emplace_back(XLO_FMT(L"{0}\\{1}", _RegPathClsId, _clsid));
 
         // Check all is good by looking up the CLISD from our progId
         CLSID foundClsid;

@@ -139,6 +139,9 @@
     <ClInclude Include="..\..\include\xloil\AppObjects.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\xloil\FmtStr.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">

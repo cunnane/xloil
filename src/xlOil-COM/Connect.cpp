@@ -82,7 +82,7 @@ namespace xloil {
           {
             throw ComConnectException(
               utf16ToUtf8(
-                fmt::format(L"COM Error {0:#x}: {1}",
+                XLO_FMT(L"COM Error {0:#x}: {1}",
                 (size_t)error.Error(), error.ErrorMessage())).c_str());
           }
         }

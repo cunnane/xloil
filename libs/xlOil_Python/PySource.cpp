@@ -64,14 +64,16 @@ namespace xloil
           , _workbookPattern(starredPattern)
         {
           // Turn the starred pattern into a fmt string for easier substitution later
-          _workbookPattern.replace(_workbookPattern.find(L'*'), 1, wstring(L"{0}\\{1}"));
+          _workbookPattern.replace(_workbookPattern.find(L'*'), 1, wstring(L"%s\\%s"));
         }
 
         void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
         {
           // Subtitute in to find target module name, removing extension
           auto fileExtn = wcsrchr(wbName, L'.');
-          auto modulePath = fmt::format(_workbookPattern,
+          auto modulePath = detail::stringprintf(
+            _workbookPattern.c_str(),
+            _workbookPattern.length(),
             wbPath,
             fileExtn ? wstring(wbName, fileExtn).c_str() : wbName);
 

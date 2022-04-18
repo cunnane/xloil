@@ -27,7 +27,7 @@ namespace xloil
 
     for (size_t i = 0; i < nArgs; ++i)
       if (_info->args[i].name.empty())
-        _info->args[i].name = fmt::format(L"Arg_{}", i);
+        _info->args[i].name = XLO_FMT(L"Arg_{}", i);
 
     return _info;
   }
@@ -71,7 +71,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          errors += fmt::format(L"{0}: {1}\n", spec->name(), utf8ToUtf16(e.what()));
+          errors += XLO_FMT(L"{0}: {1}\n", spec->name(), utf8ToUtf16(e.what()));
         }
       return result;
     }

@@ -212,7 +212,7 @@ namespace xloil
         }
         else
         {
-          const auto addinPath = fmt::format(
+          const auto addinPath = XLO_FMT(
             L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
           _registrar.writeRegistry(
             HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", name);

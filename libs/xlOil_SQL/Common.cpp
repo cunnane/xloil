@@ -81,7 +81,7 @@ namespace xloil
     {
       auto schema = tableSchema(arr, headings);
       auto arrayData = arr.slice(headings ? 0 : 1, 0);
-      auto sql = fmt::format(
+      auto sql = XLO_FMT(
         L"CREATE VIRTUAL TABLE {0} USING xlarray({1},{2},0)", name, (long long)&arrayData, schema);
 
       sqlite3_stmt *stmt;

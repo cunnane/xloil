@@ -16,6 +16,7 @@
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Intellisense.cpp" />
+    <ClCompile Include="Log.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />

@@ -146,7 +146,7 @@ namespace xloil
       vector<wstring> argHelp;
       if (truncatedArgNames)
         for (auto x : info->args)
-          argHelp.emplace_back(fmt::format(L"({0}) {1}", x.name, x.help));
+          argHelp.emplace_back(XLO_FMT(L"({0}) {1}", x.name, x.help));
       else
         for (auto x : info->args)
           argHelp.emplace_back(x.help);
