@@ -215,6 +215,7 @@ namespace xloil
     {
       setTextBoxContents(_windowText.c_str());
       ShowWindow(theMainWindow, SW_SHOWNORMAL);
+      BringWindowToTop(theMainWindow);
       theWindowIsOpen = true;
     }
 
