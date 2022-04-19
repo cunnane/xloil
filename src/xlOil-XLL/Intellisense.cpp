@@ -109,7 +109,7 @@ namespace xloil
       // and argument help.
       size_t totalStrLen = theIntellisenseRegisteredXll.size();
       size_t maxNumArgs = 0;
-      size_t nFuncs = 0;
+      ExcelArray::row_t nFuncs = 0;
       for (auto& info : thePendingFuncInfos)
       {
         totalStrLen += info->name.size();
@@ -121,7 +121,7 @@ namespace xloil
         ++nFuncs;
       }
 
-      ExcelArrayBuilder block(1 + nFuncs, 10 + maxNumArgs, totalStrLen);
+      ExcelArrayBuilder block(1 + nFuncs, 10 + (ExcelArray::col_t)maxNumArgs, totalStrLen);
       block.fillNA();
 
       block(0, 0) = theIntellisenseRegisteredXll;

@@ -87,7 +87,7 @@ namespace xloil
         if (_handlers.empty())
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
 
-        XLO_INFO("Event {} added handler {}", _event.name(), (void*)obj.ptr());
+        XLO_INFO(L"Event {} added handler {}", _event.name(), (void*)obj.ptr());
 
         // We use a weakref to avoid dangling pointers to event handlers.
         // For bound methods, we need the WeakMethod class to avoid them
@@ -105,7 +105,7 @@ namespace xloil
       {
         _handlers.remove(obj);
         // Unhook ourselves from the core for efficiency if there are no handlers
-        XLO_INFO("Event {} removed handler {}", _event.name(), (void*)obj.ptr());
+        XLO_INFO(L"Event {} removed handler {}", _event.name(), (void*)obj.ptr());
         if (_handlers.empty())
           _event -= _coreEventHandler;
         return *this;
@@ -138,11 +138,11 @@ namespace xloil
           // Avoid recursion if we actually are Event_PyUserException!
           if constexpr(TAllowUserException)
             Event_PyUserException().fire(e.type(), e.value(), e.trace());
-          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
+          XLO_ERROR(L"During Event {0}: {1}", _event.name(), utf8ToUtf16(e.what()));
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
+          XLO_ERROR(L"During Event {0}: {1}", _event.name(), utf8ToUtf16(e.what()));
         }
       }
 
@@ -177,19 +177,20 @@ namespace xloil
       }
 
       template<class T>
-      void bindEvent(py::module& mod, T* event, const char* name)
+      void bindEvent(py::module& mod, T* event, const wchar_t* name)
       {
+        auto u8name = utf16ToUtf8(name);
         const auto& instances = py::detail::get_internals().registered_types_cpp;
         const auto found = instances.find(std::type_index(typeid(T)));
         if (found == instances.end())
         {
-          py::class_<T>(mod, (string(name) + "_Type").c_str())
+          py::class_<T>(mod, (u8name + "_Type").c_str())
             .def("__iadd__", &T::add)
             .def("__isub__", &T::remove)
             .def("handlers", &T::handlers)
             .def("clear", &T::clear);
         }
-        mod.add_object(name, py::cast(event, py::return_value_policy::take_ownership));
+        mod.add_object(u8name.c_str(), py::cast(event, py::return_value_policy::take_ownership));
       }
 
       /// <summary>
@@ -224,13 +225,13 @@ namespace xloil
         bindArithmeticRef<bool>(eventMod);
 
 #define XLO_PY_EVENT(r, _, NAME) \
-        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), BOOST_PP_STRINGIZE(NAME));
+        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), XLO_WSTR(NAME));
 
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
 
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyUserException()), "UserException");
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), "PyBye");
+        bindEvent(eventMod, makeEventNoUserExcept(Event_PyUserException()), L"UserException");
+        bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), L"PyBye");
       });
     }
 

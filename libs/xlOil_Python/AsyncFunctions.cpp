@@ -277,9 +277,6 @@ namespace xloil
 
         mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });
       });
-
-      // Uncomment this for debugging in case weird things happen with the GIL not releasing
-      //static auto gilCheck = Event::AfterCalculate().bind([]() { XLO_INFO("PyGIL State: {}", PyGILState_Check());  });
     }
   }
 }

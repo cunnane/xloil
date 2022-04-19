@@ -94,9 +94,9 @@ namespace xloil
         {
           using namespace spdlog::level;
           int iLevel = 0;
-          for (const auto& level_str : level_string_views)
+          for (const auto& level_str : SPDLOG_LEVEL_NAMES)
           {
-            if (strncmp(target.c_str(), level_str.data(), target.length()) == 0)
+            if (strncmp(target.c_str(), level_str, target.length()) == 0)
               return static_cast<level_enum>(iLevel);
             iLevel++;
           }

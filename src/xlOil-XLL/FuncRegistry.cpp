@@ -181,6 +181,7 @@ namespace xloil
         truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
       }
 
+      // TODO: entrypoint will always be ascii
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
         info->name, utf8ToUtf16(entryPoint), numArgs);
 
@@ -342,8 +343,8 @@ namespace xloil
     }
     catch (std::exception& e)
     {
-      XLO_ERROR("Failed to register func {0}: {1}",
-        utf16ToUtf8(spec->info()->name.c_str()), e.what());
+      XLO_ERROR(L"Failed to register func {0}: {1}",
+        spec->info()->name.c_str(), utf8ToUtf16(e.what()));
       return RegisteredFuncPtr();
     }
   }

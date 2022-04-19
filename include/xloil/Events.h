@@ -1,13 +1,14 @@
 #pragma once
 #include "ExportMacro.h"
 #include <xlOil/Log.h> 
+#include <xloil/Preprocessor.h>
 #include <functional>
 #include <memory>
 #include <list>
 #include <mutex>
 #include <future>
 #include <string>
-#include <boost/preprocessor/stringize.hpp>
+
 
 namespace xloil { class Range; }
 
@@ -62,8 +63,8 @@ namespace xloil
       using handler = std::function<R(Args...)>;
       using handler_id = const handler*;
 
-      Event(const char* name = 0)
-        : _name(name ? name : "?")
+      Event(const wchar_t* name = 0)
+        : _name(name ? name : L"?")
       {}
 
       virtual ~Event()
@@ -155,7 +156,7 @@ namespace xloil
         _lock.lock();
         std::vector<handler> copy(_handlers.begin(), _handlers.end());
         _lock.unlock();
-        XLO_TRACE("Firing event {0}", _name);
+        XLO_TRACE(L"Firing event {0}", _name);
         return _collector(copy, std::forward<Args>(args)...);
       }
 
@@ -172,13 +173,13 @@ namespace xloil
         _handlers.clear();
       }
 
-      const std::string& name() const { return _name; }
+      const std::wstring& name() const { return _name; }
 
     private:
       std::list<handler> _handlers;
       mutable std::mutex _lock;
       TCollector _collector;
-      std::string _name;
+      std::wstring _name;
     };
 
     using EventNoParam = Event<void(void), detail::VoidCollector>;
@@ -366,7 +367,7 @@ namespace xloil
     decltype(name()) name() \
     { \
       static auto e = std::make_shared<std::remove_reference_t<\
-        decltype(name())>>(BOOST_PP_STRINGIZE(name)); \
+        decltype(name())>>(XLO_WSTR(name)); \
       return *e; \
     }
 }

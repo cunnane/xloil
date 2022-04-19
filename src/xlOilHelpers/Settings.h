@@ -34,7 +34,7 @@ namespace xloil
       environmentVariables(const toml::view_node& root);
 
     /// <summary>
-    /// Lookup name in table in a case-insensive way. TOML lookup is case 
+    /// Lookup name in table in a case-insensitive way. TOML lookup is case 
     /// sensitive because the creator "prefers it that way". That's fine, but 
     /// Microsoft thinks differently and so since 'name' is a filename, case
     /// sensitive lookup would be fairly astonishing.

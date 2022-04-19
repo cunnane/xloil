@@ -242,7 +242,7 @@ namespace xloil
     {
       _info->options = funcOpts;
       _entryPoint = entryPoint;
-      name(utf8ToUtf16(entryPoint));
+      name(utf8ToUtf16(entryPoint)); // TODO: entrypoint will always be ascii
     }
 
     template <class TFunc>

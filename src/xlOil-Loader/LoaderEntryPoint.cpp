@@ -28,7 +28,7 @@ namespace
 {
   void writeLog(const string& msg) noexcept
   {
-    loadFailureLogWindow(XllInfo::dllHandle, msg);
+    loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(msg));
   }
 }
 

@@ -57,7 +57,7 @@ namespace xloil
     {
       auto logger = spdlog::default_logger();
       auto fileWrite = make_shared<spdlog::sinks::rotating_file_sink_mt>(
-        utf16ToUtf8(logFilePath), maxFileSizeKb * 1024, numFiles);
+        logFilePath, maxFileSizeKb * 1024, numFiles);
       fileWrite->set_level(spdlog::level::from_str(logLevel));
       logger->sinks().push_back(fileWrite);
       if (fileWrite->level() < logger->level())

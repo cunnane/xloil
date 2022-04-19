@@ -1,4 +1,4 @@
-#include "CppUnitTest.h"
+﻿#include "CppUnitTest.h"
 #include <xlOil/StringUtils.h>
 #include <locale>
 #include <codecvt>
@@ -8,6 +8,7 @@ using std::wstring;
 using std::codecvt_utf8;
 using std::codecvt_utf16;
 using std::u32string;
+using xloil::utf16ToUtf8;
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -101,6 +102,16 @@ namespace Tests
       result.resize(nChars);
       auto utf16Str = To_UTF16(utf32Str);
       Assert::AreEqual(utf16Str.c_str(), result.c_str());
+    }
+
+    TEST_METHOD(Utf16ToUtf8)
+    {
+      {
+        auto source = L"xlõiƚ";
+        auto utf8 = utf16ToUtf8(source);
+        auto utf16 = To_UTF16(utf8);
+        Assert::AreEqual(source, utf16.c_str());
+      }
     }
 	};
 }

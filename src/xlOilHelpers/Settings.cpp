@@ -1,4 +1,4 @@
-#include "Settings.h"
+﻿#include "Settings.h"
 #include "Exception.h"
 #include <xlOil/StringUtils.h>
 #include <xloilHelpers/Environment.h>
@@ -49,7 +49,7 @@ namespace xloil
       auto found = findStr(root["Addin"], "LogFile", "");
       return !found.empty()
         ? utf8ToUtf16(found)
-        : fs::path(*root.source().path).replace_extension("log").wstring();
+        : fs::path(utf8ToUtf16(*root.source().path)).replace_extension("log").wstring();
     }
     std::string logLevel(const toml::view_node& root)
     {
@@ -115,7 +115,7 @@ namespace xloil
       fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
     
     // Look in the user's appdata
-    path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
+    path = fs::path(getEnvVar(L"APPDATA")) / L"xlõiƚ" / settingsFileName;
 
     std::error_code fsErr;
     // Then check the same directory as the dll itself
@@ -123,9 +123,13 @@ namespace xloil
       path = fs::path(dllPath).remove_filename() / settingsFileName;
     try
     {
-      return fs::exists(path, fsErr)
-        ? make_shared<toml::table>(toml::parse_file(path.string()))
-        : shared_ptr<const toml::table>();
+      if (!fs::exists(path, fsErr))
+        return shared_ptr<const toml::table>();
+
+      auto ifs = std::ifstream{ path.wstring() };
+
+      return make_shared<toml::table>(
+        toml::parse(ifs, utf16ToUtf8(path.wstring())));
     }
     catch (const toml::parse_error& e)
     {

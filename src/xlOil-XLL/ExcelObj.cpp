@@ -600,15 +600,11 @@ namespace
 
   namespace Const
   {
-    const ExcelObj& Missing()
+    namespace
     {
-      static ExcelObj obj = ExcelObj(ExcelType::Missing);
-      return obj;
-    }
+      static ExcelObj theMissing(ExcelType::Missing);
 
-    const ExcelObj& Error(CellError e)
-    {
-      static std::array<ExcelObj, _countof(theCellErrors)> cellErrors =
+      static std::array<ExcelObj, _countof(theCellErrors)> theErrorObjs =
       {
         ExcelObj(CellError::Null),
         ExcelObj(CellError::Div0),
@@ -619,23 +615,33 @@ namespace
         ExcelObj(CellError::NA),
         ExcelObj(CellError::GettingData)
       };
+
+      static ExcelObj theEmptyString(PString<>::steal(L"\0"));
+    }
+
+    const ExcelObj& Missing()
+    {
+      return theMissing;
+    }
+
+    const ExcelObj& Error(CellError e)
+    {
       switch (e)
       {
-      case CellError::Null:        return cellErrors[0];
-      case CellError::Div0:        return cellErrors[1];
-      case CellError::Value:       return cellErrors[2];
-      case CellError::Ref:         return cellErrors[3];
-      case CellError::Name:        return cellErrors[4];
-      case CellError::Num:         return cellErrors[5];
-      case CellError::NA:          return cellErrors[6];
-      case CellError::GettingData: return cellErrors[7];
+      case CellError::Null:        return theErrorObjs[0];
+      case CellError::Div0:        return theErrorObjs[1];
+      case CellError::Value:       return theErrorObjs[2];
+      case CellError::Ref:         return theErrorObjs[3];
+      case CellError::Name:        return theErrorObjs[4];
+      case CellError::Num:         return theErrorObjs[5];
+      case CellError::NA:          return theErrorObjs[6];
+      case CellError::GettingData: return theErrorObjs[7];
       }
       XLO_THROW("Unexpected CellError type");
     }
     const ExcelObj& EmptyStr()
     {
-      static ExcelObj obj(PString<>(L"\0"));
-      return obj;
+      return theEmptyString;
     }
   }
 }

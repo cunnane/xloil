@@ -40,7 +40,7 @@ namespace xloil
     struct DirectoryWatchEvent : public DirectoryWatchEventBase, public FW::FileWatchListener
     {
       DirectoryWatchEvent(const std::wstring& path)
-        : DirectoryWatchEventBase(("Watch_" + utf16ToUtf8(path)).c_str())
+        : DirectoryWatchEventBase((L"Watch_" + path).c_str())
         , _lastTickCount(0)
         , _watchId(theFileWatcher.addWatch(path, this, false))
       {
@@ -49,7 +49,7 @@ namespace xloil
 
       virtual ~DirectoryWatchEvent()
       {
-        XLO_TRACE("Ended directory watch '{}'", name());
+        XLO_TRACE(L"Ended directory watch '{}'", name());
         theFileWatcher.removeWatch(_watchId);
       }
 

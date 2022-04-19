@@ -27,7 +27,7 @@ namespace xloil
   {
   public:
     virtual void openWindow() noexcept = 0;
-    virtual void appendMessage(std::string&& msg) noexcept = 0;
+    virtual void appendMessage(std::wstring&& msg) noexcept = 0;
   };
 
   std::shared_ptr<ILogWindow> createLogWindow(
@@ -44,5 +44,4 @@ namespace xloil
   /// the case since is is called from AutoOpen.
   /// </summary>
   void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg) noexcept;
-  void loadFailureLogWindow(HINSTANCE parent, const std::string_view& msg) noexcept;
 }
