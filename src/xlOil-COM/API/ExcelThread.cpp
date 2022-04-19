@@ -119,7 +119,9 @@ namespace xloil
     auto firstJobTime(ULONGLONG now) 
     {
       // The queue is a sorted map so first element is due first.
-      return std::max(0u, unsigned(_timerQueue.begin()->first - now));
+      return _timerQueue.begin()->first > now
+        ? unsigned(_timerQueue.begin()->first - now)
+        : 0;
     }
 
     void startTimer(unsigned millisecs)
@@ -134,7 +136,7 @@ namespace xloil
     {
       try
       {
-        long long now = GetTickCount64();
+        ULONGLONG now = GetTickCount64();
         {
           scoped_lock lock(_lock);
           _timerQueue.emplace(now + millisecs, item);
