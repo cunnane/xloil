@@ -23,8 +23,8 @@ namespace xloil
       {
         if (plugin.action == PluginContext::Load)
         {
-          throwIfNotExactVersion(plugin);
           linkPluginToCoreLogger(context, plugin);
+          throwIfNotExactVersion(plugin);
           if (plugin.settings.empty())
             XLO_THROW(L"No settings found for {0} with addin {1}", plugin.pluginName, context->pathName());
 
