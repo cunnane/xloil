@@ -38,7 +38,6 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{A310C8C5-CE14-4DD3-8A0D-61491741558A}</ProjectGuid>
     <RootNamespace>xlOil</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil-Funcs</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

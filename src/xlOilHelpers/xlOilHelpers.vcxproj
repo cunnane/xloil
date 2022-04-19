@@ -34,7 +34,6 @@
     <ProjectGuid>{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>xlOilHelpers</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOilHelpers</ProjectName>
   </PropertyGroup>
   <PropertyGroup>

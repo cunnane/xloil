@@ -38,7 +38,6 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{1102F4DA-8B5A-4B01-A8BA-432A4C14A1AB}</ProjectGuid>
     <RootNamespace>xlOil.COM</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil-Dynamic</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

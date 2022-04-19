@@ -39,7 +39,6 @@
     <ProjectGuid>{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>xlOil</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil_Utils</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

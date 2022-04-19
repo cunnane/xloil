@@ -23,7 +23,6 @@
     <ProjectGuid>{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Python</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil_Python37</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
