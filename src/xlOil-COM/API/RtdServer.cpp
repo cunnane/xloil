@@ -95,11 +95,11 @@ namespace xloil
     // will have cancelled the producer and nothing else will need the
     // ExcelObj
     return std::const_pointer_cast<ExcelObj>(
-      COM::RtdAsyncManager::instance().getValue(task));
+      COM::RtdAsyncManager::getValue(task));
   }
 
   void rtdAsyncServerClear()
   {
-    COM::RtdAsyncManager::instance().clear();
+    COM::RtdAsyncManager::clear();
   }
 }
