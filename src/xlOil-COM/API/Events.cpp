@@ -44,12 +44,12 @@ namespace xloil
         , _lastTickCount(0)
         , _watchId(theFileWatcher.addWatch(path, this, false))
       {
-        XLO_TRACE(L"Started directory watch on '{}'", path);
+        XLO_DEBUG(L"Started directory watch on '{}'", path);
       }
 
       virtual ~DirectoryWatchEvent()
       {
-        XLO_TRACE(L"Ended directory watch '{}'", name());
+        XLO_DEBUG(L"Ended directory watch '{}'", name());
         theFileWatcher.removeWatch(_watchId);
       }
 

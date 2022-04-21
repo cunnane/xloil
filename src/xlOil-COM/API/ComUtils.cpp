@@ -15,6 +15,7 @@
 using std::make_shared;
 using std::shared_ptr;
 using std::vector;
+using std::wstring;
 
 namespace xloil
 {
@@ -37,10 +38,14 @@ namespace xloil
   void statusBarMsg(const std::wstring_view& msg, size_t timeout)
   {
     if (!msg.empty())
-      runExcelThread([msg = std::wstring(msg)](){ excelApp().PutStatusBar(0, msg.c_str()); });
+      runExcelThread([msg = wstring(msg)]() { 
+        excelApp().PutStatusBar(0, msg.c_str()); 
+      });
+    
+    // Send a null str to PutStatusBar in 'timeout' millisecs to clear it
     if (timeout > 0)
-      runExcelThread(
-        []() { excelApp().PutStatusBar(0, _bstr_t()); }, 
-        ExcelRunQueue::COM_API, (unsigned)timeout);
+      runExcelThread([]() {
+          excelApp().PutStatusBar(0, _bstr_t()); 
+        }, ExcelRunQueue::COM_API, (unsigned)timeout);
   }
 }

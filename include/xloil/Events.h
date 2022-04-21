@@ -156,7 +156,7 @@ namespace xloil
         _lock.lock();
         std::vector<handler> copy(_handlers.begin(), _handlers.end());
         _lock.unlock();
-        XLO_TRACE(L"Firing event {0}", _name);
+        XLO_DEBUG(L"Firing event {0}", _name);
         return _collector(copy, std::forward<Args>(args)...);
       }
 

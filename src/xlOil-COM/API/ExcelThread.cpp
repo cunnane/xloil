@@ -263,7 +263,9 @@ namespace xloil
       waitBetweenRetries);
 
     // Try to run immediately if possible
-    const bool canRunNow = waitBeforeCall == 0 && (flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread();
+    const bool canRunNow = waitBeforeCall == 0 
+      && (flags & ExcelRunQueue::ENQUEUE) == 0 
+      && isMainThread();
     if (canRunNow)
     {
       // TODO: avoid running isComApiAvailable if we don't need it? 
