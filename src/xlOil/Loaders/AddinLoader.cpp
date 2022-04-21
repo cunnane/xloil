@@ -38,10 +38,10 @@ namespace xloil
     {
       auto settings = findSettingsFile(xllPath);
       if (!settings)
+      {
+        XLO_DEBUG(L"No settings file found for '{}'", xllPath);
         return settings;
-
-      XLO_INFO("Found core settings file '{0}'",
-        *settings->source().path);
+      }
 
       auto addinRoot = (*settings)["Addin"];
 
@@ -49,7 +49,13 @@ namespace xloil
       auto logFile = Settings::logFilePath(*settings);
       auto logLevel = Settings::logLevel(addinRoot);
       auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
-      detail::loggerAddFile(logFile.c_str(), logLevel.c_str(), logMaxSize, logNumFiles);
+
+      detail::loggerAddFile(
+        logFile.c_str(), logLevel.c_str(), 
+        logMaxSize, logNumFiles);
+
+      XLO_INFO("Found core settings file '{}'",
+        *settings->source().path);
 
       // Add any requested date formats
       auto dateFormats = Settings::dateFormats(addinRoot);
@@ -101,7 +107,7 @@ namespace xloil
       auto settings = processAddinSettings(addinPathName);
       auto ctx = createAddinContext(addinPathName, settings);
       if (!ctx)
-        XLO_THROW(L"Failed to create add-in context for {0}", addinPathName);
+        XLO_THROW(L"Failed to create add-in context for {}", addinPathName);
 
       return *ctx;
     }

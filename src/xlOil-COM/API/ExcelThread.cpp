@@ -291,6 +291,7 @@ namespace xloil
       }
       catch (const COM::ComConnectException&)
       {
+        XLO_DEBUG("Could not connect COM: trying again in 1 second...");
         runExcelThread(
           RetryAtStartup{ func },
           ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,

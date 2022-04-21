@@ -43,12 +43,13 @@ namespace xloil
 
       if (!theCoreIsLoaded)
       {
-#if _DEBUG
+        // There's no log file until createCoreContext figures out our 
+        // settings, so any logging goes to the debug output.
         detail::loggerInitialise(spdlog::level::debug);
-#else
-        detail::loggerInitialise(spdlog::level::err);
-#endif
+
         State::initCoreContext(theCoreModuleHandle);
+
+        XLO_DEBUG(L"Loaded xlOil core from: {}", State::coreDllPath());
 
         detail::loggerInitPopupWindow();
 
