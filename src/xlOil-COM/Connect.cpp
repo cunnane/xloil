@@ -38,26 +38,13 @@ namespace xloil {
       /// 
       Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
       {
-        auto hwndCurrent = ::GetForegroundWindow();
-
-        // We switch focus away from Excel because that increases
-        // the chances of the instance adding itself to the running
-        // object table. It isn't determinimistic though so the caller
-        // may have to retry if it fails.
-        // This apparently bizarre approach is suggested here
+        // If this stops working see
         // https://support.microsoft.com/en-za/help/238610/getobject-or-getactiveobject-cannot-find-a-running-office-application
 
-        ::SetForegroundWindow(hwndCurrent);
         auto ptr = getExcelObjFromWindow(xlmainHandle);
         if (ptr)
           return ptr;
 
-        // Chances of an explorer window being available are good
-        auto explorerWindow = FindWindow(L"CabinetWClass", nullptr);
-        ::SetForegroundWindow(explorerWindow);
-
-        // Need to ensure the foreground window is restored
-        ::SetForegroundWindow(hwndCurrent);
         throw ComConnectException("Failed to get Excel COM object");
       }
 
@@ -77,6 +64,9 @@ namespace xloil {
 
             _xlApp = getExcelInstance(_excelWindowHandle);
             _handler = COM::createEventSink(_xlApp);
+            
+            XLO_DEBUG(L"Made COM connection to Excel at '{}' with hwnd={}",
+              (const wchar_t*)_xlApp->Path, (size_t)_excelWindowHandle);
           }
           catch (_com_error& error)
           {
