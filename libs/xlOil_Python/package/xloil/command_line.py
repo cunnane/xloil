@@ -89,16 +89,17 @@ def _write_python_path_to_ini(ini_txt):
         nonlocal ini_txt, fails
         ini_txt, count = re.subn(pat, repl, ini_txt, flags=re.M)
         if count != 1:
+            print(f"Failed to match pattern {pat}")
             fails += 1
     
     # Set PYTHONPATH
-    do_replace(r'^(\s*PYTHONPATH\s*=).*', r'\g<1>' + _toml_lit_string(python_path))
+    do_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
     # Set xlOil_PythonRoot
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set xlOilPythonVersion
-    do_replace(r'^(\s*PythonVersion\s*=).*', rf'\g<1>"{python_ver}"')
+    do_replace(r'^(\s*PythonVersion\s*=).*',    rf'\g<1>"{python_ver}"')
     # Set XLOIL_PATH
-    do_replace(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)))
+    do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)))
 
     return ini_txt, fails == 0
     
@@ -123,7 +124,7 @@ def _install_xloil():
     sh.copy(_XLOIL_BIN_DIR / _ADDIN_NAME, _XL_START_PATH)
     print("Installed ", _XL_START_PATH / _ADDIN_NAME)
     
-    # Copy the ini file to APPDATA, avoiding overwritting any existing ini
+    # Copy the ini file to APPDATA, avoiding overwriting any existing ini
     if ini_path.exists():
         print("Found existing settings file at \n", ini_path)
     else:
@@ -134,14 +135,13 @@ def _install_xloil():
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
     ini_txt = ini_path.read_text(encoding='utf-8')
-
     ini_txt, success = _write_python_path_to_ini(ini_txt)
     
     # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times
     if not success:
         print(f'WARNING: Failed to set python paths in {ini_path}. You may have to do this manually.')
     else:
-        ini_path.write_text(ini_txt)
+        ini_path.write_text(ini_txt, encoding='utf-8')
         print(f'Edited {ini_path} to point to {sys.prefix} python distribution.')
 
 def _remove_xloil():
@@ -196,5 +196,4 @@ def main():
         _create_addin(sys.argv[2:])
     else:
         raise Exception("Syntax: xloil {install, remove, create}")
-
 
