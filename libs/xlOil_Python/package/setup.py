@@ -106,7 +106,7 @@ setup(
     # Doesn't work, but the internet says it should
     # options={'bdist_wheel':{'python_tag':'foo'}},
     
-    python_requires=f'>={target_py_ver}',
+    python_requires=f'>=3,6',
     install_requires=[
         'numpy>=1.18'
     ],
@@ -119,6 +119,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Office/Business :: Financial :: Spreadsheet',
