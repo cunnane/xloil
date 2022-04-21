@@ -868,19 +868,30 @@ namespace xloil
     *this = builder.toExcelObj();
   }
 
+  namespace detail
+  {
+    template<class TConv, class T>
+    auto toPODHelper(const std::optional<T> defaultVal, const ExcelObj& val)
+    {
+      return defaultVal.has_value() 
+        ? FromExcelDefaulted<TConv>(defaultVal.value())(val)
+        : FromExcel<TConv>()(val);
+    }
+  }
+
   inline double ExcelObj::toDouble(const std::optional<double> defaultVal) const
   {
-    return ToDouble(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
+    return detail::toPODHelper<conv::ToDouble<>>(defaultVal, *this);
   }
 
   inline int ExcelObj::toInt(const std::optional<int> defaultVal) const
   {
-    return ToInt(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
+    return detail::toPODHelper<conv::ToInt<>>(defaultVal, *this);
   }
 
   inline bool ExcelObj::toBool(const std::optional<bool> defaultVal) const
   {
-    return ToBool(defaultVal.has_value() ? &defaultVal.value() : nullptr)(*this);
+    return detail::toPODHelper<conv::ToBool<>>(defaultVal, *this);
   }
 
   inline bool ExcelObj::operator==(double that) const

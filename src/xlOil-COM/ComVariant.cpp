@@ -116,8 +116,8 @@ namespace xloil
     {
       VariantClear(v);
       *v = allowRange
-        ? FromExcelDefaulted<ToVariantWithRange>(&vtMissing)(obj)
-        : FromExcelDefaulted<ToVariant>(&vtMissing)(obj);
+        ? FromExcelDefaulted<ToVariantWithRange>(vtMissing)(obj)
+        : FromExcelDefaulted<ToVariant>(vtMissing)(obj);
 
     }
 

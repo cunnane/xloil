@@ -52,18 +52,23 @@ namespace xloil
     };
   }
   /// <summary>
-  /// Implementation of FromExcel which covnverts an ExcelObj to a double
+  /// Implementation of FromExcel which converts an ExcelObj to a double
   /// or throws if this is not possible
   /// </summary>
-  using ToDouble = FromExcelDefaulted<conv::ToDouble<double>>;
+  inline auto ToDouble()           { return std::move(FromExcel<conv::ToDouble<>>()); }
+  inline auto ToDouble(double def) { return std::move(FromExcelDefaulted<conv::ToDouble<>>(def)); }
+  
   /// <summary>
-  /// Implementation of FromExcel which covnverts an ExcelObj to an int
+  /// Implementation of FromExcel which converts an ExcelObj to an int
   /// or throws if this is not possible
   /// </summary>
-  using ToInt = FromExcelDefaulted<conv::ToInt<int>>;
+  inline auto ToInt()        { return std::move(FromExcel<conv::ToInt<>>()); }
+  inline auto ToInt(int def) { return std::move(FromExcelDefaulted<conv::ToInt<>>(def)); }
+  
   /// <summary>
-  /// Implementation of FromExcel which covnverts an ExcelObj to a bool
+  /// Implementation of FromExcel which converts an ExcelObj to a bool
   /// or throws if this is not possible
   /// </summary>
-  using ToBool = FromExcelDefaulted<conv::ToBool<bool>>;
+  inline auto ToBool()         { return std::move(FromExcel<conv::ToBool<>>()); }
+  inline auto ToBool(bool def) { return std::move(FromExcelDefaulted<conv::ToBool<>>(def)); }
 }
