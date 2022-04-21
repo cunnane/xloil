@@ -106,7 +106,7 @@ setup(
     # Doesn't work, but the internet says it should
     # options={'bdist_wheel':{'python_tag':'foo'}},
     
-    python_requires=f'>=3,6',
+    python_requires=f'>=3.6',
     install_requires=[
         'numpy>=1.18'
     ],
