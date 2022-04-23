@@ -137,7 +137,7 @@ namespace xloil
       if (truncatedArgNames)
       {
         XLO_INFO(L"Excel does not support a concatenated argument name length of "
-          "more than 255 chars (including commans). Truncating for function '{0}'", info->name);
+          "more than 255 chars (including commas). Truncating for function '{0}'", info->name);
         argNames.resize(255);
       }
 
