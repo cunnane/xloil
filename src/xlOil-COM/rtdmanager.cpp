@@ -140,7 +140,9 @@ namespace xloil
         SAFEARRAY** data) override
       {
         auto updates = _worker.getUpdates();
-        SafeArrayGetUBound(updates, 2, topicCount);
+        long ubound; // Bound is *inclusive*
+        SafeArrayGetUBound(updates, 2, &ubound);
+        *topicCount = ubound + 1;
         *data = updates;
         return S_OK;
       }
