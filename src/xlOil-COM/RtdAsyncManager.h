@@ -9,6 +9,8 @@ namespace xloil
   {
     namespace RtdAsyncManager
     {
+      void init();
+
       /// <summary>
       /// Given an RtdAsync Task, returns a value, if one is has
       /// already been published, or starts the task and subscribes.

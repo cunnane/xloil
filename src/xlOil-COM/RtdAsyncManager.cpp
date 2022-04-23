@@ -17,6 +17,7 @@ using std::make_shared;
 using std::shared_lock;
 using std::make_pair;
 using std::unique_lock;
+using std::shared_mutex;
 
 
 namespace
@@ -169,6 +170,9 @@ namespace xloil
     {
       namespace
       {
+        // Hold this mutex to a create the Impl class or to call its methods
+        static shared_mutex theManagerMutex;
+
         class Impl
         {
         public:
@@ -248,12 +252,47 @@ namespace xloil
           {
             return _rtd;
           }
-
+         
         private:
           std::shared_ptr<IRtdServer> _rtd;
           CellTaskMap _tasksPerCell;
         };
 
+        static std::unique_ptr<Impl> theInstance;
+
+        Impl* getInstance(unique_lock<shared_mutex>& lock)
+        {
+          // Somewhat intricate logic around creating the instance:
+          //  * If we are the main thread, just create it
+          //  * Otherwise release the lock and send a request to 
+          //    main thread to acquire the lock and create it.
+          //  * Wait for 5s, then give up
+          //  * We need the lock to call functions on theInstance
+          //    so reacquire it if lost
+          if (!theInstance)
+          {
+            if (isMainThread())
+              theInstance.reset(new Impl());
+            else
+            {
+              lock.unlock();
+
+              auto status = runExcelThread([]
+              {
+                std::unique_lock lock(theManagerMutex);
+                if (!theInstance)
+                  theInstance.reset(new Impl());
+              }).wait_for(std::chrono::seconds(5));
+
+              if (status != std::future_status::ready)
+                XLO_THROW("Rtd async manager timed out, try calling the function again");
+
+              // Instance now exists, so get lock and get cracking
+              lock.lock();
+            }
+          }
+          return theInstance.get();
+        }
 
         /// <summary>
         /// Static, so does not need the mutex
@@ -317,18 +356,19 @@ namespace xloil
           assert(foundTopic);
           return result ? result : rtd->subscribe(foundTopic);
         }
+      }
 
-        // Hold this mutex to a create the Impl class or to call its methods
-        static std::shared_mutex theManagerMutex;
-        static std::unique_ptr<Impl> theInstance;
+      void init()
+      {
+        // Acquire the lock then check if the instance has been created
+        unique_lock lock(theManagerMutex);
+        getInstance(lock);
       }
 
       std::shared_ptr<const ExcelObj>
         getValue(
           const std::shared_ptr<IRtdAsyncTask>& task)
       {
-        // Protects agains a null-deref and allows starting up the RTD server
-        // without running anything
         if (!task)
           return shared_ptr<const ExcelObj>();
 
@@ -352,42 +392,14 @@ namespace xloil
           msxll::xlSheetId, caller.fullSheetName()).val.mref.idSheet;
 
         // Acquire the lock then check if the instance has been created
-        std::unique_lock lock(theManagerMutex);
+        unique_lock lock(theManagerMutex);
 
-        // Somewhat intricate logic around creating the instance:
-        //  * If we are the main thread, just create it
-        //  * Otherwise release the lock and send a request to 
-        //    main thread to acquire the lock and create it.
-        //  * Wait for 5s, then give up
-        //  * We need the lock to call functions on theInstance
-        //    so reacquire it if lost
-        if (!theInstance)
-        {
-          if (isMainThread())
-            theInstance.reset(new Impl());
-          else
-          {
-            lock.unlock();
+        auto impl = getInstance(lock);
 
-            auto status = runExcelThread([]
-            {
-              std::unique_lock lock(theManagerMutex);
-              if (!theInstance)
-                theInstance.reset(new Impl());
-            }).wait_for(std::chrono::seconds(5));
-
-            if (status != std::future_status::ready)
-              XLO_THROW("Rtd async manager timed out, try calling the function again");
-
-            // Instance now exists, so get lock and get cracking
-            lock.lock();
-          }
-        }
-
-        auto tasksInCell = theInstance->findTargetCellTasks(
+        auto tasksInCell = impl->findTargetCellTasks(
           ref, arraySize, cellNumber, sheetId);
 
-        auto rtdServer = theInstance->getRtd();
+        auto rtdServer = impl->getRtd();
 
         // We've finished with the task-per-cell lookup and can drop the lock
         // required for the Impl
@@ -398,7 +410,7 @@ namespace xloil
 
       void clear()
       {
-        std::unique_lock lock(theManagerMutex);
+        unique_lock lock(theManagerMutex);
 
         if (!theInstance)
           return;
