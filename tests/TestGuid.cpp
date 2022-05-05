@@ -18,9 +18,12 @@ namespace Tests
 
     TEST_METHOD(TestExcelDnaGuid)
     {
-      // The expected results are calculated by running this code:
+      // The expected results are calculated by running the following code on dotnetfiddle.net 
       // https://github.com/Excel-DNA/ExcelDna/blob/661aba734f08b2537866632f2295a77062640672/Source/ExcelDna.Integration/GuidUtility.cs
-      // on dotnetfiddle.net
+      // Plus:
+      //   static readonly Guid ExcelDnaGuid = new Guid("{306D016E-CCE8-4861-9DA1-51A27CBE341A}");
+		  //   GuidUtility.Create(ExcelDnaGuid, path.ToUpperInvariant());
+      // 
       wchar_t str[64];
       GUID result;
       {
@@ -36,7 +39,7 @@ namespace Tests
       {
         stableGuidFromString(result, theExcelDnaNamespaceGuid, L"c:\\path\\addin.xll");
         StringFromGUID2(result, str, _countof(str));
-        Assert::AreEqual(L"{02DCD9CA-1AB0-5F79-97A0-81A3DBBD267F}", str);
+        Assert::AreEqual(L"{C5C4A7E8-1D08-521B-A539-957E3E62568B}", str);
       }
     }
   };
