@@ -13,6 +13,10 @@ namespace xloil
   {
     extern PyTypeObject* ExcelArrayType = nullptr;
 
+    /// <summary>
+    /// This pretty weird looking ctor is supports adding to the refcount
+    /// when taking subarrays via the [] operator
+    /// </summary>
     PyExcelArray::PyExcelArray(
       const PyExcelArray& from,
       ExcelArray&& rebase)
@@ -46,13 +50,16 @@ namespace xloil
     PyExcelArray::~PyExcelArray()
     {
       *_refCount -= 1;
-      if (_refCount == 0)
+      if (*_refCount == 0)
+      {
         delete _refCount;
+        _refCount = nullptr;
+      }
     }
 
     size_t PyExcelArray::refCount() const 
     { 
-      return *_refCount; 
+      return _refCount ? *_refCount : 0;
     }
 
     const ExcelArray& PyExcelArray::base() const 
