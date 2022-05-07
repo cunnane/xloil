@@ -14,18 +14,30 @@ namespace xloil
   {
     class UserImpl : public detail::PyFromAny
     {
+      PyExcelArray* _ArrayWrapper = nullptr;
+
     public:
       using detail::PyFromAny::operator();
 
-      PyObject* operator()(ArrayVal arr) const
+      PyObject* operator()(ArrayVal arr)
       {
-        return py::cast(PyExcelArray(arr)).release().ptr();
+        _ArrayWrapper = new PyExcelArray(arr);
+        return py::cast(
+          _ArrayWrapper,
+          py::return_value_policy::take_ownership).release().ptr();
       }
-      // Override cache ref lookup?
-      PyObject* operator()(const PStringView<>& pstr) const
+
+      PyObject* operator()(const PStringView<>& pstr)
       {
         return detail::PyFromString()(pstr);
       }
+
+      void checkArrayWrapperDisposed()
+      {
+        if (_ArrayWrapper && _ArrayWrapper->refCount() != 1)
+          XLO_THROW("Held reference to ExcelArray detected. Accessing this object in python may crash Excel");
+      }
+
       constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
     };
 
@@ -33,22 +45,41 @@ namespace xloil
     {
     private:
       py::object _callable;
+      bool _checkCache;
+
     public:
-      CustomConverter(py::object&& callable)
+      CustomConverter(py::object&& callable, bool checkCache)
         : _callable(callable)
+        , _checkCache(checkCache)
       {}
       virtual ~CustomConverter()
       {
         py::gil_scoped_acquire getGil;
         _callable = py::object();
       }
-      virtual result_type operator()(const ExcelObj& xl, const_result_ptr defaultVal) const override
+      virtual result_type operator()(
+        const ExcelObj& xl, 
+        const_result_ptr defaultVal) override
       {
         // Called from type conversion code where GIL has already been acquired
-        return checkUserException([&]() 
+        return checkUserException([&]()
         {
-          auto arg = PySteal(PyFromExcel<UserImpl>()(xl, defaultVal));
-          return _callable(arg).release().ptr();
+          py::object retVal;
+          if (_checkCache)
+          {
+            PyFromExcel<UserImpl, true> typeConverter;
+            auto arg = PySteal(typeConverter(xl, defaultVal));
+            retVal = _callable(arg);
+            typeConverter._impl.checkArrayWrapperDisposed();
+          }
+          else
+          {
+            PyFromExcel<UserImpl, false> typeConverter;
+            auto arg = PySteal(typeConverter(xl, defaultVal));
+            retVal = _callable(arg);
+            typeConverter._impl.checkArrayWrapperDisposed();
+          }
+          return retVal.release().ptr();
         });
       }
       const char* name() const override
@@ -56,7 +87,6 @@ namespace xloil
         return _callable.ptr()->ob_type->tp_name;
       }
     };
-
  
     class CustomReturn : public IPyToExcel
     {
@@ -100,19 +130,16 @@ namespace xloil
       const py::object& handler() const { return _callable; }
     };
 
- 
-
     static int theBinder = addBinder([](py::module& mod)
     {
       py::class_<CustomConverter, IPyFromExcel, std::shared_ptr<CustomConverter>>
         (mod, "CustomConverter")
-        .def(py::init<py::object>(), py::arg("callable"));
+        .def(py::init<py::object, bool>(), py::arg("callable"), py::arg("check_cache")=true);
 
       py::class_<CustomReturn, IPyToExcel, std::shared_ptr<CustomReturn>>
         (mod, "CustomReturn")
         .def(py::init<py::object>(), py::arg("callable"))
         .def("get_handler", &CustomReturn::handler);
-
     });
   }
 }

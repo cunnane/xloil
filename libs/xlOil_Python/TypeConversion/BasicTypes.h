@@ -56,7 +56,7 @@ namespace xloil
         {}
 
         using TBase::operator();
-        PyObject* operator()(const PStringView<>& str) const
+        PyObject* operator()(const PStringView<>& str)
         {
           pybind11::object cached;
           if (pyCacheGet(str.view(), cached))
@@ -208,7 +208,7 @@ namespace xloil
 
       auto operator()(
         const ExcelObj& xl,
-        const PyObject* defaultVal) const
+        const PyObject* defaultVal)
       {
         return operator()(xl, const_cast<PyObject*>(defaultVal));
       }
@@ -218,7 +218,7 @@ namespace xloil
       /// </summary>
       auto operator()(
         const ExcelObj& xl,
-        PyObject* defaultVal = nullptr) const
+        PyObject* defaultVal = nullptr)
       {
         if (xl.isMissing() && defaultVal)
         {
@@ -283,7 +283,7 @@ namespace xloil
       {}
 
       virtual PyObject* operator()(
-        const ExcelObj& xl, const PyObject* defaultVal = nullptr) const override
+        const ExcelObj& xl, const PyObject* defaultVal = nullptr) override
       {
         // Because ref-counting there's no notion of a const PyObject*
         // for a default value

@@ -315,7 +315,7 @@ else:
         This is the interface class for custom type converters to allow them
         to be called from the Core.
         """
-        def __init__(self, callable):
+        def __init__(self, callable, check_cache=True):
             pass
 
     class _Event:

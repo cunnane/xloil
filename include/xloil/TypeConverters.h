@@ -18,7 +18,7 @@ namespace xloil
     virtual ~IConvertFromExcel() {}
     virtual result_type operator()(
       const ExcelObj& xl, 
-      const_result_ptr defaultVal = nullptr) const = 0;
+      const_result_ptr defaultVal = nullptr) = 0;
   };
 
   /// <summary>
@@ -66,7 +66,7 @@ namespace xloil
   template<class TFunc>
   auto visitExcelObj(
     const ExcelObj& xl, 
-    TFunc functor)
+    TFunc&& functor)
   {
     try
     {

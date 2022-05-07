@@ -100,7 +100,7 @@ def unpack_arg_converter(obj):
 def unpack_return_converter(obj):
     return getattr(obj, "_xloil_return_writer", None)
 
-def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
+def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, check_cache=True):
 
     if inspect.isclass(impl):
         #
@@ -124,10 +124,11 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
                 # Construct the inner class with the provided args
                 instance = impl(*args, **kwargs)
                 # Embed it in a new Converter which inherits from target
-                return _make_typeconverter(base_type, 
-                                            _CustomConverter(instance.read) if hasattr(instance, "read") else None,
-                                            _CustomReturn(instance.write) if hasattr(instance, "write") else None,
-                                            allow_range)
+                return _make_typeconverter(
+                    base_type, 
+                    _CustomConverter(instance.read, check_cache) if hasattr(instance, "read") else None,
+                    _CustomReturn(instance.write) if hasattr(instance, "write") else None,
+                    allow_range)
 
         # If the target obj has a no-arg constructor, we want to write:
         # `def fn(x: target_obj)`, so MetaConverter must be a valid 
@@ -136,7 +137,7 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
             instance = impl()
             
             if hasattr(instance, "read"):
-                MetaConverter._xloil_arg_reader = _CustomConverter(instance.read), allow_range
+                MetaConverter._xloil_arg_reader = _CustomConverter(instance.read, check_cache), allow_range
             if hasattr(instance, "write"):
                 MetaConverter._xloil_return_writer = _CustomReturn(instance.write)
 
@@ -149,7 +150,12 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
     elif is_returner:
         return _make_typeconverter(base_type, writer=_CustomReturn(impl), source=impl)
     else:
-        return _make_typeconverter(base_type, _CustomConverter(impl), None, allow_range, source=impl)
+        return _make_typeconverter(
+                    base_type,
+                    _CustomConverter(impl, check_cache), 
+                    None, 
+                    allow_range, 
+                    source=impl)
 
 
 def _make_tuple(obj):
@@ -183,7 +189,7 @@ class _ArgConverters:
 arg_converters = _ArgConverters()
 
 
-def converter(target=typing.Callable, range=False, register=False, direction="read"):
+def converter(target=typing.Callable, range=False, register=False, direction="read", check_cache=True):
     """
     Decorator which declares a function or a class to be a type converter
     which serialises from/to a set of simple types understood by Excel and 
@@ -235,6 +241,10 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
         When decorating a function, the direction "read" or "write" determines the
         converter behaviour
 
+    check_cache:
+        For readers, setting this to False turns of xlOil's automatic cache expansion
+        for string inputs. The converter must manually expand cache strings if desired.
+
     Examples
     --------
     
@@ -254,7 +264,7 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
             
     """
     def decorate(impl):
-        result = _make_metaconverter(target, impl, direction == "write", range)
+        result = _make_metaconverter(target, impl, direction == "write", range, check_cache)
 
         if bool(register) and target is not typing.Callable:
 
@@ -271,8 +281,6 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
                     # Is register an iterable of types?
                     return_converters.add(result, register)
 
-                
-            
         return result
     return decorate
 

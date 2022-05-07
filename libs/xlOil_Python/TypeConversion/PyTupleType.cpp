@@ -112,7 +112,7 @@ namespace xloil
       using PyFromExcelImpl::operator();
       static constexpr char* const ourName = "tuple";
 
-      PyObject* operator()(ArrayVal obj) const
+      PyObject* operator()(ArrayVal obj)
       {
         ExcelArray arr(obj);
         auto nRows = arr.nRows();
