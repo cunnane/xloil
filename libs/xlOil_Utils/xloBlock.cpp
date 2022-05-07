@@ -68,11 +68,12 @@ namespace xloil
         {
         case ExcelType::Multi:
         {
-          // No need to trim array yet since empty cells have zero stringlenth
-          auto* arrData = (const ExcelObj*)obj->val.array.lparray;
-          auto endArray = arrData + obj->val.array.rows * obj->val.array.columns;
-          for (; arrData != endArray; ++arrData)
-            totalStrLength += arrData->stringLength();
+          ExcelArray arr(*obj);
+          nRows = arr.nRows();
+          nCols = arr.nCols();
+          for (auto& x: arr)
+            totalStrLength += x.stringLength();
+          break;
         }
         case ExcelType::Str:
           totalStrLength += obj->stringLength();
