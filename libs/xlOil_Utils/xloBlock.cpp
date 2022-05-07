@@ -68,9 +68,9 @@ namespace xloil
         {
         case ExcelType::Multi:
         {
-          obj->trimmedArraySize(nRows, nCols);
-          auto arrData = obj->asArray();
-          auto endArray = arrData + nRows * nCols;
+          // No need to trim array yet since empty cells have zero stringlenth
+          auto* arrData = (const ExcelObj*)obj->val.array.lparray;
+          auto endArray = arrData + obj->val.array.rows * obj->val.array.columns;
           for (; arrData != endArray; ++arrData)
             totalStrLength += arrData->stringLength();
         }
