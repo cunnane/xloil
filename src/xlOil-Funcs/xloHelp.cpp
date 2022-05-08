@@ -9,8 +9,9 @@ namespace xloil
     const ExcelObj& function
   ))
   {
-    const auto funcName = function.toString();
-    const auto found = registeredFuncsByName().find(funcName.c_str());
+    const auto funcName = function.get<std::wstring_view>();
+    // Why does wstring_view not work with find?
+    const auto found = registeredFuncsByName().find(std::wstring(funcName));
     if (found == registeredFuncsByName().end())
       XLO_THROW(L"Function '{0}' not found", funcName);
     const auto func = found->second;

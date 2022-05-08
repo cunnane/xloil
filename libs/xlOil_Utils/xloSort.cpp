@@ -93,7 +93,7 @@ namespace xloil
     const ExcelObj* args[] = { XLO_ARG_PTRS(XLOSORT_NARGS, XLOSORT_ARG_NAME) };
 
     // could use raw pascal str, but that's an unnecessary optimisation
-    auto orderStr = order->toString(); 
+    auto orderStr = order->get<std::wstring>(); 
 
     MyArray directions, columns;
 
@@ -138,7 +138,7 @@ namespace xloil
       {
       case ExcelType::Int:
       case ExcelType::Num:
-        column = arg->toInt() - 1; // 1-based column indexing to match Excel's INDEX function etc.
+        column = arg->get<int>() - 1; // 1-based column indexing to match Excel's INDEX function etc.
         if (column >= nCols)
           XLO_THROW("Column number in descriptor {0} is beyond number of array columns: {1} > {2}", 
             nOrders, column + 1, nCols);
@@ -153,7 +153,7 @@ namespace xloil
             break;
           }
         if (column == nCols)
-          XLO_THROW(L"Could not find heading {0} in first row of array", arg->toString());
+          XLO_THROW(L"Could not find heading {0} in first row of array", arg->get<std::wstring>());
         break;
       case ExcelType::Missing:
         // No need to specify descriptor: can rely on default ordering

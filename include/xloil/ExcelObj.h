@@ -82,6 +82,8 @@ namespace xloil
     Simple = Num | Bool | SRef | Missing | Nil | Int | Err
   };
 
+  XLOIL_EXPORT const wchar_t* enumAsWCString(ExcelType e);
+
   /// <summary>
   /// Describes the various error types Excel can handle and display
   /// </summary>
@@ -96,6 +98,8 @@ namespace xloil
     NA = msxll::xlerrNA,       /// \#NA!
     GettingData = msxll::xlerrGettingData /// #GETTING_DATA
   };
+
+  XLOIL_EXPORT const wchar_t* enumAsWCString(CellError e);
 
   /// <summary>
   /// Array of all CellError types, useful for autogeneration
@@ -113,12 +117,9 @@ namespace xloil
     CellError::GettingData
   };
 
-  XLOIL_EXPORT const wchar_t* enumAsWCString(CellError e);
-  XLOIL_EXPORT const wchar_t* enumAsWCString(ExcelType e);
-
   class ExcelArray;
-
   class ExcelObj;
+
   namespace Const
   {
     /// <summary>
@@ -217,7 +218,7 @@ namespace xloil
     /// Construct from wide-char string
     /// </summary>
     explicit ExcelObj(const wchar_t* str)
-      : ExcelObj(std::move(PString<>(str)))
+      : ExcelObj(std::move(PString(str)))
     {}
     explicit ExcelObj(wchar_t* str) : ExcelObj(const_cast<const wchar_t*>(str)) {}
 
@@ -225,7 +226,7 @@ namespace xloil
     /// Construct from STL wstring
     /// </summary>
     explicit ExcelObj(const std::wstring_view& s)
-      : ExcelObj(std::move(PString<>(s)))
+      : ExcelObj(std::move(PString(s)))
     {}
 
     /// <summary>
@@ -258,7 +259,7 @@ namespace xloil
     /// of the string buffer in the provided PString.
     /// </summary>
     /// <param name="pstr"></param>
-    explicit ExcelObj(PString<Char>&& pstr)
+    explicit ExcelObj(PString&& pstr)
     {
       val.str = pstr.release();
       if (!val.str)
@@ -434,13 +435,15 @@ namespace xloil
       return this->xtype() == msxll::xltypeErr && val.err == (int)that;
     }
 
+    // TODO: somehow template these?
+
     /// <summary>
     /// Compare to string (will return false if the ExcelObj is not of 
     /// string type
     /// </summary>
     bool operator==(const std::wstring_view& that) const
     {
-      return asPString() == that;
+      return cast<PStringRef>() == that;
     }
 
     /// <summary>
@@ -449,7 +452,7 @@ namespace xloil
     /// </summary>
     bool operator==(const wchar_t* that) const
     {
-      return asPString() == that;
+      return cast<PStringRef>() == that;
     }
 
     /// <summary>
@@ -459,23 +462,14 @@ namespace xloil
     template<size_t N>
     bool operator==(const wchar_t(*that)[N]) const
     {
-      return asPString() == that;
+      return cast<PStringRef>() == that;
     }
 
     /// <summary>
-    /// Compare to double (returns false is ExcelObj is not convertible to double)
+    /// Compare to scalar type (returns false is ExcelObj is not convertible)
     /// </summary>
-    bool operator==(double that) const;
-
-    /// <summary>
-    /// Compare to int (returns false is ExcelObj is not convertible to int)
-    /// </summary>
-    bool operator==(int that) const;
-
-    /// <summary>
-    /// Compare to bool (returns false is ExcelObj is not convertible to bool)
-    /// </summary>
-    bool operator==(bool that) const;
+    template <class T, std::enable_if_t<std::is_scalar_v<T>, bool> = true>
+    bool operator==(T that) const;
 
     /// <summary>
     /// Compares two ExcelObjs. Returns -1 if left < right, 0 if left == right, else 1.
@@ -499,9 +493,6 @@ namespace xloil
       const ExcelObj& right,
       bool caseSensitive = false,
       bool recursive = false) noexcept;
-
-    const Base* xloper() const { return this; }
-    const Base* xloper() { return this; }
 
     /// <summary>
     /// Returns true if this ExcelObj has ExcelType::Missing type.
@@ -570,22 +561,22 @@ namespace xloil
     /// </summary>
     /// <param name="separator">optional separator to use for arrays</param>
     /// <returns></returns>
-    std::wstring toString(const wchar_t* separator = nullptr) const;
+    std::wstring toStringRecursive(const wchar_t* separator = nullptr) const;
 
     /// <summary>
-    /// Similar to toString but more suitable for output of object 
+    /// Similar to toStringRecursive but more suitable for output of object 
     /// descriptions, for example in error messages. For this reason
     /// it doesn't throw but rather returns ``\<ERROR\>`` on failure.
     /// 
-    /// Returns the same as toString except for arrays which yield 
+    /// Returns the same as toStringRecursive except for arrays which yield 
     /// '[NxM]' where N and M are the number of rows and columns and 
     /// for ranges which return the range reference in the form 'Sheet!A1'.
     /// </summary>
     /// <returns></returns>
-    std::wstring toStringRepresentation() const noexcept;
+    std::wstring toString() const noexcept;
 
     /// <summary>
-    /// Gives the maximum string length if toString is called on
+    /// Gives the maximum string length if toStringRecursive is called on
     /// this object without actually attempting the conversion.
     /// This method is very fast except for arrays.
     /// </summary>
@@ -600,158 +591,55 @@ namespace xloil
     }
 
     /// <summary>
-    /// Returns a double from the object value type with some conversions:
+    /// Returns a type T from the object value type allowing some conversions:
     /// 
-    /// int -> double
-    /// bool -> 0 or 1
-    /// missing/empty -> provided default
-    /// 
-    /// Other types will throw an exception.
-    /// </summary>
-    double toDouble(const std::optional<double> defaultVal = std::optional<double>()) const;
-
-    /// <summary>
-    /// Returns a int from the object value type with some conversions:
-    /// 
-    /// double -> int (if it can be stored as an int)
-    /// bool -> 0 or 1
-    /// missing/empty -> provided default
+    ///   * int -> double
+    ///   * double -> int (if an exact int)
+    ///   * bool -> 0 or 1
+    ///   * double/int -> bool if exactly 0 or 1
+    ///   * non-str type -> null wstring_view
     /// 
     /// Other types will throw an exception.
     /// </summary>
-    int toInt(const std::optional<int> defaultVal = std::optional<int>()) const;
-
+    template <class T> T get() const;
+    
     /// <summary>
-    /// Returns a bool from the object value type with some conversions:
-    /// 
-    /// double/int -> false if exactly zero, true otherwise
-    /// missing/empty -> provided default
-    /// 
-    /// Other types will throw an exception.
+    /// As <see cref="get"/> but returns the provided default if 
+    /// the object is of type missing rather than throwing.
     /// </summary>
-    bool toBool(const std::optional<bool> defaultVal = std::optional<bool>()) const;
+    template <class T> T get(const std::optional<T> defaultVal) const;
 
     /// <summary>
-    /// Returns the value in the ExcelObj assuming it is a double.
-    /// If it isn't, will return nonsense (UB)
+    /// As <see cref="get"/> but returns a `std::optional<T>` which
+    /// is empty if the conversion is not possible
     /// </summary>
-    double asDouble() const
-    {
-      assert(xtype() == msxll::xltypeNum);
-      return val.num;
-    }
+    template <class T> std::optional<T> getIf() const;
 
     /// <summary>
-    /// Returns the value in the ExcelObj assuming it is an int.
-    /// If it isn't, will return nonsense (UB)
+    /// Returns the value in the ExcelObj assuming it is the type specified
+    /// If it isn't, it will return nonsense (UB).  Allowable types are:
+    ///   * int
+    ///   * bool
+    ///   * double
+    ///   * CellError
+    ///   * PStringRef
     /// </summary>
-    int asInt() const
-    {
-      assert(xtype() == msxll::xltypeInt);
-      return val.w;
-    }
+    template <class T> T cast() const;
+    template <> PStringRef cast() const;
 
     /// <summary>
-    /// Returns the value in the ExcelObj assuming it is a bool.
-    /// If it isn't, will return nonsense (UB)
-    /// </summary>
-    bool asBool() const
-    {
-      assert(xtype() == msxll::xltypeBool);
-      return val.xbool;
-    }
-
-    /// <summary>
-    /// Returns the value in the ExcelObj assuming it is an array
-    /// If it isn't, will return nonsense (UB)
-    /// </summary>
-    /// 
-    const ExcelObj* asArray() const
-    {
-      assert(xtype() == msxll::xltypeMulti);
-      return (const ExcelObj*)val.array.lparray;
-    }
-
-    /// <summary>
-    /// Returns a PStringView object of the object's string data.
-    /// If the object is not of string type, the resulting view 
-    /// will be empty.
-    /// </summary>
-    PStringView<> asPString() const
-    {
-      return PStringView<>((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
-    }
-
-    /// <summary>
-    /// Call this on function result objects received from Excel to 
-    /// declare that Excel must free them. This is automatically done
-    /// by callExcel/tryCallExcel so only invoke this if you use Excel12v
-    /// directly.
+    /// Retuns a `std::wstring_view` of the string data in the object.
+    /// The view is empty if the object does not hold a string.
     /// </summary>
     /// <returns></returns>
-    ExcelObj& fromExcel()
+    std::wstring_view asStringView() const
     {
-      xltype |= msxll::xlbitXLFree;
-      return *this;
+      return cast<PStringRef>();
     }
-
-    /// <summary>
-    /// Attempts to convert the ExcelObj to a Date. This will only
-    /// succeed for numeric types. All function parameters are overwritten.
-    /// </summary>
-    /// <param name="nDay"></param>
-    /// <param name="nMonth"></param>
-    /// <param name="nYear"></param>
-    /// <returns>true if conversion suceeds, else false</returns>
-    bool toYMD(int &nYear, int &nMonth, int &nDay) const noexcept;
-
-    /// <summary>
-    /// Attempts to convert the ExcelObj to a Date/Time.  This will only
-    /// succeed for numeric types. All function parameters are overwritten.
-    /// </summary>
-    /// <param name="nDay"></param>
-    /// <param name="nMonth"></param>
-    /// <param name="nYear"></param>
-    /// <param name="nHours"></param>
-    /// <param name="nMins"></param>
-    /// <param name="nSecs"></param>
-    /// <param name="uSecs"></param>
-    /// <returns>true if conversion suceeds, else false</returns>
-    bool toYMDHMS(int &nYear, int &nMonth, int &nDay, int& nHours,
-      int& nMins, int& nSecs, int& uSecs) const noexcept;
-
-    /// <summary>
-    /// Attempts to convert the ExcelObj to a std::tm struct. If the ExcelObj
-    /// is a string and coerce is true, it will attempt to parse that string
-    /// using the given string format or if none was provided, all registered 
-    /// string formats. 
-    /// 
-    /// Only relevant values in the tm struct will be populated, so you may 
-    /// want to zero-initialise the struct before calling this function.
-    /// </summary>
-    /// <param name="datetime">The tm struct to be populated.</param>
-    /// <param name="coerce">If true, attempt to parse strings</param>
-    /// <param name="format">The date format for string parsing</param>
-    /// <returns>true if conversion suceeds, else false</returns>
-    bool toDateTime(
-      std::tm& datetime, 
-      const bool coerce = false, 
-      const wchar_t* format = nullptr) const;
-
-    /// <summary>
-    /// Called by ExcelArray to determine the size of array data when
-    /// blanks and \#N/A is ignored.
-    /// </summary>
-    /// <param name="nRows"></param>
-    /// <param name="nCols"></param>
-    /// <returns>false if object is not an array, else true</returns>
-    bool trimmedArraySize(row_t& nRows, col_t& nCols) const;
 
     /// <summary>
     /// Destroys the target object and replaces it with the source
     /// </summary>
-    /// <param name="to"></param>
-    /// <param name="from"></param>
     static void copy(ExcelObj& to, const ExcelObj& from)
     {
       to.reset();
@@ -764,14 +652,25 @@ namespace xloil
     /// uninitialised or non-allocating (e.g. numeric, error, nil) 
     /// target objects.
     /// </summary>
-    /// <param name="to"></param>
-    /// <param name="from"></param>
     static void overwrite(ExcelObj& to, const ExcelObj& from)
     {
       if (from.isType(ExcelType::Simple))
         (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
       else
         overwriteComplex(to, from);
+    }
+
+    /// <summary>
+    /// Call this on function result objects received from Excel to 
+    /// declare that Excel must free them. This is automatically done
+    /// by callExcel/tryCallExcel so only invoke this if you use Excel12v
+    /// directly (which ideally you wouldn't!)
+    /// </summary>
+    /// <returns></returns>
+    ExcelObj& resultFromExcel()
+    {
+      xltype |= msxll::xlbitXLFree;
+      return *this;
     }
 
     ExcelObj* setDllFreeFlag()
@@ -786,23 +685,41 @@ namespace xloil
     {
       return xltype & ~(msxll::xlbitXLFree | msxll::xlbitDLLFree);
     }
+
+    /// <summary>
+  /// Handles the switch on the type of the ExcelObj and dispatches to an
+  /// overload of the functor's operator(). Called via <see cref="FromExcel"/>.
+  /// </summary>
+    template<class TFunc>
+    auto visit(TFunc&& functor) const;
+   
+    template<class TFunc, class TDefault>
+    auto visit(TFunc&& functor, TDefault defaultVal) const;
+
    private:
     static void overwriteComplex(ExcelObj& to, const ExcelObj& from);
     void createFromChars(const char* chars, size_t len);
   };
-}
 
-namespace std {
   /// <summary>
-  /// This hash does a non-recursive comparison, like operator '<'.
-  /// For arrays it does not satisfy A==B => hash(A) == hash(B), but 
-  /// for other types it will.
+  /// Holder class which allows the type converter implementation to select
+  /// objects which represent arrays
   /// </summary>
-  template <>
-  struct hash<xloil::ExcelObj> 
-  {
-    XLOIL_EXPORT size_t operator()(const xloil::ExcelObj& value) const;
-  };
+  struct ArrayVal : public ExcelObj
+  {};
+
+  /// <summary>
+  /// Holder class which allows the type converter implementation to select
+  /// objects which represent range references
+  /// </summary>
+  struct RefVal : public ExcelObj
+  {};
+
+  /// <summary>
+  /// Indicates a missing value to a type converter implementation
+  /// </summary>
+  struct MissingVal
+  {};
 }
 
 #include <xloil/ArrayBuilder.h>
@@ -868,45 +785,140 @@ namespace xloil
     *this = builder.toExcelObj();
   }
 
-  namespace detail
+  template <class T>
+  T ExcelObj::get() const
   {
-    template<class TConv, class T>
-    auto toPODHelper(const std::optional<T> defaultVal, const ExcelObj& val)
+    return visit(conv::ToType<T>());
+  }
+  
+  template <>
+  inline CellError ExcelObj::get() const
+  {
+    if ((xltype & msxll::xltypeErr) == 0)
+      throw std::runtime_error("Not a CellError type");
+    return CellError(val.err);
+  }
+
+  template <class T> 
+  T ExcelObj::get(const std::optional<T> defaultVal) const
+  {
+    return visit(conv::ToType<T>(), defaultVal.value());
+  }
+
+  template <>
+  inline std::wstring ExcelObj::get() const
+  {
+    return toString();
+  }
+
+  template <class T> std::optional<T> ExcelObj::getIf() const
+  {
+    return visit(conv::ToType<std::optional<T>>());
+  }
+
+  template <> inline std::optional<CellError> ExcelObj::getIf() const
+  {
+    if ((xltype & msxll::xltypeErr) == 0)
+      return std::optional<CellError>();
+    return CellError(val.err);
+  }
+
+  template<> inline double ExcelObj::cast() const
+  {
+    assert(xtype() == msxll::xltypeNum);
+    return val.num;
+  }
+
+  template<> inline int ExcelObj::cast() const
+  {
+    assert(xtype() == msxll::xltypeInt);
+    return val.w;
+  }
+  
+  template<> inline bool ExcelObj::cast() const
+  {
+    assert(xtype() == msxll::xltypeBool);
+    return val.xbool;
+  }
+
+  template<> inline PStringRef ExcelObj::cast() const
+  {
+    return PStringRef((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
+  }
+
+  template<> inline const XLOIL_XLOPER* ExcelObj::cast() const
+  {
+    return this;
+  }
+
+  template <class T, std::enable_if_t<std::is_scalar_v<T>, bool>>
+  bool ExcelObj::operator==(T that) const
+  {
+    auto value = visit(conv::ToType<std::optional<T>>());
+    return value == that;
+  }
+
+  template<class TFunc>
+  auto ExcelObj::visit(TFunc&& functor) const
+  {
+    try
     {
-      return defaultVal.has_value() 
-        ? FromExcelDefaulted<TConv>(defaultVal.value())(val)
-        : FromExcel<TConv>()(val);
+      switch (type())
+      {
+      case ExcelType::Int:     return functor(val.w);
+      case ExcelType::Bool:    return functor(val.xbool != 0);
+      case ExcelType::Num:     return functor(val.num);
+      case ExcelType::Str:     return functor(cast<PStringRef>());
+      case ExcelType::Multi:   return functor(static_cast<const ArrayVal&>(*this));
+      case ExcelType::Missing: return functor(MissingVal());
+      case ExcelType::Err:     return functor(CellError(val.err));
+      case ExcelType::Nil:     return functor(nullptr);
+      case ExcelType::SRef:
+      case ExcelType::Ref:
+        return functor(static_cast<const RefVal&>(*this));
+      default:
+        XLO_THROW("Unexpected XL type");
+      }
+    }
+    catch (const std::exception& e)
+    {
+      XLO_THROW(L"Failed reading {0}: {1}",
+        toString(),
+        utf8ToUtf16(e.what()));
     }
   }
 
-  inline double ExcelObj::toDouble(const std::optional<double> defaultVal) const
+  template<class TFunc, class TDefault>
+  auto ExcelObj::visit(
+    TFunc&& functor,
+    TDefault defaultVal) const
   {
-    return detail::toPODHelper<conv::ToDouble<>>(defaultVal, *this);
+    return visit(ExcelValVisitorDefaulted<TFunc>(functor, defaultVal));
   }
 
-  inline int ExcelObj::toInt(const std::optional<int> defaultVal) const
+  template<class TVisitor>
+  struct ApplyVisitor
   {
-    return detail::toPODHelper<conv::ToInt<>>(defaultVal, *this);
-  }
+    TVisitor _visitor;
+    ApplyVisitor(TVisitor visitor) 
+      : _visitor(visitor)
+    {}
+    auto operator()(const ExcelObj& obj)
+    {
+      return obj.visit(_visitor);
+    }
+  };
+}
 
-  inline bool ExcelObj::toBool(const std::optional<bool> defaultVal) const
+namespace std {
+  /// <summary>
+  /// This hash does a non-recursive comparison, like operator '<'.
+  /// For arrays it does not satisfy A==B => hash(A) == hash(B), but 
+  /// for other types it will.
+  /// </summary>
+  template <>
+  struct hash<xloil::ExcelObj>
   {
-    return detail::toPODHelper<conv::ToBool<>>(defaultVal, *this);
-  }
-
-  inline bool ExcelObj::operator==(double that) const
-  {
-    auto value = FromExcel<conv::ToDouble<std::optional<double>>>()(*this);
-    return value == that;
-  }
-  inline bool ExcelObj::operator==(int that) const
-  {
-    auto value = FromExcel<conv::ToInt<std::optional<int>>>()(*this);
-    return value == that;
-  }
-  inline bool ExcelObj::operator==(bool that) const
-  {
-    auto value = FromExcel<conv::ToBool<std::optional<bool>>>()(*this);
-    return value == that;
-  }
+    XLOIL_EXPORT size_t operator()(const xloil::ExcelObj& value) const;
+  };
 }

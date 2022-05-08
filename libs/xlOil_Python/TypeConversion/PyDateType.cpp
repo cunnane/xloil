@@ -68,7 +68,7 @@ namespace xloil
       {
         return operator()(int(x));
       }
-      PyObject* operator()(const PStringView<>& pstr) const
+      PyObject* operator()(const PStringRef& pstr) const
       {
         std::tm tm;
         if (stringToDateTime(pstr.view(), tm))
@@ -97,7 +97,7 @@ namespace xloil
         return PyDateTime_FromDateAndTime(year, month, day, hours, mins, secs, usecs);
       }
 
-      PyObject* operator()(const PStringView<>& pstr) const
+      PyObject* operator()(const PStringRef& pstr) const
       {
         std::tm tm;
         if (stringToDateTime(pstr.view(), tm))
@@ -142,7 +142,7 @@ namespace xloil
         else if (PyFloat_Check(p))
           return PySteal(PyFromDateTime()(PyFloat_AS_DOUBLE(p)));
         else if (PyUnicode_Check(p))
-          return PySteal(PyFromDateTime()(FromPyString()(p).asPString()));
+          return PySteal(PyFromDateTime()(FromPyString()(p).cast<PStringRef>()));
         else if (PyDateTime_Check(p))
           return obj;
         else

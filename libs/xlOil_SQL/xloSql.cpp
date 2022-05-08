@@ -62,8 +62,8 @@ namespace xloil
       {
         if (meta.isType(ExcelType::Str))
         {
-         /* vector<PStringView<>> names;
-          auto pstr = meta.asPString();
+         /* vector<PStringRef> names;
+          auto pstr = meta.cast<PStringRef>();
           const auto length = pstr.length();
 
           while (!(pstr = pstr.strtok(L",")).empty())
@@ -87,7 +87,7 @@ namespace xloil
         }, XLO_ARGS_LIST(XLOSQL_NARGS, XLOSQL_ARG_NAME));
       }
 
-      auto sql = query.toString();
+      auto sql = query.toStringRecursive();
 
       auto stmt = sqlPrepare(db.get(), sql);
 

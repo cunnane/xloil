@@ -21,11 +21,11 @@ namespace xloil
     {
       throwInFunctionWizard();
 
-      const CacheObj* dbObj = cacheFetch(database.asPString());
+      const CacheObj* dbObj = cacheFetch(database.cast<PStringRef>());
       if (!dbObj)
         XLO_THROW("No database provided");
 
-      auto sql = query.toString();
+      auto sql = query.toStringRecursive();
       auto stmt = sqlPrepare(dbObj->getDB().get(), sql);
 
       return returnValue(sqlQueryToArray(stmt));

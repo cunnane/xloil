@@ -361,7 +361,7 @@ namespace xloil
     {
       // xlfGetFormula always returns RC references, but GetCell uses the
       // workspace settings to return RC or A1 style.
-      return callExcel(msxll::xlfGetCell, 6, _ref).toString();
+      return callExcel(msxll::xlfGetCell, 6, _ref).get<std::wstring>();
     }
 
     /// <summary>

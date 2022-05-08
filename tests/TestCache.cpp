@@ -37,7 +37,7 @@ namespace Tests
 
       for (auto i = 0; i < N; ++i)
       {
-        auto* val = cache->fetch(keys[i].asPString().view());
+        auto* val = cache->fetch(keys[i].asStringView());
         Assert::AreEqual<int>(i, **val);
         auto* key = cache->findKey(val);
         Assert::AreEqual(keys[i].toString(), *key);
@@ -80,7 +80,7 @@ namespace Tests
       for (auto rep = 0; rep < NumReps * 10; ++rep)
         for (auto i = 0; i < N; ++i)
         {
-          auto* val = cache.fetch(keys[i].asPString().view());
+          auto* val = cache.fetch(keys[i].cast<PStringRef>().view());
 #ifndef RUN_PERFORMANCE_TEST
           Assert::AreEqual<int>(i, **val);
 #endif

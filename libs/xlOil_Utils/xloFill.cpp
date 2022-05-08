@@ -13,15 +13,15 @@ namespace xloil
   )
   {
     auto strLen = value->stringLength();
-    auto nRowsVal = nRows->toInt();
-    auto nColsVal = nCols->toInt();
+    auto nRowsVal = nRows->get<int>();
+    auto nColsVal = nCols->get<int>();
 
     ExcelArrayBuilder builder(nRowsVal, nColsVal, strLen);
 
     if (value->type() == ExcelType::Str)
     {
       auto pstr = builder.string(strLen);
-      pstr = value->asPString();
+      pstr = value->cast<PStringRef>();
       // Rather than copy the string for each array entry, we just pass
       // the same pointer each time.
       for (auto i = 0; i < nRowsVal; ++i)

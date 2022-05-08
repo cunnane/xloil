@@ -19,7 +19,7 @@ namespace xloil
   XLOIL_EXPORT bool yieldAndCheckIfEscPressed()
   {
     auto[res, ret] = tryCallExcel(msxll::xlAbort);
-    return (ret == 0 && res.asBool());
+    return (ret == 0 && res.cast<bool>());
   }
 }
 

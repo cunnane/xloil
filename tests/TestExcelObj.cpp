@@ -6,6 +6,7 @@
 
 #include <vector>
 
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 using namespace xloil;
@@ -59,7 +60,7 @@ namespace Tests
       Assert::IsTrue(arr(2) == 3);
       Assert::IsTrue(arr(4) == 5);
       vector<double> values;
-      arr.toColMajor(std::back_inserter(values), ToDouble());
+      std::transform(arr.begin(), arr.end(), std::back_inserter(values), ApplyVisitor{ conv::ToType<double>() });
       Assert::IsTrue(values == vector<double>{ 1, 2, 3, 4, 5 });
     }
 
@@ -70,12 +71,12 @@ namespace Tests
 
       {
         auto negativeSlice = arr.slice(0, -2);
-        Assert::AreEqual(arr(0, 1).toInt(), negativeSlice(0, 0).toInt());
+        Assert::AreEqual(arr(0, 1).get<int>(), negativeSlice(0, 0).get<int>());
       }
 
       {
         auto slice2d = arr.slice(0, 1, 2, 3);
-        Assert::AreEqual(arr(0, 1).toInt(), slice2d(0, 0).toInt());
+        Assert::AreEqual(arr(0, 1).get<int>(), slice2d(0, 0).get<int>());
         Assert::AreEqual(2u, slice2d.nRows());
         Assert::AreEqual(2u, slice2d.nCols());
       }
@@ -87,11 +88,10 @@ namespace Tests
     {
       {
         ExcelObj date(stringToDateTime(L"2017-01-01", L"%Y-%m-%d"));
-        int year, month, day;
-        date.toYMD(year, month, day);
-        Assert::AreEqual(year, 2017);
-        Assert::AreEqual(month, 1);
-        Assert::AreEqual(day, 1);
+        auto tm = date.get<std::tm>();
+        Assert::AreEqual(2017, tm.tm_year + 1900);
+        Assert::AreEqual(1, tm.tm_mon + 1);
+        Assert::AreEqual(1, tm.tm_mday);
       }
     }
   };

@@ -60,7 +60,7 @@ namespace xloil {
             // This conversion to 32-bit is OK even in x64 because the 
             // window handle is an index into an array, not a pointer. 
 #pragma warning(disable: 4312)
-            _excelWindowHandle = (HWND)windowHandle.toInt();
+            _excelWindowHandle = (HWND)windowHandle.get<int>();
 
             _xlApp = getExcelInstance(_excelWindowHandle);
             _handler = COM::createEventSink(_xlApp);

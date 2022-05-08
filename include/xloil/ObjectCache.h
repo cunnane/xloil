@@ -32,7 +32,7 @@ namespace xloil
         caller.addressLength(CallerInfo::RC) 
         + optionalName.size() 
         + NPadding + 1u; // Padding for the ",XX" at the end and 1 for the uniquifier
-      PString<> pascalStr((uint16_t)pstrLength);
+      PString pascalStr((uint16_t)pstrLength);
       auto* buf = pascalStr.pstr() + 1;
 
       int nWritten = 1; // Leave space for uniquifier

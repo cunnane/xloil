@@ -35,7 +35,7 @@ namespace xloil
     };
     using IPyToExcel = IConvertToExcel<PyObject>;
 
-    struct PyFromExcelImpl : public FromExcelBase<PyObject*>
+    struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
     {
     };
 
@@ -56,7 +56,7 @@ namespace xloil
         {}
 
         using TBase::operator();
-        PyObject* operator()(const PStringView<>& str)
+        PyObject* operator()(const PStringRef& str) const
         {
           pybind11::object cached;
           if (pyCacheGet(str.view(), cached))
@@ -95,7 +95,7 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "str";
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
         }
@@ -134,7 +134,7 @@ namespace xloil
         PyObject* operator()(int x) const { return PyFromInt()(x); }
         PyObject* operator()(bool x) const { return PyFromBool()(x); }
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
-        PyObject* operator()(ArrayVal arr) const
+        PyObject* operator()(const ArrayVal& arr) const
         {
           return excelArrayToNumpyArray(ExcelArray(arr));
         }
@@ -142,7 +142,7 @@ namespace xloil
         // Return python None for Excel nil value
         PyObject* operator()(nullptr_t) const { Py_RETURN_NONE; }
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           return PyFromString()(pstr);
         }
@@ -152,7 +152,7 @@ namespace xloil
           auto pyObj = pybind11::cast(err);
           return pyObj.release().ptr();
         }
-        PyObject* operator()(RefVal ref) const
+        PyObject* operator()(const RefVal& ref) const
         {
           return pybind11::cast((Range*)new XllRange(ref)).release().ptr();
         }
@@ -164,13 +164,13 @@ namespace xloil
       /// Type converter which expects a cache reference string and rejects
       /// all other types.
       /// </summary>
-      class PyCacheObject : public FromExcelBase<PyObject*>
+      class PyCacheObject : public ExcelValVisitor<PyObject*>
       {
       public:
-        using FromExcelBase::operator();
+        using ExcelValVisitor::operator();
         static constexpr char* const ourName = "CacheObject";
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           PyObject* _typeCheck = nullptr;
 
@@ -228,7 +228,7 @@ namespace xloil
         }
 
         // Why return null and not throw here?
-        auto* retVal = visitExcelObj(xl, _impl);
+        auto* retVal = xl.visit(_impl);
 
         if (!retVal)
         {
@@ -335,7 +335,7 @@ namespace xloil
 
         const auto len = (char16_t)std::min<size_t>(
           USHRT_MAX, PyUnicode_GET_LENGTH((PyObject*)obj));
-        PString<wchar_t, TAlloc> pstr(len, allocator);
+        BasicPString<wchar_t, TAlloc> pstr(len, allocator);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ExcelObj(std::move(pstr));
       }

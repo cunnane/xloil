@@ -15,13 +15,14 @@ namespace xloil
     static std::wstring ourDllPath;
     static App::ExcelInternals ourExcelState;
 
+    // TODO: make this startup stuff noexcept?
     void setDllPath(HMODULE handle)
     {
       ourDllPath = captureWStringBuffer(
         [handle](auto* buf, auto len)
-      {
-        return GetModuleFileName(handle, buf, (DWORD)len);
-      });
+        {
+          return GetModuleFileName(handle, buf, (DWORD)len);
+        });
       ourDllName = std::filesystem::path(ourDllPath).filename();
     }
 

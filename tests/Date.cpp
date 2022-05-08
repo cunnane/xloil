@@ -1,5 +1,6 @@
 #include "CppUnitTest.h"
 #include <xlOil/Date.h>
+#include <xloil/ExcelObj.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -34,6 +35,7 @@ namespace Tests
       Assert::AreEqual(result.tm_mon + 1, 2);
       Assert::AreEqual(result.tm_mday, 1);
     }
+
     TEST_METHOD(Test_DateRoundTrip)
     {
       {
@@ -44,6 +46,36 @@ namespace Tests
         excelSerialDatetoYMDHMS(serial, *--d, *--d, *--d, *--d, *--d, *--d, *--d);
         Assert::IsTrue(std::equal(input, std::end(input), output));
       }
+    }
+
+    void checkTMValues(const std::tm& tm, int year, int month, int day)
+    {
+      Assert::AreEqual(tm.tm_year + 1900, year);
+      Assert::AreEqual(tm.tm_mon + 1, month);
+      Assert::AreEqual(tm.tm_mday, day);
+    }
+
+    void testVisitorRoundTrip(const wchar_t* date, int year, int month, int day)
+    {
+      ExcelObj dateStr(date);
+      ParseDateVisitor parseVisitor;
+      auto ret = dateStr.visit(parseVisitor);
+      Assert::IsTrue(ret);
+      checkTMValues(parseVisitor.result, year, month, day);
+
+      ExcelObj dateObj(
+        excelSerialDateFromTM(parseVisitor.result, parseVisitor.uSecs));
+
+      DateTimeVisitor dateVisitor;
+      ret = dateObj.visit(dateVisitor);
+      Assert::IsTrue(ret);
+      checkTMValues(dateVisitor.result, year, month, day);
+    }
+
+    TEST_METHOD(Test_DateVisitors)
+    {
+      testVisitorRoundTrip(L"2017-01-01", 2017, 1, 1);
+      testVisitorRoundTrip(L"1914-02-28", 1914, 2, 28);
     }
   };
 }

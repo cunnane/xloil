@@ -202,7 +202,7 @@ namespace xloil
       // We must be in XLL context to register a function, so can call this:
       publishIntellisenseInfo(info);
 
-      return registerId.toInt();
+      return registerId.get<int>();
     }
 
     void throwIfPresent(const wstring& name) const
@@ -264,7 +264,7 @@ namespace xloil
     XLO_DEBUG(L"Deregistering {0}", name);
 
     auto[result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
-    if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.toBool())
+    if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.get<bool>())
     {
       XLO_WARN(L"Unregister failed for {0}", name);
       return false;

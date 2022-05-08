@@ -12,7 +12,7 @@ namespace xloil
       _data = (const ExcelObj*)obj.val.array.lparray;
       _baseCols = (col_t)obj.val.array.columns;
       if (trim)
-        obj.trimmedArraySize(_rows, _columns);
+        trimmedArraySize(obj, _rows, _columns);
       else
       {
         _rows = obj.val.array.rows;
@@ -50,5 +50,35 @@ namespace xloil
         builder(i, j) = at(i, j);
 
     return builder.toExcelObj();
+  }
+  
+  bool ExcelArray::trimmedArraySize(const ExcelObj& obj, row_t& nRows, col_t& nCols)
+  {
+    if ((obj.xtype() & msxll::xltypeMulti) == 0)
+    {
+      nRows = 0; nCols = 0;
+      return false;
+    }
+
+    const auto& arr = obj.val.array;
+    const auto start = (ExcelObj*)arr.lparray;
+    nRows = arr.rows;
+    nCols = arr.columns;
+
+    auto p = start + nCols * nRows - 1;
+
+    for (; nRows > 0; --nRows)
+      for (int c = (int)nCols - 1; c >= 0; --c, --p)
+        if (p->isNonEmpty())
+          goto StartColSearch;
+
+  StartColSearch:
+    for (; nCols > 0; --nCols)
+      for (p = start + nCols - 1; p < (start + nCols * nRows); p += arr.columns)
+        if (p->isNonEmpty())
+          goto SearchDone;
+
+  SearchDone:
+    return true;
   }
 }

@@ -33,7 +33,7 @@ namespace xloil
           return PyDict_New();
         }
 
-        PyObject* operator()(ArrayVal obj)
+        PyObject* operator()(const ArrayVal& obj)
         {
           ExcelArray arr(obj);
 

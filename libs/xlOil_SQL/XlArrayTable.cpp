@@ -163,6 +163,28 @@ namespace xloil
     template<> struct TableReturn<XlRangeTable> { using type = ExcelObj; };
     template<> struct TableReturn<XlArrayTable> { using type = const ExcelObj&; };
 
+
+    struct ExcelValToSqlType
+    {
+      sqlite3_context* ctx;
+
+      void operator()(int x) const     { sqlite3_result_int64(ctx, x); }
+      void operator()(bool x) const    { sqlite3_result_int64(ctx, x); }
+      void operator()(double x) const  { sqlite3_result_double(ctx, x); }
+      void operator()(CellError) const { sqlite3_result_null(ctx); }
+      void operator()(nullptr_t) const { sqlite3_result_null(ctx); }
+      void operator()(const PStringRef& pstr) const 
+      {
+        sqlite3_result_text16(ctx, pstr.pstr(),
+          pstr.length() * sizeof(wchar_t), SQLITE_STATIC);
+      }
+
+      template <class T> void operator()(T) const
+      {
+        sqlite3_result_error(ctx, "Unexpected excel type", -1);
+      }
+    };
+
     /*
     ** Return values of columns for the row at which the cursor
     ** is currently pointing.
@@ -176,33 +198,7 @@ namespace xloil
       auto *pCur = (XlTableCursor*)cur;
       auto *pTab = (const T*)cur->pVtab;
       TableReturn<T>::type val = pTab->data(pCur->iRowid, i);
-
-      switch (val.type())
-      {
-      case ExcelType::Int:
-        sqlite3_result_int64(ctx, val.asInt());
-        break;
-      case ExcelType::Bool:
-        sqlite3_result_int64(ctx, val.asBool());
-        break;
-      case ExcelType::Num:
-        sqlite3_result_double(ctx, val.asDouble());
-        break;
-      case ExcelType::Str:
-      {
-        auto pstr = val.asPString();
-        sqlite3_result_text16(ctx, pstr.pstr(), 
-          pstr.length() * sizeof(wchar_t), SQLITE_STATIC);
-        break;
-      }
-      case ExcelType::Err:
-      case ExcelType::Nil:
-        sqlite3_result_null(ctx);
-        break;
-      default:
-        sqlite3_result_error(ctx, "Unexpected excel type", -1);
-      }
-
+      val.visit(ExcelValToSqlType{ ctx });
       return SQLITE_OK;
     }
 

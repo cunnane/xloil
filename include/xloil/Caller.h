@@ -83,9 +83,9 @@ namespace xloil
     /// if it could not be determined.
     /// </summary>
     /// <returns></returns>
-    PStringView<> fullSheetName() const
+    PStringRef fullSheetName() const
     {
-      return _sheetName.asPString();
+      return _sheetName.cast<PStringRef>();
     }
    
     /// <summary>

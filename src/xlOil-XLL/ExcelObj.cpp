@@ -1,4 +1,3 @@
-
 #include <xloil/ExcelObj.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/NumericTypeConverters.h>
@@ -261,7 +260,7 @@ namespace
       case xltypeRef:
       case xltypeSRef:
         // Case doesn't matter as we control the string representation for ranges
-        return wcscmp(left.toStringRepresentation().c_str(), right.toStringRepresentation().c_str());
+        return wcscmp(left.toString().c_str(), right.toString().c_str());
 
       default: // BigData or Flow types - not sure why you would be comparing these?!
         return 0;
@@ -273,7 +272,7 @@ namespace
       constexpr int typeNumeric = xltypeNum | xltypeBool | xltypeInt;
 
       if (((lType | rType) & ~typeNumeric) == 0)
-        return TCmp()(left.toDouble(), right.toDouble());
+        return TCmp()(left.get<double>(), right.get<double>());
 
       // Errors come last
       if (((lType | rType) & xltypeErr) != 0)
@@ -298,7 +297,7 @@ namespace
     return doCompare<Compare>(left, right, caseSensitive, recursive);
   }
 
-  std::wstring ExcelObj::toString(const wchar_t* separator) const
+  std::wstring ExcelObj::toStringRecursive(const wchar_t* separator) const
   {
     switch (xtype())
     {
@@ -326,24 +325,24 @@ namespace
 
     case xltypeSRef:
     case xltypeRef:
-      return ExcelRef(*this).value().toString(separator);
+      return ExcelRef(*this).value().toStringRecursive(separator);
 
     case xltypeMulti:
     {
-      ExcelArray arr(*this);
+      ExcelArray arr(*this); // Note that this trims the array
       wstring str;
       str.reserve(arr.size() * 8); // 8 is an arb choice
       if (separator)
       {
         wstring sep(separator);
         for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
-          str += arr(i).toString() + sep;
+          str += arr(i).toStringRecursive() + sep;
         if (!str.empty())
           str.erase(str.size() - sep.length());
       }
       else
         for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
-          str += arr(i).toString();
+          str += arr(i).toStringRecursive();
       return str;
     }
 
@@ -351,7 +350,7 @@ namespace
       return L"#???";
     }
   }
-  std::wstring ExcelObj::toStringRepresentation() const noexcept
+  std::wstring ExcelObj::toString() const noexcept
   {
     try
     {
@@ -364,16 +363,18 @@ namespace
         return range.address();
       }
       case xltypeMulti:
-        return fmt::format(L"[{0} x {1}]", val.array.rows, val.array.columns);
+        return formatStr(L"[%d x %d]", val.array.rows, val.array.columns);
       default:
-        return toString();
+        return toStringRecursive();
       }
     }
     catch (...)
     {
+      // TODO: when does this ever happen?
       return L"<ERROR>"s;
     }
   }
+
   uint16_t ExcelObj::maxStringLength() const noexcept
   {
     switch (xtype())
@@ -412,87 +413,6 @@ namespace
     default:
       return 4;
     }
-  }
-
-  bool ExcelObj::toYMD(
-    int &nYear, int &nMonth, int &nDay) const noexcept
-  {
-    if ((xltype & (xltypeNum | xltypeInt)) == 0)
-      return false;
-    const auto d = toInt();
-    return excelSerialDateToYMD(d, nYear, nMonth, nDay);
-  }
-
-  bool ExcelObj::toYMDHMS(
-    int & nYear, int & nMonth, int & nDay,
-    int & nHours, int & nMins, int & nSecs, int & uSecs) const noexcept
-  {
-    if ((xltype & (xltypeNum | xltypeInt)) == 0)
-      return false;
-    const auto d = toDouble();
-    return excelSerialDatetoYMDHMS(d, nYear, nMonth, nDay, nHours, nMins, nSecs, uSecs);
-  }
-
-  bool ExcelObj::toDateTime(std::tm& result, 
-    const bool coerce, const wchar_t* format) const
-  {
-    switch (xtype())
-    {
-    case xltypeNum:
-    {
-      int uSecs;
-      result.tm_isdst = false;
-      return excelSerialDatetoYMDHMS(val.num, 
-        result.tm_year, result.tm_mon, result.tm_yday,
-        result.tm_hour, result.tm_min, result.tm_sec, uSecs);
-    }
-    case xltypeInt:
-    {
-      result.tm_isdst = false;
-      result.tm_hour = 0;
-      result.tm_min = 0;
-      return excelSerialDateToYMD(val.w,
-        result.tm_year, result.tm_mon, result.tm_yday);
-    }
-    case xltypeStr:
-    {
-      if (!coerce)
-        return false;
-      return stringToDateTime(
-        asPString().view(),
-        result, format);
-    }
-    default:
-      return false;
-    }
-  }
-  bool ExcelObj::trimmedArraySize(row_t& nRows, col_t& nCols) const
-  {
-    if ((xtype() & xltypeMulti) == 0)
-    {
-      nRows = 0; nCols = 0;
-      return false;
-    }
-
-    const auto start = (ExcelObj*)val.array.lparray;
-    nRows = val.array.rows;
-    nCols = val.array.columns;
-
-    auto p = start + nCols * nRows - 1;
-
-    for (; nRows > 0; --nRows)
-      for (int c = (int)nCols - 1; c >= 0; --c, --p)
-        if (p->isNonEmpty())
-          goto StartColSearch;
-
-  StartColSearch:
-    for (; nCols > 0; --nCols)
-      for (p = start + nCols - 1; p < (start + nCols * nRows); p += val.array.columns)
-        if (p->isNonEmpty())
-          goto SearchDone;
-
-  SearchDone:
-    return true;
   }
 
   void ExcelObj::overwriteComplex(ExcelObj& to, const ExcelObj& from)
@@ -540,7 +460,7 @@ namespace
           case xltypeStr:
           {
             const auto len = pSrc->val.str[0];
-            arr(i, j) = pSrc->asPString();
+            arr(i, j) = pSrc->cast<PStringRef>();
             break;
           }
           default:
@@ -616,7 +536,7 @@ namespace
         ExcelObj(CellError::GettingData)
       };
 
-      static ExcelObj theEmptyString(PString<>::steal(L"\0"));
+      static ExcelObj theEmptyString(PString::steal(L"\0"));
     }
 
     const ExcelObj& Missing()
@@ -655,7 +575,7 @@ namespace std
     case xltypeInt: return hash<int>()(value.val.w);
     case xltypeNum: return hash<double>()(value.val.w);
     case xltypeBool: return hash<bool>()(value.val.xbool);
-    case xltypeStr: return hash<wstring_view>()(value.asPString().view());
+    case xltypeStr: return hash<wstring_view>()(value.cast<xloil::PStringRef>().view());
     case xltypeMissing:
     case xltypeNil: return 0;
     case xltypeErr: return hash<int>()(value.val.err);

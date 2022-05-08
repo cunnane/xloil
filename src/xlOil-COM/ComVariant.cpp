@@ -14,12 +14,12 @@ namespace xloil
 {
   namespace COM
   {
-    class ToVariant : public FromExcelBase<VARIANT>
+    class ToVariant : public ExcelValVisitor<VARIANT>
     {
     public:
-      using result_t = VARIANT;
+      using result_t = return_type;
 
-      using FromExcelBase::operator();
+      using ExcelValVisitor::operator();
 
       result_t operator()(int x) const
       {
@@ -33,10 +33,10 @@ namespace xloil
       {
         return _variant_t(x).Detach();
       }
-      result_t operator()(ArrayVal obj) const
+      result_t operator()(const ArrayVal& obj) const
       {
         // No array trimming, for some good reason
-        return operator()(ExcelArray(obj.obj, false));
+        return operator()(ExcelArray(obj, false));
       }
       result_t operator()(const ExcelArray& arr) const
       {
@@ -74,7 +74,7 @@ namespace xloil
 
         return result;
       }
-      result_t operator()(const PStringView<>& pstr) const
+      result_t operator()(const PStringRef& pstr) const
       {
         VARIANT result;
         VariantInit(&result);
@@ -88,15 +88,15 @@ namespace xloil
         // https://docs.microsoft.com/en-us/office/client-developer/excel/how-to-access-dlls-in-excel
         return _variant_t((long)x + (long)0x800A07D0, VT_ERROR).Detach();
       }
-      result_t operator()(RefVal ref) const
+      result_t operator()(const RefVal& ref) const
       {
-        return operator()(ExcelRef(ref.obj).value());
+        return operator()(ExcelRef(ref).value());
       }
 
       // Not part of the usual FromExcel interface, just to aid cascading
       result_t operator()(const ExcelObj& obj) const
       {
-        return FromExcel<ToVariant>()(obj);
+        return obj.visit(ToVariant());
       }
     };
 
@@ -105,9 +105,9 @@ namespace xloil
     public:
       using ToVariant::operator();
 
-      result_t operator()(RefVal ref) const
+      result_t operator()(const RefVal& ref) const
       {
-        const auto range = ExcelRange(ExcelRef(ref.obj));
+        const auto range = ExcelRange(ExcelRef(ref));
         return _variant_t(range.basePtr()).Detach();
       }
     };
@@ -116,9 +116,8 @@ namespace xloil
     {
       VariantClear(v);
       *v = allowRange
-        ? FromExcelDefaulted<ToVariantWithRange>(vtMissing)(obj)
-        : FromExcelDefaulted<ToVariant>(vtMissing)(obj);
-
+        ? obj.visit(ToVariantWithRange(), vtMissing)
+        : obj.visit(ToVariant(), vtMissing);
     }
 
     // Small helper function for array conversion

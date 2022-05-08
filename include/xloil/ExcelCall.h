@@ -160,7 +160,7 @@ namespace xloil
     auto result = std::make_pair(ExcelObj(), 0);
     detail::CallArgHolder holder(std::forward<Args>(args)...);
     result.second = callExcelRaw(func, &result.first, holder.nArgs(), holder.ptrToArgs());
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 
@@ -172,7 +172,7 @@ namespace xloil
   {
     auto result = std::make_pair(ExcelObj(), 0);
     result.second = callExcelRaw(func, &result.first);
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 
@@ -186,7 +186,7 @@ namespace xloil
     auto result = std::make_pair(ExcelObj(), 0);
     auto p = &arg;
     result.second = callExcelRaw(func, &result.first, 1, &p);
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 

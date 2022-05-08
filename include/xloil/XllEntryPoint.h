@@ -176,7 +176,7 @@ namespace xloil
       if (xIntAction.val.w == 1 && !info.empty())
       {
         xInfo.xltype = xltypeStr;
-        xInfo.val.str = PString<>(info).release();
+        xInfo.val.str = PString(info).release();
       }
       return &xInfo;
     }

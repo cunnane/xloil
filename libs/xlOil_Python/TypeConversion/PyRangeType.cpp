@@ -19,7 +19,7 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "Range";
 
-        PyObject* operator()(RefVal obj) const 
+        PyObject* operator()(const RefVal& obj) const 
         {
           return pybind11::cast((Range*)new XllRange(obj)).release().ptr();
         }

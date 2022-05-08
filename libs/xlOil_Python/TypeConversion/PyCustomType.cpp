@@ -19,7 +19,7 @@ namespace xloil
     public:
       using detail::PyFromAny::operator();
 
-      PyObject* operator()(ArrayVal arr)
+      PyObject* operator()(const ArrayVal& arr)
       {
         _ArrayWrapper = new PyExcelArray(arr);
         return py::cast(
@@ -27,7 +27,7 @@ namespace xloil
           py::return_value_policy::take_ownership).release().ptr();
       }
 
-      PyObject* operator()(const PStringView<>& pstr)
+      PyObject* operator()(const PStringRef& pstr)
       {
         return detail::PyFromString()(pstr);
       }
@@ -52,11 +52,13 @@ namespace xloil
         : _callable(callable)
         , _checkCache(checkCache)
       {}
+
       virtual ~CustomConverter()
       {
         py::gil_scoped_acquire getGil;
         _callable = py::object();
       }
+
       virtual result_type operator()(
         const ExcelObj& xl, 
         const_result_ptr defaultVal) override
@@ -64,24 +66,23 @@ namespace xloil
         // Called from type conversion code where GIL has already been acquired
         return checkUserException([&]()
         {
-          py::object retVal;
           if (_checkCache)
-          {
-            PyFromExcel<UserImpl, true> typeConverter;
-            auto arg = PySteal(typeConverter(xl, defaultVal));
-            retVal = _callable(arg);
-            typeConverter._impl.checkArrayWrapperDisposed();
-          }
+            return callConverter<true>(xl, defaultVal);
           else
-          {
-            PyFromExcel<UserImpl, false> typeConverter;
-            auto arg = PySteal(typeConverter(xl, defaultVal));
-            retVal = _callable(arg);
-            typeConverter._impl.checkArrayWrapperDisposed();
-          }
-          return retVal.release().ptr();
+            return callConverter<false>(xl, defaultVal);
         });
       }
+
+      template<bool TUseCache>
+      auto callConverter(const ExcelObj& xl, const_result_ptr defaultVal)
+      {
+        PyFromExcel<UserImpl, TUseCache> typeConverter;
+        auto arg = PySteal(typeConverter(xl, defaultVal));
+        auto retVal = _callable(arg);
+        typeConverter._impl.checkArrayWrapperDisposed();
+        return retVal.release().ptr();
+      }
+
       const char* name() const override
       {
         return _callable.ptr()->ob_type->tp_name;
@@ -103,7 +104,6 @@ namespace xloil
       }
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
-        // This c
         // Use raw C API for extra speed as this code is on a critical path
 #if PY_VERSION_HEX < 0x03080000
         auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&pyObj), nullptr);

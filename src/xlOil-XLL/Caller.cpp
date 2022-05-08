@@ -242,7 +242,7 @@ namespace xloil
       wchar_t* buf,
       size_t bufLen,
       const msxll::XLREF12& sheetRef,
-      const PString<>& sheetName,
+      const PStringRef& sheetName,
       const bool A1Style)
     {
       uint16_t nWritten = 0;
@@ -272,7 +272,7 @@ namespace xloil
       wchar_t* buf,
       size_t bufLen,
       const ExcelObj& address,
-      const PString<>& sheetName,
+      const PStringRef& sheetName,
       CallerInfo::AddressStyle style)
     {
       switch (address.type())
@@ -289,7 +289,7 @@ namespace xloil
       }
       case ExcelType::Str: // Graphic object or Auto_XXX macro caller
       {
-        auto str = address.asPString();
+        auto str = address.cast<PStringRef>();
         // Never return a string longer than the advertised max length
         uint16_t maxLen = str.length();
         switch (style)
@@ -302,7 +302,7 @@ namespace xloil
       }
       case ExcelType::Num: // DLL caller
       {
-        return _snwprintf_s(buf, bufLen, bufLen, L"DLL(%d)", address.asInt());
+        return _snwprintf_s(buf, bufLen, bufLen, L"DLL(%d)", address.cast<int>());
       }
       case ExcelType::Multi:
       {
@@ -310,9 +310,9 @@ namespace xloil
         switch (arr.size())
         {
         case 2:
-          return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).asInt());
+          return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).cast<int>());
         case 4:
-          return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).asInt());
+          return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).cast<int>());
         default:
           XLO_THROW("Caller: address is badly formed array");
         }
@@ -356,7 +356,7 @@ namespace xloil
     }
 
     // Not a worksheet caller
-    auto addressStr = _address.asPString();
+    auto addressStr = _address.cast<PStringRef>();
     if (!addressStr.empty())
       return addressStr.length();
 
@@ -365,7 +365,7 @@ namespace xloil
 
   int CallerInfo::writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style) const
   {
-    return writeAddressImpl(buf, bufLen, _address, _sheetName.asPString(), style);
+    return writeAddressImpl(buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
   }
   
   std::wstring CallerInfo::writeAddress(AddressStyle style) const
@@ -410,7 +410,7 @@ namespace xloil
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    return writeSheetAddress(buf, bufSize, ref, sheetNm.asPString(), A1Style);
+    return writeSheetAddress(buf, bufSize, ref, sheetNm.cast<PStringRef>(), A1Style);
   }
 
   namespace

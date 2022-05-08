@@ -58,7 +58,7 @@ namespace xloil
   {
     auto ret = Excel12v(func, result, (int)nArgs, (XLOIL_XLOPER**)args);
     if (result)
-      result->fromExcel();
+      result->resultFromExcel();
     return ret;
   }
 
