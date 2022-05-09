@@ -176,6 +176,12 @@ namespace xloil
         Event::WorkbookBeforeSave().fire(Wb->Name, SaveAsUI < 0, cancel);
         *Cancel = cancel ? -1 : 0;
       }
+      void WorkbookAfterSave(
+        Workbook* Wb, 
+        VARIANT_BOOL success)
+      {
+        Event::WorkbookAfterSave().fire(Wb->Name, success);
+      }
       void WorkbookBeforePrint(
         Workbook* Wb,
         VARIANT_BOOL* Cancel)
@@ -281,6 +287,10 @@ namespace xloil
             break;
           case 0x00000a34:
             AfterCalculate();
+            break;
+          case 2911:
+            WorkbookAfterSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal);
+            break;
           }
         }
         catch (_com_error& error)

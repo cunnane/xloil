@@ -267,6 +267,9 @@ namespace xloil
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool saveAsUI, bool& cancel)>&
       WorkbookBeforeSave();
 
+    XLOIL_EXPORT Event<void(const wchar_t* wbName, bool success)>&
+      WorkbookAfterSave();
+
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool& cancel)>&
       WorkbookBeforePrint();
 
@@ -347,6 +350,7 @@ namespace xloil
     (WorkbookDeactivate)\
     (WorkbookBeforeClose)\
     (WorkbookBeforeSave)\
+    (WorkbookAfterSave)\
     (WorkbookBeforePrint)\
     (WorkbookNewSheet)\
     (WorkbookAddinInstall)\
