@@ -115,6 +115,7 @@ namespace xloil
     // Entirely arbitrary ID numbers
     static constexpr unsigned IDT_TIMER1     = 101;
     static constexpr unsigned WINDOW_MESSAGE = 666;
+    static constexpr unsigned WM_TIMER       = 0x0113;
 
     auto firstJobTime(ULONGLONG now) 
     {
@@ -221,10 +222,10 @@ namespace xloil
     static LRESULT CALLBACK WindowProc(
       HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
     {
-      // TODO: handle WM_TIMER here rather than allowing DefWindowProc to do it?
       switch (uMsg)
       {
       case WINDOW_MESSAGE:
+      case WM_TIMER:
       {
         TimerCallback(hwnd, uMsg, wParam, 0);
         return S_OK;
@@ -248,7 +249,6 @@ namespace xloil
 
   bool isMainThread()
   {
-    // TODO: would a thread-local bool be quicker here?
     return App::internals().mainThreadId == GetCurrentThreadId();
   }
 
