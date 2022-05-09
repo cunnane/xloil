@@ -246,7 +246,6 @@ namespace xloil
     VARIANT stringToVariant(const std::wstring_view& str)
     {
       VARIANT result;
-      VariantInit(&result); // TODO: may not be required
       V_VT(&result) = VT_BSTR;
       V_BSTR(&result) = SysAllocStringLen(str.data(), (UINT)str.length());
       return result;

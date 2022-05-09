@@ -74,7 +74,7 @@ namespace
     case CellError::Name: return L"#NAME?";
     case CellError::Num: return L"#NUM!";
     case CellError::NA: return L"#N/A";
-    case CellError::GettingData: 
+    case CellError::GettingData: return L"#GETTNG_DATA";
     default:
       return L"#ERR!";
     }
@@ -405,9 +405,9 @@ namespace
     case xltypeMulti:
     {
       size_t n = 0;
-      auto p = val.array.lparray;
+      auto p = (const ExcelObj*)val.array.lparray;
       const auto pEnd = p + (val.array.rows * val.array.columns);
-      while (p < pEnd) n += ((const ExcelObj*)p++)->maxStringLength();
+      while (p < pEnd) n += (p++)->maxStringLength();
       return (int16_t)std::min<size_t>(USHRT_MAX, n);
     }
     default:
