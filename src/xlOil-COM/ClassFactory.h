@@ -228,15 +228,17 @@ namespace xloil
           REGCLS_MULTIPLEUSE,        // it can be created multiple times
           &_comRegistrationCookie);
         
-        auto keyPath = fmt::format(L"Software\\Classes\\{0}", _progId);
+        auto keyPath = fmt::format(L"Software\\Classes\\{0}\\CLSID", _progId);
         writeRegistry(
           HKEY_CURRENT_USER,
           keyPath.c_str(),
           0,
           _clsid.c_str());
 
-        // Add to our list of added keys, to ensure outer key is deleted
-        addedKey(HKEY_CURRENT_USER, keyPath);
+        
+        // Note the outer key to ensure it is deleted
+        addedKey(HKEY_CURRENT_USER, 
+          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
 
         // This registry entry is not needed to call CLSIDFromProgID, nor
         // to call CoCreateInstance, but for some reason the RTD call to
@@ -247,7 +249,9 @@ namespace xloil
           keyPath.c_str(),
           0,
           L"xlOil.dll"); // Name of dll isn't actually used.
-        addedKey(HKEY_CURRENT_USER, keyPath);
+
+        addedKey(HKEY_CURRENT_USER,
+          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
 
         // Check all is good by looking up the CLSID from our progId
         CLSID foundClsid;
@@ -279,11 +283,8 @@ namespace xloil
         addedKey(hive, path);
         return regWrite(hive, path, name, value);
       }
-      void addedKey(HKEY hive, const std::wstring& path)
-      {
-        addedKey(hive, path.c_str());
-      }
-      void addedKey(HKEY hive, const wchar_t* path)
+
+      void addedKey(HKEY hive, std::wstring_view path)
       {
         _regKeysAdded.emplace_back(std::pair(hive, std::wstring(path)));
       }
