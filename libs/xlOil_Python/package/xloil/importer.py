@@ -79,7 +79,7 @@ def get_event_loop():
     return xloil_core.get_event_loop(addin)
 
 
-def _import_scan(what, addin):
+def _import_and_scan(what, addin):
     """
     Loads or reloads the specifed module, which can be a string name
     or module object, then calls scan_module.
@@ -106,7 +106,7 @@ def _import_scan(what, addin):
     scan_module(module, addin)
     return module
 
-def _import_file(path, addin, workbook_name=None):
+def _import_file_and_scan(path, addin, workbook_name=None):
 
     """
     Imports the specifed py file as a module without adding its path to sys.modules.
@@ -142,7 +142,7 @@ def _import_file(path, addin, workbook_name=None):
                 module = importlib.import_module(module_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
-            n_funcs = scan_module(module)
+            n_funcs = scan_module(module, addin)
 
             status.msg(f"Registered {n_funcs} funcs for {path}")
 

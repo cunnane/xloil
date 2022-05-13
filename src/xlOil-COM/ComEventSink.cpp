@@ -1,4 +1,3 @@
-
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/AppObjects.h>
 #include "ClassFactory.h"
@@ -7,7 +6,9 @@
 #include <xlOil/Events.h>
 #include <xlOil/ExcelThread.h>
 #include <set>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using std::set;
 using std::wstring;
 
@@ -16,10 +17,10 @@ namespace xloil
   namespace COM
   {
     /// <summary>
-    /// Maintains a list of open workbooks and fires the WorkbookAfterClose
-    /// event if entries drop off that list.  Excel's built-in 
-    /// WorkbookBeforeClose fires before the user gets a chance to cancel
-    /// the closure, so should not be used to run clean-up actions.
+    /// Maintains a list of open workbooks and signals the WorkbookAfterClose
+    /// and WorkbookRename events. Excel's built-in WorkbookBeforeClose fires  
+    /// before the user gets a chance to cancel the closure, so should not be
+    /// used to run clean-up actions.
     /// </summary>
     class WorkbookMonitor
     {
@@ -34,6 +35,38 @@ namespace xloil
           _workbooks.emplace(Wb->Name);
         else
           check();
+      }
+
+      /// <summary>
+      /// On BeforeSave, we store the path of the active workbook
+      /// </summary>
+      static void Workbook_BeforeSave()
+      {
+        auto& app = excelApp();
+        app.EnableEvents = false;
+        _wbPathBeforeSave = fs::path((const wchar_t*)app.ActiveWorkbook->Path) 
+          / (const wchar_t*)app.ActiveWorkbook->Name;
+        app.EnableEvents = true;
+      }
+
+      /// <summary>
+      /// On AfterSave we compare the path of the active workbook
+      /// to the stored value and fire a WorkbookRename event if
+      /// they differ
+      /// </summary>
+      static void Workbook_AfterSave(bool success)
+      {
+        if (!success)
+          return;
+        auto& app = excelApp();
+        app.EnableEvents = false;
+        const auto wbPath = fs::path((const wchar_t*)app.ActiveWorkbook->Path)
+          / (const wchar_t*)app.ActiveWorkbook->Name;
+        if (wbPath != _wbPathBeforeSave)
+        {
+          Event::WorkbookRename().fire(wbPath.c_str(), _wbPathBeforeSave.c_str());
+        }
+        app.EnableEvents = true;
       }
 
       static void check()
@@ -56,10 +89,11 @@ namespace xloil
 
     private:
       static set<wstring> _workbooks;
+      static fs::path _wbPathBeforeSave;
     };
 
     set<wstring> WorkbookMonitor::_workbooks;
-
+    fs::path WorkbookMonitor::_wbPathBeforeSave;
 
     class EventHandler :
       public ComEventHandler<NoIDispatchImpl<ComObject<Excel::AppEvents>>, Excel::AppEvents>
@@ -174,6 +208,7 @@ namespace xloil
       {
         bool cancel = *Cancel;
         Event::WorkbookBeforeSave().fire(Wb->Name, SaveAsUI < 0, cancel);
+        WorkbookMonitor::Workbook_BeforeSave();
         *Cancel = cancel ? -1 : 0;
       }
       void WorkbookAfterSave(
@@ -181,6 +216,7 @@ namespace xloil
         VARIANT_BOOL success)
       {
         Event::WorkbookAfterSave().fire(Wb->Name, success);
+        WorkbookMonitor::Workbook_AfterSave(success);
       }
       void WorkbookBeforePrint(
         Workbook* Wb,

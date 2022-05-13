@@ -16,6 +16,6 @@ namespace xloil
     bool unloadModule(const pybind11::handle& module);
 
     std::shared_ptr<const void> 
-      createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext);
+      createWorkbookOpenHandler(PyAddin& loadContext);
   }
 }

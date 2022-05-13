@@ -6,7 +6,6 @@
 #include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
-#include "EventLoop.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
@@ -245,7 +244,7 @@ namespace xloil
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed
     // via the core, then a reference to the FileSource can be held and closed by the module itself
-    class RegisteredModule : public WatchedSource
+    class RegisteredModule : public LinkedSource
     {
     public:
       /// <summary>
@@ -256,8 +255,9 @@ namespace xloil
       RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
-        : WatchedSource(
+        : LinkedSource(
             modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
+            true,
             workbookName)
       {
         _linkedWorkbook = workbookName;
@@ -280,12 +280,12 @@ namespace xloil
           auto success = unloadModule(_module.release());
 
           XLO_DEBUG(L"Python module unload {1} for '{0}'", 
-            sourceName(), success ? L"succeeded" : L"failed");
+            filename(), success ? L"succeeded" : L"failed");
         }
         catch (const std::exception& e)
         {
           XLO_ERROR("Error unloading python module '{0}': {1}", 
-            utf16ToUtf8(sourceName()), e.what());
+            utf16ToUtf8(filename()), e.what());
         }
       }
 
@@ -328,18 +328,44 @@ namespace xloil
 
       void reload() override
       {
-        auto[source, addin] = Python::findSource(sourcePath().c_str());
+        auto[source, addin] = Python::findSource(name().c_str());
         if (source.get() != this)
-          XLO_THROW(L"Error reloading '{0}': source ptr mismatch", sourcePath());
+          XLO_THROW(L"Error reloading '{0}': source ptr mismatch", name());
         
         // Rescan the module, passing in the module handle if it exists
         py::gil_scoped_acquire get_gil;
         if (_module && !_module.is_none())
-          addin->thread->callback("xloil.importer", "_import_scan", _module, addin->pathName());
+          addin->importModule(_module);
         else
-          addin->thread->callback("xloil.importer", "_import_file", sourcePath(), addin->pathName(), linkedWorkbook());
+          addin->importFile(name().c_str(), linkedWorkbook().c_str());
       }
 
+      void renameWorkbook(const wchar_t* newPathName) override
+      {
+        if (!_linkedWorkbook) // Should never be called without a linked wb
+          return;
+
+        // This is all great but...background thread?
+        auto [source, addin] = Python::findSource(name().c_str());
+
+        AddinContext::deleteSource(shared_from_this());
+
+        const auto newSourcePath = addin->getLocalModulePath(newPathName);
+        const auto& currentSourcePath = name();
+
+        std::error_code ec;
+        if (fs::copy_file(currentSourcePath, newSourcePath, ec))
+        {
+          const auto wbName = wcsrchr(newPathName, '\\') + 1;
+          auto newSource = make_shared<RegisteredModule>(newSourcePath, wbName);
+          addin->context.addSource(newSource);
+          py::gil_scoped_acquire get_gil;
+          addin->importFile(newSourcePath.c_str(), newPathName);
+        }
+        else
+          XLO_WARN(L"On workbook rename, failed to copy source '{0}' to '{1}' because: {3}",
+            currentSourcePath, newSourcePath, utf8ToUtf16(ec.message()));
+      }
     private:
       bool _linkedWorkbook;
       py::object _module;
@@ -351,7 +377,7 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto[source, addin] = FileSource::findSource(modulePath.c_str());
+      auto[source, addin] = AddinContext::findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
@@ -399,7 +425,7 @@ namespace xloil
 
       const auto modulePath = getModulePath(moduleHandle);
 
-      auto[foundSource, foundAddin] = FileSource::findSource(
+      auto[foundSource, foundAddin] = AddinContext::findSource(
         modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
 
       if (!foundSource)

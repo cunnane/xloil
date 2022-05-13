@@ -53,11 +53,13 @@ namespace xloil
     return instance;
   }
 
-  void loadPlugins(
-    AddinContext& context, 
-    const std::vector<std::wstring>& names) noexcept
+  void loadPluginsForAddin(AddinContext& context) noexcept
   {
-    auto plugins = std::set<wstring>(names.cbegin(), names.cend());
+    auto addinSettings = (*context.settings())["Addin"];
+
+    auto pluginNames = Settings::plugins(addinSettings);
+
+    auto plugins = std::set<wstring>(pluginNames.cbegin(), pluginNames.cend());
 
     const auto xllDir = fs::path(context.pathName()).remove_filename();
     const auto coreDir = fs::path(State::coreDllPath()).remove_filename();
@@ -68,8 +70,7 @@ namespace xloil
     {
       WIN32_FIND_DATA fileData;
 
-      auto searchPath = xllDir / Settings::pluginSearchPattern(
-        (*context.settings())["Addin"]);
+      auto searchPath = xllDir / Settings::pluginSearchPattern(addinSettings);
       auto fileHandle = FindFirstFile(searchPath.c_str(), &fileData);
       if (fileHandle != INVALID_HANDLE_VALUE &&
         fileHandle != (void*)ERROR_FILE_NOT_FOUND)
@@ -175,7 +176,6 @@ namespace xloil
 
           // Register any static functions in the plugin by adding it as a source.
           auto source = make_shared<StaticFunctionSource>(pluginName.c_str());
-          source->registerQueue();
           context.addSource(source);
 
           XLO_DEBUG(L"Finished loading plugin {0}", pluginName);
@@ -242,12 +242,12 @@ namespace xloil
   }
 
   StaticFunctionSource::StaticFunctionSource(const wchar_t* pluginPath)
-    : FileSource(pluginPath)
+    : _sourcePath(pluginPath)
   {}
 
-  void StaticFunctionSource::registerQueue()
+  void StaticFunctionSource::init()
   {
-    auto specs = detail::processRegistryQueue(sourcePath().c_str());
+    auto specs = detail::processRegistryQueue(_sourcePath.c_str());
     registerFuncs(specs);
   }
 }

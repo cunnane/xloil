@@ -2,8 +2,7 @@
 
 #include "PyHelpers.h"
 #include "PyFunctionRegister.h"
-#include "Main.h"
-#include "EventLoop.h"
+#include "PyAddin.h"
 
 #include <xloil/Log.h>
 #include <xlOil/ExcelThread.h>
@@ -56,24 +55,16 @@ namespace xloil
     {
       struct WorkbookOpenHandler
       {
-        wstring _workbookPattern;
         PyAddin& _loadContext;
 
-        WorkbookOpenHandler(const wstring& starredPattern, PyAddin& loadContext)
+        WorkbookOpenHandler(PyAddin& loadContext)
           : _loadContext(loadContext)
-          , _workbookPattern(starredPattern)
-        {
-          // Turn the starred pattern into a fmt string for easier substitution later
-          _workbookPattern.replace(_workbookPattern.find(L'*'), 1, wstring(L"{0}\\{1}"));
-        }
+        {}
 
         void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
         {
-          // Subtitute in to find target module name, removing extension
-          auto fileExtn = wcsrchr(wbName, L'.');
-          auto modulePath = fmt::format(_workbookPattern,
-            wbPath,
-            fileExtn ? wstring(wbName, fileExtn).c_str() : wbName);
+          auto modulePath = _loadContext.getLocalModulePath(
+            fmt::format(L"{0}\\{1}", wbPath, wbName).c_str());
 
           std::error_code err;
           if (!fs::exists(modulePath, err))
@@ -86,8 +77,7 @@ namespace xloil
           auto wbPathName = (fs::path(wbPath) / wbName).wstring();
 
           py::gil_scoped_acquire getGil;
-          _loadContext.thread->callback("xloil.importer", "_import_file", 
-            modulePath, _loadContext.pathName(), wbPathName);
+          _loadContext.importFile(modulePath.c_str(), wbPathName.c_str());
         }
       };
 
@@ -98,16 +88,9 @@ namespace xloil
       }
     }
     std::shared_ptr<const void> 
-      createWorkbookOpenHandler(const wchar_t* starredPattern, PyAddin& loadContext)
+      createWorkbookOpenHandler(PyAddin& loadContext)
     {
-      if (!wcschr(starredPattern, L'*'))
-      {
-        XLO_WARN("WorkbookModule should be of the form '*foo.py' where '*'"
-          "will be replaced by the full workbook path with file extension removed");
-        return std::shared_ptr<void>();
-      }
-
-      WorkbookOpenHandler handler(starredPattern, loadContext);
+      WorkbookOpenHandler handler(loadContext);
 
       checkExistingWorkbooks(handler);
 

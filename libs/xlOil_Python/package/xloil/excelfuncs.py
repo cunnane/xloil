@@ -9,7 +9,7 @@ def xloPyLoad(ModuleName:str = ""):
 
     workbook_name = None
 
-    from xloil.importer import _import_file
+    from xloil.importer import _import_file_and_scan
 
     if len(ModuleName) == 0:
         import os
@@ -27,7 +27,7 @@ def xloPyLoad(ModuleName:str = ""):
 
     module = importlib.reload(sys.modules[ModuleName]) \
         if ModuleName in sys.modules else \
-            _import_file(ModuleName, workbook_name)
+            _import_file_and_scan(ModuleName, workbook_name)
     
     return str(module)
 

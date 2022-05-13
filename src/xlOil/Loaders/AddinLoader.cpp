@@ -26,14 +26,6 @@ namespace xloil
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
 
-    AddinContext* createAddinContext(
-      const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
-    {
-      auto [ctx, isNew] = theAddinContexts.try_emplace(
-        wstring(pathName), make_shared<AddinContext>(pathName, settings));
-      return isNew ? ctx->second.get() : nullptr;
-    }
-
     auto processAddinSettings(const wchar_t* xllPath)
     {
       auto settings = findSettingsFile(xllPath);
@@ -73,44 +65,9 @@ namespace xloil
     return *ourCoreContext;
   }
 
-  std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
-    findFileSource(const wchar_t* source)
+  const std::map<std::wstring, std::shared_ptr<AddinContext>>& currentAddinContexts()
   {
-    for (auto& [addinName, addin] : theAddinContexts)
-    {
-      auto found = addin->files().find(source);
-      if (found != addin->files().end())
-        return make_pair(found->second, addin);
-    }
-    return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
-  }
-
-  void
-    deleteFileSource(const std::shared_ptr<FileSource>& context)
-  {
-    for (auto& [name, addinCtx] : theAddinContexts)
-    {
-      auto found = addinCtx->files().find(context->sourcePath());
-      if (found != addinCtx->files().end())
-        addinCtx->removeSource(found);
-    }
-  }
-
-  namespace
-  {
-    AddinContext& createAddinContext(const wchar_t* addinPathName)
-    {
-      // Delete existing context if addin is reloaded
-      if (theAddinContexts.find(addinPathName) != theAddinContexts.end())
-        theAddinContexts.erase(addinPathName);
-
-      auto settings = processAddinSettings(addinPathName);
-      auto ctx = createAddinContext(addinPathName, settings);
-      if (!ctx)
-        XLO_THROW(L"Failed to create add-in context for {}", addinPathName);
-
-      return *ctx;
-    }
+    return theAddinContexts;
   }
 
   void createCoreContext() 
@@ -125,20 +82,16 @@ namespace xloil
         Settings::logPopupLevel(coreAddinSettings).c_str()));
 
     auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
-    staticSource->registerQueue();
     ourCoreContext->addSource(staticSource);
   }
 
-  void loadPluginsForAddin(AddinContext& ctx)
+  AddinContext& createAddinContext(const wchar_t* pathName)
   {
-    auto plugins = Settings::plugins((*ctx.settings())["Addin"]);
-    loadPlugins(ctx, plugins);
-  }
+    auto settings = processAddinSettings(pathName);
+    auto [ctx, isNew] = theAddinContexts.insert_or_assign(
+      wstring(pathName), make_shared<AddinContext>(pathName, settings));
 
-  AddinContext& addinOpenXll(const wchar_t* xllPath)
-  {
-    auto& ctx = createAddinContext(xllPath);
-    return ctx;
+    return *ctx->second;
   }
 
   void addinCloseXll(const wchar_t* xllPath)

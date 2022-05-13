@@ -245,15 +245,24 @@ namespace xloil
       WorkbookOpen();
 
     /// <summary>
-    /// WorkbookAfterClose is a special event: Excel's event `WorkbookBeforeClose`, is 
-    /// limited by being cancellable by the user: it is not possible to know if the 
-    /// workbook actually closed. When xlOil calls `WorkbookAfterClose`, the workbook is
-    /// certainly closed, but it may be some time since that closure happened.
+    /// WorkbookAfterClose is not part of Excel's event model.  Excel's event 
+    /// `WorkbookBeforeClose`, can be cancellable by the user so it is not possible to 
+    /// know if the workbook actually closed. When xlOil calls `WorkbookAfterClose`, the 
+    /// workbook is certainly closed, but it may be some time since that closure happened.
     /// 
-    /// The event is not called for each workbook when xlOil exits.
+    /// The event is not called for each workbook when xlOil (or Excel) exits.
     /// </summary>
     XLOIL_EXPORT EventNameParam&
       WorkbookAfterClose();
+
+    /// <summary>
+    /// WorkbookRename is also not in Excel's event module. It is called when xlOil
+    /// detects that a workbook has been saved under a different name. It does this by
+    /// watching the `WorkbookBeforeSave` and `WorkbookAfterSave` events, so the event
+    /// is fired immediately after save.
+    /// </summary>
+    XLOIL_EXPORT Event<void(const wchar_t* currentPath, const wchar_t* previousPath)>&
+      WorkbookRename();
 
     XLOIL_EXPORT EventNameParam&
       WorkbookActivate();
@@ -346,6 +355,7 @@ namespace xloil
     (SheetCalculate)\
     (SheetChange)\
     (WorkbookAfterClose)\
+    (WorkbookRename)\
     (WorkbookActivate)\
     (WorkbookDeactivate)\
     (WorkbookBeforeClose)\

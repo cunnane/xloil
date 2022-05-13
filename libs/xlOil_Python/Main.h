@@ -1,29 +1,14 @@
 #pragma once
+#include "PyAddin.h"
 #include <memory>
 #include <string>
 
 namespace xloil
 {
-  class AddinContext; class FileSource;
+  class FuncSource;
 
   namespace Python
   {
-    class EventLoop;
-
-    /// <summary>
-    /// Hold a python addin context. Each XLL which uses xlOil_Python has a 
-    /// separate context to keep track of the functions it registers. It also
-    /// has separate thread and event loop on which all importing is done
-    /// </summary>
-    struct PyAddin
-    {
-      PyAddin(AddinContext&, bool);
-      AddinContext& context;
-      std::shared_ptr<EventLoop> thread;
-      std::string comBinder;
-      const std::wstring& pathName() const;
-    };
-
     PyAddin& findAddin(const wchar_t* xllPath);
     /// <summary>
     /// Gets the event loop associated with the current thread or throws
@@ -45,8 +30,7 @@ namespace xloil
     /// </summary>
     /// <param name="sourcePath"></param>
     /// <returns></returns>
-    std::pair<std::shared_ptr<FileSource>, PyAddin*> 
+    std::pair<std::shared_ptr<FuncSource>, PyAddin*> 
       findSource(const wchar_t* sourcePath);
-
    }
 }

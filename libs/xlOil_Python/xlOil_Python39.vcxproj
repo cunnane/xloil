@@ -72,6 +72,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
@@ -99,6 +100,7 @@
   <ItemGroup>
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="EventLoop.h" />
+    <ClInclude Include="PyAddin.h" />
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="AsyncFunctions.h" />
