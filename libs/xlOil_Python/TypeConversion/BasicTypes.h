@@ -63,6 +63,10 @@ namespace xloil
             return cached.release().ptr();
           return TBase::operator()(str);
         }
+        PyObject* operator()(const PStringRef& str)
+        {
+          return const_cast<const PyFromCache<TBase>&>(*this)(str);
+        }
       };
 
       struct PyFromDouble : public PyFromExcelImpl
@@ -70,9 +74,9 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "float";
 
-        PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
-        PyObject* operator()(int x) const    { return operator()(double(x)); }
-        PyObject* operator()(bool x) const   { return operator()(double(x)); }
+        PyObject* operator()(double x) const   { return PyFloat_FromDouble(x); }
+        PyObject* operator()(int x)    const   { return operator()(double(x)); }
+        PyObject* operator()(bool x)   const   { return operator()(double(x)); }
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
@@ -85,8 +89,8 @@ namespace xloil
         {
           if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
         }
-        PyObject* operator()(int x) const     { return operator()(bool(x)); }
-        PyObject* operator()(double x) const  { return operator()(x != 0); }
+        PyObject* operator()(int x)      const { return operator()(bool(x)); }
+        PyObject* operator()(double x)   const { return operator()(x != 0); }
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
@@ -101,9 +105,9 @@ namespace xloil
         }
         // Return empty string for Excel Nil value
         PyObject* operator()(nullptr_t) const { return PyUnicode_New(0, 127); }
-        PyObject* operator()(int x) const { return PyUnicode_FromFormat("%i", x); }
-        PyObject* operator()(bool x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
-        PyObject* operator()(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        PyObject* operator()(int x)     const { return PyUnicode_FromFormat("%i", x); }
+        PyObject* operator()(bool x)    const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        PyObject* operator()(double x)  const { return PyUnicode_FromString(std::to_string(x).c_str()); }
 
         constexpr wchar_t* failMessage() const { return L"Expected string"; }
       };
@@ -113,8 +117,8 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "int";
 
-        PyObject* operator()(int x) const  { return PyLong_FromLong(long(x)); }
-        PyObject* operator()(bool x) const { return operator()(int(x)); }
+        PyObject* operator()(int x)    const { return PyLong_FromLong(long(x)); }
+        PyObject* operator()(bool x)   const { return operator()(int(x)); }
         PyObject* operator()(double x) const
         {
           long i;
@@ -131,8 +135,8 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "Any";
 
-        PyObject* operator()(int x) const { return PyFromInt()(x); }
-        PyObject* operator()(bool x) const { return PyFromBool()(x); }
+        PyObject* operator()(int x)    const { return PyFromInt()(x); }
+        PyObject* operator()(bool x)   const { return PyFromBool()(x); }
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
         PyObject* operator()(const ArrayVal& arr) const
         {
@@ -263,8 +267,12 @@ namespace xloil
       /// </summary>
       template <class T>
       struct MakePyFromExcel { using type = PyFromExcel<T>; };
+
       template <class T, bool TUseCache>
-      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> { using type = PyFromExcel<T, TUseCache>; };
+      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> 
+      { 
+        using type = PyFromExcel<T, TUseCache>; 
+      };
     }
 
     /// <summary>
