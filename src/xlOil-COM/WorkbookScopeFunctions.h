@@ -6,12 +6,13 @@
 namespace xloil
 {
   struct FuncInfo;
+  class LocalWorksheetFunc;
 
   namespace COM
   {
     void writeLocalFunctionsToVBA(
       const wchar_t* workbookName,
-      const std::vector<std::shared_ptr<const FuncInfo>>& registeredFuncs,
+      const std::vector<std::shared_ptr<const LocalWorksheetFunc>>& registeredFuncs,
       const bool append);
   }
 }

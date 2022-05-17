@@ -147,24 +147,6 @@ namespace xloil
     }
   }
 
-  //std::pair<shared_ptr<FuncSource>, shared_ptr<AddinContext>>
-  //  findSource(const wchar_t* source)
-  //{
-  //  auto found = xloil::findFileSource(source);
-  //  //if (found.first)
-  //  //{
-  //  //  // Slightly gross little check that the linked workbook is still open
-  //  //  // Can we do better?
-  //  //  const auto& wbName = found.first->_workbookName;
-  //  //  if (!wbName.empty() && !COM::checkWorkbookIsOpen(wbName.c_str()))
-  //  //  {
-  //  //    deleteSource(found.first);
-  //  //    return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
-  //  //  }
-  //  //}
-  //  return found;
-  //}
-
   FileSource::FileSource(
     const wchar_t* sourcePath, bool watchFile)
     : _sourcePath(sourcePath)
@@ -181,10 +163,8 @@ namespace xloil
 
   LinkedSource::~LinkedSource()
   {
-    wstring workbookName;
-    std::swap(_workbookName, workbookName);
-    if (!workbookName.empty())
-      clearLocalFunctions(workbookName.c_str());
+    if (!_localFunctions.empty())
+      clearLocalFunctions(_localFunctions);
   }
 
   void LinkedSource::registerLocal(
@@ -193,19 +173,18 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    runExcelThread([=, self = this]()
-    {
-      xloil::registerLocalFuncs(self->_workbookName.c_str(), funcSpecs, append);
-    });
+    registerLocalFuncs(_localFunctions, _workbookName.c_str(), funcSpecs, append);
   }
 
-  template<class T, class U>
-  std::weak_ptr<T>
-    static_pointer_cast(std::weak_ptr<U> const& r)
+  namespace
   {
-    return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
+    template<class T, class U>
+    std::weak_ptr<T>
+      static_pointer_cast(std::weak_ptr<U> const& r)
+    {
+      return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
+    }
   }
-
 
   void FileSource::reload()
   {}
@@ -251,11 +230,6 @@ namespace xloil
 
   void LinkedSource::renameWorkbook(const wchar_t* newName)
   {
-    //deleteSource(shared_from_this());
-    //// if it's in the same directory and the filename matches...
-    //fs::copy_file(sourcePath(), wbName....);
-    //rename();
-    //createSource()
   }
 
   void FileSource::handleDirChange(

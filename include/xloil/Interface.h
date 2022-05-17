@@ -9,6 +9,7 @@
 namespace toml { class table; }
 namespace xloil { 
   class RegisteredWorksheetFunc; 
+  class LocalWorksheetFunc;
   class AddinContext; 
   namespace Event { enum class FileAction; }
 }
@@ -128,9 +129,8 @@ namespace xloil
     /// workbook
     /// </summary>
     /// <param name="funcSpecs"></param>
-    /// <param name="append">if false, replacess all currently registered functions</param>
     void registerLocal(
-      const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+      const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs, 
       const bool append);
 
     const std::wstring& linkedWorkbook() const { return _workbookName; }
@@ -140,6 +140,7 @@ namespace xloil
     virtual void renameWorkbook(const wchar_t* newPathName);
 
   private:
+    std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>> _localFunctions;
     std::wstring _workbookName;
     std::shared_ptr<const void> _workbookCloseHandler;
     std::shared_ptr<const void> _workbookRenameHandler;
