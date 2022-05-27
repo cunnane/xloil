@@ -9,45 +9,31 @@
 using std::make_shared;
 using std::wstring;
 
-
-Excel::_ApplicationPtr getExcelObjFromWindow(HWND xlmainHandle)
+namespace xloil
 {
-  // Based on discussion here:
-  // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
-  auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
-  auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
-  Excel::Window* pWindow = NULL;
-  if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM, 
-                                 __uuidof(IDispatch), 
-                                 (void**)&pWindow) == S_OK)
-    return pWindow->Application;
-  return nullptr;
-}
-
-
-namespace xloil {
   namespace COM
   {
+    HWND nextExcelMainWindow(HWND xlmainHandle)
+    {
+      return FindWindowExA(0, xlmainHandle, "XLMAIN", NULL);
+    }
+
+    Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle)
+    {
+      // Based on discussion here:
+      // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
+      auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
+      auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
+      Excel::Window* pWindow = NULL;
+      if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM,
+        __uuidof(IDispatch),
+        (void**)&pWindow) == S_OK)
+        return pWindow->Application.Detach();
+      return nullptr;
+    }
+
     namespace
     {
-      /// <summary>
-      /// A naive GetActiveObject("Excel.Application") gets the first registered 
-      /// instance of Excel which may not be our instance. Instead we get the one
-      /// corresponding to the window handle we get from xlGetHwnd.
-      /// </summary>
-      /// 
-      Excel::_ApplicationPtr getExcelInstance(HWND xlmainHandle)
-      {
-        // If this stops working see
-        // https://support.microsoft.com/en-za/help/238610/getobject-or-getactiveobject-cannot-find-a-running-office-application
-
-        auto ptr = getExcelObjFromWindow(xlmainHandle);
-        if (ptr)
-          return ptr;
-
-        throw ComConnectException("Failed to get Excel COM object");
-      }
-
       class COMConnector
       {
       public:
@@ -62,7 +48,7 @@ namespace xloil {
 #pragma warning(disable: 4312)
             _excelWindowHandle = (HWND)windowHandle.get<int>();
 
-            _xlApp = getExcelInstance(_excelWindowHandle);
+            _xlApp = applicationObjectFromWindow(_excelWindowHandle);
             _handler = COM::createEventSink(_xlApp);
             
             XLO_DEBUG(L"Made COM connection to Excel at '{}' with hwnd={}",
@@ -115,20 +101,21 @@ namespace xloil {
       return (SUCCEEDED(result));
     }
 
-    Excel::_Application& excelApp()
+    Excel::_Application& attachedExcelApp()
     {
       if (!theComConnector)
         throw ComConnectException("COM Connection not ready");
       return theComConnector->excelApp();
     }
 
+    // Not used at the moment but seems useful
     bool checkWorkbookIsOpen(const wchar_t* workbookName)
     {
       // See other possibility here. Seems a bit crazy?
       // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
       try
       {
-        auto workbook = excelApp().Workbooks->GetItem(_variant_t(workbookName));
+        auto workbook = attachedExcelApp().Workbooks->GetItem(_variant_t(workbookName));
         return !!workbook;
       }
       catch (_com_error& error)

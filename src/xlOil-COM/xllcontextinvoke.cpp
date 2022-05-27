@@ -76,7 +76,7 @@ namespace xloil
 
     return tryComCall([]()
     {
-      return COM::excelApp().Run("xloRunInXLLContext");
+      return COM::attachedExcelApp().Run("xloRunInXLLContext");
     });
   }
 
@@ -93,7 +93,7 @@ namespace xloil
     theExcelCallNumArgs = nArgs;
     auto ret = tryComCall([]()
     { 
-      return COM::excelApp().Run("xloRunInXLLContext");
+      return COM::attachedExcelApp().Run("xloRunInXLLContext");
     });
     if (!ret)
       return msxll::xlretInvXlfn;

@@ -44,7 +44,7 @@ namespace xloil
 
   Excel::_Application& excelApp() noexcept
   {
-    return COM::excelApp();
+    return COM::attachedExcelApp();
   }
 
   IAppObject::~IAppObject()
@@ -296,7 +296,7 @@ namespace xloil
     {
       try
       {
-        COM::excelApp().EnableEvents = _variant_t(value);
+        excelApp().EnableEvents = _variant_t(value);
       }
       XLO_RETHROW_COM_ERROR;
     }

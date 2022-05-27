@@ -1,13 +1,15 @@
 #pragma once
 #include <xloil/Throw.h>
+#include <xloil/WindowsSlim.h>
 
-namespace Excel { struct _Application; }
+namespace Excel {
+  struct _Application;
+}
 
-namespace xloil 
+namespace xloil
 {
   namespace COM
   {
-    // We don't inherit from our own Exception class as that writes to the log in its ctor
     class ComConnectException : public std::runtime_error
     {
     public:
@@ -16,17 +18,21 @@ namespace xloil
       {}
     };
 
+    HWND nextExcelMainWindow(HWND xlmainHandle = 0);
+
+    /// <summary>
+    /// A naive GetActiveObject("Excel.Application") gets the first registered 
+    /// instance of Excel which may not be our instance. Instead we get the one
+    /// corresponding to the window handle we get from xlGetHwnd.
+    /// </summary>
+    /// 
+    Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle);
+
     void connectCom();
     void disconnectCom();
 
     bool isComApiAvailable() noexcept;
 
-    Excel::_Application& excelApp();
-
-    /// <summary>
-    /// Returns true if the workbook is open. Like all COM functions it should 
-    /// only be called on the main thread. Possible race condition if it is not
-    /// </summary>
-    bool checkWorkbookIsOpen(const wchar_t* wbName);
+    Excel::_Application& attachedExcelApp();
   }
 }
