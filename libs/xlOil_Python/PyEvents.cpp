@@ -2,6 +2,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelRange.h>
+#include <xlOil/AppObjects.h>
 #include "PyHelpers.h"
 #include "PyCore.h"
 #include <list>
@@ -213,7 +214,7 @@ namespace xloil
       void setAllowEvents(bool value)
       {
         py::gil_scoped_release releaseGil;
-        runExcelThread([=]() { Event::allowEvents(value); });
+        runExcelThread([=]() { App::allowEvents(value); });
       }
 
       static int theBinder = addBinder([](pybind11::module& mod)

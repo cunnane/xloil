@@ -253,32 +253,32 @@ namespace xloil
       }
     }
 
-    py::object comToPy(Excel::_Application* p, const char* binder)
+    py::object comToPy(Excel::_Application& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Application", __uuidof(Excel::_Application));
+      return marshalCom(binder, &p, "_Application", __uuidof(Excel::_Application));
     }
-    pybind11::object comToPy(Excel::Window* p, const char* binder)
+    pybind11::object comToPy(Excel::Window& p, const char* binder)
     {
-      return marshalCom(binder, p, "Window", __uuidof(Excel::Window));
+      return marshalCom(binder, &p, "Window", __uuidof(Excel::Window));
     }
-    pybind11::object comToPy(Excel::_Workbook* p, const char* binder)
+    pybind11::object comToPy(Excel::_Workbook& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Workbook", __uuidof(Excel::_Workbook));
+      return marshalCom(binder, &p, "_Workbook", __uuidof(Excel::_Workbook));
     }
-    pybind11::object comToPy(Excel::_Worksheet* p, const char* binder)
+    pybind11::object comToPy(Excel::_Worksheet& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Worksheet", __uuidof(Excel::_Worksheet));
+      return marshalCom(binder, &p, "_Worksheet", __uuidof(Excel::_Worksheet));
     }
-    pybind11::object comToPy(Excel::Range* p, const char* binder)
+    pybind11::object comToPy(Excel::Range& p, const char* binder)
     {
-      return marshalCom(binder, p, "Range", __uuidof(Excel::Range));
+      return marshalCom(binder, &p, "Range", __uuidof(Excel::Range));
     }
 
     namespace
     {
       py::object getExcelApp(const char* comlib)
       {
-        return comToPy(&excelApp(), comlib);
+        return comToPy(excelApp(), comlib);
       }
 
       static int theBinder = addBinder([](py::module& mod)

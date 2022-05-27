@@ -81,19 +81,19 @@ namespace xloil
 
   size_t ExcelWindow::hwnd() const
   {
-    return (size_t)ptr()->Hwnd;
+    return (size_t)com().Hwnd;
   }
 
   std::wstring ExcelWindow::name() const
   {
-    return ptr()->Caption.bstrVal;
+    return com().Caption.bstrVal;
   }
 
   ExcelWorkbook ExcelWindow::workbook() const
   {
     try
     {
-      return ExcelWorkbook(Excel::_WorkbookPtr(ptr()->Parent));
+      return ExcelWorkbook(Excel::_WorkbookPtr(com().Parent));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -112,21 +112,21 @@ namespace xloil
 
   std::wstring ExcelWorkbook::name() const
   {
-    return ptr()->Name.GetBSTR();
+    return com().Name.GetBSTR();
   }
 
   std::wstring ExcelWorkbook::path() const
   {
-    return ptr()->Path.GetBSTR();
+    return com().Path.GetBSTR();
   }
   std::vector<ExcelWindow> ExcelWorkbook::windows() const
   {
-    return CollectionToVector<ExcelWindow>()(ptr()->Windows);
+    return CollectionToVector<ExcelWindow>()(com().Windows);
   }
 
   void ExcelWorkbook::activate() const
   {
-    ptr()->Activate();
+    com().Activate();
   }
 
   vector<ExcelWorksheet> ExcelWorkbook::worksheets() const
@@ -134,9 +134,9 @@ namespace xloil
     try
     {
       vector<ExcelWorksheet> result;
-      const auto N = ptr()->Worksheets->Count;
+      const auto N = com().Worksheets->Count;
       for (auto i = 1; i <= N; ++i)
-        result.push_back((Excel::_Worksheet*)(IDispatch*)ptr()->Worksheets->GetItem(i));
+        result.push_back((Excel::_Worksheet*)(IDispatch*)com().Worksheets->GetItem(i));
       return std::move(result);
     }
     XLO_RETHROW_COM_ERROR;
@@ -145,19 +145,19 @@ namespace xloil
   {
     try
     {
-      return (Excel::_Worksheet*)(IDispatch*)(ptr()->Worksheets->GetItem(stringToVariant(name)));
+      return (Excel::_Worksheet*)(IDispatch*)(com().Worksheets->GetItem(stringToVariant(name)));
     }
     XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelWorksheet::name() const
   {
-    return ptr()->Name.GetBSTR();
+    return com().Name.GetBSTR();
   }
 
   ExcelWorkbook ExcelWorksheet::parent() const
   {
-    return ExcelWorkbook((Excel::_Workbook*)(IDispatch*)ptr()->Parent);
+    return ExcelWorkbook((Excel::_Workbook*)(IDispatch*)com().Parent);
   }
 
   ExcelRange ExcelWorksheet::range(
@@ -167,13 +167,13 @@ namespace xloil
     try
     {
       if (toRow == Range::TO_END)
-        toRow = ptr()->Rows->GetCount();
+        toRow = com().Rows->GetCount();
       if (toCol == Range::TO_END)
-        toCol = ptr()->Columns->GetCount();
+        toCol = com().Columns->GetCount();
 
-      auto r = ptr()->GetRange(
-        ptr()->Cells->Item[fromRow + 1][fromCol + 1],
-        ptr()->Cells->Item[toRow + 1][toCol + 1]);
+      auto r = com().GetRange(
+        com().Cells->Item[fromRow + 1][fromCol + 1],
+        com().Cells->Item[toRow + 1][toCol + 1]);
       return ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;
@@ -181,20 +181,20 @@ namespace xloil
 
   ExcelRange ExcelWorksheet::range(const std::wstring_view& address) const
   {
-    auto fullAddress = std::wstring(ptr()->Name);
+    auto fullAddress = std::wstring(com().Name);
     fullAddress += '!';
     fullAddress += address;
     return ExcelRange(fullAddress.c_str());
   }
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
   {
-    return COM::variantToExcelObj(ptr()->Cells->Item[i][j]);
+    return COM::variantToExcelObj(com().Cells->Item[i][j]);
   }
   void ExcelWorksheet::activate()
   {
     try
     {
-      ptr()->Activate();
+      com().Activate();
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -202,7 +202,7 @@ namespace xloil
   {
     try
     {
-      ptr()->Calculate();
+      com().Calculate();
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -288,6 +288,15 @@ namespace xloil
         Excel::_Worksheet* sheet = nullptr;
         excelApp().ActiveSheet->QueryInterface(&sheet);
         return ExcelWorksheet(sheet);
+      }
+      XLO_RETHROW_COM_ERROR;
+    }
+
+    XLOIL_EXPORT void App::allowEvents(bool value)
+    {
+      try
+      {
+        COM::excelApp().EnableEvents = _variant_t(value);
       }
       XLO_RETHROW_COM_ERROR;
     }

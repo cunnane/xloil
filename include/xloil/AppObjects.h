@@ -109,7 +109,7 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::_Workbook* ptr() const { return (Excel::_Workbook*)_ptr; }
+    Excel::_Workbook& com() const { return *(Excel::_Workbook*)_ptr; }
   };
 
 
@@ -156,7 +156,7 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::Window* ptr() const { return (Excel::Window*)_ptr; }
+    Excel::Window& com() const { return *(Excel::Window*)_ptr; }
   };
 
   class XLOIL_EXPORT ExcelRange : public Range, public IAppObject
@@ -238,17 +238,17 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::Range* ptr() const { return (Excel::Range*)_ptr; }
-    Excel::Range* ptr() { return (Excel::Range*)_ptr; }
+    Excel::Range& com() const { return *(Excel::Range*)_ptr; }
+    Excel::Range& com() { return *(Excel::Range*)_ptr; }
   };
 
-  XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range* range);
+  XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range& range);
 
   inline ExcelRef refFromRange(const Range& range)
   {
     auto excelRange = dynamic_cast<const ExcelRange*>(&range);
     if (excelRange)
-      return refFromComRange(excelRange->ptr());
+      return refFromComRange(excelRange->com());
     else
       return static_cast<const XllRange&>(range).asRef();
   }
@@ -331,7 +331,7 @@ namespace xloil
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
     /// and dec ref any use of it.
     /// </summary>
-    Excel::_Worksheet* ptr() const { return (Excel::_Worksheet*)_ptr; }
+    Excel::_Worksheet& com() const { return *(Excel::_Worksheet*)_ptr; }
   };
 
 
@@ -342,7 +342,7 @@ namespace xloil
     struct XLOIL_EXPORT Workbooks
     {
       static ExcelWorkbook active();
-      inline ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name); }
+      static ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name); }
       static std::vector<ExcelWorkbook> list();
       static size_t count();
     };
@@ -350,7 +350,7 @@ namespace xloil
     struct XLOIL_EXPORT Windows
     {
       static ExcelWindow active();
-      inline ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name); }
+      static ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name); }
       static std::vector<ExcelWindow> list();
       static size_t count();
     };
@@ -359,6 +359,13 @@ namespace xloil
     {
       static ExcelWorksheet active();
     };
+
+    /// <summary>
+    /// Must be run on the main thread
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    XLOIL_EXPORT void allowEvents(bool value);
 
     struct ExcelInternals
     {

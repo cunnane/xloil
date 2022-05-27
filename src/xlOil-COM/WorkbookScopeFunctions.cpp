@@ -60,9 +60,9 @@ namespace xloil
         // Check we have trusted access to VBA object model
         static bool registryChecked = checkRegistryKeys();
 
-        auto workbook = excelApp().Workbooks->GetItem(_variant_t(workbookName));
+        auto workbook = App::Workbooks::get(workbookName);
 
-        auto vbProj = workbook->VBProject;
+        auto vbProj = workbook.com().VBProject;
 
         struct _VBComponent* vbFound = 0;
         vbProj->VBComponents->raw_Item(_variant_t(ourModuleName), &vbFound);

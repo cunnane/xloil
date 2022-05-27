@@ -169,12 +169,12 @@ namespace xloil
     template<class T>
     auto toCom(T& p, const char* binder) 
     { 
-      return comToPy(p.ptr(), binder); 
+      return comToPy(p.com(), binder); 
     }
     template<>
     auto toCom(Range& range, const char* binder)
     {
-      return comToPy(ExcelRange(range).ptr(), binder);
+      return comToPy(ExcelRange(range).com(), binder);
     }
 
     static int theBinder = addBinder([](pybind11::module& mod)

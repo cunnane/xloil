@@ -91,14 +91,5 @@ namespace xloil
       auto [it, ins] = theDirectoryWatchers.emplace(path, event);
       return event;
     }
-
-    XLOIL_EXPORT void allowEvents(bool value)
-    {
-      try
-      {
-        COM::excelApp().EnableEvents = _variant_t(value);
-      }
-      XLO_RETHROW_COM_ERROR;
-    }
   }
 }
