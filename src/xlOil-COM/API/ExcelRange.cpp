@@ -50,7 +50,7 @@ namespace xloil
     try
     {
       auto addressStr = COM::stringToVariant(address);
-      auto rangePtr = excelApp().GetRange(_variant_t(addressStr, false));
+      auto rangePtr = excelApp().com().GetRange(_variant_t(addressStr, false));
       init(rangePtr);
     }
     XLO_RETHROW_COM_ERROR;

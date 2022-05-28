@@ -10,14 +10,6 @@ namespace xloil
 {
   namespace COM
   {
-    class ComConnectException : public std::runtime_error
-    {
-    public:
-      ComConnectException(const char* message)
-        : std::runtime_error(message)
-      {}
-    };
-
     HWND nextExcelMainWindow(HWND xlmainHandle = 0);
 
     /// <summary>

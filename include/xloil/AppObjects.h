@@ -21,10 +21,13 @@ namespace Excel {
 
 namespace xloil
 {
-  /// <summary>
-  /// Gets the Excel.Application object which is the root of the COM API 
-  /// </summary>
-  XLOIL_EXPORT Excel::_Application& excelApp() noexcept;
+  class ComConnectException : public std::runtime_error
+  {
+  public:
+    ComConnectException(const char* message)
+      : std::runtime_error(message)
+    {}
+  };
 
   /// <summary>
   /// Base class for objects in the object model, not very usefuly directly.
@@ -333,6 +336,28 @@ namespace xloil
     /// </summary>
     Excel::_Worksheet& com() const { return *(Excel::_Worksheet*)_ptr; }
   };
+
+  struct XLOIL_EXPORT Application : public IAppObject
+  {
+    Application(Excel::_Application* app);
+    Application(size_t hWnd);
+    //Application(const wchar_t* workbook);
+
+    Application(Application&& that) noexcept { std::swap(_ptr, that._ptr); }
+    Application(const Application& that) : IAppObject(that._ptr) {}
+
+    Application& operator=(const Application& that) noexcept { assign(that); return *this; }
+    Application& operator=(Application&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
+
+    Excel::_Application& com() const { return *(Excel::_Application*)_ptr; }
+
+    virtual std::wstring name() const;
+  };
+
+  /// <summary>
+  /// Gets the Excel.Application object which is the root of the COM API 
+  /// </summary>
+  XLOIL_EXPORT Application& excelApp() noexcept;
 
 
   namespace App

@@ -155,14 +155,14 @@ namespace xloil
     {
       SetAutomationSecurity(Office::MsoAutomationSecurity value)
       {
-        _previous = excelApp().AutomationSecurity;
-        excelApp().AutomationSecurity = value;
+        _previous = excelApp().com().AutomationSecurity;
+        excelApp().com().AutomationSecurity = value;
       }
       ~SetAutomationSecurity()
       {
         try
         {
-          excelApp().AutomationSecurity = _previous;
+          excelApp().com().AutomationSecurity = _previous;
         }
         catch (...)
         {
@@ -199,7 +199,7 @@ namespace xloil
 
         // It's possible the addin has already been registered and loaded and 
         // is just being reinitialised, so we do findAddin twice
-        auto& app = excelApp();
+        auto& app = excelApp().com();
 
         SetAutomationSecurity setSecurity(
           Office::MsoAutomationSecurity::msoAutomationSecurityLow);

@@ -4,6 +4,7 @@
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xloil/Log.h>
+#include <xloil/AppObjects.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
 #include <xloil/ExcelUI.h>
@@ -289,7 +290,7 @@ namespace xloil
         COM::connectCom();
         runExcelThread(func, ExcelRunQueue::XLL_API);
       }
-      catch (const COM::ComConnectException&)
+      catch (const ComConnectException&)
       {
         XLO_DEBUG("Could not connect COM: trying again in 1 second...");
         runExcelThread(

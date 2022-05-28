@@ -42,9 +42,10 @@ namespace xloil
     }
   }
 
-  Excel::_Application& excelApp() noexcept
+  Application& excelApp() noexcept
   {
-    return COM::attachedExcelApp();
+    static Application theApp(&COM::attachedExcelApp());
+    return theApp;
   }
 
   IAppObject::~IAppObject()
@@ -67,14 +68,61 @@ namespace xloil
     _ptr->AddRef();
   }
 
+
+
+  Application::Application(Excel::_Application* app)
+    : IAppObject(app)
+  {
+  }
+
+
+  Application::Application(size_t hWnd)
+    : IAppObject([hWnd]() {
+    auto p = COM::applicationObjectFromWindow((HWND)hWnd);
+    if (!p)
+      throw ComConnectException("Window not found");
+    return p;
+  }())
+  {
+  }
+
+  //namespace
+  //{
+  //  Excel::_Application* workbookFinder(const wchar_t* workbook)
+  //  {
+  //    HWND xlmain = 0;
+  //    while ((xlmain = COM::nextExcelMainWindow(xlmain)) != 0)
+  //    {
+  //      auto xlApp = Application(COM::applicationObjectFromWindow(xlmain));
+  //      auto wb = xlApp.tryGetWorkbook(workbook);
+  //      if (wb)
+  //      {
+  //        wb->Release();
+  //        return &xlApp.com();
+  //      }
+  //    }
+  //    return nullptr;
+  //  }
+  //}
+  //Application::Application(const wchar_t* workbook)
+  //  : IAppObject(workbookFinder(workbook))
+  //{
+  //}
+
+  std::wstring Application::name() const
+  {
+    return com().Name.GetBSTR();
+  }
+
+
   ExcelWindow::ExcelWindow(const std::wstring_view& caption)
   {
     try
     {
       if (caption.empty())
-        init(excelApp().ActiveWindow);
+        init(excelApp().com().ActiveWindow);
       else
-        init(excelApp().Windows->GetItem(stringToVariant(caption)));
+        init(excelApp().com().Windows->GetItem(stringToVariant(caption)));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -103,9 +151,9 @@ namespace xloil
     try
     {
       if (name.empty())
-        init(excelApp().ActiveWorkbook);
+        init(excelApp().com().ActiveWorkbook);
       else
-        init(excelApp().Workbooks->GetItem(stringToVariant(name)));
+        init(excelApp().com().Workbooks->GetItem(stringToVariant(name)));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -213,7 +261,7 @@ namespace xloil
     {
       template <typename F, typename T, std::size_t N, std::size_t... Idx>
       decltype(auto) appRun_impl(F func, T(&args)[N], std::index_sequence<Idx...>) {
-        return excelApp().Run(func, args[Idx]...);
+        return excelApp().com().Run(func, args[Idx]...);
       }
 
       template <typename T, std::size_t N>
@@ -261,11 +309,11 @@ namespace xloil
     }
     std::vector<ExcelWorkbook> Workbooks::list()
     {
-      return CollectionToVector<ExcelWorkbook>()(excelApp().Workbooks);
+      return CollectionToVector<ExcelWorkbook>()(excelApp().com().Workbooks);
     }
     size_t Workbooks::count()
     {
-      return excelApp().Workbooks->Count;
+      return excelApp().com().Workbooks->Count;
     }
 
     ExcelWindow Windows::active()
@@ -274,11 +322,11 @@ namespace xloil
     }
     std::vector<ExcelWindow> Windows::list()
     {
-      return CollectionToVector<ExcelWindow>()(excelApp().Windows);
+      return CollectionToVector<ExcelWindow>()(excelApp().com().Windows);
     }
     size_t Windows::count()
     {
-      return excelApp().Windows->Count;
+      return excelApp().com().Windows->Count;
     }
 
     ExcelWorksheet Worksheets::active()
@@ -286,7 +334,7 @@ namespace xloil
       try
       {
         Excel::_Worksheet* sheet = nullptr;
-        excelApp().ActiveSheet->QueryInterface(&sheet);
+        excelApp().com().ActiveSheet->QueryInterface(&sheet);
         return ExcelWorksheet(sheet);
       }
       XLO_RETHROW_COM_ERROR;
@@ -296,7 +344,7 @@ namespace xloil
     {
       try
       {
-        excelApp().EnableEvents = _variant_t(value);
+        excelApp().com().EnableEvents = _variant_t(value);
       }
       XLO_RETHROW_COM_ERROR;
     }

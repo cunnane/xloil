@@ -27,7 +27,7 @@ namespace xloil
     public:
       static void checkOnOpenWorkbook(struct Excel::_Workbook* Wb)
       {
-        size_t numWorkbooks = excelApp().Workbooks->Count;
+        size_t numWorkbooks = excelApp().com().Workbooks->Count;
 
         // If workbook collection has grown by one, nothing was closed
         // and we just add the workbook name
@@ -42,7 +42,7 @@ namespace xloil
       /// </summary>
       static void Workbook_BeforeSave()
       {
-        auto& app = excelApp();
+        auto& app = excelApp().com();
         app.EnableEvents = false;
         _wbPathBeforeSave = fs::path((const wchar_t*)app.ActiveWorkbook->Path) 
           / (const wchar_t*)app.ActiveWorkbook->Name;
@@ -58,7 +58,7 @@ namespace xloil
       {
         if (!success)
           return;
-        auto& app = excelApp();
+        auto& app = excelApp().com();
         app.EnableEvents = false;
         const auto wbPath = fs::path((const wchar_t*)app.ActiveWorkbook->Path)
           / (const wchar_t*)app.ActiveWorkbook->Name;
@@ -72,7 +72,7 @@ namespace xloil
       static void check()
       {
         set<wstring> openWorkbooks;
-        auto& app = excelApp();
+        auto& app = excelApp().com();
         auto numWorkbooks = app.Workbooks->Count;
         for (auto i = 1; i <= numWorkbooks; ++i)
           openWorkbooks.emplace(app.Workbooks->Item[i]->Name);
@@ -249,12 +249,12 @@ namespace xloil
         if (!_enableAfterCalculate)
           return;
 
-        excelApp().put_EnableEvents(VARIANT_FALSE);
+        excelApp().com().put_EnableEvents(VARIANT_FALSE);
         _enableAfterCalculate = false;
 
         Event::AfterCalculate().fire();
 
-        excelApp().put_EnableEvents(VARIANT_TRUE);
+        excelApp().com().put_EnableEvents(VARIANT_TRUE);
         _enableAfterCalculate = true;
       }
 

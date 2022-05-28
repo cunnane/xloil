@@ -3,6 +3,7 @@
 #include <xloil/Events.h>
 #include <xloil/ExcelCall.h>
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 #include <oleacc.h> // AccessibleObjectFromWindow
 #include <memory>
 

@@ -62,7 +62,7 @@ namespace xloil
     {
       try
       {
-        auto& app = excelApp();
+        auto& app = excelApp().com();
         auto caller = Excel::RangePtr(app.Caller);
 
         // AddPicture2 takes -1 to retain the size of the existing file
@@ -278,7 +278,7 @@ namespace xloil
     {
       py::object getExcelApp(const char* comlib)
       {
-        return comToPy(excelApp(), comlib);
+        return comToPy(excelApp().com(), comlib);
       }
 
       static int theBinder = addBinder([](py::module& mod)
