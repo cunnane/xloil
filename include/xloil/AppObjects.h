@@ -51,6 +51,30 @@ namespace xloil
     void assign(const IAppObject& that);
   };
 
+
+  struct XLOIL_EXPORT Application : public IAppObject
+  {
+    Application(Excel::_Application* app);
+    Application(size_t hWnd);
+    //Application(const wchar_t* workbook);
+
+    Application(Application&& that) noexcept { std::swap(_ptr, that._ptr); }
+    Application(const Application& that) : IAppObject(that._ptr) {}
+
+    Application& operator=(const Application& that) noexcept { assign(that); return *this; }
+    Application& operator=(Application&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
+
+    Excel::_Application& com() const { return *(Excel::_Application*)_ptr; }
+
+    virtual std::wstring name() const;
+  };
+
+  /// <summary>
+  /// Gets the Excel.Application object which is the root of the COM API 
+  /// </summary>
+  XLOIL_EXPORT Application& excelApp() noexcept;
+
+
   class ExcelWindow;
   class ExcelWorksheet;
 
@@ -65,7 +89,9 @@ namespace xloil
     /// Gives the ExcelWorkbook object associated with the given workbookb name, or the active workbook
     /// </summary>
     /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
-    explicit ExcelWorkbook(const std::wstring_view& name = std::wstring_view());
+    explicit ExcelWorkbook(
+      const std::wstring_view& name = std::wstring_view(), 
+      Application app = excelApp());
     /// <summary>
     /// Constructs an ExcelWorkbook from a COM pointer
     /// </summary>
@@ -131,7 +157,9 @@ namespace xloil
     /// Gives the ExcelWindow object associated with the given window caption, or the active window
     /// </summary>
     /// <param name="caption">The name of the window to find, or the active window if null</param>
-    explicit ExcelWindow(const std::wstring_view& caption = std::wstring_view());
+    explicit ExcelWindow(
+      const std::wstring_view& caption = std::wstring_view(),
+      Application app = excelApp());
 
     ExcelWindow(ExcelWindow&& that) noexcept { std::swap(_ptr, that._ptr); }
     ExcelWindow(const ExcelWindow& that) : IAppObject(that._ptr) {}
@@ -169,7 +197,9 @@ namespace xloil
     /// Constructs a Range from a address. A local address (not qualified with
     /// a workbook name) will refer to the active workbook
     /// </summary>
-    explicit ExcelRange(const std::wstring_view& address);
+    explicit ExcelRange(
+      const std::wstring_view& address, 
+      Application app = excelApp());
     ExcelRange(const Range& range);
     ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
@@ -336,29 +366,6 @@ namespace xloil
     /// </summary>
     Excel::_Worksheet& com() const { return *(Excel::_Worksheet*)_ptr; }
   };
-
-  struct XLOIL_EXPORT Application : public IAppObject
-  {
-    Application(Excel::_Application* app);
-    Application(size_t hWnd);
-    //Application(const wchar_t* workbook);
-
-    Application(Application&& that) noexcept { std::swap(_ptr, that._ptr); }
-    Application(const Application& that) : IAppObject(that._ptr) {}
-
-    Application& operator=(const Application& that) noexcept { assign(that); return *this; }
-    Application& operator=(Application&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
-
-    Excel::_Application& com() const { return *(Excel::_Application*)_ptr; }
-
-    virtual std::wstring name() const;
-  };
-
-  /// <summary>
-  /// Gets the Excel.Application object which is the root of the COM API 
-  /// </summary>
-  XLOIL_EXPORT Application& excelApp() noexcept;
-
 
   namespace App
   {

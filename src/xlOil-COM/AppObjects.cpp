@@ -115,14 +115,14 @@ namespace xloil
   }
 
 
-  ExcelWindow::ExcelWindow(const std::wstring_view& caption)
+  ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
   {
     try
     {
       if (caption.empty())
-        init(excelApp().com().ActiveWindow);
+        init(app.com().ActiveWindow);
       else
-        init(excelApp().com().Windows->GetItem(stringToVariant(caption)));
+        init(app.com().Windows->GetItem(stringToVariant(caption)));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -146,14 +146,14 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelWorkbook::ExcelWorkbook(const std::wstring_view& name)
+  ExcelWorkbook::ExcelWorkbook(const std::wstring_view& name, Application app)
   {
     try
     {
       if (name.empty())
-        init(excelApp().com().ActiveWorkbook);
+        init(app.com().ActiveWorkbook);
       else
-        init(excelApp().com().Workbooks->GetItem(stringToVariant(name)));
+        init(app.com().Workbooks->GetItem(stringToVariant(name)));
     }
     XLO_RETHROW_COM_ERROR;
   }

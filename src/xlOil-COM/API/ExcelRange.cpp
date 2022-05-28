@@ -45,12 +45,12 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelRange::ExcelRange(const std::wstring_view& address)
+  ExcelRange::ExcelRange(const std::wstring_view& address, Application app)
   {
     try
     {
       auto addressStr = COM::stringToVariant(address);
-      auto rangePtr = excelApp().com().GetRange(_variant_t(addressStr, false));
+      auto rangePtr = app.com().GetRange(_variant_t(addressStr, false));
       init(rangePtr);
     }
     XLO_RETHROW_COM_ERROR;
