@@ -60,7 +60,7 @@ namespace xloil
         // Check we have trusted access to VBA object model
         static bool registryChecked = checkRegistryKeys();
 
-        auto workbook = App::Workbooks::get(workbookName);
+        auto workbook = excelApp().Workbooks().get(workbookName);
 
         auto vbProj = workbook.com().VBProject;
 

@@ -117,7 +117,7 @@ namespace xloil
           const ExcelObj* argsP[30];
           for (size_t i = 0; i < args.size(); ++i)
             argsP[i] = &args[i];
-          return App::Run(func, args.size(), argsP);
+          return excelApp().Run(func, args.size(), argsP);
         }));
     }
 

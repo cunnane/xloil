@@ -83,7 +83,7 @@ namespace xloil
 
       void checkExistingWorkbooks(const WorkbookOpenHandler& handler)
       {
-        for (const auto& wb : App::Workbooks::list())
+        for (const auto& wb : excelApp().Workbooks().list())
           handler(wb.path().c_str(), wb.name().c_str());
       }
     }

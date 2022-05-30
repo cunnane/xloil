@@ -255,8 +255,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  namespace App
-  {
+
     namespace
     {
       template <typename F, typename T, std::size_t N, std::size_t... Idx>
@@ -270,83 +269,95 @@ namespace xloil
       }
     }
 
-    ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[])
-    {
-      if (nArgs > 30)
-        XLO_THROW("Application::Run maximum number of args is 30");
+  ExcelObj Application::Run(
+    const std::wstring& func, 
+    const size_t nArgs, 
+    const ExcelObj* args[])
+  {
+    if (nArgs > 30)
+      XLO_THROW("Application::Run maximum number of args is 30");
 
-      static _variant_t vArgs[30] = {
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
-        vtMissing, vtMissing, vtMissing, vtMissing, vtMissing
-      };
+    static _variant_t vArgs[30] = {
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
+      vtMissing, vtMissing, vtMissing, vtMissing, vtMissing
+    };
 
-      // The construction of 'cleanup' is all noexcept
-      auto finally = [begin = vArgs, end = vArgs + nArgs](void*)
-        {
-          for (auto i = begin; i != end; ++i)
-            *i = vtMissing;
-        };
-      std::unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
+    // The construction of 'cleanup' is all noexcept
+    auto finally = [begin = vArgs, end = vArgs + nArgs](void*)
+    {
+      for (auto i = begin; i != end; ++i)
+        *i = vtMissing;
+    };
+    std::unique_ptr<void, decltype(finally)> cleanup((void*)1, finally);
 
-      for (size_t i = 0; i < nArgs; ++i)
-        COM::excelObjToVariant(&vArgs[i], *args[i], true);
+    for (size_t i = 0; i < nArgs; ++i)
+      COM::excelObjToVariant(&vArgs[i], *args[i], true);
 
-      try
-      {
-        auto result = appRun(func.c_str(), vArgs);
-        return COM::variantToExcelObj(result);
-      }
-      XLO_RETHROW_COM_ERROR;
+    try
+    {
+      auto result = appRun(func.c_str(), vArgs);
+      return COM::variantToExcelObj(result);
     }
+    XLO_RETHROW_COM_ERROR;
+  }
 
-    ExcelWorkbook Workbooks::active()
+  ExcelWorksheet Application::ActiveWorksheet() const
+  {
+    try
     {
-      return ExcelWorkbook();
+      Excel::_Worksheet* sheet = nullptr;
+      com().ActiveSheet->QueryInterface(&sheet);
+      return ExcelWorksheet(sheet);
     }
-    std::vector<ExcelWorkbook> Workbooks::list()
-    {
-      return CollectionToVector<ExcelWorkbook>()(excelApp().com().Workbooks);
-    }
-    size_t Workbooks::count()
-    {
-      return excelApp().com().Workbooks->Count;
-    }
+    XLO_RETHROW_COM_ERROR;
+  }
 
-    ExcelWindow Windows::active()
-    {
-      return ExcelWindow();
-    }
-    std::vector<ExcelWindow> Windows::list()
-    {
-      return CollectionToVector<ExcelWindow>()(excelApp().com().Windows);
-    }
-    size_t Windows::count()
-    {
-      return excelApp().com().Windows->Count;
-    }
+  Workbooks::Workbooks(Application app)
+    : app(app)
+  {}
 
-    ExcelWorksheet Worksheets::active()
-    {
-      try
-      {
-        Excel::_Worksheet* sheet = nullptr;
-        excelApp().com().ActiveSheet->QueryInterface(&sheet);
-        return ExcelWorksheet(sheet);
-      }
-      XLO_RETHROW_COM_ERROR;
-    }
+  ExcelWorkbook Workbooks::active() const
+  {
+    return ExcelWorkbook(std::wstring_view(), app);
+  }
+  std::vector<ExcelWorkbook> Workbooks::list() const
+  {
+    return CollectionToVector<ExcelWorkbook>()(app.com().Workbooks);
+  }
+  size_t Workbooks::count()
+  {
+    return app.com().Workbooks->Count;
+  }
 
-    XLOIL_EXPORT void App::allowEvents(bool value)
+  Windows::Windows(Application app)
+    : app(app)
+  {}
+
+  ExcelWindow Windows::active() const
+  {
+    return ExcelWindow(std::wstring_view(), app);
+  }
+
+  std::vector<ExcelWindow> Windows::list() const
+  {
+    return CollectionToVector<ExcelWindow>()(app.com().Windows);
+  }
+
+  size_t Windows::count()
+  {
+    return app.com().Windows->Count;
+  }
+
+  void Application::allowEvents(bool value)
+  {
+    try
     {
-      try
-      {
-        excelApp().com().EnableEvents = _variant_t(value);
-      }
-      XLO_RETHROW_COM_ERROR;
+      com().EnableEvents = _variant_t(value);
     }
+    XLO_RETHROW_COM_ERROR;
   }
 }

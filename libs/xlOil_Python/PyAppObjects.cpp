@@ -129,12 +129,19 @@ namespace xloil
     template<class T>
     struct Collection
     {
-      using value_t = decltype(T::active());
+      T _collection;
+
+      Collection(Application app)
+        : _collection(app)
+      {
+      }
+
+      using value_t = decltype(_collection.active());
       struct Iter
       {
         vector<value_t> _objects;
         size_t i = 0;
-        Iter() : _objects(T::list()) {}
+        Iter(const T& collection) : _objects(collection.list()) {}
         Iter(const Iter&) = delete;
         value_t next()
         {
@@ -157,12 +164,12 @@ namespace xloil
       }
       auto iter()
       {
-        return new Iter();
+        return new Iter(_collection);
       }
       value_t active()
       {
         py::gil_scoped_release noGil;
-        return std::move(T::active());
+        return std::move(_collection.active());
       }
     };
 
@@ -252,32 +259,32 @@ namespace xloil
         .def_property_readonly("workbook", wrapNoGil(&ExcelWindow::workbook))
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
-      using Workbooks = Collection<App::Workbooks>;
-      using Windows = Collection<App::Windows>;
+      using PyWorkbooks = Collection<Workbooks>;
+      using PyWindows = Collection<Windows>;
 
-      py::class_<Workbooks::Iter>(mod, "ExcelWorkbooksIter")
+      py::class_<PyWorkbooks::Iter>(mod, "ExcelWorkbooksIter")
         .def("__iter__", [](py::object self) { return self; })
-        .def("__next__", &Workbooks::Iter::next);
+        .def("__next__", &PyWorkbooks::Iter::next);
 
-      py::class_<Workbooks>(mod, "ExcelWorkbooks")
-        .def("__getitem__", &Workbooks::getitem)
-        .def("__iter__", &Workbooks::iter)
-        .def_property_readonly("active", &Workbooks::active);
+      py::class_<PyWorkbooks>(mod, "ExcelWorkbooks")
+        .def("__getitem__", &PyWorkbooks::getitem)
+        .def("__iter__", &PyWorkbooks::iter)
+        .def_property_readonly("active", &PyWorkbooks::active);
 
-      py::class_<Windows::Iter>(mod, "ExcelWindowsIter")
+      py::class_<PyWindows::Iter>(mod, "ExcelWindowsIter")
         .def("__iter__", [](py::object self) { return self; })
-        .def("__next__", &Windows::Iter::next);
+        .def("__next__", &PyWindows::Iter::next);
 
-      py::class_<Windows>(mod, "ExcelWindows")
-        .def("__getitem__", &Windows::getitem)
-        .def("__iter__", &Windows::iter)
-        .def_property_readonly("active", &Windows::active);
+      py::class_<PyWindows>(mod, "ExcelWindows")
+        .def("__getitem__", &PyWindows::getitem)
+        .def("__iter__", &PyWindows::iter)
+        .def_property_readonly("active", &PyWindows::active);
 
       // Use 'new' with this return value policy or we get a segfault later. 
-      mod.add_object("workbooks", py::cast(new Workbooks(), py::return_value_policy::take_ownership));
-      mod.add_object("windows", py::cast(new Windows(), py::return_value_policy::take_ownership));
-      mod.def("active_worksheet", &App::Worksheets::active);
-      mod.def("active_workbook", &App::Workbooks::active);
+      mod.add_object("workbooks", py::cast(new PyWorkbooks(excelApp()), py::return_value_policy::take_ownership));
+      mod.add_object("windows", py::cast(new PyWindows(excelApp()), py::return_value_policy::take_ownership));
+      mod.def("active_worksheet", []() { return excelApp().ActiveWorksheet(); });
+      mod.def("active_workbook", []() { return excelApp().Workbooks().active(); });
     });
   }
 }

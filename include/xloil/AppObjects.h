@@ -11,12 +11,21 @@
 // Forward Declarations from Typelib
 struct IDispatch;
 
-namespace Excel {
+namespace Excel 
+{
   struct _Application;
   struct Window;
   struct _Workbook;
   struct _Worksheet;
   struct Range;
+}
+
+namespace xloil
+{
+  class ExcelWindow;
+  class ExcelWorksheet;
+  class Windows;
+  class Workbooks;
 }
 
 namespace xloil
@@ -67,16 +76,20 @@ namespace xloil
     Excel::_Application& com() const { return *(Excel::_Application*)_ptr; }
 
     virtual std::wstring name() const;
+
+    Workbooks Workbooks() const;
+    Windows Windows() const;
+    ExcelWorksheet ActiveWorksheet() const;
+
+    ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
+
+    void allowEvents(bool value);
   };
 
   /// <summary>
   /// Gets the Excel.Application object which is the root of the COM API 
   /// </summary>
   XLOIL_EXPORT Application& excelApp() noexcept;
-
-
-  class ExcelWindow;
-  class ExcelWorksheet;
 
   /// <summary>
   /// Wraps a Workbook (https://docs.microsoft.com/en-us/office/vba/api/excel.workbook) in
@@ -367,38 +380,42 @@ namespace xloil
     Excel::_Worksheet& com() const { return *(Excel::_Worksheet*)_ptr; }
   };
 
+  class XLOIL_EXPORT Workbooks
+  {
+  public:
+    Workbooks(Application app = excelApp());
+    ExcelWorkbook active() const;
+    ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name, app); }
+    std::vector<ExcelWorkbook> list() const;
+    size_t count();
+
+    Application app;
+  };
+
+  class XLOIL_EXPORT Windows
+  {
+  public:
+    Windows(Application app = excelApp());
+    ExcelWindow active() const;
+    ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name, app); }
+    std::vector<ExcelWindow> list() const;
+    size_t count();
+
+    Application app;
+  };
+
+  inline Workbooks Application::Workbooks() const
+  {
+    return xloil::Workbooks(*this);
+  }
+
+  inline Windows Application::Windows() const
+  {
+    return xloil::Windows(*this);
+  }
+
   namespace App
   {
-    XLOIL_EXPORT ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
-    
-    struct XLOIL_EXPORT Workbooks
-    {
-      static ExcelWorkbook active();
-      static ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name); }
-      static std::vector<ExcelWorkbook> list();
-      static size_t count();
-    };
-
-    struct XLOIL_EXPORT Windows
-    {
-      static ExcelWindow active();
-      static ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name); }
-      static std::vector<ExcelWindow> list();
-      static size_t count();
-    };
-
-    struct XLOIL_EXPORT Worksheets
-    {
-      static ExcelWorksheet active();
-    };
-
-    /// <summary>
-    /// Must be run on the main thread
-    /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    XLOIL_EXPORT void allowEvents(bool value);
-
     struct ExcelInternals
     {
       /// <summary>
