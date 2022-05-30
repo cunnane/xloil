@@ -31,7 +31,7 @@ namespace xloil
       // slow and is less fragile.
       auto sysModules = PyBorrow<py::dict>(PyImport_GetModuleDict());
       py::handle modName;
-      for (auto[k, v] : sysModules)
+      for (auto [k, v] : sysModules)
         if (v.is(module))
           modName = k;
 
@@ -69,7 +69,7 @@ namespace xloil
           std::error_code err;
           if (!fs::exists(modulePath, err))
             return;
-          
+
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
@@ -81,18 +81,18 @@ namespace xloil
         }
       };
 
-      void checkExistingWorkbooks(const WorkbookOpenHandler& handler)
+      void checkExistingWorkbooks(const WorkbookOpenHandler& handler, Application& app)
       {
-        for (const auto& wb : excelApp().Workbooks().list())
+        for (const auto& wb : app.Workbooks().list())
           handler(wb.path().c_str(), wb.name().c_str());
       }
     }
-    std::shared_ptr<const void> 
-      createWorkbookOpenHandler(PyAddin& loadContext)
+    std::shared_ptr<const void>
+      createWorkbookOpenHandler(PyAddin& loadContext, Application& app)
     {
       WorkbookOpenHandler handler(loadContext);
 
-      checkExistingWorkbooks(handler);
+      checkExistingWorkbooks(handler, app);
 
       return Event::WorkbookOpen().bind(handler);
     }

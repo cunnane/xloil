@@ -305,6 +305,40 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
+  bool Workbooks::tryGet(const wchar_t* workbookName, ExcelWorkbook& wb) const
+  {
+    // See other possibility here. Seems a bit crazy?
+    // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
+    try
+    {
+      wb = Workbooks().get(workbookName);
+      return true;
+    }
+    catch (_com_error& error)
+    {
+      if (error.Error() == DISP_E_BADINDEX)
+        return false;
+      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+    }
+  }
+
+  bool Windows::tryGet(const wchar_t* caption, ExcelWindow& window) const
+  {
+    // See other possibility here. Seems a bit crazy?
+    // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
+    try
+    {
+      window = Windows().get(caption);
+      return true;
+    }
+    catch (_com_error& error)
+    {
+      if (error.Error() == DISP_E_BADINDEX)
+        return false;
+      XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+    }
+  }
+
   ExcelWorksheet Application::ActiveWorksheet() const
   {
     try
@@ -328,7 +362,7 @@ namespace xloil
   {
     return CollectionToVector<ExcelWorkbook>()(app.com().Workbooks);
   }
-  size_t Workbooks::count()
+  size_t Workbooks::count() const
   {
     return app.com().Workbooks->Count;
   }
@@ -347,7 +381,7 @@ namespace xloil
     return CollectionToVector<ExcelWindow>()(app.com().Windows);
   }
 
-  size_t Windows::count()
+  size_t Windows::count() const
   {
     return app.com().Windows->Count;
   }

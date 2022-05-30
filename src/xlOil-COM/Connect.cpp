@@ -108,23 +108,5 @@ namespace xloil
         throw ComConnectException("COM Connection not ready");
       return theComConnector->excelApp();
     }
-
-    // Not used at the moment but seems useful
-    bool checkWorkbookIsOpen(const wchar_t* workbookName)
-    {
-      // See other possibility here. Seems a bit crazy?
-      // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
-      try
-      {
-        auto workbook = attachedExcelApp().Workbooks->GetItem(_variant_t(workbookName));
-        return !!workbook;
-      }
-      catch (_com_error& error)
-      {
-        if (error.Error() == DISP_E_BADINDEX)
-          return false;
-        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-      }
-    }
   }
 }

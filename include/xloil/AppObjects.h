@@ -26,6 +26,7 @@ namespace xloil
   class ExcelWorksheet;
   class Windows;
   class Workbooks;
+  class ExcelWorkbook;
 }
 
 namespace xloil
@@ -385,9 +386,10 @@ namespace xloil
   public:
     Workbooks(Application app = excelApp());
     ExcelWorkbook active() const;
-    ExcelWorkbook get(const std::wstring_view& name) { return ExcelWorkbook(name, app); }
+    ExcelWorkbook get(const std::wstring_view& name) const  { return ExcelWorkbook(name, app); }
+    bool tryGet(const wchar_t* workbookName, ExcelWorkbook& wb) const;
     std::vector<ExcelWorkbook> list() const;
-    size_t count();
+    size_t count() const;
 
     Application app;
   };
@@ -397,9 +399,10 @@ namespace xloil
   public:
     Windows(Application app = excelApp());
     ExcelWindow active() const;
-    ExcelWindow get(const std::wstring_view& name) { return ExcelWindow(name, app); }
+    ExcelWindow get(const std::wstring_view& name) const { return ExcelWindow(name, app); }
+    bool tryGet(const wchar_t* caption, ExcelWindow& window) const;
     std::vector<ExcelWindow> list() const;
-    size_t count();
+    size_t count() const;
 
     Application app;
   };
