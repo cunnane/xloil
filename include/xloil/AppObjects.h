@@ -64,9 +64,22 @@ namespace xloil
 
   struct XLOIL_EXPORT Application : public IAppObject
   {
-    Application(Excel::_Application* app);
+    /// <summary>
+    /// Construct an application object from a ptr to the underlying COM object.
+    /// If no ptr is provided, a new instance of Excel is created.
+    /// </summary>
+    Application(Excel::_Application* app = nullptr);
+    /// <summary>
+    /// Construct an application object from a window handle to the top level
+    /// Excel window (which has window class XLMAIN)
+    /// </summary>
     Application(size_t hWnd);
-    //Application(const wchar_t* workbook);
+    /// <summary>
+    /// Construct an application object from a workbook name. This searches all
+    /// open Excel instances for the one which has opened the workbook. It will
+    /// fail if the workbook is not open
+    /// </summary>
+    Application(const wchar_t* workbook);
 
     Application(Application&& that) noexcept { std::swap(_ptr, that._ptr); }
     Application(const Application& that) : IAppObject(that._ptr) {}

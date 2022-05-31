@@ -19,6 +19,16 @@ namespace xloil
       return FindWindowExA(0, xlmainHandle, "XLMAIN", NULL);
     }
 
+    Excel::_Application* newApplicationObject()
+    {
+      Excel::_ApplicationPtr app;
+      auto hr = app.CreateInstance(
+        __uuidof(Excel::Application),
+        NULL,
+        CLSCTX_LOCAL_SERVER);
+      return hr == S_OK ? app.Detach() : nullptr;
+    }
+
     Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle)
     {
       // Based on discussion here:
@@ -102,7 +112,7 @@ namespace xloil
       return (SUCCEEDED(result));
     }
 
-    Excel::_Application& attachedExcelApp()
+    Excel::_Application& attachedApplication()
     {
       if (!theComConnector)
         throw ComConnectException("COM Connection not ready");

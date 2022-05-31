@@ -10,6 +10,8 @@ namespace xloil
 {
   namespace COM
   {
+    Excel::_Application* newApplicationObject();
+
     HWND nextExcelMainWindow(HWND xlmainHandle = 0);
 
     /// <summary>
@@ -25,6 +27,6 @@ namespace xloil
 
     bool isComApiAvailable() noexcept;
 
-    Excel::_Application& attachedExcelApp();
+    Excel::_Application& attachedApplication();
   }
 }

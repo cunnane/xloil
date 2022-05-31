@@ -184,6 +184,25 @@ namespace xloil
       return comToPy(ExcelRange(range).com(), binder);
     }
 
+    Application createExcelApp(
+      const py::object& com,
+      const py::object& hwnd,
+      const py::object& wbName)
+    {
+      if (!com.is_none())
+      {
+        // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
+        auto window = py::cast<size_t>(com.attr("hWnd")());
+        return Application(window);
+      }
+      else if (!hwnd.is_none())
+        return Application(py::cast<size_t>(hwnd));
+      else if (!wbName.is_none())
+        return Application(pyToWStr(wbName).c_str());
+      else
+        return Application();
+    }
+
     static int theBinder = addBinder([](pybind11::module& mod)
     {
       py::class_<RangeIter>(mod, "RangeIter")
@@ -261,6 +280,15 @@ namespace xloil
 
       using PyWorkbooks = Collection<Workbooks>;
       using PyWindows = Collection<Windows>;
+
+      py::class_<Application>(mod, "ExcelApp")
+        .def(py::init(std::function(createExcelApp)), 
+          py::arg("com") = py::none(), 
+          py::arg("hwnd") = py::none(), 
+          py::arg("workbook") = py::none())
+        .def("workbooks", [](Application& self) { return PyWorkbooks(self); })
+        .def("windows", [](Application& self) { return PyWindows(self); })
+        .def("to_com", toCom<Application>, py::arg("lib") = "");
 
       py::class_<PyWorkbooks::Iter>(mod, "ExcelWorkbooksIter")
         .def("__iter__", [](py::object self) { return self; })

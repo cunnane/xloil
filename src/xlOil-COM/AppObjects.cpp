@@ -44,7 +44,7 @@ namespace xloil
 
   Application& excelApp() noexcept
   {
-    static Application theApp(&COM::attachedExcelApp());
+    static Application theApp(&COM::attachedApplication());
     return theApp;
   }
 
@@ -68,52 +68,45 @@ namespace xloil
     _ptr->AddRef();
   }
 
-
-
   Application::Application(Excel::_Application* app)
-    : IAppObject(app)
+    : IAppObject(app ? app : COM::newApplicationObject())
   {
   }
-
 
   Application::Application(size_t hWnd)
     : IAppObject([hWnd]() {
-    auto p = COM::applicationObjectFromWindow((HWND)hWnd);
-    if (!p)
-      throw ComConnectException("Window not found");
-    return p;
-  }())
+        auto p = COM::applicationObjectFromWindow((HWND)hWnd);
+        if (!p)
+          throw ComConnectException("Window not found");
+        return p;
+      }())
   {
   }
 
-  //namespace
-  //{
-  //  Excel::_Application* workbookFinder(const wchar_t* workbook)
-  //  {
-  //    HWND xlmain = 0;
-  //    while ((xlmain = COM::nextExcelMainWindow(xlmain)) != 0)
-  //    {
-  //      auto xlApp = Application(COM::applicationObjectFromWindow(xlmain));
-  //      auto wb = xlApp.tryGetWorkbook(workbook);
-  //      if (wb)
-  //      {
-  //        wb->Release();
-  //        return &xlApp.com();
-  //      }
-  //    }
-  //    return nullptr;
-  //  }
-  //}
-  //Application::Application(const wchar_t* workbook)
-  //  : IAppObject(workbookFinder(workbook))
-  //{
-  //}
+  namespace
+  {
+    Excel::_Application* workbookFinder(const wchar_t* workbook)
+    {
+      HWND xlmain = 0;
+      while ((xlmain = COM::nextExcelMainWindow(xlmain)) != 0)
+      {
+        auto xlApp = Application(COM::applicationObjectFromWindow(xlmain));
+        ExcelWorkbook wb(nullptr);
+        if (xlApp.Workbooks().tryGet(workbook, wb))
+          return &xlApp.com();
+      }
+      return nullptr;
+    }
+  }
+  Application::Application(const wchar_t* workbook)
+    : IAppObject(workbookFinder(workbook))
+  {
+  }
 
   std::wstring Application::name() const
   {
     return com().Name.GetBSTR();
   }
-
 
   ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
   {
