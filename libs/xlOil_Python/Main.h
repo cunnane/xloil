@@ -22,7 +22,7 @@ namespace xloil
     /// non-specific stuff such as workbook modules and jupyter functions. 
     /// </summary>
     /// <returns></returns>
-    PyAddin& theCoreAddin();
+    PyAddin* theCoreAddin();
 
     /// <summary>
     /// Similar to the function in FileSource, but retrieve the PyAddin

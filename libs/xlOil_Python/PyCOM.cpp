@@ -231,7 +231,9 @@ namespace xloil
         const char* binderLib, IUnknown* p, const char* interfaceName, const GUID& clsid)
       {
         if (!binderLib || binderLib[0] == 0)
-          return marshalCom(theCoreAddin().comBinder.c_str(), p, interfaceName, clsid);
+          return marshalCom(
+            theCoreAddin() ? theCoreAddin()->comBinder.c_str() : "win32com",
+            p, interfaceName, clsid);
         
         // Convert our CLSID to a string, 128 chars should be plenty
         wchar_t clsidStr[128];

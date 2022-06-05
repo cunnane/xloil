@@ -33,7 +33,7 @@ namespace xloil
             XLO_THROW("No xlOilPythonVersion specified in Python Environment block");
 
           // Convert X.Y version to XY and form the dll name
-          auto dllName = fmt::format(L"xloil_Python{0}.dll", 
+          auto dllName = fmt::format(L"xloil_Python{0}.pyd", 
             pyVer.replace(pyVer.find(L'.'), 1, L""));
 
           // Load the library - the xlOil loader should already have set the DLL

@@ -17,7 +17,7 @@ namespace xloil
   {
     PyAddin::PyAddin(AddinContext& ctx, bool newThread, const wchar_t* wbPattern)
       : context(ctx)
-      , thread(newThread ? make_shared<EventLoop>() : theCoreAddin().thread)
+      , thread(newThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
     {
       if (wbPattern)
       {

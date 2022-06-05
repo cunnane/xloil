@@ -37,6 +37,9 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
+ <PropertyGroup>
+    <TargetExt>.pyd</TargetExt>
+  </PropertyGroup>   
   <PropertyGroup>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

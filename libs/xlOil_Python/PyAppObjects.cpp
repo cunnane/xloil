@@ -9,6 +9,7 @@ using std::shared_ptr;
 using std::wstring_view;
 using std::vector;
 using std::wstring;
+using std::string;
 namespace py = pybind11;
 
 namespace xloil
@@ -100,6 +101,9 @@ namespace xloil
 
       py::object worksheet_GetItem(const ExcelWorksheet& ws, py::object loc)
       {
+        // Somewhat unfortunately, since ExcelRange is a virtual child of the 
+        // Range class declared in pybind, we need to pass a ptr to py::cast
+        // which python can own, so we need to copy it (but with an rval ref)
         if (PyUnicode_Check(loc.ptr()))
           return py::cast((Range*)new ExcelRange(ws.range(pyToWStr(loc))));
         else
@@ -133,8 +137,7 @@ namespace xloil
 
       Collection(Application app)
         : _collection(app)
-      {
-      }
+      {}
 
       using value_t = decltype(_collection.active());
       struct Iter
@@ -150,26 +153,61 @@ namespace xloil
           return std::move(_objects[i++]);
         }
       };
-      value_t getitem(const wstring& name)
+      
+      auto getitem(const wstring& name)
       {
         try
         {
           py::gil_scoped_release noGil;
-          return value_t(name.c_str());
+          return _collection.get(name.c_str());
         }
         catch (...)
         {
           throw py::key_error();
         }
       }
+      
+      py::object getdefaulted(const wstring& name, const py::object& defaultVal)
+      {
+        value_t result(nullptr);
+        if (_collection.tryGet(name.c_str(), result))
+          return py::cast(result);
+        return defaultVal;
+      }
+
       auto iter()
       {
         return new Iter(_collection);
       }
-      value_t active()
+
+      size_t count() const { return _collection.count(); }
+
+      py::object active()
       {
-        py::gil_scoped_release noGil;
-        return std::move(_collection.active());
+        value_t obj(nullptr);
+        {
+          py::gil_scoped_release noGil;
+          obj = _collection.active();
+        }
+        if (!obj.valid())
+          return py::none();
+        return py::cast(std::move(obj));
+      }
+
+      static auto startBinding(const py::module& mod, const char* name)
+      {
+        using this_t = Collection<T>;
+
+        py::class_<Iter>(mod, (string(name) + "Iter").c_str())
+          .def("__iter__", [](const py::object& self) { return self; })
+          .def("__next__", &Iter::next);
+
+        return py::class_<this_t>(mod, name)
+          .def("__getitem__", &getitem)
+          .def("__iter__", &iter)
+          .def("__len__", &count)
+          .def("get", &getdefaulted, py::arg("name"), py::arg("default") = py::none())
+          .def_property_readonly("active", &active);
       }
     };
 
@@ -189,16 +227,24 @@ namespace xloil
       const py::object& hwnd,
       const py::object& wbName)
     {
+      size_t hWnd = 0;
+      wstring workbook;
+
       if (!com.is_none())
       {
         // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
-        auto window = py::cast<size_t>(com.attr("hWnd")());
-        return Application(window);
+        hWnd = py::cast<size_t>(com.attr("hWnd")());
       }
       else if (!hwnd.is_none())
-        return Application(py::cast<size_t>(hwnd));
+        hWnd = py::cast<size_t>(hwnd);
       else if (!wbName.is_none())
-        return Application(pyToWStr(wbName).c_str());
+        workbook = pyToWStr(wbName);
+
+      py::gil_scoped_release noGil;
+      if (hWnd != 0)
+        return Application(hWnd);
+      else if (!workbook.empty())
+        return Application(workbook.c_str());
       else
         return Application();
     }
@@ -278,41 +324,45 @@ namespace xloil
         .def_property_readonly("workbook", wrapNoGil(&ExcelWindow::workbook))
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
-      using PyWorkbooks = Collection<Workbooks>;
-      using PyWindows = Collection<Windows>;
+      using PyWorkbooks  = Collection<Workbooks>;
+      using PyWindows    = Collection<Windows>;
+      using PyWorksheets = Collection<Worksheets>;
 
-      py::class_<Application>(mod, "ExcelApp")
-        .def(py::init(std::function(createExcelApp)), 
-          py::arg("com") = py::none(), 
-          py::arg("hwnd") = py::none(), 
+      py::class_<Application>(mod, "Application")
+        .def(py::init(std::function(createExcelApp)),
+          py::arg("com") = py::none(),
+          py::arg("hwnd") = py::none(),
           py::arg("workbook") = py::none())
-        .def("workbooks", [](Application& self) { return PyWorkbooks(self); })
-        .def("windows", [](Application& self) { return PyWindows(self); })
-        .def("to_com", toCom<Application>, py::arg("lib") = "");
+        .def("workbooks", [](Application& app) { py::gil_scoped_release noGil; return PyWorkbooks(app); })
+        .def("windows", [](Application& app) { py::gil_scoped_release noGil; return PyWindows(app); })
+        .def("to_com", toCom<Application>, py::arg("lib") = "")
+        .def_property("visible",
+          [](Application& app) { py::gil_scoped_release noGil; return app.getVisible(); },
+          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setVisible(x); })
+        .def_property("enable_events",
+          [](Application& app) { py::gil_scoped_release noGil; return app.getEnableEvents(); },
+          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
+        .def("quit", wrapNoGil(&Application::Quit));
 
-      py::class_<PyWorkbooks::Iter>(mod, "ExcelWorkbooksIter")
-        .def("__iter__", [](py::object self) { return self; })
-        .def("__next__", &PyWorkbooks::Iter::next);
 
-      py::class_<PyWorkbooks>(mod, "ExcelWorkbooks")
-        .def("__getitem__", &PyWorkbooks::getitem)
-        .def("__iter__", &PyWorkbooks::iter)
-        .def_property_readonly("active", &PyWorkbooks::active);
+      PyWorkbooks::startBinding(mod, "Workbooks")
+        .def("add", [](PyWorkbooks& self) { self._collection.add(); });
 
-      py::class_<PyWindows::Iter>(mod, "ExcelWindowsIter")
-        .def("__iter__", [](py::object self) { return self; })
-        .def("__next__", &PyWindows::Iter::next);
+      PyWindows::startBinding(mod, "ExcelWindows");
 
-      py::class_<PyWindows>(mod, "ExcelWindows")
-        .def("__getitem__", &PyWindows::getitem)
-        .def("__iter__", &PyWindows::iter)
-        .def_property_readonly("active", &PyWindows::active);
+      PyWorksheets::startBinding(mod, "Worksheets");
 
-      // Use 'new' with this return value policy or we get a segfault later. 
-      mod.add_object("workbooks", py::cast(new PyWorkbooks(excelApp()), py::return_value_policy::take_ownership));
-      mod.add_object("windows", py::cast(new PyWindows(excelApp()), py::return_value_policy::take_ownership));
-      mod.def("active_worksheet", []() { return excelApp().ActiveWorksheet(); });
-      mod.def("active_workbook", []() { return excelApp().Workbooks().active(); });
+      try
+      {
+        // Use 'new' with this return value policy or we get a segfault later. 
+        mod.add_object("workbooks", py::cast(new PyWorkbooks(excelApp()), py::return_value_policy::take_ownership));
+        mod.add_object("windows", py::cast(new PyWindows(excelApp()), py::return_value_policy::take_ownership));
+        mod.def("active_worksheet", []() { return excelApp().ActiveWorksheet(); });
+        mod.def("active_workbook", []() { return excelApp().Workbooks().active(); });
+      }
+      catch (ComConnectException)
+      {
+      }
     });
   }
 }

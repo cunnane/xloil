@@ -56,7 +56,7 @@ namespace xloil
     {
       auto& asyncEventLoop()
       {
-        return *theCoreAddin().thread;
+        return *theCoreAddin()->thread;
       }
     }
 

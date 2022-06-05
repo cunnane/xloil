@@ -69,6 +69,14 @@ namespace xloil
       return mod.release().ptr();
     }
 
+    PYBIND11_MODULE(XLO_PROJECT_NAME, mod)
+    {
+      mod.doc() = "pybind11 example module";
+
+      initialiseCore(mod);
+      BinderRegistry::get().bindAll(mod);
+    }
+
     int addBinder(std::function<void(pybind11::module&)> binder)
     {
       BinderRegistry::get().add(binder, 1);
@@ -282,4 +290,5 @@ namespace xloil
         mod.def("get_event_loop", [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
       }
     }
+
 } }

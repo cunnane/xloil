@@ -410,7 +410,7 @@ namespace xloil
 
       auto registeredMod = FunctionRegistry::addModule(
         addinCtx.is_none() 
-          ? theCoreAddin().context 
+          ? theCoreAddin()->context 
           : findAddin(pyToWStr(addinCtx).c_str()).context,
         modulePath, 
         nullptr);
