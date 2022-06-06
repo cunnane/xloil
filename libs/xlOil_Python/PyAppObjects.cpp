@@ -131,11 +131,11 @@ namespace xloil
 
 
     template<class T>
-    struct Collection
+    struct BindCollection
     {
       T _collection;
 
-      Collection(Application app)
+      BindCollection(Application app)
         : _collection(app)
       {}
 
@@ -196,7 +196,7 @@ namespace xloil
 
       static auto startBinding(const py::module& mod, const char* name)
       {
-        using this_t = Collection<T>;
+        using this_t = BindCollection<T>;
 
         py::class_<Iter>(mod, (string(name) + "Iter").c_str())
           .def("__iter__", [](const py::object& self) { return self; })
@@ -210,6 +210,28 @@ namespace xloil
           .def_property_readonly("active", &active);
       }
     };
+
+    ExcelWorksheet addWorksheetToWorkbook(
+      ExcelWorkbook& wb,
+      const py::object& name, 
+      const py::object& before, 
+      const py::object& after)
+    {
+      auto cname = name.is_none() ? wstring() : pyToWStr(name);
+      auto cbefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
+      auto cafter = after.is_none() ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
+      py::gil_scoped_release noGil;
+      return wb.add(cname, cbefore, cafter);
+    }
+
+    auto addWorksheetToCollection(
+      BindCollection<Worksheets>& worksheets,
+      const py::object& name,
+      const py::object& before,
+      const py::object& after)
+    {
+      return addWorksheetToWorkbook(worksheets._collection.parent, name, before, after);
+    }
 
     template<class T>
     auto toCom(T& p, const char* binder) 
@@ -316,17 +338,18 @@ namespace xloil
         .def_property_readonly("windows", wrapNoGil(&ExcelWorkbook::windows))
         .def("worksheet", wrapNoGil(&ExcelWorkbook::worksheet), py::arg("name"))
         .def("__getitem__", wrapNoGil(&ExcelWorkbook::worksheet))
-        .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "");
-
+        .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "")
+        .def("add", addWorksheetToWorkbook, py::arg("name") = py::none(), py::arg("before") = py::none(), py::arg("after") = py::none());
+      
       py::class_<ExcelWindow>(mod, "ExcelWindow")
         .def_property_readonly("hwnd", wrapNoGil(&ExcelWindow::hwnd))
         .def_property_readonly("name", wrapNoGil(&ExcelWindow::name))
         .def_property_readonly("workbook", wrapNoGil(&ExcelWindow::workbook))
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
-      using PyWorkbooks  = Collection<Workbooks>;
-      using PyWindows    = Collection<Windows>;
-      using PyWorksheets = Collection<Worksheets>;
+      using PyWorkbooks  = BindCollection<Workbooks>;
+      using PyWindows    = BindCollection<Windows>;
+      using PyWorksheets = BindCollection<Worksheets>;
 
       py::class_<Application>(mod, "Application")
         .def(py::init(std::function(createExcelApp)),
@@ -344,14 +367,17 @@ namespace xloil
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
         .def("quit", wrapNoGil(&Application::Quit));
 
-
       PyWorkbooks::startBinding(mod, "Workbooks")
-        .def("add", [](PyWorkbooks& self) { self._collection.add(); });
+        .def("add", [](PyWorkbooks& self) { return self._collection.add(); });
 
       PyWindows::startBinding(mod, "ExcelWindows");
 
-      PyWorksheets::startBinding(mod, "Worksheets");
+      PyWorksheets::startBinding(mod, "Worksheets")
+        .def("add", addWorksheetToCollection, py::arg("name")=py::none(), py::arg("before")=py::none(), py::arg("after") = py::none());
 
+      // We can only define these objects when running embedded in existing Excel
+      // application. excelApp() will throw a ComConnectException if this is not
+      // the case
       try
       {
         // Use 'new' with this return value policy or we get a segfault later. 

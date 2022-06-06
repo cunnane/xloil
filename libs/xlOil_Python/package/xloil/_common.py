@@ -1,8 +1,28 @@
 import importlib.util
 import traceback
 
-XLOIL_HAS_CORE = importlib.util.find_spec("xloil_core") is not None
+# Tests if we have been loaded from the XLL plugin which will have
+# already injected the xloil_core module
+XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
 
+XLOIL_HAS_CORE = XLOIL_EMBEDDED
+
+if not XLOIL_HAS_CORE:
+    # We try to load xlOil_PythonXY.pyd where XY is the python version
+    # if we succeed, we fake an entry in sys.modules so that future 
+    # imports of 'xloil_core' will work as expected.
+    import importlib
+    import sys
+    ver = sys.version_info
+    dll_name = f"xlOil_Python{ver.major}{ver.minor}"
+    try:
+        sys.modules['xloil_core'] = importlib.import_module(dll_name)
+        XLOIL_HAS_CORE = True
+    except OSError:
+        pass
+
+# We can proceed without xloil_core: _core.py will set up placeholders
+# for all core functionality - useful for type checking and help generation
 
 if XLOIL_HAS_CORE:
     from xloil_core import (  # pylint: disable=import-error

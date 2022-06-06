@@ -21,9 +21,13 @@ if XLOIL_HAS_CORE:
         insert_cell_image,
         TaskPaneFrame as TaskPaneFrame,
         StatusBar,
-        workbooks, windows, ExcelWindow, Workbook, Worksheet, active_worksheet, active_workbook,
-        run, run_async, call, call_async)
-
+        Application, ExcelWindow, Workbook, Worksheet, 
+        run, run_async, call, call_async
+        )
+    if XLOIL_EMBEDDED:
+        from xloil_core import (
+            workbooks, windows, active_worksheet, active_workbook
+            )
 else:
     # TODO: how can we synchronise the help here with what you see when you actually import xloil_core
 

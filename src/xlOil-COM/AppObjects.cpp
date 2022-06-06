@@ -293,6 +293,9 @@ namespace xloil
   {
     try
     {
+      if (before.valid() && after.valid())
+        XLO_THROW("ExcelWorkbook::add: at most one of 'before' and 'after' should be specified");
+
       auto ws = ExcelWorksheet((Excel::_Worksheet*)(com().Worksheets->Add(
         before.valid() ? _variant_t(before.basePtr()) : vtMissing,
         after.valid() ? _variant_t(after.basePtr()) : vtMissing).Detach()), true);

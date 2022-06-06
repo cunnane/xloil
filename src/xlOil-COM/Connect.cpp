@@ -21,6 +21,7 @@ namespace xloil
 
     Excel::_Application* newApplicationObject()
     {
+      CoInitialize(NULL); // It's safe to call repeatedly
       Excel::_ApplicationPtr app;
       auto hr = app.CreateInstance(
         __uuidof(Excel::Application),
@@ -31,6 +32,7 @@ namespace xloil
 
     Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle)
     {
+      CoInitialize(NULL);
       // Based on discussion here:
       // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
       auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
@@ -52,7 +54,7 @@ namespace xloil
         {
           try
           {
-            CoInitialize(NULL); // It's safe to call again if we're retrying here
+
             auto windowHandle = callExcel(msxll::xlGetHwnd);
             // This conversion to 32-bit is OK even in x64 because the 
             // window handle is an index into an array, not a pointer. 
