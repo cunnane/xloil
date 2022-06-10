@@ -100,6 +100,8 @@ namespace xloil
 
     ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
+    ExcelWorkbook Open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
+
     void Quit();
     bool getVisible() const;
     void setVisible(bool x);
@@ -190,7 +192,7 @@ namespace xloil
     /// </summary>
     ExcelWorksheet parent() const;
 
-    Application& app() const;
+    Application app() const;
 
     /// <summary>
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref

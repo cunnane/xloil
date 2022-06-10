@@ -1,4 +1,5 @@
 #include <xloil/ExcelRange.h>
+#include <xloil/AppObjects.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelRef.h>
 #include <xlOil/AppObjects.h>
@@ -176,5 +177,9 @@ namespace xloil
       return ExcelWorksheet(com().Worksheet);
     }
     XLO_RETHROW_COM_ERROR;
+  }
+  Application ExcelRange::app() const
+  {
+      return parent().app();
   }
 }

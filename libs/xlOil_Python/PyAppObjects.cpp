@@ -305,7 +305,8 @@ namespace xloil
         .def_property_readonly("ncols", &Range::nCols)
         .def_property_readonly("shape", &Range::shape)
         .def_property("formula", range_GetFormula, range_SetFormula)
-        .def("to_com", toCom<Range>, py::arg("lib") = "");
+        .def("to_com", toCom<Range>, py::arg("lib") = "")
+        .def_property_readonly("parent", [](const Range& r) { return ExcelRange(r).parent(); });
 
       rangeType = (PyTypeObject*)rangeClass.ptr();
 
@@ -313,6 +314,7 @@ namespace xloil
       py::class_<ExcelWorksheet>(mod, "Worksheet")
         .def_property_readonly("name", wrapNoGil(&ExcelWorksheet::name))
         .def_property_readonly("parent", wrapNoGil(&ExcelWorksheet::parent))
+        .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("__getitem__", worksheet_GetItem)
         .def("range", worksheet_subRange,
           py::arg("from_row"),
@@ -324,18 +326,19 @@ namespace xloil
         .def("cell", wrapNoGil(&ExcelWorksheet::cell),
           py::arg("row"),
           py::arg("col"))
-        .def("at", 
-          wrapNoGil((ExcelRange(ExcelWorksheet::*)(const wstring_view&) const) &ExcelWorksheet::range),
+        .def("at",
+          wrapNoGil((ExcelRange(ExcelWorksheet::*)(const wstring_view&) const)& ExcelWorksheet::range),
           py::arg("address"))
         .def("calculate", wrapNoGil(&ExcelWorksheet::calculate))
         .def("activate", wrapNoGil(&ExcelWorksheet::activate))
-        .def("to_com", toCom<ExcelWorksheet>, py::arg("lib")="");
-
+        .def("to_com", toCom<ExcelWorksheet>, py::arg("lib") = "");
+        
       py::class_<ExcelWorkbook>(mod, "Workbook")
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path", wrapNoGil(&ExcelWorkbook::path))
         .def_property_readonly("worksheets", wrapNoGil(&ExcelWorkbook::worksheets))
         .def_property_readonly("windows", wrapNoGil(&ExcelWorkbook::windows))
+        .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("worksheet", wrapNoGil(&ExcelWorkbook::worksheet), py::arg("name"))
         .def("__getitem__", wrapNoGil(&ExcelWorkbook::worksheet))
         .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "")
@@ -345,6 +348,7 @@ namespace xloil
         .def_property_readonly("hwnd", wrapNoGil(&ExcelWindow::hwnd))
         .def_property_readonly("name", wrapNoGil(&ExcelWindow::name))
         .def_property_readonly("workbook", wrapNoGil(&ExcelWindow::workbook))
+        .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
       using PyWorkbooks  = BindCollection<Workbooks>;
@@ -365,6 +369,8 @@ namespace xloil
         .def_property("enable_events",
           [](Application& app) { py::gil_scoped_release noGil; return app.getEnableEvents(); },
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
+        .def("open", wrapNoGil(&Application::Open), 
+          py::arg("filepath"), py::arg("update_links")=true, py::arg("read_only")=false)
         .def("quit", wrapNoGil(&Application::Quit));
 
       PyWorkbooks::startBinding(mod, "Workbooks")

@@ -213,6 +213,16 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
+  ExcelWorkbook Application::Open(
+    const std::wstring& filepath, 
+    bool updateLinks, 
+    bool readOnly)
+  {
+    return ExcelWorkbook(com().Workbooks->Open(
+      _bstr_t(filepath.c_str()), _variant_t(updateLinks), _variant_t(readOnly)
+    ).Detach(), true);
+  }
+
   ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
   {
     try
@@ -390,6 +400,17 @@ namespace xloil
 
   namespace 
   {
+    template<class TRes, class TObj>
+    auto comGet(const TObj& obj, const std::wstring_view& what)
+    {
+      try
+      {
+        using Com_t = std::remove_reference_t<decltype(TRes(nullptr).com())>;
+        return TRes((Com_t*)obj->GetItem(stringToVariant(what)).Detach(), true);
+      }
+      XLO_RETHROW_COM_ERROR;
+    }
+
     template<class TObj, class TRes>
     bool comTryGet(const TObj& obj, const std::wstring_view& what, TRes& out)
     {
@@ -449,12 +470,7 @@ namespace xloil
 
   ExcelWorksheet Worksheets::get(const std::wstring_view& name) const
   {
-    try
-    {
-      return ExcelWorksheet((Excel::_Worksheet*)(
-        parent.com().Worksheets->GetItem(stringToVariant(name))).Detach(), true);
-    }
-    XLO_RETHROW_COM_ERROR;
+    return comGet<ExcelWorksheet>(parent.com().Worksheets, name);
   }
   
   bool Worksheets::tryGet(const std::wstring_view& name, ExcelWorksheet& out) const
