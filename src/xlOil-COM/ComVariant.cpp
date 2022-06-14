@@ -175,7 +175,7 @@ namespace xloil
       switch (variant.vt)
       {
       case VT_R8:   return ExcelObj(variant.dblVal);
-      case VT_BOOL: return ExcelObj(variant.boolVal);
+      case VT_BOOL: return ExcelObj(variant.boolVal == VARIANT_TRUE);
       case VT_BSTR: return ExcelObj((const wchar_t*)variant.bstrVal);
       case VT_CY:   return ExcelObj(variant.cyVal.int64); // currency
       case VT_DATE: return ExcelObj(variant.date);
