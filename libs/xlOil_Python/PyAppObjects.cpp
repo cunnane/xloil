@@ -54,11 +54,18 @@ namespace xloil
 
       auto range_GetValue(const Range& r)
       {
-        return convertExcelObj(r.value());
+        // TODO: converting Variant->ExcelObj->Python is not very efficient!
+        ExcelObj val;
+        {
+          py::gil_scoped_release noGil;
+          val = r.value();
+        }
+        return convertExcelObj(std::move(val));
       }
 
       void range_SetValue(Range& r, const py::object& pyval)
       {
+        // TODO: converting Python->ExcelObj->Variant is not very efficient!
         const auto val = FromPyObj()(pyval.ptr());
         // Release gil when setting values in as this may trigger calcs 
         // which call back into other python functions.
@@ -105,9 +112,56 @@ namespace xloil
         // Range class declared in pybind, we need to pass a ptr to py::cast
         // which python can own, so we need to copy it (but with an rval ref)
         if (PyUnicode_Check(loc.ptr()))
-          return py::cast((Range*)new ExcelRange(ws.range(pyToWStr(loc))));
+          return py::cast(wrapNoGil([&]() {
+            return (Range*)new ExcelRange(ws.range(pyToWStr(loc))); 
+          }));
         else
           return getItem(ws, loc);
+      }
+
+      py::object workbook_GetItem(const ExcelWorkbook& wb, py::object loc)
+      {
+        // Somewhat unfortunately, since ExcelRange is a virtual child of the 
+        // Range class declared in pybind, we need to pass a ptr to py::cast
+        // which python can own, so we need to copy it (but with an rval ref)
+        if (PyUnicode_Check(loc.ptr()))
+        {
+          auto address = pyToWStr(loc);
+          if (address.find(L'!') != wstring::npos)
+          {
+            return py::cast(wrapNoGil([&]() { return (Range*)new ExcelRange(wb.range(address)); }));
+          }
+          else
+          {
+            return py::cast(wrapNoGil([&]() { return wb.worksheet(address); }));
+          }
+        }
+        else if (PyLong_Check(loc.ptr()))
+        {
+          auto i = PyLong_AsLong(loc.ptr());
+          auto worksheets = wb.worksheets();
+          if (i < 0 || i >= worksheets.count())
+            throw py::index_error();
+
+          return py::cast(wb.worksheets().list()[i]);
+        }
+        else
+          throw py::value_error();
+      }
+
+      py::object workbook_Enter(const py::object& wb)
+      {
+        return wb;
+      }
+
+      void workbook_Exit(
+        ExcelWorkbook& wb, 
+        const py::object& exc_type, 
+        const py::object& exc_val, 
+        const py::object& exc_tb)
+      {
+        // Close *without* saving - saving must be done explicitly
+        wb.close(false); 
       }
 
       struct RangeIter
@@ -135,8 +189,8 @@ namespace xloil
     {
       T _collection;
 
-      BindCollection(Application app)
-        : _collection(app)
+      template<class V> BindCollection(const V& x)
+        : _collection(x)
       {}
 
       using value_t = decltype(_collection.active());
@@ -273,6 +327,10 @@ namespace xloil
 
     static int theBinder = addBinder([](pybind11::module& mod)
     {
+      using PyWorkbooks = BindCollection<Workbooks>;
+      using PyWindows = BindCollection<Windows>;
+      using PyWorksheets = BindCollection<Worksheets>;
+
       py::class_<RangeIter>(mod, "RangeIter")
         .def("__iter__", [](const py::object& self) { return self; })
         .def("__next__", &RangeIter::next);
@@ -336,24 +394,25 @@ namespace xloil
       py::class_<ExcelWorkbook>(mod, "Workbook")
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path", wrapNoGil(&ExcelWorkbook::path))
-        .def_property_readonly("worksheets", wrapNoGil(&ExcelWorkbook::worksheets))
+        .def_property_readonly("worksheets", [](ExcelWorkbook& wb) { py::gil_scoped_release noGil; return PyWorksheets(wb); })
         .def_property_readonly("windows", wrapNoGil(&ExcelWorkbook::windows))
         .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("worksheet", wrapNoGil(&ExcelWorkbook::worksheet), py::arg("name"))
-        .def("__getitem__", wrapNoGil(&ExcelWorkbook::worksheet))
+        .def("range", wrapNoGil(&ExcelWorkbook::range), py::arg("address"))
+        .def("__getitem__", workbook_GetItem)
         .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "")
-        .def("add", addWorksheetToWorkbook, py::arg("name") = py::none(), py::arg("before") = py::none(), py::arg("after") = py::none());
-      
+        .def("add", addWorksheetToWorkbook, py::arg("name") = py::none(), py::arg("before") = py::none(), py::arg("after") = py::none())
+        .def("save", wrapNoGil(&ExcelWorkbook::save), py::arg("filepath") = "")
+        .def("close", wrapNoGil(&ExcelWorkbook::close), py::arg("save")=true)
+        .def("__enter__", workbook_Enter)
+        .def("__exit__", workbook_Exit);
+
       py::class_<ExcelWindow>(mod, "ExcelWindow")
         .def_property_readonly("hwnd", wrapNoGil(&ExcelWindow::hwnd))
         .def_property_readonly("name", wrapNoGil(&ExcelWindow::name))
         .def_property_readonly("workbook", wrapNoGil(&ExcelWindow::workbook))
         .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
-
-      using PyWorkbooks  = BindCollection<Workbooks>;
-      using PyWindows    = BindCollection<Windows>;
-      using PyWorksheets = BindCollection<Worksheets>;
 
       py::class_<Application>(mod, "Application")
         .def(py::init(std::function(createExcelApp)),
@@ -371,7 +430,8 @@ namespace xloil
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
         .def("open", wrapNoGil(&Application::Open), 
           py::arg("filepath"), py::arg("update_links")=true, py::arg("read_only")=false)
-        .def("quit", wrapNoGil(&Application::Quit));
+        .def("calculate", wrapNoGil(&Application::calculate), py::arg("full")=false, py::arg("rebuild")=false)
+        .def("quit", wrapNoGil(&Application::quit), py::arg("silent")=true);
 
       PyWorkbooks::startBinding(mod, "Workbooks")
         .def("add", [](PyWorkbooks& self) { return self._collection.add(); });

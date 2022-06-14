@@ -62,6 +62,9 @@ namespace xloil
             _excelWindowHandle = (HWND)windowHandle.get<int>();
 
             _xlApp = applicationObjectFromWindow(_excelWindowHandle);
+            if (!_xlApp)
+              throw ComConnectException("Could not get COM object");
+
             _handler = COM::createEventSink(_xlApp);
             
             XLO_DEBUG(L"Made COM connection to Excel at '{}' with hwnd={}",
@@ -79,6 +82,7 @@ namespace xloil
         ~COMConnector()
         {
           _handler.reset();
+          _xlApp.Release();
           CoUninitialize();
         }
 

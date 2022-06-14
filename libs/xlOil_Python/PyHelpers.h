@@ -219,6 +219,13 @@ namespace xloil
       };
     }
 
+    template<class F>
+    constexpr auto wrapNoGil(F&& f)
+    {
+      py::gil_scoped_release release;
+      return f();
+    }
+
     /// <summary>
     /// Wraps a class member function to ensure it is executed on Excel's main
     /// thread (with no GIL) Used for pybind: e.g. mod.def("bar", MainThreadWrap(&Foo::bar))

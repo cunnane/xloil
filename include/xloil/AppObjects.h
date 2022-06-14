@@ -41,6 +41,21 @@ namespace xloil
   };
 
   /// <summary>
+  /// Thrown if an AppObject has a null underlying pointer.  Currently
+  /// only the Application object checks this
+  /// </summary>
+  class NullComObjectException : public std::exception
+  {
+  public:
+    NullComObjectException(const char* message)
+      : std::exception(message)
+    {}
+    NullComObjectException()
+      : std::exception()
+    {}
+  };
+
+  /// <summary>
   /// Base class for objects in the object model, not very usefuly directly.
   /// </summary>
   class XLOIL_EXPORT IAppObject
@@ -90,9 +105,18 @@ namespace xloil
     Application& operator=(const Application& that) noexcept { assign(that); return *this; }
     Application& operator=(Application&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
 
-    Excel::_Application& com() const { return *(Excel::_Application*)_ptr; }
+    Excel::_Application& com() const 
+    { 
+      if (!valid()) throw new NullComObjectException();
+      return *(Excel::_Application*)_ptr; 
+    }
 
     virtual std::wstring name() const;
+
+    /// <summary>
+    /// Calculates
+    /// </summary>
+    void calculate(const bool full=false, const bool rebuild=false);
 
     Workbooks Workbooks() const;
     Windows Windows() const;
@@ -102,7 +126,16 @@ namespace xloil
 
     ExcelWorkbook Open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
 
-    void Quit();
+    /// <summary>
+    /// Calls Application.Quit to close the Excel instance and frees the COM resources.
+    /// This invalidates the Application object: any further calls to methods other 
+    /// than quit() will raise an exception.
+    /// </summary>
+    /// <param name="silent">
+    ///   If true, supresses save file dialogs: unsaved changes to workbooks will be discarded.
+    /// </param>
+    void quit(bool silent=true);
+
     bool getVisible() const;
     void setVisible(bool x);
 
@@ -357,6 +390,14 @@ namespace xloil
     ExcelWorksheet worksheet(const std::wstring_view& name) const;
 
     /// <summary>
+    /// Returns a range in this workbook given an address
+    /// </summary>
+    ExcelRange range(const std::wstring_view& address) const
+    {
+      return ExcelRange(address, app());
+    }
+
+    /// <summary>
     /// Adds a new worksheet, naming it if a name is provided, otherwise it
     /// will have a default name provided by Excel, such as 'Sheet4'.
     /// </summary>
@@ -374,6 +415,10 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     void activate() const;
+
+    void save(const std::wstring_view& filepath = std::wstring_view());
+
+    void close(bool save=true);
 
     /// <summary>
     /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
@@ -475,7 +520,7 @@ namespace xloil
   public:
     Workbooks(Application app = excelApp());
     ExcelWorkbook active() const;
-    auto get(const std::wstring_view& name) const  { return ExcelWorkbook(name, app); }
+    auto get(const std::wstring_view& name) const { return ExcelWorkbook(name, app); }
     auto operator[](const std::wstring_view& name) const { return get(name); };
     bool tryGet(const std::wstring_view& name, ExcelWorkbook& wb) const;
     std::vector<ExcelWorkbook> list() const;

@@ -105,6 +105,7 @@ namespace xloil
       return nullptr;
     }
   }
+
   Application::Application(const wchar_t* workbook)
     : IAppObject(workbookFinder(workbook))
   {
@@ -114,7 +115,25 @@ namespace xloil
 
   std::wstring Application::name() const
   {
-    return com().Name.GetBSTR();
+    try
+    {
+      return com().Name.GetBSTR();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  void Application::calculate(const bool full, const bool rebuild)
+  {
+    try
+    {
+      if (rebuild)
+        com().CalculateFullRebuild();
+      else if (full)
+        com().CalculateFull();
+      else
+        com().Calculate();
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelWorksheet Application::ActiveWorksheet() const
@@ -128,19 +147,36 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  void Application::Quit()
+  void Application::quit(bool silent)
   {
-    com().Quit();
+    try
+    {
+      if (!valid())
+        return;
+
+      if (silent)
+        com().PutDisplayAlerts(0, VARIANT_FALSE);
+      com().Quit();
+
+      // Release the COM object so app really does quit
+      _ptr->Release();
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   bool Application::getVisible() const 
   {
-    return com().Visible;
+    try
+    {
+      return com().Visible;
+    }
+    XLO_RETHROW_COM_ERROR;
   }
+
   void Application::setVisible(bool x)
   {
     try
-    {
+    { 
       com().PutVisible(0, x ? VARIANT_TRUE : VARIANT_FALSE);
     }
     XLO_RETHROW_COM_ERROR;
@@ -218,9 +254,13 @@ namespace xloil
     bool updateLinks, 
     bool readOnly)
   {
-    return ExcelWorkbook(com().Workbooks->Open(
-      _bstr_t(filepath.c_str()), _variant_t(updateLinks), _variant_t(readOnly)
-    ).Detach(), true);
+    try
+    {
+      return ExcelWorkbook(com().Workbooks->Open(
+        _bstr_t(filepath.c_str()), updateLinks ? 3 : 0, _variant_t(readOnly)
+      ).Detach(), true);
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
@@ -312,6 +352,28 @@ namespace xloil
       if (!name.empty())
         ws.setName(name);
       return ws;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  void ExcelWorkbook::save(const std::wstring_view& filepath)
+  {
+    try
+    {
+      if (filepath.empty())
+        com().Save();
+      else
+        com().SaveAs(stringToVariant(filepath), 
+          vtMissing, vtMissing, vtMissing, vtMissing, vtMissing, Excel::XlSaveAsAccessMode::xlNoChange);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  void ExcelWorkbook::close(bool save)
+  {
+    try
+    {
+      com().Close(_variant_t(save));
     }
     XLO_RETHROW_COM_ERROR;
   }

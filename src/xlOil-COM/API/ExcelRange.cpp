@@ -120,7 +120,7 @@ namespace xloil
 
   ExcelObj ExcelRange::value() const
   {
-    return refFromComRange(com()).value();
+    return COM::variantToExcelObj(com().Value2);
   }
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const
