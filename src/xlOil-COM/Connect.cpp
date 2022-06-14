@@ -1,5 +1,6 @@
 #include "Connect.h"
 #include "ComEventSink.h"
+#include <xloil/AppObjects.h>
 #include <xloil/Events.h>
 #include <xloil/ExcelCall.h>
 #include <xlOil/ExcelTypeLib.h>
@@ -41,7 +42,11 @@ namespace xloil
       if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM,
         __uuidof(IDispatch),
         (void**)&pWindow) == S_OK)
-        return pWindow->Application.Detach();
+      {
+        auto result = pWindow->Application.Detach();
+        pWindow->Release();
+        return result;
+      }
       return nullptr;
     }
 
@@ -51,24 +56,15 @@ namespace xloil
       {
       public:
         COMConnector()
+          : _excelWindowHandle((HWND)App::internals().hWnd)
+          , _xlApp((size_t)_excelWindowHandle)
         {
           try
           {
-
-            auto windowHandle = callExcel(msxll::xlGetHwnd);
-            // This conversion to 32-bit is OK even in x64 because the 
-            // window handle is an index into an array, not a pointer. 
-#pragma warning(disable: 4312)
-            _excelWindowHandle = (HWND)windowHandle.get<int>();
-
-            _xlApp = applicationObjectFromWindow(_excelWindowHandle);
-            if (!_xlApp)
-              throw ComConnectException("Could not get COM object");
-
-            _handler = COM::createEventSink(_xlApp);
+            _handler = COM::createEventSink(&_xlApp.com());
             
             XLO_DEBUG(L"Made COM connection to Excel at '{}' with hwnd={}",
-              (const wchar_t*)_xlApp->Path, (size_t)_excelWindowHandle);
+              (const wchar_t*)_xlApp.com().Path, (size_t)_excelWindowHandle);
           }
           catch (_com_error& error)
           {
@@ -82,16 +78,16 @@ namespace xloil
         ~COMConnector()
         {
           _handler.reset();
-          _xlApp.Release();
+          _xlApp.detach()->Release();
           CoUninitialize();
         }
 
-        const Excel::_ApplicationPtr& excelApp() const { return _xlApp; }
+        Application& excelApp() { return _xlApp; }
        
       private:
-        Excel::_ApplicationPtr _xlApp;
-        std::shared_ptr<Excel::AppEvents> _handler;
         HWND _excelWindowHandle;
+        Application _xlApp;
+        std::shared_ptr<Excel::AppEvents> _handler;
       };
 
       std::unique_ptr<COMConnector> theComConnector;
@@ -114,11 +110,11 @@ namespace xloil
       
       // Do some random COM thing - is this the fastest thing?
       VARIANT_BOOL temp;
-      auto result = theComConnector->excelApp()->get_EnableEvents(&temp);
+      auto result = theComConnector->excelApp().com().get_EnableEvents(&temp);
       return (SUCCEEDED(result));
     }
 
-    Excel::_Application& attachedApplication()
+    Application& attachedApplication()
     {
       if (!theComConnector)
         throw ComConnectException("COM Connection not ready");

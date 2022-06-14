@@ -51,13 +51,10 @@ namespace xloil
   {
     XLOIL_EXPORT void initAppContext()
     {
-      ourExcelState = App::ExcelInternals
-      {
-        getExcelVersion(),
-        getExcelHInstance(),
-        (long long)getExcelHWnd(),
-        GetCurrentThreadId()
-      };
+      ourExcelState.version = getExcelVersion();
+      ourExcelState.hInstance = getExcelHInstance();
+      ourExcelState.hWnd = (long long)getExcelHWnd();
+      ourExcelState.mainThreadId = GetCurrentThreadId();
     }
     void initCoreContext(void* coreHInstance)
     {
@@ -84,6 +81,13 @@ namespace xloil
 
   namespace App
   {
+    ExcelInternals::ExcelInternals()
+      : version(0)
+      , hInstance(nullptr)
+      , hWnd(0)
+      , mainThreadId(0)
+    {}
+
     XLOIL_EXPORT const ExcelInternals& internals() noexcept
     {
       return ourExcelState;

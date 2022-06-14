@@ -2,7 +2,12 @@
 #include <xloil/Throw.h>
 #include <xloil/WindowsSlim.h>
 
-namespace Excel {
+namespace xloil
+{
+  class Application;
+}
+namespace Excel 
+{
   struct _Application;
 }
 
@@ -27,6 +32,6 @@ namespace xloil
 
     bool isComApiAvailable() noexcept;
 
-    Excel::_Application& attachedApplication();
+    Application& attachedApplication();
   }
 }

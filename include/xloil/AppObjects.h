@@ -71,6 +71,8 @@ namespace xloil
     IDispatch* basePtr() const { return _ptr; }
     bool valid() const { return _ptr; }
 
+    IDispatch* detach() { IDispatch* p = nullptr; std::swap(p, _ptr); return p; }
+
   protected:
     IDispatch* _ptr;
     IAppObject(IDispatch* ptr = nullptr, bool steal = false) { init(ptr, steal); }
@@ -571,6 +573,8 @@ namespace xloil
   {
     struct ExcelInternals
     {
+      ExcelInternals();
+
       /// <summary>
       /// The Excel major version number
       /// </summary>

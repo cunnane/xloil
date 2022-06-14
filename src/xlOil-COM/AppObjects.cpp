@@ -49,8 +49,7 @@ namespace xloil
 
   Application& excelApp()
   {
-    static Application theApp(&COM::attachedApplication());
-    return theApp;
+    return COM::attachedApplication();
   }
 
   IAppObject::~IAppObject()
@@ -84,7 +83,7 @@ namespace xloil
     : IAppObject([hWnd]() {
         auto p = COM::applicationObjectFromWindow((HWND)hWnd);
         if (!p)
-          throw ComConnectException("Window not found");
+          throw ComConnectException("Failed to create Application object from window handle");
         return p;
       }(), true)
   {
@@ -110,7 +109,7 @@ namespace xloil
     : IAppObject(workbookFinder(workbook))
   {
     if (!valid())
-      throw ComConnectException("Failed to create Application object");
+      throw ComConnectException("Failed to create Application object from workbook");
   }
 
   std::wstring Application::name() const
@@ -160,6 +159,7 @@ namespace xloil
 
       // Release the COM object so app really does quit
       _ptr->Release();
+      _ptr = nullptr;
     }
     XLO_RETHROW_COM_ERROR;
   }
