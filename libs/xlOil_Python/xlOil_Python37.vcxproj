@@ -37,9 +37,9 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
- <PropertyGroup>
+  <PropertyGroup>
     <TargetExt>.pyd</TargetExt>
-  </PropertyGroup>   
+  </PropertyGroup>
   <PropertyGroup>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -69,6 +69,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
