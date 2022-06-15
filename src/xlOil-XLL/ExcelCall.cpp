@@ -54,7 +54,7 @@ namespace xloil
   }
 
   XLOIL_EXPORT int callExcelRaw(
-    int func, ExcelObj* result, size_t nArgs, const ExcelObj** args)
+    int func, ExcelObj* result, size_t nArgs, const ExcelObj** args) noexcept
   {
     auto ret = Excel12v(func, result, (int)nArgs, (XLOIL_XLOPER**)args);
     if (result)

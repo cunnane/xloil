@@ -667,13 +667,13 @@ namespace xloil
     /// directly (which ideally you wouldn't!)
     /// </summary>
     /// <returns></returns>
-    ExcelObj& resultFromExcel()
+    ExcelObj& resultFromExcel() noexcept
     {
       xltype |= msxll::xlbitXLFree;
       return *this;
     }
 
-    ExcelObj* setDllFreeFlag()
+    ExcelObj* setDllFreeFlag() noexcept
     {
       xltype |= msxll::xlbitDLLFree;
       return this;

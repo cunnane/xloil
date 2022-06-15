@@ -47,8 +47,7 @@ namespace xloil
     /// interpreted as per the return from xlfCaller. In particular, a string
     /// address will be returned by <see cref="writeAddress"/> unmodified. The 
     /// <paramref name="fullSheetName"/> is used when the address is a ref or
-    /// sref. If it corresponds to a valid Excel sheet, the sheetId is looked
-    /// up and can be used in an Internal-style reference.
+    /// sref.
     /// </summary>
     /// <param name="address"></param>
     /// <param name="fullSheetName">If provided, should be of the form [Book]Sheet</param>
@@ -64,9 +63,7 @@ namespace xloil
     /// Writes the caller address to the provided buffer, returning the number
     /// of characters written on success or a negative number or on failure. 
     /// </summary>
-    /// <param name="buf"></param>
-    /// <param name="bufLen"></param>
-    /// <param name="style">Selects A1-type, RC-type or internal address</param>
+    /// <param name="style">Selects A1-type or RC-type</param>
     /// <returns></returns>
     int writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style = RC) const;
 
@@ -99,6 +96,7 @@ namespace xloil
       auto begin = sName.begin() + sName.find(L']') + 1;
       return std::wstring_view(begin, sName.end() - begin);
     }
+
     /// <summary>
     /// Returns a view containing only the workbook name. If the workbook has
     /// been saved, this includes a file extension.
@@ -135,7 +133,7 @@ namespace xloil
 
   /// <summary>
   /// Writes a simple Excel ref including sheet name in either A1 or RxCy 
-  /// to the provided string buffer. That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
+  /// to the provided string buffer. That is, gives '[Book]Sheet!A1' or '[Book]Sheet!R1C1'.
   /// <returns>The number of characters written</returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(

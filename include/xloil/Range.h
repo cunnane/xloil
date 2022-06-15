@@ -84,9 +84,10 @@ namespace xloil
     }
 
     /// <summary>
-    /// Returns the address of the range in the form *SheetNm!A1:Z5*. The sheet
-    /// name may be surrounded by single quote characters if it contains a space.
-    /// If *local* is set to true, the sheet name is omitted.
+    /// Returns the address of the range in the form *[Book]SheetNm!A1:Z5*. The sheet
+    /// name may be surrounded by single quote characters if it contains or space or
+    /// satifies various other conditions.
+    /// If *local* is set to true, the workbook and sheet name are omitted.
     /// </summary>
     virtual std::wstring address(bool local = false) const = 0;
 

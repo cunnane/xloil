@@ -97,7 +97,7 @@ namespace xloil
   XLOIL_EXPORT int callExcelRaw(
     int func, ExcelObj* result,
     size_t nArgs = 0,
-    const ExcelObj** args = nullptr);
+    const ExcelObj** args = nullptr) noexcept;
 
   /// <summary>
   /// 
@@ -112,7 +112,7 @@ namespace xloil
   inline int callExcelRaw(
     int func, ExcelObj* result,
     size_t nArgs,
-    T firstArg)
+    T firstArg) noexcept
   {
     const ExcelObj* pArgs[XL_MAX_UDF_ARGS];
     for (size_t i = 0; i < nArgs; ++i, ++firstArg)
@@ -125,7 +125,7 @@ namespace xloil
   /// a single argument
   /// </summary>
   inline int
-    callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg)
+    callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg) noexcept
   {
     auto p = arg;
     return callExcelRaw(func, result, 1, &p);
