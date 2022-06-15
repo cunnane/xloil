@@ -124,19 +124,7 @@ namespace xloil
         // Somewhat unfortunately, since ExcelRange is a virtual child of the 
         // Range class declared in pybind, we need to pass a ptr to py::cast
         // which python can own, so we need to copy it (but with an rval ref)
-        if (PyUnicode_Check(loc.ptr()))
-        {
-          auto address = pyToWStr(loc);
-          if (address.find(L'!') != wstring::npos)
-          {
-            return py::cast(wrapNoGil([&]() { return (Range*)new ExcelRange(wb.range(address)); }));
-          }
-          else
-          {
-            return py::cast(wrapNoGil([&]() { return wb.worksheet(address); }));
-          }
-        }
-        else if (PyLong_Check(loc.ptr()))
+        if (PyLong_Check(loc.ptr()))
         {
           auto i = PyLong_AsLong(loc.ptr());
           auto worksheets = wb.worksheets();
@@ -146,7 +134,24 @@ namespace xloil
           return py::cast(wb.worksheets().list()[i]);
         }
         else
-          throw py::value_error();
+        {
+          auto address = pyToWStr(loc);
+          if (address.empty())
+            throw py::value_error();
+          else if (address.find(L'!') != wstring::npos)
+          {
+            return py::cast(wrapNoGil([&]() { return (Range*)new ExcelRange(wb.range(address)); }));
+          }
+          else 
+          {
+            // Remove quotes around worksheet name - these appear in
+            // addresses if the sheet name contains spaces
+            if (address[0] == L'\'' && address.length() > 2)
+              address = address.substr(1, address.length() - 2);
+            return py::cast(wrapNoGil([&]() { return wb.worksheet(address); }));
+          }
+            
+        }
       }
 
       py::object workbook_Enter(const py::object& wb)
@@ -156,9 +161,9 @@ namespace xloil
 
       void workbook_Exit(
         ExcelWorkbook& wb, 
-        const py::object& exc_type, 
-        const py::object& exc_val, 
-        const py::object& exc_tb)
+        const py::object& /*exc_type*/, 
+        const py::object& /*exc_val*/, 
+        const py::object& /*exc_tb*/)
       {
         // Close *without* saving - saving must be done explicitly
         wb.close(false); 
