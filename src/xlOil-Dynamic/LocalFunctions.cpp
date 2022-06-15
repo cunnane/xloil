@@ -1,7 +1,7 @@
 #include "LocalFunctions.h"
 #include <xlOil/StaticRegister.h>
 #include <xlOil/DynamicRegister.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Log.h>

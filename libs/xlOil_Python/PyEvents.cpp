@@ -1,7 +1,7 @@
 #include "PyEvents.h"
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xlOil/AppObjects.h>
 #include "PyHelpers.h"
 #include "PyCore.h"

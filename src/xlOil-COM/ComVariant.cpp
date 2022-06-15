@@ -1,7 +1,7 @@
 #include "ComVariant.h"
 #include <xlOil/TypeConverters.h>
 #include <xlOil/ExcelArray.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xloil/ExcelRef.h>
 #include <xloil/ArrayBuilder.h>
 #include <xlOil/ExcelTypeLib.h>

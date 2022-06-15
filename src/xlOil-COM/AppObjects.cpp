@@ -2,7 +2,7 @@
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xlOil/ExcelTypeLib.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>

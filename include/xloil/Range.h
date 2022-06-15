@@ -24,7 +24,7 @@ namespace xloil
     /// <summary>
     /// Gives a subrange relative to the current range.  Similar to Excel's function, 
     /// we do not insist the sub-range is a subset, so fromRow can be negative or toRow 
-    /// can be past the end of the referenced range. Unlike Excel, the indices are zero-based
+    /// can be past the end of the referenced range. Unlike VBA / COM, the indices are zero-based
     /// Omitting toRow or fromRow or passing the special value TO_END goes to the end of the 
     /// parent range.
     /// </summary>
@@ -46,8 +46,15 @@ namespace xloil
       return range(i, j, i, j);
     }
 
+    /// <summary>
+    /// Returns a tuple (num columns, num rows)
+    /// </summary>
     virtual std::tuple<row_t, col_t> shape() const = 0;
     
+    /// <summary>
+    /// Returns a zero-based tuple (top-left-row, top-left-col, bottom-right-row, bottom-right-col)
+    /// which defines the Range area (currently only rectangular ranges are supported).
+    /// </summary>
     virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const = 0;
 
     /// <summary>
@@ -66,23 +73,27 @@ namespace xloil
       return std::get<1>(shape());
     }
 
+    /// <summary>
+    /// Returns the number of cells in the range (i.e width x height)
+    /// </summary>
     size_t size() const
     {
-      row_t nRows; col_t nCols;
+      size_t nRows; size_t nCols;
       std::tie(nRows, nCols) = shape();
       return nRows * nCols;
     }
 
     /// <summary>
-    /// Returns the address of the range in the form
-    /// 'SheetNm!A1:Z5'
+    /// Returns the address of the range in the form *SheetNm!A1:Z5*. The sheet
+    /// name may be surrounded by single quote characters if it contains a space.
+    /// If *local* is set to true, the sheet name is omitted.
     /// </summary>
     virtual std::wstring address(bool local = false) const = 0;
 
     /// <summary>
-    /// Converts the referenced range to an ExcelObj. References
-    /// to single cells return an ExcelObj of the appropriate type.
-    /// Multicell references return an array.
+    /// Converts the referenced range to an ExcelObj. References to single
+    /// cells return an ExcelObj of the appropriate type. Multicell references
+    /// return an array.
     /// </summary>
     virtual ExcelObj value() const = 0;
     
@@ -101,9 +112,8 @@ namespace xloil
     }
 
     /// <summary>
-    /// Sets the cell values in the range to the provided value. 
-    /// If `value` is a single value, every cell will be set to 
-    /// that value.
+    /// Sets the cell values in the range to the provided value.  If `value` is 
+    /// a single value, every cell will be set to that value.
     /// </summary>
     virtual void set(const ExcelObj& value) = 0;
 

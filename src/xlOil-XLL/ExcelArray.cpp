@@ -1,6 +1,6 @@
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelObj.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xloil/ArrayBuilder.h>
 
 namespace xloil

@@ -14,7 +14,7 @@
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
 #include <xloil/StringUtils.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <string>
 
 using namespace std::literals::string_literals;

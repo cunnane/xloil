@@ -2,7 +2,6 @@
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyCOM.h"
-#include <xlOil/ExcelRange.h>
 #include <xlOil/AppObjects.h>
 
 using std::shared_ptr;
@@ -37,14 +36,6 @@ namespace xloil
         const auto toRow = !toR.is_none() ? toR.cast<int>() : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
         const auto toCol = !toC.is_none() ? toC.cast<int>() : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
         return r.range(fromR, fromC, toRow, toCol);
-      }
-
-      inline Range* worksheet_subRange(const ExcelWorksheet& ws,
-        int fromR, int fromC,
-        const py::object& toR, const py::object& toC,
-        const py::object& nRows, const py::object& nCols)
-      {
-        return new ExcelRange(range_subRange<ExcelWorksheet>(ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
       inline auto convertExcelObj(ExcelObj&& val)
@@ -104,6 +95,14 @@ namespace xloil
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
           : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
+      }
+
+      inline Range* worksheet_subRange(const ExcelWorksheet& ws,
+        int fromR, int fromC,
+        const py::object& toR, const py::object& toC,
+        const py::object& nRows, const py::object& nCols)
+      {
+        return new ExcelRange(range_subRange<ExcelWorksheet>(ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
       py::object worksheet_GetItem(const ExcelWorksheet& ws, py::object loc)
@@ -303,7 +302,7 @@ namespace xloil
       return comToPy(ExcelRange(range).com(), binder);
     }
 
-    Application createExcelApp(
+    Application application_Construct(
       const py::object& com,
       const py::object& hwnd,
       const py::object& wbName)
@@ -363,11 +362,21 @@ namespace xloil
           py::return_value_policy::automatic)
         .def("set", range_SetValue)
         .def("clear", range_Clear)
-        .def("address", wrapNoGil(&Range::address), py::arg("local") = false)
+        .def("address", wrapNoGil(&Range::address), 
+          "Returns the address of the range in the form *SheetNm!A1:Z5*. The sheet "
+          "name may be surrounded by single quote characters if it contains a space. "
+          "If *local* is set to true, the sheet name is omitted.",
+          py::arg("local") = false)
         .def_property_readonly("nrows", &Range::nRows)
         .def_property_readonly("ncols", &Range::nCols)
-        .def_property_readonly("shape", &Range::shape)
-        .def_property("formula", range_GetFormula, range_SetFormula)
+        .def_property_readonly("shape", &Range::shape,
+          "Returns a tuple (num columns, num rows)")
+        .def_property_readonly("bounds", &Range::bounds, 
+          "Returns a zero-based tuple (top-left-row, top-left-col, bottom-right-row, bottom-right-col) "
+          "which defines the Range area (currently only rectangular ranges are supported).")
+        .def_property("formula", range_GetFormula, range_SetFormula,
+          "Get / sets the forumula for the range as a string string. If the "
+          "range is larger than one cell, the formula is applied as an ArrayFormula")
         .def("to_com", toCom<Range>, py::arg("lib") = "")
         .def_property_readonly("parent", [](const Range& r) { return ExcelRange(r).parent(); });
 
@@ -420,7 +429,7 @@ namespace xloil
         .def("to_com", toCom<ExcelWindow>, py::arg("lib") = "");
 
       py::class_<Application>(mod, "Application")
-        .def(py::init(std::function(createExcelApp)),
+        .def(py::init(std::function(application_Construct)),
           py::arg("com") = py::none(),
           py::arg("hwnd") = py::none(),
           py::arg("workbook") = py::none())

@@ -1,6 +1,6 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Caller.h>
 

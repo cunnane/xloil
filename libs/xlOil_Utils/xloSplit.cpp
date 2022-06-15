@@ -1,7 +1,7 @@
 #include <xloil/ExcelObj.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil/Preprocessor.h>
 #include <xloil/ExcelObjCache.h>

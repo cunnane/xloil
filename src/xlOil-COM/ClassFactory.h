@@ -2,6 +2,7 @@
 #include <Objbase.h>
 #include <atlcomcli.h>
 #include <xloil/Throw.h>
+#include <xloil/Log.h>
 #include <xlOilHelpers/Environment.h>
 #include <string>
 #include <list>
@@ -364,7 +365,8 @@ namespace xloil
 
       virtual ~ComEventHandler() noexcept
       {
-        // We do not disconnect as should never enter the dtor while connected
+        if (_pIConnectionPoint)
+          XLO_ERROR("ComEventHandler destroyed before being disconnected");
       }
 
       bool connect(IUnknown* source) noexcept
@@ -391,9 +393,8 @@ namespace xloil
         if (_pIConnectionPoint)
         {
           _pIConnectionPoint->Unadvise(_dwEventCookie);
-          _dwEventCookie = 0;
           _pIConnectionPoint->Release();
-          _pIConnectionPoint = NULL;
+          _pIConnectionPoint = nullptr;
         }
       }
 

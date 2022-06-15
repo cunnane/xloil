@@ -2,7 +2,7 @@
 #include "Connect.h"
 #include "ComVariant.h"
 #include <xlOil-Dynamic/LocalFunctions.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xlOil/Register.h>
 #include <xlOilHelpers/Environment.h>
 #include <xloil/FuncSpec.h>

@@ -1,4 +1,4 @@
-#include <xloil/ExcelRange.h>
+#include <xloil/Range.h>
 #include <xloil/AppObjects.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelRef.h>
@@ -93,17 +93,22 @@ namespace xloil
 
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
   {
-    return { com().Rows->GetCount(), com().Columns->GetCount() };
+    try
+    {
+      return { com().Rows->GetCount(), com().Columns->GetCount() };
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::tuple<Range::row_t, Range::col_t, Range::row_t, Range::col_t> ExcelRange::bounds() const
   {
-    return {
-      com().Row,
-      com().Column,
-      com().Row + com().Rows->GetCount() - 1,
-      com().Column + com().Columns->GetCount() - 1
-    };
+    try
+    {
+      const auto row = com().Row - 1;
+      const auto col = com().Column - 1;
+      return { row, col, row + com().Rows->GetCount(), col + com().Columns->GetCount() };
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelRange::address(bool local) const
@@ -162,7 +167,11 @@ namespace xloil
 
   void ExcelRange::clear()
   {
-    com().Clear();
+    try
+    {
+      com().Clear();
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelRange::name() const
@@ -180,6 +189,6 @@ namespace xloil
   }
   Application ExcelRange::app() const
   {
-      return parent().app();
+    return parent().app();
   }
 }

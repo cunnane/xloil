@@ -1,7 +1,7 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
-#include <xloil/ExcelRange.h>
+#include <xloil/Range.h>
 #include <xloil/ExcelRef.h>
 #include <string>
 #include <memory>
@@ -160,6 +160,7 @@ namespace xloil
     explicit ExcelRange(
       const std::wstring_view& address,
       Application app = excelApp());
+
     ExcelRange(const Range& range);
     ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
@@ -174,47 +175,32 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
-    /// <summary>
-    /// Returns a tuple (width, height)
-    /// </summary>
     std::tuple<row_t, col_t> shape() const final override;
 
-    /// <summary>
-    /// Returns the tuple (top row, top column, bottom row, bottom column)  
-    /// which describes the extent of the range, which is assumed rectangular.
-    /// </summary>
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
 
-    /// <summary>
-    /// Returns the address of the range in the form
-    /// 'SheetNm!A1:Z5'
-    /// </summary>
     std::wstring address(bool local = false) const final override;
 
-    /// <summary>
-    /// Converts the referenced range to an ExcelObj. 
-    /// References to single cells return an ExcelObj of the
-    /// appropriate type. Multicell refernces return an array.
-    /// </summary>
     ExcelObj value() const final override;
 
-    /// <summary>
-    /// Gets the value at (i, j) as an ExcelObj (zero-based)
-    /// </summary>
     ExcelObj value(row_t i, col_t j) const final override;
 
-    /// <summary>
-    /// Sets all cells in the range to the specified value
-    /// </summary>
     void set(const ExcelObj& value) final override;
 
+    /// <summary>
+    /// Sets the forumula for the range to the specified string. If the 
+    /// range is larger than one cell, the formula is applied as an 
+    /// ArrayFormula.
+    /// </summary>
+    /// <param name="formula"></param>
     void setFormula(const std::wstring_view& formula);
 
+    /// <summary>
+    /// Gets the formula assoicated with this range (or cell)
+    /// </summary>
+    /// <returns></returns>
     std::wstring formula() final override;
 
-    /// <summary>
-    /// Clears / empties all cells referred to by this ExcelRange.
-    /// </summary>
     void clear() final override;
 
     /// <summary>
@@ -227,6 +213,9 @@ namespace xloil
     /// </summary>
     ExcelWorksheet parent() const;
 
+    /// <summary>
+    /// Returns the Application object which owns this Range
+    /// </summary>
     Application app() const;
 
     /// <summary>

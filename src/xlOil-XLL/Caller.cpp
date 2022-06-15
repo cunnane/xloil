@@ -248,6 +248,7 @@ namespace xloil
       uint16_t nWritten = 0;
       const auto wsName = sheetName.pstr();
       const uint16_t wsLength = sheetName.length();
+      // TODO: what about quote chars around the sheet name?
       if (wsLength > 0)
       {
         if (bufLen <= wsLength + 1u)
