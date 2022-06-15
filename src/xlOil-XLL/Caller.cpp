@@ -242,30 +242,46 @@ namespace xloil
       wchar_t* buf,
       size_t bufLen,
       const msxll::XLREF12& sheetRef,
-      const PStringRef& sheetName,
+      const PStringRef& fullSheetName,
       const bool A1Style)
     {
       uint16_t nWritten = 0;
-      const auto wsName = sheetName.pstr();
-      const uint16_t wsLength = sheetName.length();
+      const auto sheetNamePStr = fullSheetName.pstr();
+      const uint16_t sheetNameLength = fullSheetName.length();
+
       // There are some complicated but unwritten rules on when Excel quotes
       // the sheet name in an address.  See https://stackoverflow.com/questions/41677779/
       // We avoid the complexity of checking this and simply quote everything
       constexpr bool quoteSheetName = true;
-
-      if (wsLength > 0)
+      
+      if (sheetNameLength > 0)
       {
-        const auto sheetNameLength = wsLength + (quoteSheetName ? 2 : 0);
-        if (bufLen <= sheetNameLength + 1)
-          return 0;
-        if (quoteSheetName) *(buf++) = L'\'';
-        wmemcpy(buf, wsName, wsLength);
-        buf += wsLength;
-        if (quoteSheetName) *(buf++) = L'\'';
-        // Separator character
-        *(buf++) = L'!';
+        const auto bookNameEnd = fullSheetName.find(L']');
 
-        nWritten += wsLength + 1u;
+        if (quoteSheetName && bookNameEnd != PString::npos)
+        {
+          if (bufLen <= sheetNameLength + 1u + 2)
+            return 0;
+          auto sheetName = fullSheetName.view(bookNameEnd + 1);
+          wmemcpy(buf, sheetNamePStr, bookNameEnd + 1u);
+          buf += bookNameEnd + 1u;
+          *(buf++) = L'\'';
+          wmemcpy(buf, sheetName.data(), sheetName.size());
+          buf += sheetName.size();
+          *(buf++) = L'\'';
+
+          nWritten += 2;
+        }
+        else
+        {
+          if (bufLen <= sheetNameLength + 1u)
+            return 0;
+          wmemcpy(buf, sheetNamePStr, sheetNameLength);
+          buf += sheetNameLength;
+        }
+
+        *(buf++) = L'!'; // Separator character
+        nWritten += sheetNameLength + 1u;
         bufLen -= nWritten;
       }
 
