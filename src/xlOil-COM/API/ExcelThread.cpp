@@ -32,7 +32,7 @@ namespace xloil
       WNDCLASS wc;
       memset(&wc, 0, sizeof(WNDCLASS));
       wc.lpfnWndProc   = WindowProc;
-      wc.hInstance     = (HINSTANCE)App::internals().hInstance;
+      wc.hInstance     = (HINSTANCE)Environment::excelProcess().hInstance;
       wc.lpszClassName = L"xlOilHidden";
       if (RegisterClass(&wc) == 0)
         XLO_ERROR(L"Failed to register window class: {0}", writeWindowsError());
@@ -250,7 +250,7 @@ namespace xloil
 
   bool isMainThread()
   {
-    return App::internals().mainThreadId == GetCurrentThreadId();
+    return Environment::excelProcess().mainThreadId == GetCurrentThreadId();
   }
 
   void runExcelThreadImpl(

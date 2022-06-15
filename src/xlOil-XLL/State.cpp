@@ -13,7 +13,7 @@ namespace xloil
 
     static std::wstring ourDllName;
     static std::wstring ourDllPath;
-    static App::ExcelInternals ourExcelState;
+    static Environment::ExcelProcessInfo ourExcelState;
 
     // TODO: make this startup stuff noexcept?
     void setDllPath(HMODULE handle)
@@ -47,7 +47,7 @@ namespace xloil
     }
   }
 
-  namespace State
+  namespace Environment
   {
     XLOIL_EXPORT void initAppContext()
     {
@@ -77,18 +77,15 @@ namespace xloil
     {
       return ourDllName.c_str();
     }
-  }
 
-  namespace App
-  {
-    ExcelInternals::ExcelInternals()
+    ExcelProcessInfo::ExcelProcessInfo()
       : version(0)
       , hInstance(nullptr)
       , hWnd(0)
       , mainThreadId(0)
     {}
 
-    XLOIL_EXPORT const ExcelInternals& internals() noexcept
+    XLOIL_EXPORT const ExcelProcessInfo& excelProcess() noexcept
     {
       return ourExcelState;
     }

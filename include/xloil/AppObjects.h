@@ -568,33 +568,4 @@ namespace xloil
   {
     return worksheets().get(name);
   }
-
-  namespace App
-  {
-    struct ExcelInternals
-    {
-      ExcelInternals();
-
-      /// <summary>
-      /// The Excel major version number
-      /// </summary>
-      int version;
-      /// <summary>
-      /// The Windows API process instance handle, castable to HINSTANCE
-      /// </summary>
-      void* hInstance;
-      /// <summary>
-      /// The Windows API handle for the top level Excel window 
-      /// castable to type HWND
-      /// </summary>
-      long long hWnd;
-      size_t mainThreadId;
-    };
-
-    /// <summary>
-    /// Returns Excel application state information such as the version number,
-    /// HINSTANCE, window handle and thread ID.
-    /// </summary>
-    XLOIL_EXPORT const ExcelInternals& internals() noexcept;
-  }
 }

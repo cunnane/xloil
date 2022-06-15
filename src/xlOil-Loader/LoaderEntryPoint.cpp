@@ -158,7 +158,7 @@ struct xlOilAddin
 
       SetDllDirectory(NULL);
 
-      State::initAppContext();
+      Environment::initAppContext();
 
       detail::RegisterAddinBase<xlOilAddin>::theAddin.reset(new xlOilAddin());
 

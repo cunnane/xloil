@@ -72,7 +72,7 @@ namespace xloil
 
   void createCoreContext() 
   {
-    ourCoreContext = &createAddinContext(State::coreDllPath());
+    ourCoreContext = &createAddinContext(Environment::coreDllPath());
 
     const auto& coreAddinSettings = (*ourCoreContext->settings())["Addin"];
 
@@ -81,7 +81,7 @@ namespace xloil
       spdlog::level::from_str(
         Settings::logPopupLevel(coreAddinSettings).c_str()));
 
-    auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
+    auto staticSource = make_shared<StaticFunctionSource>(Environment::coreDllName());
     ourCoreContext->addSource(staticSource);
   }
 

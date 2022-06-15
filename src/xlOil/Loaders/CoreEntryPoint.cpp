@@ -1,16 +1,16 @@
+#include <xlOilHelpers/Settings.h>
+#include <xlOil/Loaders/CoreEntryPoint.h>
+#include <xlOil/Loaders/PluginLoader.h>
+#include <xlOil/Loaders/AddinLoader.h>
+#include <xlOil/State.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil/Events.h>
 #include <xlOil/ExcelObj.h>
 #include <xlOil/Interface.h>
 #include <xlOil/ExcelCall.h>
-#include <xlOil/Loaders/CoreEntryPoint.h>
 #include <xlOil/ExportMacro.h>
 #include <xlOil/Log.h>
-#include <xlOil/Loaders/PluginLoader.h>
 #include <xlOil/WindowsSlim.h>
-#include <xlOilHelpers/Settings.h>
-#include <xlOil/Loaders/AddinLoader.h>
-#include <xlOil/State.h>
-#include <xlOil/ExcelThread.h>
 #include <xlOil-XLL/Intellisense.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/XllContextInvoke.h>
@@ -47,9 +47,9 @@ namespace xloil
         // settings, so any logging goes to the debug output.
         detail::loggerInitialise(spdlog::level::debug);
 
-        State::initCoreContext(theCoreModuleHandle);
+        Environment::initCoreContext(theCoreModuleHandle);
 
-        XLO_DEBUG(L"Loaded xlOil core from: {}", State::coreDllPath());
+        XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 
         detail::loggerInitPopupWindow();
 

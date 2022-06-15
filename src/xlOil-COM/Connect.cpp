@@ -4,7 +4,7 @@
 #include <xloil/Events.h>
 #include <xloil/ExcelCall.h>
 #include <xlOil/ExcelTypeLib.h>
-#include <xlOil/AppObjects.h>
+#include <xlOil/State.h>
 #include <oleacc.h> // AccessibleObjectFromWindow
 #include <memory>
 
@@ -56,7 +56,7 @@ namespace xloil
       {
       public:
         COMConnector()
-          : _excelWindowHandle((HWND)App::internals().hWnd)
+          : _excelWindowHandle((HWND)Environment::excelProcess().hWnd)
           , _xlApp((size_t)_excelWindowHandle)
         {
           try

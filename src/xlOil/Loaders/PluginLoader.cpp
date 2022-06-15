@@ -62,7 +62,7 @@ namespace xloil
     auto plugins = std::set<wstring>(pluginNames.cbegin(), pluginNames.cend());
 
     const auto xllDir = fs::path(context.pathName()).remove_filename();
-    const auto coreDir = fs::path(State::coreDllPath()).remove_filename();
+    const auto coreDir = fs::path(Environment::coreDllPath()).remove_filename();
 
     // If the settings specify a search pattern for plugins, 
     // find the DLLs and add them to our plugins collection
@@ -77,7 +77,7 @@ namespace xloil
       {
         do
         {
-          if (_wcsicmp(fileData.cFileName, State::coreDllName()) == 0)
+          if (_wcsicmp(fileData.cFileName, Environment::coreDllName()) == 0)
             continue;
 
           plugins.emplace(fs::path(fileData.cFileName).stem());

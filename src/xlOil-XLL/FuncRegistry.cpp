@@ -240,7 +240,7 @@ namespace xloil
   private:
     FunctionRegistry()
     {
-      theCoreDllName = State::coreDllName();
+      theCoreDllName = Environment::coreDllName();
     }
 
     map<wstring, RegisteredFuncPtr> theRegistry;

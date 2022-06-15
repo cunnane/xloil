@@ -7,7 +7,7 @@
 #include <xlOil/ExcelThread.h>
 #include <xloil/Log.h>
 #include <xloil/Caller.h>
-#include <xloil/AppObjects.h>
+#include <xloil/State.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/ExcelUI.h>
 #include <map>
@@ -239,13 +239,13 @@ namespace xloil
           py::arg("retry") = 500,
           py::arg("api") = "");
 
-        py::class_<App::ExcelInternals>(mod, "ExcelState")
-          .def_readonly("version", &App::ExcelInternals::version)
-          .def_readonly("hinstance", &App::ExcelInternals::hInstance)
-          .def_readonly("hwnd", &App::ExcelInternals::hWnd)
-          .def_readonly("main_thread_id", &App::ExcelInternals::mainThreadId);
+        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState")
+          .def_readonly("version", &Environment::ExcelProcessInfo::version)
+          .def_readonly("hinstance", &Environment::ExcelProcessInfo::hInstance)
+          .def_readonly("hwnd", &Environment::ExcelProcessInfo::hWnd)
+          .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId);
 
-        mod.def("excel_state", App::internals);
+        mod.def("excel_state", Environment::excelProcess);
 
         py::class_<CallerInfo>(mod, "Caller")
           .def(py::init<>())

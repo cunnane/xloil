@@ -25,7 +25,7 @@ namespace xloil
   {
     bool checkRegistryKeys()
     {
-      auto excelVersion = App::internals().version;
+      auto excelVersion = Environment::excelProcess().version;
       auto regKey = fmt::format(L"Software\\Microsoft\\Office\\{0}.0\\Excel\\Security\\AccessVBOM", excelVersion);
       DWORD currentUser = 666, localMachine = 666;
       getWindowsRegistryValue(L"HKCU", regKey.c_str(), currentUser);

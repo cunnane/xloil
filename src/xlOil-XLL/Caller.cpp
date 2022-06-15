@@ -92,7 +92,7 @@ namespace
   {
     DWORD pid = 0;
     const char* windowName;
-    auto& state = xloil::App::internals();
+    auto& state = xloil::Environment::excelProcess();
     if (state.version < 13)
       windowName = "";
     else

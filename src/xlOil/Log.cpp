@@ -2,7 +2,7 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
-#include <xloil/AppObjects.h>
+#include <xloil/State.h>
 #include <xloil/State.h>
 #include <xlOil/Throw.h>
 #include <xlOilHelpers/Exception.h>
@@ -42,10 +42,10 @@ namespace xloil
 
     void loggerInitPopupWindow()
     {
-      auto& state = App::internals();
+      auto& state = Environment::excelProcess();
       auto logWindow = makeLogWindowSink(
         (HWND)state.hWnd,
-        (HINSTANCE)State::coreModuleHandle());
+        (HINSTANCE)Environment::coreModuleHandle());
 
       auto logger = spdlog::default_logger();
       logger->sinks().push_back(logWindow);
