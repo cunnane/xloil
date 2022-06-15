@@ -17,6 +17,16 @@ using std::vector;
 
 namespace fs = std::filesystem;
 
+namespace
+{
+  template<class T, class U>
+  std::weak_ptr<T>
+    static_pointer_cast(std::weak_ptr<U> const& r)
+  {
+    return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
+  }
+}
+
 namespace xloil
 {
   AddinContext::AddinContext(
@@ -150,15 +160,35 @@ namespace xloil
   FileSource::FileSource(
     const wchar_t* sourcePath, bool watchFile)
     : _sourcePath(sourcePath)
+    , _watchFile(watchFile)
   {
     auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
     _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
+    // TODO: implement std::string _functionPrefix;
     //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
   }
 
   FileSource::~FileSource()
   {
     XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
+  }
+
+  void FileSource::reload()
+  {}
+
+  void FileSource::init()
+  {
+    if (_watchFile)
+    {
+      auto path = fs::path(name());
+      auto dir = path.remove_filename();
+      if (!dir.empty())
+        _fileWatcher = Event::DirectoryChange(dir)->weakBind(
+          static_pointer_cast<FileSource>(weak_from_this()),
+          &FileSource::handleDirChange);
+    }
+
+    FuncSource::init();
   }
 
   LinkedSource::~LinkedSource()
@@ -176,30 +206,7 @@ namespace xloil
     registerLocalFuncs(_localFunctions, _workbookName.c_str(), funcSpecs, append);
   }
 
-  namespace
-  {
-    template<class T, class U>
-    std::weak_ptr<T>
-      static_pointer_cast(std::weak_ptr<U> const& r)
-    {
-      return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
-    }
-  }
 
-  void FileSource::reload()
-  {}
-
-  void FileSource::init()
-  {
-    auto path = fs::path(name());
-    auto dir = path.remove_filename();
-    if (!dir.empty())
-      _fileWatcher = Event::DirectoryChange(dir)->weakBind(
-        static_pointer_cast<FileSource>(weak_from_this()),
-        &FileSource::handleDirChange);
-
-    FuncSource::init();
-  }
 
   void LinkedSource::init()
   {
@@ -228,7 +235,7 @@ namespace xloil
       renameWorkbook(wbName);
   }
 
-  void LinkedSource::renameWorkbook(const wchar_t* newName)
+  void LinkedSource::renameWorkbook(const wchar_t* /*newName*/)
   {
   }
 

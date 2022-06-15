@@ -93,15 +93,13 @@ namespace xloil
   private:
     std::wstring _sourcePath;
     const wchar_t* _sourceName;
-
+    bool _watchFile;
     std::shared_ptr<const void> _fileWatcher;
 
     void handleDirChange(
       const wchar_t* dirName,
       const wchar_t* fileName,
       const Event::FileAction action);
-
-    // TODO: implement std::string _functionPrefix;
   };
 
   /// <summary>
