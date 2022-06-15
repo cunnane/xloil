@@ -248,13 +248,20 @@ namespace xloil
       uint16_t nWritten = 0;
       const auto wsName = sheetName.pstr();
       const uint16_t wsLength = sheetName.length();
-      // TODO: what about quote chars around the sheet name?
+      // There are some complicated but unwritten rules on when Excel quotes
+      // the sheet name in an address.  See https://stackoverflow.com/questions/41677779/
+      // We avoid the complexity of checking this and simply quote everything
+      constexpr bool quoteSheetName = true;
+
       if (wsLength > 0)
       {
-        if (bufLen <= wsLength + 1u)
+        const auto sheetNameLength = wsLength + (quoteSheetName ? 2 : 0);
+        if (bufLen <= sheetNameLength + 1)
           return 0;
+        if (quoteSheetName) *(buf++) = L'\'';
         wmemcpy(buf, wsName, wsLength);
         buf += wsLength;
+        if (quoteSheetName) *(buf++) = L'\'';
         // Separator character
         *(buf++) = L'!';
 
