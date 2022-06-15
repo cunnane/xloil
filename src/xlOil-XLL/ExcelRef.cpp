@@ -17,16 +17,14 @@ namespace xloil
       callExcelRaw(msxll::xlSheetNm, &sheetName, &from);
       if (0 != callExcelRaw(msxll::xlSheetId, &_obj, &sheetName))
         XLO_THROW("ExcelRef: could not determine sheet for local reference");
-      const auto& r = from.val.sref.ref;
-      create(_obj.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
+      create(_obj.val.mref.idSheet, from.val.sref.ref);
       break;
     }
     case ExcelType::Ref:
     {
       if (from.val.mref.lpmref->count != 1)
         XLO_THROW("ExcelRef: only contiguous refs are supported");
-      const auto& r = *from.val.mref.lpmref[0].reftbl;
-      create(from.val.mref.idSheet, r.rwFirst, r.colFirst, r.rwLast, r.colLast);
+      create(from.val.mref.idSheet, *from.val.mref.lpmref[0].reftbl);
       break;
     }
     default:
@@ -59,17 +57,16 @@ namespace xloil
   }
 
   XLOIL_EXPORT ExcelRef::ExcelRef(
-    msxll::IDSHEET sheetId, int fromRow, int fromCol, int toRow, int toCol)
+    msxll::IDSHEET sheetId, const msxll::xlref12& ref)
   {
-    create(sheetId, fromRow, fromCol, toRow, toCol);
+    create(sheetId, ref);
   }
 
   void ExcelRef::create(
     msxll::IDSHEET sheetId, 
-    row_t fromRow, col_t fromCol, 
-    row_t toRow, col_t toCol)
+    const msxll::xlref12& ref)
   {
-    _obj = ExcelObj(sheetId, msxll::xlref12{ fromRow,  toRow, fromCol, toCol });
+    _obj = ExcelObj(sheetId, ref);
   }
 
   void XllRange::setFormula(const std::wstring_view& formula)

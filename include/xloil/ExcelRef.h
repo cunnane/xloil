@@ -49,8 +49,7 @@ namespace xloil
       }
 
       /// <summary>
-      /// Returns the address of the range in the form
-      /// 'SheetNm!A1:Z5'
+      /// Returns the address of the range in the form '[Book]SheetNm!A1:Z5'
       /// </summary>
       std::wstring address(bool local = false) const
       {
@@ -60,9 +59,9 @@ namespace xloil
       }
 
       /// <summary>
-      /// Converts the referenced range to an ExcelObj. 
-      /// References to single cells return an ExcelObj of the
-      /// appropriate type. Multicell refernces return an array.
+      /// Converts the referenced range to an ExcelObj. References to single
+      /// cells return an ExcelObj of the appropriate type. Multicell refernces 
+      /// return an array.
       /// </summary>
       ExcelObj value() const
       {
@@ -84,9 +83,21 @@ namespace xloil
         callExcelRaw(msxll::xlSet, nullptr, &up().obj());
       }
 
+      static auto subrangeHelper(
+        const msxll::xlref12& r,
+        int fromRow, int fromCol,
+        int toRow, int toCol) noexcept
+      {
+        return msxll::xlref12{
+          r.rwFirst + fromRow,
+          r.colFirst + fromCol,
+          toRow == Range::TO_END ? r.rwLast : r.rwFirst + toRow,
+          toCol == Range::TO_END ? r.colLast : r.colFirst + toCol };
+      }
+
     private:
-      TSuper& up()             { return (TSuper&)(*this); }
-      const TSuper& up() const { return (const TSuper&)(*this); }
+      TSuper& up()             noexcept { return (TSuper&)(*this); }
+      const TSuper& up() const noexcept { return (const TSuper&)(*this); }
     };
   }
 
@@ -110,17 +121,21 @@ namespace xloil
     ExcelRef(const ExcelObj& from);
 
     /// <summary>
-    /// Constructs an ExcelRange from a sheet address. If the 
-    /// address does not contain a sheet name, the current
-    /// Active sheet is used.
+    /// Constructs an ExcelRange from a sheet address. If the address
+    /// does not contain a sheet name, the current Active sheet is used.
     /// </summary>
     explicit ExcelRef(const std::wstring_view& address);
     explicit ExcelRef(const wchar_t* address) 
       : ExcelRef(std::wstring_view(address)) 
     {}
 
+    ExcelRef(msxll::IDSHEET sheetId, const msxll::xlref12& ref);
+
     ExcelRef(msxll::IDSHEET sheetId,
-      int fromRow, int fromCol, int toRow, int toCol);
+      int fromRow, int fromCol,
+      int toRow, int toCol)
+      : ExcelRef(sheetId, msxll::xlref12{ fromRow, fromCol, toRow, toCol })
+    {}
 
     /// <summary>
     /// Copy constructor
@@ -129,11 +144,11 @@ namespace xloil
       : _obj(from._obj)
     {}
 
-    ExcelRef(ExcelRef&& from)
+    ExcelRef(ExcelRef&& from) noexcept
       : _obj(std::move(from._obj))
     {}
 
-    ~ExcelRef()
+    ~ExcelRef() noexcept
     {
       reset();
     }
@@ -142,39 +157,37 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow = Range::TO_END, int toCol = Range::TO_END) const
     {
-      return ExcelRef(sheetId(),
-        ref().rwFirst + fromRow,
-        ref().colFirst + fromCol,
-        toRow == Range::TO_END ? ref().rwLast : ref().rwFirst + toRow,
-        toCol == Range::TO_END ? ref().colLast : ref().colFirst + toCol);
+      return ExcelRef(sheetId(), 
+        subrangeHelper(ref(), fromRow, fromCol, toRow, toCol));
     }
 
-    operator const ExcelObj& () const { return _obj; }
+    operator const ExcelObj& () const noexcept { return _obj; }
 
 
   protected:
-    msxll::IDSHEET  sheetId() const { return _obj.val.mref.idSheet; }
-    msxll::IDSHEET& sheetId() { return _obj.val.mref.idSheet; }
+    msxll::IDSHEET  sheetId() const noexcept { return _obj.val.mref.idSheet; }
+    msxll::IDSHEET& sheetId()       noexcept { return _obj.val.mref.idSheet; }
 
-    const msxll::XLREF12& ref() const
+    const msxll::XLREF12& ref() const noexcept
     {
       return _obj.val.mref.lpmref->reftbl[0];
     }
-    msxll::XLREF12& ref()
+    msxll::XLREF12& ref() noexcept
     {
       return _obj.val.mref.lpmref->reftbl[0];
     }
 
-    const ExcelObj& obj() const { return _obj; }
-    ExcelObj&       obj() { return _obj; }
+    const ExcelObj& obj() const noexcept { return _obj; }
+    ExcelObj&       obj()       noexcept { return _obj; }
 
   private:
     ExcelObj _obj;
+
     void create(
       msxll::IDSHEET sheetId,
-      row_t fromRow, col_t fromCol,
-      row_t toRow, col_t toCol);
-    void reset()
+      const msxll::xlref12& ref);
+
+    void reset() noexcept
     {
       if (_obj.xltype & msxll::xlbitDLLFree)
       {
@@ -224,20 +237,13 @@ namespace xloil
       case msxll::xltypeRef:
       {
         auto& r = val.mref.lpmref->reftbl[0];
-        return RangeArg(val.mref.idSheet, msxll::xlref12{
-          r.rwFirst + fromRow,
-          r.colFirst + fromCol,
-          toRow == Range::TO_END ? r.rwLast : r.rwFirst + toRow,
-          toCol == Range::TO_END ? r.colLast : r.colFirst + toCol });
+        return RangeArg(val.mref.idSheet, 
+          subrangeHelper(r, fromRow, fromCol, toRow, toCol));
       }
       case msxll::xltypeSRef:
       {
         auto& r = val.sref.ref;
-        return RangeArg(msxll::xlref12{
-          r.rwFirst + fromRow,
-          r.colFirst + fromCol,
-          toRow == Range::TO_END ? r.rwLast : r.rwFirst + toRow,
-          toCol == Range::TO_END ? r.colLast : r.colFirst + toCol });
+        return RangeArg(subrangeHelper(r, fromRow, fromCol, toRow, toCol));
       }
       default:
         XLO_THROW("Not a ref");
@@ -287,8 +293,8 @@ namespace xloil
       }
     }
 
-    const ExcelObj& obj() const { return *this; }
-    ExcelObj&       obj()       { return *this; }
+    const ExcelObj& obj() const noexcept { return *this; }
+    ExcelObj&       obj()       noexcept { return *this; }
   };
 
 
@@ -299,9 +305,9 @@ namespace xloil
   class XllRange : public Range
   {
   public:
-    explicit XllRange(const ExcelRef& ref) : _ref(ref) {}
-    explicit XllRange(ExcelRef&& ref)      : _ref(ref) {}
-    explicit XllRange(const ExcelObj& ref) : _ref(ExcelRef(ref)) {}
+    explicit XllRange(const ExcelRef& ref) noexcept : _ref(ref) {}
+    explicit XllRange(ExcelRef&& ref)      noexcept : _ref(ref) {}
+    explicit XllRange(const ExcelObj& ref) noexcept : _ref(ExcelRef(ref)) {}
 
     Range* range(
       int fromRow, int fromCol,
@@ -351,8 +357,9 @@ namespace xloil
 
     /// <summary>
     /// Sets the formula if the range is a cell or an array formula for a 
-    /// larger range. Formulae must use RC-style references. This is not
-    /// a common style, so there is no setFormula on the base 
+    /// larger range. Formulae must use RC-style references; this is not
+    /// the case for ExcelRange, so there is no setFormula on the base Range
+    /// class 
     /// <see cref="xloil::Range"\> class.
     /// </summary>
     void setFormula(const std::wstring_view& formula);
