@@ -73,7 +73,7 @@ namespace xloil
   }
 
   Application::Application(Excel::_Application* app)
-    : IAppObject(app ? app : COM::newApplicationObject(), !app)
+    : IAppObject(app ? app : COM::newApplicationObject(), true)
   {
     if (!valid())
       throw ComConnectException("Failed to create Application object");
@@ -306,7 +306,10 @@ namespace xloil
       if (name.empty())
         init(app.com().ActiveWorkbook);
       else
-        init(app.com().Workbooks->GetItem(stringToVariant(name)));
+      {
+        auto workbooks = app.com().Workbooks;
+        init(workbooks->GetItem(stringToVariant(name)));
+      }
     }
     XLO_RETHROW_COM_ERROR;
   }

@@ -16,6 +16,7 @@ namespace xloil
       return _variant_t(variant, false);
     }
   }
+
   Range* newRange(const wchar_t* address)
   {
     if (InXllContext::check())
@@ -50,9 +51,8 @@ namespace xloil
   {
     try
     {
-      auto addressStr = COM::stringToVariant(address);
-      auto rangePtr = app.com().GetRange(_variant_t(addressStr, false));
-      init(rangePtr);
+      auto rangePtr = app.com().GetRange(stringToVariant(address));
+      init(rangePtr.Detach(), true);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -68,7 +68,7 @@ namespace xloil
       *this = ExcelRange(range.address());
     }
   }
-
+  
   Range* ExcelRange::range(
     int fromRow, int fromCol,
     int toRow, int toCol) const

@@ -9,6 +9,7 @@ using std::wstring_view;
 using std::vector;
 using std::wstring;
 using std::string;
+using std::move;
 namespace py = pybind11;
 
 namespace xloil
@@ -23,6 +24,20 @@ namespace xloil
       {
         py::gil_scoped_release noGil; 
         return new ExcelRange(address);
+      }
+
+      /// <summary>
+      /// Creates a Range object in python given a helper functor. The 
+      /// helper functor should not need the GIL. The reason for this function
+      /// is that we need create a new Range ptr and allow python to take 
+      /// ownership of it
+      /// </summary>
+      template<class F>
+      py::object createPyRange(F&& f)
+      {
+        return py::cast(wrapNoGil([&]() {
+          return (Range*)new ExcelRange(f());
+        }), py::return_value_policy::take_ownership);
       }
 
       // Works like the Range.Range function in VBA except is zero-based
@@ -111,11 +126,17 @@ namespace xloil
         // Range class declared in pybind, we need to pass a ptr to py::cast
         // which python can own, so we need to copy it (but with an rval ref)
         if (PyUnicode_Check(loc.ptr()))
-          return py::cast(wrapNoGil([&]() {
-            return (Range*)new ExcelRange(ws.range(pyToWStr(loc))); 
-          }));
+        {
+          const auto address = pyToWStr(loc);
+          return createPyRange([&]() { return ws.range(address); });
+        }
         else
           return getItem(ws, loc);
+      }
+      
+      py::object workbook_range(const ExcelWorkbook& wb, const std::wstring& address)
+      {
+        return createPyRange([&]() { return wb.range(address); });
       }
 
       py::object workbook_GetItem(const ExcelWorkbook& wb, py::object loc)
@@ -138,9 +159,7 @@ namespace xloil
           if (address.empty())
             throw py::value_error();
           else if (address.find(L'!') != wstring::npos)
-          {
-            return py::cast(wrapNoGil([&]() { return (Range*)new ExcelRange(wb.range(address)); }));
-          }
+            return workbook_range(wb, address);
           else 
           {
             // Remove quotes around worksheet name - these appear in
@@ -412,7 +431,7 @@ namespace xloil
         .def_property_readonly("windows", wrapNoGil(&ExcelWorkbook::windows))
         .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
         .def("worksheet", wrapNoGil(&ExcelWorkbook::worksheet), py::arg("name"))
-        .def("range", wrapNoGil(&ExcelWorkbook::range), py::arg("address"))
+        .def("range", workbook_range, py::arg("address"))
         .def("__getitem__", workbook_GetItem)
         .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "")
         .def("add", addWorksheetToWorkbook, py::arg("name") = py::none(), py::arg("before") = py::none(), py::arg("after") = py::none())
