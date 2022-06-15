@@ -86,7 +86,8 @@ namespace xloil
   public:
     /// <summary>
     /// Construct an application object from a ptr to the underlying COM object.
-    /// If no ptr is provided, a new instance of Excel is created.
+    /// If no ptr is provided, a new instance of Excel is created. Always steals
+    /// a reference, i.e. does not call AddRef.
     /// </summary>
     Application(Excel::_Application* app = nullptr);
     /// <summary>
@@ -187,6 +188,10 @@ namespace xloil
 
     void set(const ExcelObj& value) final override;
 
+    std::wstring formula() final override;
+
+    void clear() final override;
+
     /// <summary>
     /// Sets the forumula for the range to the specified string. If the 
     /// range is larger than one cell, the formula is applied as an 
@@ -194,14 +199,6 @@ namespace xloil
     /// </summary>
     /// <param name="formula"></param>
     void setFormula(const std::wstring_view& formula);
-
-    /// <summary>
-    /// Gets the formula assoicated with this range (or cell)
-    /// </summary>
-    /// <returns></returns>
-    std::wstring formula() final override;
-
-    void clear() final override;
 
     /// <summary>
     /// The range address
