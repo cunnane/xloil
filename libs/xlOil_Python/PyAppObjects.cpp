@@ -134,9 +134,14 @@ namespace xloil
           return getItem(ws, loc);
       }
       
+      py::object application_range(const Application& app, const std::wstring& address)
+      {
+        return createPyRange([&]() { return ExcelRange(address, app); });
+      }
+
       py::object workbook_range(const ExcelWorkbook& wb, const std::wstring& address)
       {
-        return createPyRange([&]() { return wb.range(address); });
+        return application_range(wb.app(), address);
       }
 
       py::object workbook_GetItem(const ExcelWorkbook& wb, py::object loc)
@@ -155,6 +160,9 @@ namespace xloil
         }
         else
         {
+          // If loc string contains '!' it must an address. Otherwise it
+          // might be a worksheet name. If it isn't that it may be a named
+          // range we just pass it to Application.Range
           auto address = pyToWStr(loc);
           if (address.empty())
             throw py::value_error();
@@ -162,11 +170,20 @@ namespace xloil
             return workbook_range(wb, address);
           else 
           {
-            // Remove quotes around worksheet name - these appear in
-            // addresses if the sheet name contains spaces
-            if (address[0] == L'\'' && address.length() > 2)
-              address = address.substr(1, address.length() - 2);
-            return py::cast(wrapNoGil([&]() { return wb.worksheet(address); }));
+            ExcelWorksheet ws(nullptr);
+            bool isSheet;
+            {
+              py::gil_scoped_release noGil;
+              // Remove quotes around worksheet name - these appear in
+              // addresses if the sheet name contains spaces
+              if (address[0] == L'\'' && address.length() > 2)
+                address = address.substr(1, address.length() - 2);
+              isSheet = wb.worksheets().tryGet(address, ws);
+            }
+            if (isSheet)
+              return py::cast(ws);
+            else
+              return workbook_range(wb, address);
           }
             
         }
@@ -461,6 +478,9 @@ namespace xloil
         .def_property("enable_events",
           [](Application& app) { py::gil_scoped_release noGil; return app.getEnableEvents(); },
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
+        .def("range", application_range, 
+          "Create a range object from an external address, e.g. [Book]Sheet!A1",
+          py::arg("address"))
         .def("open", wrapNoGil(&Application::Open), 
           py::arg("filepath"), py::arg("update_links")=true, py::arg("read_only")=false)
         .def("calculate", wrapNoGil(&Application::calculate), py::arg("full")=false, py::arg("rebuild")=false)
