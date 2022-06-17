@@ -376,7 +376,7 @@ namespace xloil
             // them whilst holding the lock.  Note the i++ as the iterator passed to 
             // splice will be invalidated.
             for (auto i = _cancelledPublishers.begin(); i != _cancelledPublishers.end(); ++i)
-              if (i->done())
+              if ((*i)->done())
                 finalisedPublishers.splice(finalisedPublishers.end(), _cancelledPublishers, i++);
 
             auto& record = _records[topic->second];
