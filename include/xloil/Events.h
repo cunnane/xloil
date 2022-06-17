@@ -1,5 +1,5 @@
 #pragma once
-#include "ExportMacro.h"
+#include <xloil/ExportMacro.h>
 #include <xlOil/Log.h> 
 #include <xloil/Preprocessor.h>
 #include <functional>

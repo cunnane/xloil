@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ExcelObj.h"
+#include <xloil/ExcelObj.h>
 #include <cassert>
 
 namespace xloil
