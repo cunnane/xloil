@@ -196,84 +196,98 @@ namespace xloil
       {
         unordered_set<long> readyTopicIds;
 
-        while (isServerRunning())
+        try
         {
-          // The worker does all the work!  In this order
-          //   1) Wait for wake notification
-          //   2) Check if quit/stop has been sent
-          //   3) Look for new values.
-          //      a) If any, put the matching topicIds in readyTopicIds
-          //      b) If Excel has picked up previous values, create an array of 
-          //         updates and send an UpdateNotify.
-          //   4) Run any topic connect requests
-          //   5) Run any topic disconnect requests
-          //   6) Repeat
-          //
-          decltype(_newValues) newValues;
-
-          unique_lock lockValues(_mutexNewValues);
-          // This slightly convoluted code protects against spurious wakes and 
-          // 'lost' wakes, i.e. if the CV is signalled but the worker is not
-          // in the waiting state.
-          if (!_workPending)
-            _workPendingNotifier.wait(lockValues, [&]() { return _workPending.load(); });
-          _workPending = false;
-
-          if (!isServerRunning())
-            break;
-
-          // Since _mutexNewValues is required to send updates, so we avoid holding it  
-          // and quickly swap out the list of new values. 
-          std::swap(newValues, _newValues);
-          lockValues.unlock();
-
-          if (!newValues.empty())
+          while (isServerRunning())
           {
-            shared_lock lock(_lockRecords);
-            auto iValue = newValues.begin();
-            for (; iValue != newValues.end(); ++iValue)
+            // The worker does all the work!  In this order
+            //   1) Wait for wake notification
+            //   2) Check if quit/stop has been sent
+            //   3) Look for new values.
+            //      a) If any, put the matching topicIds in readyTopicIds
+            //      b) If Excel has picked up previous values, create an array of 
+            //         updates and send an UpdateNotify.
+            //   4) Run any topic connect requests
+            //   5) Run any topic disconnect requests
+            //   6) Repeat
+            //
+            decltype(_newValues) newValues;
+
+            unique_lock lockValues(_mutexNewValues);
+            // This slightly convoluted code protects against spurious wakes and 
+            // 'lost' wakes, i.e. if the CV is signalled but the worker is not
+            // in the waiting state.
+            if (!_workPending)
+              _workPendingNotifier.wait(lockValues, [&]() { return _workPending.load(); });
+            _workPending = false;
+
+            if (!isServerRunning())
+              break;
+
+            // Since _mutexNewValues is required to send updates, so we avoid holding it  
+            // and quickly swap out the list of new values. 
+            std::swap(newValues, _newValues);
+            lockValues.unlock();
+
+            if (!newValues.empty())
             {
-              auto record = _records.find(iValue->first);
-              if (record == _records.end())
-                continue;
-              record->second.value = iValue->second;
-              readyTopicIds.insert(record->second.subscribers.begin(), record->second.subscribers.end());
+              shared_lock lock(_lockRecords);
+              auto iValue = newValues.begin();
+              for (; iValue != newValues.end(); ++iValue)
+              {
+                auto record = _records.find(iValue->first);
+                if (record == _records.end())
+                  continue;
+                record->second.value = iValue->second;
+                readyTopicIds.insert(record->second.subscribers.begin(), record->second.subscribers.end());
+              }
             }
+
+            // When RefreshData runs, it will take the SAFEARRAY in _readyUpdates and
+            // atomically replace it with null. So if this ptr is not null, we know Excel
+            // has not yet picked up the new values.
+            if (!readyTopicIds.empty() && !_readyUpdates)
+            {
+              const auto nReady = readyTopicIds.size();
+
+              SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
+              auto* topicArray = SafeArrayCreate(VT_VARIANT, 2, bounds);
+              writeReadyTopicsArray(topicArray, readyTopicIds);
+              _readyUpdates = topicArray;
+
+              _updateNotify();
+
+              readyTopicIds.clear();
+            }
+
+            decltype(_topicsToConnect) topicsToConnect;
+            decltype(_topicIdsToDisconnect) topicIdsToDisconnect;
+            {
+              unique_lock lock(_mutexNewSubscribers);
+
+              std::swap(_topicIdsToDisconnect, topicIdsToDisconnect);
+              std::swap(_topicsToConnect, topicsToConnect);
+            }
+            for (auto& [topicId, topic] : topicsToConnect)
+              connectTopic(topicId, std::move(topic));
+            for (auto topicId : topicIdsToDisconnect)
+              disconnectTopic(topicId);
           }
-
-          // When RefreshData runs, it will take the SAFEARRAY in _readyUpdates and
-          // atomically replace it with null. So if this ptr is not null, we know Excel
-          // has not yet picked up the new values.
-          if (!readyTopicIds.empty() && !_readyUpdates)
-          {
-            const auto nReady = readyTopicIds.size();
-
-            SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
-            auto* topicArray = SafeArrayCreate(VT_VARIANT, 2, bounds);
-            writeReadyTopicsArray(topicArray, readyTopicIds);
-            _readyUpdates = topicArray;
-
-            _updateNotify();
-
-            readyTopicIds.clear();
-          }
-
-          decltype(_topicsToConnect) topicsToConnect;
-          decltype(_topicIdsToDisconnect) topicIdsToDisconnect;
-          {
-            unique_lock lock(_mutexNewSubscribers);
-
-            std::swap(_topicIdsToDisconnect, topicIdsToDisconnect);
-            std::swap(_topicsToConnect, topicsToConnect);
-          }
-          for (auto& [topicId, topic] : topicsToConnect)
-            connectTopic(topicId, std::move(topic));
-          for (auto topicId : topicIdsToDisconnect)
-            disconnectTopic(topicId);
         }
-
-        // Clear all records, destroy all publishers
-        clear();
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("RTD Worker thread exited with error: {}", e.what());
+        }
+        
+        try
+        {
+          // Clear all records, destroy all publishers
+          clear();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("RTD Worker thread error during cleanup: {}", e.what());
+        }
       }
 
       // 
@@ -338,62 +352,76 @@ namespace xloil
       {
         shared_ptr<IRtdPublisher> publisher;
         size_t numSubscribers;
-        decltype(_cancelledPublishers) cancelledPublishers;
+        decltype(_cancelledPublishers) finalisedPublishers;
 
-        // We must *not* hold the lock when calling methods of the publisher
-        // as they may try to call other functions on the RTD server. So we
-        // first handle the topic lookup and removing subscribers before
-        // releasing the lock and notifying the publisher.
+        try
         {
-          unique_lock lock(_lockRecords);
-
-          XLO_TRACE("RTD: disconnect topicId {}", topicId);
-
-          std::swap(_cancelledPublishers, cancelledPublishers);
-
-          const auto topic = _activeTopicIds.find(topicId);
-          if (topic == _activeTopicIds.end())
-            XLO_THROW("Could not find topic for id {0}", topicId);
-
-          auto& record = _records[topic->second];
-          record.subscribers.erase(topicId);
-
-          numSubscribers = record.subscribers.size();
-          publisher = record.publisher;
-
-          if (!publisher && numSubscribers == 0)
-            _records.erase(topic->second);
-
-          _activeTopicIds.erase(topic);
-        }
-
-        // Remove any cancelled publishers which have finalised
-        cancelledPublishers.remove_if([](auto& x) { return x->done(); });
-
-        if (!publisher)
-          return;
-
-        // If disconnect() causes the publisher to cancel its task,
-        // it will return true here. We may not be able to just delete it: 
-        // we have to wait until any threads it created have exited
-        if (publisher->disconnect(numSubscribers))
-        {
-          const auto topic = publisher->topic();
-          const auto done = publisher->done();
-
-          if (!done)
-            publisher->stop();
+          // We must *not* hold the lock when calling methods of the publisher
+          // as they may try to call other functions on the RTD server. So we
+          // first handle the topic lookup and removing subscribers before
+          // releasing the lock and notifying the publisher.
           {
             unique_lock lock(_lockRecords);
 
-            // Not done, so add to this list and check back later
-            if (!done)
-              _cancelledPublishers.emplace_back(publisher);
+            XLO_TRACE("RTD: disconnect topicId {}", topicId);
 
-            // Disconnect should only return true when num_subscribers = 0, 
-            // so it's safe to erase the entire record
-            _records.erase(topic);
+            const auto topic = _activeTopicIds.find(topicId);
+            if (topic == _activeTopicIds.end())
+            {
+              XLO_ERROR("Could not find topic for id {0}", topicId);
+              return;
+            }
+
+            // Remove any cancelled publishers which have finalised but don't destroy 
+            // them whilst holding the lock.  Note the i++ as the iterator passed to 
+            // splice will be invalidated.
+            for (auto i = _cancelledPublishers.begin(); i != _cancelledPublishers.end(); ++i)
+              if (i->done())
+                finalisedPublishers.splice(finalisedPublishers.end(), _cancelledPublishers, i++);
+
+            auto& record = _records[topic->second];
+            record.subscribers.erase(topicId);
+
+            numSubscribers = record.subscribers.size();
+            publisher = record.publisher;
+
+            if (!publisher && numSubscribers == 0)
+              _records.erase(topic->second);
+
+            _activeTopicIds.erase(topic);
           }
+
+          finalisedPublishers.clear();
+
+          if (!publisher)
+            return;
+
+          // If disconnect() causes the publisher to cancel its task,
+          // it will return true here. We may not be able to just delete it: 
+          // we have to wait until any threads it created have exited
+          if (publisher->disconnect(numSubscribers))
+          {
+            const auto topic = publisher->topic();
+            const auto done = publisher->done();
+
+            if (!done)
+              publisher->stop();
+            {
+              unique_lock lock(_lockRecords);
+
+              // Not done, so add to this list and check back later
+              if (!done)
+                _cancelledPublishers.emplace_back(publisher);
+
+              // Disconnect should only return true when num_subscribers = 0, 
+              // so it's safe to erase the entire record
+              _records.erase(topic);
+            }
+          }
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR("RTD disconnectTopic: error whilst disconnecting '{}': {}", topicId, e.what());
         }
       }
 
