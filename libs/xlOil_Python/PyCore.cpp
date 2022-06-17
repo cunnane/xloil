@@ -217,9 +217,9 @@ namespace xloil
         py::class_<IPyFromExcel, shared_ptr<IPyFromExcel>>(mod, "IPyFromExcel")
           .def("__call__",
             [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
-        {
-          XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
-        });
+            {
+              XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
+            });
 
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
 
@@ -247,27 +247,6 @@ namespace xloil
 
         mod.def("excel_state", Environment::excelProcess);
 
-        py::class_<CallerInfo>(mod, "Caller")
-          .def(py::init<>())
-          .def_property_readonly("sheet",
-            [](const CallerInfo& self)
-            {
-              const auto name = self.sheetName();
-              return name.empty() ? py::none() : py::wstr(name);
-            })
-          .def_property_readonly("workbook",
-            [](const CallerInfo& self)
-            {
-              const auto name = self.workbook();
-              return name.empty() ? py::none() : py::wstr(name);
-            })
-          .def("address",
-            [](const CallerInfo& self, bool x)
-            {
-              return self.writeAddress(x ? CallerInfo::A1 : CallerInfo::RC);
-            }, py::arg("a1style") = false);
-
-
         py::class_<PyStatusBar>(mod, "StatusBar")
           .def(py::init<size_t>(), py::arg("timeout") = 0)
           .def("__enter__", [](py::object self) { return self; })
@@ -290,5 +269,4 @@ namespace xloil
         mod.def("get_event_loop", [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
       }
     }
-
 } }

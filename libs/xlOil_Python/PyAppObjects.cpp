@@ -474,6 +474,34 @@ namespace xloil
       PyWorksheets::startBinding(mod, "Worksheets")
         .def("add", addWorksheetToCollection, py::arg("name")=py::none(), py::arg("before")=py::none(), py::arg("after") = py::none());
 
+      py::class_<CallerInfo>(mod, "Caller")
+        .def(py::init<>())
+        .def_property_readonly("sheet_name",
+          [](const CallerInfo& self)
+          {
+            const auto name = self.sheetName();
+            return name.empty() ? py::none() : py::wstr(name);
+          })
+        .def_property_readonly("workbook",
+          [](const CallerInfo& self)
+          {
+            const auto name = self.workbook();
+            return name.empty() ? py::none() : py::wstr(name);
+          })
+        .def("address",
+          [](const CallerInfo& self, bool x)
+          {
+            py::gil_scoped_release noGil;
+            return self.writeAddress(x ? AddressStyle::A1 : AddressStyle::RC);
+          }, 
+          py::arg("a1style") = false)
+        .def_property_readonly("range",
+          [](const CallerInfo& self)
+          {
+            return createPyRange([&]() { return self.writeAddress(); });
+          },
+          "Range object corresponding to caller");
+
       // We can only define these objects when running embedded in existing Excel
       // application. excelApp() will throw a ComConnectException if this is not
       // the case

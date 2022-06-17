@@ -35,10 +35,12 @@ namespace xloil
   XLOIL_EXPORT ExcelRef::ExcelRef(const std::wstring_view& address)
   {
     // If address contains a '!', get sheetId of that name otherwise use
-    // the active sheet (which we get by passing no args)
-    auto pling = address.find_last_of(L'!');
+    // the active sheet (which we get by passing no args). Sheet name
+    // may be quoted - xlSheetId doesn't like this so we must de-quote
+    const auto pling = address.find_last_of(L'!');
+    const auto quoted = address[0] == L'\'' ? 1 : 0;
     auto [sheetId, ret] = pling > 0
-      ? tryCallExcel(msxll::xlSheetId, address.substr(0, pling))
+      ? tryCallExcel(msxll::xlSheetId, address.substr(0 + quoted, pling - quoted * 2))
       : tryCallExcel(msxll::xlSheetId);
 
     if (ret != 0 || !sheetId.isType(ExcelType::Ref))

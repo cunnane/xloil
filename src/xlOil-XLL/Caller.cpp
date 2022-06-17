@@ -243,7 +243,8 @@ namespace xloil
       size_t bufLen,
       const msxll::XLREF12& sheetRef,
       const PStringRef& fullSheetName,
-      const bool A1Style)
+      const bool A1Style,
+      const bool quoteSheetName)
     {
       uint16_t nWritten = 0;
       const auto sheetNamePStr = fullSheetName.pstr();
@@ -252,22 +253,16 @@ namespace xloil
       // There are some complicated but unwritten rules on when Excel quotes
       // the sheet name in an address.  See https://stackoverflow.com/questions/41677779/
       // We avoid the complexity of checking this and simply quote everything
-      constexpr bool quoteSheetName = true;
-      
       if (sheetNameLength > 0)
       {
-        const auto bookNameEnd = fullSheetName.find(L']');
-
-        if (quoteSheetName && bookNameEnd != PString::npos)
+        if (quoteSheetName)
         {
           if (bufLen <= sheetNameLength + 1u + 2)
             return 0;
-          auto sheetName = fullSheetName.view(bookNameEnd + 1);
-          wmemcpy(buf, sheetNamePStr, bookNameEnd + 1u);
-          buf += bookNameEnd + 1u;
+
           *(buf++) = L'\'';
-          wmemcpy(buf, sheetName.data(), sheetName.size());
-          buf += sheetName.size();
+          wmemcpy(buf, sheetNamePStr, sheetNameLength);
+          buf += sheetNameLength;
           *(buf++) = L'\'';
 
           nWritten += 2;
@@ -297,30 +292,30 @@ namespace xloil
       size_t bufLen,
       const ExcelObj& address,
       const PStringRef& sheetName,
-      CallerInfo::AddressStyle style)
+      AddressStyle style)
     {
+      const bool a1Style    = (style & AddressStyle::RC) == 0;
+      const bool quoteSheet = (style & AddressStyle::NOQUOTE) == 0;
       switch (address.type())
       {
       case ExcelType::SRef:
       {
         return writeSheetAddress(buf, bufLen, address.val.sref.ref,
-          sheetName, style == CallerInfo::A1);
+          sheetName, a1Style, quoteSheet);
       }
       case ExcelType::Ref:
       {
         return writeSheetAddress(buf, bufLen, address.val.mref.lpmref->reftbl[0],
-          sheetName, style == CallerInfo::A1);
+          sheetName, a1Style, quoteSheet);
       }
       case ExcelType::Str: // Graphic object or Auto_XXX macro caller
       {
-        auto str = address.cast<PStringRef>();
+        const auto str = address.cast<PStringRef>();
         // Never return a string longer than the advertised max length
-        uint16_t maxLen = str.length();
-        switch (style)
-        {
-        case CallerInfo::RC: maxLen = std::min(maxLen, XL_FULL_ADDRESS_RC_MAX_LEN); break;
-        case CallerInfo::A1: maxLen = std::min(maxLen, XL_FULL_ADDRESS_A1_MAX_LEN); break;
-        }
+        const auto maxLen = std::min<uint16_t>(str.length(),
+          a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN
+          + quoteSheet ? 2 : 0);
+   
         wmemcpy_s(buf, bufLen, str.pstr(), maxLen);
         return std::min<int>((int)bufLen, maxLen);
       }
@@ -372,11 +367,12 @@ namespace xloil
     const auto sheetName = fullSheetName();
     if (!sheetName.empty())
     {
-      switch (style)
-      {
-        case RC: return sheetName.length() + 1 + XL_CELL_ADDRESS_RC_MAX_LEN;
-        case A1: return sheetName.length() + 1 + XL_CELL_ADDRESS_A1_MAX_LEN;
-      }
+      const bool a1Style = (style & AddressStyle::RC) == 0;
+      const bool quoteSheet = (style & AddressStyle::NOQUOTE) == 0;
+      // Sheetname + quotes + ! + address
+      return sheetName.length() + 1
+        + a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN
+        + quoteSheet ? 2 : 0;
     }
 
     // Not a worksheet caller
@@ -387,9 +383,13 @@ namespace xloil
     return 19; // Max is "Toolbar(<some int id>)"
   }
 
-  int CallerInfo::writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style) const
+  int CallerInfo::writeAddress(
+    wchar_t* buf, 
+    size_t bufLen, 
+    AddressStyle style) const
   {
-    return writeAddressImpl(buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
+    return writeAddressImpl(
+      buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
   }
   
   std::wstring CallerInfo::writeAddress(AddressStyle style) const
@@ -427,14 +427,15 @@ namespace xloil
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize,
-    bool A1Style)
+    bool A1Style,
+    bool quoteSheet)
   {
     ExcelObj sheetNm;
     sheetNm.xltype = msxll::xltypeRef;
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    return writeSheetAddress(buf, bufSize, ref, sheetNm.cast<PStringRef>(), A1Style);
+    return writeSheetAddress(buf, bufSize, ref, sheetNm.cast<PStringRef>(), A1Style, quoteSheet);
   }
 
   namespace

@@ -12,6 +12,7 @@
 using std::shared_ptr;
 using std::make_shared;
 using std::vector;
+using std::wstring;
 
 namespace xloil
 {
@@ -425,10 +426,14 @@ namespace xloil
 
   ExcelRange ExcelWorksheet::range(const std::wstring_view& address) const
   {
-    auto fullAddress = std::wstring(com().Name);
-    fullAddress += '!';
-    fullAddress += address;
-    return ExcelRange(fullAddress.c_str());
+    try
+    {
+      return ExcelRange(formatStr(L"'[%s]%s'!%s", 
+        parent().name().c_str(), 
+        name().c_str(), 
+        wstring(address).data()));
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const

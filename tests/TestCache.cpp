@@ -52,8 +52,8 @@ namespace Tests
       auto sheetName = wstring(L"[Book]Sheet");
       auto caller = CallerInfo(F3, sheetName.c_str());
 
-      Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(CallerInfo::RC));
-      Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(CallerInfo::A1));
+      Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(AddressStyle::RC | AddressStyle::NOQUOTE));
+      Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(AddressStyle::A1 | AddressStyle::NOQUOTE));
     }
     TEST_METHOD(CacheSpeedTest1)
     {

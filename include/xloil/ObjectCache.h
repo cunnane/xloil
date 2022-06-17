@@ -27,9 +27,10 @@ namespace xloil
     inline auto writeCacheId(
       const CallerInfo& caller, const std::wstring_view& optionalName)
     {
+      constexpr auto addressStyle = AddressStyle::RC | AddressStyle::NOQUOTE;
       const auto nameLength = optionalName.size();
       const auto pstrLength = 
-        caller.addressLength(CallerInfo::RC) 
+        caller.addressLength(addressStyle)
         + optionalName.size() 
         + NPadding + 1u; // Padding for the ",XX" at the end and 1 for the uniquifier
       PString pascalStr((uint16_t)pstrLength);
@@ -37,10 +38,10 @@ namespace xloil
 
       int nWritten = 1; // Leave space for uniquifier
 
-      nWritten += caller.writeAddress(buf, pstrLength - 1);
+      nWritten += caller.writeAddress(buf, pstrLength - 1, addressStyle);
       // Check for a negative return condition from the above. This should not
       // be possible as we made the buffer larger than the addres length
-      assert(nWritten - 1 > 0 && nWritten <= caller.addressLength(CallerInfo::RC) + 1);
+      assert(nWritten - 1 > 0 && nWritten <= caller.addressLength(addressStyle) + 1);
 
       if (nameLength != 0)
         wmemcpy_s(buf + nWritten - 1, pstrLength - nWritten, optionalName.data(), nameLength);
