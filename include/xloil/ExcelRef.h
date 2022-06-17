@@ -49,7 +49,7 @@ namespace xloil
       }
 
       /// <summary>
-      /// Returns the address of the range in the form '[Book]SheetNm!A1:Z5'
+      /// Returns the address of the range in the form '[Book]SheetNm'!A1:Z5
       /// </summary>
       std::wstring address(bool local = false) const
       {
@@ -90,8 +90,8 @@ namespace xloil
       {
         return msxll::xlref12{
           r.rwFirst + fromRow,
-          r.colFirst + fromCol,
           toRow == Range::TO_END ? r.rwLast : r.rwFirst + toRow,
+          r.colFirst + fromCol,
           toCol == Range::TO_END ? r.colLast : r.colFirst + toCol };
       }
 
@@ -134,7 +134,7 @@ namespace xloil
     ExcelRef(msxll::IDSHEET sheetId,
       int fromRow, int fromCol,
       int toRow, int toCol)
-      : ExcelRef(sheetId, msxll::xlref12{ fromRow, fromCol, toRow, toCol })
+      : ExcelRef(sheetId, msxll::xlref12{ fromRow, toRow, fromCol, toCol })
     {}
 
     /// <summary>
