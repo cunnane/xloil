@@ -653,13 +653,12 @@ def event_writeTimeToA1():
     if xlo.app("win32com").ActiveWorkbook.Name != _workbook_name:
         return
     
-    ws = xlo.active_worksheet()
     wb = xlo.active_workbook()
-    rng = wb[ws.to_com().Name]["A1"]
+    rng = wb["RTD"]["A1"]
     
     time = str(dt.datetime.now())
 
-    rng.value = f"Calc on {ws.name} finished at: {time}"
+    rng.value = f"Calc finished at: {time}"
 
 #
 # This handler is for the WorkbookBeforePrint event. If the `cancel` parameter
