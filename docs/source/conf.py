@@ -18,19 +18,21 @@ import os
 import sys
 from pathlib import Path
 
-soln_dir = Path(os.path.realpath(__file__)).parent.parent.parent
+soln_dir = Path(os.environ["XLOIL_SOLN_DIR"])
+bin_dir = Path(os.environ["XLOIL_BIN_DIR"])
+
 print("xlOil solution directory: ", str(soln_dir))
-sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
+sys.path.append(str(bin_dir))
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'xlOil'
-copyright = '2020, Steven Cunnane'
+copyright = '2022, Steven Cunnane'
 author = 'Steven Cunnane'
 
 # The full version, including alpha/beta/rc tags
-release = Path(soln_dir / "Version.txt").read_text()
+release = (soln_dir / "Version.txt").read_text()
 
 # -- General configuration ---------------------------------------------------
 
@@ -84,7 +86,7 @@ autodoc_default_flags = ['members']
 
 autosummary_generate = False
 
-# See https://stackoverflow.com/questions/34216659/sphinx-autosummary-produces-two-summaries-for-each-class 
+# See https://stackoverflow.com/questions/34216659/
 numpydoc_show_class_members=False
 
 #
@@ -103,9 +105,10 @@ except FileExistsError: pass
 
 zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
  
-zipObj.write(soln_dir / "tests" / "python" / "PythonTest.xlsm", "PythonTest.xlsm")
-zipObj.write(soln_dir / "tests" / "python" / "PythonTest.py", "PythonTest.py")
-zipObj.write(soln_dir / "tests" / "sql" / "TestSQL.xlsx", "TestSQL.xlsx")
-zipObj.write(soln_dir / "tests" / "utils" / "xlOil_Utils.xlsx", "xlOil_Utils.xlsx")
+zipObj.write(soln_dir / "tests" / "TestSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+zipObj.write(soln_dir / "tests" / "TestSheets" / "PythonTest.py", "PythonTest.py")
+zipObj.write(soln_dir / "tests" / "TestSheets" / "TestModule.py", "TestModule.py")
+zipObj.write(soln_dir / "tests" / "TestSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+zipObj.write(soln_dir / "tests" / "TestSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
  
 zipObj.close()

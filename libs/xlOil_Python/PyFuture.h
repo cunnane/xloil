@@ -109,10 +109,30 @@ namespace xloil
           .def("__next__", &Iter::next)
           .def("__iter__", [](pybind11::object self) { return self; });
 
-        pybind11::class_<this_type>(mod, name.c_str())
+        pybind11::class_<this_type>(mod, name.c_str(), R"(
+            A Future represents an eventual result of an asynchronous operation.
+            Future is an awaitable object. Coroutines can await on Future objects 
+            until they either have a result or an exception set. This Future cannot
+            be cancelled.
+
+            This class actually wraps a C++ future so does executes in a separate 
+            thread unrelated to an `asyncio` event loop. 
+          )")
           .def("__await__", &await, pybind11::return_value_policy::reference_internal)
-          .def("result", &result)
-          .def("done", &done);
+          .def("result", 
+            &result,
+            R"(
+              Return the result of the Future, blocking if the Future is not yet done.
+
+              If the Future has a result, its value is returned.
+
+              If the Future has an exception, raises the exception.
+            )")
+          .def("done", 
+            &done,
+            R"(
+              Return True if the Future is done.  A Future is done if it has a result or an exception.
+            )");
       }
     };
 

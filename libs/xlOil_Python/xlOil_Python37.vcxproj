@@ -72,6 +72,8 @@
     <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
+    <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
     <ClCompile Include="TypeConversion\PyCustomType.cpp" />

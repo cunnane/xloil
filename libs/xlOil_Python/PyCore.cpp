@@ -5,11 +5,9 @@
 #include "PyFuture.h"
 #include <TypeConversion/BasicTypes.h>
 #include <xlOil/ExcelThread.h>
-#include <xloil/Log.h>
 #include <xloil/Caller.h>
 #include <xloil/State.h>
 #include <xlOil/StringUtils.h>
-#include <xlOil/ExcelUI.h>
 #include <map>
 
 using std::shared_ptr;
@@ -85,73 +83,6 @@ namespace xloil
 
     namespace
     {
-      // The numerical values of the python log levels align nicely with spdlog
-      // so we can translate with a factor of 10.
-      // https://docs.python.org/3/library/logging.html#levels
-
-      class LogWriter
-      {
-      public:
-
-        /// <summary>
-        /// Allows intial match like 'warn' for 'warning'
-        /// </summary>
-        /// <param name="target"></param>
-        /// <returns></returns>
-        spdlog::level::level_enum levelFromStr(const std::string& target)
-        {
-          using namespace spdlog::level;
-          int iLevel = 0;
-          for (const auto& level_str : SPDLOG_LEVEL_NAMES)
-          {
-            if (strncmp(target.c_str(), level_str, target.length()) == 0)
-              return static_cast<level_enum>(iLevel);
-            iLevel++;
-          }
-          return off;
-        }
-
-        spdlog::level::level_enum toSpdLogLevel(const py::object& level)
-        {
-          if (PyLong_Check(level.ptr()))
-          {
-            return spdlog::level::level_enum(
-              std::min(PyLong_AsUnsignedLong(level.ptr()) / 10, 6ul));
-          }
-          return levelFromStr(toLower((string)py::str(level)));
-        }
-
-        void writeToLog(const char* message, const py::object& level)
-        {
-          auto frame = PyEval_GetFrame();
-          spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
-          if (frame)
-          {
-            auto code = frame->f_code; // Guaranteed never null
-            source.line = PyCode_Addr2Line(code, frame->f_lasti);
-            source.filename = PyUnicode_AsUTF8(code->co_filename);
-            source.funcname = PyUnicode_AsUTF8(code->co_name);
-          }
-          const auto spdLevel = toSpdLogLevel(level);
-          py::gil_scoped_release releaseGil;
-          spdlog::default_logger_raw()->log(
-            source,
-            spdLevel,
-            message);
-        }
-
-        unsigned getLogLevel()
-        {
-          auto level = spdlog::default_logger()->level();
-          return level * 10;
-        }
-
-        void setLogLevel(const py::object& level)
-        {
-          spdlog::default_logger()->set_level(toSpdLogLevel(level));
-        }
-      };
-
       auto runLater(
         const py::object& callable, 
         const unsigned delay, 
@@ -192,25 +123,7 @@ namespace xloil
 
       struct CannotConvert {};
 
-      struct PyStatusBar
-      {
-        std::unique_ptr<StatusBar> _bar;
-
-        PyStatusBar(size_t timeout)
-          : _bar(new StatusBar(timeout))
-        {}
-        void msg(const std::wstring& msg, size_t timeout)
-        {
-          py::gil_scoped_release releaseGil;
-          _bar->msg(msg, timeout);
-        }
-        void exit(py::args)
-        {
-          py::gil_scoped_release releaseGil;
-          _bar.reset();
-        }
-      };
-
+      
       void initialiseCore(pybind11::module& mod)
       {
         // Bind the two base classes for python converters
@@ -225,41 +138,79 @@ namespace xloil
 
         mod.def("set_return_converter", setReturnConverter);
 
-        mod.def("in_wizard", &inFunctionWizard);
-
-        py::class_<LogWriter>(mod, "LogWriter")
-          .def(py::init<>())
-          .def("__call__", &LogWriter::writeToLog, py::arg("msg"), py::arg("level") = 20)
-          .def_property("level", &LogWriter::getLogLevel, &LogWriter::setLogLevel);
+        mod.def("in_wizard", &inFunctionWizard,
+          R"(
+          Returns true if the function is being invoked from the function wizard : costly functions should"
+          exit in this case to maintain UI responsiveness.Checking for the wizard is itself not cheap, so"
+          use this sparingly.
+          )");
 
         mod.def("excel_callback",
           &runLater,
+          R"(
+          Schedules a callback to be run in the main thread.Much of the COM API in unavailable
+          during the calc cycle, in particular anything which involves writing to the sheet.
+
+          Parameters
+          ----------
+
+          func: callable
+          A callable which takes no arguments and returns nothing
+
+          retry : int
+          Millisecond delay between retries if Excel's COM API is busy, e.g. a dialog box
+          is open or it is running a calc cycle.If zero, does no retry
+
+          wait : int
+          Number of milliseconds to wait before first attempting to run this function
+
+          api : str
+          Specify 'xll' or 'com' or both to indicate which add - in APIs the call requires.
+          The default is 'com' and changing this would only be required in rare cases.
+          )",
           py::arg("func"),
           py::arg("wait") = 0,
           py::arg("retry") = 500,
           py::arg("api") = "");
 
-        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState")
-          .def_readonly("version", &Environment::ExcelProcessInfo::version)
-          .def_readonly("hinstance", &Environment::ExcelProcessInfo::hInstance)
-          .def_readonly("hwnd", &Environment::ExcelProcessInfo::hWnd)
-          .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId);
+        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState", 
+          R"(
+          Gives information about the Excel application, in particular the handles required
+          to interact with Excel via the Win32 API.
+          )")
+          .def_readonly("version", &Environment::ExcelProcessInfo::version, 
+            "Excel major version")
+          .def_readonly("hinstance", &Environment::ExcelProcessInfo::hInstance,
+            "Excel HINSTANCE")
+          .def_readonly("hwnd", &Environment::ExcelProcessInfo::hWnd,
+            "Excel main window handle(as an int)")
+          .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId,
+            "Excel's main thread ID");
 
         mod.def("excel_state", Environment::excelProcess);
 
-        py::class_<PyStatusBar>(mod, "StatusBar")
-          .def(py::init<size_t>(), py::arg("timeout") = 0)
-          .def("__enter__", [](py::object self) { return self; })
-          .def("__exit__", &PyStatusBar::exit)
-          .def("msg", &PyStatusBar::msg, py::arg("msg"), py::arg("timeout") = 0);
-
         comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
 
-        cannotConvertException = py::exception<CannotConvert>(mod, "CannotConvert").ptr();
+        {
+          auto e = py::exception<CannotConvert>(mod, "CannotConvert");
+          e.doc() = R"(
+            Should be thrown by a converter when it is unable to handle the 
+            provided type.  In a return converter it may not indicate a fatal 
+            condition, as xlOil will fallback to another converter.
+          )";
+          cannotConvertException = e.ptr();
+        }
 
         {
           // Bind CellError type to xloil::CellError enum
-          auto eType = py::enum_<CellError>(mod, "CellError");
+          auto eType = py::enum_<CellError>(mod, "CellError", 
+            R"(
+              Enum-type class which represents an Excel error condition of the 
+              form `#N/A!`, `#NAME!`, etc passed as a function argument. If a 
+              function argument does not specify a type (e.g. int, str) it may be passed 
+              a CellError, which it can handle based on the error condition.
+            )");
+
           for (auto e : theCellErrors)
             eType.value(utf16ToUtf8(enumAsWCString(e)).c_str(), e);
 

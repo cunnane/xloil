@@ -38,6 +38,8 @@
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyAddin.cpp" />
+    <ClCompile Include="PyStatusBar.cpp" />
+    <ClCompile Include="PyLogWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncFunctions.h" />

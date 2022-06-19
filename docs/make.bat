@@ -7,10 +7,16 @@ REM Command file for Sphinx documentation
 if "%SPHINXBUILD%" == "" (
 	set SPHINXBUILD=sphinx-build
 )
-set SOURCEDIR=source
-set BUILDDIR=source\_build
 
 if "%1" == "" goto help
+
+REM TODO: Build flavour hard coded here!
+set XLOIL_SOLN_DIR=%~dp0..
+set XLOIL_BIN_DIR=%SOLN_DIR%\build\x64\Debug
+
+set SOURCEDIR=source
+set BUILDDIR=%SOLN_DIR%\build\docs
+set PATH=%PATH%;C:\Program Files\doxygen\bin
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
@@ -24,9 +30,6 @@ if errorlevel 9009 (
 	echo.http://sphinx-doc.org/
 	exit /b 1
 )
-
-set PATH=%PATH%;C:\Program Files\doxygen\bin
-set SOLN_DIR=%~dp0..
 
 if "%1" == "doxygen" goto doxygen
 

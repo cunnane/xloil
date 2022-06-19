@@ -147,20 +147,59 @@ namespace xloil
       {
         // Bind the PyExcelArray type to ExcelArray. PyExcelArray is a wrapper
         // around the core ExcelArray type.
-        auto aType = py::class_<PyExcelArray>(mod, "ExcelArray")
-          .def("sub_array", &PyExcelArray::slice, 
+        auto aType = py::class_<PyExcelArray>(mod, "ExcelArray",
+          R"(
+            A view of a internal Excel array which can be manipulated without
+            copying the underlying data. It's not a general purpose array class 
+            but rather used to create efficiencies in type converters.
+    
+            It can be accessed and sliced using the usual syntax (the slice step must be 1):
+
+            ::
+
+                x[1, 1] # The value at 1,1 as int, str, float, etc.
+
+                x[1, :] # The second row as another ExcelArray
+
+                x[:-1, :-1] # A sub-array omitting the last row and column
+
+          )")
+          .def("slice", 
+            &PyExcelArray::slice, 
+            R"(
+              Slices the array 
+            )",
             py::arg("from_row"), 
             py::arg("from_col"),
-            py::arg("to_row") = -1, 
-            py::arg("to_col") = -1)
-          .def("to_numpy", &toArray,
+            py::arg("to_row"), 
+            py::arg("to_col"))
+          .def("to_numpy",
+            &toArray,
+            R"(
+              Converts the array to a numpy array. If *dtype* is None, xlOil attempts 
+              to determine the correct numpy dtype. It raises an exception if values
+              cannot be converted to a specified *dtype*. The array dimension *dims* 
+              can be 1 or 2 (default is 2).
+            )",
             py::arg("dtype") = py::none(), 
             py::arg("dims") = 2)
-          .def("__getitem__", &PyExcelArray::getItem)
-          .def_property_readonly("nrows", &PyExcelArray::nRows)
-          .def_property_readonly("ncols", &PyExcelArray::nCols)
-          .def_property_readonly("dims", &PyExcelArray::dims)
-          .def_property_readonly("shape", &PyExcelArray::shape);
+          .def("__getitem__", 
+            &PyExcelArray::getItem,
+            R"(
+              Given a 2-tuple, slices the array to return a sub ExcelArray or a single element.
+            )")
+          .def_property_readonly("nrows", 
+            &PyExcelArray::nRows,
+            "Returns the number of rows in the array")
+          .def_property_readonly("ncols", 
+            &PyExcelArray::nCols,
+            "Returns the number of columns in the array")
+          .def_property_readonly("dims", 
+            &PyExcelArray::dims,
+            "Property which gives the dimension of the array: 1 or 2")
+          .def_property_readonly("shape", 
+            &PyExcelArray::shape,
+            "Returns a tuple (nrows, ncols) like numpy's array.shape");
 
         ExcelArrayType = (PyTypeObject*)aType.get_type().ptr();
 

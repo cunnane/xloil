@@ -132,10 +132,63 @@ namespace xloil
       {
         ExcelObjFuture::bind(mod, "ExcelObjFuture");
 
-        mod.def("run", appRun, py::arg("func"));
-        mod.def("run_async", appRunAsync, py::arg("func"));
-        mod.def("call", callXll, py::arg("func"));
-        mod.def("call_async", callXllAsync, py::arg("func"));
+        mod.def("run", 
+          appRun, 
+          R"(
+            Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+            This can call any user-defined function or macro but not built-in functions.
+
+            The type and order of arguments expected depends on the function being called.
+
+            Must be called on Excel's main thread, for example in worksheet function or 
+            command.
+          )",
+          py::arg("func"));
+
+        mod.def("run_async", 
+          appRunAsync, 
+          R"(
+            Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+            This can call any user-defined function or macro but not built-in functions.
+
+            Calls to the Excel API must be done on Excel's main thread: this async function
+            can be called from any thread but will require the main thread to be available
+            to return a result.
+
+            Returns an **awaitable**, i.e. a future which holds the result.
+          )",
+          py::arg("func"));
+
+        mod.def("call", 
+          callXll, 
+          R"(
+            Calls a built-in worksheet function or command or a user-defined function with the 
+            given name. The name is case-insensitive; built-in functions take priority in a name
+            clash.
+            
+            The type and order of arguments expected depends on the function being called.  
+
+            `func` can be built-in function number (as an int) which slightly reduces the lookup overhead
+
+            This function must be called from a *non-local worksheet function on the main thread*.
+
+            *call* can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf`>`_
+          )",
+          py::arg("func"));
+
+        mod.def("call_async", 
+          callXllAsync, 
+          R"(
+            Calls a built-in worksheet function or command or a user-defined function with the 
+            given name.  See ``xloil.call``.
+
+            Calls to the Excel API must be done on Excel's main thread: this async function
+            can be called from any thread but will require the main thread to be available
+            to return a result.
+            
+            Returns an **awaitable**, i.e. a future which holds the result.
+          )",
+          py::arg("func"));
       });
     }
   }

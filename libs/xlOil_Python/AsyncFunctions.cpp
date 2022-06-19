@@ -275,7 +275,13 @@ namespace xloil
           .def_property_readonly("caller", &AsyncReturn::caller)
           .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
 
-        mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });
+        mod.def("get_async_loop", 
+          []() { return asyncEventLoop().loop(); },
+          R"(
+            Returns the asyncio event loop associated with the async background
+            worker thread.  All async / RTD worksheet functions are executed 
+            on this event loop.
+          )");
       });
     }
   }

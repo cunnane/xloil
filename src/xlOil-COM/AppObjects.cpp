@@ -99,7 +99,7 @@ namespace xloil
       {
         auto xlApp = Application(COM::applicationObjectFromWindow(xlmain));
         ExcelWorkbook wb(nullptr);
-        if (xlApp.Workbooks().tryGet(workbook, wb))
+        if (xlApp.workbooks().tryGet(workbook, wb))
           return &xlApp.com();
       }
       return nullptr;
@@ -330,11 +330,6 @@ namespace xloil
     return com().Path.GetBSTR();
   }
 
-  std::vector<ExcelWindow> ExcelWorkbook::windows() const
-  {
-    return CollectionToVector<ExcelWindow>()(com().Windows);
-  }
-
   void ExcelWorkbook::activate() const
   {
     com().Activate();
@@ -517,7 +512,7 @@ namespace xloil
   }
 
   Worksheets::Worksheets(Application app)
-    : parent(app.Workbooks().active())
+    : parent(app.workbooks().active())
   {
     if (!parent.valid())
       XLO_THROW("No active workbook");
@@ -572,27 +567,36 @@ namespace xloil
     return app.com().Workbooks->GetCount();
   }
 
-  Windows::Windows(Application app)
-    : app(app)
+  Windows::Windows(const Application& app)
+    : IAppObject(app.com().Windows.Detach(), true)
+  {}
+
+  Windows::Windows(const ExcelWorkbook& workbook)
+    : IAppObject(workbook.com().Windows.Detach(), true)
   {}
 
   ExcelWindow Windows::active() const
   {
-    return ExcelWindow(std::wstring_view(), app);
+    return ExcelWindow(std::wstring_view(), app());
+  }
+
+  Application Windows::app() const
+  {
+    return Application(com().Application.Detach());
   }
 
   bool Windows::tryGet(const std::wstring_view& name, ExcelWindow& out) const
   {
-    return comTryGet(app.com().Windows, name, out);
+    return comTryGet(&com(), name, out);
   }
 
   std::vector<ExcelWindow> Windows::list() const
   {
-    return CollectionToVector<ExcelWindow>()(app.com().Windows);
+    return CollectionToVector<ExcelWindow>()(&com());
   }
 
   size_t Windows::count() const
   {
-    return app.com().Windows->GetCount();
+    return com().GetCount();
   }
 }

@@ -147,15 +147,71 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<PyCache>(mod, "ObjectCache")
-          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
+        py::class_<PyCache>(mod, "ObjectCache", R"(
+            Provides a way to manipulate xlOil's Python object cache
+
+            Examples
+            --------
+
+            ::
+        
+                @xlo.func
+                def myfunc(x):
+                    return xlo.cache(MyObject(x)) # <-equivalent to cache.add(...)
+
+                @xlo.func
+                def myfunc2(array: xlo.Array(str), i):
+                    return xlo.cache[array[i]]   # <-equivalent to cache.get(...)
+
+          )")
+          .def("add", 
+            &PyCache::add, 
+            R"(
+              Adds an object to the cache and returns a reference string
+              based on the currently calculating cell.
+
+              xlOil automatically adds unconvertible returned objects to the cache,
+              so this function is useful to force a recognised object, such as an 
+              iterable into the cache, or to return a list of cached objects.
+
+              Parameters
+              ----------
+
+              obj:
+                The object to cache.  Required.
+
+              tag: str
+                An optional string to append to the cache ref to make it more 
+                'friendly'. When returning python objects from functions, 
+                xlOil uses the object's type name as a tag
+
+              key: str
+                If specified, use the exact cache key (after prepending by
+                cache uniquifier). The user is responsible for ensuring 
+                uniqueness of the cache key.
+            )",
+            py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
           .def("remove", &PyCache::remove, py::arg("ref"))
-          .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
-          .def("contains", &PyCache::contains, py::arg("ref"))
-          .def("keys", &PyCache::keys)
+          .def("get", 
+            &PyCache::get, 
+            R"(
+              Fetches an object from the cache given a reference string.
+              Returns `default` if not found
+            )",
+            py::arg("ref"), py::arg("default") = py::none())
+          .def("contains", 
+            &PyCache::contains, 
+            "Returns True if the given reference string links to a valid object",
+            py::arg("ref"))
+          .def("keys", 
+            &PyCache::keys,
+            "Returns all cache keys as a list of strings")
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::getitem)
-          .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag")="", py::arg("key")="");
+          .def("__call__", 
+            &PyCache::add, 
+            "Calls `add` method with provided arguments",
+            py::arg("obj"), py::arg("tag")="", py::arg("key")="");
 
         mod.add_object("cache", py::cast(PyCache::construct()));
       });

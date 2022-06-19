@@ -8,33 +8,16 @@ from .com import EventsPaused
 from ._common import *
 import contextvars
 
-if XLOIL_HAS_CORE:
-    import xloil_core
-    from xloil_core import (
-        Read_object as _Read_object,
-        Read_Cache as _Read_Cache,
-        FuncSpec as _FuncSpec,
-        FuncArg as _FuncArg
-    )
-else:
-    def _Read_object():
-        pass
 
-    def _Read_Cache():
-        pass
+import xloil_core
 
-    class _FuncSpec:
-        def __init__(self, *args, **kwargs):
-            pass
-        help = ""
-        name = ""
+from xloil_core import (
+    Read_object as _Read_object,
+    Read_Cache as _Read_Cache,
+    FuncSpec as _FuncSpec,
+    FuncArg as _FuncArg
+)
 
-    class _FuncArg:
-        name:str
-        help:str
-        converter=None
-        default=None
-        allow_range = False
 
 """
 Tag used to mark modules which contain functions to register. It is added 

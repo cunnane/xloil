@@ -188,7 +188,7 @@ namespace xloil
           py::class_<T>(mod, (u8name + "_Type").c_str())
             .def("__iadd__", &T::add)
             .def("__isub__", &T::remove)
-            .def("handlers", &T::handlers)
+            .def_property_readonly("handlers", &T::handlers)
             .def("clear", &T::clear);
         }
         mod.add_object(u8name.c_str(), py::cast(event, py::return_value_policy::take_ownership));
@@ -220,11 +220,81 @@ namespace xloil
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         auto eventMod = mod.def_submodule("event");
-        eventMod.def("allow", []() {setAllowEvents(true); });
-        eventMod.def("pause", []() {setAllowEvents(false); });
+        mod.doc() = R"(
+          Module containing event objects which can be hooked to receive events driven by 
+          Excel's UI. The events correspond to COM/VBA events and are described in detail
+          in the Excel Application API.
+        
+          Event Class
+          -----------
+
+              * Events are hooked using `+=`, e.g. `event.NewWorkbook += lambda wb: print(wb_name)`
+              * Events are unhooked using `-=` passing a reference to the handler function
+              * Each event has a `handlers` property listing all currently hooked handlers
+
+          Events
+          ------
+          
+              * AfterCalculate: 
+                  Called after a calculation whether or not it completed or was interrupted
+              * CalcCancelled:
+                  Called when the user interrupts calculation by interacting with Excel.
+              * WorkbookAfterClose:
+                  Excel's event *WorkbookBeforeClose*, is  cancellable by the user so it is not 
+                  possible to know if the workbook actually closed.  When xlOil calls 
+                  `WorkbookAfterClose`, the workbook is certainly closed, but it may be some time
+                  since that closure happened.
+                  The event is not called for each workbook when xlOil exits.
+              * PyBye:
+                  Called just before xlOil finalises the python interpreter. All python and xlOil
+                  functionality is still available. This event is useful to stop threads as it is 
+                  called before threading module teardown, whereas `atexit` is not.
+
+          For other events see  `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+          
+          Notes
+          -----
+
+              * The `CalcCancelled` and `WorkbookAfterClose` event are not part of the 
+                Application object, see their individual documentation.
+              * Where an event has reference parameter, for example the `cancel` bool in
+                `WorkbookBeforeSave`, you need to set the value using `cancel.value=True`.
+                This is because python does not support reference parameters for primitive types.
+
+
+          Examples
+          --------
+
+          ::
+
+              def greet(workbook, worksheet):
+                  xlo.Range(f"[{workbook}]{worksheet}!A1") = "Hello!"
+
+              xlo.event.WorkbookNewSheet += greet
+              ...
+              xlo.event.WorkbookNewSheet -= greet
+              
+              print(xlo.event.WorkbookNewSheet.handlers) # Should be empty
+
+        )";
+
+        eventMod.def("allow", 
+          []() { setAllowEvents(true); },
+          R"(
+            Resumes Excel's event handling after a pause.  Equivalent to VBA's
+            `Application.EnableEvents = True` or `xlo.app().enable_events = True` 
+          )" );
+
+        eventMod.def("pause", 
+          []() { setAllowEvents(false); },
+          R"(
+            Pauses Excel's event handling. Equivalent to VBA's 
+            `Application.EnableEvents = False` or `xlo.app().enable_events = False` 
+          )");
 
         bindArithmeticRef<bool>(eventMod);
 
+        // TODO: how to set doc string for each event?
 #define XLO_PY_EVENT(r, _, NAME) \
         bindEvent(eventMod, makeEvent(xloil::Event::NAME()), XLO_WSTR(NAME));
 

@@ -156,7 +156,14 @@ namespace xloil
         bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
         bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
 
-        mod.def("from_excel_date", fromExcelDate);
+        mod.def("from_excel_date", 
+          fromExcelDate,
+          R"(
+            Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
+            Excel date serial number.  Strings are parsed using the current date conversion 
+            settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
+            if conversion is not possible.
+          )");
       });
     }
   }

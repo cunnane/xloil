@@ -18,6 +18,7 @@ namespace Excel
   struct _Workbook;
   struct _Worksheet;
   struct Range;
+  struct Windows;
 }
 
 namespace xloil
@@ -121,8 +122,8 @@ namespace xloil
     /// </summary>
     void calculate(const bool full=false, const bool rebuild=false);
 
-    Workbooks Workbooks() const;
-    Windows Windows() const;
+    Workbooks workbooks() const;
+    Windows windows() const;
     ExcelWorksheet ActiveWorksheet() const;
 
     ExcelObj Run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
@@ -362,7 +363,7 @@ namespace xloil
     /// multiple windows viewing a single workbook).
     /// </summary>
     /// <returns></returns>
-    std::vector<ExcelWindow> windows() const;
+    Windows windows() const;
 
     /// <summary>
     /// Returns a collection of all Worksheets in this Workbook. It does not  
@@ -518,38 +519,52 @@ namespace xloil
     Application app;
   };
 
-  class XLOIL_EXPORT Windows
+  class XLOIL_EXPORT Windows : public IAppObject
   {
   public:
-    Windows(Application app = excelApp());
+    Windows(const Application& app = excelApp());
+    Windows(const ExcelWorkbook& workbook);
     ExcelWindow active() const;
-    auto get(const std::wstring_view& name) const { return ExcelWindow(name, app); }
+    auto get(const std::wstring_view& name) const { return ExcelWindow(name, app()); }
     auto operator[](const std::wstring_view& name) const { return get(name); };
     bool tryGet(const std::wstring_view& name, ExcelWindow& window) const;
     std::vector<ExcelWindow> list() const;
     size_t count() const;
 
-    Application app;
+    virtual std::wstring name() const { return L""; }
+
+    Application app() const;
+
+    Excel::Windows& com() const
+    {
+      if (!valid()) throw new NullComObjectException();
+      return *(Excel::Windows*)_ptr;
+    }
   };
 
   // Some function definitions which need to live down here due to
   // the order of declarations
 
-  inline Workbooks Application::Workbooks() const
+  inline Workbooks Application::workbooks() const
   {
-    return xloil::Workbooks(*this);
+    return Workbooks(*this);
   }
 
-  inline Windows Application::Windows() const
+  inline Windows Application::windows() const
   {
-    return xloil::Windows(*this);
+    return Windows(*this);
   }
 
   inline Worksheets ExcelWorkbook::worksheets() const
   { 
     return Worksheets(*this); 
   }
-  
+
+  inline Windows ExcelWorkbook::windows() const
+  {
+    return Windows(*this);
+  }
+
   inline ExcelWorksheet ExcelWorkbook::worksheet(const std::wstring_view& name) const
   {
     return worksheets().get(name);

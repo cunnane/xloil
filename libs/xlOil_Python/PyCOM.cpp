@@ -275,6 +275,10 @@ namespace xloil
     {
       return marshalCom(binder, &p, "Range", __uuidof(Excel::Range));
     }
+    pybind11::object comToPy(IDispatch& p, const char* binder)
+    {
+      return marshalCom(binder, &p, "IDispatch", __uuidof(IDispatch));
+    }
 
     namespace
     {
@@ -285,7 +289,31 @@ namespace xloil
 
       static int theBinder = addBinder([](py::module& mod)
       {
-        mod.def("insert_cell_image", writeCellImage, 
+        mod.def("insert_cell_image", 
+          writeCellImage, 
+          R"(
+            Inserts an image associated with the calling cell. A second call to this function
+            removes any image previously inserted from the same calling cell.
+
+            Parameters
+            ----------
+
+            writer: 
+                a one-arg function which writes the image to a provided filename. The file
+                format must be one that Excel can open.
+            size:  
+                * A tuple (width, height) in points. 
+                * "cell" to fit to the caller size
+                * "img" or None to keep the original image size
+            pos:
+                A tuple (X, Y) in points. The origin is determined by the `origin` argument
+            origin:
+                * "top" or None: the top left of the calling range
+                * "sheet": the top left of the sheet
+                * "bottom": the bottom right of the calling range
+            compress:
+                if True, compresses the resulting image before storing in the sheet
+          )",
           py::arg("writer"),
           py::arg("size") = py::none(),
           py::arg("pos") = py::none(),

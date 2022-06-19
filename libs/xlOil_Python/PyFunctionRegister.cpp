@@ -494,7 +494,13 @@ namespace xloil
           py::arg("module")=py::none(),
           py::arg("addin")=py::none(),
           py::arg("append")=false);
-        mod.def("deregister_functions", &deregisterFunctions);
+
+        mod.def("deregister_functions", 
+          &deregisterFunctions,
+          R"(
+            Deregisters worksheet functions linked to specified module.Generally, there
+            is no need to call this directly.
+          )");
       });
     }
   }

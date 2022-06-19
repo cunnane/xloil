@@ -7,39 +7,18 @@ import functools
 from ._core import Range, CellError, CannotConvert
 from ._common import *
 
-if XLOIL_HAS_CORE:
-    import xloil_core
-    from xloil_core import (
-        set_return_converter,
-        CustomConverter as _CustomConverter,
-        CustomReturn as _CustomReturn,
-        Return_Cache as _Return_Cache,
-        Return_SingleValue as _Return_SingleValue,
-        Read_Array_object_2d as _Read_Array_object_2d,
-        Return_Array_object_2d as _Return_Array_object_2d,
-    )
-else:
-    class _CustomConverter:
-        def __init__(self, *arg, **kwargs):
-            pass
+import xloil_core
 
-    class _CustomReturn:
-        def __init__(self, *arg, **kwargs):
-            pass
-        def get_handler(self):
-            pass
-    
-    def set_return_converter(*arg, **kwargs):
-        pass
+from xloil_core import (
+    set_return_converter,
+    CustomConverter as _CustomConverter,
+    CustomReturn as _CustomReturn,
+    Return_Cache as _Return_Cache,
+    Return_SingleValue as _Return_SingleValue,
+    Read_Array_object_2d as _Read_Array_object_2d,
+    Return_Array_object_2d as _Return_Array_object_2d,
+)
 
-    def _Return_Cache():
-        pass
-    def _Return_SingleValue():
-        pass
-    def _Read_Array_object_2d(trim):
-        pass
-    def _Return_Array_object_2d(trim):
-        pass
 
 """
 This annotation includes all the types which can be passed from xlOil to
