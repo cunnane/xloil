@@ -132,7 +132,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelWorksheet Application::ActiveWorksheet() const
+  ExcelWorksheet Application::activeWorksheet() const
   {
     try
     {
@@ -209,7 +209,7 @@ namespace xloil
     }
   }
 
-  ExcelObj Application::Run(
+  ExcelObj Application::run(
     const std::wstring& func,
     const size_t nArgs,
     const ExcelObj* args[])
@@ -245,7 +245,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelWorkbook Application::Open(
+  ExcelWorkbook Application::open(
     const std::wstring& filepath, 
     bool updateLinks, 
     bool readOnly)
@@ -495,17 +495,26 @@ namespace xloil
 
   bool Workbooks::tryGet(const std::wstring_view& workbookName, ExcelWorkbook& wb) const
   {
-    return comTryGet(this->app.com().Workbooks, workbookName, wb);
+    return comTryGet(&com(), workbookName, wb);
   }
 
   ExcelWorkbook Workbooks::add()
   {
     try
     {
-      auto p = app.com().Workbooks->Add();
+      auto p = com().Add();
       return ExcelWorkbook(p.Detach(), true);
     }
     XLO_RETHROW_COM_ERROR;
+  }
+
+  Application Workbooks::app() const
+  {
+    try
+    {
+      return Application(com().Application.Detach());
+    }
+    XLO_RETHROW_COM_ERROR
   }
 
   Worksheets::Worksheets(Application app)
@@ -545,23 +554,23 @@ namespace xloil
     return parent.com().Worksheets->GetCount();
   }
 
-  Workbooks::Workbooks(Application app)
-    : app(app)
+  Workbooks::Workbooks(const Application& app)
+    : AppObject(app.com().Workbooks.Detach(), true)
   {}
 
   ExcelWorkbook Workbooks::active() const
   {
-    return ExcelWorkbook(std::wstring_view(), app);
+    return ExcelWorkbook(std::wstring_view(), app());
   }
 
   std::vector<ExcelWorkbook> Workbooks::list() const
   {
-    return CollectionToVector<ExcelWorkbook>()(app.com().Workbooks);
+    return CollectionToVector<ExcelWorkbook>()(&com());
   }
 
   size_t Workbooks::count() const
   {
-    return app.com().Workbooks->GetCount();
+    return com().GetCount();
   }
 
   Windows::Windows(const Application& app)

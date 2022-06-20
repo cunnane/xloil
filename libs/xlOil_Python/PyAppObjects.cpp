@@ -300,7 +300,13 @@ namespace xloil
           .def("__getitem__", &getitem)
           .def("__iter__", &iter)
           .def("__len__", &count)
-          .def("get", &getdefaulted, py::arg("name"), py::arg("default") = py::none())
+          .def("get", 
+            &getdefaulted, 
+            R"(
+              Tries to get the named object, returning the default if not found
+            )"
+            py::arg("name"), 
+            py::arg("default") = py::none())
           .def_property_readonly("active", &active);
       }
     };
@@ -605,6 +611,20 @@ namespace xloil
           toComDocString, 
           py::arg("lib") = "");
         
+      constexpr const char* workbookAddDocString = R"(
+        Add a worksheet, returning a `Worksheet` object.
+
+        Parameters
+        ----------
+        name: str
+          Names the worksheet, otherwise it will have an Excel-assigned name
+        before: Worksheet
+          Places the new worksheet immediately before this Worksheet object 
+        after: Worksheet
+          Places the new worksheet immediately before this Worksheet object.
+          Specifying both `before` and `after` raises an exception.
+      )";
+
       py::class_<ExcelWorkbook>(mod, "Workbook")
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path",
@@ -629,12 +649,43 @@ namespace xloil
             otherwise raises an exception.
           )",
           py::arg("name"))
-        .def("range", workbook_range, py::arg("address"))
-        .def("__getitem__", workbook_GetItem)
-        .def("to_com", toCom<ExcelWorkbook>, py::arg("lib") = "")
-        .def("add", addWorksheetToWorkbook, py::arg("name") = py::none(), py::arg("before") = py::none(), py::arg("after") = py::none())
-        .def("save", wrapNoGil(&ExcelWorkbook::save), py::arg("filepath") = "")
-        .def("close", wrapNoGil(&ExcelWorkbook::close), py::arg("save")=true)
+        .def("range", 
+          workbook_range, 
+          "Create a `Range` object from an address such as \"Sheet!A1\" or a named range",
+          py::arg("address"))
+        .def("__getitem__", 
+          workbook_GetItem,
+          R"(
+            If the index is a worksheet name, returns the `Worksheet` object,
+            otherwise treats the string as a workbook address and returns a `Range`.
+          )")
+        .def("to_com", 
+          toCom<ExcelWorkbook>, 
+          toComDocString,
+          py::arg("lib") = "")
+        .def("add", 
+          addWorksheetToWorkbook,
+          workbookAddDocString,
+          py::arg("name") = py::none(), 
+          py::arg("before") = py::none(), 
+          py::arg("after") = py::none())
+        .def("save", 
+          wrapNoGil(&ExcelWorkbook::save), 
+          R"(
+            Saves the Workbook, either to the specified `filepath` or if this is
+            unspecified, to its original source file (an error is raised if the 
+            workbook has never been saved).
+          )",
+          py::arg("filepath") = "")
+        .def("close", 
+          wrapNoGil(&ExcelWorkbook::close), 
+          R"(
+            Closes the workbook. If there are changes to the workbook and the 
+            workbook doesn't appear in any other open windows, the `save` argument
+            specifies whether changes should be saved. If set to True, changes are 
+            saved to the workbook, if False they are discared.
+          )",
+          py::arg("save")=true)
         .def("__enter__", workbook_Enter)
         .def("__exit__", workbook_Exit);
 
@@ -654,25 +705,87 @@ namespace xloil
 
       py::class_<Application>(mod, "Application")
         .def(py::init(std::function(application_Construct)),
+          R"(
+            Creates a new Excel Application if no arguments are specified. Gets a handle to 
+            an existing COM Application object based on the arguments.
+ 
+            To get the parent Excel application if xlOil is embedded, used `xloil.app()`.
+
+            Parameters
+            ----------
+            
+            com: 
+              Gets a handle to the given com object with class Excel.Appliction (marshalled 
+              by `comtypes` or `win32com`).
+            hwnd:
+              Tries to gets a handle to the Excel.Application with given main window handle.
+            workbook:
+              Tries to gets a handle to the Excel.Application which has the specified workbook
+              open.
+          )",
           py::arg("com") = py::none(),
           py::arg("hwnd") = py::none(),
           py::arg("workbook") = py::none())
-        .def("workbooks", [](Application& app) { py::gil_scoped_release noGil; return PyWorkbooks(app); })
-        .def("windows", [](Application& app) { py::gil_scoped_release noGil; return PyWindows(app); })
-        .def("to_com", toCom<Application>, py::arg("lib") = "")
+        .def_property_readonly("workbooks",
+          [](Application& app) { py::gil_scoped_release noGil; return PyWorkbooks(app); },
+          "A collection of all Workbooks open in this Application")
+        .def_property_readonly("windows", 
+          [](Application& app) { py::gil_scoped_release noGil; return PyWindows(app); },
+          "A collection of all Windows open in this Application")
+        .def("to_com", 
+          toCom<Application>, 
+          toComDocString,
+          py::arg("lib") = "")
         .def_property("visible",
-          [](Application& app) { py::gil_scoped_release noGil; return app.getVisible(); },
+          wrapNoGil(&Application::getVisible),
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setVisible(x); })
         .def_property("enable_events",
-          [](Application& app) { py::gil_scoped_release noGil; return app.getEnableEvents(); },
+          wrapNoGil(&Application::getEnableEvents),
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
-        .def("range", application_range, 
-          "Create a range object from an external address, e.g. [Book]Sheet!A1",
+        .def("range", 
+          application_range, 
+          "Create a range object from an external address such as \"[Book]Sheet!A1\"",
           py::arg("address"))
-        .def("open", wrapNoGil(&Application::Open), 
-          py::arg("filepath"), py::arg("update_links")=true, py::arg("read_only")=false)
-        .def("calculate", wrapNoGil(&Application::calculate), py::arg("full")=false, py::arg("rebuild")=false)
-        .def("quit", wrapNoGil(&Application::quit), py::arg("silent")=true);
+        .def("open", 
+          wrapNoGil(&Application::open),
+          R"(
+            Opens a workbook given its full `filepath`.
+
+            Parameters
+            ----------
+
+            filepath: 
+              path and filename of the target workbook
+            update_links: 
+              if True, attempts to update links to external workbooks
+            read_only: 
+              if True, opens the workbook in read-only mode
+          )",
+          py::arg("filepath"), 
+          py::arg("update_links")=true, 
+          py::arg("read_only")=false)
+        .def("calculate", 
+          wrapNoGil(&Application::calculate),
+          R"(
+            Calculates all open workbooks
+
+            Parameters
+            ----------
+            full:
+              Forces a full calculation of the data in all open workbooks
+            rebuild:
+              For all open workbooks, forces a full calculation of the data 
+              and rebuilds the dependencies. (Implies `full`)
+          )",
+          py::arg("full")=false, 
+          py::arg("rebuild")=false)
+        .def("quit", 
+          wrapNoGil(&Application::quit), 
+          R"(
+            Terminates the application. If `silent` is True, unsaved data
+            in workbooks is discarded, otherwise a prompt is displayed.
+          )",
+          py::arg("silent")=true);
 
       PyWorkbooks::startBinding(mod, "Workbooks")
         .def("add", 
@@ -683,6 +796,7 @@ namespace xloil
       PyWorksheets::startBinding(mod, "Worksheets")
         .def("add", 
           addWorksheetToCollection, 
+          workbookAddDocString,
           py::arg("name")=py::none(), 
           py::arg("before")=py::none(), 
           py::arg("after") = py::none());
@@ -728,14 +842,18 @@ namespace xloil
           "Range object corresponding to caller address");
 
       mod.def("active_worksheet", 
-        []() { return excelApp().ActiveWorksheet(); },
-        "Returns the currently active worksheet. Will raise an exception if xlOil is "
-        "not embedded in Excel");
+        []() { return excelApp().activeWorksheet(); },
+        R"(
+          Returns the currently active worksheet. Will raise an exception if xlOil is
+          not embedded in Excel
+        )");
 
       mod.def("active_workbook", 
         []() { return excelApp().workbooks().active(); },
-        "Returns the currently active workbook. Will raise an exception if xlOil is "
-        "not embedded in Excel");
+        R"(
+          Returns the currently active workbook. Will raise an exception if xlOil is
+          not embedded in Excel
+        )");
 
       // We can only define these objects when running embedded in existing Excel
       // application. excelApp() will throw a ComConnectException if this is not
@@ -749,8 +867,7 @@ namespace xloil
           py::cast(new PyWindows(excelApp()), py::return_value_policy::take_ownership));
       }
       catch (ComConnectException)
-      {
-      }
+      {}
     });
   }
 }
