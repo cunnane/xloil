@@ -78,7 +78,7 @@ namespace xloil
         ~COMConnector()
         {
           _handler.reset();
-          _xlApp.detach()->Release();
+          _xlApp.release();
           CoUninitialize();
         }
 

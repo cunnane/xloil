@@ -53,35 +53,31 @@ namespace xloil
     return COM::attachedApplication();
   }
 
-  IAppObject::~IAppObject()
+  void DispatchObject::release()
   {
     if (_ptr)
+    {
       _ptr->Release();
+      _ptr = nullptr;
+    }
   }
 
-  void IAppObject::init(IDispatch* ptr, bool steal)
+  void DispatchObject::init(IDispatch* ptr, bool steal)
   {
     _ptr = ptr;
     if (!steal && ptr)
       ptr->AddRef();
   }
 
-  void IAppObject::assign(const IAppObject& that)
-  {
-    if (_ptr) _ptr->Release();
-    _ptr = that._ptr;
-    _ptr->AddRef();
-  }
-
   Application::Application(Excel::_Application* app)
-    : IAppObject(app ? app : COM::newApplicationObject(), true)
+    : AppObject(app ? app : COM::newApplicationObject(), true)
   {
     if (!valid())
       throw ComConnectException("Failed to create Application object");
   }
 
   Application::Application(size_t hWnd)
-    : IAppObject([hWnd]() {
+    : AppObject([hWnd]() {
         auto p = COM::applicationObjectFromWindow((HWND)hWnd);
         if (!p)
           throw ComConnectException("Failed to create Application object from window handle");
@@ -107,7 +103,7 @@ namespace xloil
   }
 
   Application::Application(const wchar_t* workbook)
-    : IAppObject(workbookFinder(workbook))
+    : AppObject(workbookFinder(workbook))
   {
     if (!valid())
       throw ComConnectException("Failed to create Application object from workbook");
@@ -159,8 +155,7 @@ namespace xloil
       com().Quit();
 
       // Release the COM object so app really does quit
-      _ptr->Release();
-      _ptr = nullptr;
+      release();
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -265,16 +260,17 @@ namespace xloil
   }
 
   ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
-  {
-    try
-    {
-      if (caption.empty())
-        init(app.com().ActiveWindow);
-      else
-        init(app.com().Windows->GetItem(stringToVariant(caption)));
-    }
-    XLO_RETHROW_COM_ERROR;
-  }
+    : AppObject([&]() {
+        try
+        {
+          if (caption.empty())
+            return app.com().ActiveWindow.Detach();
+          else
+            return app.com().Windows->GetItem(stringToVariant(caption)).Detach();
+        }
+        XLO_RETHROW_COM_ERROR;
+      }(), true)
+  {}
 
   size_t ExcelWindow::hwnd() const
   {
@@ -301,19 +297,20 @@ namespace xloil
   }
 
   ExcelWorkbook::ExcelWorkbook(const std::wstring_view& name, Application app)
-  {
-    try
-    {
-      if (name.empty())
-        init(app.com().ActiveWorkbook);
-      else
-      {
-        auto workbooks = app.com().Workbooks;
-        init(workbooks->GetItem(stringToVariant(name)));
-      }
-    }
-    XLO_RETHROW_COM_ERROR;
-  }
+    : AppObject([&]() {
+        try
+        {
+          if (name.empty())
+            return app.com().ActiveWorkbook.Detach();
+          else
+          {
+            auto workbooks = app.com().Workbooks;
+            return workbooks->GetItem(stringToVariant(name)).Detach();
+          }
+        }
+        XLO_RETHROW_COM_ERROR;
+      }(), true)
+  {}
 
   std::wstring ExcelWorkbook::name() const
   {
@@ -346,8 +343,8 @@ namespace xloil
         XLO_THROW("ExcelWorkbook::add: at most one of 'before' and 'after' should be specified");
 
       auto ws = ExcelWorksheet((Excel::_Worksheet*)(com().Worksheets->Add(
-        before.valid() ? _variant_t(before.basePtr()) : vtMissing,
-        after.valid() ? _variant_t(after.basePtr()) : vtMissing).Detach()), true);
+        before.valid() ? _variant_t(&before.com()) : vtMissing,
+        after.valid() ? _variant_t(&after.com()) : vtMissing).Detach()), true);
       if (!name.empty())
         ws.setName(name);
       return ws;
@@ -568,11 +565,11 @@ namespace xloil
   }
 
   Windows::Windows(const Application& app)
-    : IAppObject(app.com().Windows.Detach(), true)
+    : AppObject(app.com().Windows.Detach(), true)
   {}
 
   Windows::Windows(const ExcelWorkbook& workbook)
-    : IAppObject(workbook.com().Windows.Detach(), true)
+    : AppObject(workbook.com().Windows.Detach(), true)
   {}
 
   ExcelWindow Windows::active() const

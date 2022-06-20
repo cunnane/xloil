@@ -48,25 +48,24 @@ namespace xloil
   }
 
   ExcelRange::ExcelRange(const std::wstring_view& address, Application app)
+    : AppObject([&]() {    
+        try
+        {
+          return app.com().GetRange(stringToVariant(address)).Detach();
+        }
+        XLO_RETHROW_COM_ERROR; 
+      }(), true)
   {
-    try
-    {
-      auto rangePtr = app.com().GetRange(stringToVariant(address));
-      init(rangePtr.Detach(), true);
-    }
-    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelRange::ExcelRange(const Range& range)
+    : AppObject(nullptr)
   {
     auto excelRange = dynamic_cast<const ExcelRange*>(&range);
     if (excelRange)
-      init(&excelRange->com());
+      *this = ExcelRange(&excelRange->com());
     else
-    {
-      init(nullptr);
       *this = ExcelRange(range.address());
-    }
   }
   
   Range* ExcelRange::range(

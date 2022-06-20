@@ -188,7 +188,7 @@ namespace xloil
         const py::object& progId)
       {
         auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
-        auto winPtr    = window.is_none() ? nullptr   : window.cast<ExcelWindow>().basePtr();
+        auto winPtr    = window.is_none() ? nullptr   : window.cast<ExcelWindow>().dispatchPtr();
 
         return runExcelThread([&comAddin, name, winPtr, progIdStr]()
         {

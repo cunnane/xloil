@@ -57,32 +57,78 @@ namespace xloil
   };
 
   /// <summary>
-  /// Base class for objects in the object model, not very usefuly directly.
+  /// IDispatch ptr holder. Used internally.
   /// </summary>
-  class XLOIL_EXPORT IAppObject
+  class DispatchObject
   {
   public:
-    virtual ~IAppObject();
-    /// <summary>
-    /// Returns an identifier for the object. This may be a workbook name,
-    /// window caption or range address.
-    /// </summary>
-    /// <returns></returns>
-    virtual std::wstring name() const = 0;
-    IDispatch* basePtr() const { return _ptr; }
+    DispatchObject(IDispatch* ptr = nullptr, bool steal = false) 
+    { 
+      init(ptr, steal); 
+    }
+
+    DispatchObject(DispatchObject&& that) noexcept 
+      : _ptr(nullptr) 
+    { 
+      std::swap(_ptr, that._ptr); 
+    }
+
+    DispatchObject(const DispatchObject& that) : DispatchObject(that._ptr) {}
+
+    DispatchObject& operator=(const DispatchObject& that) noexcept 
+    { 
+      release();
+      init(that._ptr);
+      return *this; 
+    }
+
+    DispatchObject& operator=(DispatchObject&& that) noexcept 
+    { 
+      release(); 
+      std::swap(_ptr, that._ptr); 
+      return *this; 
+    }
+
+    ~DispatchObject()
+    {
+      release();
+    }
+
+    IDispatch* ptr() const { return _ptr; }
     bool valid() const { return _ptr; }
+    void release();
 
-    IDispatch* detach() { IDispatch* p = nullptr; std::swap(p, _ptr); return p; }
-
-  protected:
+  private:
     IDispatch* _ptr;
-    IAppObject(IDispatch* ptr = nullptr, bool steal = false) { init(ptr, steal); }
     void init(IDispatch* ptr, bool steal = false);
-    void assign(const IAppObject& that);
+  };
+
+  template <typename T, bool TCheck=false>
+  class AppObject
+  {
+    DispatchObject _obj;
+
+  public:
+    AppObject(T* ptr = nullptr, bool steal = false) 
+      : _obj((IDispatch*)ptr, steal)
+    {}
+
+    void check() const 
+    {
+      if constexpr (TCheck)
+      {
+        if (!valid()) throw new NullComObjectException();
+      }
+    }
+    
+    bool valid() const { return _obj.valid(); }
+    void release() { _obj.release(); }
+    auto dispatchPtr() const { return _obj.ptr(); }
+    T& com() const { check(); return *(T*)_obj.ptr(); }
   };
 
 
-  class XLOIL_EXPORT Application : public IAppObject
+  class XLOIL_EXPORT Application : public AppObject<Excel::_Application, true>
   {
   public:
     /// <summary>
@@ -103,19 +149,7 @@ namespace xloil
     /// </summary>
     Application(const wchar_t* workbook);
 
-    Application(Application&& that) noexcept { std::swap(_ptr, that._ptr); }
-    Application(const Application& that) : IAppObject(that._ptr) {}
-
-    Application& operator=(const Application& that) noexcept { assign(that); return *this; }
-    Application& operator=(Application&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
-
-    Excel::_Application& com() const 
-    { 
-      if (!valid()) throw new NullComObjectException();
-      return *(Excel::_Application*)_ptr; 
-    }
-
-    virtual std::wstring name() const;
+    std::wstring name() const;
 
     /// <summary>
     /// Calculates
@@ -152,7 +186,7 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT Application& excelApp();
 
-  class XLOIL_EXPORT ExcelRange : public Range, public IAppObject
+  class XLOIL_EXPORT ExcelRange : public Range, public AppObject<Excel::Range>
   {
   public:
     /// <summary>
@@ -164,14 +198,9 @@ namespace xloil
       Application app = excelApp());
 
     ExcelRange(const Range& range);
-    ExcelRange(Excel::Range* range) : IAppObject((IDispatch*)range) {}
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
 
-    ExcelRange(ExcelRange&& that) noexcept { std::swap(_ptr, that._ptr); }
-    ExcelRange(const ExcelRange& that) : IAppObject(that._ptr) {}
-
-    ExcelRange& operator=(ExcelRange&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
-    ExcelRange& operator=(const ExcelRange& that) noexcept { assign(that); return *this; }
+    using  AppObject<Excel::Range>::AppObject;
 
     Range* range(
       int fromRow, int fromCol,
@@ -204,7 +233,7 @@ namespace xloil
     /// <summary>
     /// The range address
     /// </summary>
-    std::wstring name() const override;
+    std::wstring name() const;
 
     /// <summary>
     /// The worksheet which contains this range
@@ -215,39 +244,26 @@ namespace xloil
     /// Returns the Application object which owns this Range
     /// </summary>
     Application app() const;
-
-    /// <summary>
-    /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
-    /// and dec ref any use of it.
-    /// </summary>
-    Excel::Range& com() const { return *(Excel::Range*)_ptr; }
-    Excel::Range& com() { return *(Excel::Range*)_ptr; }
   };
 
 
   /// <summary>
   /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
   /// </summary>
-  class XLOIL_EXPORT ExcelWorksheet : public IAppObject
+  class XLOIL_EXPORT ExcelWorksheet : public AppObject<Excel::_Worksheet>
   {
   public:
     /// <summary>
     /// Constructs an ExcelWindow from a COM pointer
     /// </summary>
     /// <param name="p"></param>
-    ExcelWorksheet(Excel::_Worksheet* p, bool steal=false) : IAppObject((IDispatch*)p, steal) {}
-
-    ExcelWorksheet(ExcelWorksheet&& that) noexcept { std::swap(_ptr, that._ptr); }
-    ExcelWorksheet(const ExcelWorksheet& that) : IAppObject(that._ptr) {}
-
-    ExcelWorksheet& operator=(const ExcelWorksheet& that) noexcept { assign(that); return *this; }
-    ExcelWorksheet& operator=(ExcelWorksheet&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
+    using AppObject<Excel::_Worksheet>::AppObject;
 
     /// <summary>
     /// Returns the window title
     /// </summary>
     /// <returns></returns>
-    std::wstring name() const override;
+    std::wstring name() const;
 
     /// <summary>
     /// Gives the name of the workbook which owns this sheet
@@ -309,12 +325,6 @@ namespace xloil
     /// Sets the worksheet name (note 31 char limit)
     /// </summary>
     void setName(const std::wstring_view& name);
-
-    /// <summary>
-    /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
-    /// and dec ref any use of it.
-    /// </summary>
-    Excel::_Worksheet& com() const { return *(Excel::_Worksheet*)_ptr; }
   };
 
 
@@ -322,7 +332,7 @@ namespace xloil
   /// Wraps a Workbook (https://docs.microsoft.com/en-us/office/vba/api/excel.workbook) in
   /// Excel's object model but with very limited functionality at present
   /// </summary>
-  class XLOIL_EXPORT ExcelWorkbook : public IAppObject
+  class XLOIL_EXPORT ExcelWorkbook : public AppObject<Excel::_Workbook>
   {
   public:
     /// <summary>
@@ -332,20 +342,11 @@ namespace xloil
     explicit ExcelWorkbook(
       const std::wstring_view& name = std::wstring_view(), 
       Application app = excelApp());
-    /// <summary>
-    /// Constructs an ExcelWorkbook from a COM pointer
-    /// </summary>
-    /// <param name="p"></param>
-    ExcelWorkbook(Excel::_Workbook* p, bool steal=false) : IAppObject((IDispatch*)p, steal) {}
-
-    ExcelWorkbook(ExcelWorkbook&& that) noexcept { std::swap(_ptr, that._ptr); }
-    ExcelWorkbook(const ExcelWorkbook& that) : IAppObject(that._ptr) {}
-
-    ExcelWorkbook& operator=(const ExcelWorkbook& that) noexcept { assign(that); return *this; }
-    ExcelWorkbook& operator=(ExcelWorkbook&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
+    
+    using AppObject<Excel::_Workbook>::AppObject;
 
     /// <inheritdoc />
-    std::wstring name() const override;
+    std::wstring name() const;
 
     /// <summary>
     /// Returns the full file path and file name for this workbook
@@ -408,26 +409,17 @@ namespace xloil
     void save(const std::wstring_view& filepath = std::wstring_view());
 
     void close(bool save=true);
-
-    /// <summary>
-    /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
-    /// and dec ref any use of it.
-    /// </summary>
-    Excel::_Workbook& com() const { return *(Excel::_Workbook*)_ptr; }
   };
 
 
   /// <summary>
   /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
   /// </summary>
-  class XLOIL_EXPORT ExcelWindow : public IAppObject
+  class XLOIL_EXPORT ExcelWindow : public AppObject<Excel::Window>
   {
   public:
-    /// <summary>
-    /// Constructs an ExcelWindow from a COM pointer
-    /// </summary>
-    /// <param name="p"></param>
-    ExcelWindow(Excel::Window* p, bool steal = false) : IAppObject((IDispatch*)p, steal) {}
+    using AppObject<Excel::Window>::AppObject;
+
     /// <summary>
     /// Gives the ExcelWindow object associated with the given window caption, or the active window
     /// </summary>
@@ -435,12 +427,6 @@ namespace xloil
     explicit ExcelWindow(
       const std::wstring_view& caption = std::wstring_view(),
       Application app = excelApp());
-
-    ExcelWindow(ExcelWindow&& that) noexcept { std::swap(_ptr, that._ptr); }
-    ExcelWindow(const ExcelWindow& that) : IAppObject(that._ptr) {}
-
-    ExcelWindow& operator=(const ExcelWindow& that) noexcept { assign(that); return *this; }
-    ExcelWindow& operator=(ExcelWindow&& that)      noexcept { std::swap(_ptr, that._ptr); return *this; }
 
     /// <summary>
     /// Retuns the Win32 window handle
@@ -451,7 +437,7 @@ namespace xloil
     /// <summary>
     /// Returns the window title
     /// </summary>
-    std::wstring name() const override;
+    std::wstring name() const;
 
     /// <summary>
     /// Returns the underlying Application object, the ultimate parent 
@@ -463,12 +449,6 @@ namespace xloil
     /// Gives the name of the workbook displayed by this window 
     /// </summary>
     ExcelWorkbook workbook() const;
-
-    /// <summary>
-    /// The raw COM ptr to the underlying object. Be sure to correctly inc ref
-    /// and dec ref any use of it.
-    /// </summary>
-    Excel::Window& com() const { return *(Excel::Window*)_ptr; }
   };
 
   XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range& range);
@@ -519,7 +499,7 @@ namespace xloil
     Application app;
   };
 
-  class XLOIL_EXPORT Windows : public IAppObject
+  class XLOIL_EXPORT Windows : public AppObject<Excel::Windows>
   {
   public:
     Windows(const Application& app = excelApp());
@@ -531,15 +511,7 @@ namespace xloil
     std::vector<ExcelWindow> list() const;
     size_t count() const;
 
-    virtual std::wstring name() const { return L""; }
-
     Application app() const;
-
-    Excel::Windows& com() const
-    {
-      if (!valid()) throw new NullComObjectException();
-      return *(Excel::Windows*)_ptr;
-    }
   };
 
   // Some function definitions which need to live down here due to

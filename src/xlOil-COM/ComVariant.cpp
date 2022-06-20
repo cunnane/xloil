@@ -108,7 +108,7 @@ namespace xloil
       result_t operator()(const RefVal& ref) const
       {
         const auto range = ExcelRange(ExcelRef(ref));
-        return _variant_t(range.basePtr()).Detach();
+        return _variant_t(&range.com()).Detach();
       }
     };
 
