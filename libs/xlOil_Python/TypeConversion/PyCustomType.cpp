@@ -12,12 +12,12 @@ namespace xloil
 {
   namespace Python
   {
-    class UserImpl : public detail::PyFromAny
+    class UserImpl : public detail::PyFromAny<>
     {
       PyExcelArray* _ArrayWrapper = nullptr;
 
     public:
-      using detail::PyFromAny::operator();
+      using detail::PyFromAny<>::operator();
 
       PyObject* operator()(const ArrayVal& arr)
       {

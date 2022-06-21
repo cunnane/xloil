@@ -55,7 +55,7 @@ namespace xloil
 
       inline auto convertExcelObj(ExcelObj&& val)
       {
-        return PySteal(PyFromAny()(val));
+        return PySteal(PyFromAnyNoTrim()(val));
       }
 
       auto range_GetValue(const Range& r)
@@ -100,8 +100,8 @@ namespace xloil
         ExcelRange(r).setFormula(val);
       }
 
-      template<class T>
-      py::object getItem(const T& range, py::object loc)
+      template<class T> 
+      py::object Range_getItem(const T& range, py::object loc)
       {
         size_t fromRow, fromCol, toRow, toCol, nRows, nCols;
         std::tie(nRows, nCols) = range.shape();
@@ -117,7 +117,8 @@ namespace xloil
         const py::object& toR, const py::object& toC,
         const py::object& nRows, const py::object& nCols)
       {
-        return new ExcelRange(range_subRange<ExcelWorksheet>(ws, fromR, fromC, toR, toC, nRows, nCols));
+        return new ExcelRange(range_subRange<ExcelWorksheet>(
+          ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
       py::object worksheet_GetItem(const ExcelWorksheet& ws, py::object loc)
@@ -131,7 +132,7 @@ namespace xloil
           return createPyRange([&]() { return ws.range(address); });
         }
         else
-          return getItem(ws, loc);
+          return Range_getItem(ws, loc);
       }
       
       py::object application_range(const Application& app, const std::wstring& address)
@@ -304,7 +305,7 @@ namespace xloil
             &getdefaulted, 
             R"(
               Tries to get the named object, returning the default if not found
-            )"
+            )",
             py::arg("name"), 
             py::arg("default") = py::none())
           .def_property_readonly("active", &active);
@@ -344,6 +345,12 @@ namespace xloil
       return comToPy(ExcelRange(range).com(), binder);
     }
 
+    template<class T>
+    auto getComAttr(T& p, const char* attrName)
+    {
+      return py::getattr(toCom(p, ""), attrName);
+    }
+
     Application application_Construct(
       const py::object& com,
       const py::object& hwnd,
@@ -369,6 +376,12 @@ namespace xloil
         return Application(workbook.c_str());
       else
         return Application();
+    }
+
+    auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
+    {
+      py::gil_scoped_release noGil;
+      return self.writeAddress(a1style ? AddressStyle::A1 : AddressStyle::RC);
     }
 
     static int theBinder = addBinder([](py::module& mod)
@@ -459,7 +472,7 @@ namespace xloil
         .def("__iter__", 
           [](Range& self) { return new RangeIter(self); })
         .def("__getitem__", 
-          getItem<Range>,
+          Range_getItem<Range>,
           R"(
             Given a 2-tuple, slices the range to return a sub Range or a single element.Uses
             normal python slicing conventions i.e[left included, right excluded), negative
@@ -467,14 +480,16 @@ namespace xloil
             the value in that cell, otherwise returns a Range object.
           )")
         .def("__len__", 
-          [](const Range& r) { return r.nRows() * r.nCols(); })
+          [](const Range& r) { py::gil_scoped_release noGil; return r.nRows() * r.nCols(); })
+        .def("__str__", 
+          [](const Range& r) { py::gil_scoped_release noGil; return r.address(false); })
         .def_property("value",
           range_GetValue, range_SetValue,
           R"(
             Property which gets or sets the value for a range. A fetched value is converted
             to the most appropriate Python type using the normal generic converter.
 
-            If you use a horizontal array for the assignemnt, it is duplicated down to fill 
+            If you use a horizontal array for the assignment, it is duplicated down to fill 
             the entire rectangle. If you use a vertical array, it is duplicated right to fill 
             the entire rectangle. If you use a rectangular array, and it is too small for the 
             rectangular range you want to put it in, that range is padded with #N/As.
@@ -528,6 +543,8 @@ namespace xloil
         .def("to_com", toCom<Range>, 
           toComDocString, 
           py::arg("lib") = "")
+        .def("__getattr__",
+          getComAttr<Range>)
         .def_property_readonly("parent", 
           [](const Range& r) { return ExcelRange(r).parent(); },
           "Returns the parent Worksheet for this Range");
@@ -536,7 +553,10 @@ namespace xloil
 
       // TODO: do we need main thread synchronisation on all this?
       py::class_<ExcelWorksheet>(mod, "Worksheet")
-        .def_property_readonly("name", wrapNoGil(&ExcelWorksheet::name))
+        .def("__str__", 
+          wrapNoGil(&ExcelWorksheet::name))
+        .def_property_readonly("name", 
+          wrapNoGil(&ExcelWorksheet::name))
         .def_property_readonly("parent", 
           wrapNoGil(&ExcelWorksheet::parent),
           "Returns the parent Workbook for this Worksheet")
@@ -609,7 +629,9 @@ namespace xloil
         .def("to_com", 
           toCom<ExcelWorksheet>, 
           toComDocString, 
-          py::arg("lib") = "");
+          py::arg("lib") = "")
+        .def("__getattr__",
+            getComAttr<ExcelWorksheet>);
         
       constexpr const char* workbookAddDocString = R"(
         Add a worksheet, returning a `Worksheet` object.
@@ -626,6 +648,7 @@ namespace xloil
       )";
 
       py::class_<ExcelWorkbook>(mod, "Workbook")
+        .def("__str__", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path",
           wrapNoGil(&ExcelWorkbook::path),
@@ -663,6 +686,8 @@ namespace xloil
           toCom<ExcelWorkbook>, 
           toComDocString,
           py::arg("lib") = "")
+        .def("__getattr__",
+          getComAttr<ExcelWorkbook>)
         .def("add", 
           addWorksheetToWorkbook,
           workbookAddDocString,
@@ -690,6 +715,7 @@ namespace xloil
         .def("__exit__", workbook_Exit);
 
       py::class_<ExcelWindow>(mod, "ExcelWindow")
+        .def("__str__", wrapNoGil(&ExcelWindow::name))
         .def_property_readonly("hwnd", 
           wrapNoGil(&ExcelWindow::hwnd), 
           "The Win32 API window handle as an integer")
@@ -701,7 +727,9 @@ namespace xloil
         .def("to_com", 
           toCom<ExcelWindow>, 
           toComDocString, 
-          py::arg("lib") = "");
+          py::arg("lib") = "")
+        .def("__getattr__",
+            getComAttr<ExcelWindow>);
 
       py::class_<Application>(mod, "Application")
         .def(py::init(std::function(application_Construct)),
@@ -729,24 +757,26 @@ namespace xloil
         .def_property_readonly("workbooks",
           [](Application& app) { py::gil_scoped_release noGil; return PyWorkbooks(app); },
           "A collection of all Workbooks open in this Application")
-        .def_property_readonly("windows", 
+        .def_property_readonly("windows",
           [](Application& app) { py::gil_scoped_release noGil; return PyWindows(app); },
           "A collection of all Windows open in this Application")
-        .def("to_com", 
-          toCom<Application>, 
+        .def("to_com",
+          toCom<Application>,
           toComDocString,
           py::arg("lib") = "")
+        .def("__getattr__", 
+          getComAttr<Application>)
         .def_property("visible",
           wrapNoGil(&Application::getVisible),
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setVisible(x); })
         .def_property("enable_events",
           wrapNoGil(&Application::getEnableEvents),
           [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
-        .def("range", 
-          application_range, 
+        .def("range",
+          application_range,
           "Create a range object from an external address such as \"[Book]Sheet!A1\"",
           py::arg("address"))
-        .def("open", 
+        .def("open",
           wrapNoGil(&Application::open),
           R"(
             Opens a workbook given its full `filepath`.
@@ -761,10 +791,10 @@ namespace xloil
             read_only: 
               if True, opens the workbook in read-only mode
           )",
-          py::arg("filepath"), 
-          py::arg("update_links")=true, 
-          py::arg("read_only")=false)
-        .def("calculate", 
+          py::arg("filepath"),
+          py::arg("update_links") = true,
+          py::arg("read_only") = false)
+        .def("calculate",
           wrapNoGil(&Application::calculate),
           R"(
             Calculates all open workbooks
@@ -777,15 +807,15 @@ namespace xloil
               For all open workbooks, forces a full calculation of the data 
               and rebuilds the dependencies. (Implies `full`)
           )",
-          py::arg("full")=false, 
-          py::arg("rebuild")=false)
-        .def("quit", 
-          wrapNoGil(&Application::quit), 
+          py::arg("full") = false,
+          py::arg("rebuild") = false)
+        .def("quit",
+          wrapNoGil(&Application::quit),
           R"(
             Terminates the application. If `silent` is True, unsaved data
             in workbooks is discarded, otherwise a prompt is displayed.
           )",
-          py::arg("silent")=true);
+          py::arg("silent") = true);
 
       PyWorkbooks::startBinding(mod, "Workbooks")
         .def("add", 
@@ -807,6 +837,7 @@ namespace xloil
           the class queries Excel via the `xlfCaller` function.
         )")
         .def(py::init<>())
+        .def("__str__", CallerInfo_Address)
         .def_property_readonly("sheet_name",
           [](const CallerInfo& self)
           {
@@ -825,11 +856,7 @@ namespace xloil
             If the workbook has been saved, the name will contain a file extension.
           )")
         .def("address",
-          [](const CallerInfo& self, bool x)
-          {
-            py::gil_scoped_release noGil;
-            return self.writeAddress(x ? AddressStyle::A1 : AddressStyle::RC);
-          }, 
+          CallerInfo_Address,
           R"(
             Gives the sheet address either in A1 form: '[Book]Sheet!A1' or RC form: '[Book]Sheet!R1C1'
           )",

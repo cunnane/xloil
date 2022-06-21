@@ -130,6 +130,7 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected int"; }
       };
 
+      template<bool TTrimArray = true>
       struct PyFromAny : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
@@ -140,7 +141,7 @@ namespace xloil
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
         PyObject* operator()(const ArrayVal& arr) const
         {
-          return excelArrayToNumpyArray(ExcelArray(arr));
+          return excelArrayToNumpyArray(ExcelArray(arr, TTrimArray));
         }
 
         // Return python None for Excel nil value
@@ -251,14 +252,15 @@ namespace xloil
     using PyFromBool           = PyFromExcel<detail::PyFromBool>;
     using PyFromDouble         = PyFromExcel<detail::PyFromDouble>;
     using PyFromString         = PyFromExcel<detail::PyFromString>;
-    using PyFromAny            = PyFromExcel<detail::PyFromAny>;
+    using PyFromAny            = PyFromExcel<detail::PyFromAny<true>>;
+    using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<false>>;
     using PyCacheObject        = PyFromExcel<detail::PyCacheObject>;
 
     using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
     using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
     using PyFromDoubleUncached = PyFromExcel<detail::PyFromDouble, false>;
     using PyFromStringUncached = PyFromExcel<detail::PyFromString, false>;
-    using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny, false>;
+    using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny<>, false>;
 
     namespace detail
     {

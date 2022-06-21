@@ -3,6 +3,7 @@
 #include "PyEvents.h"
 #include "EventLoop.h"
 #include "PyFuture.h"
+#include "TypeConversion/Numpy.h"
 #include <TypeConversion/BasicTypes.h>
 #include <xlOil/ExcelThread.h>
 #include <xloil/Caller.h>
@@ -126,6 +127,10 @@ namespace xloil
       
       void initialiseCore(pybind11::module& mod)
       {
+        XLO_DEBUG("Python importing numpy");
+        if (!importNumpy())
+          throw py::error_already_set();
+
         // Bind the two base classes for python converters
         py::class_<IPyFromExcel, shared_ptr<IPyFromExcel>>(mod, "IPyFromExcel")
           .def("__call__",
