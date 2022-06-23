@@ -208,6 +208,8 @@ namespace xloil
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
+    Range* trim() const final override;
+
     std::tuple<row_t, col_t> shape() const final override;
 
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;

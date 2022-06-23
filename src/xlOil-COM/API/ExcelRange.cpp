@@ -2,6 +2,7 @@
 #include <xloil/AppObjects.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelRef.h>
+#include <xlOil/ExcelArray.h>
 #include <xlOil/AppObjects.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/ComVariant.h>
@@ -82,12 +83,23 @@ namespace xloil
       // Caling range->GetRange(cell1, cell2) does a very weird thing
       // which I can't make sense of. Better to call ws.range(...)
       auto ws = (Excel::_WorksheetPtr)com().Parent;
+      auto cells = com().Cells;
       auto r = ws->GetRange(
-        com().Cells->Item[fromRow + 1][fromCol + 1],
-        com().Cells->Item[toRow + 1][toCol + 1]);
+        cells->Item[fromRow + 1][fromCol + 1],
+        cells->Item[toRow + 1][toCol + 1]);
       return new ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;
+  }
+
+  Range* ExcelRange::trim() const
+  {
+    // Better than SpecialCells?
+    size_t nRows, nCols;
+    if (size() == 1 || !COM::trimmedVariantArrayBounds(com().Value2, nRows, nCols))
+      return new ExcelRange(*this);
+
+    return range(0, 0, nRows, nCols);
   }
 
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
@@ -124,7 +136,7 @@ namespace xloil
 
   ExcelObj ExcelRange::value() const
   {
-    return COM::variantToExcelObj(com().Value2);
+    return COM::variantToExcelObj(com().Value2, false, false);
   }
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const

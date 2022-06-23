@@ -3,6 +3,7 @@
 #include <xlOil/Range.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Caller.h>
+#include <xlOil/ExcelArray.h>
 
 namespace xloil
 {
@@ -314,6 +315,15 @@ namespace xloil
       int toRow = TO_END, int toCol = TO_END) const final override
     {
       return new XllRange(_ref.range(fromRow, fromCol, toRow, toCol));
+    }
+
+    Range* trim() const final override
+    {
+      auto val = _ref.value();
+      if (!val.isType(ExcelType::Multi))
+        return new XllRange(*this);
+      ExcelArray array(val);
+      return range(0, 0, array.nRows(), array.nCols());
     }
 
     std::tuple<row_t, col_t> shape() const final override

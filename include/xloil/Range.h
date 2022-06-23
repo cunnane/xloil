@@ -47,6 +47,12 @@ namespace xloil
     }
 
     /// <summary>
+    /// Returns a sub-range by trimming to the last non-empty (not Nil, \#N/A or "") 
+    /// row and column. The top-left remains the same (even if empty).
+    /// </summary>
+    virtual Range* trim() const = 0;
+
+    /// <summary>
     /// Returns a tuple (num columns, num rows)
     /// </summary>
     virtual std::tuple<row_t, col_t> shape() const = 0;

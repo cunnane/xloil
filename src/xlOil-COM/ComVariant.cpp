@@ -14,6 +14,126 @@ namespace xloil
 {
   namespace COM
   {
+    namespace
+    {
+      // Small helper function for array conversion
+      template<class T> 
+      auto elementConvert(const T& val)       { return val; }
+      template<>
+      auto elementConvert(const VARIANT& val) { return variantToExcelObj(val, false); }
+
+      template<typename T>
+      void addStringLength(size_t&, const T&) {}
+
+      template<>
+      void addStringLength(size_t& len, const BSTR& v)
+      {
+        len += wcslen(v);
+      }
+
+      template<>
+      void addStringLength(size_t& len, const VARIANT& v)
+      {
+        if (v.vt == VT_BSTR)
+          len += wcslen(v.bstrVal);
+      }
+
+      auto variantErrorToCellError(SCODE scode)
+      {
+        return (CellError)(scode - 0x800A07D0);
+      }
+
+      bool isNonEmpty(VARIANT& obj)
+      {
+        switch (obj.vt)
+        {
+        case VT_BSTR: return wcslen(obj.bstrVal) > 0;
+        case VT_ERROR:
+          return obj.scode != DISP_E_PARAMNOTFOUND
+            && variantErrorToCellError(obj.scode) != CellError::NA;
+        case VT_EMPTY: return false;
+        }
+        return true;
+      }
+
+      void trimmedArraySize(VARIANT* data, size_t& nRows, size_t& nCols)
+      {
+        const auto start = data;
+        const auto rows = nRows;
+
+        auto p = start + nCols * nRows - 1; // Go to last element
+        for (; nCols > 0; --nCols)
+          for (int r = (int)nRows - 1; r >= 0; --r, --p)
+            if (isNonEmpty(*p))
+              goto StartRowSearch;
+       
+      StartRowSearch:
+       
+        for (; nRows > 0; --nRows)
+          for (p = start + nRows - 1; p < (start + nCols * nRows); p += rows)
+            if (isNonEmpty(*p))
+              goto SearchDone;
+
+      SearchDone:;
+      }
+
+      template<typename T>
+      size_t stringLength(const SafeArrayAccessor<T>& array)
+      {
+        size_t len = 0;
+        for (auto j = 0u; j < array.cols; j++)
+          for (auto i = 0u; i < array.rows; i++)
+            addStringLength(len, array(i, j));
+        return len;
+      }
+    }
+
+    detail::SafeArrayAccessorBase::SafeArrayAccessorBase(SAFEARRAY* pArr)
+      : _ptr(pArr)
+      , dimensions(pArr->cDims)
+      , cols(dimensions == 1 ? 1 : pArr->rgsabound[0].cElements)
+      , rows(pArr->rgsabound[dimensions == 1 ? 0 : 1].cElements)
+    {
+      if (S_OK != SafeArrayAccessData(pArr, &_data))
+        XLO_THROW("Failed to access SafeArray");
+    }
+
+    detail::SafeArrayAccessorBase::~SafeArrayAccessorBase()
+    {
+      SafeArrayUnaccessData(_ptr);
+    }
+
+    std::pair<size_t, size_t> SafeArrayAccessor<VARIANT>::trimmedSize() const
+    {
+      auto nrows = this->rows;
+      auto ncols = this->cols;
+      trimmedArraySize(data(), nrows, ncols);
+      return std::pair(nrows, ncols);
+    }
+
+    template<class T>
+    auto toExcelObj(SafeArrayAccessor<T> array, bool trimArray)
+    {
+      if (array.dimensions > 2)
+        XLO_THROW("Can only convert 1 or 2 dim arrays");
+
+      auto rows = array.rows;
+      auto cols = array.cols;
+      if (trimArray)
+        std::tie(rows, cols) = array.trimmedSize();
+
+      // We need up-front total string length for the ExcelArrayBuilder
+      const auto strLength = stringLength<T>(array);
+      ExcelArrayBuilder builder(
+        (ExcelObj::row_t)rows, (ExcelObj::col_t)cols, strLength);
+
+      for (auto i = 0u; i < rows; i++)
+        for (auto j = 0u; j < cols; j++)
+          builder(i, j) = elementConvert(array(i, j));
+
+      return builder.toExcelObj();
+    }
+
     class ToVariant : public ExcelValVisitor<VARIANT>
     {
     public:
@@ -52,21 +172,11 @@ namespace xloil
         auto array = unique_ptr<SAFEARRAY, HRESULT(__stdcall *)(SAFEARRAY*)> (
           SafeArrayCreate(VT_VARIANT, 2, bounds), SafeArrayDestroy);
 
-        VARIANT* data = nullptr;
-        if (S_OK != SafeArrayAccessData(array.get(), (void**)&data))
-          XLO_THROW("Failed to access SafeArray");
-        
-        for (auto i = 0u; i < nRows; i++)
-        {
-          for (auto j = 0u; j < nCols; j++)
-          {
-            const auto idx = j * nRows + i;
-            auto element = (*this)(arr(i, j));
-            data[idx] = element;
-          }
-        }
+        SafeArrayAccessor<VARIANT> arrayData(array.get());
 
-        SafeArrayUnaccessData(array.get());
+        for (auto i = 0u; i < nRows; i++)
+          for (auto j = 0u; j < nCols; j++)
+            arrayData(i, j) = (*this)(arr(i, j));
 
         VARIANT result;
         result.vt = VT_VARIANT | VT_ARRAY;
@@ -120,56 +230,7 @@ namespace xloil
         : obj.visit(ToVariant(), vtMissing);
     }
 
-    // Small helper function for array conversion
-    template<class T> auto elementConvert(const T& val) { return val; }
-    ExcelObj elementConvert(const VARIANT& val) { return variantToExcelObj(val, false); }
-
-    template<class T>
-    size_t stringLength(T* /*arr*/, size_t /*nRows*/, size_t /*nCols*/)
-    {
-      return 0;
-    }
-    template<>
-    size_t stringLength<BSTR>(BSTR* pData, size_t nRows, size_t nCols)
-    {
-      size_t len = 0u;
-      for (auto i = 0u; i < nRows; i++)
-        for (auto j = 0u; j < nCols; j++)
-          len += wcslen(pData[i * nCols + j]);
-      return len;
-    }
-    template<>
-    size_t stringLength<VARIANT>(VARIANT* pData, size_t nRows, size_t nCols)
-    {
-      size_t len = 0;
-      for (auto i = 0u; i < nRows; i++)
-        for (auto j = 0u; j < nCols; j++)
-        {
-          auto& p = pData[i * nCols + j];
-          if (p.vt == VT_BSTR)
-            len += wcslen(p.bstrVal);
-        }
-      return len;
-    }
-
-    template<class T>
-    auto arrayToExcelObj(void* pVoidData, size_t nRows, size_t nCols)
-    {
-      auto pData = (T*)pVoidData;
-      const auto strLength = stringLength<T>(pData, nRows, nCols);
-      ExcelArrayBuilder builder(
-        (ExcelObj::row_t)nRows, (ExcelObj::col_t)nCols, strLength);
-
-      for (auto i = 0u; i < nRows; i++)
-        for (auto j = 0u; j < nCols; j++)
-        {
-          builder(i, j) = elementConvert(pData[j * nRows + i]);
-        }
-      
-      return builder.toExcelObj();
-    }
-
-    ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange)
+    ExcelObj variantToExcelObj(const VARIANT& variant, bool allowRange, bool trimArray)
     {
       switch (variant.vt)
       {
@@ -180,13 +241,11 @@ namespace xloil
       case VT_DATE: return ExcelObj(variant.date);
       case VT_DISPATCH:
       {
-        Excel::Range* pRange;
-        if (S_OK != variant.pdispVal->QueryInterface(&pRange))
-          XLO_THROW("Unexpected variant type: could not convert to Range");
+        Excel::RangePtr pRange(variant.pdispVal);
         
-        auto xlRef = ExcelRef(pRange->GetAddress(VARIANT_TRUE, VARIANT_TRUE, Excel::xlA1, VARIANT_TRUE));
-        variant.pdispVal->Release(); //TODO: surely pRange->Release();
-        
+        auto xlRef = ExcelRef(pRange->GetAddress(
+          VARIANT_TRUE, VARIANT_TRUE, Excel::xlA1, VARIANT_TRUE));
+
         if (allowRange)
           return xlRef;
         else
@@ -196,7 +255,7 @@ namespace xloil
       case VT_ERROR:
         return variant.scode == DISP_E_PARAMNOTFOUND
           ? ExcelObj(ExcelType::Missing)
-          : ExcelObj((CellError)(variant.scode - 0x800A07D0));
+          : ExcelObj(variantErrorToCellError(variant.scode));
       case VT_EMPTY: return ExcelObj();
       }
 
@@ -204,33 +263,34 @@ namespace xloil
         XLO_THROW("Unknown variant type {0}", variant.vt);
       else
       {
-        const auto dims = variant.parray->cDims;
-        if (dims > 2)
-          XLO_THROW("Can only convert 1 or 2 dim arrays");
-
-        void* pData;
-        if (FAILED(SafeArrayAccessData(variant.parray, &pData)))
-          XLO_THROW("Failed calling SafeArrayAccessData");
-
-        std::shared_ptr<SAFEARRAY> pArr(variant.parray, SafeArrayUnaccessData);
-
-        // The rgsabound structure is reversed
-        const auto nCols = dims == 1 ? 1 : pArr->rgsabound[0].cElements;
-        const auto nRows = pArr->rgsabound[dims == 1 ? 0 : 1].cElements;
-
+        auto pArr = variant.parray;
         VARTYPE vartype;
-        SafeArrayGetVartype(pArr.get(), &vartype);
+        SafeArrayGetVartype(pArr, &vartype);
         switch (vartype)
         {
-        case VT_R8:    return arrayToExcelObj<double>(pData, nRows, nCols);
-        case VT_BOOL:  return arrayToExcelObj<bool>(pData, nRows, nCols);
-        case VT_BSTR:  return arrayToExcelObj<BSTR>(pData, nRows, nCols);
-        case VT_ERROR: return arrayToExcelObj<long>(pData, nRows, nCols);
-        case VT_VARIANT: return arrayToExcelObj<VARIANT>(pData, nRows, nCols);
+        case VT_R8:    return toExcelObj(SafeArrayAccessor<double>(pArr), trimArray);
+        case VT_BOOL:  return toExcelObj(SafeArrayAccessor<bool>(pArr), trimArray);
+        case VT_BSTR:  return toExcelObj(SafeArrayAccessor<BSTR>(pArr), trimArray);
+        case VT_ERROR: return toExcelObj(SafeArrayAccessor<long>(pArr), trimArray);
+        case VT_VARIANT: return toExcelObj(SafeArrayAccessor<VARIANT>(pArr), trimArray);
         default:
           XLO_THROW("Unhandled array data type: {0}", variant.vt ^ VT_ARRAY);
         }
       }
+    }
+    bool trimmedVariantArrayBounds(const VARIANT& variant, size_t& nRows, size_t& nCols)
+    {
+      if ((variant.vt & VT_ARRAY) == 0)
+        return false;
+
+      auto pArr = variant.parray;
+      VARTYPE vartype;
+      SafeArrayGetVartype(pArr, &vartype);
+      if (vartype != VT_VARIANT)
+        return false;
+
+      std::tie(nRows, nCols) = SafeArrayAccessor<VARIANT>(pArr).trimmedSize();
+      return true;
     }
 
     VARIANT stringToVariant(const char* str)

@@ -469,6 +469,8 @@ namespace xloil
           )",
           py::arg("row"),
           py::arg("col"))
+        .def("trim",
+          wrapNoGil(&Range::trim))
         .def("__iter__", 
           [](Range& self) { return new RangeIter(self); })
         .def("__getitem__", 
