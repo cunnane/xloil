@@ -8,6 +8,7 @@
 #include "PyFuture.h"
 #include "PyCom.h"
 #include <xloil/ExcelUI.h>
+#include <xlOil/AppObjects.h>
 #include <xloil/ExcelThread.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>

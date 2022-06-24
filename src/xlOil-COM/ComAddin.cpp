@@ -4,6 +4,7 @@
 #include "RibbonExtensibility.h"
 #include "CustomTaskPane.h"
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
 #include <xlOil/ExcelThread.h>

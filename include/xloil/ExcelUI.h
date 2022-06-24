@@ -1,7 +1,6 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <xloil/ExcelObj.h>
-#include <xlOil/AppObjects.h>
 #include <functional>
 #include <memory>
 #include <map>
@@ -10,7 +9,7 @@ typedef struct tagVARIANT VARIANT;
 struct IDispatch;
 
 namespace Excel { struct Window; }
-
+namespace xloil { class ExcelWindow; }
 namespace xloil
 {
   /// <summary>

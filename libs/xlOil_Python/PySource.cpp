@@ -4,6 +4,7 @@
 #include "PyFunctionRegister.h"
 #include "PyAddin.h"
 
+#include <xlOil/AppObjects.h>
 #include <xloil/Log.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Events.h>

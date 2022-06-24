@@ -1,5 +1,6 @@
 #include "ClassFactory.h"
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 #include <xlOil/ExcelUI.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
