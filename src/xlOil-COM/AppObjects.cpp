@@ -420,10 +420,12 @@ namespace xloil
   {
     try
     {
-      return ExcelRange(formatStr(L"'[%s]%s'!%s", 
-        parent().name().c_str(), 
-        name().c_str(), 
-        wstring(address).data()));
+      return ExcelRange(
+        formatStr(L"'[%s]%s'!%s", 
+          parent().name().c_str(), 
+          name().c_str(), 
+          wstring(address).data()),
+        app());
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -517,14 +519,14 @@ namespace xloil
     XLO_RETHROW_COM_ERROR
   }
 
-  Worksheets::Worksheets(Application app)
+  Worksheets::Worksheets(const Application& app)
     : parent(app.workbooks().active())
   {
     if (!parent.valid())
       XLO_THROW("No active workbook");
   }
 
-  Worksheets::Worksheets(ExcelWorkbook workbook)
+  Worksheets::Worksheets(const ExcelWorkbook& workbook)
     : parent(workbook)
   {}
 
