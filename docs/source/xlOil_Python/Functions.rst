@@ -1,5 +1,5 @@
 ==================================
-xlOil Registering Python Functions
+xlOil Python Registering Functions
 ==================================
 
 .. contents::

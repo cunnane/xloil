@@ -35,6 +35,7 @@ Dynamically Resized Arrays
 This is available in Office 365.  It would be possible to replicate this behaviour in older Excel 
 versions however it is somewhat tricky, as the output ranges are not 'protected' as they are with 
 array formulae or with the Office 365 support.  The code would need to:
+
    1. Hook the *AfterCalculate* event.
    2. Remember which functions output arrays in the current calc cycle and their calling cell.
    3. Remember which functions output arrays in the previous calc cycle and their calling cell.
