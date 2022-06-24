@@ -25,10 +25,8 @@ test_sheets = [(Path(args.testdir) / x).resolve() for x in Path(args.testdir).gl
 app = xlo.Application()
 app.visible = True
 
-app.workbooks().add() # Cannot get com object without this
-
 # Load addin
-if not app.to_com().RegisterXLL(os.path.join(bin_path, "xloil.xll")):
+if not app.RegisterXLL(os.path.join(bin_path, "xloil.xll")):
     raise Exception("xloil load failed")
 
 # Uncomment this to pause so the debugger can be attached to the 
@@ -36,7 +34,6 @@ if not app.to_com().RegisterXLL(os.path.join(bin_path, "xloil.xll")):
 #input("Attach debugger now...")
 test_results = {}
 for filename in test_sheets:
-    #with app.open(str(filename)) as wb:
     print(filename)
     wb = app.open(str(filename), read_only=True)
     
@@ -63,7 +60,7 @@ app.quit()
 for k,v in test_results.items():
     print(k, v)
 
-if not all(test_results.values()):
+if not all([x == True for x in test_results.values()]):
     print("-->FAILED<--")
 
     
