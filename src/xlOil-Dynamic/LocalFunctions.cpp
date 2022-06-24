@@ -83,7 +83,7 @@ namespace xloil
       }
     }
 
-    auto iNewFuncsEnd = toRegister.end();
+    const auto nNewFuncs = toRegister.size();
 
     if (rewriteVBAModule)
     {
@@ -91,6 +91,7 @@ namespace xloil
         toRegister.push_back(f.second);
     }
     
+    const auto iNewFuncsEnd = toRegister.begin() + nNewFuncs;
     for (auto i = toRegister.begin(); i != iNewFuncsEnd; ++i)
       existing.emplace(i->get()->info()->name, *i);
 
