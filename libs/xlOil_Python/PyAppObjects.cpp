@@ -190,12 +190,12 @@ namespace xloil
         }
       }
 
-      py::object workbook_Enter(const py::object& wb)
+      py::object Context_Enter(const py::object& x)
       {
-        return wb;
+        return x;
       }
 
-      void workbook_Exit(
+      void Workbook_Exit(
         ExcelWorkbook& wb, 
         const py::object& /*exc_type*/, 
         const py::object& /*exc_val*/, 
@@ -203,6 +203,16 @@ namespace xloil
       {
         // Close *without* saving - saving must be done explicitly
         wb.close(false); 
+      }
+
+      void Application_Exit(
+        Application& app,
+        const py::object& /*exc_type*/,
+        const py::object& /*exc_val*/,
+        const py::object& /*exc_tb*/)
+      {
+        // Close *without* saving - saving must be done explicitly
+        app.quit(true);
       }
 
       struct RangeIter
@@ -713,8 +723,8 @@ namespace xloil
             saved to the workbook, if False they are discared.
           )",
           py::arg("save")=true)
-        .def("__enter__", workbook_Enter)
-        .def("__exit__", workbook_Exit);
+        .def("__enter__", Context_Enter)
+        .def("__exit__", Workbook_Exit);
 
       py::class_<ExcelWindow>(mod, "ExcelWindow")
         .def("__str__", wrapNoGil(&ExcelWindow::name))
@@ -817,7 +827,9 @@ namespace xloil
             Terminates the application. If `silent` is True, unsaved data
             in workbooks is discarded, otherwise a prompt is displayed.
           )",
-          py::arg("silent") = true);
+          py::arg("silent") = true)
+        .def("__enter__", Context_Enter)
+        .def("__exit__", Application_Exit);
 
       PyWorkbooks::startBinding(mod, "Workbooks")
         .def("add", 
