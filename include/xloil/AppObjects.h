@@ -197,12 +197,12 @@ namespace xloil
     /// </summary>
     explicit ExcelRange(
       const std::wstring_view& address,
-      Application app = excelApp());
+      const Application& app = excelApp());
 
     ExcelRange(const Range& range);
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
 
-    using  AppObject<Excel::Range>::AppObject;
+    using AppObject<Excel::Range>::AppObject;
 
     Range* range(
       int fromRow, int fromCol,
@@ -464,8 +464,8 @@ namespace xloil
   class XLOIL_EXPORT Worksheets
   {
   public:
-    Worksheets(Application app = excelApp());
-    Worksheets(ExcelWorkbook workbook);
+    Worksheets(const Application& app = excelApp());
+    Worksheets(const ExcelWorkbook& workbook);
     ExcelWorksheet active() const { return app().activeWorksheet(); }
     ExcelWorksheet get(const std::wstring_view& name) const;
     auto operator[](const std::wstring_view& name) const { return get(name); };

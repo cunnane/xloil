@@ -48,7 +48,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelRange::ExcelRange(const std::wstring_view& address, Application app)
+  ExcelRange::ExcelRange(const std::wstring_view& address, const Application& app)
     : AppObject([&]() {    
         try
         {
@@ -68,7 +68,7 @@ namespace xloil
     else
       *this = ExcelRange(range.address());
   }
-  
+
   Range* ExcelRange::range(
     int fromRow, int fromCol,
     int toRow, int toCol) const
