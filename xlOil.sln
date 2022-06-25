@@ -17,7 +17,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{67EB80BB-D718-428C-80BD-E409C27FAD25}"
 	ProjectSection(SolutionItems) = preProject
 		tools\BuildRelease.cmd = tools\BuildRelease.cmd
-		src\NewAddin.ini = src\NewAddin.ini
 		README.md = README.md
 		tools\stage.py = tools\stage.py
 		tools\WriteInclude.ps1 = tools\WriteInclude.ps1

@@ -55,11 +55,12 @@ extern "C" PfnDliHook __pfnDliFailureHook2 = nullptr;
 namespace
 {
   // Name of core dll. Not sure if there's an automatic way to get this
-  constexpr wchar_t* const xloil_dll = L"XLOIL.DLL";
+  // maybe some build env vars?
+  constexpr wchar_t* const xloil_dll = L"xlOil.dll";
 
   void loadEnvironmentBlock(const toml::table& settings)
   {
-    auto environment = Settings::environmentVariables(settings["Addin"]);
+    auto environment = Settings::environmentVariables(settings[XLOIL_SETTINGS_ADDIN_SECTION]);
 
     for (auto&[key, val] : environment)
     {
@@ -78,7 +79,7 @@ namespace
     __pfnDliFailureHook2 = &delayLoadFailureHook;
     __try
     {
-      __HrLoadAllImportsForDll("xlOil.dll");
+      __HrLoadAllImportsForDll("xlOil.dll"); // This is CASE SENSITIVE!
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
@@ -105,7 +106,7 @@ struct xlOilAddin
       std::error_code fsErr;
       if (settings)
       {
-        traceLoad = (*settings)["Addin"]["StartupTrace"].value_or(false);
+        traceLoad = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION]["StartupTrace"].value_or(false);
         if (traceLoad)
           writeLog(formatStr("Found ini file at '%s'", settings->source().path->c_str()));
       }
@@ -145,7 +146,7 @@ struct xlOilAddin
           {
             if (traceLoad)
               writeLog(formatStr("Found xloil.ini at '%s'", coreSettings->source().path->c_str()));
-            loadEnvironmentBlock(*settings);
+            loadEnvironmentBlock(*coreSettings);
           }
         }
       }

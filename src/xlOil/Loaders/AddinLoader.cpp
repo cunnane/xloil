@@ -26,6 +26,11 @@ namespace xloil
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
 
+    /// <summary>
+    /// Finds the settings file <XllName>.ini either in %APPDATA%\xlOil
+    /// or in the same directory as the XLL.  Adds any log sink specified
+    /// and any date formats.
+    /// </summary>
     auto processAddinSettings(const wchar_t* xllPath)
     {
       auto settings = findSettingsFile(xllPath);
@@ -35,7 +40,7 @@ namespace xloil
         return settings;
       }
 
-      auto addinRoot = (*settings)["Addin"];
+      auto addinRoot = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION];
 
       // Log file settings
       auto logFile = Settings::logFilePath(*settings);
@@ -46,8 +51,15 @@ namespace xloil
         logFile.c_str(), logLevel.c_str(), 
         logMaxSize, logNumFiles);
 
-      XLO_INFO("Found core settings file '{}'",
-        *settings->source().path);
+      // Write the log message *after* we set up the log file!
+      XLO_INFO(L"Found core settings file '{}' for '{}'",
+        utf8ToUtf16(*settings->source().path), xllPath);
+
+      // If this is specified in multiple addins and/or the core, 
+      // the last value overrides: not easy to workaround
+      setLogWindowPopupLevel(
+        spdlog::level::from_str(
+          Settings::logPopupLevel(addinRoot).c_str()));
 
       // Add any requested date formats
       auto dateFormats = Settings::dateFormats(addinRoot);
@@ -73,14 +85,6 @@ namespace xloil
   void createCoreContext() 
   {
     ourCoreContext = &createAddinContext(State::coreDllPath());
-
-    const auto& coreAddinSettings = (*ourCoreContext->settings())["Addin"];
-
-    // Can only do this once not per-addin
-    setLogWindowPopupLevel(
-      spdlog::level::from_str(
-        Settings::logPopupLevel(coreAddinSettings).c_str()));
-
     auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
     ourCoreContext->addSource(staticSource);
   }

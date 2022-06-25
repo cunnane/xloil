@@ -13,6 +13,7 @@ namespace toml {
 namespace xloil
 {
   constexpr char* XLOIL_SETTINGS_FILE_EXT = "ini";
+  constexpr char* XLOIL_SETTINGS_ADDIN_SECTION = "Addin";
 
   namespace Settings
   {
@@ -32,6 +33,8 @@ namespace xloil
 
     std::vector<std::pair<std::wstring, std::wstring>>
       environmentVariables(const toml::view_node& root);
+
+    bool loadBeforeCore(const toml::table& root);
 
     /// <summary>
     /// Lookup name in table in a case-insensitive way. TOML lookup is case 
