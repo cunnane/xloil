@@ -19,22 +19,40 @@ namespace xloil
   namespace
   {
     template <class T>
+    using ComPtr_t = _com_ptr_t<_com_IIID<T, &__uuidof(T)>>;
+
+    template<typename T, class V>
+    struct comPtrCast
+    {
+      auto operator()(const ComPtr_t<V>& v) const { return ComPtr_t<T>(v); }
+    };
+    template<typename T>
+    struct comPtrCast<T, T>
+    {
+      auto operator()(const ComPtr_t<T>& v) const { return v; }
+    };
+
+    template<typename T>
+    using ComType = std::remove_reference_t<decltype(T(nullptr).com())>;
+
+    template<typename TAppObj, class V>
+    auto fromComPtr(const ComPtr_t<V>& v)
+    {
+      return TAppObj(comPtrCast<ComType<TAppObj>, V>()(v).Detach(), true);
+    }
+
+    template <class T>
     struct CollectionToVector
     {
-      using Com_t = decltype(&T(nullptr).com());
       template <class V>
       vector<T> operator()(const V& collection) const
       {
-        return operator()(collection, collection->GetCount());
-      }
-      template <class V>
-      vector<T> operator()(const V& collection, const long N) const
-      {
         try
         {
+          const auto N = collection->GetCount();
           vector<T> result;
           for (auto i = 1; i <= N; ++i)
-            result.emplace_back((Com_t)(IDispatch*)collection->GetItem(i));
+            result.emplace_back(fromComPtr<T>(collection->GetItem(i)));
           return std::move(result);
         }
         XLO_RETHROW_COM_ERROR;
@@ -45,6 +63,44 @@ namespace xloil
     {
       auto variant = COM::stringToVariant(str);
       return _variant_t(variant, false);
+    }
+
+    template<class TRes, class TObj>
+    TRes comGet(const TObj& obj, const std::wstring_view& what)
+    {
+      try
+      {
+        return fromComPtr<TRes>(obj->GetItem(stringToVariant(what)));
+      }
+      XLO_RETHROW_COM_ERROR;
+    }
+
+    template<class TObj, class TRes>
+    bool comTryGet(const TObj& obj, const std::wstring_view& what, TRes& out)
+    {
+      // See other possibility here. Seems a bit crazy?
+      // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
+      try
+      {
+        out = fromComPtr<TRes>(obj->GetItem(stringToVariant(what)));
+        return true;
+      }
+      catch (_com_error& error)
+      {
+        if (error.Error() == DISP_E_BADINDEX)
+          return false;
+        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+      }
+    }
+
+    template<class T>
+    auto comGetApp(T& x)
+    {
+      try
+      {
+        return Application(x.Application.Detach());
+      }
+      XLO_RETHROW_COM_ERROR;
     }
   }
 
@@ -252,9 +308,9 @@ namespace xloil
   {
     try
     {
-      return ExcelWorkbook(com().Workbooks->Open(
+      return fromComPtr<ExcelWorkbook>(com().Workbooks->Open(
         _bstr_t(filepath.c_str()), updateLinks ? 3 : 0, _variant_t(readOnly)
-      ).Detach(), true);
+      ));
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -284,7 +340,7 @@ namespace xloil
 
   Application ExcelWindow::app() const
   {
-    return Application(com().Application.Detach());
+    return comGetApp(com());
   }
 
   ExcelWorkbook ExcelWindow::workbook() const
@@ -319,7 +375,7 @@ namespace xloil
 
   Application ExcelWorkbook::app() const
   {
-    return Application(com().Application.Detach());
+    return comGetApp(com());
   }
 
   std::wstring ExcelWorkbook::path() const
@@ -342,9 +398,9 @@ namespace xloil
       if (before.valid() && after.valid())
         XLO_THROW("ExcelWorkbook::add: at most one of 'before' and 'after' should be specified");
 
-      auto ws = ExcelWorksheet((Excel::_Worksheet*)(com().Worksheets->Add(
+      auto ws = fromComPtr<ExcelWorksheet>(com().Worksheets->Add(
         before.valid() ? _variant_t(&before.com()) : vtMissing,
-        after.valid() ? _variant_t(&after.com()) : vtMissing).Detach()), true);
+        after.valid()  ? _variant_t(&after.com())  : vtMissing));
       if (!name.empty())
         ws.setName(name);
       return ws;
@@ -360,7 +416,8 @@ namespace xloil
         com().Save();
       else
         com().SaveAs(stringToVariant(filepath), 
-          vtMissing, vtMissing, vtMissing, vtMissing, vtMissing, Excel::XlSaveAsAccessMode::xlNoChange);
+          vtMissing, vtMissing, vtMissing, vtMissing, vtMissing, 
+          Excel::XlSaveAsAccessMode::xlNoChange);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -385,14 +442,14 @@ namespace xloil
 
   Application ExcelWorksheet::app() const
   {
-    return Application(com().Application.Detach());
+    return comGetApp(com());
   }
 
   ExcelWorkbook ExcelWorksheet::parent() const
   {
     try
     {
-      return ExcelWorkbook((Excel::_Workbook*)(IDispatch*)com().Parent);
+      return fromComPtr<ExcelWorkbook>(com().Parent);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -462,39 +519,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  namespace 
-  {
-    template<class TRes, class TObj>
-    auto comGet(const TObj& obj, const std::wstring_view& what)
-    {
-      try
-      {
-        using Com_t = std::remove_reference_t<decltype(TRes(nullptr).com())>;
-        return TRes((Com_t*)obj->GetItem(stringToVariant(what)).Detach(), true);
-      }
-      XLO_RETHROW_COM_ERROR;
-    }
-
-    template<class TObj, class TRes>
-    bool comTryGet(const TObj& obj, const std::wstring_view& what, TRes& out)
-    {
-      // See other possibility here. Seems a bit crazy?
-      // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
-      try
-      {
-        using Com_t = std::remove_reference_t<decltype(TRes(nullptr).com())>;
-        out = TRes((Com_t*)obj->GetItem(stringToVariant(what)).Detach(), true);
-        return true;
-      }
-      catch (_com_error& error)
-      {
-        if (error.Error() == DISP_E_BADINDEX)
-          return false;
-        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-      }
-    }
-  }
-
+  
   bool Workbooks::tryGet(const std::wstring_view& workbookName, ExcelWorkbook& wb) const
   {
     return comTryGet(&com(), workbookName, wb);
@@ -504,19 +529,14 @@ namespace xloil
   {
     try
     {
-      auto p = com().Add();
-      return ExcelWorkbook(p.Detach(), true);
+      return fromComPtr<ExcelWorkbook>(com().Add());
     }
     XLO_RETHROW_COM_ERROR;
   }
 
   Application Workbooks::app() const
   {
-    try
-    {
-      return Application(com().Application.Detach());
-    }
-    XLO_RETHROW_COM_ERROR
+    return comGetApp(com());
   }
 
   Worksheets::Worksheets(const Application& app)
@@ -534,9 +554,17 @@ namespace xloil
   {
     try
     {
-      // TODO: Not sure why I need to pass the N here... if not, get `unresolved external`
-      auto N = parent.com().Worksheets->Count;
-      return CollectionToVector<ExcelWorksheet>()(parent.com().Worksheets, N);
+      const auto collection = parent.com().Worksheets;
+      const auto N = collection->GetCount();
+      vector<ExcelWorksheet> result;
+      for (auto i = 1; i <= N; ++i)
+        result.emplace_back(fromComPtr<ExcelWorksheet>(collection->GetItem(i)));
+      return std::move(result);
+      
+
+      // This seemingly identical code gives a link error 2019: missing 
+      // Excel::Sheets::GetItem. Looks like a compiler bug.
+      //return CollectionToVector<ExcelWorksheet>()(parent.com().Worksheets);
     }
     XLO_RETHROW_COM_ERROR;
   }
