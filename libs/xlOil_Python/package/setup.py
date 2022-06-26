@@ -46,7 +46,6 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_Python.dll', 
     'xlOil_Utils.dll', 
     'xlOil_SQL.dll', 
-    'NewAddin.ini', 
     'xlOil_Install.ps1', 
     'xlOil_NewAddin.ps1',
     'xlOil_Remove.ps1']]

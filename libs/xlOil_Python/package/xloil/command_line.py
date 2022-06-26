@@ -41,6 +41,15 @@ def _check_VBA_access(version):
 			"Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings\n")
 
 
+def _get_xloil_bin_dir():
+    # This is where we expect thie binary to be for a normal python install
+    if (_XLOIL_BIN_DIR / _ADDIN_NAME).exists():
+        return _XLOIL_BIN_DIR
+    # But allow for being executed from the same directory as the binaries
+    if Path(_ADDIN_NAME).exists():
+        return Path(".")
+    raise Exception(f"{_ADDIN_NAME} not found")
+
 def _remove_from_resiliancy(filename, version):
 
     # Source https://stackoverflow.com/questions/751048/how-to-programatically-re-enable-documents-in-the-ms-office-list-of-disabled-fil
@@ -78,7 +87,7 @@ def _toml_lit_string(s):
     return "'''" + s.replace('\\','\\\\') + "'''"
 
 
-def _write_python_path_to_ini(ini_txt):
+def _write_python_path_to_ini(ini_txt, bin_dir:str):
 
     python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
     python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
@@ -96,10 +105,8 @@ def _write_python_path_to_ini(ini_txt):
     do_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
     # Set xlOil_PythonRoot
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
-    # Set xlOilPythonVersion
-    do_replace(r'^(\s*PythonVersion\s*=).*',    rf'\g<1>"{python_ver}"')
     # Set XLOIL_PATH
-    do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(_XLOIL_BIN_DIR)))
+    do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
 
     return ini_txt, fails == 0
     
@@ -120,8 +127,10 @@ def _install_xloil():
     with suppress(FileExistsError):
         os.mkdir(_XL_START_PATH)
 
+    bin_dir = _get_xloil_bin_dir()
+
     # Copy the XLL
-    sh.copy(_XLOIL_BIN_DIR / _ADDIN_NAME, _XL_START_PATH)
+    sh.copy(bin_dir / _ADDIN_NAME, _XL_START_PATH)
     print("Installed ", _XL_START_PATH / _ADDIN_NAME)
     
     # Copy the ini file to APPDATA, avoiding overwriting any existing ini
@@ -130,12 +139,12 @@ def _install_xloil():
     else:
         with suppress(FileExistsError):
             ini_path.parent.mkdir()
-        sh.copy(_XLOIL_BIN_DIR / _INIFILE_NAME, ini_path)
+        sh.copy(bin_dir / _INIFILE_NAME, ini_path)
 
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
     ini_txt = ini_path.read_text(encoding='utf-8')
-    ini_txt, success = _write_python_path_to_ini(ini_txt)
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir)
     
     # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times
     if not success:
@@ -164,8 +173,10 @@ def _create_addin(args):
     xll_path = basename.with_suffix(".xll")
     ini_path = basename.with_suffix(".ini")
 
-    sh.copy(_XLOIL_BIN_DIR / _ADDIN_NAME, xll_path)
-    sh.copy(_XLOIL_BIN_DIR / "NewAddin.ini",  ini_path)
+    bin_dir = _get_xloil_bin_dir()
+
+    sh.copy(bin_dir / _ADDIN_NAME, xll_path)
+    sh.copy(bin_dir / _INIFILE_NAME,  ini_path)
     
     print("New addin created at: ", xll_path)
 
@@ -176,7 +187,7 @@ def _create_addin(args):
     ini_txt, count = re.subn(r'^(\s*Plugins\s*=).*', r'\g<1>["xlOil_Python"]', ini_txt, flags=re.M)
     
     # Assume we want the python paths set to the distribution running this script
-    ini_txt, success = _write_python_path_to_ini(ini_txt)
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir)
     
     ini_path.write_text(ini_txt)
 
@@ -197,3 +208,5 @@ def main():
     else:
         raise Exception("Syntax: xloil {install, remove, create}")
 
+if __name__ == '__main__':
+    main()

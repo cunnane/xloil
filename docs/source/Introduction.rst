@@ -2,9 +2,10 @@
 xlOil
 ===========
 
-xlOil is a framework for building Excel language bindings. That is, a way to 
-write functions in a language of your choice and have them appear in Excel
-as worksheet functions and macros.
+xlOil is a framework for linking programming langagues with Excel language. 
+That is, a way to write functions in a language of your choice and have them
+appear in Excel as worksheet functions and macros, as well as manipulating
+the application and GUI similar to VBA.
 
 xlOil is designed to have very low overheads when calling your own worksheet 
 functions.
@@ -17,12 +18,14 @@ supported are:
 - SQL
 
 In addition there is :any:`xlOil_Utils` which contains some handy tools which Microsoft
-never quite go around to adding.
+never quite got around to adding.
 
 You can use xlOil as an end-user of these plugins or you can use it to write
 you own language bindings and contribute.
 
-**Start Here**  :any:`core-getting-started`
+.. important::
+
+    **Start Here:**  :any:`core-getting-started`
 
 xlOil features
 --------------

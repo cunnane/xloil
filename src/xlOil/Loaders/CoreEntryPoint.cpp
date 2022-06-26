@@ -43,7 +43,7 @@ namespace xloil
 
       if (!theCoreIsLoaded)
       {
-        // There's no log file until createCoreContext figures out our 
+        // There's no log file until createAddinContext figures out our 
         // settings, so any logging goes to the debug output.
         detail::loggerInitialise(spdlog::level::debug);
 
@@ -52,7 +52,22 @@ namespace xloil
         XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 
         detail::loggerInitPopupWindow();
+      }
 
+      bool isXloilCoreAddin = _wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0;
+      AddinContext* addinContext = nullptr;
+
+      if (!isXloilCoreAddin)
+      {
+        addinContext = &createAddinContext(xllPath);
+        auto loadFirst = Settings::loadBeforeCore(*addinContext->settings());
+        if (loadFirst)
+          runComSetupOnXllOpen([&]() { loadPluginsForAddin(*addinContext); });
+        addinContext = nullptr;
+      }
+
+      if (!theCoreIsLoaded)
+      {
         // Run *before* createCoreContext so the function registration memo gets
         // picked up
         registerIntellisenseHook(xllPath);
@@ -65,11 +80,11 @@ namespace xloil
         retVal = 1;
       }
 
-      // If we are not the core xll, load our plugins
-      if (_wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) != 0)
+      // If we have an addin context here it means we are not
+      // xloil.xll and have not yet loaded our plugins
+      if (addinContext)
       {
-        auto& addinContext = createAddinContext(xllPath);
-        runComSetupOnXllOpen([&]() { loadPluginsForAddin(addinContext); });
+        runComSetupOnXllOpen([&]() { loadPluginsForAddin(*addinContext); });
       }
 
       return retVal;
