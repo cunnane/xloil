@@ -99,7 +99,7 @@ namespace xloil
     if (size() == 1 || !COM::trimmedVariantArrayBounds(com().Value2, nRows, nCols))
       return new ExcelRange(*this);
 
-    return range(0, 0, nRows, nCols);
+    return range(0, 0, nRows > 0 ? nRows - 1 : 0, nCols > 1 ? nCols - 1 : 0);
   }
 
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
@@ -117,7 +117,7 @@ namespace xloil
     {
       const auto row = com().Row - 1;
       const auto col = com().Column - 1;
-      return { row, col, row + com().Rows->GetCount(), col + com().Columns->GetCount() };
+      return { row, col, row + com().Rows->GetCount() - 1, col + com().Columns->GetCount() - 1 };
     }
     XLO_RETHROW_COM_ERROR;
   }

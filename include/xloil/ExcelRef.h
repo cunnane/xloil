@@ -30,12 +30,12 @@ namespace xloil
       row_t nRows() const
       {
         auto& r = up().ref();
-        return r.rwLast - r.rwFirst;
+        return r.rwLast - r.rwFirst + 1;
       }
       col_t nCols() const
       {
         auto& r = up().ref();
-        return (col_t)(r.colLast - r.colFirst);
+        return (col_t)(r.colLast - r.colFirst + 1);
       }
 
       std::tuple<row_t, col_t> shape() const
@@ -323,7 +323,9 @@ namespace xloil
       if (!val.isType(ExcelType::Multi))
         return new XllRange(*this);
       ExcelArray array(val);
-      return range(0, 0, array.nRows(), array.nCols());
+      return range(0, 0, 
+        array.nRows() > 0 ? array.nRows() - 1 : 0, 
+        array.nCols() > 1 ? array.nCols() - 1 : 0);
     }
 
     std::tuple<row_t, col_t> shape() const final override
