@@ -70,7 +70,13 @@ namespace xloil
 
     PYBIND11_MODULE(XLO_PROJECT_NAME, mod)
     {
-      mod.doc() = "pybind11 example module";
+      mod.doc() = R"(
+        The Python plugin for xlOil primarily allows creation of Excel functions and macros 
+        backed by Python code. In addition it offers full control over GUI objects and an 
+        interface for Excel automation: driving the application in code.
+
+        See the documentation at https://xloil.readthedocs.io
+      )";
 
       initialiseCore(mod);
       BinderRegistry::get().bindAll(mod);
@@ -124,7 +130,18 @@ namespace xloil
 
       struct CannotConvert {};
 
-      
+      auto cellErrorSymbol(CellError e)
+      {
+        auto wstr = enumAsWCString(e);
+        string str;
+        for (auto c = wstr; *c != L'0'; ++c)
+        {
+          if (*c != L'#' && *c != L'/' && *c != L'?' && *c != L'!')
+            str.push_back((char)*c);
+        }
+        return str;
+      }
+
       void initialiseCore(pybind11::module& mod)
       {
         XLO_DEBUG("Python importing numpy");
@@ -153,8 +170,9 @@ namespace xloil
         mod.def("excel_callback",
           &runLater,
           R"(
-          Schedules a callback to be run in the main thread.Much of the COM API in unavailable
+          Schedules a callback to be run in the main thread. Much of the COM API in unavailable
           during the calc cycle, in particular anything which involves writing to the sheet.
+          Returns a future which can be awaited.
 
           Parameters
           ----------
@@ -170,8 +188,8 @@ namespace xloil
           Number of milliseconds to wait before first attempting to run this function
 
           api : str
-          Specify 'xll' or 'com' or both to indicate which add - in APIs the call requires.
-          The default is 'com' and changing this would only be required in rare cases.
+          Specify 'xll' or 'com' or both to indicate which APIs the call requires.
+          The default is 'com': 'xll' would only be required in rare cases.
           )",
           py::arg("func"),
           py::arg("wait") = 0,
@@ -217,7 +235,7 @@ namespace xloil
             )");
 
           for (auto e : theCellErrors)
-            eType.value(utf16ToUtf8(enumAsWCString(e)).c_str(), e);
+            eType.value(cellErrorSymbol(e).c_str(), e);
 
           cellErrorType = (PyTypeObject*)eType.ptr();
         }
