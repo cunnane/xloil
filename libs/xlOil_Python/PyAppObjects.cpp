@@ -856,14 +856,14 @@ namespace xloil
           [](const CallerInfo& self)
           {
             const auto name = self.sheetName();
-            return name.empty() ? py::none() : py::wstr(name);
+            return name.empty() ? (py::object)py::none() : py::wstr(name);
           },
           "Gives the sheet name of the caller or None if not called from a sheet.")
         .def_property_readonly("workbook",
           [](const CallerInfo& self)
           {
             const auto name = self.workbook();
-            return name.empty() ? py::none() : py::wstr(name);
+            return name.empty() ? (py::object)py::none() : py::wstr(name);
           },
           R"(
             Gives the workbook name of the caller or None if not called from a sheet.

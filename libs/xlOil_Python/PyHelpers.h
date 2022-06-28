@@ -17,7 +17,7 @@ namespace pybind11
   // Adds a logically missing wstr class to pybind11
   class wstr : public object {
   public:
-    PYBIND11_OBJECT_CVT(wstr, object, detail::PyUnicode_Check_Permissive, raw_str)
+    PYBIND11_OBJECT_CVT(wstr, object, PYBIND11_STR_CHECK_FUN, raw_str)
 
     wstr(const wchar_t* c, size_t n)
       : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
@@ -74,7 +74,8 @@ namespace pybind11
   class error_traceback_set : public error_already_set
   {
   public:
-    // Note: need to add a ctor to error_already_set which takes a string msg
+    // Note: When pybind is upgraded, we need to add a ctor to 
+    // error_already_set which takes a string msg
     error_traceback_set()
       : error_already_set(error_full_traceback())
     {}

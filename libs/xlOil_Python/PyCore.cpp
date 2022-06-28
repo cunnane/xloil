@@ -62,7 +62,8 @@ namespace xloil
 
     PyObject* buildInjectedModule()
     {
-      auto mod = py::module(theInjectedModuleName);
+      auto mod = py::module::create_extension_module(
+        theInjectedModuleName, nullptr, new PyModuleDef());
       initialiseCore(mod);
       BinderRegistry::get().bindAll(mod);
       return mod.release().ptr();
