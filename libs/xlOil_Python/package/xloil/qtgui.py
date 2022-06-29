@@ -175,9 +175,6 @@ class QtThreadTaskPane(CustomTaskPane):
         Qt_thread().submit(lambda: self.widget.destroy())
         super().on_destroy()
 
-    
-
-
 def _try_create_qt_pane(obj):
     try:
         QWidget = _qt_import('QtWidgets', 'QWidget')

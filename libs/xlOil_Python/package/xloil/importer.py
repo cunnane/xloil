@@ -40,7 +40,7 @@ _module_finder = _SpecifiedPathFinder()
 sys.meta_path.append(_module_finder)
 
 
-def linked_workbook(mod=None):
+def linked_workbook(mod=None) -> str:
     """
         Returns the full path of the workbook linked to the specified module
         or None if the module was not loaded with an associated workbook.
@@ -52,7 +52,7 @@ def linked_workbook(mod=None):
     return _linked_workbooks.get(frame.filename, None)
 
 
-def source_addin(mod=None):
+def source_addin(mod=None) -> str:
     """
         Returns the full path of the source add-in (XLL file) assoicated with
         the current code. That is the add-in which has caused the current code

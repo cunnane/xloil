@@ -19,13 +19,12 @@ from xloil_core import (
 )
 
 
-"""
-Tag used to mark modules which contain functions to register. It is added 
-by the xloil.func decorator to the module's __dict__ and contains a list
-of functions
-"""
 _LANDMARK_TAG = "_xloil_pending_funcs_"
-
+"""
+    Tag used to mark modules which contain functions to register. It is added 
+    by the xloil.func decorator to the module's __dict__ and contains a list
+    of functions
+"""
 
 def _add_pending_funcs(module, objects):
     pending = getattr(module, _LANDMARK_TAG, set())
@@ -34,8 +33,21 @@ def _add_pending_funcs(module, objects):
     
 class Arg:
     """
-    Holds the description of a function argument. Can be used with the 'func'
+    Holds the description of a function argument. Can be used with the `xloil.func`
     decorator to specify the argument description.
+
+    Examples
+    --------
+
+    ::
+
+        @xloil.func(args = { 
+            'a': xloil.Arg("A", "The First Arg", default=3),
+            'b': xloil.Arg("B", "Next Arg",      typeof=double),
+        })
+        def MyFunc(a, b, c):
+            ...
+
     """
     def __init__(self, name, help="", typeof=None, default=None, is_keywords=False):
         """
@@ -52,8 +64,9 @@ class Arg:
             A default value to pass if the argument is not specified in Excel
         is_keywords: bool, optional
             Denotes the special kwargs argument. xlOil will expect a two-column array
-            in Excel which it will interpret as key, value pairs and convert to a
-            dictionary.
+            in Excel which it will interpret as (key, value) pairs and convert to a
+            dictionary. A `**kwargs` argument is auto-detected by xlOil so it is 
+            unusual to set this parameter explicitly.
         """
 
         self.typeof = typeof
@@ -379,8 +392,8 @@ def func(fn=None,
     args: dict
         A dictionary with key names matching function arguments and values specifying
         information for that argument. The information can be a string, which is 
-        interpreted as the help to display in the function wizard or in can be an 
-        xloil.Arg object which can contain defaults, help and type information. 
+        interpreted as the help to display in the function wizard or it can be an
+        `xloil.Arg` object which can contain defaults, help and type information. 
     group: str
         Specifes a category of functions in Excel's function wizard under which
         this function should be placed.
