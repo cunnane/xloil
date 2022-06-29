@@ -18,7 +18,6 @@ from .importer import (
     )
 
 from .com import (
-    app,
     EventsPaused
     )
 

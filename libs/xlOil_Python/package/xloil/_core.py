@@ -7,7 +7,7 @@ from xloil_core import (
     event, cache, RtdServer, RtdPublisher,
     deregister_functions, get_async_loop,
     ExcelGUI, create_gui, 
-    excel_callback, excel_state,
+    excel_callback, excel_state, _ExcelState,
     Caller,
     CannotConvert, 
     from_excel_date,
@@ -15,6 +15,7 @@ from xloil_core import (
     TaskPaneFrame as TaskPaneFrame,
     RibbonControl,
     StatusBar,
+    app,
     Application, Range, ExcelWindow, Workbook, Worksheet, ExcelWindows, Workbooks, Worksheets,
     active_worksheet, active_workbook,
     run, run_async, call, call_async

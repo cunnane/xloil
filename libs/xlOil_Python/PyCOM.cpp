@@ -282,11 +282,6 @@ namespace xloil
 
     namespace
     {
-      py::object getExcelApp(const char* comlib)
-      {
-        return comToPy(excelApp().com(), comlib);
-      }
-
       static int theBinder = addBinder([](py::module& mod)
       {
         mod.def("insert_cell_image", 
@@ -319,8 +314,6 @@ namespace xloil
           py::arg("pos") = py::none(),
           py::arg("origin") = py::none(),
           py::arg("compress") = true);
-
-        mod.def("application", getExcelApp, py::arg("comlib")="");
       });
     }
   }
