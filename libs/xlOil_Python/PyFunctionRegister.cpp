@@ -498,7 +498,7 @@ namespace xloil
         mod.def("deregister_functions", 
           &deregisterFunctions,
           R"(
-            Deregisters worksheet functions linked to specified module.Generally, there
+            Deregisters worksheet functions linked to specified module. Generally, there
             is no need to call this directly.
           )");
       });

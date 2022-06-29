@@ -433,7 +433,9 @@ namespace xloil
               An Exception object can be passed at the value, this will trigger the debugging
               hook if it is set. The exception string and it's traceback will be published.
             )",
-            py::arg("topic"), py::arg("value"), py::arg("converter") = nullptr)
+            py::arg("topic"), 
+            py::arg("value"), 
+            py::arg("converter") = nullptr)
           .def("subscribe", 
             &PyRtdServer::subscribe,
             R"(
@@ -448,7 +450,8 @@ namespace xloil
               Calling this function outside of a worksheet function called by Excel may
               produce undesired results and possibly crash Excel.
             )",
-            py::arg("topic"), py::arg("converter") = nullptr)
+            py::arg("topic"), 
+            py::arg("converter") = nullptr)
           .def("peek", 
             &PyRtdServer::peek,
             R"(
@@ -459,10 +462,22 @@ namespace xloil
               This function does not use any Excel API and is safe to call at
               any time on any thread.
             )",
-            py::arg("topic"), py::arg("converter") = nullptr)
-          .def("drop", &PyRtdServer::drop)
-          .def("start_task", &PyRtdServer::startTask,
-            py::arg("topic"), py::arg("func"), py::arg("converter") = nullptr);
+            py::arg("topic"), 
+            py::arg("converter") = nullptr)
+          .def("drop", 
+            &PyRtdServer::drop,
+            R"(
+              Drops the producer for a topic by calling `RtdPublisher.stop()`, then waits
+              for it to complete and publishes #N/A to all subscribers.
+            )")
+          .def("start_task", 
+            &PyRtdServer::startTask,
+            R"(
+              Launch a publishing task for a `topic` given a func and a return converter
+            )",
+            py::arg("topic"), 
+            py::arg("func"), 
+            py::arg("converter") = nullptr);
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)

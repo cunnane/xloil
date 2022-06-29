@@ -82,10 +82,10 @@ def find_task_pane(title:str=None, workbook=None, window=None):
 
     if window is None:
         if workbook is None:
-            hwnds = [_core.windows.active.hwnd]
+            hwnds = [_core.app().windows.active.hwnd]
         else:
             workbook = _core.Workbook(workbook) # TODO: string or obj....
-            hwnds = [x.hwnd for x in _core.windows]
+            hwnds = [x.hwnd for x in _core.app().windows]
     else:
             hwnds = [ExcelWindow(window).hwnd]
 

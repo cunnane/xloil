@@ -15,7 +15,7 @@ from xloil_core import (
     TaskPaneFrame as TaskPaneFrame,
     RibbonControl,
     StatusBar,
-    Application, Range, ExcelWindow, Workbook, Worksheet, ExcelWindows, Workbooks,
+    Application, Range, ExcelWindow, Workbook, Worksheet, ExcelWindows, Workbooks, Worksheets,
     active_worksheet, active_workbook,
     run, run_async, call, call_async
 )
@@ -26,9 +26,7 @@ from xloil_core import (
 # types to support type-checking, linting, auto-completion and documentation.
 #
 if XLOIL_EMBEDDED:
-    from xloil_core import (
-        workbooks, windows, 
-    )
+    from xloil_core import workbooks
 else:
     workbooks:Workbooks = None
     """
@@ -39,17 +37,5 @@ else:
 
             workbooks['MyBook'].path
             windows.active.workbook.path
-
-    """
-
-    windows:ExcelWindows = None
-    """
-        Collection of all open windows as ExcelWindow objects.
-    
-        Examples
-        --------
-
-            windows['CaptionMyCaption']
-            windows.active.name
 
     """

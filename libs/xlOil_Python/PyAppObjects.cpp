@@ -318,7 +318,12 @@ namespace xloil
             )",
             py::arg("name"), 
             py::arg("default") = py::none())
-          .def_property_readonly("active", &active);
+          .def_property_readonly("active", 
+            &active,
+            R"(
+              Gives the active (as displayed in the GUI) object in the collection
+              or None if no object has been activated.
+            )");
       }
     };
 
@@ -401,11 +406,14 @@ namespace xloil
       using PyWorksheets = BindCollection<Worksheets>;
 
       static constexpr const char* toComDocString = R"(
-            Returns a managed COM object which can be used to invoke Excel's full 
-            object model. For details of the available calls see the Microsoft 
-            documentation on the Excel Object Model. The ``lib`` used to provide COM
-            support can be 'comtypes' or 'win32com'. If omitted, the default is 'comtypes'
-            unless changed in the XLL's ini file.
+          Returns a managed COM object which can be used to invoke Excel's full 
+          object model. For details of the available calls see the Microsoft 
+          documentation on the Excel Object Model. The ``lib`` used to provide COM
+          support can be 'comtypes' or 'win32com'. If omitted, the default is 
+          'win32com', unless specified in the XLL's ini file.
+      )";
+      static constexpr const char* appDocString = R"(
+          Returns the parent `xloil.Application` object associated with this object.
       )";
 
       py::class_<RangeIter>(mod, "RangeIter")
@@ -480,7 +488,12 @@ namespace xloil
           py::arg("row"),
           py::arg("col"))
         .def("trim",
-          wrapNoGil(&Range::trim))
+          wrapNoGil(&Range::trim),
+          R"(
+            Returns a sub-range by trimming to the last non-empty (i.e. not Nil, #N/A or "") 
+            row and column. The top-left remains the same so the function always returns
+            at least a single cell, even if it's empty.  
+          )")
         .def("__iter__", 
           [](Range& self) { return new RangeIter(self); })
         .def("__getitem__", 
@@ -573,7 +586,8 @@ namespace xloil
           wrapNoGil(&ExcelWorksheet::parent),
           "Returns the parent Workbook for this Worksheet")
         .def_property_readonly("app", 
-          wrapNoGil(&ExcelWorksheet::app))
+          wrapNoGil(&ExcelWorksheet::app),
+          appDocString)
         .def("__getitem__", 
           worksheet_GetItem,
           R"(
@@ -676,7 +690,9 @@ namespace xloil
           R"(
             A collection object of all windows which are displaying this workbook
           )")
-        .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
+        .def_property_readonly("app", 
+          wrapNoGil(&ExcelWorksheet::app),
+          appDocString)
         .def("worksheet", 
           wrapNoGil(&ExcelWorkbook::worksheet), 
           R"(
@@ -735,7 +751,9 @@ namespace xloil
         .def_property_readonly("workbook", 
           wrapNoGil(&ExcelWindow::workbook), 
           "The workbook being displayed by this window")
-        .def_property_readonly("app", wrapNoGil(&ExcelWorksheet::app))
+        .def_property_readonly("app", 
+          wrapNoGil(&ExcelWorksheet::app),
+          appDocString)
         .def("to_com", 
           toCom<ExcelWindow>, 
           toComDocString, 
@@ -743,7 +761,26 @@ namespace xloil
         .def("__getattr__",
             getComAttr<ExcelWindow>);
 
-      py::class_<Application>(mod, "Application")
+      py::class_<Application>(mod, "Application",
+        R"(
+          Manages a handle to the *Excel.Application* object. This object is the root 
+          of Excel's COM interface and supports a wide range of operations.
+
+          In addition to the methods known to python, properties and methods of the 
+          Application object can be resolved dynamically at runtime the available methods
+          will be familiar to VBA programmers and are well documented by Microsoft, 
+          see https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview 
+          and https://docs.microsoft.com/en-us/office/vba/api/excel.application(object).
+
+          COM methods and properties are in UpperCamelCase, whereas python ones are lower_case.
+
+          Examples
+          --------
+
+          To get the name of the active worksheet:
+
+              return xlo.app().ActiveWorksheet.Name
+        )")
         .def(py::init(std::function(application_Construct)),
           R"(
             Creates a new Excel Application if no arguments are specified. Gets a handle to 
@@ -780,10 +817,17 @@ namespace xloil
           getComAttr<Application>)
         .def_property("visible",
           wrapNoGil(&Application::getVisible),
-          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setVisible(x); })
+          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setVisible(x); },
+          R"(
+            Determines whether the Excel window is visble on the desktop
+          )")
         .def_property("enable_events",
           wrapNoGil(&Application::getEnableEvents),
-          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); })
+          [](Application& app, bool x) { py::gil_scoped_release noGil; app.setEnableEvents(x); },
+          R"(
+            Pauses or resumes Excel's event handling. It can be useful when writing to a sheet
+            to pause events both for performance and to prevent side effects.
+          )")
         .def("range",
           application_range,
           "Create a range object from an external address such as \"[Book]Sheet!A1\"",
@@ -833,7 +877,10 @@ namespace xloil
 
       PyWorkbooks::startBinding(mod, "Workbooks")
         .def("add", 
-          [](PyWorkbooks& self) { return self._collection.add(); });
+          [](PyWorkbooks& self) { return self._collection.add(); },
+          R"(
+            Creates and returns a new workbook
+          )");
 
       PyWindows::startBinding(mod, "ExcelWindows");
 
@@ -848,7 +895,9 @@ namespace xloil
       py::class_<CallerInfo>(mod, 
         "Caller", R"(
           Captures the caller information for a worksheet function. On construction
-          the class queries Excel via the `xlfCaller` function.
+          the class queries Excel via the `xlfCaller` function to determine the 
+          calling cell or range. If the function was not called from a sheet (e.g. 
+          via a macro), most of the methods return None.
         )")
         .def(py::init<>())
         .def("__str__", CallerInfo_Address)
@@ -896,6 +945,12 @@ namespace xloil
           not embedded in Excel
         )");
 
+      mod.def("app", excelApp, py::return_value_policy::reference,
+        R"(
+          Returns the parent Excel Application object when xlOil is embedded. Will
+          throw if xlOil has been imported to run automation.
+        )");
+
       // We can only define these objects when running embedded in existing Excel
       // application. excelApp() will throw a ComConnectException if this is not
       // the case
@@ -904,8 +959,6 @@ namespace xloil
         // Use 'new' with this return value policy or we get a segfault later. 
         mod.add_object("workbooks", 
           py::cast(new PyWorkbooks(excelApp()), py::return_value_policy::take_ownership));
-        mod.add_object("windows", 
-          py::cast(new PyWindows(excelApp()), py::return_value_policy::take_ownership));
       }
       catch (ComConnectException)
       {}
