@@ -74,7 +74,7 @@ namespace
     case CellError::Name: return L"#NAME?";
     case CellError::Num: return L"#NUM!";
     case CellError::NA: return L"#N/A";
-    case CellError::GettingData: return L"#GETTNG_DATA";
+    case CellError::GettingData: return L"#GETTING_DATA";
     default:
       return L"#ERR!";
     }

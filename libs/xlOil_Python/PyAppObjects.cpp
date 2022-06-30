@@ -767,12 +767,13 @@ namespace xloil
           of Excel's COM interface and supports a wide range of operations.
 
           In addition to the methods known to python, properties and methods of the 
-          Application object can be resolved dynamically at runtime the available methods
+          Application object can be resolved dynamically at runtime. The available methods
           will be familiar to VBA programmers and are well documented by Microsoft, 
           see https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview 
           and https://docs.microsoft.com/en-us/office/vba/api/excel.application(object).
 
-          COM methods and properties are in UpperCamelCase, whereas python ones are lower_case.
+          Note COM methods and properties are in UpperCamelCase, whereas python ones are 
+          lower_case.
 
           Examples
           --------
@@ -780,6 +781,7 @@ namespace xloil
           To get the name of the active worksheet:
 
               return xlo.app().ActiveWorksheet.Name
+
         )")
         .def(py::init(std::function(application_Construct)),
           R"(

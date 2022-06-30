@@ -48,7 +48,8 @@ namespace xloil
 
     /// <summary>
     /// Returns a sub-range by trimming to the last non-empty (not Nil, \#N/A or "") 
-    /// row and column. The top-left remains the same (even if empty).
+    /// row and column. The top-left remains the same so the function always returns
+    /// at least a single cell, even if it's empty.  
     /// </summary>
     virtual Range* trim() const = 0;
 
