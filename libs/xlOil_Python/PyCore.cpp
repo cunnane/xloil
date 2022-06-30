@@ -27,13 +27,9 @@ namespace xloil
     PyTypeObject* cellErrorType;
     PyObject*     comBusyException;
     PyObject*     cannotConvertException;
-    shared_ptr<const IPyToExcel> theCustomReturnConverter = nullptr;
 
     namespace
     {
-      auto cleanupGlobals = Event_PyBye().bind([] {
-        theCustomReturnConverter.reset();
-      });
       void initialiseCore(py::module& mod);
     }
 
@@ -124,11 +120,6 @@ namespace xloil
           retryPause));
       }
 
-      void setReturnConverter(const shared_ptr<const IPyToExcel>& conv)
-      {
-        theCustomReturnConverter = conv;
-      }
-
       struct CannotConvert {};
 
       auto cellErrorSymbol(CellError e)
@@ -158,8 +149,6 @@ namespace xloil
             });
 
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
-
-        mod.def("set_return_converter", setReturnConverter);
 
         mod.def("in_wizard", &inFunctionWizard,
           R"(
@@ -197,10 +186,11 @@ namespace xloil
           py::arg("retry") = 500,
           py::arg("api") = "");
 
-        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState", 
+        py::class_<Environment::ExcelProcessInfo>(mod, "_ExcelState", 
           R"(
-          Gives information about the Excel application, in particular the handles required
-          to interact with Excel via the Win32 API.
+            Gives information about the Excel application, in particular the handles required
+            to interact with Excel via the Win32 API. Cannot be constructed, call
+            xloil.excel_state to get an instance.
           )")
           .def_readonly("version", &Environment::ExcelProcessInfo::version, 
             "Excel major version")
@@ -211,7 +201,7 @@ namespace xloil
           .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId,
             "Excel's main thread ID");
 
-        mod.def("excel_state", Environment::excelProcess);
+        mod.def("excel_state", Environment::excelProcess, py::return_value_policy::reference);
 
         comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
 

@@ -10,7 +10,7 @@ from ._common import *
 import xloil_core
 
 from xloil_core import (
-    set_return_converter,
+    return_converter,
     CustomConverter as _CustomConverter,
     CustomReturn as _CustomReturn,
     Return_Cache as _Return_Cache,
@@ -293,18 +293,17 @@ class _ReturnConverters:
         # Register this singleton object as the custom return converter tried by xlOil 
         # when a func does not specify its return type 
         if not self._registered:
-            set_return_converter(_CustomReturn(self))
+            return_converter.value = _CustomReturn(self)
             self._registered = True
 
     
     def remove(self, return_type):
         self._converters.remove(return_type)
         if not any(self._converters):
-            set_return_converter(None)
+            return_converter.value = None
             self._registered = False
 
     def create_returner(self, return_type):
-
         """
         Creates a _CustomReturn object which handles the given type or returns None
         if no handlers can be found.  The _CustomReturn object is an internal xloil_core
@@ -340,7 +339,7 @@ def returner(target=None, register=False):
 
 Cache = _make_typeconverter(object, writer=_Return_Cache())
 """
-Using `-> xloil.Cache` in a function declaration to force the output to be 
+Use `-> xloil.Cache` in a function declaration to force the output to be 
 placed in the python object cache rather than attempting a conversion
 """
 
@@ -348,14 +347,25 @@ SingleValue = _make_typeconverter(object, writer=_Return_SingleValue())
 """
 Use `-> xloil.SingleValue` in a function declaration to force the output to
 be a single cell value. Uses the Excel object cache for returned arrays and 
-the Python object cache for unconvertable objects
+the Python object cache for unconvertable objects.  
+
+Examples
+--------
+
+::
+
+    @xloil.func
+    def single_val(n:int, m:int) -> xloil.SingleValue:
+        return np.ones((n, m))
+
 """
 
 AllowRange = typing.Union[ExcelValue, Range]
 """
 The special AllowRange annotation allows functions to receive the argument
-as an Range object if appropriate.  If a sheet reference (e.g. A1:B2) 
-was not passed from Excel, xlOil converts as per ExcelValue.
+as an Range object if possible.  It is only possible if the function was invoked
+with a sheet reference e.g. `=MyFunc(A1:B2)`.  Any other argument types are
+converted as per `xloil.ExcelValue`.
 """
 
 class Array(np.ndarray):

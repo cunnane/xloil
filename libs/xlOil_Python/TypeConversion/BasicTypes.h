@@ -39,7 +39,6 @@ namespace xloil
     {
     };
 
-
     namespace detail
     {
       /// <summary>
@@ -351,6 +350,10 @@ namespace xloil
       }
     };
 
+    namespace detail
+    {
+      const IPyToExcel* getCustomReturnConverter();
+    }
    
     template<bool TUseCache = true>
     struct FromPyObj
@@ -395,9 +398,9 @@ namespace xloil
         {
           return FromPyString()(p, stringAllocator);
         }
-        else if (theCustomReturnConverter)
+        else if (detail::getCustomReturnConverter())
         {
-          auto val = (*theCustomReturnConverter)(*p);
+          auto val = (*detail::getCustomReturnConverter())(*p);
           if (!val.isType(ExcelType::Nil))
             return ExcelObj(std::move(val));
         }
