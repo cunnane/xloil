@@ -100,8 +100,8 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
             print(f"Failed to match pattern {pat}")
             fails += 1
     
-    # Set PYTHONPATH
-    do_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
+    # Set PYTHONPATH - note we append to the path as that seems the least surprising
+    do_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>%PYTHONPATH%;' + _toml_lit_string(python_path))
     # Set xlOil_PythonRoot
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set XLOIL_PATH
