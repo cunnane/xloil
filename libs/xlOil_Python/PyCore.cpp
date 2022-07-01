@@ -65,7 +65,29 @@ namespace xloil
       return mod.release().ptr();
     }
 
-    PYBIND11_MODULE(XLO_PROJECT_NAME, mod)
+    // This unfortunate block of code is a copy of PYBIND11_MODULE with the name of 
+    // the module tweaked. This allows the module name to be consistent accross the 
+    // various xloil_PythonXX.pyd implemenations which reduces surprise and makes 
+    // the documentation nicer
+
+#define XLO_NAMED_MODULE(name, variable, ModuleName)                                                           \
+    static ::pybind11::module_::module_def PYBIND11_CONCAT(pybind11_module_def_, name); \
+    static void PYBIND11_CONCAT(pybind11_init_, name)(::pybind11::module_ &);           \
+    PYBIND11_PLUGIN_IMPL(name) {                                                        \
+        PYBIND11_CHECK_PYTHON_VERSION                                                   \
+        PYBIND11_ENSURE_INTERNALS_READY                                                 \
+        auto m = ::pybind11::module_::create_extension_module(                          \
+            ModuleName, nullptr, &PYBIND11_CONCAT(pybind11_module_def_, name));         \
+        try {                                                                           \
+            PYBIND11_CONCAT(pybind11_init_, name)(m);                                   \
+            return m.ptr();                                                             \
+        }                                                                               \
+        PYBIND11_CATCH_INIT_EXCEPTIONS                                                  \
+    }                                                                                   \
+    void PYBIND11_CONCAT(pybind11_init_, name)(::pybind11::module_ & (variable))
+
+
+    XLO_NAMED_MODULE(XLO_PROJECT_NAME, mod, "xloil_core")
     {
       mod.doc() = R"(
         The Python plugin for xlOil primarily allows creation of Excel functions and macros 
@@ -122,6 +144,10 @@ namespace xloil
 
       struct CannotConvert {};
 
+      /// <summary>
+      /// Gets rid of any #, /, ? or ! chars from the cell errors to 
+      /// produce a valid python symbol.
+      /// </summary>
       auto cellErrorSymbol(CellError e)
       {
         auto wstr = enumAsWCString(e);
@@ -157,6 +183,8 @@ namespace xloil
           use this sparingly.
           )");
 
+        PyFuture<PyObject*>::bind(mod, "_PyObjectFuture");
+
         mod.def("excel_callback",
           &runLater,
           R"(
@@ -186,7 +214,7 @@ namespace xloil
           py::arg("retry") = 500,
           py::arg("api") = "");
 
-        py::class_<Environment::ExcelProcessInfo>(mod, "_ExcelState", 
+        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState", 
           R"(
             Gives information about the Excel application, in particular the handles required
             to interact with Excel via the Win32 API. Cannot be constructed, call
