@@ -70,13 +70,13 @@ def source_addin(mod=None) -> str:
 
 def get_event_loop():
     """
-        Returns the background asyncio event loop used to load the current add-in. 
+        Returns the background *asyncio* event loop used to load the current add-in. 
         Unless specified in the settings, all add-ins are loaded in the same thread  
         and event loop.
     """
     import xloil_core
     addin = source_addin()
-    return xloil_core.get_event_loop(addin)
+    return xloil_core._get_event_loop(addin)
 
 
 def _import_and_scan(what, addin):

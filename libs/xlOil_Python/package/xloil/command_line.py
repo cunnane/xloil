@@ -82,12 +82,11 @@ def _remove_addin(version):
                 reg.DeleteValue(regkey, name)
 
 
-def _toml_lit_string(s):
+def _toml_lit_string(s:str):
     # TOML literal strings have a lot of quotes and escapes, this function does the encoding
     return "'''" + s.replace('\\','\\\\') + "'''"
 
-
-def _write_python_path_to_ini(ini_txt, bin_dir:str):
+def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
     python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
     python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
@@ -107,6 +106,10 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str):
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set XLOIL_PATH
     do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
+
+    if comment_reg_keys:
+        for key in ["xlOil_RegistryPythonRoot", "xlOil_RegistryPythonPath", "xlOil_PythonRegKey"]:
+            do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
 
     return ini_txt, fails == 0
     
@@ -144,8 +147,8 @@ def _install_xloil():
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
     ini_txt = ini_path.read_text(encoding='utf-8')
-    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir)
-    
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, True)
+    # Comment out xlOil_PythonRegKey, xlOil_RegistryPythonRoot, xlOil_RegistryPythonPath
     # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times
     if not success:
         print(f'WARNING: Failed to set python paths in {ini_path}. You may have to do this manually.')
@@ -187,7 +190,7 @@ def _create_addin(args):
     ini_txt, count = re.subn(r'^(\s*Plugins\s*=).*', r'\g<1>["xlOil_Python"]', ini_txt, flags=re.M)
     
     # Assume we want the python paths set to the distribution running this script
-    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir)
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, True)
     
     ini_path.write_text(ini_txt)
 

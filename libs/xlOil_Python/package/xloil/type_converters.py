@@ -221,7 +221,7 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
         converter behaviour
 
     check_cache:
-        For readers, setting this to False turns of xlOil's automatic cache expansion
+        For readers, setting this to False turns off xlOil's automatic cache expansion
         for string inputs. The converter must manually expand cache strings if desired.
 
     Examples

@@ -19,7 +19,7 @@ from xloil_core import LogWriter
 
 log = LogWriter()
 """
-    Instance of `xloil.LogWriter` which writes a log message to xlOil's log.  The level 
+    An instance of `xloil.LogWriter` which writes a log message to xlOil's log.  The level 
     parameter can be a integer constant from the ``logging`` module or one of the strings
     *error*, *warn*, *info*, *debug* or *trace*.
 

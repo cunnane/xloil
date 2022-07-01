@@ -2,17 +2,18 @@ from ._common import *
 
 import xloil_core
 
+# TODO: how about from xloil_core import *?
 from xloil_core import (
     CellError, ExcelArray, in_wizard, 
     event, cache, RtdServer, RtdPublisher,
     deregister_functions, get_async_loop,
     ExcelGUI, create_gui, 
-    excel_callback, excel_state, _ExcelState,
+    excel_callback, excel_state, ExcelState,
     Caller,
     CannotConvert, 
     from_excel_date,
     insert_cell_image,
-    TaskPaneFrame as TaskPaneFrame,
+    TaskPaneFrame,
     RibbonControl,
     StatusBar,
     app,
