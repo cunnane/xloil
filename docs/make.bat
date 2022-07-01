@@ -10,9 +10,8 @@ if "%SPHINXBUILD%" == "" (
 
 if "%1" == "" goto help
 
-REM TODO: Build flavour hard coded here!
 set XLOIL_SOLN_DIR=%~dp0..
-set XLOIL_BIN_DIR=%SOLN_DIR%\build\x64\Debug
+
 
 set SOURCEDIR=source
 set BUILDDIR=%SOLN_DIR%\build\docs
@@ -33,7 +32,19 @@ if errorlevel 9009 (
 
 if "%1" == "doxygen" goto doxygen
 
-%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% -W --keep-going %O%
+if "%1" == "-bin" (
+  set XLOIL_BIN_DIR=%SOLN_DIR%\build\%2
+  shift
+  shift
+) else (
+  set XLOIL_BIN_DIR=%SOLN_DIR%\build\x64\Debug
+)
+
+REM It's very important to pass the -E argument to sphinx, otherwise it does
+REM not notice changes to docstrings in python modules and generates the 
+REM wrong documentation
+
+%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% -E -W --keep-going %O%
 goto end
 
 :doxygen

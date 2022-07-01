@@ -141,6 +141,7 @@ Should you need to force remove xlOil, do the following:
 
 If you have added *xlOil.xll* or another xll add-in (xlOil does not do this by default)
 and you want to remove it go to:
+
    1. `Excel > File > Options > Add-ins > Manage Excel Addins`
    2. If the previous step fails to remove the addin, start Excel with elevated/admin 
       priviledges and retry
@@ -162,6 +163,7 @@ To really scrub the registry, you may find references to the addin under:
 
 
 .. _core-distributing-addins:
+
 Distributing Addins
 -------------------
 

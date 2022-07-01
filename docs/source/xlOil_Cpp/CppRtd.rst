@@ -44,8 +44,8 @@ following example:
     XLO_FUNC_END(getStock);
 
 
-Example: Backgroun task
------------------------
+Example: Background task
+------------------------
 
 The RTD mechanism can be used to run slow tasks like data fetches or calculations in the background whilst
 the user continues to interact with Excel.  The following demonstrates a simple counter which increments

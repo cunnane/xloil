@@ -9,21 +9,31 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+#     sys.path.insert(0, os.path.abspath('.'))
 
 import os
 import sys
 from pathlib import Path
 
-soln_dir = Path(os.environ["XLOIL_SOLN_DIR"])
-bin_dir = Path(os.environ["XLOIL_BIN_DIR"])
+this_file = os.path.realpath(__file__)
 
-print("xlOil solution directory: ", str(soln_dir))
+#
+# The default soln_dir and bin_dir paths here are to allow VS code to auto
+# preview the docs. I'm currently not sure how to add environment variables
+# to processes run by VS code.
+#
+
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", rf"{this_file}\..\..\..")).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", rf"{this_file}\..\..\..\build\x64\Debug")).resolve()
+
 sys.path.append(str(bin_dir))
+sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
 
+# May as well fail here if this doesn't work
+try:
+    import xloil
+except Exception as e:
+    raise Exception(f'{e}. SysPath={sys.path}', e)
 
 # -- Project information -----------------------------------------------------
 
@@ -97,6 +107,8 @@ master_doc = 'index'
 
 # -- Generate examples file ---------------------------------------------------
 
+# TODO: want to disable this when running previews in VS Code
+
 import zipfile
 from zipfile import ZipFile
 
@@ -105,10 +117,10 @@ except FileExistsError: pass
 
 zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
  
-zipObj.write(soln_dir / "tests" / "TestSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
-zipObj.write(soln_dir / "tests" / "TestSheets" / "PythonTest.py", "PythonTest.py")
-zipObj.write(soln_dir / "tests" / "TestSheets" / "TestModule.py", "TestModule.py")
-zipObj.write(soln_dir / "tests" / "TestSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
-zipObj.write(soln_dir / "tests" / "TestSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
  
 zipObj.close()
