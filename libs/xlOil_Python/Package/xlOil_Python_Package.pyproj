@@ -16,8 +16,10 @@
     <TestFramework>unittest</TestFramework>
     <UnitTestPattern>test*.py</UnitTestPattern>
     <UnitTestRootDirectory>.</UnitTestRootDirectory>
-    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <EnableNativeCodeDebugging>True</EnableNativeCodeDebugging>
     <IsWindowsApplication>False</IsWindowsApplication>
+    <Environment>
+    </Environment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
@@ -26,10 +28,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="setup.py" />
+    <Compile Include="TestConfig.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="test_PythonAutomation.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="xloil\.vscode\.ropeproject\config.py" />
+    <Compile Include="test_SpreadsheetRunner.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="xloil\com.py" />
     <Compile Include="xloil\command_line.py" />
     <Compile Include="xloil\debug.py" />
@@ -51,8 +58,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="xloil" />
-    <Folder Include="xloil\.vscode\" />
-    <Folder Include="xloil\.vscode\.ropeproject" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda39-64" />

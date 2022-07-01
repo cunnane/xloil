@@ -2,22 +2,21 @@ import unittest
 import sys
 import os
 
-#
-# For unknown reasons, the tests do not run in Visual Studio's test runner
-# documentation on python in VS seems very thin so it is unclear how
-# the environment should be set up. The test can be invoked at a command 
-#
+from TestConfig import *
 
 
 class Test_PythonAutomation(unittest.TestCase):
     def test_A(self):
         # Not great!
-        sys.path.append("..\\..\\..\\build\\x64\\Debug")
+
 
         import xloil as xlo
 
         with xlo.Application() as app:
-            app.visible=True
+
+            # Can be useful for debugging
+            # app.visible=True
+            
             wb = app.workbooks.add()
             ws = wb.worksheets.add()
             range = ws["A1:C1"]
