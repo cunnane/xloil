@@ -416,7 +416,7 @@ namespace xloil
           Returns the parent `xloil.Application` object associated with this object.
       )";
 
-#define XLO_CITE_API_SUFFIX(what, suffix) "See `Excel." #what "<https://docs.microsoft.com/en-us/office/vba/api/excel." #what #suffix">`_ "
+#define XLO_CITE_API_SUFFIX(what, suffix) "See `Excel." #what " <https://docs.microsoft.com/en-us/office/vba/api/excel." #what #suffix">`_ "
 #define XLO_CITE_API(what) XLO_CITE_API_SUFFIX(what, what)
 
       py::class_<RangeIter>(mod, "RangeIter")
@@ -441,7 +441,7 @@ namespace xloil
 
               x[:-1, :-1] # A sub-range omitting the last row and column
 
-        )" XLO_CITE_API_SUFFIX(Range, (object)))
+          )" XLO_CITE_API_SUFFIX(Range, (object)))
         .def(py::init(std::function(range_Construct)), 
           py::arg("address"))
         .def("range", 
@@ -587,7 +587,7 @@ namespace xloil
           syntax to Excel's Worksheet object, supporting the ``cell`` and ``range`` functions, 
           however indices are zero-based as per python's standard.
 
-        )" XLO_CITE_API(Worksheet))
+          )" XLO_CITE_API(Worksheet))
         .def("__str__", 
           wrapNoGil(&ExcelWorksheet::name))
         .def_property_readonly("name", 
@@ -695,7 +695,7 @@ namespace xloil
         R"(
           Represents an open Excel workbook.
 
-        )" XLO_CITE_API(Workbook))
+          )" XLO_CITE_API(Workbook))
         .def("__str__", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path",
@@ -807,7 +807,7 @@ namespace xloil
 
               return xlo.app().ActiveWorksheet.Name
 
-        )" XLO_CITE_API_SUFFIX(Application,(object)))
+          )" XLO_CITE_API_SUFFIX(Application,(object)))
         .def(py::init(std::function(application_Construct)),
           R"(
             Creates a new Excel Application if no arguments are specified. Gets a handle to 
@@ -907,7 +907,7 @@ namespace xloil
           A collection of all the Workbook objects that are currently open in the 
           Excel application.  
           
-        )" XLO_CITE_API(Workbooks))
+          )" XLO_CITE_API(Workbooks))
         .def("add", 
           [](PyWorkbooks& self) { return self._collection.add(); },
           R"(
@@ -919,14 +919,14 @@ namespace xloil
           A collection of all the Window objects in Excel.  A Window is a view of
           a Workbook
 
-        )" XLO_CITE_API(Windows));
+          )" XLO_CITE_API(Windows));
 
       PyWorksheets::startBinding(mod, "Worksheets",
         R"(
           A collection of all the Worksheet objects in the specified or active workbook. 
           Each Worksheet object represents a worksheet.
           
-        )" XLO_CITE_API(Worksheets))
+          )" XLO_CITE_API(Worksheets))
         .def("add", 
           addWorksheetToCollection, 
           workbookAddDocString,
@@ -939,7 +939,7 @@ namespace xloil
           Captures the caller information for a worksheet function. On construction
           the class queries Excel via the `xlfCaller` function to determine the 
           calling cell or range. If the function was not called from a sheet (e.g. 
-          via a macro), most of the methods return None.
+          via a macro), most of the methods return `None`.
         )")
         .def(py::init<>())
         .def("__str__", CallerInfo_Address)
@@ -976,21 +976,21 @@ namespace xloil
       mod.def("active_worksheet", 
         []() { return excelApp().activeWorksheet(); },
         R"(
-          Returns the currently active worksheet. Will raise an exception if xlOil is
-          not embedded in Excel
+          Returns the currently active worksheet. Will raise an exception if xlOil
+          has not been loaded as an addin.
         )");
 
       mod.def("active_workbook", 
         []() { return excelApp().workbooks().active(); },
         R"(
-          Returns the currently active workbook. Will raise an exception if xlOil is
-          not embedded in Excel
+          Returns the currently active workbook. Will raise an exception if xlOil
+          has not been loaded as an addin.
         )");
 
       mod.def("app", excelApp, py::return_value_policy::reference,
         R"(
-          Returns the parent Excel Application object when xlOil is embedded. Will
-          throw if xlOil has been imported to run automation.
+          Returns the parent Excel Application object when xlOil is loaded as an
+          addin. Will throw if xlOil has been imported to run automation.
         )");
 
       // We can only define these objects when running embedded in existing Excel

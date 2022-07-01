@@ -229,7 +229,14 @@ namespace xloil
           .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId,
             "Excel's main thread ID");
 
-        mod.def("excel_state", Environment::excelProcess, py::return_value_policy::reference);
+        mod.def("excel_state", 
+          Environment::excelProcess, 
+          R"(
+            Gives information about the Excel application, in particular the handles required
+            to interact with Excel via the Win32 API. Only available when xlOil is loaded as 
+            an addin.
+          )",
+          py::return_value_policy::reference);
 
         comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
 
@@ -259,7 +266,9 @@ namespace xloil
           cellErrorType = (PyTypeObject*)eType.ptr();
         }
 
-        mod.def("get_event_loop", [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
+        // No doc string - not exposed
+        mod.def("_get_event_loop", 
+          [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
       }
     }
 } }

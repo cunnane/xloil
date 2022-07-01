@@ -130,7 +130,7 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        ExcelObjFuture::bind(mod, "ExcelObjFuture");
+        ExcelObjFuture::bind(mod, "_ExcelObjFuture");
 
         mod.def("run", 
           appRun, 
@@ -172,7 +172,7 @@ namespace xloil
 
             This function must be called from a *non-local worksheet function on the main thread*.
 
-            *call* can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf`>`_
+            `call` can also invoke old-style `macro sheet commands <https://docs.excel-dna.net/assets/excel-c-api-excel-4-macro-reference.pdf>`_
           )",
           py::arg("func"));
 
