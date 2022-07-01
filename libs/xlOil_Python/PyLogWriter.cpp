@@ -96,7 +96,14 @@ namespace xloil
           .def(py::init<>(), R"(
             Do not construct this class - a singleton instance is created by xlOil.
           )")
-          .def("__call__", &LogWriter::writeToLog, py::arg("msg"), py::arg("level") = 20)
+          .def("__call__", 
+            &LogWriter::writeToLog, 
+            R"(
+              Writes a message to the log at the optionally specifed level. The default 
+              level is 'info'.
+            )",
+            py::arg("msg"),
+            py::arg("level") = 20)
           .def_property("level", 
             &LogWriter::getLogLevel,
             &LogWriter::setLogLevel,
