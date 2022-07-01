@@ -22,7 +22,7 @@ namespace xloil
       struct CastFutureConverter
       {
         template<class T> auto operator()(T x) { return py::cast(x).release().ptr(); }
-        template<>        auto operator()(PyObject* x) { return PySteal(x); }
+        template<>        auto operator()(PyObject* x) { return x; }
       };
     }
     /// <summary>
