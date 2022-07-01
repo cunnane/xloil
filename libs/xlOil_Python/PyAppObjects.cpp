@@ -645,7 +645,7 @@ namespace xloil
           py::arg("num_rows") = py::none(),
           py::arg("num_cols") = py::none())
         .def("cell", 
-          [](const ExcelWorksheet& self, size_t row, size_t col)
+          [](const ExcelWorksheet& self, int row, int col)
           {
             py::gil_scoped_release noGil;
             return new ExcelRange(self.cell(row, col));
