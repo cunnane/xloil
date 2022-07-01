@@ -62,12 +62,21 @@ namespace xloil
         }
       };
     }
+    
+    struct IPyEvent
+    {
+      virtual ~IPyEvent() {}
+      virtual IPyEvent& add(const py::object& obj) = 0;
+      virtual IPyEvent& remove(const py::object& obj) = 0;
+      virtual py::tuple handlers() const = 0;
+      virtual void clear() = 0;
+    };
 
     template<class TEvent, bool, class F> class PyEvent {};
 
     // Specialisation to allow capture of the arguments to the event handler
     template<class TEvent, bool TAllowUserException, class R, class... Args>
-    class PyEvent<TEvent, TAllowUserException, std::function<R(Args...)>>
+    class PyEvent<TEvent, TAllowUserException, std::function<R(Args...)>> : public IPyEvent
     {
     public:
       PyEvent(TEvent& event) 
@@ -83,7 +92,7 @@ namespace xloil
           _event -= _coreEventHandler;
       }
 
-      PyEvent& add(const py::object& obj)
+      IPyEvent& add(const py::object& obj)
       {
         if (_handlers.empty())
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
@@ -102,7 +111,7 @@ namespace xloil
         return *this;
       }
 
-      PyEvent& remove(const py::object& obj)
+      IPyEvent& remove(const py::object& obj)
       {
         _handlers.remove(obj);
         // Unhook ourselves from the core for efficiency if there are no handlers
@@ -177,21 +186,14 @@ namespace xloil
         return new PyEvent<TEvent, false, typename TEvent::handler>(event);
       }
 
-      template<class T>
-      void bindEvent(py::module& mod, T* event, const wchar_t* name)
+      void bindEvent(
+        py::module& mod, 
+        const wchar_t* name, 
+        IPyEvent* event)
       {
         auto u8name = utf16ToUtf8(name);
-        const auto& instances = py::detail::get_internals().registered_types_cpp;
-        const auto found = instances.find(std::type_index(typeid(T)));
-        if (found == instances.end())
-        {
-          py::class_<T>(mod, (u8name + "_Type").c_str())
-            .def("__iadd__", &T::add)
-            .def("__isub__", &T::remove)
-            .def_property_readonly("handlers", &T::handlers)
-            .def("clear", &T::clear);
-        }
-        mod.add_object(u8name.c_str(), py::cast(event, py::return_value_policy::take_ownership));
+        mod.add_object(u8name.c_str(), 
+          py::cast(event, py::return_value_policy::take_ownership));
       }
 
       /// <summary>
@@ -246,9 +248,13 @@ namespace xloil
                   since that closure happened.
                   The event is not called for each workbook when xlOil exits.
               * PyBye:
-                  Called just before xlOil finalises the python interpreter. All python and xlOil
-                  functionality is still available. This event is useful to stop threads as it is 
-                  called before threading module teardown, whereas `atexit` is not.
+                  An event fired just before xlOil finalises its embedded python interpreter. 
+                  All python and xlOil functionality is still available. This event is useful 
+                  to stop threads as it is called before threading module teardown, whereas 
+                  `atexit` is called afterward.
+              * UserException:
+                  An event fired when an exception is raised in a user-supplied 
+                  python callback, for example a GUI callback or and RTD publisher. 
 
           For other events see  `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
           
@@ -294,15 +300,26 @@ namespace xloil
 
         bindArithmeticRef<bool>(eventMod);
 
+        py::class_<IPyEvent>(eventMod, "Event")
+          .def("__iadd__", &IPyEvent::add)
+          .def("__isub__", &IPyEvent::remove)
+          .def_property_readonly("handlers", &IPyEvent::handlers)
+          .def("clear", &IPyEvent::clear);
+
         // TODO: how to set doc string for each event?
 #define XLO_PY_EVENT(r, _, NAME) \
-        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), XLO_WSTR(NAME));
+        bindEvent(eventMod, XLO_WSTR(NAME), makeEvent(xloil::Event::NAME()));
 
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
 
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyUserException()), L"UserException");
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), L"PyBye");
+        bindEvent(eventMod, 
+          L"UserException",
+          makeEventNoUserExcept(Event_PyUserException()));
+
+        bindEvent(eventMod, 
+          L"PyBye",
+          makeEventNoUserExcept(Event_PyBye()));
       });
     }
 
