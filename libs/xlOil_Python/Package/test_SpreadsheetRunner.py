@@ -7,6 +7,7 @@ from TestConfig import *
 
 RESULT_RANGE_PREFIX = "test_"
 
+# TODO: as new sheets are unlikely to be added often, could manually make a test case per sheet
 class Test_SpreadsheetRunner(unittest.TestCase):
     def test_RunSheets(self):
 
@@ -19,8 +20,8 @@ class Test_SpreadsheetRunner(unittest.TestCase):
         app = xlo.Application()
         app.visible = True
 
-        # Load addin
-        if not app.RegisterXLL(str(BIN_PATH / "xloil.xll")):
+        # Load addin - assume it's already installed if ADDIN_PATH is None
+        if ADDIN_PATH is not None and not app.RegisterXLL(ADDIN_PATH):
             raise Exception("xloil load failed")
 
         # Uncomment this to pause so the debugger can be attached to the 
@@ -51,9 +52,20 @@ class Test_SpreadsheetRunner(unittest.TestCase):
 
         app.quit()
 
+        
+        # Subtests are broken in VS code up to 2021. Don't seem to work
+        # in Visual Studio 2019 either... hoping that one day....
+        # https://github.com/microsoft/vscode-python/issues/17561
+
+        succeed = True
         for k, v in test_results.items():
             with self.subTest(msg=k):
-                self.assertEqual(v, True)
+                self.assertTrue(v)
+            if v is not True:
+                print(k, v)
+                succeed = False
+        self.assertTrue(succeed) # Required because VS is broken
+
 
 if __name__ == '__main__':
     unittest.main()

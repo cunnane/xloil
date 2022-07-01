@@ -7,8 +7,6 @@ from TestConfig import *
 
 class Test_PythonAutomation(unittest.TestCase):
     def test_A(self):
-        # Not great!
-
 
         import xloil as xlo
 
