@@ -34,5 +34,4 @@ class Test_PythonAutomation(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    input("Attach debugger now...")
     unittest.main()
