@@ -62,6 +62,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\src\Release.props" />
   </ImportGroup>
+  <PropertyGroup>
+    <TargetExt>.pyd</TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
