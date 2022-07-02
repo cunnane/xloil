@@ -12,9 +12,8 @@ if "%1" == "" goto help
 
 set XLOIL_SOLN_DIR=%~dp0..
 
-
 set SOURCEDIR=source
-set BUILDDIR=%SOLN_DIR%\build\docs
+set BUILDDIR=%XLOIL_SOLN_DIR%\build\docs
 set PATH=%PATH%;C:\Program Files\doxygen\bin
 
 %SPHINXBUILD% >NUL 2>NUL
@@ -30,14 +29,16 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
+mkdir %BUILDDIR%
+
 if "%1" == "doxygen" goto doxygen
 
 if "%1" == "-bin" (
-  set XLOIL_BIN_DIR=%SOLN_DIR%\build\%2
+  set XLOIL_BIN_DIR=%XLOIL_SOLN_DIR%\build\%2
   shift
   shift
 ) else (
-  set XLOIL_BIN_DIR=%SOLN_DIR%\build\x64\Debug
+  set XLOIL_BIN_DIR=%XLOIL_SOLN_DIR%\build\x64\Debug
 )
 
 REM It's very important to pass the -E argument to sphinx, otherwise it does
@@ -47,9 +48,12 @@ REM wrong documentation
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% -E -W --keep-going %O%
 goto end
 
+
 :doxygen
+
 pushd source
-set "XLO_SOLN_DIR=%SOLN_DIR:\=/%"
+REM Need to reverse slashes for doxygen because life is tough
+set "XLO_SOLN_DIR=%XLOIL_SOLN_DIR:\=/%"
 
 doxygen xloil.doxyfile
 popd

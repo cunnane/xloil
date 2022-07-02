@@ -32,7 +32,7 @@ python_package_dir = staging_dir / "pypackage"
 build_files = {}
 build_files['x64'] = {
     'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib", "xlOil.ini"],
-    'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.dll" for ver in python_versions],
+    'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.pyd" for ver in python_versions],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
 }
@@ -47,11 +47,6 @@ lib_files = [
     { 
         'from': 'tools',
         'files': ['xlOil_Install.ps1', 'xlOil_Remove.ps1', 'xlOil_NewAddin.ps1'],
-        'to': architectures
-    },
-    { 
-        'from': 'src',
-        'files': ['NewAddin.ini'],
         'to': architectures
     },
     {
@@ -170,7 +165,7 @@ for arch in architectures:
         pypi_version += f'.post{cmd_args.post_ver}'
        
     for pyver in python_versions:
-        # It's important to run the setup using the targetted python version
+        # It's important to run the setup using the targeted python version
         # If you get errors building win32 on an x64 version of python,
         # just comment out the assert in get_tag() in bdist_wheel.py.
         # Guido probably wouldn't approve but it seems to work.
