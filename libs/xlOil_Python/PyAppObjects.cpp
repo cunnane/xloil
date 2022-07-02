@@ -154,7 +154,7 @@ namespace xloil
         {
           auto i = PyLong_AsLong(loc.ptr());
           auto worksheets = wb.worksheets();
-          if (i < 0 || i >= worksheets.count())
+          if (i < 0 || i >= (long)worksheets.count())
             throw py::index_error();
 
           return py::cast(wb.worksheets().list()[i]);

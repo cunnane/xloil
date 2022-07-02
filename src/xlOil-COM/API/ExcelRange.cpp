@@ -95,11 +95,13 @@ namespace xloil
   Range* ExcelRange::trim() const
   {
     // Better than SpecialCells?
-    size_t nRows, nCols;
+    size_t nRows = 0, nCols = 0;
     if (size() == 1 || !COM::trimmedVariantArrayBounds(com().Value2, nRows, nCols))
       return new ExcelRange(*this);
-
-    return range(0, 0, nRows > 0 ? nRows - 1 : 0, nCols > 1 ? nCols - 1 : 0);
+    // 'range' takes the last row/col inclusive so subtract one
+    if (nRows > 0) --nRows;
+    if (nCols > 0) --nCols;
+    return range(0, 0, (int)nRows, (int)nCols);
   }
 
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
