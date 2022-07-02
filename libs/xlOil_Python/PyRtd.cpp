@@ -370,7 +370,8 @@ namespace xloil
               Called by the RtdServer when a sheet function subscribes to this 
               topic. Typically a topic will start up its publisher on the first
               subscriber, i.e. when num_subscribers == 1
-            )")
+            )",
+            py::arg("num_subscribers"))
           .def("disconnect", 
             &IRtdPublisher::disconnect,
             R"(
@@ -381,7 +382,8 @@ namespace xloil
 
               Whilst the topic remains live, it may still receive new connection
               requests, so generally avoid finalising in this method.
-            )")
+            )",
+            py::arg("num_subscribers"))
           .def("stop", 
             &IRtdPublisher::stop, 
             R"(
