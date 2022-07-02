@@ -1,23 +1,9 @@
-import importlib.util
 import traceback
+from . import _core
 
-# Tests if we have been loaded from the XLL plugin which will have
-# already injected the xloil_core module
-XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
+from xloil_core import _LogWriter
 
-if not XLOIL_EMBEDDED:
-    # We try to load xlOil_PythonXY.pyd where XY is the python version
-    # if we succeed, we fake an entry in sys.modules so that future 
-    # imports of 'xloil_core' will work as expected.
-    import importlib
-    import sys
-    ver = sys.version_info
-    dll_name = f"xlOil_Python{ver.major}{ver.minor}"
-    sys.modules['xloil_core'] = importlib.import_module(dll_name)
-
-from xloil_core import LogWriter
-
-log = LogWriter()
+log = _LogWriter()
 """
     An instance of `xloil.LogWriter` which writes a log message to xlOil's log.  The level 
     parameter can be a integer constant from the ``logging`` module or one of the strings

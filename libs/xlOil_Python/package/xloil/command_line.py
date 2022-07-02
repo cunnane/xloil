@@ -6,13 +6,10 @@ import winreg as reg
 from contextlib import suppress
 import binascii
 import shutil as sh
+from ._paths import *
 
-_ADDIN_NAME    = "xlOil.xll"
-_INIFILE_NAME  = "xlOil.ini"
-_APP_DATA_PATH = Path(os.getenv('APPDATA'))
-_XL_START_PATH = _APP_DATA_PATH / "Microsoft" / "Excel" / "XLSTART"
-_XLOIL_BIN_DIR = Path(sys.prefix) / "share" / "xloil"
-
+_XL_START_PATH = Path(os.getenv('APPDATA')) / "Microsoft" / "Excel" / "XLSTART"
+_XLL_INSTALL_PATH = _XL_START_PATH / ADDIN_NAME
 
 def _excel_regpath(version):
     return rf"Software\Microsoft\Office\{version}\Excel"
@@ -42,17 +39,18 @@ def _check_VBA_access(version):
 
 
 def _get_xloil_bin_dir():
-    # This is where we expect thie binary to be for a normal python install
-    if (_XLOIL_BIN_DIR / _ADDIN_NAME).exists():
-        return _XLOIL_BIN_DIR
-    # But allow for being executed from the same directory as the binaries
-    if Path(_ADDIN_NAME).exists():
-        return Path(".")
-    raise Exception(f"{_ADDIN_NAME} not found")
+
+    # We look in the a possibly overriden (by an env var) bin dir, the normal install 
+    # path and the current directory
+    for bin_path in [Path(XLOIL_BIN_DIR), Path(XLOIL_INSTALL_DIR), Path(".")]:
+        if (bin_path / ADDIN_NAME).exists():
+            return bin_path
+
+    raise Exception(f"{ADDIN_NAME} not found")
 
 def _remove_from_resiliancy(filename, version):
 
-    # Source https://stackoverflow.com/questions/751048/how-to-programatically-re-enable-documents-in-the-ms-office-list-of-disabled-fil
+    # Source https://stackoverflow.com/questions/751048/
 
     #Converts the File Name string to UTF16 Hex
     filename_hex = binascii.hexlify(filename.encode('utf-16'))
@@ -74,11 +72,10 @@ def _remove_addin(version):
     with suppress(OSError): 
         regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + "\Add-in Manager")
 
-        addin_path = _XL_START_PATH / _ADDIN_NAME
         # Cycles through all the properties and delete if it contains the file name.
         for i in range(1024):
             name, value, = reg.EnumValue(regkey, i)
-            if addin_path in value:
+            if _XLL_INSTALL_PATH in value:
                 reg.DeleteValue(regkey, name)
 
 
@@ -106,7 +103,8 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
     do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set XLOIL_PATH
     do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
-
+    
+    # Comment out the now usused code to get the python paths from the registry
     if comment_reg_keys:
         for key in ["xlOil_RegistryPythonRoot", "xlOil_RegistryPythonPath", "xlOil_PythonRegKey"]:
             do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
@@ -116,12 +114,12 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
    
 def _install_xloil():
 
-    ini_path = _APP_DATA_PATH / "xlOil" / _INIFILE_NAME
+    ini_path = Path(APP_DATA_DIR) / INIFILE_NAME
 
     excel_version = _find_excel_version()
 
     # Just in case we got put in Excel's naughty corner for misbehaving addins
-    _remove_from_resiliancy(_ADDIN_NAME, excel_version)
+    _remove_from_resiliancy(ADDIN_NAME, excel_version)
 
     # Check access to the VBA Object model (for local functions)
     _check_VBA_access(excel_version)
@@ -133,8 +131,8 @@ def _install_xloil():
     bin_dir = _get_xloil_bin_dir()
 
     # Copy the XLL
-    sh.copy(bin_dir / _ADDIN_NAME, _XL_START_PATH)
-    print("Installed ", _XL_START_PATH / _ADDIN_NAME)
+    sh.copy(bin_dir / ADDIN_NAME, _XLL_INSTALL_PATH)
+    print("Installed ", _XLL_INSTALL_PATH)
     
     # Copy the ini file to APPDATA, avoiding overwriting any existing ini
     if ini_path.exists():
@@ -142,13 +140,13 @@ def _install_xloil():
     else:
         with suppress(FileExistsError):
             ini_path.parent.mkdir()
-        sh.copy(bin_dir / _INIFILE_NAME, ini_path)
+        sh.copy(bin_dir / INIFILE_NAME, ini_path)
 
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
     ini_txt = ini_path.read_text(encoding='utf-8')
     ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, True)
-    # Comment out xlOil_PythonRegKey, xlOil_RegistryPythonRoot, xlOil_RegistryPythonPath
+
     # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times
     if not success:
         print(f'WARNING: Failed to set python paths in {ini_path}. You may have to do this manually.')
@@ -163,7 +161,7 @@ def _remove_xloil():
     # Ensure no xlOil addins are in the registry
     _remove_addin(excel_version)
     
-    os.remove(_XL_START_PATH / _ADDIN_NAME)
+    os.remove(_XLL_INSTALL_PATH)
 
 
 def _create_addin(args):
@@ -178,8 +176,8 @@ def _create_addin(args):
 
     bin_dir = _get_xloil_bin_dir()
 
-    sh.copy(bin_dir / _ADDIN_NAME, xll_path)
-    sh.copy(bin_dir / _INIFILE_NAME,  ini_path)
+    sh.copy(bin_dir / ADDIN_NAME,    xll_path)
+    sh.copy(bin_dir / INIFILE_NAME,  ini_path)
     
     print("New addin created at: ", xll_path)
 
@@ -209,7 +207,7 @@ def main():
     elif command == 'create':
         _create_addin(sys.argv[2:])
     else:
-        raise Exception("Syntax: xloil {install, remove, create}")
+        raise Exception("Syntax: xloil {install, remove, uninstall, create}")
 
 if __name__ == '__main__':
     main()

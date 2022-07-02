@@ -1,6 +1,4 @@
-from ._core import TaskPaneFrame, ExcelGUI, ExcelWindow
-from . import _core
-
+from ._core import TaskPaneFrame, ExcelGUI, ExcelWindow, Workbook, app
 
 _task_panes = set()
  
@@ -78,14 +76,13 @@ def find_task_pane(title:str=None, workbook=None, window=None):
         `xloil.CustomTaskPane object` or None, otherwise returns a list of 
         `xloil.CustomTaskPane` objects.
     """
-    from . import _core
 
     if window is None:
         if workbook is None:
-            hwnds = [_core.app().windows.active.hwnd]
+            hwnds = [app().windows.active.hwnd]
         else:
-            workbook = _core.Workbook(workbook) # TODO: string or obj....
-            hwnds = [x.hwnd for x in _core.app().windows]
+            workbook = Workbook(workbook) # TODO: string or obj....
+            hwnds = [x.hwnd for x in app().windows]
     else:
             hwnds = [ExcelWindow(window).hwnd]
 

@@ -35,7 +35,8 @@ namespace xloil
       void checkArrayWrapperDisposed()
       {
         if (_ArrayWrapper && _ArrayWrapper->refCount() != 1)
-          XLO_THROW("Held reference to ExcelArray detected. Accessing this object in python may crash Excel");
+          XLO_THROW("Held reference to ExcelArray detected. Accessing this object "
+            "in python may crash Excel");
       }
 
       constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
@@ -133,14 +134,16 @@ namespace xloil
     static int theBinder = addBinder([](py::module& mod)
     {
       py::class_<CustomConverter, IPyFromExcel, std::shared_ptr<CustomConverter>>(mod, 
-        "CustomConverter", R"(
+        "_CustomConverter", R"(
           This is the interface class for custom type converters to allow them
           to be called from the Core.
         )")
-        .def(py::init<py::object, bool>(), py::arg("callable"), py::arg("check_cache")=true);
+        .def(py::init<py::object, bool>(), 
+          py::arg("callable"), 
+          py::arg("check_cache")=true);
 
       py::class_<CustomReturn, IPyToExcel, std::shared_ptr<CustomReturn>>(mod, 
-        "CustomReturn")
+        "_CustomReturn")
         .def(py::init<py::object>(), py::arg("callable"))
         .def("get_handler", &CustomReturn::handler);
     });

@@ -7,28 +7,25 @@ SOLUTION_PATH = PACKAGE_PATH / "../../../"
 TEST_PATH = SOLUTION_PATH / "tests"
 ADDIN_PATH = None
 
-
 def _set_test_environment():
     """
-        If the env var XLOIL_TEST_BIN_DIR has been defined, set paths
-        so that the xlOil 'pyd' and 'xll' are loaded from that directory.
-        Also ensure the python package is on the path.
+        If the env var XLOIL_TEST_BIN_DIR has been defined, ensure the python 
+        package is on the path and XLOIL_BIN_DIR is set. Note that 
+        XLOIL_TEST_BIN_DIR is assumed to be relative to the solution root.
 
         Otherwise assume we are in pre-release test mode and that the 
         xloil addin has been installed.
     """
 
-    bin_dir = os.environ.get("XLOIL_TEST_BIN_DIR", None)
+    test_bin_dir = os.environ.get("XLOIL_TEST_BIN_DIR", None)
     
-    if bin_dir is not None:
+    if test_bin_dir is not None:
         global ADDIN_PATH
-        bin_path = (SOLUTION_PATH / bin_dir).resolve()
+        bin_path = (SOLUTION_PATH / test_bin_dir).resolve()
 
+        os.environ['XLOIL_BIN_DIR'] = str(bin_path)
         # Need to do this so when we launch Excel, we can see the python package
         os.environ["PYTHONPATH"] = str(PACKAGE_PATH)
-
-        sys.path.append(str(bin_path))
-        os.environ["PATH"] += os.pathsep + str(bin_path)
 
         ADDIN_PATH = str(bin_path / "xloil.xll")
 

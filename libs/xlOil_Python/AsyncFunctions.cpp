@@ -268,7 +268,7 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<AsyncReturn>(mod, "AsyncReturn")
+        py::class_<AsyncReturn>(mod, "_AsyncReturn")
           .def("set_result", &AsyncReturn::set_result)
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)

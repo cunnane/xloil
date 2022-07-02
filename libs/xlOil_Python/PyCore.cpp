@@ -87,7 +87,7 @@ namespace xloil
     void PYBIND11_CONCAT(pybind11_init_, name)(::pybind11::module_ & (variable))
 
 
-    XLO_NAMED_MODULE(XLO_PROJECT_NAME, mod, "xloil_core")
+    XLO_NAMED_MODULE(XLO_PROJECT_NAME, mod, theInjectedModuleName)
     {
       mod.doc() = R"(
         The Python plugin for xlOil primarily allows creation of Excel functions and macros 
@@ -216,18 +216,21 @@ namespace xloil
 
         py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState", 
           R"(
-            Gives information about the Excel application, in particular the handles required
-            to interact with Excel via the Win32 API. Cannot be constructed, call
-            xloil.excel_state to get an instance.
+            Gives information about the Excel application. Cannot be constructed: call
+            ``xloil.excel_state`` to get an instance.
           )")
-          .def_readonly("version", &Environment::ExcelProcessInfo::version, 
+          .def_readonly("version", 
+            &Environment::ExcelProcessInfo::version, 
             "Excel major version")
-          .def_readonly("hinstance", &Environment::ExcelProcessInfo::hInstance,
-            "Excel HINSTANCE")
-          .def_readonly("hwnd", &Environment::ExcelProcessInfo::hWnd,
-            "Excel main window handle(as an int)")
-          .def_readonly("main_thread_id", &Environment::ExcelProcessInfo::mainThreadId,
-            "Excel's main thread ID");
+          .def_readonly("hinstance",
+            &Environment::ExcelProcessInfo::hInstance,
+            "Excel Win32 HINSTANCE")
+          .def_readonly("hwnd",
+            &Environment::ExcelProcessInfo::hWnd,
+            "Excel Win32 main window handle(as an int)")
+          .def_readonly("main_thread_id",
+            &Environment::ExcelProcessInfo::mainThreadId,
+            "Excel main thread ID");
 
         mod.def("excel_state", 
           Environment::excelProcess, 

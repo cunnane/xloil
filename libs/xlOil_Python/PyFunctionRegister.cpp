@@ -464,7 +464,7 @@ namespace xloil
       
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<PyFuncArg>(mod, "FuncArg")
+        py::class_<PyFuncArg>(mod, "_FuncArg")
           .def(py::init<>())
           .def_readwrite("name", &PyFuncArg::name)
           .def_readwrite("help", &PyFuncArg::help)
@@ -472,7 +472,7 @@ namespace xloil
           .def_readwrite("default", &PyFuncArg::default)
           .def_readwrite("allow_range", &PyFuncArg::allowRange);
 
-        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "FuncSpec")
+        py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
           .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool, bool>(),
             py::arg("func"),
             py::arg("args"),
@@ -483,10 +483,15 @@ namespace xloil
             py::arg("local") = true,
             py::arg("volatile") = false,
             py::arg("has_kwargs") = false)
-          .def_property("return_converter", &PyFuncInfo::getReturnConverter, &PyFuncInfo::setReturnConverter)
-          .def_property_readonly("args", &PyFuncInfo::args)
-          .def_property_readonly("name", [](const PyFuncInfo& self) { return self.info()->name; })
-          .def_property_readonly("help", [](const PyFuncInfo& self) { return self.info()->help; })
+          .def_property("return_converter", 
+            &PyFuncInfo::getReturnConverter, 
+            &PyFuncInfo::setReturnConverter)
+          .def_property_readonly("args", 
+            &PyFuncInfo::args)
+          .def_property_readonly("name", 
+            [](const PyFuncInfo& self) { return self.info()->name; })
+          .def_property_readonly("help", 
+            [](const PyFuncInfo& self) { return self.info()->help; })
           .def("__str__", pyFuncInfoToString);
 
         mod.def("register_functions", &registerFunctions, 

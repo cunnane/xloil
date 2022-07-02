@@ -5,19 +5,17 @@ import sys
 from .type_converters import *
 from ._core import *
 from .com import EventsPaused
-from ._common import *
+from ._log import *
 import contextvars
-
 
 import xloil_core
 
 from xloil_core import (
-    Read_object as _Read_object,
-    Read_Cache as _Read_Cache,
-    FuncSpec as _FuncSpec,
-    FuncArg as _FuncArg
+    _Read_object,
+    _Read_Cache,
+    _FuncSpec,
+    _FuncArg
 )
-
 
 _LANDMARK_TAG = "_xloil_pending_funcs_"
 """

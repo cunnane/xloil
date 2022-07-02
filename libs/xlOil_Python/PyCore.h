@@ -14,10 +14,10 @@ namespace xloil
     using IPyToExcel = IConvertToExcel<PyObject>;
 
     constexpr char* const theInjectedModuleName = "xloil_core";
-    constexpr char* const theReadConverterPrefix = "Read_";
-    constexpr char* const theReturnConverterPrefix = "Return_";
+    constexpr char* const theReadConverterPrefix = "_Read_";
+    constexpr char* const theReturnConverterPrefix = "_Return_";
     // TODO: constexpr string concat instead of relying on macros?
-#define XLOPY_UNCACHED_PREFIX "Uncached_"
+#define XLOPY_UNCACHED_PREFIX "_Uncached_"
 
     PyObject* buildInjectedModule();
 

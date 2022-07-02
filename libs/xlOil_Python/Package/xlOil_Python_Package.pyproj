@@ -46,13 +46,14 @@
     <Compile Include="xloil\jupyter.py" />
     <Compile Include="xloil\matplotlib.py" />
     <Compile Include="xloil\pandas.py" />
+    <Compile Include="xloil\_paths.py" />
     <Compile Include="xloil\pillow.py" />
     <Compile Include="xloil\qtgui.py" />
     <Compile Include="xloil\register.py" />
     <Compile Include="xloil\rtd.py" />
     <Compile Include="xloil\tkinter.py" />
     <Compile Include="xloil\type_converters.py" />
-    <Compile Include="xloil\_common.py" />
+    <Compile Include="xloil\_log.py" />
     <Compile Include="xloil\_core.py" />
     <Compile Include="xloil\__init__.py" />
   </ItemGroup>

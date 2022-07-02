@@ -5,18 +5,18 @@ import numpy as np
 import functools
 
 from ._core import Range, CellError, CannotConvert
-from ._common import *
+from ._log import *
 
 import xloil_core
 
 from xloil_core import (
     return_converter,
-    CustomConverter as _CustomConverter,
-    CustomReturn as _CustomReturn,
-    Return_Cache as _Return_Cache,
-    Return_SingleValue as _Return_SingleValue,
-    Read_Array_object_2d as _Read_Array_object_2d,
-    Return_Array_object_2d as _Return_Array_object_2d,
+    _CustomConverter,
+    _CustomReturn,
+    _Return_Cache,
+    _Return_SingleValue,
+    _Read_Array_object_2d,
+    _Return_Array_object_2d,
 )
 
 
@@ -27,9 +27,9 @@ useful type-checking information to other software which reads annotations.
 """
 ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellError]
 
-_READ_CONVERTER_PREFIX   = "Read_"
-_RETURN_CONVERTER_PREFIX = "Return_"
-_UNCACHED_CONVERTER_PREFIX = "Uncached_"
+_READ_CONVERTER_PREFIX   = "_Read_"
+_RETURN_CONVERTER_PREFIX = "_Return_"
+_UNCACHED_CONVERTER_PREFIX = "_Uncached_"
 
 def get_converter(type_name, read=True, cache=True):
     """

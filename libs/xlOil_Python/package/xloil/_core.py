@@ -1,26 +1,35 @@
-from ._common import *
+import importlib.util
+from ._paths import XLOIL_BIN_DIR, add_dll_path
 
-import xloil_core
+# Tests if we have been loaded from the XLL plugin which will have
+# already injected the xloil_core module
+XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
 
-# TODO: how about from xloil_core import *?
-from xloil_core import (
-    CellError, ExcelArray, in_wizard, 
-    event, cache, RtdServer, RtdPublisher,
-    deregister_functions, get_async_loop,
-    ExcelGUI, create_gui, 
-    excel_callback, excel_state, ExcelState,
-    Caller,
-    CannotConvert, 
-    from_excel_date,
-    insert_cell_image,
-    TaskPaneFrame,
-    RibbonControl,
-    StatusBar,
-    app,
-    Application, Range, ExcelWindow, Workbook, Worksheet, ExcelWindows, Workbooks, Worksheets,
-    active_worksheet, active_workbook,
-    run, run_async, call, call_async
-)
+if not XLOIL_EMBEDDED:
+    # We try to load xlOil_PythonXY.pyd where XY is the python version
+    # if we succeed, we fake an entry in sys.modules so that future 
+    # imports of 'xloil_core' will work as expected.
+    import importlib
+    import sys
+    import os
+
+    sys.path.append(XLOIL_BIN_DIR)
+
+    ver = sys.version_info
+    pyd_name = f"xlOil_Python{ver.major}{ver.minor}"
+    mod = None
+    try:
+        with add_dll_path(XLOIL_BIN_DIR):
+            mod = importlib.import_module(pyd_name)
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(f"Failed to load {pyd_name} with " +
+            f"sys.path={sys.path} and PATH={os.environ['PATH']}")
+    
+    sys.path.pop()
+    sys.modules['xloil_core'] = mod
+
+
+from xloil_core import *
 
 #
 # If we are being called from an xlOil embedded interpreter, we can import

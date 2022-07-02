@@ -1,5 +1,5 @@
 
-from ._common import *
+from ._log import *
 
 from ._core import *
 

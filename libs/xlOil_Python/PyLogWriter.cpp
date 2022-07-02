@@ -85,7 +85,7 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<LogWriter>(mod, 
-          "LogWriter", R"(
+          "_LogWriter", R"(
             Writes a log message to xlOil's log.  The level parameter can be a level constant 
             from the `logging` module or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
 
