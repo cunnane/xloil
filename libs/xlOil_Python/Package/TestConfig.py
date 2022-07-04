@@ -5,7 +5,6 @@ import os
 PACKAGE_PATH = Path(__file__).parent.resolve()
 SOLUTION_PATH = PACKAGE_PATH / "../../../"
 TEST_PATH = SOLUTION_PATH / "tests"
-ADDIN_PATH = None
 
 def _set_test_environment():
     """
@@ -26,7 +25,5 @@ def _set_test_environment():
         os.environ['XLOIL_BIN_DIR'] = str(bin_path)
         # Need to do this so when we launch Excel, we can see the python package
         os.environ["PYTHONPATH"] = str(PACKAGE_PATH)
-
-        ADDIN_PATH = str(bin_path / "xloil.xll")
 
 _set_test_environment()

@@ -650,7 +650,7 @@ def getLinkedWbName():
 _workbook_name = os.path.basename(xlo.linked_workbook())
 
 def event_writeTimeToA1():
-    if xlo.app("win32com").ActiveWorkbook.Name != _workbook_name:
+    if xlo.app().ActiveWorkbook.Name != _workbook_name:
         return
     
     wb = xlo.active_workbook()

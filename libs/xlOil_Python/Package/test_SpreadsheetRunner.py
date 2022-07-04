@@ -14,14 +14,16 @@ class Test_SpreadsheetRunner(unittest.TestCase):
         SHEET_PATH = TEST_PATH / "AutoSheets"
 
         import xloil as xlo
+        from xloil._paths import ADDIN_NAME, XLOIL_BIN_DIR
 
         test_sheets = [(SHEET_PATH / x) for x in SHEET_PATH.glob("*.xls*")]
 
         app = xlo.Application()
         app.visible = True
 
-        # Load addin - assume it's already installed if ADDIN_PATH is None
-        if ADDIN_PATH is not None and not app.RegisterXLL(ADDIN_PATH):
+        # Load addin: when running via COM automation, no addins are  
+        # loaded by default
+        if not app.RegisterXLL(os.path.join(XLOIL_BIN_DIR, ADDIN_NAME)):
             raise Exception("xloil load failed")
 
         # Uncomment this to pause so the debugger can be attached to the 
