@@ -268,10 +268,30 @@ namespace xloil
               std::swap(_topicIdsToDisconnect, topicIdsToDisconnect);
               std::swap(_topicsToConnect, topicsToConnect);
             }
-            for (auto& [topicId, topic] : topicsToConnect)
-              connectTopic(topicId, std::move(topic));
+
+            // First connect any topics but don't yet map their Excel topicIds.
+            // Excel does reuse topicIds possibly when it detects the same inputs,
+            // but we don't want to rely on this behaviour.  This means that
+            // we may have a disconnect and connect on the same topic and publisher.
+            // By connecting first it avoids the publisher cancelling its internal task.
+
+            // TODO: is it worth cancelling out a connect/disconnect on the same topic? 
+            //       Does that happen often?
+            for (const auto& [topicId, topic] : topicsToConnect)
+              connectTopic(topic);
+
             for (auto topicId : topicIdsToDisconnect)
               disconnectTopic(topicId);
+
+            {
+              unique_lock lock(_lockRecords);
+              for (auto& [topicId, topic] : topicsToConnect)
+              {
+                XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
+                _records[topic].subscribers.insert(topicId);
+                _activeTopicIds.emplace(topicId, std::move(topic));
+              }
+            }
           }
         }
         catch (const std::exception& e)
@@ -321,24 +341,17 @@ namespace xloil
         }
       }
 
-      void connectTopic(long topicId, wstring&& topic)
+      void connectTopic(const wstring& topic)
       {
-        XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
-
         // We need these values after we release the lock
         shared_ptr<IRtdPublisher> publisher;
         size_t numSubscribers;
 
         {
           unique_lock lock(_lockRecords);
-
-          // Find subscribers for this topic and link to the topic ID
           auto& record = _records[topic];
-          record.subscribers.insert(topicId);
           publisher = record.publisher;
-          numSubscribers = record.subscribers.size();
-
-          _activeTopicIds.emplace(topicId, std::move(topic));
+          numSubscribers = record.subscribers.size() + 1;
         }
 
         // Let the publisher know how many subscribers they now have.
