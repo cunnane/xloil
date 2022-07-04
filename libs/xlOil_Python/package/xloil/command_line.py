@@ -85,26 +85,32 @@ def _toml_lit_string(s:str):
 
 def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
-    python_path = os.path.join(sys.prefix, "Lib") + ";" + os.path.join(sys.prefix, "DLLs") 
+    python_path = f'%PYTHONPATH%;{os.path.join(sys.prefix, "Lib")};{os.path.join(sys.prefix, "DLLs")}' 
     python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
     
     fails = 0
 
     def do_replace(pat, repl):
-        nonlocal ini_txt, fails
+        nonlocal ini_txt
         ini_txt, count = re.subn(pat, repl, ini_txt, flags=re.M)
+        return count
+
+    def check_replace(pat, repl):
+        nonlocal fails
+        count = do_replace(pat, repl)
         if count != 1:
             print(f"Failed to match pattern {pat}")
             fails += 1
     
     # Set PYTHONPATH - note we append to the path as that seems the least surprising
-    do_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>%PYTHONPATH%;' + _toml_lit_string(python_path))
+    check_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
     # Set xlOil_PythonRoot
-    do_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
+    check_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set XLOIL_PATH
-    do_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
+    check_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
     
     # Comment out the now usused code to get the python paths from the registry
+    # Don't error if this fails as it's not critical
     if comment_reg_keys:
         for key in ["xlOil_RegistryPythonRoot", "xlOil_RegistryPythonPath", "xlOil_PythonRegKey"]:
             do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
