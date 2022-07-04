@@ -177,13 +177,16 @@ for arch in architectures:
 # Next steps
 #
 print(
-    '\n'
-    '\nTo test the python package:'
+     '\n'
+     '\nTo test the python package:'
     f'\n  > pip install {str(python_package_dir)}\\dist\\<wheel file>'
+     '\n  > xloil install'
+    r'\n  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
+    r'\n  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
     '\n'
     '\nTo upload the python package to PyPI:'
     f'\n  > cd {str(python_package_dir)}'
-    '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
+     '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
     '\nor'
-    '\n  > twine upload dist/*'
+     '\n  > twine upload dist/*'
     )
