@@ -51,7 +51,7 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_Remove.ps1']]
 
 py_version_XY = target_py_ver.replace('.','')
-data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.dll')]
+data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.pyd')]
 
 #
 # Special treatment for ini file
