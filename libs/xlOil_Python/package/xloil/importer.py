@@ -99,7 +99,7 @@ def _import_and_scan(what, addin):
         with StatusBar(2000) as status:
             for m in what:
                 status.msg(f"Loading {m}")
-                result.append(_import_scan(m, addin))
+                result.append(_import_and_scan(m, addin))
             status.msg("xlOil load complete")
         return result
     
