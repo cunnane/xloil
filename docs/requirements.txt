@@ -2,3 +2,4 @@ numpy
 numpydoc
 pandas
 autodocsumm
+xloil
