@@ -138,7 +138,7 @@ for job in lib_files:
             else:
                 copy_file(source/ f, target_path)
 
-copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
+copy_tree(build_dir / "docs" / "html", staging_dir / "docs")
 
 #
 # Create distributable archives
@@ -187,12 +187,12 @@ print(
      '\nTo test the python package:'
     f'\n  > pip install {str(python_package_dir)}\\dist\\<wheel file>'
      '\n  > xloil install'
-    r'\n  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
-    r'\n  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
+ '\n' r'  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
+ '\n' r'  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
     '\n'
     '\nTo upload the python package to PyPI:'
     f'\n  > cd {str(python_package_dir)}'
      '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
-    '\nor'
+     '\nor'
      '\n  > twine upload dist/*'
     )

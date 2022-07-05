@@ -25,7 +25,7 @@ Source: microsoft
 pybind11
 --------
 
-Branch: 2.4.3
+Branch: 2.9.2
 Source: https://github.com/pybind/pybind11/releases
 
 Python (CPython)
