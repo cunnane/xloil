@@ -269,28 +269,98 @@ namespace xloil
               std::swap(_topicsToConnect, topicsToConnect);
             }
 
-            // First connect any topics but don't yet map their Excel topicIds.
-            // Excel does reuse topicIds possibly when it detects the same inputs,
-            // but we don't want to rely on this behaviour.  This means that
-            // we may have a disconnect and connect on the same topic and publisher.
-            // By connecting first it avoids the publisher cancelling its internal task.
+            if (topicsToConnect.empty() && topicIdsToDisconnect.empty())
+              continue;
 
-            // TODO: is it worth cancelling out a connect/disconnect on the same topic? 
-            //       Does that happen often?
-            for (const auto& [topicId, topic] : topicsToConnect)
-              connectTopic(topic);
+            // The connect/disconnect logic seems unnecessarily tortuous. 
+            // There are a few tricky bases to cover:
+            //   1) Do not hold locks when calling functions on the publisher
+            //      as they may re-enter the RTD framework.
+            //   2) Catch any exceptions from publisher calls to avoid killing
+            //      the RTD server
+            //   3) We may have a disconnect and connect on the same publisher
+            //      and want to avoid the publisher cancelling itself.
+            //   3) We may have a disconnect and connect on the same topic id
+            //      and need to ensure `_activeTopicIds` ends in the correct
+            //      state
+            //   4) We may have a disconnect and connect on the same topic id
+            //      *and* the same publisher. In this case we want to cancel
+            //      out the requests. 
 
-            for (auto topicId : topicIdsToDisconnect)
-              disconnectTopic(topicId);
+            // Sort pending connects / disconnects by topic ID, so we can more 
+            // efficiently iterate one whilst looking up in the other. 
+            std::sort(topicsToConnect.begin(), topicsToConnect.end(),
+              [](auto& l, auto& r) { return l.first < r.first; });
+            std::sort(topicIdsToDisconnect.begin(), topicIdsToDisconnect.end());
 
+            // Lookup the topic names for the IDs to disconnect, then remove
+            // them as they are no longer needed
+            decltype(_topicsToConnect) topicsToDisconnect;
+            if (!topicIdsToDisconnect.empty())
             {
+              topicsToDisconnect.reserve(topicIdsToDisconnect.size());
               unique_lock lock(_lockRecords);
-              for (auto& [topicId, topic] : topicsToConnect)
+              for (auto id : topicIdsToDisconnect)
               {
-                XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
-                _records[topic].subscribers.insert(topicId);
+                auto p = _activeTopicIds.find(id);
+                if (p != _activeTopicIds.end())
+                {
+                  topicsToDisconnect.emplace_back(id, p->second);
+                  _activeTopicIds.erase(p);
+                }
+                else
+                  XLO_WARN("Could not find topic to disconnect for id {0}", id);
+              }
+            }
+
+            // Step through the topics to connect, checking for a match
+            // in topicsToDisconnect. If one is found, skip the connect
+            // and zero the topic id which will skip the disconnect later.
+            // Otherwise connect the topic and update the active IDs
+            auto iDisconnect = topicsToDisconnect.begin();
+            const auto ttdEnd = topicsToDisconnect.end();
+            for (auto& [topicId, topic] : topicsToConnect)
+            {
+              iDisconnect = std::lower_bound(iDisconnect, ttdEnd, topicId,
+                [](auto& l, auto& r) { return l.first < r; });
+              if (iDisconnect != ttdEnd
+                && iDisconnect->first == topicId
+                && iDisconnect->second == topic)
+              {
+                iDisconnect->first = 0;
+                ++iDisconnect;
+              }
+              else
+              {
+                connectTopic(topicId, topic);
                 _activeTopicIds.emplace(topicId, std::move(topic));
               }
+            }
+
+            // Now we can run the disconnects, skipping any zeroed ones
+            for (auto& [topicId, topic] : topicsToDisconnect)
+              if (topicId != 0)
+                disconnectTopic(topicId, topic);
+
+            // Remove any cancelled publishers which have finalised.  Don't destroy 
+            // them whilst holding the lock.  Note the i++ as the iterator passed to 
+            // splice will be invalidated.
+            decltype(_cancelledPublishers) finalisedPublishers;
+            {
+              unique_lock lock(_lockRecords);
+              for (auto i = _cancelledPublishers.begin(); i != _cancelledPublishers.end(); ++i)
+                if ((*i)->done())
+                  finalisedPublishers.splice(finalisedPublishers.end(), _cancelledPublishers, i++);
+            }
+
+            // Now return the dtors, but catch to avoid killing the RTD server
+            try 
+            {
+              finalisedPublishers.clear();
+            }
+            catch (const std::exception& e)
+            {
+              XLO_ERROR("Error during publisher desctructor: {}", e.what());
             }
           }
         }
@@ -341,17 +411,19 @@ namespace xloil
         }
       }
 
-      void connectTopic(const wstring& topic)
+      void connectTopic(long topicId, const wstring& topic)
       {
         // We need these values after we release the lock
         shared_ptr<IRtdPublisher> publisher;
         size_t numSubscribers;
 
         {
+          XLO_TRACE(L"RTD: connect '{}' to topicId '{}'", topic, topicId);
           unique_lock lock(_lockRecords);
           auto& record = _records[topic];
           publisher = record.publisher;
-          numSubscribers = record.subscribers.size() + 1;
+          record.subscribers.insert(topicId);
+          numSubscribers = record.subscribers.size();
         }
 
         // Let the publisher know how many subscribers they now have.
@@ -361,12 +433,11 @@ namespace xloil
           publisher->connect(numSubscribers);
       }
 
-      void disconnectTopic(long topicId)
+      void disconnectTopic(long topicId, const wstring& topic)
       {
         shared_ptr<IRtdPublisher> publisher;
         size_t numSubscribers;
-        decltype(_cancelledPublishers) finalisedPublishers;
-
+ 
         try
         {
           // We must *not* hold the lock when calling methods of the publisher
@@ -375,36 +446,16 @@ namespace xloil
           // releasing the lock and notifying the publisher.
           {
             unique_lock lock(_lockRecords);
-
-            XLO_TRACE("RTD: disconnect topicId {}", topicId);
-
-            const auto topic = _activeTopicIds.find(topicId);
-            if (topic == _activeTopicIds.end())
-            {
-              XLO_ERROR("Could not find topic for id {0}", topicId);
-              return;
-            }
-
-            // Remove any cancelled publishers which have finalised but don't destroy 
-            // them whilst holding the lock.  Note the i++ as the iterator passed to 
-            // splice will be invalidated.
-            for (auto i = _cancelledPublishers.begin(); i != _cancelledPublishers.end(); ++i)
-              if ((*i)->done())
-                finalisedPublishers.splice(finalisedPublishers.end(), _cancelledPublishers, i++);
-
-            auto& record = _records[topic->second];
+  
+            auto& record = _records[topic];
             record.subscribers.erase(topicId);
 
             numSubscribers = record.subscribers.size();
             publisher = record.publisher;
 
             if (!publisher && numSubscribers == 0)
-              _records.erase(topic->second);
-
-            _activeTopicIds.erase(topic);
+              _records.erase(topic);
           }
-
-          finalisedPublishers.clear();
 
           if (!publisher)
             return;
@@ -414,11 +465,10 @@ namespace xloil
           // we have to wait until any threads it created have exited
           if (publisher->disconnect(numSubscribers))
           {
-            const auto topic = publisher->topic();
             const auto done = publisher->done();
-
             if (!done)
               publisher->stop();
+
             {
               unique_lock lock(_lockRecords);
 
