@@ -15,5 +15,6 @@
     <ClCompile Include="TestExcelCall.cpp" />
     <ClCompile Include="TestStringUtils.cpp" />
     <ClCompile Include="TestGuid.cpp" />
+    <ClCompile Include="TestCOM.cpp" />
   </ItemGroup>
 </Project>
