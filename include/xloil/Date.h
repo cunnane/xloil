@@ -133,10 +133,12 @@ namespace xloil
 
   struct ParseDateVisitor : public DateTimeVisitor
   {
+    ParseDateVisitor(const wchar_t* fmt = nullptr) 
+      : format(fmt) {}
+
     const wchar_t* format;
 
-    using DateTimeVisitor::operator();
-
+    using DateVisitor::operator();
     bool operator()(PStringRef str)
     {
       return stringToDateTime(str, result, format);

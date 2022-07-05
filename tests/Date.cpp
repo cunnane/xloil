@@ -58,7 +58,7 @@ namespace Tests
     void testVisitorRoundTrip(const wchar_t* date, int year, int month, int day)
     {
       ExcelObj dateStr(date);
-      ParseDateVisitor parseVisitor;
+      ParseDateVisitor parseVisitor(L"%Y-%m-%d");
       auto ret = dateStr.visit(parseVisitor);
       Assert::IsTrue(ret);
       checkTMValues(parseVisitor.result, year, month, day);
