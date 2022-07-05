@@ -15,9 +15,9 @@ namespace xloil
 {
   namespace COM
   {
-    HWND nextExcelMainWindow(HWND xlmainHandle)
+    HWND nextExcelMainWindow(HWND startFrom)
     {
-      return FindWindowExA(0, xlmainHandle, "XLMAIN", NULL);
+      return FindWindowExA(0, startFrom, "XLMAIN", NULL);
     }
 
     Excel::_Application* newApplicationObject()
@@ -34,18 +34,32 @@ namespace xloil
     Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle)
     {
       CoInitialize(NULL);
-      // Based on discussion here:
-      // https://stackoverflow.com/questions/30363748/having-multiple-excel-instances-launched-how-can-i-get-the-application-object-f
+      
+      // Based on discussion https://stackoverflow.com/questions/30363748/
+      // However we need to make a modification to the method given there:
+      // 
+      // The result of `pWindow->Application` differs from 
+      // `pWindow->Parent->Application` if we *do not own* the Excel process
+      // (i.e. we didn't start it and are not running within it). In this case
+      // the window's Application object is broken and will dump core when used.
+      // The only difference I can see with the VBA implementation is that VBA
+      // uses late binding, i.e. calls `invoke` which may take a different code 
+      // path.  This does look awfully like a bug, but since it's in the COM 
+      // interface its probably existed for years and will never be fixed.
+      //
       auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
       auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
       Excel::Window* pWindow = NULL;
       if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM,
-        __uuidof(IDispatch),
+        __uuidof(Excel::Window),
         (void**)&pWindow) == S_OK)
       {
-        auto result = pWindow->Application.Detach();
+        auto parent = pWindow->Parent;
+        Excel::_WorkbookPtr parentWorkbook(parent);
         pWindow->Release();
-        return result;
+        
+        auto result = parentWorkbook->Application;
+        return result.Detach();
       }
       return nullptr;
     }
