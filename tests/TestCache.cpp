@@ -16,12 +16,11 @@ namespace Tests
   {
   public:
 
-    TEST_METHOD(ReverseLookupCacheTest)
+    TEST_METHOD(LookupCacheTest)
     {
       auto cache = ObjectCache<
         std::unique_ptr<int>,
-        CacheUniquifier<std::unique_ptr<int>>,
-        true>::create();
+        CacheUniquifier<std::unique_ptr<int>>>::create();
       const int N = 100;
 
       vector<ExcelObj> callers;
@@ -39,10 +38,7 @@ namespace Tests
       {
         auto* val = cache->fetch(keys[i].asStringView());
         Assert::AreEqual<int>(i, **val);
-        auto* key = cache->findKey(val);
-        Assert::AreEqual(keys[i].toString(), *key);
       }
-
     }
 
     TEST_METHOD(CallerAddressTypes)

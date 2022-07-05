@@ -153,24 +153,17 @@ namespace xloil
   /// PyObject* obj = theCache.fetch(refStr);
   /// </code>
   /// </summary>
-  template<class TObj, class TUniquifier, bool TReverseLookup = false>
+  template<class TObj, class TUniquifier>
   class ObjectCache
   {
   private:
-    typedef ObjectCache<TObj, TUniquifier, TReverseLookup> self;
+    typedef ObjectCache<TObj, TUniquifier> self;
     typedef detail::CellCache<TObj> CellCache;
 
     detail::Lookup<CellCache> _cache;
     mutable std::mutex _cacheLock;
 
     size_t _calcId;
-
-    struct Reverse
-    {
-      std::unordered_map<const TObj*, std::wstring> map;
-      mutable std::mutex lock;
-    };
-    typename std::conditional<TReverseLookup, Reverse, char>::type _reverseLookup;
 
     std::shared_ptr<const void> _calcEndHandler;
     std::shared_ptr<const void> _workbookCloseHandler;
@@ -231,7 +224,6 @@ namespace xloil
 
       auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
 
-      typename std::conditional<TReverseLookup, std::vector<TObj>, char>::type staleObjects;
       decltype(_cache)::iterator found;
 
       uint8_t iPos = 0;
@@ -242,30 +234,18 @@ namespace xloil
         if (found == _cache.end())
         {
           found = _cache.emplace(
-            std::make_pair(
+            std::pair(
               std::wstring(cacheKey),
               CellCache(std::forward<TObj>(obj), _calcId))).first;
         }
         else
         {
-          if constexpr (TReverseLookup)
-            found->second.getStaleObjects(_calcId, staleObjects);
-
-          iPos = (uint8_t)found->second.add(std::forward<TObj>(obj), _calcId);
+          iPos = (uint8_t)found->second.add(
+            std::forward<TObj>(obj), _calcId);
         }
       }
 
       writeCount(fullKey.end() - PADDING, iPos);
-
-      if constexpr (TReverseLookup)
-      {
-        std::scoped_lock lock(_reverseLookup.lock);
-        for (auto& x : staleObjects)
-          _reverseLookup.map.erase(&x);
-        _reverseLookup.map.insert(std::make_pair(
-          found->second.fetch(iPos),
-          fullKey.string()));
-      }
 
       return ExcelObj(std::move(fullKey));
     }
@@ -299,15 +279,7 @@ namespace xloil
       {
         // Key looks like UNIQ[WbName]BlahBlah, so skip 2 chars and check for match
         if (wcsncmp(wbName, i->first.c_str() + 2, len) == 0)
-        {
-          if constexpr (TReverseLookup)
-          {
-            auto& cellCache = i->second;
-            for (size_t k = 0; k < cellCache.count(); ++k)
-              _reverseLookup.map.erase(cellCache.fetch(k));
-          }
           i = _cache.erase(i);
-        }
         else
           ++i;
       }
@@ -342,17 +314,6 @@ namespace xloil
         && cacheString[cacheString.length() - PADDING] == L',';
     }
 
-    template<bool B = TReverseLookup>
-    std::enable_if_t<B, const std::wstring*>
-      findKey(const TObj* obj) const
-    {
-      if constexpr (TReverseLookup)
-      {
-        auto found = _reverseLookup.map.find(obj);
-        return found == _reverseLookup.map.end() ? nullptr : &found->second;
-      }
-    }
-
   private:
 
     size_t readCount(wchar_t count) const
@@ -373,7 +334,7 @@ namespace xloil
   struct ObjectCacheFactory
   {
     static auto& cache() {
-      static auto theInstance = ObjectCache<T, CacheUniquifier<T>, false>::create();
+      static auto theInstance = ObjectCache<T, CacheUniquifier<T>>::create();
       return *theInstance;
     }
   };
