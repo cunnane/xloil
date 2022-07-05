@@ -144,26 +144,23 @@ namespace xloil
 
   namespace
   {
-    Excel::_Application* workbookFinder(const wchar_t* workbook)
+    Application workbookFinder(const wchar_t* workbook)
     {
       HWND xlmain = 0;
       while ((xlmain = COM::nextExcelMainWindow(xlmain)) != 0)
       {
-        auto xlApp = Application(COM::applicationObjectFromWindow(xlmain));
+        auto xlApp = Application(size_t(xlmain));
         ExcelWorkbook wb(nullptr);
         if (xlApp.workbooks().tryGet(workbook, wb))
-          return &xlApp.com();
+          return xlApp;
       }
-      return nullptr;
+      throw ComConnectException("Failed to create Application object from workbook");
     }
   }
 
   Application::Application(const wchar_t* workbook)
-    : AppObject(workbookFinder(workbook))
-  {
-    if (!valid())
-      throw ComConnectException("Failed to create Application object from workbook");
-  }
+    : Application(workbookFinder(workbook))
+  {}
 
   std::wstring Application::name() const
   {
