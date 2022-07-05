@@ -70,8 +70,9 @@
     <ClCompile Include="LoaderEntryPoint.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="..\xloil.ini">
+    <CopyFileToFolders Include="..\..\config\xloil_local.ini">
       <FileType>Document</FileType>
+      <DestinationFileName>xloil.ini</DestinationFileName>
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>

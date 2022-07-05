@@ -31,7 +31,7 @@ python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
 build_files['x64'] = {
-    'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib", "xlOil.ini"],
+    'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib"],
     'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.pyd" for ver in python_versions],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
@@ -47,6 +47,11 @@ lib_files = [
     { 
         'from': 'tools',
         'files': ['xlOil_Install.ps1', 'xlOil_Remove.ps1', 'xlOil_NewAddin.ps1'],
+        'to': architectures
+    },
+    { 
+        'from': 'config',
+        'files': ['xloil.ini'],
         'to': architectures
     },
     {
@@ -89,7 +94,8 @@ if not 'no_build' in cmd_args or cmd_args.no_build is False:
         subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir, check=True)
 
     # Write the combined include file
-    subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", cwd=tools_dir, check=True)
+    subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", 
+                   cwd=tools_dir, check=True)
 
 # Build the docs
 # TODO: check=True should throw if the process exit code is != 0. Doesn't work.
