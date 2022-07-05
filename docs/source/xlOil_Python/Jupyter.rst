@@ -10,7 +10,7 @@ Introduction
 
 xlOil can connect to a Jupyter python kernel, allowing interaction between a Jupyter notebook 
 and Excel.  To use this functionality, either run `=xloPyLoad("xloil.jupyter")` in a cell or
-load the `xloil_jupyter` module by specifying it in the xlOil ini file like this:
+load the `xloil.jupyter` module by specifying it in the `xlOil.ini` file:
 
 ::
 
@@ -30,6 +30,12 @@ To establish the connection, call the `xloJpyConnect` function. You pass it one 
 
 The `xloJpyConnect` function will return a cache reference.
 
+.. note:: 
+
+    The targeted jupyter kernel can be running any version of Python 3 and does not need to
+    to have the `xloil` package installed.
+
+
 Registering an Excel function from Jupyter
 ------------------------------------------
 
@@ -37,6 +43,11 @@ After the connection is estabilished, any function created in the kernel and dec
 `@xloil.func` will be registed in Excel just as if it had been loaded by xlOil in the normal way.
 The function will be run in the context of the kernel and the result returned asynchronously 
 to Excel.
+
+.. note:: 
+
+    Any `@xloil.func` declarations prior to connection will be ignored, so part of the 
+    jupyter notebook may need to be re-calculated to ensure functions are registed
 
 
 Watching a variable in a Jupyter notebook
@@ -78,17 +89,34 @@ not cause a problem if re-imported.
 Now try entering `=jptest("hi")` in Excel!
 
 
+Using COM Automation
+--------------------
+
+If the *jupyter* kernel has the *xloil* package installed, we can turn the tables on the 
+connected Excel application and control it using COM automtion. Executing the following
+in the jupyter kernel will add a new workbook to the connected Excel:
+
+::
+
+    app = xloil.app()
+    app.workbooks.add()
+
+See :ref:`xlOil_Python.ExcelApplication` for full details on the :any:`xloil.Application` 
+object and COM automation support.
+
+
 Limitations
 -----------
 
-Functions declared in the kernel cannot use the `async` or `rtd` arguments: they are already
-implictly both!  They also cannot be multithreaded, although xlOil can connect to more than 
-one kernel simultaneously and exection in each will be concurrent.
+Functions declared in the kernel cannot specify the `async` or `rtd` arguments: they are 
+automatically of RTD async type to stop the kernel blocking Excel's calculation cycle!  
+They cannot be multi-threaded, although xlOil can connect to more than one kernel 
+simultaneously and exection in each kernel will be concurrent.
 
-The kernel-based functions are registered at global scope, so name collisions may occur as
-with loading any non-local python module.
+Registered kernel-based functions have addin/global scope in Excel.  Any `@xloil.func` 
+declarations prior to connection will be ignored, even if `xloil` was imported. 
 
 There is reasonable overhead in the machinery required to pass the function arguments to 
 jupyter and process the result: all transport is via strings, so peformance degredation 
-may be noticable for a large number of calls.
+may be noticable for a large number of calls or for large arrays.
 

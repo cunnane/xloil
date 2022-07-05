@@ -42,8 +42,14 @@
     <Compile Include="xloil\debug.py" />
     <Compile Include="xloil\excelfuncs.py" />
     <Compile Include="xloil\excelgui.py" />
+    <Compile Include="xloil\func_inspect.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="xloil\importer.py" />
     <Compile Include="xloil\jupyter.py" />
+    <Compile Include="xloil\jupyter_kernel.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="xloil\matplotlib.py" />
     <Compile Include="xloil\pandas.py" />
     <Compile Include="xloil\_paths.py" />

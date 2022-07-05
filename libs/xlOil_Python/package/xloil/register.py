@@ -6,6 +6,7 @@ from .type_converters import *
 from ._core import *
 from .com import EventsPaused
 from ._log import *
+from .func_inspect import Arg
 import contextvars
 
 import xloil_core
@@ -28,162 +29,64 @@ def _add_pending_funcs(module, objects):
     pending = getattr(module, _LANDMARK_TAG, set())
     pending.update(objects)
     setattr(module, _LANDMARK_TAG, pending)
-    
-class Arg:
-    """
-    Holds the description of a function argument. Can be used with the `xloil.func`
-    decorator to specify the argument description.
+ 
 
-    Examples
-    --------
+def arg_to_funcarg(arg: Arg) -> _FuncArg:
 
-    ::
+    # Set the arg converters based on the typeof provided for 
+    # each argument. If 'typeof' is a xloil typeconverter object
+    # it's passed through.  If it is a general python type, we
+    # attempt to create a suitable typeconverter
+    # Determine the internal C++ arg converter to run on the Excel values
+    # before they are passed to python.
 
-        @xloil.func(args = { 
-            'a': xloil.Arg("A", "The First Arg", default=3),
-            'b': xloil.Arg("B", "Next Arg",      typeof=double),
-        })
-        def MyFunc(a, b, c):
-            ...
+    this_arg = _FuncArg()
+    this_arg.name = arg.name
+    this_arg.help = arg.help
 
-    """
-    def __init__(self, name, help="", typeof=None, default=None, is_keywords=False):
-        """
-        Parameters
-        ----------
-
-        name: str
-            The name of the argument which appears in Excel's function wizard
-        help: str, optional
-            Help string to display in the function wizard
-        typeof: object, optional
-            Selects the type converter used to pass the argument value
-        default: object, optional
-            A default value to pass if the argument is not specified in Excel
-        is_keywords: bool, optional
-            Denotes the special kwargs argument. xlOil will expect a two-column array
-            in Excel which it will interpret as (key, value) pairs and convert to a
-            dictionary. A `**kwargs` argument is auto-detected by xlOil so it is 
-            unusual to set this parameter explicitly.
-        """
-
-        self.typeof = typeof
-        self.name = str(name)
-        self.help = help
-        self.default = default
-        self.is_keywords = is_keywords
-
-    @property
-    def has_default(self):
-        """ 
-        Since 'None' is a fairly likely default value, this property indicates 
-        whether there was a user-specified default
-        """
-        return self.default is not inspect._empty
-
-    def to_core_argspec(self) -> _FuncArg:
-
-        # Set the arg converters based on the typeof provided for 
-        # each argument. If 'typeof' is a xloil typeconverter object
-        # it's passed through.  If it is a general python type, we
-        # attempt to create a suitable typeconverter
-        # Determine the internal C++ arg converter to run on the Excel values
-        # before they are passed to python.
-
-        this_arg = _FuncArg()
-        this_arg.name = self.name
-        this_arg.help = self.help
-
-        if self.is_keywords:
-            return this_arg
-
-        arg_type = self.typeof
-        converter = 0
-
-        # If a typing annotation is None or not a type, ignore it and use the
-        # generic converter which gives a python type based on the Excel type
-        if not isinstance(arg_type, type):
-            # if arg_type is ExcelValue: ExcelValue is just the explicit generic 
-            # type available for linting, so do nothing. AllowRange adds range
-            # support. It's a typing.Union so not an instance of type.
-            if arg_type is AllowRange:
-                converter = _Read_object()
-                this_arg.allow_range = True
-            else:
-                converter = _Read_object()
-        else:
-            converter = get_converter(arg_type.__name__)
-
-            # xloil_core.Range is special: the only core class in typing annotations
-            if arg_type is Range:
-                this_arg.allow_range = True
-            
-            # If internal converter was found, nothing more to do
-            if converter is not None:
-                pass
-            # A designated xloil @converter type contains the internal converter
-            elif unpack_arg_converter(arg_type) is not None:
-                converter, this_arg.allow_range = unpack_arg_converter(arg_type)
-            # Attempt to find a registered user-converter, otherwise assume the object
-            # should be read from the cache 
-            else:
-                converter = arg_converters.get_converter(arg_type)
-                if converter is None:
-                    converter = _Read_Cache()
-        if self.has_default:
-            this_arg.default = self.default
-
-        assert converter is not None
-        this_arg.converter = converter
-
+    if arg.is_keywords:
         return this_arg
 
-    @staticmethod
-    def override_arglist(arglist, replacements):
-        if replacements is None:
-            return arglist
-        elif not isinstance(replacements, dict):
-            replacements = { a.name : a for a in replacements }
+    arg_type = arg.typeof
+    converter = 0
 
-        def override_arg(arg):
-            override = replacements.get(arg.name, None)
-            if override is None:
-                return arg
-            elif isinstance(override, str):
-                arg.help = override
-                return arg
-            else:
-                return override
+    # If a typing annotation is None or not a type, ignore it and use the
+    # generic converter which gives a python type based on the Excel type
+    if not isinstance(arg_type, type):
+        # if arg_type is ExcelValue: ExcelValue is just the explicit generic 
+        # type available for linting, so do nothing. AllowRange adds range
+        # support. It's a typing.Union so not an instance of type.
+        if arg_type is AllowRange:
+            converter = _Read_object()
+            this_arg.allow_range = True
+        else:
+            converter = _Read_object()
+    else:
+        converter = get_converter(arg_type.__name__)
 
-        return [override_arg(arg) for arg in arglist]
+        # xloil_core.Range is special: the only core class in typing annotations
+        if arg_type is Range:
+            this_arg.allow_range = True
+            
+        # If internal converter was found, nothing more to do
+        if converter is not None:
+            pass
+        # A designated xloil @converter type contains the internal converter
+        elif unpack_arg_converter(arg_type) is not None:
+            converter, this_arg.allow_range = unpack_arg_converter(arg_type)
+        # Attempt to find a registered user-converter, otherwise assume the object
+        # should be read from the cache 
+        else:
+            converter = arg_converters.get_converter(arg_type)
+            if converter is None:
+                converter = _Read_Cache()
+    if arg.has_default:
+        this_arg.default = arg.default
 
-# TODO: Could be replaced by inspect.getfullargspec??
-def function_arg_info(func):
-    """
-    Returns a list of Arg for a given function which describe the function's arguments
-    """
-    sig = inspect.signature(func)
-    params = sig.parameters
-    args = []
-    for name, param in params.items():
-        if param.kind == param.POSITIONAL_ONLY or param.kind == param.POSITIONAL_OR_KEYWORD:
-            spec = Arg(name, default=param.default)
-            anno = param.annotation
-            if anno is not param.empty:
-                spec.typeof = anno
-                # Add a little help string based on the type annotation
-                if isinstance(anno, type):
-                    spec.help = f"({anno.__name__})"
-                else:
-                    spec.help = f"({str(anno)})"
-            args.append(spec)
-        elif param.kind == param.VAR_POSITIONAL:
-             raise Exception(f"Unhandled argument type positional for {name}")
-        elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            args.append(Arg(name, is_keywords=True))
-        else: 
-            raise Exception(f"Unhandled argument type for {name}")
-    return args, sig.return_annotation
+    assert converter is not None
+    this_arg.converter = converter
+
+    return this_arg
 
 
 def find_return_converter(ret_type: type):
@@ -439,7 +342,7 @@ def func(fn=None,
     def decorate(fn):
 
         try:
-            func_args, return_type = function_arg_info(fn)
+            func_args, return_type = Arg.full_argspec(fn)
             has_kwargs = any(func_args) and func_args[-1].is_keywords
 
             is_coroutine = False
@@ -480,7 +383,7 @@ def func(fn=None,
             # Optional overrides of function arg information that we read
             # by reflection
             func_args = Arg.override_arglist(func_args, args)
-            core_argspec = [arg.to_core_argspec() for arg in func_args]
+            core_argspec = [arg_to_funcarg(arg) for arg in func_args]
 
             spec = _FuncSpec(
                 func = fn,
@@ -493,7 +396,7 @@ def func(fn=None,
                 local = is_local,
                 has_kwargs = has_kwargs)
 
-            if return_type is not inspect._empty:
+            if return_type is not None:
                 spec.return_converter = find_return_converter(return_type)
 
             log(f"Found func: {str(spec)}", level="debug")
