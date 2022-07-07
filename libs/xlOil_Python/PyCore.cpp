@@ -101,9 +101,9 @@ namespace xloil
       BinderRegistry::get().bindAll(mod);
     }
 
-    int addBinder(std::function<void(pybind11::module&)> binder)
+    int addBinder(std::function<void(pybind11::module&)> binder, size_t priority)
     {
-      BinderRegistry::get().add(binder, 1);
+      BinderRegistry::get().add(binder, priority);
       return 0;
     }
 

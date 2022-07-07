@@ -224,12 +224,12 @@ namespace xloil
         RangeIter(Range& r) : _range(r), _i(0), _j(0) 
         {}
 
-        ExcelObj next()
+        auto next()
         {
           if (++_j == _range.nCols())
             if (++_i == _range.nRows())
               throw py::stop_iteration();
-          return _range.value(_i, _j);
+          return PyFromAny()(_range.value(_i, _j));
         }
       };
     }
@@ -401,10 +401,6 @@ namespace xloil
 
     static int theBinder = addBinder([](py::module& mod)
     {
-      using PyWorkbooks = BindCollection<Workbooks>;
-      using PyWindows = BindCollection<Windows>;
-      using PyWorksheets = BindCollection<Worksheets>;
-
       static constexpr const char* toComDocString = R"(
           Returns a managed COM object which can be used to invoke Excel's full 
           object model. For details of the available calls see the Microsoft 
@@ -415,16 +411,51 @@ namespace xloil
       static constexpr const char* appDocString = R"(
           Returns the parent `xloil.Application` object associated with this object.
       )";
+      static constexpr const char* workbookAddDocString = R"(
+        Add a worksheet, returning a `Worksheet` object.
+
+        Parameters
+        ----------
+        name: str
+          Names the worksheet, otherwise it will have an Excel-assigned name
+        before: Worksheet
+          Places the new worksheet immediately before this Worksheet object 
+        after: Worksheet
+          Places the new worksheet immediately before this Worksheet object.
+          Specifying both `before` and `after` raises an exception.
+      )";
 
 #define XLO_CITE_API_SUFFIX(what, suffix) "See `Excel." #what " <https://docs.microsoft.com/en-us/office/vba/api/excel." #what #suffix">`_ "
 #define XLO_CITE_API(what) XLO_CITE_API_SUFFIX(what, what)
 
-      py::class_<RangeIter>(mod, "RangeIter")
-        .def("__iter__", [](const py::object& self) { return self; })
-        .def("__next__", &RangeIter::next);
 
-      // Bind Range class from xloil::ExcelRange
-      auto rangeClass = py::class_<Range>(mod, "Range", R"(
+      // We "forward declare" all our classes before defining their functions
+      // so that when the definition happens pybind knows about the python types
+      // being returned and can generate the correct docstring and type hints
+      
+      auto declare_Application = py::class_<Application>(mod, "Application",
+        R"(
+          Manages a handle to the *Excel.Application* object. This object is the root 
+          of Excel's COM interface and supports a wide range of operations.
+
+          In addition to the methods known to python, properties and methods of the 
+          Application object can be resolved dynamically at runtime. The available methods
+          will be familiar to VBA programmers and are well documented by Microsoft, 
+          see `Object Model Overview <https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview>`_
+
+          Note COM methods and properties are in UpperCamelCase, whereas python ones are 
+          lower_case.
+
+          Examples
+          --------
+
+          To get the name of the active worksheet:
+
+              return xlo.app().ActiveWorksheet.Name
+
+          )" XLO_CITE_API_SUFFIX(Application, (object)));
+
+      auto declare_Range = py::class_<Range>(mod, "Range", R"(
           Represents a cell, a row, a column or a selection of cells containing a contiguous 
           blocks of cells. (Non contiguous ranges are not currently supported).
           This class allows direct access to an area on a worksheet. It uses similar 
@@ -441,7 +472,68 @@ namespace xloil
 
               x[:-1, :-1] # A sub-range omitting the last row and column
 
-          )" XLO_CITE_API_SUFFIX(Range, (object)))
+          )" XLO_CITE_API_SUFFIX(Range, (object)));
+
+      auto declare_Worksheet = py::class_<ExcelWorksheet>(mod, "Worksheet",
+        R"(
+          Allows access to ranges and properties of a worksheet. It uses similar 
+          syntax to Excel's Worksheet object, supporting the ``cell`` and ``range`` functions, 
+          however indices are zero-based as per python's standard.
+
+          )" XLO_CITE_API(Worksheet));
+
+      auto declare_Workbook = py::class_<ExcelWorkbook>(mod, "Workbook",
+        R"(
+          Represents an open Excel workbook.
+          )" XLO_CITE_API(Workbook));
+
+      auto declare_Window = py::class_<ExcelWindow>(mod, "ExcelWindow",
+        R"(
+          Represents a window.  A window is a view of a workbook.
+          )" XLO_CITE_API(Window));
+
+      using PyWorkbooks = BindCollection<Workbooks>;
+      using PyWindows = BindCollection<Windows>;
+      using PyWorksheets = BindCollection<Worksheets>;
+
+      PyWorkbooks::startBinding(mod, "Workbooks",
+        R"(
+          A collection of all the Workbook objects that are currently open in the 
+          Excel application.  
+          
+          )" XLO_CITE_API(Workbooks))
+        .def("add",
+          [](PyWorkbooks& self) { return self._collection.add(); },
+          R"(
+            Creates and returns a new workbook with an Excel-assigned name
+          )");
+
+      PyWindows::startBinding(mod, "ExcelWindows",
+        R"(
+          A collection of all the Window objects in Excel.  A Window is a view of
+          a Workbook
+
+          )" XLO_CITE_API(Windows));
+
+      PyWorksheets::startBinding(mod, "Worksheets",
+        R"(
+          A collection of all the Worksheet objects in the specified or active workbook. 
+          Each Worksheet object represents a worksheet.
+          
+          )" XLO_CITE_API(Worksheets))
+        .def("add",
+          addWorksheetToCollection,
+          workbookAddDocString,
+          py::arg("name") = py::none(),
+          py::arg("before") = py::none(),
+          py::arg("after") = py::none());
+
+
+      py::class_<RangeIter>(mod, "RangeIter")
+        .def("__iter__", [](const py::object& self) { return self; })
+        .def("__next__", &RangeIter::next);
+
+      declare_Range
         .def(py::init(std::function(range_Construct)), 
           py::arg("address"))
         .def("range", 
@@ -579,15 +671,9 @@ namespace xloil
           [](const Range& r) { return ExcelRange(r).parent(); },
           "Returns the parent Worksheet for this Range");
 
-      rangeType = (PyTypeObject*)rangeClass.ptr();
+      rangeType = (PyTypeObject*)declare_Range.ptr();
 
-      py::class_<ExcelWorksheet>(mod, "Worksheet",
-        R"(
-          Allows access to ranges and properties of a worksheet. It uses similar 
-          syntax to Excel's Worksheet object, supporting the ``cell`` and ``range`` functions, 
-          however indices are zero-based as per python's standard.
-
-          )" XLO_CITE_API(Worksheet))
+      declare_Worksheet
         .def("__str__", 
           wrapNoGil(&ExcelWorksheet::name))
         .def_property_readonly("name", 
@@ -648,7 +734,7 @@ namespace xloil
           [](const ExcelWorksheet& self, int row, int col)
           {
             py::gil_scoped_release noGil;
-            return new ExcelRange(self.cell(row, col));
+            return (Range*)new ExcelRange(self.cell(row, col));
           },
           R"(
             Returns a Range object which consists of a single cell. The indices are zero-based 
@@ -660,7 +746,7 @@ namespace xloil
           [](const ExcelWorksheet& self, const wstring& address)
           {
             py::gil_scoped_release noGil;
-            return new ExcelRange(self.range(address));
+            return (Range*)new ExcelRange(self.range(address));
           },
           "Returns the range specified by the local address, e.g. ``.at('B3:D6')``",
           py::arg("address"))
@@ -677,25 +763,7 @@ namespace xloil
         .def("__getattr__",
             getComAttr<ExcelWorksheet>);
         
-      constexpr const char* workbookAddDocString = R"(
-        Add a worksheet, returning a `Worksheet` object.
-
-        Parameters
-        ----------
-        name: str
-          Names the worksheet, otherwise it will have an Excel-assigned name
-        before: Worksheet
-          Places the new worksheet immediately before this Worksheet object 
-        after: Worksheet
-          Places the new worksheet immediately before this Worksheet object.
-          Specifying both `before` and `after` raises an exception.
-      )";
-
-      py::class_<ExcelWorkbook>(mod, "Workbook",
-        R"(
-          Represents an open Excel workbook.
-
-          )" XLO_CITE_API(Workbook))
+      declare_Workbook
         .def("__str__", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("name", wrapNoGil(&ExcelWorkbook::name))
         .def_property_readonly("path",
@@ -764,11 +832,7 @@ namespace xloil
         .def("__enter__", Context_Enter)
         .def("__exit__", Workbook_Exit);
 
-      py::class_<ExcelWindow>(mod, "ExcelWindow",
-        R"(
-          Represents a window.  A window is a view of a workbook.
-
-        )" XLO_CITE_API(Window))
+      declare_Window
         .def("__str__", wrapNoGil(&ExcelWindow::name))
         .def_property_readonly("hwnd", 
           wrapNoGil(&ExcelWindow::hwnd), 
@@ -787,27 +851,7 @@ namespace xloil
         .def("__getattr__",
             getComAttr<ExcelWindow>);
 
-      py::class_<Application>(mod, "Application",
-        R"(
-          Manages a handle to the *Excel.Application* object. This object is the root 
-          of Excel's COM interface and supports a wide range of operations.
-
-          In addition to the methods known to python, properties and methods of the 
-          Application object can be resolved dynamically at runtime. The available methods
-          will be familiar to VBA programmers and are well documented by Microsoft, 
-          see `Object Model Overview <https://docs.microsoft.com/en-us/visualstudio/vsto/excel-object-model-overview>`_
-
-          Note COM methods and properties are in UpperCamelCase, whereas python ones are 
-          lower_case.
-
-          Examples
-          --------
-
-          To get the name of the active worksheet:
-
-              return xlo.app().ActiveWorksheet.Name
-
-          )" XLO_CITE_API_SUFFIX(Application,(object)))
+      declare_Application
         .def(py::init(std::function(application_Construct)),
           R"(
             Creates a new Excel Application if no arguments are specified. Gets a handle to 
@@ -902,38 +946,6 @@ namespace xloil
         .def("__enter__", Context_Enter)
         .def("__exit__", Application_Exit);
 
-      PyWorkbooks::startBinding(mod, "Workbooks", 
-        R"(
-          A collection of all the Workbook objects that are currently open in the 
-          Excel application.  
-          
-          )" XLO_CITE_API(Workbooks))
-        .def("add", 
-          [](PyWorkbooks& self) { return self._collection.add(); },
-          R"(
-            Creates and returns a new workbook with an Excel-assigned name
-          )");
-
-      PyWindows::startBinding(mod, "ExcelWindows", 
-        R"(
-          A collection of all the Window objects in Excel.  A Window is a view of
-          a Workbook
-
-          )" XLO_CITE_API(Windows));
-
-      PyWorksheets::startBinding(mod, "Worksheets",
-        R"(
-          A collection of all the Worksheet objects in the specified or active workbook. 
-          Each Worksheet object represents a worksheet.
-          
-          )" XLO_CITE_API(Worksheets))
-        .def("add", 
-          addWorksheetToCollection, 
-          workbookAddDocString,
-          py::arg("name")=py::none(), 
-          py::arg("before")=py::none(), 
-          py::arg("after") = py::none());
-
       py::class_<CallerInfo>(mod, 
         "Caller", R"(
           Captures the caller information for a worksheet function. On construction
@@ -1004,6 +1016,8 @@ namespace xloil
       }
       catch (ComConnectException)
       {}
-    });
+    }, 50); 
+    // Up the priority of this binding to 50 as there are other places where app 
+    // objects are returned and pybind needs to know the python types beforehand
   }
 }
