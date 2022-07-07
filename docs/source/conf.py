@@ -15,16 +15,14 @@ import os
 import sys
 from pathlib import Path
 
-this_file = os.path.realpath(__file__)
-
 #
 # The default soln_dir and bin_dir paths here are to allow VS code to auto
 # preview the docs. I'm currently not sure how to add environment variables
 # to processes run by VS code.
 #
 
-soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", rf"{this_file}\..\..\..")).resolve()
-bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", rf"{this_file}\..\..\..\build\x64\Debug")).resolve()
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{__file__}/../../..")).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", f"{__file__}/../../../build/x64/Debug")).resolve()
 
 sys.path.append(str(bin_dir))
 sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
