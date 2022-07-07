@@ -1,7 +1,7 @@
 
 from ._core import *
 
-from ._log import *
+from .logging import *
 
 from .register import (
     Arg, 

@@ -5,7 +5,7 @@ import sys
 from .type_converters import *
 from ._core import *
 from .com import EventsPaused
-from ._log import *
+from .logging import *
 from .func_inspect import Arg
 import contextvars
 

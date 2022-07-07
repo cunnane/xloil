@@ -94,7 +94,7 @@ namespace xloil
           .def_readwrite("value", &CustomReturnConverter::value);
           
         theConverter = new CustomReturnConverter();
-        mod.add_object("return_converter",
+        mod.add_object("_return_converter_hook",
           py::cast(theConverter, py::return_value_policy::take_ownership));
       });
     }

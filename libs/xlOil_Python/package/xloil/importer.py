@@ -8,7 +8,7 @@ import inspect
 
 from .register import scan_module, _clear_pending_registrations
 from ._core import StatusBar
-from ._log import log, log_except
+from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 

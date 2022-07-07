@@ -5,12 +5,12 @@ import numpy as np
 import functools
 
 from ._core import Range, CellError, CannotConvert
-from ._log import *
+from .logging import *
 
 import xloil_core
 
 from xloil_core import (
-    return_converter,
+    _return_converter_hook,
     _CustomConverter,
     _CustomReturn,
     _Return_Cache,
@@ -292,15 +292,15 @@ class _ReturnConverters:
         
         # Register this singleton object as the custom return converter tried by xlOil 
         # when a func does not specify its return type 
-        if not self._registered:
-            return_converter.value = _CustomReturn(self)
+        if not self._registered and _return_converter_hook is not None:
+            _return_converter_hook.value = _CustomReturn(self)
             self._registered = True
 
     
     def remove(self, return_type):
         self._converters.remove(return_type)
-        if not any(self._converters):
-            return_converter.value = None
+        if not any(self._converters) and _return_converter_hook is not None:
+            _return_converter_hook.value = None
             self._registered = False
 
     def create_returner(self, return_type):

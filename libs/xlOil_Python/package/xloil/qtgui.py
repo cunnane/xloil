@@ -1,6 +1,6 @@
 import threading
 import queue
-from ._log import *
+from .logging import *
 from . import _core
 from .excelgui import CustomTaskPane
 import importlib
