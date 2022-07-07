@@ -202,11 +202,6 @@ namespace xloil
             "Returns a tuple (nrows, ncols) like numpy's array.shape");
 
         ExcelArrayType = (PyTypeObject*)aType.get_type().ptr();
-
-        mod.def("to_array", &toArray,
-          py::arg("array"), 
-          py::arg("dtype") = py::none(), 
-          py::arg("dims") = 2);
       });
     }
   }
