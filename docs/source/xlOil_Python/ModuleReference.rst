@@ -23,7 +23,6 @@ xlOil Python Module Reference
 	returner
 	in_wizard
 	log
-	LogWriter
 	get_async_loop
 	get_event_loop
 	from_excel_date
@@ -223,7 +222,7 @@ Everything else
 .. currentmodule:: xloil
 
 .. automodule:: xloil
-	:members: in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
 	:imported-members:
 	:undoc-members:
 
@@ -232,8 +231,13 @@ Everything else
 	:imported-members:
 	:undoc-members:
 	:inherited-members:
+	:private-members:
+	:special-members:
 	
 .. autodata:: log
+
+.. automodule:: xloil.logging
+	:members: _LogWriter
 
 .. automodule:: xloil.debug
 	:members:

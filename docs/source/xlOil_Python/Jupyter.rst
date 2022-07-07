@@ -101,7 +101,7 @@ in the jupyter kernel will add a new workbook to the connected Excel:
     app = xloil.app()
     app.workbooks.add()
 
-See :ref:`xlOil_Python.ExcelApplication` for full details on the :any:`xloil.Application` 
+See :ref:`xlOil_Python/ExcelApplication:Introduction` for full details on the :any:`xloil.Application` 
 object and COM automation support.
 
 

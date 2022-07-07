@@ -5,6 +5,9 @@ xlOil Python: The Excel.Application object
 .. contents::
     :local:
 
+Introduction
+------------
+
 The `Excel.Application` object is the root of Excel's COM interface.  If you have used VBA you 
 will likely have come across it.  If xlOil is running embedded in Excel, you can get a reference 
 to the parent application with :any:`xloil.app`.  If xlOil has been imported as package, you can 

@@ -72,7 +72,7 @@ as a button.  They run on Excel's main thread and have full permissions on the E
 model.  In the XLL interface, these are called 'commands' in the XLL interface and xlOil uses 
 this terminology.
 
-Programs which heavily use the :ref:`xlOil_Python/ExcelApplication` object model are usually written as 
+Programs which heavily use the :ref:`xlOil_Python/ExcelApplication:Introduction` object model are usually written as 
 commands.
 
 ::
