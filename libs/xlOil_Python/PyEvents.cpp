@@ -222,7 +222,7 @@ namespace xloil
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         auto eventMod = mod.def_submodule("event");
-        mod.doc() = R"(
+        eventMod.doc() = R"(
           Module containing event objects which can be hooked to receive events driven by 
           Excel's UI. The events correspond to COM/VBA events and are described in detail
           in the Excel Application API.
