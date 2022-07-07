@@ -1,4 +1,3 @@
-xloil
 numpy
 numpydoc
 pandas
