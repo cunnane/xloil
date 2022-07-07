@@ -41,11 +41,20 @@ if "%1" == "-bin" (
   set XLOIL_BIN_DIR=%XLOIL_SOLN_DIR%\build\x64\Debug
 )
 
+REM Generate the doc stubs: we can import the core locally, this is
+REM really just for ReadTheDocs
+echo.Generating doc stubs for xloil_core
+python %XLOIL_SOLN_DIR%\libs\xlOil_Python\Package\generate_stubs.py
+
+
 REM It's very important to pass the -E argument to sphinx, otherwise it does
 REM not notice changes to docstrings in python modules and generates the 
 REM wrong documentation
 
+REM Set READTHEDOCS so we get consistency with the RTD online version
+set READTHEDOCS=1
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% -E -W --keep-going %O%
+set READTHEDOCS=
 goto end
 
 
