@@ -32,16 +32,11 @@ namespace Tests
         str = L"Foobar";
         Assert::IsTrue(str == L"Foobar");
       }
-      {
-        PString str(wstring(L"Foo"));
-        PStringCRef ref(str);
-        Assert::IsTrue(str == ref);
-      }
     }
     TEST_METHOD(Test_Strtok)
     {
       PString address(L"['My Book']'My Sheet'!A1");
-      PStringRef view(address);
+      auto view = PStringRef(address).remove_const();
 
       const auto delims = L"[]'!";
       const auto wb = view.strtok(delims);

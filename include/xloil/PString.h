@@ -38,15 +38,11 @@ namespace xloil
   /// PString (length-counted string) of wide-char, owns data, behaves a 
   /// bit like `std::wstring`
   /// </summary>
-  using PString     = BasicPString<wchar_t>;
+  using PString    = BasicPString<wchar_t>;
   /// <summary>
   /// A non-owning reference to the data underlying a <see cref="PString"\>
   /// </summary>
-  using PStringRef  = BasicPStringRef<wchar_t>;
-  /// <summary>
-  /// A non-owning const reference to the data underlying a <see cref="PString"\>
-  /// </summary>
-  using PStringCRef = BasicPStringRef<const wchar_t>;
+  using PStringRef = BasicPStringRef<const wchar_t>;
 
   namespace detail
   {
@@ -499,6 +495,11 @@ namespace xloil
         _data[0] = sz;
       else
         throw std::out_of_range("Cannot increase size of PStringRef");
+    }
+
+    auto remove_const()
+    {
+      return BasicPStringRef<char_type>(const_cast<char_type*>(_data));
     }
   };
 
