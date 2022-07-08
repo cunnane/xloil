@@ -346,8 +346,6 @@ namespace xloil
     /// Drops the producer for a topic by calling RtdPublisher::stop, then waits
     /// for it to complete and publishes # N/A to all subscribers.
     /// </summary>
-    /// <param name="topic"></param>
-    /// <returns></returns>
     virtual bool 
       drop(const wchar_t* topic) = 0;
 

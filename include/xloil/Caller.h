@@ -3,11 +3,31 @@
 #include <xlOil/XlCallSlim.h>
 #include <xlOil/PString.h>
 #include <xlOil/ExcelObj.h>
+#include <xlOil/EnumHelper.h>
 #include <memory>
 #include <string>
 
 namespace xloil
 {
+  /// <summary>
+   /// Species the format used to write sheet addresses
+   /// </summary>
+  enum class AddressStyle : int
+  {
+    /// <summary>
+    /// A1 Format: '[Book1]Sheet1'!A1:B2
+    /// </summary>
+    A1 = 0,
+    /// <summary>
+    /// RC Format: '[Book1]Sheet1'!R1C1:R2C2
+    /// </summary>
+    RC = 1,
+    /// <summary>
+    /// Does note quote sheet name, e.g. [Book1]Sheet1!A1:B2
+    /// </summary>
+    NOQUOTE = 2,
+  };
+
   /// <summary>
   /// Captures and writes information about the calling cell or context 
   /// provided by xlfCaller. Only returns useful information when the
@@ -20,22 +40,6 @@ namespace xloil
     ExcelObj _sheetName;
 
   public:
-
-    /// <summary>
-    /// Species the format used to write sheet addresses
-    /// </summary>
-    enum AddressStyle
-    {
-      /// <summary>
-      /// A1 Format: [Book1]Sheet1!A1:B2
-      /// </summary>
-      A1,
-      /// <summary>
-      /// RC Format: [Book1]Sheet1!R1C1:R2C2
-      /// </summary>
-      RC,
-    };
-
     /// <summary>
     /// Constructor which makes calls to xlfCaller and xlfSheetName to
     /// determine the caller.
@@ -47,8 +51,7 @@ namespace xloil
     /// interpreted as per the return from xlfCaller. In particular, a string
     /// address will be returned by <see cref="writeAddress"/> unmodified. The 
     /// <paramref name="fullSheetName"/> is used when the address is a ref or
-    /// sref. If it corresponds to a valid Excel sheet, the sheetId is looked
-    /// up and can be used in an Internal-style reference.
+    /// sref.
     /// </summary>
     /// <param name="address"></param>
     /// <param name="fullSheetName">If provided, should be of the form [Book]Sheet</param>
@@ -64,11 +67,12 @@ namespace xloil
     /// Writes the caller address to the provided buffer, returning the number
     /// of characters written on success or a negative number or on failure. 
     /// </summary>
-    /// <param name="buf"></param>
-    /// <param name="bufLen"></param>
-    /// <param name="style">Selects A1-type, RC-type or internal address</param>
+    /// <param name="style">Selects A1-type or RC-type</param>
     /// <returns></returns>
-    int writeAddress(wchar_t* buf, size_t bufLen, AddressStyle style = RC) const;
+    int writeAddress(
+      wchar_t* buf, 
+      size_t bufLen, 
+      AddressStyle style = AddressStyle::A1) const;
 
     /// <summary>
     /// As per <see cref="writeAddress"/>, but returns a string rather than writing
@@ -76,16 +80,16 @@ namespace xloil
     /// </summary>
     /// <param name="style"></param>
     /// <returns></returns>
-    std::wstring writeAddress(AddressStyle style = RC) const;
+    std::wstring writeAddress(AddressStyle style = AddressStyle::A1) const;
 
     /// <summary>
     /// Returns the calling worksheet name as a PString or a null PString
     /// if it could not be determined.
     /// </summary>
     /// <returns></returns>
-    PStringView<> fullSheetName() const
+    PStringRef fullSheetName() const
     {
-      return _sheetName.asPString();
+      return _sheetName.cast<PStringRef>();
     }
    
     /// <summary>
@@ -99,6 +103,7 @@ namespace xloil
       auto begin = sName.begin() + sName.find(L']') + 1;
       return std::wstring_view(begin, sName.end() - begin);
     }
+
     /// <summary>
     /// Returns a view containing only the workbook name. If the workbook has
     /// been saved, this includes a file extension.
@@ -117,12 +122,9 @@ namespace xloil
     /// </summary>
     const msxll::XLREF12* sheetRef() const
     {
-      switch (_address.type())
-      {
-      case ExcelType::SRef: return &_address.val.sref.ref;
-      default:
-        return nullptr;
-      }
+      return _address.isType(ExcelType::SRef)
+        ? &_address.val.sref.ref
+        : nullptr;
     }
   };
 
@@ -135,7 +137,10 @@ namespace xloil
 
   /// <summary>
   /// Writes a simple Excel ref including sheet name in either A1 or RxCy 
-  /// to the provided string buffer. That is, gives 'Sheet!A1' or 'Sheet!R1C1'.
+  /// to the provided string buffer. That is, gives "[Book]Sheet!A1" or 
+  /// "[Book]Sheet!R1C1".  The workbook and sheet name may be quoted which gives
+  /// some consistency with COM's Range.Address, however in the COM case 
+  /// there is a complex set of rules determining whether quotes are added.
   /// <returns>The number of characters written</returns>
   /// </summary>
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
@@ -143,7 +148,8 @@ namespace xloil
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize,
-    bool A1Style = true);
+    bool A1Style = true,
+    bool quoteSheetName = true);
 
   /// <summary>
   /// Version of <see cref="xlrefToWorkbookAddress"/> which returns a string rather
@@ -152,11 +158,12 @@ namespace xloil
   inline std::wstring xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
-    bool A1Style = true)
+    bool A1Style = true,
+    bool quoteSheetName = true)
   {
     return captureWStringBuffer([&](auto buf, auto sz)
     {
-      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style);
+      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style, quoteSheetName);
     });
   }
   

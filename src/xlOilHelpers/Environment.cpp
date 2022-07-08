@@ -68,10 +68,10 @@ namespace xloil
 
     namespace
     {
-      template<int RegType>
-      bool getWindowsRegistryValue(
-        const std::wstring& hive,
-        const std::wstring& location,
+      inline bool getWindowsRegistryValue(
+        const std::wstring_view& hive,
+        const std::wstring_view& location,
+        int regType,
         void* buffer,
         DWORD* bufSize)
       {
@@ -86,15 +86,15 @@ namespace xloil
           return false;
 
         const auto lastSlash = location.rfind(L'\\');
-        const auto subKey = location.substr(0, lastSlash);
+        const auto subKey = wstring(location.substr(0, lastSlash));
         const auto value = lastSlash + 1 < location.size()
-          ? location.substr(lastSlash + 1) : wstring();
+          ? wstring(location.substr(lastSlash + 1)) : wstring();
 
         return ERROR_SUCCESS == RegGetValue(
           root,
           subKey.c_str(),
           value.c_str(),
-          RegType,
+          regType,
           nullptr /*type not required*/,
           buffer,
           bufSize);
@@ -102,14 +102,13 @@ namespace xloil
     }
 
     bool getWindowsRegistryValue(
-      const wchar_t* hive,
-      const wchar_t* location,
+      const std::wstring_view& hive,
+      const std::wstring_view& location,
       std::wstring& result)
     {
-      assert(hive && location);
       wchar_t buffer[1024];
-      DWORD bufSize = sizeof(buffer) / sizeof(wchar_t);
-      if (getWindowsRegistryValue<RRF_RT_REG_SZ>(hive, location, buffer, &bufSize))
+      DWORD bufSize = _countof(buffer);
+      if (getWindowsRegistryValue(hive, location, RRF_RT_REG_SZ, buffer, &bufSize))
       {
         result = buffer;
         return true;
@@ -118,14 +117,13 @@ namespace xloil
     }
 
     bool getWindowsRegistryValue(
-      const wchar_t* hive,
-      const wchar_t* location,
+      const std::wstring_view& hive,
+      const std::wstring_view& location,
       unsigned long& result)
     {
-      assert(hive && location);
       char buffer[sizeof(DWORD)];
       DWORD bufSize = sizeof(DWORD);
-      if (getWindowsRegistryValue<RRF_RT_REG_DWORD>(hive, location, buffer, &bufSize))
+      if (getWindowsRegistryValue(hive, location, RRF_RT_REG_DWORD, buffer, &bufSize))
       {
         result = *(DWORD*)buffer;
         return true;
@@ -151,7 +149,7 @@ namespace xloil
         match = *next;
         assert(match.size() == 3);
         result += match.prefix().str();
-        if (getWindowsRegistryValue(match[1].str().c_str(), match[2].str().c_str(), regValue))
+        if (getWindowsRegistryValue(match[1].str(), match[2].str(), regValue))
           result += regValue;
         next++;
       }

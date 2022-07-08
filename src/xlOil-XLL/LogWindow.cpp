@@ -24,11 +24,11 @@ namespace xloil
     HMENU theTextControlId = (HMENU)101;
     WNDPROC theMenuHandler;
     bool theWindowIsOpen = false;
-    std::list<string> _messages;
+    std::list<wstring> _messages;
     wstring _windowText;
     size_t _maxSize;
     shared_ptr<ATOM> _windowClass;
-    static constexpr wchar_t* theWindowClass = L"xlOil_Log";
+    static constexpr const wchar_t* theWindowClass = L"xlOil_Log";
 
     static auto createWindowClass(HINSTANCE hInstance, const wchar_t* windowClass)
     {
@@ -195,9 +195,9 @@ namespace xloil
       return theWindowIsOpen;
     }
 
-    void appendToWindow(const string& msg)
+    void appendToWindow(const wstring& msg)
     {
-      auto wmsg = utf8ToUtf16(msg);
+      auto wmsg(msg);
 
       // Fix any unix line endings (e.g. from python)
       auto pos = (size_t)-1;
@@ -215,6 +215,7 @@ namespace xloil
     {
       setTextBoxContents(_windowText.c_str());
       ShowWindow(theMainWindow, SW_SHOWNORMAL);
+      BringWindowToTop(theMainWindow);
       theWindowIsOpen = true;
     }
 
@@ -236,9 +237,9 @@ namespace xloil
       showWindow();
     }
 
-    void appendMessage(string&& msg) noexcept override
+    void appendMessage(wstring&& msg) noexcept override
     {
-      _messages.emplace_back(std::forward<string>(msg));
+      _messages.emplace_back(std::forward<wstring>(msg));
 
       if (_messages.size() > _maxSize)
         _messages.pop_front();
@@ -296,20 +297,15 @@ namespace xloil
 
   void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg) noexcept
   {
-    loadFailureLogWindow(parent, utf16ToUtf8(msg));
-  }
-
-  void loadFailureLogWindow(HINSTANCE parent, const std::string_view& msg) noexcept
-  {
     // This function is always called from the main thread so can use
     // statics and the single-threaded version of LogWindow. 
-    std::string msgStr;
+    std::wstring msgStr;
     try
     {
       auto t = std::time(nullptr);
       tm tm;
       localtime_s(&tm, &t);
-      msgStr = formatStr("%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg);
+      msgStr = formatStr(L"%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg);
 
       static auto logWindow = make_shared<LogWindow>(
         (HWND)0, parent, L"xlOil Load Failure", (HMENU)0, (WNDPROC)0, 100);
@@ -319,7 +315,7 @@ namespace xloil
     }
     catch (...)
     {
-      OutputDebugStringA(msgStr.c_str());
+      OutputDebugString(msgStr.c_str());
     }
   }
 }

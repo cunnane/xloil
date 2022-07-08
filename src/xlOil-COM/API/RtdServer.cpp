@@ -91,15 +91,21 @@ namespace xloil
 
   shared_ptr<ExcelObj> rtdAsync(const shared_ptr<IRtdAsyncTask>& task)
   {
-    // This cast is OK because if we are returning a non-null value we
-    // will have cancelled the producer and nothing else will need the
+    if (!task)
+    {
+      COM::RtdAsyncManager::init();
+      return shared_ptr<ExcelObj>();
+    }
+   
+    // This const cast is OK because if we are returning a non-null value 
+    // we will have cancelled the producer and nothing else will need the
     // ExcelObj
     return std::const_pointer_cast<ExcelObj>(
-      COM::RtdAsyncManager::instance().getValue(task));
+      COM::RtdAsyncManager::getValue(task));
   }
 
   void rtdAsyncServerClear()
   {
-    COM::RtdAsyncManager::instance().clear();
+    COM::RtdAsyncManager::clear();
   }
 }

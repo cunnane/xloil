@@ -35,7 +35,7 @@ class _TkinterGUI:
         return self._root
 
 # Not currently required
-# tkinter_gui = _TkinterGUI(XLOIL_HAS_CORE)
+# tkinter_gui = _TkinterGUI()
 
 _tkinter_root = None
 

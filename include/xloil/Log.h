@@ -21,6 +21,7 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 #endif 
 
+#define SPDLOG_WCHAR_FILENAMES
 #define SPDLOG_WCHAR_TO_UTF8_SUPPORT
 #include <xlOil/WindowsSlim.h>
 #include <spdlog/spdlog.h> 

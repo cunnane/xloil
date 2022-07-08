@@ -62,7 +62,7 @@ namespace xloil
     {
       try
       {
-        auto& app = excelApp();
+        auto& app = excelApp().com();
         auto caller = Excel::RangePtr(app.Caller);
 
         // AddPicture2 takes -1 to retain the size of the existing file
@@ -231,7 +231,9 @@ namespace xloil
         const char* binderLib, IUnknown* p, const char* interfaceName, const GUID& clsid)
       {
         if (!binderLib || binderLib[0] == 0)
-          return marshalCom(theCoreAddin().comBinder.c_str(), p, interfaceName, clsid);
+          return marshalCom(
+            theCoreAddin() ? theCoreAddin()->comBinder.c_str() : "win32com",
+            p, interfaceName, clsid);
         
         // Convert our CLSID to a string, 128 chars should be plenty
         wchar_t clsidStr[128];
@@ -253,44 +255,65 @@ namespace xloil
       }
     }
 
-    py::object comToPy(Excel::_Application* p, const char* binder)
+    py::object comToPy(Excel::_Application& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Application", __uuidof(Excel::_Application));
+      return marshalCom(binder, &p, "_Application", __uuidof(Excel::_Application));
     }
-    pybind11::object comToPy(Excel::Window* p, const char* binder)
+    pybind11::object comToPy(Excel::Window& p, const char* binder)
     {
-      return marshalCom(binder, p, "Window", __uuidof(Excel::Window));
+      return marshalCom(binder, &p, "Window", __uuidof(Excel::Window));
     }
-    pybind11::object comToPy(Excel::_Workbook* p, const char* binder)
+    pybind11::object comToPy(Excel::_Workbook& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Workbook", __uuidof(Excel::_Workbook));
+      return marshalCom(binder, &p, "_Workbook", __uuidof(Excel::_Workbook));
     }
-    pybind11::object comToPy(Excel::_Worksheet* p, const char* binder)
+    pybind11::object comToPy(Excel::_Worksheet& p, const char* binder)
     {
-      return marshalCom(binder, p, "_Worksheet", __uuidof(Excel::_Worksheet));
+      return marshalCom(binder, &p, "_Worksheet", __uuidof(Excel::_Worksheet));
     }
-    pybind11::object comToPy(Excel::Range* p, const char* binder)
+    pybind11::object comToPy(Excel::Range& p, const char* binder)
     {
-      return marshalCom(binder, p, "Range", __uuidof(Excel::Range));
+      return marshalCom(binder, &p, "Range", __uuidof(Excel::Range));
+    }
+    pybind11::object comToPy(IDispatch& p, const char* binder)
+    {
+      return marshalCom(binder, &p, "IDispatch", __uuidof(IDispatch));
     }
 
     namespace
     {
-      py::object getExcelApp(const char* comlib)
-      {
-        return comToPy(&excelApp(), comlib);
-      }
-
       static int theBinder = addBinder([](py::module& mod)
       {
-        mod.def("insert_cell_image", writeCellImage, 
+        mod.def("insert_cell_image", 
+          writeCellImage, 
+          R"(
+            Inserts an image associated with the calling cell. A second call to this function
+            removes any image previously inserted from the same calling cell.
+
+            Parameters
+            ----------
+
+            writer: 
+                a one-arg function which writes the image to a provided filename. The file
+                format must be one that Excel can open.
+            size:  
+                * A tuple (width, height) in points. 
+                * "cell" to fit to the caller size
+                * "img" or None to keep the original image size
+            pos:
+                A tuple (X, Y) in points. The origin is determined by the `origin` argument
+            origin:
+                * "top" or None: the top left of the calling range
+                * "sheet": the top left of the sheet
+                * "bottom": the bottom right of the calling range
+            compress:
+                if True, compresses the resulting image before storing in the sheet
+          )",
           py::arg("writer"),
           py::arg("size") = py::none(),
           py::arg("pos") = py::none(),
           py::arg("origin") = py::none(),
           py::arg("compress") = true);
-
-        mod.def("application", getExcelApp, py::arg("comlib")="");
       });
     }
   }

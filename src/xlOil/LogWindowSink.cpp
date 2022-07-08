@@ -108,8 +108,9 @@ namespace xloil
 
       spdlog::memory_buf_t formatted;
       formatter_->format(msg, formatted);
-
-      _window->appendMessage(fmt::to_string(formatted));
+      _window->appendMessage(
+        utf8ToUtf16(
+          std::string_view(formatted.data(), formatted.size())));
 
       if (msg.level >= MainLogWindow::thePopupLevel)
         _window->openWindow();

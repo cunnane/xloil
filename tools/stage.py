@@ -31,8 +31,8 @@ python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
 build_files['x64'] = {
-    'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib", "xlOil.ini"],
-    'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.dll" for ver in python_versions],
+    'Core' : ["xlOil.xll", "xlOil.dll", "xlOil.lib"],
+    'xlOil_Python': ["xlOil_Python.dll"] + [f"xlOil_Python{ver.replace('.','')}.pyd" for ver in python_versions],
     'xlOil_SQL': ["xlOil_SQL.dll"],
     'xlOil_Utils': ["xlOil_Utils.dll"] 
 }
@@ -50,8 +50,8 @@ lib_files = [
         'to': architectures
     },
     { 
-        'from': 'src',
-        'files': ['NewAddin.ini'],
+        'from': 'config',
+        'files': ['xloil.ini'],
         'to': architectures
     },
     {
@@ -94,12 +94,13 @@ if not 'no_build' in cmd_args or cmd_args.no_build is False:
         subprocess.run(f"BuildRelease.cmd {arch}", cwd=tools_dir, check=True)
 
     # Write the combined include file
-    subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", cwd=tools_dir, check=True)
+    subprocess.run(f"powershell ./WriteInclude.ps1 {include_dir / 'xloil'} {staging_dir / 'include' / 'xloil'}", 
+                   cwd=tools_dir, check=True)
 
 # Build the docs
 # TODO: check=True should throw if the process exit code is != 0. Doesn't work.
-subprocess.run(f"cmd /C make.bat doxygen", cwd=doc_dir, check=True)
-subprocess.run(f"cmd /C make.bat html", cwd=doc_dir, check=True)
+subprocess.run(f"cmd /C make.cmd doxygen", cwd=doc_dir, check=True)
+subprocess.run(f"cmd /C make.cmd -bin x64\Release html", cwd=doc_dir, check=True)
 
 #
 # Start of file copying
@@ -137,7 +138,7 @@ for job in lib_files:
             else:
                 copy_file(source/ f, target_path)
 
-copy_tree(doc_dir / "source" / "_build" / "html", staging_dir / "docs")
+copy_tree(build_dir / "docs" / "html", staging_dir / "docs")
 
 #
 # Create distributable archives
@@ -170,7 +171,7 @@ for arch in architectures:
         pypi_version += f'.post{cmd_args.post_ver}'
        
     for pyver in python_versions:
-        # It's important to run the setup using the targetted python version
+        # It's important to run the setup using the targeted python version
         # If you get errors building win32 on an x64 version of python,
         # just comment out the assert in get_tag() in bdist_wheel.py.
         # Guido probably wouldn't approve but it seems to work.
@@ -182,13 +183,16 @@ for arch in architectures:
 # Next steps
 #
 print(
-    '\n'
-    '\nTo test the python package:'
+     '\n'
+     '\nTo test the python package:'
     f'\n  > pip install {str(python_package_dir)}\\dist\\<wheel file>'
+     '\n  > xloil install'
+ '\n' r'  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
+ '\n' r'  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
     '\n'
     '\nTo upload the python package to PyPI:'
     f'\n  > cd {str(python_package_dir)}'
-    '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
-    '\nor'
-    '\n  > twine upload dist/*'
+     '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
+     '\nor'
+     '\n  > twine upload dist/*'
     )

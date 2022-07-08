@@ -262,7 +262,7 @@ namespace xloil
     /// Determines the type of data stored in the array if it is homogenous. If it is
     /// not, it returns the type BigData.
     ///
-    /// It assumes that boolean can be interprets as integers and that integers can 
+    /// It assumes that boolean can be interpreted as integers and that integers can 
     /// be interpreted as float.  It also assumes "empty" can be interpreted as a floating
     /// point (e.g. NaN), but other error types cannot.
     ///
@@ -313,16 +313,10 @@ namespace xloil
     XLOIL_EXPORT ExcelObj toExcelObj() const;
 
     /// <summary>
-    /// Uses the given type convertor to write the array in column major
-    /// form. The provided iterator must have the same value_type as the
-    /// converter outputs and it must be valid for at least size() elements.
+    /// Determine the size of array data when blanks and \#N/A is ignored.
     /// </summary>
-    template<class TConv, class TIter>
-    void toColMajor(TIter begin, TConv conv = TConv()) const
-    {
-      for (size_type i = 0; i < size(); ++i, ++begin)
-        *begin = conv(at(i));
-    }
+    /// <returns>false if object is not an array, else true</returns>
+    XLOIL_EXPORT static bool trimmedArraySize(const ExcelObj& obj, row_t& nRows, col_t& nCols);
 
   private:
     const ExcelObj* _data;

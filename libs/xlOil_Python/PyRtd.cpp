@@ -56,7 +56,7 @@ namespace xloil
     {
       auto& asyncEventLoop()
       {
-        return *theCoreAddin().thread;
+        return *theCoreAddin()->thread;
       }
     }
 
@@ -345,27 +345,141 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<IRtdPublisher, PyRtdTopic, py_shared_ptr<IRtdPublisher>>(mod, "RtdPublisher")
-          .def(py::init<>())
-          .def("connect", &IRtdPublisher::connect)
-          .def("disconnect", &IRtdPublisher::disconnect)
-          .def("stop", &IRtdPublisher::stop)
-          .def("done", &IRtdPublisher::done)
-          .def("topic", &IRtdPublisher::topic);
+        py::class_<IRtdPublisher, PyRtdTopic, py_shared_ptr<IRtdPublisher>>(mod, "RtdPublisher",
+          R"(
+            RTD servers use a publisher/subscriber model with the 'topic' as the key
+            The publisher class is linked to a single topic string.
 
-        py::class_<PyRtdServer>(mod, "RtdServer")
+            Typically the publisher will do nothing on construction, but when it detects
+            a subscriber using the connect() method, it creates a background publishing task
+            When disconnect() indicates there are no subscribers, it cancels this task with
+            a call to stop()
+
+            If the task is slow to return or spin up, it could be started the constructor  
+            and kept it running permanently, regardless of subscribers.
+
+            The publisher should call RtdServer.publish() to push values to subscribers.
+          )")
+          .def(py::init<>(), R"(
+            This __init__ method must be called explicitly by subclasses or pybind
+            will fatally crash Excel.
+          )")
+          .def("connect", 
+            &IRtdPublisher::connect,
+            R"(
+              Called by the RtdServer when a sheet function subscribes to this 
+              topic. Typically a topic will start up its publisher on the first
+              subscriber, i.e. when num_subscribers == 1
+            )",
+            py::arg("num_subscribers"))
+          .def("disconnect", 
+            &IRtdPublisher::disconnect,
+            R"(
+              Called by the RtdServer when a sheet function disconnects from this 
+              topic. This happens when the function arguments are changed the
+              function deleted. Typically a topic will shutdown its publisher 
+              when num_subscribers == 0.
+
+              Whilst the topic remains live, it may still receive new connection
+              requests, so generally avoid finalising in this method.
+            )",
+            py::arg("num_subscribers"))
+          .def("stop", 
+            &IRtdPublisher::stop, 
+            R"(
+              Called by the RtdServer to indicate that a topic should shutdown
+              and dependent threads or tasks and finalise resource usage
+            )")
+          .def("done", 
+            &IRtdPublisher::done,
+            R"(
+              Returns True if the topic can safely be deleted without leaking resources.
+            )")
+          .def_property_readonly("topic", 
+            &IRtdPublisher::topic, 
+            "Returns the name of the topic");
+
+        py::class_<PyRtdServer>(mod, "RtdServer",
+          R"(
+            An RtdServer allows asynchronous interaction with Excel by posting update
+            notifications which cause Excel to recalcate certain cells.  The python 
+            RtdServer object manages an RTD COM server with each new RtdServer creating
+            an underlying COM server. The RtdServer works on a publisher/subscriber
+            model with topics identified by a string. 
+
+            A topic publisher is registered using start(). Subsequent calls to subscribe()
+            will connect this topic and tell Excel that the current calling cell should be
+            recalculated when a new value is published.
+
+            RTD sits outside of Excel's normal calc cycle: publishers can publish new values 
+            at any time, triggering a re-calc of any cells containing subscribers. Note the
+            re-calc will only happen 'live' if Excel's caclulation mode is set to automatic
+          )")
           .def(py::init<>())
-          .def("start", &PyRtdServer::start,
+          .def("start", 
+            &PyRtdServer::start,
+            R"(
+              Registers an RtdPublisher publisher with this manager. The RtdPublisher receives
+              notification when the number of subscribers changes
+            )",
             py::arg("topic"))
-          .def("publish", &PyRtdServer::publish,
-            py::arg("topic"), py::arg("value"), py::arg("converter") = nullptr)
-          .def("subscribe", &PyRtdServer::subscribe,
-            py::arg("topic"), py::arg("converter") = nullptr)
-          .def("peek", &PyRtdServer::peek,
-            py::arg("topic"), py::arg("converter") = nullptr)
-          .def("drop", &PyRtdServer::drop)
-          .def("start_task", &PyRtdServer::startTask,
-            py::arg("topic"), py::arg("func"), py::arg("converter") = nullptr);
+          .def("publish", 
+            &PyRtdServer::publish,
+            R"(
+              Publishes a new value for the specified topic and updates all subscribers.
+              This function can be called even if no RtdPublisher has been started.
+
+              This function does not use any Excel API and is safe to call at any time
+              on any thread.
+
+              An Exception object can be passed at the value, this will trigger the debugging
+              hook if it is set. The exception string and it's traceback will be published.
+            )",
+            py::arg("topic"), 
+            py::arg("value"), 
+            py::arg("converter") = nullptr)
+          .def("subscribe", 
+            &PyRtdServer::subscribe,
+            R"(
+              Subscribes to the specified topic. If no publisher for the topic currently 
+              exists, it returns None, but the subscription is held open and will connect
+              to a publisher created later. If there is no published value, it will return 
+              CellError.NA.  
+        
+              This calls Excel's RTD function, which means the calling cell will be
+              recalculated every time a new value is published.
+
+              Calling this function outside of a worksheet function called by Excel may
+              produce undesired results and possibly crash Excel.
+            )",
+            py::arg("topic"), 
+            py::arg("converter") = nullptr)
+          .def("peek", 
+            &PyRtdServer::peek,
+            R"(
+              Looks up a value for a specified topic, but does not subscribe.
+              If there is no active publisher for the topic, it returns None.
+              If there is no published value, it will return CellError.NA.
+
+              This function does not use any Excel API and is safe to call at
+              any time on any thread.
+            )",
+            py::arg("topic"), 
+            py::arg("converter") = nullptr)
+          .def("drop", 
+            &PyRtdServer::drop,
+            R"(
+              Drops the producer for a topic by calling `RtdPublisher.stop()`, then waits
+              for it to complete and publishes #N/A to all subscribers.
+            )")
+          .def("start_task", 
+            &PyRtdServer::startTask,
+            R"(
+              Launch a publishing task for a `topic` given a func and a return converter
+            )",
+            py::arg("topic"), 
+            py::arg("func"), 
+            py::arg("converter") = nullptr);
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", &RtdReturn::set_result)

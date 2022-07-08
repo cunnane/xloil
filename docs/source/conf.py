@@ -9,28 +9,38 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+#     sys.path.insert(0, os.path.abspath('.'))
 
 import os
 import sys
 from pathlib import Path
 
-soln_dir = Path(os.path.realpath(__file__)).parent.parent.parent
-print("xlOil solution directory: ", str(soln_dir))
-sys.path.append(str(soln_dir / "libs" / "xlOil_Python" / "package"))
+#
+# The default soln_dir and bin_dir paths here are to allow VS code to auto
+# preview the docs. I'm currently not sure how to add environment variables
+# to processes run by VS code.
+#
 
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{__file__}/../../..")).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", f"{__file__}/../../../build/x64/Debug")).resolve()
+
+sys.path.append(str(bin_dir))
+sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
+
+# May as well fail here if this doesn't work
+try:
+    import xloil
+except Exception as e:
+    raise Exception(f'{e}. SysPath={sys.path}', e)
 
 # -- Project information -----------------------------------------------------
 
 project = 'xlOil'
-copyright = '2020, Steven Cunnane'
+copyright = '2022, Steven Cunnane'
 author = 'Steven Cunnane'
 
 # The full version, including alpha/beta/rc tags
-release = Path(soln_dir / "Version.txt").read_text()
+release = (soln_dir / "Version.txt").read_text()
 
 # -- General configuration ---------------------------------------------------
 
@@ -84,7 +94,7 @@ autodoc_default_flags = ['members']
 
 autosummary_generate = False
 
-# See https://stackoverflow.com/questions/34216659/sphinx-autosummary-produces-two-summaries-for-each-class 
+# See https://stackoverflow.com/questions/34216659/
 numpydoc_show_class_members=False
 
 #
@@ -95,6 +105,8 @@ master_doc = 'index'
 
 # -- Generate examples file ---------------------------------------------------
 
+# TODO: want to disable this when running previews in VS Code
+
 import zipfile
 from zipfile import ZipFile
 
@@ -103,9 +115,10 @@ except FileExistsError: pass
 
 zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
  
-zipObj.write(soln_dir / "tests" / "python" / "PythonTest.xlsm", "PythonTest.xlsm")
-zipObj.write(soln_dir / "tests" / "python" / "PythonTest.py", "PythonTest.py")
-zipObj.write(soln_dir / "tests" / "sql" / "TestSQL.xlsx", "TestSQL.xlsx")
-zipObj.write(soln_dir / "tests" / "utils" / "xlOil_Utils.xlsx", "xlOil_Utils.xlsx")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
  
 zipObj.close()

@@ -23,7 +23,6 @@
     <ProjectGuid>{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Python</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil_Python37</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -37,6 +36,9 @@
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetExt>.pyd</TargetExt>
   </PropertyGroup>
   <PropertyGroup>
     <CharacterSet>Unicode</CharacterSet>
@@ -60,6 +62,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\src\Release.props" />
   </ImportGroup>
+  <PropertyGroup>
+    <TargetExt>.pyd</TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>python37.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -67,8 +72,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
+    <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
+    <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
     <ClCompile Include="TypeConversion\PyCustomType.cpp" />
@@ -112,6 +120,11 @@
     <ClInclude Include="TypeConversion\PyExcelArrayType.h" />
     <ClInclude Include="PyHelpers.h" />
     <ClInclude Include="TypeConversion\PyTupleType.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
+      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

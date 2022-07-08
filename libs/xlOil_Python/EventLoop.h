@@ -111,7 +111,7 @@ namespace xloil
       template <class...Args>
       void callback(const char* module, const char* func, Args&&... args)
       {
-        callback(py::module::import(module).attr(func), std::forward<Args>(args)...);
+        callback(pybind11::module::import(module).attr(func), std::forward<Args>(args)...);
       }
 
       void runAsync(const pybind11::object& coro)

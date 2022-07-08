@@ -97,7 +97,7 @@ namespace xloil
   XLOIL_EXPORT int callExcelRaw(
     int func, ExcelObj* result,
     size_t nArgs = 0,
-    const ExcelObj** args = nullptr);
+    const ExcelObj** args = nullptr) noexcept;
 
   /// <summary>
   /// 
@@ -112,7 +112,7 @@ namespace xloil
   inline int callExcelRaw(
     int func, ExcelObj* result,
     size_t nArgs,
-    T firstArg)
+    T firstArg) noexcept
   {
     const ExcelObj* pArgs[XL_MAX_UDF_ARGS];
     for (size_t i = 0; i < nArgs; ++i, ++firstArg)
@@ -125,7 +125,7 @@ namespace xloil
   /// a single argument
   /// </summary>
   inline int
-    callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg)
+    callExcelRaw(int func, ExcelObj* result, const ExcelObj* arg) noexcept
   {
     auto p = arg;
     return callExcelRaw(func, result, 1, &p);
@@ -139,28 +139,14 @@ namespace xloil
     xlRetCodeToString(int xlret, bool checkXllContext=true);
 
   /// <summary>
-  /// Calls the specified Excel function number with the given arguments.
-  /// Non-ExcelObj arguments are converted to ExcelObj types - this is 
-  /// generally only possible for arithmetic and string types.
-  /// 
-  /// Throws an exeception if the call fails, otherwise returns the 
-  /// result as an ExcelObj.
+  /// If this error is thrown, Excel SDK documentation says you must
+  /// immediately return control.
   /// </summary>
-  template<typename... Args>
-  inline ExcelObj callExcel(int func, Args&&... args)
+  class ExcelAbort : public std::runtime_error
   {
-    auto[result, ret] = tryCallExcel(func, std::forward<Args>(args)...);
-    switch (ret)
-    {
-    case msxll::xlretSuccess:
-      break;
-    case msxll::xlretAbort:
-      throw ExcelAbort();
-    default:
-      XLO_THROW(L"Excel call failed: {0}", xlRetCodeToString(ret));
-    }
-    return result;
-  }
+  public:
+    ExcelAbort() : std::runtime_error("Excel abort") {}
+  };
 
   /// <summary>
   /// Similar to <see cref="callExcel"/> but does not throw on failure.
@@ -174,7 +160,7 @@ namespace xloil
     auto result = std::make_pair(ExcelObj(), 0);
     detail::CallArgHolder holder(std::forward<Args>(args)...);
     result.second = callExcelRaw(func, &result.first, holder.nArgs(), holder.ptrToArgs());
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 
@@ -186,7 +172,7 @@ namespace xloil
   {
     auto result = std::make_pair(ExcelObj(), 0);
     result.second = callExcelRaw(func, &result.first);
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 
@@ -200,19 +186,33 @@ namespace xloil
     auto result = std::make_pair(ExcelObj(), 0);
     auto p = &arg;
     result.second = callExcelRaw(func, &result.first, 1, &p);
-    result.first.fromExcel();
+    result.first.resultFromExcel();
     return result;
   }
 
   /// <summary>
-  /// If this error is thrown, Excel SDK documentation says you must
-  /// immediately return control.
+  /// Calls the specified Excel function number with the given arguments.
+  /// Non-ExcelObj arguments are converted to ExcelObj types - this is 
+  /// generally only possible for arithmetic and string types.
+  /// 
+  /// Throws an exeception if the call fails, otherwise returns the 
+  /// result as an ExcelObj.
   /// </summary>
-  class ExcelAbort : public std::runtime_error
+  template<typename... Args>
+  inline ExcelObj callExcel(int func, Args&&... args)
   {
-  public:
-    ExcelAbort() : std::runtime_error("Excel abort") {}
-  };
+    auto [result, ret] = tryCallExcel(func, std::forward<Args>(args)...);
+    switch (ret)
+    {
+    case msxll::xlretSuccess:
+      break;
+    case msxll::xlretAbort:
+      throw ExcelAbort();
+    default:
+      XLO_THROW(L"Excel call failed: {0}", xlRetCodeToString(ret));
+    }
+    return result;
+  }
 
   /// <summary>
   /// Convert an Excel built-in function name to a number for use <see cref="callExcel"/>

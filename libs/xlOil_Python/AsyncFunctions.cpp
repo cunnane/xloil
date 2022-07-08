@@ -29,7 +29,7 @@ namespace xloil
   {
     auto& asyncEventLoop()
     {
-      return *theCoreAddin().thread;
+      return *theCoreAddin()->thread;
     }
 
     struct AsyncReturn : public AsyncHelper
@@ -268,18 +268,21 @@ namespace xloil
     {
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<AsyncReturn>(mod, "AsyncReturn")
+        py::class_<AsyncReturn>(mod, "_AsyncReturn")
           .def("set_result", &AsyncReturn::set_result)
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)
           .def_property_readonly("caller", &AsyncReturn::caller)
           .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
 
-        mod.def("get_async_loop", []() { return asyncEventLoop().loop(); });
+        mod.def("get_async_loop", 
+          []() { return asyncEventLoop().loop(); },
+          R"(
+            Returns the asyncio event loop associated with the async background
+            worker thread.  All async / RTD worksheet functions are executed 
+            on this event loop.
+          )");
       });
-
-      // Uncomment this for debugging in case weird things happen with the GIL not releasing
-      //static auto gilCheck = Event::AfterCalculate().bind([]() { XLO_INFO("PyGIL State: {}", PyGILState_Check());  });
     }
   }
 }

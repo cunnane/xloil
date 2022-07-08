@@ -1,5 +1,6 @@
 #include "ClassFactory.h"
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/AppObjects.h>
 #include <xlOil/ExcelUI.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
@@ -232,6 +233,11 @@ namespace xloil
 
       size_t parentWindowHandle() const override
       {
+        // Walk up the window stack until we find the target below.
+        // We start wwith the parent of our custom control, or the window
+        // attached to any other control type.
+        constexpr wchar_t target[] = L"NUIPane";  // TODO: could be MsoWorkPane or NetUIHWND
+
         HWND parent = 0;
         if (_customCtrl)
           parent = _customCtrl->GetActualParent();
@@ -240,10 +246,10 @@ namespace xloil
           IOleWindowPtr oleWin(_pane->ContentControl);
           oleWin->GetWindow(&parent);
         }
-        constexpr wchar_t target[] = L"NUIPane";   // TODO: could be MsoWorkPane or NetUIHWND
+        
         constexpr auto len = 1 + _countof(target);
         wchar_t winClass[len + 1];
-        //  Ensure that class_name is always null terminated for safety.
+        // Ensure that class_name is always null terminated for safety.
         winClass[len] = 0;
 
         do 

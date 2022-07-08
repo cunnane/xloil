@@ -46,29 +46,12 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_Python.dll', 
     'xlOil_Utils.dll', 
     'xlOil_SQL.dll', 
-    'NewAddin.ini', 
     'xlOil_Install.ps1', 
     'xlOil_NewAddin.ps1',
     'xlOil_Remove.ps1']]
 
 py_version_XY = target_py_ver.replace('.','')
-data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.dll')]
-
-#
-# Special treatment for ini file
-# 
-try: os.makedirs(py_version_XY)
-except FileExistsError: pass
-
-ini_path = Path(py_version_XY) / 'xlOil.ini'
-sh.copyfile(bin_dir / 'xlOil.ini', ini_path)
-
-# Fix up the version number in the ini file
-ini_text = ini_path.read_text()
-ini_text = re.sub(r'(PythonVersion=\")[0-9.]+(\")', f"\\g<1>{target_py_ver}\\g<2>", ini_text)
-ini_path.write_text(ini_text)
-
-data_files += [str(ini_path)]
+data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.pyd')]
 
 #
 # Grab the help text from README.md
@@ -106,7 +89,7 @@ setup(
     # Doesn't work, but the internet says it should
     # options={'bdist_wheel':{'python_tag':'foo'}},
     
-    python_requires=f'>={target_py_ver}',
+    python_requires=f'>=3.6',
     install_requires=[
         'numpy>=1.18'
     ],
@@ -119,6 +102,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Office/Business :: Financial :: Spreadsheet',

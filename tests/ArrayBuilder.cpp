@@ -35,8 +35,8 @@ namespace Tests
       Assert::AreEqual<size_t>(arr.nCols(), 2);
       Assert::AreEqual(arr(0, 0).toString(), wstring(row0[0]));
       Assert::AreEqual(arr(0, 1).toString(), wstring(row0[1]));
-      Assert::AreEqual(arr(1, 0).toDouble(), row1[0]);
-      Assert::AreEqual(arr(1, 1).toDouble(), row1[1]);
+      Assert::AreEqual(arr(1, 0).get<double>(), row1[0]);
+      Assert::AreEqual(arr(1, 1).get<double>(), row1[1]);
     }
 
     TEST_METHOD(ArrayAccess)

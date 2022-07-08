@@ -26,30 +26,40 @@ namespace xloil
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
 
-    AddinContext* createAddinContext(
-      const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
-    {
-      auto [ctx, isNew] = theAddinContexts.try_emplace(
-        wstring(pathName), make_shared<AddinContext>(pathName, settings));
-      return isNew ? ctx->second.get() : nullptr;
-    }
-
+    /// <summary>
+    /// Finds the settings file <XllName>.ini either in %APPDATA%\xlOil
+    /// or in the same directory as the XLL.  Adds any log sink specified
+    /// and any date formats.
+    /// </summary>
     auto processAddinSettings(const wchar_t* xllPath)
     {
       auto settings = findSettingsFile(xllPath);
       if (!settings)
+      {
+        XLO_DEBUG(L"No settings file found for '{}'", xllPath);
         return settings;
+      }
 
-      XLO_INFO("Found core settings file '{0}'",
-        *settings->source().path);
-
-      auto addinRoot = (*settings)["Addin"];
+      auto addinRoot = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION];
 
       // Log file settings
       auto logFile = Settings::logFilePath(*settings);
       auto logLevel = Settings::logLevel(addinRoot);
       auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
-      detail::loggerAddFile(logFile.c_str(), logLevel.c_str(), logMaxSize, logNumFiles);
+
+      detail::loggerAddFile(
+        logFile.c_str(), logLevel.c_str(), 
+        logMaxSize, logNumFiles);
+
+      // Write the log message *after* we set up the log file!
+      XLO_INFO(L"Found core settings file '{}' for '{}'",
+        utf8ToUtf16(*settings->source().path), xllPath);
+
+      // If this is specified in multiple addins and/or the core, 
+      // the last value overrides: not easy to workaround
+      setLogWindowPopupLevel(
+        spdlog::level::from_str(
+          Settings::logPopupLevel(addinRoot).c_str()));
 
       // Add any requested date formats
       auto dateFormats = Settings::dateFormats(addinRoot);
@@ -67,72 +77,25 @@ namespace xloil
     return *ourCoreContext;
   }
 
-  std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
-    findFileSource(const wchar_t* source)
+  const std::map<std::wstring, std::shared_ptr<AddinContext>>& currentAddinContexts()
   {
-    for (auto& [addinName, addin] : theAddinContexts)
-    {
-      auto found = addin->files().find(source);
-      if (found != addin->files().end())
-        return make_pair(found->second, addin);
-    }
-    return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
-  }
-
-  void
-    deleteFileSource(const std::shared_ptr<FileSource>& context)
-  {
-    for (auto& [name, addinCtx] : theAddinContexts)
-    {
-      auto found = addinCtx->files().find(context->sourcePath());
-      if (found != addinCtx->files().end())
-        addinCtx->removeSource(found);
-    }
-  }
-
-  namespace
-  {
-    AddinContext& createAddinContext(const wchar_t* addinPathName)
-    {
-      // Delete existing context if addin is reloaded
-      if (theAddinContexts.find(addinPathName) != theAddinContexts.end())
-        theAddinContexts.erase(addinPathName);
-
-      auto settings = processAddinSettings(addinPathName);
-      auto ctx = createAddinContext(addinPathName, settings);
-      if (!ctx)
-        XLO_THROW(L"Failed to create add-in context for {0}", addinPathName);
-
-      return *ctx;
-    }
+    return theAddinContexts;
   }
 
   void createCoreContext() 
   {
-    ourCoreContext = &createAddinContext(State::coreDllPath());
-
-    const auto& coreAddinSettings = (*ourCoreContext->settings())["Addin"];
-
-    // Can only do this once not per-addin
-    setLogWindowPopupLevel(
-      spdlog::level::from_str(
-        Settings::logPopupLevel(coreAddinSettings).c_str()));
-
-    auto staticSource = make_shared<StaticFunctionSource>(State::coreDllName());
-    staticSource->registerQueue();
+    ourCoreContext = &createAddinContext(Environment::coreDllPath());
+    auto staticSource = make_shared<StaticFunctionSource>(Environment::coreDllName());
     ourCoreContext->addSource(staticSource);
   }
 
-  void loadPluginsForAddin(AddinContext& ctx)
+  AddinContext& createAddinContext(const wchar_t* pathName)
   {
-    auto plugins = Settings::plugins((*ctx.settings())["Addin"]);
-    loadPlugins(ctx, plugins);
-  }
+    auto settings = processAddinSettings(pathName);
+    auto [ctx, isNew] = theAddinContexts.insert_or_assign(
+      wstring(pathName), make_shared<AddinContext>(pathName, settings));
 
-  AddinContext& addinOpenXll(const wchar_t* xllPath)
-  {
-    auto& ctx = createAddinContext(xllPath);
-    return ctx;
+    return *ctx->second;
   }
 
   void addinCloseXll(const wchar_t* xllPath)

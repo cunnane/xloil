@@ -18,7 +18,7 @@ namespace xloil
     virtual ~IConvertFromExcel() {}
     virtual result_type operator()(
       const ExcelObj& xl, 
-      const_result_ptr defaultVal = nullptr) const = 0;
+      const_result_ptr defaultVal = nullptr) = 0;
   };
 
   /// <summary>
@@ -34,156 +34,70 @@ namespace xloil
   };
 
   /// <summary>
-  /// Holder class which allows the type converter implementation to select
-  /// objects which represent arrays
-  /// </summary>
-  struct ArrayVal
-  {
-    const ExcelObj& obj;
-    operator const ExcelObj& () const { return obj; }
-  };
-
-  /// <summary>
-  /// Holder class which allows the type converter implementation to select
-  /// objects which represent range references
-  /// </summary>
-  struct RefVal
-  {
-    const ExcelObj& obj;
-    operator const ExcelObj& () const { return obj; }
-  };
-
-  /// <summary>
-  /// Indicates a missing value to a type converter implementation
-  /// </summary>
-  struct MissingVal
-  {};
-
-  /// <summary>
-  /// Handles the switch on the type of the ExcelObj and dispatches to an
-  /// overload of the functor's operator(). Called via <see cref="FromExcel"/>.
-  /// </summary>
-  template<class TFunc>
-  auto visitExcelObj(
-    const ExcelObj& xl, 
-    TFunc functor)
-  {
-    try
-    {
-      switch (xl.type())
-      {
-      case ExcelType::Int:     return functor(xl.val.w);
-      case ExcelType::Bool:    return functor(xl.val.xbool != 0);
-      case ExcelType::Num:     return functor(xl.val.num);
-      case ExcelType::Str:     return functor(xl.asPString());
-      case ExcelType::Multi:   return functor(ArrayVal{ xl });
-      case ExcelType::Missing: return functor(MissingVal());
-      case ExcelType::Err:     return functor(CellError(xl.val.err));
-      case ExcelType::Nil:     return functor(nullptr);
-      case ExcelType::SRef:
-      case ExcelType::Ref:
-        return functor(RefVal{ xl });
-      default:
-        XLO_THROW("Unexpected XL type");
-      }
-    }
-    catch (const std::exception& e)
-    {
-      XLO_THROW(L"Failed reading {0}: {1}", 
-        xl.toStringRepresentation(), 
-        utf8ToUtf16(e.what()));
-    }
-  }
-
-  /// <summary>
   /// Provides the default implementation (which is generally an error)
   /// for conversion functors to be used in <see cref="FromExcel"/> or 
   /// <see cref="visitExcelObj"/>
   /// </summary>
   template <class TResult>
-  class FromExcelBase
+  class ExcelValVisitor
   {
   public:
-    template <class T>
-    TResult operator()(T) const 
+    using return_type = TResult;
+    template <class T> return_type operator()(T) const
     { 
       throw std::runtime_error("Cannot convert to required type");
     }
   };
 
   template <class TResult>
-  class FromExcelBase<std::optional<TResult>>
+  class ExcelValVisitor<std::optional<TResult>>
   {
   public:
-    template <class T>
-    auto operator()(T) const
+    using return_type = std::optional<TResult>;
+    template <class T> return_type operator()(T) const
     {
       return std::optional<TResult>();
     }
   };
 
   template <class TResult>
-  class FromExcelBase<TResult*>
+  class ExcelValVisitor<TResult*>
   {
   public:
-    template <class T>
-    TResult* operator()(T) const
+    using return_type = TResult*;
+    template <class T> return_type operator()(T) const
     {
       return nullptr;
     }
   };
 
-  template<class TBase>
-  class FromExcelHandleMissing : public TBase
+  template<class TVisitor>
+  class ExcelValVisitorDefaulted 
+    : public ExcelValVisitor<typename TVisitor::return_type>
   {
-    const typename TBase::result_t* _defaultValue;
+    using base = ExcelValVisitor<typename TVisitor::return_type>;
+    using default_type = const typename TVisitor::return_type&;
+
+    TVisitor _visitor;
+    default_type _defaultValue;
 
   public:
-    FromExcelHandleMissing()
-      : _defaultValue(nullptr)
-    {}
     template <class...Args>
-    FromExcelHandleMissing(const typename TBase::result_t* defaultVal, Args&&...args)
-      : TBase(std::forward<Args>(args)...)
+    ExcelValVisitorDefaulted(
+      TVisitor visitor,
+      default_type defaultVal)
+      : _visitor(visitor)
       , _defaultValue(defaultVal)
     {}
 
-    using TBase::operator();
+    template<class T> auto operator()(T x) const
+    {
+      return _visitor(std::forward<T>(x));
+    }
+
     auto operator()(MissingVal) const
     {
-      return *_defaultValue;
+      return _defaultValue;
     }
   };
-
-  /// <summary>
-  /// Creates a functor which applies a type conversion implementation 
-  /// functor to an ExcelObj
-  /// </summary>
-  template<class TImpl>
-  class FromExcel
-  {
-    TImpl _impl;
-  public:
-
-    template <class...Args>
-    FromExcel(Args&&...args)
-      : _impl(std::forward<Args>(args)...)
-    {}
-
-    using return_type = decltype(_impl(nullptr));
-
-    /// <summary>
-    /// Applies the type conversion implementation functor to the ExcelObj.
-    /// If provided, the default value is returned if the ExcelObj is of
-    /// type Missing.
-    /// </summary>
-    auto operator()(const ExcelObj& xl) const
-    {
-      return visitExcelObj(xl, _impl);
-    }
-  };
-
-
-  template<class TImpl>
-  using FromExcelDefaulted = FromExcel<FromExcelHandleMissing<TImpl>>;
 }

@@ -148,13 +148,16 @@ namespace xloil
       {
         py::class_<PyCache>(mod, "ObjectCache")
           .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
-          //.def("remove", &PyCache::remove, py::arg("ref"))
+          .def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
           .def("__contains__", &PyCache::contains)
           .def("__getitem__", &PyCache::getitem)
-          .def("__call__", &PyCache::add, py::arg("obj"), py::arg("tag")="", py::arg("key")="");
+          .def("__call__", 
+            &PyCache::add, 
+            "Calls `add` method with provided arguments",
+            py::arg("obj"), py::arg("tag")="", py::arg("key")="");
 
         mod.add_object("cache", py::cast(PyCache::construct(), py::return_value_policy::take_ownership));
       });

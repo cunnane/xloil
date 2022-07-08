@@ -13,15 +13,16 @@ namespace xloil
 
     static std::wstring ourDllName;
     static std::wstring ourDllPath;
-    static App::ExcelInternals ourExcelState;
+    static Environment::ExcelProcessInfo ourExcelState;
 
+    // TODO: make this startup stuff noexcept?
     void setDllPath(HMODULE handle)
     {
       ourDllPath = captureWStringBuffer(
         [handle](auto* buf, auto len)
-      {
-        return GetModuleFileName(handle, buf, (DWORD)len);
-      });
+        {
+          return GetModuleFileName(handle, buf, (DWORD)len);
+        });
       ourDllName = std::filesystem::path(ourDllPath).filename();
     }
 
@@ -46,17 +47,14 @@ namespace xloil
     }
   }
 
-  namespace State
+  namespace Environment
   {
     XLOIL_EXPORT void initAppContext()
     {
-      ourExcelState = App::ExcelInternals
-      {
-        getExcelVersion(),
-        getExcelHInstance(),
-        (long long)getExcelHWnd(),
-        GetCurrentThreadId()
-      };
+      ourExcelState.version = getExcelVersion();
+      ourExcelState.hInstance = getExcelHInstance();
+      ourExcelState.hWnd = (long long)getExcelHWnd();
+      ourExcelState.mainThreadId = GetCurrentThreadId();
     }
     void initCoreContext(void* coreHInstance)
     {
@@ -79,11 +77,15 @@ namespace xloil
     {
       return ourDllName.c_str();
     }
-  }
 
-  namespace App
-  {
-    XLOIL_EXPORT const ExcelInternals& internals() noexcept
+    ExcelProcessInfo::ExcelProcessInfo()
+      : version(0)
+      , hInstance(nullptr)
+      , hWnd(0)
+      , mainThreadId(0)
+    {}
+
+    XLOIL_EXPORT const ExcelProcessInfo& excelProcess() noexcept
     {
       return ourExcelState;
     }

@@ -13,7 +13,7 @@ namespace xloil
   {
     spdlog::default_logger()->flush();
 
-    if (showWindow.toBool(false))
+    if (showWindow.get<bool>(false))
       openLogWindow();
     // TODO: better to add the log file name to the addin context?
     // TODO: this only returns the main log file path - each addin context could have one

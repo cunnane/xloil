@@ -16,6 +16,7 @@ xlOil Python
     Jupyter
     Rtd
     Debugging
+    DistributingAddins
     Example
     ExampleGUI
     FAQ

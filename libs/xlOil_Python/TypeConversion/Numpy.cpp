@@ -52,9 +52,10 @@ namespace xloil
 
     // We need to override the nan returned here as numpy's nan is not
     // the same as the one defined in numeric_limits for some reason.
-    struct ToDoubleNPYNan : conv::ToDouble<double>
+    struct ToDoubleNPYNan : conv::ExcelValToType<double, double>
     {
-      using ToDouble::operator();
+      using base = conv::ExcelValToType<double, double>;
+      using base::operator();
       double operator()(CellError err) const
       {
         switch (err)
@@ -66,11 +67,11 @@ namespace xloil
         case CellError::NA:
           return NPY_NAN;
         }
-        return ToDouble::operator()(err);
+        return base::operator()(err);
       }
     };
 
-    struct ToFloatNPYNan : public FromExcelBase<float>
+    struct ToFloatNPYNan : public ExcelValVisitor<float>
     {
       template<class T>
       float operator()(T x) const
@@ -79,10 +80,10 @@ namespace xloil
       }
     };
 
-    class NumpyDateFromDate : public FromExcelBase<npy_datetime>
+    class NumpyDateFromDate : public ExcelValVisitor<npy_datetime>
     {
     public:
-      using FromExcelBase::operator();
+      using ExcelValVisitor::operator();
 
       npy_datetime operator()(int x) const
       {
@@ -98,7 +99,7 @@ namespace xloil
         npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
         return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
       }
-      npy_datetime operator()(const PStringView<>& str) const
+      npy_datetime operator()(const PStringRef& str) const
       {
         std::tm tm;
         if (stringToDateTime(str.view(), tm))
@@ -136,12 +137,12 @@ namespace xloil
         auto destLength = destSize / sizeof(TChar);
         if (obj.type() == ExcelType::Str)
         {
-          auto pstr = obj.asPString();
+          auto pstr = obj.cast<PStringRef>();
           nWritten = _conv(dest, destLength, pstr.begin(), pstr.end());
         }
         else
         {
-          auto str = obj.toString();
+          auto str = obj.toStringRecursive();
           nWritten = _conv(dest, destLength, (wchar_t*)str.data(), (wchar_t*)str.data() + str.length());
         }
         memset((char*)(dest + nWritten), 0, (destLength - nWritten) * sizeof(TChar));
@@ -158,7 +159,7 @@ namespace xloil
     {
       void operator()(TResultValue* d, size_t, const ExcelObj& x) const
       {
-        *d = (TResultValue)FromExcel<TExcelObjConverter>()(x);
+        *d = (TResultValue)x.visit(TExcelObjConverter());
       }
     };
 
@@ -174,15 +175,15 @@ namespace xloil
     template <class T> struct TypeTraitsBase { };
 
     template <int> struct TypeTraits {};
-    template<> struct TypeTraits<NPY_BOOL> { using storage = bool; using from_excel = NPToT<conv::ToBool<>, storage>;  };
-    template<> struct TypeTraits<NPY_SHORT> { using storage = short;  using from_excel = NPToT<conv::ToInt<>, storage>;  };
-    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<conv::ToInt<>, storage>;  };
-    template<> struct TypeTraits<NPY_INT> { using storage = int; using from_excel = NPToT<conv::ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_UINT> { using storage = unsigned; using from_excel = NPToT<conv::ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_LONG> { using storage = long; using from_excel = NPToT<conv::ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_ULONG> { using storage = unsigned long; using from_excel = NPToT<conv::ToInt<>, storage>; };
-    template<> struct TypeTraits<NPY_FLOAT> { using storage = float; using from_excel = NPToT<ToFloatNPYNan, storage>; };
-    template<> struct TypeTraits<NPY_DOUBLE> { using storage = double; using from_excel = NPToT<ToDoubleNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_BOOL>   { using storage = bool;           using from_excel = NPToT<conv::ToType<bool>, storage>; };
+    template<> struct TypeTraits<NPY_SHORT>  { using storage = short;          using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_INT>    { using storage = int;            using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_UINT>   { using storage = unsigned;       using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_LONG>   { using storage = long;           using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_ULONG>  { using storage = unsigned long;  using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_FLOAT>  { using storage = float;          using from_excel = NPToT<ToFloatNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_DOUBLE> { using storage = double;         using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
     { 
       using storage = npy_datetime;
@@ -266,9 +267,9 @@ namespace xloil
       using PyFromExcelImpl::operator();
       static constexpr char* const ourName = "ndarray(1d)";
 
-      PyObject* operator()(ArrayVal obj) const
+      PyObject* operator()(const ArrayVal& obj) const
       {
-        ExcelArray arr(obj.obj, _trim);
+        ExcelArray arr(obj, _trim);
         return (*this)(arr);
       }
 
@@ -319,9 +320,9 @@ namespace xloil
       using PyFromExcelImpl::operator();
       static constexpr char* const ourName = "ndarray(2d)";
 
-      PyObject* operator()(ArrayVal obj) const
+      PyObject* operator()(const ArrayVal& obj) const
       {
-        ExcelArray arr(obj.obj, _trim);
+        ExcelArray arr(obj, _trim);
         return (*this)(arr);
       }
 

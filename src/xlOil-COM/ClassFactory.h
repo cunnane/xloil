@@ -2,6 +2,7 @@
 #include <Objbase.h>
 #include <atlcomcli.h>
 #include <xloil/Throw.h>
+#include <xloil/Log.h>
 #include <xlOilHelpers/Environment.h>
 #include <string>
 #include <list>
@@ -13,7 +14,6 @@ namespace xloil
     /// <summary>
     /// Simple thread-safe COM-style reference count which statisfies IUnknown.
     /// </summary>
-    /// <typeparam name="Base"></typeparam>
     template <class Base>
     class ComObject : public Base
     {
@@ -156,7 +156,7 @@ namespace xloil
       DWORD _comRegistrationCookie;
       std::wstring _clsid;
       std::wstring _progId;
-      std::list<std::wstring> _regKeysAdded;
+      std::list<std::pair<HKEY, std::wstring>> _regKeysAdded;
 
     public:
       template<class TCreatorFunc>
@@ -228,27 +228,33 @@ namespace xloil
           CLSCTX_INPROC_SERVER,      // can only be used inside our process
           REGCLS_MULTIPLEUSE,        // it can be created multiple times
           &_comRegistrationCookie);
-
+        
+        auto keyPath = fmt::format(L"Software\\Classes\\{0}\\CLSID", _progId);
         writeRegistry(
           HKEY_CURRENT_USER,
-          fmt::format(L"Software\\Classes\\{0}\\CLSID", _progId).c_str(),
+          keyPath.c_str(),
           0,
           _clsid.c_str());
 
-        // Add to our list of added keys, to ensure outer key is deleted
-        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\{0}", _progId));
+        
+        // Note the outer key to ensure it is deleted
+        addedKey(HKEY_CURRENT_USER, 
+          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
 
         // This registry entry is not needed to call CLSIDFromProgID, nor
         // to call CoCreateInstance, but for some reason the RTD call to
         // Excel will fail without it.
+        keyPath = fmt::format(L"Software\\Classes\\CLSID\\{0}\\InProcServer32", _clsid);
         writeRegistry(
           HKEY_CURRENT_USER,
-          fmt::format(L"Software\\Classes\\CLSID\\{0}\\InProcServer32", _clsid).c_str(),
+          keyPath.c_str(),
           0,
           L"xlOil.dll"); // Name of dll isn't actually used.
-        _regKeysAdded.emplace_back(fmt::format(L"Software\\Classes\\CLSID\\{0}", _clsid));
 
-        // Check all is good by looking up the CLISD from our progId
+        addedKey(HKEY_CURRENT_USER,
+          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
+
+        // Check all is good by looking up the CLSID from our progId
         CLSID foundClsid;
         res = CLSIDFromProgID(_progId.c_str(), &foundClsid);
         if (res != S_OK || !IsEqualCLSID(foundClsid, clsid))
@@ -265,27 +271,34 @@ namespace xloil
         const wchar_t* name,
         const wchar_t* value)
       {
-        _regKeysAdded.push_back(path);
+        addedKey(hive, path);
         return regWrite(hive, path, name, value);
       }
+
       HRESULT writeRegistry(
         HKEY hive,
         const wchar_t* path,
         const wchar_t* name,
         DWORD value)
       {
-        _regKeysAdded.push_back(path);
+        addedKey(hive, path);
         return regWrite(hive, path, name, value);
       }
+
+      void addedKey(HKEY hive, std::wstring_view path)
+      {
+        _regKeysAdded.emplace_back(std::pair(hive, std::wstring(path)));
+      }
+
       void cleanRegistry()
       {
         // Remove the registry keys used to locate the server (they would be 
         // removed anyway on windows logoff)
-        // TODO: only removes from HKCU
-        for (auto& key : _regKeysAdded)
-          RegDeleteKey(HKEY_CURRENT_USER, key.c_str());
+        for (auto&[hive, path] : _regKeysAdded)
+          RegDeleteKey(hive, path.c_str());
         _regKeysAdded.clear();
       }
+
       ~RegisterCom()
       {
         CoRevokeClassObject(_comRegistrationCookie);
@@ -297,7 +310,6 @@ namespace xloil
     /// Null implementation of all IDispatch functionality. Returns E_NOTIMPL
     /// for every call.
     /// </summary>
-    /// <typeparam name="TBase"></typeparam>
     template <class TBase>
     class NoIDispatchImpl : public TBase
     {
@@ -353,7 +365,8 @@ namespace xloil
 
       virtual ~ComEventHandler() noexcept
       {
-        // We do not disconnect as should never enter the dtor while connected
+        if (_pIConnectionPoint)
+          XLO_ERROR("ComEventHandler destroyed before being disconnected");
       }
 
       bool connect(IUnknown* source) noexcept
@@ -380,9 +393,8 @@ namespace xloil
         if (_pIConnectionPoint)
         {
           _pIConnectionPoint->Unadvise(_dwEventCookie);
-          _dwEventCookie = 0;
           _pIConnectionPoint->Release();
-          _pIConnectionPoint = NULL;
+          _pIConnectionPoint = nullptr;
         }
       }
 

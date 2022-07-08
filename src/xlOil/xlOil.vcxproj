@@ -23,7 +23,6 @@
     <ProjectGuid>{DF88A189-295A-4AC8-BEFC-D199155EC8CB}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>xlOil</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
     <ProjectName>xlOil</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -61,6 +60,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\xloil\AppObjects.h" />
+    <ClInclude Include="..\..\include\xloil\EnumHelper.h" />
     <ClInclude Include="..\..\include\xloil\ExcelThread.h" />
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />
     <ClInclude Include="..\..\include\xloil\Async.h" />
@@ -71,7 +71,7 @@
     <ClInclude Include="..\..\include\xloil\ExcelCall.h" />
     <ClInclude Include="..\..\include\xloil\ExcelObj.h" />
     <ClInclude Include="..\..\include\xloil\ExcelObjCache.h" />
-    <ClInclude Include="..\..\include\xloil\ExcelRange.h" />
+    <ClInclude Include="..\..\include\xloil\Range.h" />
     <ClInclude Include="..\..\include\xloil\ExcelRef.h" />
     <ClInclude Include="..\..\include\xloil\Caller.h" />
     <ClInclude Include="..\..\include\xloil\ExcelTypeLib.h" />

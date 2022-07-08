@@ -1,139 +1,64 @@
 import xloil as xlo
-import xloil.register
+
 import asyncio
-import inspect
 import IPython
 import pickle
 from IPython.display import publish_display_data
 import jupyter_client
 import os
 import re
+import json
+from . import func_inspect
 
-def _serialise(obj):
-    return pickle.dumps(obj, protocol=0).decode('latin1')
+from .jupyter_kernel import _xlOilJupyterImpl
+_unpickle = _xlOilJupyterImpl._unpickle
+_pickle = _xlOilJupyterImpl._pickle
+_FuncDescription = _xlOilJupyterImpl._FuncDescription
 
-def _deserialise(dump:str):
-    return pickle.loads(dump.encode('latin1'))
+def _remove_ansi_escapes(s):
+    # Escape codes for colours can appear in some jupyter output
+    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
+    return ansi_escape.sub('', s)
 
-class MonitoredVariables:
-    """
-    Created within the jupyter kernel to hook the 'post_execute' event and watch
-    for variable changes
-    """
-    def __init__(self, ipy_shell):
-        # Takes a reference to the ipython shell (e.g. from get_ipython())
-
-        self._values = dict()
-        self._shell = ipy_shell
-
-        # Hook post_execute
-        ipy_shell.events.register('post_execute', self.post_execute)
+class _FuncDescriptionDecoder(json.JSONDecoder):
     
-    def post_execute(self):
-        updates = {}
-        # Loop through all global variables looking for changes
-        for name, val in self._values.items():
-            that_val = self._shell.user_ns.get(name, None)
-            # Use is to check for equality rather than == as the latter
-            # may not return a single value e.g. numpy arrays
-            if not that_val is val:
-                updates[name] = that_val
-                self._values[name] = that_val
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
-        if len(updates) > 0:
-            publish_display_data(
-                { "xloil/data": _serialise(updates) },
-                { 'type': "VariableChange" }
-            )
+    def object_hook(self, dct):
 
-    def watch(self, name):
-        # Starts monitoring the given variable name
-        self._values[name] = globals().get(name, None)
-        # Run the hook now to publish the variable
-        self.post_execute()
+        if "typeof" in dct and "is_keywords" in dct:
+            return func_inspect.Arg(**dct)
+        elif "func_name" in dct:
+            return _FuncDescription(**dct)
 
-    def stop_watch(self, name):
-        # Stops monitoring the given variable name
-        del self._values[name]
+        return dct
 
-    def close(self):
-        self._shell.events.unregister('post_execute', self.post_execute)
-
-
-class _FuncDescription:
-    """
-        A serialisable func description we can pickle and send over Jupyter 
-        messaging
-    """
-    def __init__(self, func, name, help, override_args):
-        self.func_name = func.__name__
-        self.name = name
-        self.help = help
-        self.args, self.return_type = xloil.register.function_arg_info(func)
-
-        self.args = xlo.Arg.override_arglist(self.args, override_args)
-
-    def register(self, connection):
+def _register_func_description(desc: _FuncDescription, connection):
         
-        import xloil_core
+    import xloil_core
+    from xloil.register import async_wrapper, arg_to_funcarg, find_return_converter
+    func_name = desc.func_name
 
-        func_name = self.func_name
+    @async_wrapper
+    async def shim(*args, **kwargs):
+        return await connection.invoke(func_name, *args, **kwargs)
 
-        @xloil.register.async_wrapper
-        async def shim(*args, **kwargs):
-            return await connection.invoke(func_name, *args, **kwargs)
+    core_funcargs = [arg_to_funcarg(arg) for arg in desc.args]
 
-        core_argspec = [arg.to_core_argspec() for arg in self.args]
+    spec = xloil_core._FuncSpec(shim, 
+        args = core_funcargs,
+        name = desc.name,
+        features = "rtd",
+        help = desc.help,
+        category = "xlOil Jupyter")
 
-        # TODO: can we avoid using the core?
-        spec = xloil_core.FuncSpec(shim, 
-            args = core_argspec,
-            name = self.name,
-            features = "rtd",
-            help = self.help,
-            category = "xlOil Jupyter")
+    if desc.return_type is not None:
+        spec.return_converter = find_return_converter(return_type)
 
-        if self.return_type is not inspect._empty:
-            spec.return_converter = xloil.register.find_return_converter(return_type)
+    xlo.log(f"Jupyter registering func: '{str(spec)}'", level="debug")
 
-        xlo.log(f"Found func: '{str(spec)}'", level="debug")
-
-        # TODO: can we avoid using the core?
-        xloil_core.register_functions([spec])
-
-def _replacement_func_decorator(
-        fn=None,
-        name=None, 
-        help="", 
-        args=None):
-
-    """
-        Replaces xlo.func in jupyter but removes arguments which do not make sense
-        when called from jupyter
-    """
-
-    def decorate(fn):
-       
-        spec = _FuncDescription(fn, name or fn.__name__, help, args)
-
-        publish_display_data(
-            { "xloil/data": _serialise(spec) },
-            { 'type': "FuncRegister" }
-        )
-
-        return fn
-
-    return decorate if fn is None else decorate(fn)
-
-def function_invoke(func, args_data, kwargs_data):
-    args = _deserialise(args_data)
-    kwargs = _deserialise(kwargs_data)
-    result = func(*args, **kwargs)
-    publish_display_data(
-        { "xloil/data": _serialise(result) },
-        { 'type': "FuncResult" }
-    )
-    return result # Not used, just in case tho
+    xloil_core.register_functions([spec])
 
 
 class _VariableWatcher(xlo.RtdPublisher):
@@ -149,12 +74,19 @@ class _VariableWatcher(xlo.RtdPublisher):
         self._connection = connection ## TODO: weak-ptr?
 
     def connect(self, num_subscribers):
-        if num_subscribers == 1:
-            self._connection.execute(f"_xloil_vars.watch('{self._name}')", silent=True)
+        # Although we should only need to connect for the first subscriber,
+        # if things somehow go out of sync its safer to just make another
+        # call to the variable watcher 
+        #
+        # Given we refer to it several times, you'd think that making '_xloil_jpy_impl'
+        # a module level global. But NO: the deletion order during teardown means
+        # it's not available when the RTD server wants to tidy up
+        #
+        self._connection.execute(f"_xloil_jpy_impl._vars.watch('{self._name}')", silent=True)
 
     def disconnect(self, num_subscribers):
         if num_subscribers == 0:
-            self._connection.execute(f"_xloil_vars.stop_watch('{self._name}')", silent=True)
+            self._connection.execute(f"_xloil_jpy_impl._vars.stop_watch('{self._name}')", silent=True)
             return True # Schedule topic for destruction
 
     def stop(self):
@@ -166,11 +98,24 @@ class _VariableWatcher(xlo.RtdPublisher):
     def topic(self):
         return self._topic
 
+def _file_to_string(filepath, indent="  "):
+    """
+        Write a file to string with the given indent per line. 
+        Used to send code to the jupyter kernel
+    """
+
+    result = ""
+    with open(filepath, "r") as file:
+        for line in file:
+            result += indent + line + '\n'
+
+    return result
 
 class JupyterNotReadyError(Exception):
     pass
 
 _rtd_server_object = None
+
 # We use the ipython kernel json filename as the object cache key for the 
 # connection object. To preserve this we need to provide a custom converter
 # otherwise RtdServer will resolve the cache reference when converting to 
@@ -180,9 +125,9 @@ _uncached_convert = None
 def _rtd_server():
     global _rtd_server_object, _uncached_convert
     if _rtd_server_object is None:
-        import xloil.type_converters
+        from xloil.type_converters import get_converter
         _rtd_server_object = xlo.RtdServer()
-        _uncached_convert = xloil.type_converters.get_converter("object", read=True, cache=False)
+        _uncached_convert = get_converter("object", read=True, cache=False)
     return _rtd_server_object
 
 class _JupyterConnection:
@@ -220,27 +165,35 @@ class _JupyterConnection:
             except Empty:
                 break
 
-        # Setup the python path to find xloil.jupyter. We do a reload of xloil because
-        # we override xloil.func - this allows repeated connection to the same kernel
-        # without error.  We also connect the variable monitor
-
-        # TODO: if the target notebook already has imported xloil under a different name,
-        # I suspect the overwrite of xloil.func will not work.
+        #
+        # To avoid the remote kernel needing to export or even know about xlOil,
+        # we send a small class by concatenating the files jupyter_kernel.py and
+        # func_inspect.py. We then instantiate that class and assign it to the 
+        # variable `xloil` to give consistent syntax for function declaration.
+        # If xloil is actually imported in the kernel, it will overwrite the symbol
+        # and some magic in __init__.py should fix up the names.
+        #
         
         xlo.log(f"Initialising Jupyter connection {self._connection_file}", level='debug')
         
+        excel_hwnd = xlo.excel_state().hwnd
+        our_dir = os.path.dirname(os.path.realpath(__file__))
+
         msg_id = self._client.execute(
-            "import sys, IPython\n" + 
-            f"if not '{self._xloil_path}' in sys.path: sys.path.append('{self._xloil_path}')\n" + 
-            "import xloil\n"
-            "import xloil.jupyter\n"
-            "xloil.func = xloil.jupyter._replacement_func_decorator\n" # Overide xloil.func to do our own thing
-            "_xloil_vars = xloil.jupyter.MonitoredVariables(get_ipython())\n"
+            _file_to_string(os.path.join(our_dir, "jupyter_kernel.py"), indent="")
+            + _file_to_string(os.path.join(our_dir, "func_inspect.py"), indent="    ")
+            + f"\n_xloil_jpy_impl = _xlOilJupyterImpl(get_ipython(), {excel_hwnd})"
+            +  "\nimport sys"
+            +  "\nif 'xloil' in sys.modules:"
+            + f"\n    xloil.func = _xloil_jpy_impl.func"
+            + f"\n    xloil.app = _xloil_jpy_impl.app"
+            +  "\nelse:"
+            + f"\n    xloil = _xloil_jpy_impl"
         )
 
         # TODO: retry?
         # Some examples online suggest get_shell_msg(msg_id) should work. It doesn't, which is 
-        # a shame as it would be rather nicer than this loop.
+        # a shame.  It may be possible to use the undocumented _async_recv_reply function instead.
         msg = None
         while True:
             if not await self._client.is_alive():
@@ -254,9 +207,8 @@ class _JupyterConnection:
 
             if msg.get('parent_header', {}).get('msg_id', None) == msg_id:
                 if msg['content']['status'] == 'error':
-                    trace = "\n".join(msg['content']['traceback'])
-                    ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
-                    raise Exception(f"Connection failed: {msg['content']['evalue']} at {ansi_escape.sub('', trace)}")
+                    trace = _remove_ansi_escapes("\n".join(msg['content']['traceback']))
+                    raise Exception(f"Connection failed: {msg['content']['evalue']} at {trace}")
                 break
 
         self._sessionId = msg['header']['session']
@@ -268,7 +220,7 @@ class _JupyterConnection:
 
         # If still ready, i.e. not triggered by a kernel restart, clean up our variables
         if self._ready:
-            self._client.execute("_xloil_vars.close()\ndel _xloil_vars")
+            self.execute("_xloil_jpy_impl._vars.unhook()")
 
         self._ready = False
 
@@ -305,35 +257,53 @@ class _JupyterConnection:
         await self.connect()
 
     def execute(self, *args, **kwargs):
-        if not self._ready:
-            raise JupyterNotReadyError()
-        return self._client.execute(*args, **kwargs)
-
-    async def aexecute(self, command):
         """
-        Async run the given command on the kernel
+        Executes asynchronously on the kernel but does not return. Can be
+        called from any thread
         """
         if not self._ready:
             raise JupyterNotReadyError()
 
-        msg_id = self.execute(command)
+        async def coro():
+            self._client.execute(*args, **kwargs)
+
+        asyncio.run_coroutine_threadsafe(coro(), self._loop)
+
+    async def aexecute(self, command:str, **kwargs):
+        """
+        Async run the given command on the kernel. Must be called on same thread 
+        as our xloil event loop, e.g. from an RTD function
+        """
+        if not self._ready:
+            raise JupyterNotReadyError()
+
+        # TODO: maybe able to use the undocumented _async_recv_reply 
+        # method on the client rather than rolling our own
+
+        msg_id = self._client.execute(command, **kwargs)
         future = self._loop.create_future()
         self._pending_messages[msg_id] = future
         return await future
 
     async def invoke(self, func_name, *args, **kwargs):
+        """
+        Must be called on same thread as our xloil event loop, e.g. from an RTD function
+        """
         if not self._ready:
             raise JupyterNotReadyError()
 
-        args_data = repr(_serialise(args))
-        kwargs_data = repr(_serialise(kwargs))
-        msg_id = self.execute("xloil.jupyter.function_invoke("
-           f"{func_name}, {args_data}, {kwargs_data})")
-        future = self._loop.create_future()
-        self._pending_messages[msg_id] = future
-        return await future
+        # TODO: won't work with cellerror, need to convert that to None or string or?
+
+        args_data = repr(_pickle(args))
+        kwargs_data = repr(_pickle(kwargs))
+
+        return await self.aexecute(
+            f"_xloil_jpy_impl._function_invoke("
+            f"{func_name}, {args_data}, {kwargs_data})"
+            )
 
     def _watch_prefix(self, name):
+        # Just come up with some unique ID for the RTD topic...
         prefix = self._client.get_connection_info()["key"].decode('utf-8')
         return f"{prefix}_{name}" 
 
@@ -370,7 +340,7 @@ class _JupyterConnection:
         while await self._client.is_alive():
             from queue import Empty
             try:
-                # At the moment we communicate over the public iopub channel 
+                # We communicate over the public iopub channel 
                 # TODO: consider using the private comm channel rather
                 msg = await self._client.get_iopub_msg()
                 content = msg['content']
@@ -378,11 +348,11 @@ class _JupyterConnection:
                 # Timed out waiting for messages, or msg had no content
                 continue 
             
-            xlo.log(f"Jupyter Msg: {content}", level='trace')
+            xlo.log(f"Jupyter Message: {msg['header']}", level='trace')
 
             msg_type = msg['header']['msg_type']
 
-            # If kernel is shutting down, break out of loop
+            # If kernel is shutting down, break out of loop by returning
             if msg_type == 'shutdown_reply':
                 xlo.log(f"Jupyter kernel shutdown: {self._connection_file}", level='info')
                 self._ready = False
@@ -395,52 +365,67 @@ class _JupyterConnection:
             # Look for xlOil specific message content
             data = content.get('data', {})
             xloil_data = data.get('xloil/data', None)
-            payload = None if xloil_data is None else _deserialise(xloil_data)
+            meta_type = content.get('metadata', {}).get('type', None)
 
-            
             # If we matched a pending message, check for an error or a result then
             # publish the result and pop the pending message. We also will also 
             # match kernel status messages which are replies to our execute request
             # so in this case we just continue
             if pending is not None:
-                xlo.log(f"Jupyter matched reply to: {parent_id}", level='trace')
+                xlo.log(f"Jupyter matched '{msg_type}' reply to: {parent_id}", level='trace')
                 result = None
                 if msg_type == 'error':
                     result = content['evalue']
+                elif msg_type == 'display_data':
+                    if xloil_data is not None:
+                        result = self._process_xloil_message(meta_type, xloil_data, pending)
+                    else:
+                        result = f"Unexpected result: {data}"
                 elif msg_type == 'execute_result':
-                    if xloil_data is None:
-                        result = eval(content['data']['text/plain'])
-                    elif content['metadata']['type'] == "FuncResult":
-                        result = payload
-                else: # Kernel status and other messages
-                    continue
-                pending.set_result(result or f"Kernel reply {content} not understood")
+                    result = eval(data.get('text/plain', "MISSING_RESULT"))
+                else: 
+                    continue # Kernel status and other messages
+
+                xlo.log(f"Jupyter result for request {parent_id}: {result}", level='trace')
+                pending.set_result(result)
                 self._pending_messages.pop(parent_id)
                 continue
 
             if xloil_data is None: 
                 continue
 
-            meta_type = content['metadata']['type']
-            
-            xlo.log(f"Jupyter xlOil Msg: {payload}", level='trace')
+            self._process_xloil_message(meta_type, xloil_data)
+        
+    def _process_xloil_message(self, meta_type, xloil_data, pending=None):
 
-            # Handle xlOil messages
-            if meta_type == "VariableChange":
-                self.publish_variables(payload)
+        # Just used for logging
+        payload = None
 
-            elif meta_type == "FuncRegister":
+        if meta_type == "VariableChange":
+            payload = _unpickle(xloil_data)
+            self.publish_variables(payload)
 
-                payload.register(self)
+        elif meta_type == "FuncRegister":
+            # Registrations are sent using JSON serialisation rather than pickle
+            # because the _FuncDescription is not declard in the same python
+            # module on both sides 
+            payload = xloil_data
+            func_descr = json.loads(xloil_data, cls=_FuncDescriptionDecoder)
+            _register_func_description(func_descr, connection=self)
+                
+            # Keep track of our funtions for a clean shutdown
+            self._registered_funcs.add(func_descr.name)
 
-                # Keep track of our funtions for a clean shutdown
-                self._registered_funcs.add(payload.name)
-
-            elif meta_type == "FuncResult":
-                xlo.log(f"Unexpected function result: {msg}")
-              
+        elif meta_type == "FuncResult":
+            if pending:
+                return _unpickle(xloil_data)
             else:
-                raise Exception(f"Unknown xlOil message: {meta_type}, {payload}")
+                xlo.log(f"Unexpected function result: {msg}")
+        else:
+            raise Exception(f"Unknown xlOil message: {meta_type}, {payload}")
+            
+        xlo.log(f"Jupyter xlOil Msg: {payload}", level='trace')
+
 
     # TODO: support 'with'?
     #def __enter__(self):
@@ -463,20 +448,25 @@ class _JupyterTopic(xlo.RtdPublisher):
 
             async def run():
                 try:
+                    xlo.log(f"Awaiting connection to Jupyter kernel {self._topic}", level="debug")
                     await conn.connect()
                     while True:
                         self._cacheRef = xlo.cache.add(conn, key=self._topic)
                         _rtd_server().publish(self._topic, self._cacheRef)
                         restart = await conn.process_messages()
+                        xlo.log(f"Closing connection to Jupyter kernel {self._topic}", level="debug")
                         conn.close()
                         if not restart:
                             break
                         await conn.wait_for_restart()
+                        xlo.log(f"Restarted connection to Jupyter kernel {self._topic}", level="debug")
 
                     _rtd_server().publish(self._topic, "KernelShutdown")
 
                 except Exception as e:
                     _rtd_server().publish(self._topic, e)
+                finally:
+                    conn.close()
 
             self._task = conn._loop.create_task(run())
 

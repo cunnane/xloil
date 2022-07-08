@@ -11,7 +11,6 @@ xlOil Python Module Reference
 	Arg
 	CannotConvert
 	CellError
-	Event
 	ExcelArray
 	AllowRange
 	RtdPublisher
@@ -24,7 +23,6 @@ xlOil Python Module Reference
 	returner
 	in_wizard
 	log
-	LogWriter
 	get_async_loop
 	get_event_loop
 	from_excel_date
@@ -34,16 +32,20 @@ xlOil Python Module Reference
 	source_addin
 	excel_callback
 	excel_state
+	ExcelState
 	run
 	run_async
 	call
 	call_async	
-	app
+	Caller
+	Application
 	Range
 	Worksheet
 	Workbook
 	ExcelWindow
-	windows
+	Workbooks
+	Worksheets
+	app
 	workbooks
 	active_worksheet
 	active_workbook
@@ -80,8 +82,6 @@ Excel Object Model
 
 .. currentmodule:: xloil
 
-.. autodata:: windows
-
 .. autodata:: workbooks
 	
 .. autofunction:: app
@@ -90,26 +90,54 @@ Excel Object Model
 
 .. autofunction:: active_workbook
 
+.. autoclass:: Application
+	:members: 
+	:inherited-members:
+	:undoc-members:
+	:special-members: __enter__, __exit__
+
+.. autoclass:: Caller
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
 .. autoclass:: Range
 	:members: 
 	:inherited-members:
 	:undoc-members:
+	:special-members: __getitem__
 
 .. autoclass:: Workbook
 	:members: 
 	:inherited-members:
 	:undoc-members:
+	:special-members: __getitem__
 
 .. autoclass:: Worksheet
 	:members: 
 	:inherited-members:
 	:undoc-members:
+	:special-members: __getitem__
 
 .. autoclass:: ExcelWindow
 	:members: 
 	:inherited-members:
 	:undoc-members:
 
+.. autoclass:: ExcelWindows
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
+.. autoclass:: Workbooks
+	:members: 
+	:inherited-members:
+	:undoc-members:
+
+.. autoclass:: Worksheets
+	:members: 
+	:inherited-members:
+	:undoc-members:
 
 RTD Functions
 -------------
@@ -132,25 +160,84 @@ GUI Interaction
 .. currentmodule:: xloil
 
 .. autoclass:: ExcelGUI
+	:members:
 .. autoclass:: CustomTaskPane 
+	:members:	
 .. autoclass:: TaskPaneFrame
+	:members:
 .. autoclass:: RibbonControl
+	:members:
+	
 .. autofunction:: find_task_pane
 .. autofunction:: create_task_pane
 
 .. automodule:: xloil.qtgui
 	:members: Qt_thread, QtThreadTaskPane	
 
+Events
+------
+
+.. currentmodule:: xloil.event
+
+.. automodule:: xloil.event
+
+.. autoclass:: Event
+	:members:
+	:special-members: __iadd__, __isub__
+
+.. autofunction:: pause
+.. autofunction:: allow
+
+.. autodata:: AfterCalculate
+.. autodata:: WorkbookOpen
+.. autodata:: NewWorkbook
+.. autodata:: SheetSelectionChange
+.. autodata:: SheetBeforeDoubleClick
+.. autodata:: SheetBeforeRightClick
+.. autodata:: SheetActivate
+.. autodata:: SheetDeactivate
+.. autodata:: SheetCalculate
+.. autodata:: SheetChange
+.. autodata:: WorkbookAfterClose
+.. autodata:: WorkbookRename
+.. autodata:: WorkbookActivate
+.. autodata:: WorkbookDeactivate
+.. autodata:: WorkbookBeforeClose
+.. autodata:: WorkbookBeforeSave
+.. autodata:: WorkbookAfterSave
+.. autodata:: WorkbookBeforePrint
+.. autodata:: WorkbookNewSheet
+.. autodata:: WorkbookAddinInstall
+.. autodata:: WorkbookAddinUninstall
+.. autodata:: XllAdd
+.. autodata:: XllRemove
+.. autodata:: ComAddinsUpdate
+.. autodata:: PyBye
+.. autodata:: UserException
+
 
 Everything else
 ---------------
 
+.. currentmodule:: xloil
+
 .. automodule:: xloil
-	:members: Event,in_wizard,LogWriter,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
 	:imported-members:
 	:undoc-members:
 
+.. autoclass::ExcelState
+	:members:
+	:imported-members:
+	:undoc-members:
+	:inherited-members:
+	:private-members:
+	:special-members:
+	
 .. autodata:: log
+
+.. automodule:: xloil.logging
+	:members: _LogWriter
 
 .. automodule:: xloil.debug
 	:members:

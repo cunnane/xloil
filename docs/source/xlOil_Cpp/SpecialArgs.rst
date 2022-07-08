@@ -43,8 +43,8 @@ Inplace returns
 Excel supports returning values by modifying arguments in place.  This is most useful for the 
 FPArray type.  To declare inplace return, simply make the argument a non-const ref or pointer.
 
-It is also possible to returning an `ExcelObj` in-place but this is disabled 
-by default. In the words of the XLL SDK:
+It is also possible to return an `ExcelObj` in-place but this is disabled by default. 
+In the words of the XLL SDK:
 
 
     "Excel permits the registration of functions that return an XLOPER by modifying 
@@ -57,8 +57,8 @@ by default. In the words of the XLL SDK:
 
 In practice, it can be safe to modify an ExcelObj in place, for instance *xloSort*
 modifies its input by changing the row order in the array, but without changing memory 
-allocation.  However it does not use inplace return becasue the general difficulty with 
-this technique is that you cannot return a type different to the one passed, in particular
+allocation.  However it does not use an inplace return because the drawback of this  
+technique is that you cannot return a different type to the one passed, in particular
 you cannot return an error message or error type. 
 
 To enable inplace `ExcelObj` returns, define the macro 

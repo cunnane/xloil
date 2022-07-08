@@ -1,8 +1,7 @@
 #include "LocalFunctions.h"
 #include <xlOil/StaticRegister.h>
 #include <xlOil/DynamicRegister.h>
-#include <xlOil/Events.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelCall.h>
 #include <xlOil/Log.h>
@@ -11,8 +10,6 @@
 #include <xlOil-COM/WorkbookScopeFunctions.h>
 #include <xlOil-XLL/Intellisense.h>
 #include <xloil/ExcelThread.h>
-#include <boost/preprocessor/repetition/repeat_from_to.hpp>
-#include <boost/preprocessor/repetition/enum_params.hpp>
 #include <oleacc.h>
 #include <map>
 
@@ -21,62 +18,121 @@ using std::map;
 using std::shared_ptr;
 using std::vector;
 using std::make_shared;
+using std::move;
 
 namespace xloil
 {
-  // TODO: this is not good, filesource should manage its own local funcs and event
-  map<wstring, map<wstring, shared_ptr<const WorksheetFuncSpec>>> theRegistry;
-
-  auto& findOrThrow(const wchar_t* wbName, const wchar_t* funcName)
+  namespace
   {
-    auto wb = theRegistry.find(wbName);
-    if (wb == theRegistry.end())
-      XLO_THROW(L"Workbook '{0}' unknown for local function '{1}'", wbName, funcName);
-    auto func = wb->second.find(funcName);
-    if (func == wb->second.end())
-      XLO_THROW(L"Local function '{1}' in workbook '{0}' not found", wbName, funcName);
-    return *func->second;
+    map<intptr_t, shared_ptr<const WorksheetFuncSpec>> theRegistry2;
+
+    using LocalFunctionMap = std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>>;
+
+    void unregisterLocalFuncs(LocalFunctionMap& toRemove)
+    {
+      for (auto& [k, v] : toRemove)
+        theRegistry2.erase(v->registerId());
+    }
   }
 
-  auto workbookCloseHandler = Event::WorkbookAfterClose().bind(
-    [](const wchar_t* wbName)
-    {
-      auto found = theRegistry.find(wbName);
-      if (found != theRegistry.end())
-        theRegistry.erase(found);
-    });
+  LocalWorksheetFunc::LocalWorksheetFunc(
+    const std::shared_ptr<const WorksheetFuncSpec>& spec)
+    : _spec(spec)
+  {}
+
+  LocalWorksheetFunc::~LocalWorksheetFunc()
+  {
+  }
+
+  const std::shared_ptr<const WorksheetFuncSpec>& LocalWorksheetFunc::spec() const
+  {
+    return _spec;
+  }
+  const std::shared_ptr<const FuncInfo>& LocalWorksheetFunc::info() const
+  {
+    return _spec->info();
+  }
+  intptr_t LocalWorksheetFunc::registerId() const
+  {
+    return (intptr_t)_spec.get();
+  }
 
   void registerLocalFuncs(
+    LocalFunctionMap& existing,
     const wchar_t* workbookName,
-    const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
+    const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcs,
     const bool append)
   {
-    auto& wbFuncs = theRegistry[workbookName];
-    wbFuncs.clear();
-    vector<shared_ptr<const FuncInfo>> funcInfos;
-    for (auto& spec: funcSpecs)
-    {
-      funcInfos.push_back(spec->info());
-      wbFuncs[spec->name()] = spec;
-    }
-    COM::writeLocalFunctionsToVBA(workbookName, funcInfos, append);
+    LocalFunctionMap toRemove;
 
-    runExcelThread([funcInfos]()
+    if (!append)
+      existing.swap(toRemove);
+
+    auto rewriteVBAModule = !append;
+
+    vector<shared_ptr<const LocalWorksheetFunc>> toRegister;
+
+    for (auto& func : funcs)
+    {
+      toRegister.push_back(make_shared<LocalWorksheetFunc>(func));
+      auto found = existing.find(func->name());
+      if (found != existing.end())
+      {
+        rewriteVBAModule = true;
+        toRemove.insert(existing.extract(found));
+      }
+    }
+
+    const auto nNewFuncs = toRegister.size();
+
+    if (rewriteVBAModule)
+    {
+      for (auto& f : existing)
+        toRegister.push_back(f.second);
+    }
+    
+    const auto iNewFuncsEnd = toRegister.begin() + nNewFuncs;
+    for (auto i = toRegister.begin(); i != iNewFuncsEnd; ++i)
+      existing.emplace(i->get()->info()->name, *i);
+
+    vector<shared_ptr<const FuncInfo>> funcInfos;
+    for (auto& f : toRegister)
+      funcInfos.emplace_back(f->info());
+
+    runExcelThread([
+        append, 
+        workbookName = wstring(workbookName), 
+        newRegisteredFuncs = move(toRegister),
+        toRemove = move(toRemove) 
+    ]() mutable
+    {
+      unregisterLocalFuncs(toRemove);
+      COM::writeLocalFunctionsToVBA(workbookName.c_str(), newRegisteredFuncs, append);
+      for (auto& f : newRegisteredFuncs)
+        theRegistry2.emplace(f->registerId(), f->spec());
+    });
+
+    runExcelThread([funcInfos = std::move(funcInfos)]()
     {
       publishIntellisenseInfo(funcInfos);
     }, ExcelRunQueue::XLL_API | ExcelRunQueue::ENQUEUE);
   }
 
-  void clearLocalFunctions(const wchar_t* workbookName)
+  void clearLocalFunctions(
+    LocalFunctionMap& existing)
   {
-    theRegistry.erase(workbookName);
+    LocalFunctionMap toRemove;
+    existing.swap(toRemove);
+    runExcelThread([toRemove = move(toRemove)]() mutable
+      {
+        unregisterLocalFuncs(toRemove);
+      });
   }
 }
 
 using namespace xloil;
 int __stdcall localFunctionEntryPoint(
-  const VARIANT* workbookName,
-  const VARIANT* funcName,
+  const intptr_t* funcId,
   VARIANT* returnVal,
   const VARIANT* args)
 {
@@ -87,10 +143,14 @@ int __stdcall localFunctionEntryPoint(
   {
     VariantClear(returnVal);
 
-    if (workbookName->vt != VT_BSTR || funcName->vt != VT_BSTR)
-      XLO_THROW("WorkbookName and funcName parameters must be strings");
+   /* if (funcId->vt != VT_INT)
+      XLO_THROW("WorkbookName and funcName parameters must be strings");*/
 
-    auto& func = findOrThrow(workbookName->bstrVal, funcName->bstrVal);
+    auto found = theRegistry2.find(*funcId);
+    if (found == theRegistry2.end())
+      XLO_THROW("Local funcId {0} not found", *funcId);
+
+    auto& func = *found->second;
 
     const auto nArgs = func.info()->numArgs();
 

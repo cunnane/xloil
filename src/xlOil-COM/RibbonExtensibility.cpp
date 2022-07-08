@@ -5,7 +5,6 @@
 #include <xlOil/Log.h>
 #include <map>
 #include <functional>
-#include <regex>
 
 using std::wstring;
 using std::map;
@@ -69,8 +68,9 @@ namespace xloil
       {
         if (!_xml.empty())
           XLO_THROW("Already set"); // TODO: reload addin?
-        std::wregex find(L"(<customUI[^>]*)>");
-        _xml = std::regex_replace(xml, find, L"$1 onLoad=\"onLoadHandler\">");
+        _xml = xml;
+        auto i = _xml.find(L"<customUI") + wcslen(L"<customUI");
+        _xml.insert(i, L" onLoad=\"onLoadHandler\"");
         _handler = handler;
       }
 

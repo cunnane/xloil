@@ -136,6 +136,7 @@ In addition to the function wizard, Excel has a function context help which pops
 This is only directly available for built-in functions.  Fortunately, Govert of *Excel-DNA* has created
 an add-in which mimics this behaviour for user-defined functions.  Download the XLL (with the right bitness)
 from the link above and activate it by one of:
+
    1) Dragging the XLL into Excel (must be done once per session)
    2) Install it via *Excel* => *Options* => *Addins* => *Manage*. 
    3) Copy it to your `%APPDATA%\\Microsoft\\Excel\\XLSTART` directory.

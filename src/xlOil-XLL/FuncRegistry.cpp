@@ -137,7 +137,7 @@ namespace xloil
       if (truncatedArgNames)
       {
         XLO_INFO(L"Excel does not support a concatenated argument name length of "
-          "more than 255 chars (including commans). Truncating for function '{0}'", info->name);
+          "more than 255 chars (including commas). Truncating for function '{0}'", info->name);
         argNames.resize(255);
       }
 
@@ -181,6 +181,7 @@ namespace xloil
         truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
       }
 
+      // TODO: entrypoint will always be ascii
       XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
         info->name, utf8ToUtf16(entryPoint), numArgs);
 
@@ -201,7 +202,7 @@ namespace xloil
       // We must be in XLL context to register a function, so can call this:
       publishIntellisenseInfo(info);
 
-      return registerId.toInt();
+      return registerId.get<int>();
     }
 
     void throwIfPresent(const wstring& name) const
@@ -239,7 +240,7 @@ namespace xloil
   private:
     FunctionRegistry()
     {
-      theCoreDllName = State::coreDllName();
+      theCoreDllName = Environment::coreDllName();
     }
 
     map<wstring, RegisteredFuncPtr> theRegistry;
@@ -263,7 +264,7 @@ namespace xloil
     XLO_DEBUG(L"Deregistering {0}", name);
 
     auto[result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
-    if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.toBool())
+    if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.get<bool>())
     {
       XLO_WARN(L"Unregister failed for {0}", name);
       return false;
@@ -342,8 +343,8 @@ namespace xloil
     }
     catch (std::exception& e)
     {
-      XLO_ERROR("Failed to register func {0}: {1}",
-        utf16ToUtf8(spec->info()->name.c_str()), e.what());
+      XLO_ERROR(L"Failed to register func {0}: {1}",
+        spec->info()->name.c_str(), utf8ToUtf16(e.what()));
       return RegisteredFuncPtr();
     }
   }

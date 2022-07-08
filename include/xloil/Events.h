@@ -1,13 +1,14 @@
 #pragma once
-#include "ExportMacro.h"
+#include <xloil/ExportMacro.h>
 #include <xlOil/Log.h> 
+#include <xloil/Preprocessor.h>
 #include <functional>
 #include <memory>
 #include <list>
 #include <mutex>
 #include <future>
 #include <string>
-#include <boost/preprocessor/stringize.hpp>
+
 
 namespace xloil { class Range; }
 
@@ -62,8 +63,8 @@ namespace xloil
       using handler = std::function<R(Args...)>;
       using handler_id = const handler*;
 
-      Event(const char* name = 0)
-        : _name(name ? name : "?")
+      Event(const wchar_t* name = 0)
+        : _name(name ? name : L"?")
       {}
 
       virtual ~Event()
@@ -155,7 +156,7 @@ namespace xloil
         _lock.lock();
         std::vector<handler> copy(_handlers.begin(), _handlers.end());
         _lock.unlock();
-        XLO_TRACE("Firing event {0}", _name);
+        XLO_DEBUG(L"Firing event {0}", _name);
         return _collector(copy, std::forward<Args>(args)...);
       }
 
@@ -172,13 +173,13 @@ namespace xloil
         _handlers.clear();
       }
 
-      const std::string& name() const { return _name; }
+      const std::wstring& name() const { return _name; }
 
     private:
       std::list<handler> _handlers;
       mutable std::mutex _lock;
       TCollector _collector;
-      std::string _name;
+      std::wstring _name;
     };
 
     using EventNoParam = Event<void(void), detail::VoidCollector>;
@@ -244,15 +245,24 @@ namespace xloil
       WorkbookOpen();
 
     /// <summary>
-    /// WorkbookAfterClose is a special event: Excel's event `WorkbookBeforeClose`, is 
-    /// limited by being cancellable by the user: it is not possible to know if the 
-    /// workbook actually closed. When xlOil calls `WorkbookAfterClose`, the workbook is
-    /// certainly closed, but it may be some time since that closure happened.
+    /// WorkbookAfterClose is not part of Excel's event model.  Excel's event 
+    /// `WorkbookBeforeClose`, can be cancellable by the user so it is not possible to 
+    /// know if the workbook actually closed. When xlOil calls `WorkbookAfterClose`, the 
+    /// workbook is certainly closed, but it may be some time since that closure happened.
     /// 
-    /// The event is not called for each workbook when xlOil exits.
+    /// The event is not called for each workbook when xlOil (or Excel) exits.
     /// </summary>
     XLOIL_EXPORT EventNameParam&
       WorkbookAfterClose();
+
+    /// <summary>
+    /// WorkbookRename is also not in Excel's event module. It is called when xlOil
+    /// detects that a workbook has been saved under a different name. It does this by
+    /// watching the `WorkbookBeforeSave` and `WorkbookAfterSave` events, so the event
+    /// is fired immediately after save.
+    /// </summary>
+    XLOIL_EXPORT Event<void(const wchar_t* currentPath, const wchar_t* previousPath)>&
+      WorkbookRename();
 
     XLOIL_EXPORT EventNameParam&
       WorkbookActivate();
@@ -265,6 +275,9 @@ namespace xloil
 
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool saveAsUI, bool& cancel)>&
       WorkbookBeforeSave();
+
+    XLOIL_EXPORT Event<void(const wchar_t* wbName, bool success)>&
+      WorkbookAfterSave();
 
     XLOIL_EXPORT Event<void(const wchar_t* wbName, bool& cancel)>&
       WorkbookBeforePrint();
@@ -314,13 +327,6 @@ namespace xloil
     XLOIL_EXPORT std::shared_ptr<Event<
       void(const wchar_t* directory, const wchar_t* filename, FileAction)>>
       DirectoryChange(const std::wstring& path);
-
-    /// <summary>
-    /// Must be run on the main thread
-    /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    XLOIL_EXPORT void allowEvents(bool value);
   }
 
  
@@ -342,10 +348,12 @@ namespace xloil
     (SheetCalculate)\
     (SheetChange)\
     (WorkbookAfterClose)\
+    (WorkbookRename)\
     (WorkbookActivate)\
     (WorkbookDeactivate)\
     (WorkbookBeforeClose)\
     (WorkbookBeforeSave)\
+    (WorkbookAfterSave)\
     (WorkbookBeforePrint)\
     (WorkbookNewSheet)\
     (WorkbookAddinInstall)\
@@ -366,7 +374,7 @@ namespace xloil
     decltype(name()) name() \
     { \
       static auto e = std::make_shared<std::remove_reference_t<\
-        decltype(name())>>(BOOST_PP_STRINGIZE(name)); \
+        decltype(name())>>(XLO_WSTR(name)); \
       return *e; \
     }
 }

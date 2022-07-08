@@ -1,7 +1,7 @@
 #include <xloil/ExcelObj.h>
 #include <xloil/ArrayBuilder.h>
 #include <xloil/ExcelArray.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil/Preprocessor.h>
 
@@ -25,16 +25,16 @@ namespace xloil
       ProcessArgs([&result](auto& argVal)
       {
         if (argVal.isNonEmpty())
-          result += argVal.toString();
+          result += argVal.get<std::wstring>();
       }, XLO_ARGS_LIST(XLOCONCAT_NARGS, XLOCONCAT_ARG_NAME));
     }
     else
     {
-      auto sep = separator.toString();
+      auto sep = separator.get<std::wstring>();
       ProcessArgs([&result, &sep](auto& argVal)
       {
         if (argVal.isNonEmpty())
-          result += argVal.toString(sep.c_str()) + sep;
+          result += argVal.toStringRecursive(sep.c_str()) + sep;
       }, XLO_ARGS_LIST(XLOCONCAT_NARGS, XLOCONCAT_ARG_NAME));
       if (!result.empty())
         result.erase(result.size() - sep.size());

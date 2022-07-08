@@ -40,16 +40,16 @@ namespace xloil
     struct DirectoryWatchEvent : public DirectoryWatchEventBase, public FW::FileWatchListener
     {
       DirectoryWatchEvent(const std::wstring& path)
-        : DirectoryWatchEventBase(("Watch_" + utf16ToUtf8(path)).c_str())
+        : DirectoryWatchEventBase((L"Watch_" + path).c_str())
         , _lastTickCount(0)
         , _watchId(theFileWatcher.addWatch(path, this, false))
       {
-        XLO_TRACE(L"Started directory watch on '{}'", path);
+        XLO_DEBUG(L"Started directory watch on '{}'", path);
       }
 
       virtual ~DirectoryWatchEvent()
       {
-        XLO_TRACE("Ended directory watch '{}'", name());
+        XLO_DEBUG(L"Ended directory watch '{}'", name());
         theFileWatcher.removeWatch(_watchId);
       }
 
@@ -90,15 +90,6 @@ namespace xloil
       auto event = make_shared<DirectoryWatchEvent>(path);
       auto [it, ins] = theDirectoryWatchers.emplace(path, event);
       return event;
-    }
-
-    XLOIL_EXPORT void allowEvents(bool value)
-    {
-      try
-      {
-        COM::excelApp().EnableEvents = _variant_t(value);
-      }
-      XLO_RETHROW_COM_ERROR;
     }
   }
 }

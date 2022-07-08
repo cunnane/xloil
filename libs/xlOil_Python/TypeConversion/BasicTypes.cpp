@@ -11,31 +11,46 @@ namespace xloil
 {
   namespace Python
   {
+    namespace
+    {
+      struct CustomReturnConverter
+      {
+        std::shared_ptr<const IPyToExcel> value;
+      };
+      CustomReturnConverter* theConverter = nullptr;
+    }
+
+    const IPyToExcel* detail::getCustomReturnConverter()
+    {
+      return theConverter->value.get();
+    }
+
     const char* IPyFromExcel::name() const
     {
       return "type";
     }
 
-    template <class T>
-    void convertPy(pybind11::module& mod, const char* type)
+    namespace
     {
-      bindPyConverter<PyFromExcelConverter<T>>(mod, type).def(py::init<>());
-    }
-
-    template <class T>
-    void convertXl(pybind11::module& mod, const char* type)
-    {
-      bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
-    }
-
-
-    struct FromPyToCache
-    {
-      auto operator()(const PyObject* obj) const
+      template <class T>
+      void convertPy(pybind11::module& mod, const char* type)
       {
-        return pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)));
+        bindPyConverter<PyFromExcelConverter<T>>(mod, type).def(py::init<>());
       }
-    };
+
+      template <class T>
+      void convertXl(pybind11::module& mod, const char* type)
+      {
+        bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
+      }
+
+      struct FromPyToCache
+      {
+        auto operator()(const PyObject* obj) const
+        {
+          return pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)));
+        }
+      };
 
     /// <summary>
     /// Always returns a single cell value. Uses the Excel object cache for 
@@ -52,28 +67,36 @@ namespace xloil
       }
     };
 
-    static int theBinder = addBinder([](py::module& mod)
-    {
-      // Bind converters for standard types
-      convertPy<PyFromInt>(mod, "int");
-      convertPy<PyFromDouble>(mod, "float");
-      convertPy<PyFromBool>(mod, "bool");
-      convertPy<PyFromString>(mod, "str");
-      convertPy<PyFromAny>(mod, "object");
-      convertPy<PyCacheObject>(mod, "Cache");
+      static int theBinder = addBinder([](py::module& mod)
+      {
+        // Bind converters for standard types
+        convertPy<PyFromInt>(mod, "int");
+        convertPy<PyFromDouble>(mod, "float");
+        convertPy<PyFromBool>(mod, "bool");
+        convertPy<PyFromString>(mod, "str");
+        convertPy<PyFromAny>(mod, "object");
+        convertPy<PyCacheObject>(mod, "Cache");
 
-      convertPy<PyFromIntUncached>(mod, XLOPY_UNCACHED_PREFIX "int");
-      convertPy<PyFromDoubleUncached>(mod, XLOPY_UNCACHED_PREFIX "float");
-      convertPy<PyFromBoolUncached>(mod, XLOPY_UNCACHED_PREFIX "bool");
-      convertPy<PyFromStringUncached>(mod, XLOPY_UNCACHED_PREFIX "str");
-      convertPy<PyFromAnyUncached>(mod, XLOPY_UNCACHED_PREFIX "object");
+        convertPy<PyFromIntUncached>(mod, XLOPY_UNCACHED_PREFIX "int");
+        convertPy<PyFromDoubleUncached>(mod, XLOPY_UNCACHED_PREFIX "float");
+        convertPy<PyFromBoolUncached>(mod, XLOPY_UNCACHED_PREFIX "bool");
+        convertPy<PyFromStringUncached>(mod, XLOPY_UNCACHED_PREFIX "str");
+        convertPy<PyFromAnyUncached>(mod, XLOPY_UNCACHED_PREFIX "object");
 
-      convertXl<FromPyLong>(mod, "int");
-      convertXl<FromPyFloat>(mod, "float");
-      convertXl<FromPyBool>(mod, "bool");
-      convertXl<FromPyString>(mod, "str");
-      convertXl<FromPyToCache>(mod, "Cache");
-      convertXl<FromPyToSingleValue>(mod, "SingleValue");
-    });
+        convertXl<FromPyLong>(mod, "int");
+        convertXl<FromPyFloat>(mod, "float");
+        convertXl<FromPyBool>(mod, "bool");
+        convertXl<FromPyString>(mod, "str");
+        convertXl<FromPyToCache>(mod, "Cache");
+        convertXl<FromPyToSingleValue>(mod, "SingleValue");
+
+        py::class_<CustomReturnConverter>(mod, "_CustomReturnConverter")
+          .def_readwrite("value", &CustomReturnConverter::value);
+          
+        theConverter = new CustomReturnConverter();
+        mod.add_object("_return_converter_hook",
+          py::cast(theConverter, py::return_value_policy::take_ownership));
+      });
+    }
   }
 }

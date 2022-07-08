@@ -35,7 +35,7 @@ namespace pybind11
     // at that's likely the most useful thing to see in the cell 
     auto errorString = (std::string)str(errs[errs.size() - 1]);
 
-    for (auto i = 0; i < errs.size(); ++i)
+    for (auto i = 0u; i < errs.size(); ++i)
       errorString += (std::string)str(errs[i]);
 
     return errorString;

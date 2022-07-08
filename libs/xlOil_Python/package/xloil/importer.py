@@ -8,7 +8,7 @@ import inspect
 
 from .register import scan_module, _clear_pending_registrations
 from ._core import StatusBar
-from ._common import log, log_except
+from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
@@ -40,7 +40,7 @@ _module_finder = _SpecifiedPathFinder()
 sys.meta_path.append(_module_finder)
 
 
-def linked_workbook(mod=None):
+def linked_workbook(mod=None) -> str:
     """
         Returns the full path of the workbook linked to the specified module
         or None if the module was not loaded with an associated workbook.
@@ -52,7 +52,7 @@ def linked_workbook(mod=None):
     return _linked_workbooks.get(frame.filename, None)
 
 
-def source_addin(mod=None):
+def source_addin(mod=None) -> str:
     """
         Returns the full path of the source add-in (XLL file) assoicated with
         the current code. That is the add-in which has caused the current code
@@ -70,16 +70,16 @@ def source_addin(mod=None):
 
 def get_event_loop():
     """
-        Returns the background asyncio event loop used to load the current add-in. 
+        Returns the background *asyncio* event loop used to load the current add-in. 
         Unless specified in the settings, all add-ins are loaded in the same thread  
         and event loop.
     """
     import xloil_core
     addin = source_addin()
-    return xloil_core.get_event_loop(addin)
+    return xloil_core._get_event_loop(addin)
 
 
-def _import_scan(what, addin):
+def _import_and_scan(what, addin):
     """
     Loads or reloads the specifed module, which can be a string name
     or module object, then calls scan_module.
@@ -99,14 +99,14 @@ def _import_scan(what, addin):
         with StatusBar(2000) as status:
             for m in what:
                 status.msg(f"Loading {m}")
-                result.append(_import_scan(m, addin))
+                result.append(_import_and_scan(m, addin))
             status.msg("xlOil load complete")
         return result
     
     scan_module(module, addin)
     return module
 
-def _import_file(path, addin, workbook_name=None):
+def _import_file_and_scan(path, addin, workbook_name=None):
 
     """
     Imports the specifed py file as a module without adding its path to sys.modules.
@@ -142,7 +142,7 @@ def _import_file(path, addin, workbook_name=None):
                 module = importlib.import_module(module_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
-            n_funcs = scan_module(module)
+            n_funcs = scan_module(module, addin)
 
             status.msg(f"Registered {n_funcs} funcs for {path}")
 

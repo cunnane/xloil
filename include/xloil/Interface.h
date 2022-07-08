@@ -9,6 +9,7 @@
 namespace toml { class table; }
 namespace xloil { 
   class RegisteredWorksheetFunc; 
+  class LocalWorksheetFunc;
   class AddinContext; 
   namespace Event { enum class FileAction; }
 }
@@ -16,27 +17,26 @@ namespace xloil {
 namespace xloil
 {
   class AddinContext;
-
   /// <summary>
-  /// A file source collects Excel UDFs created from a single file.
-  /// The file could be a plugin DLL or source file. You can inherit
-  /// from this class to provide additional tracking functionality.
+  /// FuncSource is the base class in a hierachy which keeps track 
+  /// of a location (typically a file) from which UDFs have been
+  /// registered and provides functionality such as reloading on change.
   /// 
-  /// Plugins should avoid keeping references to file sources, or if
+  /// Plugins should avoid keeping references to a FuncSource, or if
   /// they do be careful to clean them up when an XLL detaches
   /// </summary>
-  class XLOIL_EXPORT FileSource : public std::enable_shared_from_this<FileSource>
+  class XLOIL_EXPORT FuncSource : public std::enable_shared_from_this<FuncSource>
   {
   public:
     /// <summary>
-    /// 
+    /// Called just after the source is registered in the global FuncSource
+    /// map. FuncSources should not register functions before `init`.
     /// </summary>
-    /// <param name="sourcePath">Should be a full pathname</param>
-    /// <param name="linkedWorkbook">Name of linked workbook, required for local functions</param>
-    FileSource(
-      const wchar_t* sourcePath,
-      const wchar_t* linkedWorkbook = nullptr);
-    virtual ~FileSource();
+    virtual void init() = 0;
+  
+    virtual ~FuncSource();
+
+    virtual const std::wstring& name() const = 0;
 
     /// <summary>
     /// Registers the given function specifcations with Excel. If
@@ -50,8 +50,8 @@ namespace xloil
     /// <param name="specs">functions to register</param>
     /// <param name="append">if false, replacess all currently registered functions</param>
     void registerFuncs(
-        const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs,
-        const bool append = false);
+      const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& specs,
+      const bool append = false);
 
     /// <summary>
     /// Removes the specified function from Excel
@@ -59,74 +59,92 @@ namespace xloil
     /// <param name="name"></param>
     /// <returns></returns>
     bool deregister(const std::wstring& name);
-    /// <summary>
-    /// Registers the given functions as local functions in the specified
-    /// workbook
-    /// </summary>
-    /// <param name="funcSpecs"></param>
-    /// <param name="append">if false, replacess all currently registered functions</param>
-    void registerLocal(
-        const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
-        const bool append);
-
-    /// <summary>
-    /// Looks for a FileSource corresponding the specified pathname.
-    /// Returns the FileSource if found, otherwise a null pointer
-    /// </summary>
-    /// <param name="sourcePath"></param>
-    /// <returns></returns>
-    static std::pair<std::shared_ptr<FileSource>, std::shared_ptr<AddinContext>>
-      findSource(const wchar_t* sourcePath);
-
-    /// <summary>
-    /// Removes the specified source from all add-in contexts
-    /// </summary>
-    /// <param name="context"></param>
-    static void
-      deleteSource(const std::shared_ptr<FileSource>& context);
-
-    const std::wstring& sourcePath() const { return _sourcePath; }
-    const std::wstring& linkedWorkbook() const { return _workbookName; }
-    const wchar_t* sourceName() const { return _sourceName; }
-
-  protected:
-    friend class AddinContext;
-    virtual void startWatch();
 
   private:
     std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>> _functions;
-    std::wstring _sourcePath;
-    const wchar_t* _sourceName;
-    std::wstring _workbookName;
+  };
 
-    std::shared_ptr<const void> _workbookWatcher;
-
-    void handleClose(const wchar_t* wbName);
-    // TODO: implement std::string _functionPrefix;
-  };;
-
-  class WatchedSource : public FileSource
+  /// <summary>
+  /// FileSource extends FuncSource by watching the specified source file
+  /// for changes and signals `reload` on modification or deletes the 
+  /// source (hence unregistering the UDFs) if the watched file is removed.
+  /// </summary>
+  class XLOIL_EXPORT FileSource : public FuncSource
   {
   public:
-    WatchedSource(
-      const wchar_t* sourceName,
-      const wchar_t* linkedWorkbook = nullptr)
-      : FileSource(sourceName, linkedWorkbook)
-    {}
+    friend class AddinContext;
+
+    /// <summary>
+    /// </summary>
+    /// <param name="sourcePath">Should be a full pathname</param>
+    FileSource(const wchar_t* sourcePath, bool watchFile = false);
+    virtual ~FileSource();
+
+    virtual const std::wstring& name() const override { return _sourcePath; }
+    const wchar_t* filename() const { return _sourceName; }
 
   protected:
-    XLOIL_EXPORT virtual void startWatch();
     /// <summary>
-    /// Invoked when the watched file is modified, but not deleted
+    /// Invoked when the source file is modified, but not deleted.
     /// </summary>
-    virtual void reload() = 0;
+    virtual void reload();
+    virtual void init();
+
   private:
+    std::wstring _sourcePath;
+    const wchar_t* _sourceName;
+    bool _watchFile;
     std::shared_ptr<const void> _fileWatcher;
 
     void handleDirChange(
       const wchar_t* dirName,
       const wchar_t* fileName,
       const Event::FileAction action);
+  };
+
+  /// <summary>
+  /// LinkedSource extends FileSource by having an associated workbook. 
+  /// This allows the registration of local functions. The workbook is 
+  /// watched for rename and close events which trigger a call of 
+  /// `renameWorkbook` or deletion of the source respectively.
+  /// </summary>
+  class XLOIL_EXPORT LinkedSource : public FileSource
+  {
+  public:
+    LinkedSource(
+      const wchar_t* sourceName,
+      bool watchFile,
+      const wchar_t* linkedWorkbookName)
+      : FileSource(sourceName, watchFile)
+    {
+      if (linkedWorkbookName)
+        _workbookName = linkedWorkbookName;
+    }
+    ~LinkedSource();
+
+    /// <summary>
+    /// Registers the given functions as local functions in the specified
+    /// workbook
+    /// </summary>
+    /// <param name="funcSpecs"></param>
+    void registerLocal(
+      const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs, 
+      const bool append);
+
+    const std::wstring& linkedWorkbook() const { return _workbookName; }
+
+  protected:
+    virtual void init();
+    virtual void renameWorkbook(const wchar_t* newPathName);
+
+  private:
+    std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>> _localFunctions;
+    std::wstring _workbookName;
+    std::shared_ptr<const void> _workbookCloseHandler;
+    std::shared_ptr<const void> _workbookRenameHandler;
+
+    void handleClose(const wchar_t* wbName);
+    void handleRename(const wchar_t* wbPathName, const wchar_t* prevName);
   };
 
   /// <summary> 
@@ -136,7 +154,7 @@ namespace xloil
   class AddinContext
   {
   public:
-    using ContextMap = std::map<std::wstring, std::shared_ptr<FileSource>>;
+    using ContextMap = std::map<std::wstring, std::shared_ptr<FuncSource>>;
 
     AddinContext(
       const wchar_t* pathName, 
@@ -144,31 +162,21 @@ namespace xloil
 
     ~AddinContext();
 
+
     /// <summary>
-    /// Links a FileSource for the specified source path to this
-    /// add-in context. Other addin contexts are first searched
-    /// for the matching FileSource.  If it is not found a new
-    /// one is created passing the variadic argument to the TSource
-    /// constructor.
+    /// Looks for a FileSource corresponding the specified pathname.
+    /// Returns the FileSource if found, otherwise a null pointer
     /// </summary>
-    template <class TSource, class...Args>
-    std::pair<std::shared_ptr<TSource>, bool>
-      tryAdd(
-        const wchar_t* sourcePath, Args&&... args)
-    {
-      auto found = FileSource::findSource(sourcePath).first;
-      if (found)
-      {
-        addSource(found, false);
-        return std::make_pair(std::static_pointer_cast<TSource>(found), false);
-      }
-      else
-      {
-        auto newSource = std::make_shared<TSource>(std::forward<Args>(args)...);
-        addSource(newSource);
-        return std::make_pair(newSource, true);
-      }
-    }
+    /// <param name="sourcePath"></param>
+    /// <returns></returns>
+    XLOIL_EXPORT static std::pair<std::shared_ptr<FuncSource>, std::shared_ptr<AddinContext>>
+      findSource(const wchar_t* sourcePath);
+
+    /// <summary>
+    /// Removes the specified source from all add-in contexts
+    /// </summary>
+    /// <param name="context"></param>
+    XLOIL_EXPORT static void deleteSource(const std::shared_ptr<FuncSource>& context);
 
     /// <summary>
     /// Gets the root of the addin's ini file
@@ -176,9 +184,9 @@ namespace xloil
     const toml::table* settings() const { return _settings.get(); }
 
     /// <summary>
-    /// Returns a map of all FileSource associated with this XLL addin
+    /// Returns a map of all Sources associated with this XLL addin
     /// </summary>
-    const ContextMap& files() const { return _files; }
+    const ContextMap& sources() const { return _files; }
 
     /// <summary>
     /// Returns the full pathname of the XLL addin
@@ -194,13 +202,11 @@ namespace xloil
       return _pathName.c_str() + slash + 1;
     }
 
-    void addSource(const std::shared_ptr<FileSource>& source)
+    void addSource(const std::shared_ptr<FuncSource>& source)
     {
-      _files.emplace(std::make_pair(source->sourcePath(), source));
-      source->startWatch();
+      _files.emplace(std::make_pair(source->name(), source));
+      source->init();
     }
-
-    void removeSource(ContextMap::const_iterator which);
 
   private:
     AddinContext(const AddinContext&) = delete;

@@ -17,12 +17,11 @@ namespace Tests
   {
   public:
 
-   /* TEST_METHOD(ReverseLookupCacheTest)
+    TEST_METHOD(LookupCacheTest)
     {
       auto cache = ObjectCache<
         std::unique_ptr<int>,
-        CacheUniquifier<std::unique_ptr<int>>::value,
-        true>::create();
+        CacheUniquifier<std::unique_ptr<int>>>::create();
       const int N = 100;
 
       vector<ExcelObj> callers;
@@ -38,12 +37,10 @@ namespace Tests
 
       for (auto i = 0; i < N; ++i)
       {
-        auto* val = cache->fetch(keys[i].asPString().view());
+        auto* val = cache->fetch(keys[i].asStringView());
         Assert::AreEqual<int>(i, **val);
-        auto* key = cache->findKey(val);
-        Assert::AreEqual(keys[i].toString(), *key);
       }
-    }*/
+    }
 
     TEST_METHOD(CallerAddressTypes)
     {
@@ -52,8 +49,8 @@ namespace Tests
       auto sheetName = wstring(L"[Book]Sheet");
       auto caller = CallerInfo(F3, sheetName.c_str());
 
-      Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(CallerInfo::RC));
-      Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(CallerInfo::A1));
+      Assert::AreEqual(sheetName + L"!R3C6:R4C7", caller.writeAddress(AddressStyle::RC | AddressStyle::NOQUOTE));
+      Assert::AreEqual(sheetName + L"!F3:G4", caller.writeAddress(AddressStyle::A1 | AddressStyle::NOQUOTE));
     }
 
     TEST_METHOD(CacheV2Test)
@@ -120,7 +117,7 @@ namespace Tests
       for (auto rep = 0; rep < NumReps * 10; ++rep)
         for (auto i = 0; i < N; ++i)
         {
-          auto* val = cache.fetch(keys[i].asPString().view());
+          auto* val = cache.fetch(keys[i].cast<PStringRef>().view());
 #ifndef RUN_PERFORMANCE_TEST
           Assert::AreEqual<int>(i, **val);
 #endif

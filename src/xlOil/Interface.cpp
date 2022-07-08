@@ -17,6 +17,16 @@ using std::vector;
 
 namespace fs = std::filesystem;
 
+namespace
+{
+  template<class T, class U>
+  std::weak_ptr<T>
+    static_pointer_cast(std::weak_ptr<U> const& r)
+  {
+    return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
+  }
+}
+
 namespace xloil
 {
   AddinContext::AddinContext(
@@ -30,32 +40,17 @@ namespace xloil
   {
   }
 
-  FileSource::FileSource(
-    const wchar_t* sourcePath,
-    const wchar_t* linkedWorkbook)
-    : _sourcePath(sourcePath)
+  void FuncSource::init()
   {
-    auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
-    _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
-    if (linkedWorkbook)
-      _workbookName = linkedWorkbook;
-    //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
   }
 
-  FileSource::~FileSource()
+  FuncSource::~FuncSource()
   {
-    if (_functions.empty() && _workbookName.empty())
+    if (_functions.empty())
       return;
 
-    XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
-
     decltype(_functions) functions;
-    wstring workbookName;
     std::swap(_functions, functions);
-    std::swap(_workbookName, workbookName);
-
-    if (!workbookName.empty())
-      clearLocalFunctions(workbookName.c_str());
 
     runExcelThread([functions = std::move(functions)]()
     {
@@ -91,7 +86,7 @@ namespace xloil
     }
   }
 
-  void FileSource::registerFuncs(
+  void FuncSource::registerFuncs(
     const std::vector<std::shared_ptr<const WorksheetFuncSpec> >& funcSpecs,
     const bool append)
   {
@@ -123,7 +118,7 @@ namespace xloil
     }, ExcelRunQueue::XLL_API);
   }
 
-  bool FileSource::deregister(const std::wstring& name)
+  bool FuncSource::deregister(const std::wstring& name)
   {
     auto iFunc = _functions.find(name);
     if (iFunc != _functions.end())
@@ -138,102 +133,140 @@ namespace xloil
     return false;
   }
 
-  void FileSource::registerLocal(
+
+  std::pair<std::shared_ptr<FuncSource>, std::shared_ptr<AddinContext>>
+    AddinContext::findSource(const wchar_t* source)
+  {
+    for (auto& [addinName, addin] : currentAddinContexts())
+    {
+      auto found = addin->sources().find(source);
+      if (found != addin->sources().end())
+        return make_pair(found->second, addin);
+    }
+    return make_pair(shared_ptr<FuncSource>(), shared_ptr<AddinContext>());
+  }
+
+  void
+    AddinContext::deleteSource(const std::shared_ptr<FuncSource>& context)
+  {
+    for (auto& [name, addinCtx] : currentAddinContexts())
+    {
+      auto found = addinCtx->sources().find(context->name());
+      if (found != addinCtx->sources().end())
+        addinCtx->_files.erase(found);
+    }
+  }
+
+  FileSource::FileSource(
+    const wchar_t* sourcePath, bool watchFile)
+    : _sourcePath(sourcePath)
+    , _watchFile(watchFile)
+  {
+    auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
+    _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
+    // TODO: implement std::string _functionPrefix;
+    //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
+  }
+
+  FileSource::~FileSource()
+  {
+    XLO_DEBUG(L"Deregistering functions in source '{0}'", _sourcePath);
+  }
+
+  void FileSource::reload()
+  {}
+
+  void FileSource::init()
+  {
+    if (_watchFile)
+    {
+      auto path = fs::path(name());
+      auto dir = path.remove_filename();
+      if (!dir.empty())
+        _fileWatcher = Event::DirectoryChange(dir)->weakBind(
+          static_pointer_cast<FileSource>(weak_from_this()),
+          &FileSource::handleDirChange);
+    }
+
+    FuncSource::init();
+  }
+
+  LinkedSource::~LinkedSource()
+  {
+    if (!_localFunctions.empty())
+      clearLocalFunctions(_localFunctions);
+  }
+
+  void LinkedSource::registerLocal(
     const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs,
     const bool append)
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    runExcelThread([=, self = this]()
-    {
-      xloil::registerLocalFuncs(self->_workbookName.c_str(), funcSpecs, append);
-    });
+    registerLocalFuncs(_localFunctions, _workbookName.c_str(), funcSpecs, append);
   }
 
-  std::pair<shared_ptr<FileSource>, shared_ptr<AddinContext>>
-    FileSource::findSource(const wchar_t* source)
-  {
-    auto found = xloil::findFileSource(source);
-    if (found.first)
-    {
-      // Slightly gross little check that the linked workbook is still open
-      // Can we do better?
-      const auto& wbName = found.first->_workbookName;
-      if (!wbName.empty() && !COM::checkWorkbookIsOpen(wbName.c_str()))
-      {
-        deleteSource(found.first);
-        return make_pair(shared_ptr<FileSource>(), shared_ptr<AddinContext>());
-      }
-    }
-    return found;
-  }
 
-  void FileSource::deleteSource(const shared_ptr<FileSource>& source)
-  {
-    xloil::deleteFileSource(source);
-  }
 
-  void FileSource::startWatch()
+  void LinkedSource::init()
   {
     if (!linkedWorkbook().empty())
-      _workbookWatcher = Event::WorkbookAfterClose().weakBind(weak_from_this(), &FileSource::handleClose);
+    {
+      _workbookCloseHandler = Event::WorkbookAfterClose().weakBind(
+        static_pointer_cast<LinkedSource>(weak_from_this()),
+        &LinkedSource::handleClose);
+      _workbookRenameHandler = Event::WorkbookRename().weakBind(
+        static_pointer_cast<LinkedSource>(weak_from_this()),
+        &LinkedSource::handleRename);
+
+    }
+    FileSource::init();
   }
 
-  void WatchedSource::reload()
-  {}
-
-  void WatchedSource::startWatch()
-  {
-    auto path = fs::path(sourcePath());
-    auto dir = path.remove_filename();
-    if (!dir.empty())
-      _fileWatcher = Event::DirectoryChange(dir)->weakBind(weak_from_this(), &WatchedSource::handleDirChange);
-  }
-
-
-  void FileSource::handleClose(const wchar_t* wbName)
+  void LinkedSource::handleClose(const wchar_t* wbName)
   {
     if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
-      FileSource::deleteSource(shared_from_this());
+      AddinContext::deleteSource(shared_from_this());
   }
 
-  void WatchedSource::handleDirChange(
+  void LinkedSource::handleRename(const wchar_t* wbName, const wchar_t* prevName)
+  {
+    if (_wcsicmp(prevName, linkedWorkbook().c_str()) != 0)
+      renameWorkbook(wbName);
+  }
+
+  void LinkedSource::renameWorkbook(const wchar_t* /*newName*/)
+  {
+  }
+
+  void FileSource::handleDirChange(
     const wchar_t* dirName,
     const wchar_t* fileName,
     const Event::FileAction action)
   {
-    if (_wcsicmp(fileName, sourceName()) != 0)
+    if (fs::path(fileName) != fs::path(name()))
       return;
-
+    
     runExcelThread([
-      self = std::static_pointer_cast<WatchedSource>(shared_from_this()),
+      self = std::static_pointer_cast<FileSource>(shared_from_this()),
         filePath = fs::path(dirName) / fileName,
         action]()
       {
-        // File paths should match as our directory watch listener only checks
-        // the specified directory
-        assert(_wcsicmp(filePath.c_str(), self->sourcePath().c_str()) == 0);
-
         switch (action)
         {
-        case Event::FileAction::Modified:
-        {
-          XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
-          self->reload();
-          break;
-        }
-        case Event::FileAction::Delete:
-        {
-          XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
-          FileSource::deleteSource(self);
-          break;
-        }
+          case Event::FileAction::Modified:
+          {
+            XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
+            self->reload();
+            break;
+          }
+          case Event::FileAction::Delete:
+          {
+            XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
+            AddinContext::deleteSource(self);
+            break;
+          }
         }
       }, ExcelRunQueue::ENQUEUE);
-  }
-
-  void AddinContext::removeSource(ContextMap::const_iterator which)
-  {
-    _files.erase(which);
   }
 }

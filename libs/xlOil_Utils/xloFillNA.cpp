@@ -18,7 +18,7 @@ namespace xloil
       XLO_THROW("Value must be a suitable type for an array element");
 
     const auto& array = cacheCheck(*arrayOrRef);
-    ExcelArray arr(array, trim->isMissing() ? true : trim->toBool());
+    ExcelArray arr(array, trim->isMissing() ? true : trim->get<bool>());
 
     const auto inplace = &array == arrayOrRef;
 
@@ -31,7 +31,7 @@ namespace xloil
     // Need to check that this behaviour is guaranteed....
     if (value->type() == ExcelType::Str)
     {
-      auto valueStr = value->asPString();
+      auto valueStr = value->cast<PStringRef>();
 
       // Rather than copy the string for each array entry, we just pass
       // the same pointer each time, so the total string length is 

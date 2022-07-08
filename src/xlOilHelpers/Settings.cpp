@@ -1,4 +1,4 @@
-#include "Settings.h"
+﻿#include "Settings.h"
 #include "Exception.h"
 #include <xlOil/StringUtils.h>
 #include <xloilHelpers/Environment.h>
@@ -46,10 +46,10 @@ namespace xloil
     }
     std::wstring logFilePath(const toml::table& root)
     {
-      auto found = findStr(root["Addin"], "LogFile", "");
+      auto found = findStr(root[XLOIL_SETTINGS_ADDIN_SECTION], "LogFile", "");
       return !found.empty()
         ? utf8ToUtf16(found)
-        : fs::path(*root.source().path).replace_extension("log").wstring();
+        : fs::path(utf8ToUtf16(*root.source().path)).replace_extension("log").wstring();
     }
     std::string logLevel(const toml::view_node& root)
     {
@@ -90,6 +90,12 @@ namespace xloil
         }
       return result;
     }
+
+    bool loadBeforeCore(const toml::table& root)
+    {
+      return root[XLOIL_SETTINGS_ADDIN_SECTION]["LoadBeforeCore"].value_or(false);
+    }
+
     toml::node_view<const toml::node> findPluginSettings(
       const toml::table* table, const char* name)
     {
@@ -123,9 +129,13 @@ namespace xloil
       path = fs::path(dllPath).remove_filename() / settingsFileName;
     try
     {
-      return fs::exists(path, fsErr)
-        ? make_shared<toml::table>(toml::parse_file(path.string()))
-        : shared_ptr<const toml::table>();
+      if (!fs::exists(path, fsErr))
+        return shared_ptr<const toml::table>();
+
+      auto ifs = std::ifstream{ path.wstring() };
+
+      return make_shared<toml::table>(
+        toml::parse(ifs, utf16ToUtf8(path.wstring())));
     }
     catch (const toml::parse_error& e)
     {

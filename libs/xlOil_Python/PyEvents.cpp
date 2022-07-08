@@ -1,7 +1,8 @@
 #include "PyEvents.h"
 #include <xlOil/Events.h>
 #include <xlOil/Log.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
+#include <xlOil/AppObjects.h>
 #include "PyHelpers.h"
 #include "PyCore.h"
 #include <list>
@@ -61,12 +62,21 @@ namespace xloil
         }
       };
     }
+    
+    struct IPyEvent
+    {
+      virtual ~IPyEvent() {}
+      virtual IPyEvent& add(const py::object& obj) = 0;
+      virtual IPyEvent& remove(const py::object& obj) = 0;
+      virtual py::tuple handlers() const = 0;
+      virtual void clear() = 0;
+    };
 
     template<class TEvent, bool, class F> class PyEvent {};
 
     // Specialisation to allow capture of the arguments to the event handler
     template<class TEvent, bool TAllowUserException, class R, class... Args>
-    class PyEvent<TEvent, TAllowUserException, std::function<R(Args...)>>
+    class PyEvent<TEvent, TAllowUserException, std::function<R(Args...)>> : public IPyEvent
     {
     public:
       PyEvent(TEvent& event) 
@@ -82,12 +92,12 @@ namespace xloil
           _event -= _coreEventHandler;
       }
 
-      PyEvent& add(const py::object& obj)
+      IPyEvent& add(const py::object& obj)
       {
         if (_handlers.empty())
           _coreEventHandler = _event += [this](Args... args) { this->fire(args...); };
 
-        XLO_INFO("Event {} added handler {}", _event.name(), (void*)obj.ptr());
+        XLO_INFO(L"Event {} added handler {}", _event.name(), (void*)obj.ptr());
 
         // We use a weakref to avoid dangling pointers to event handlers.
         // For bound methods, we need the WeakMethod class to avoid them
@@ -101,11 +111,11 @@ namespace xloil
         return *this;
       }
 
-      PyEvent& remove(const py::object& obj)
+      IPyEvent& remove(const py::object& obj)
       {
         _handlers.remove(obj);
         // Unhook ourselves from the core for efficiency if there are no handlers
-        XLO_INFO("Event {} removed handler {}", _event.name(), (void*)obj.ptr());
+        XLO_INFO(L"Event {} removed handler {}", _event.name(), (void*)obj.ptr());
         if (_handlers.empty())
           _event -= _coreEventHandler;
         return *this;
@@ -138,11 +148,11 @@ namespace xloil
           // Avoid recursion if we actually are Event_PyUserException!
           if constexpr(TAllowUserException)
             Event_PyUserException().fire(e.type(), e.value(), e.trace());
-          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
+          XLO_ERROR(L"During Event {0}: {1}", _event.name(), utf8ToUtf16(e.what()));
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("During Event {0}: {1}", _event.name(), e.what());
+          XLO_ERROR(L"During Event {0}: {1}", _event.name(), utf8ToUtf16(e.what()));
         }
       }
 
@@ -176,20 +186,14 @@ namespace xloil
         return new PyEvent<TEvent, false, typename TEvent::handler>(event);
       }
 
-      template<class T>
-      void bindEvent(py::module& mod, T* event, const char* name)
+      void bindEvent(
+        py::module& mod, 
+        const wchar_t* name, 
+        IPyEvent* event)
       {
-        const auto& instances = py::detail::get_internals().registered_types_cpp;
-        const auto found = instances.find(std::type_index(typeid(T)));
-        if (found == instances.end())
-        {
-          py::class_<T>(mod, (string(name) + "_Type").c_str())
-            .def("__iadd__", &T::add)
-            .def("__isub__", &T::remove)
-            .def("handlers", &T::handlers)
-            .def("clear", &T::clear);
-        }
-        mod.add_object(name, py::cast(event, py::return_value_policy::take_ownership));
+        auto u8name = utf16ToUtf8(name);
+        mod.add_object(u8name.c_str(), 
+          py::cast(event, py::return_value_policy::take_ownership));
       }
 
       /// <summary>
@@ -212,25 +216,110 @@ namespace xloil
       void setAllowEvents(bool value)
       {
         py::gil_scoped_release releaseGil;
-        runExcelThread([=]() { Event::allowEvents(value); });
+        runExcelThread([=]() { excelApp().setEnableEvents(value); });
       }
 
       static int theBinder = addBinder([](pybind11::module& mod)
       {
         auto eventMod = mod.def_submodule("event");
-        eventMod.def("allow", []() {setAllowEvents(true); });
-        eventMod.def("pause", []() {setAllowEvents(false); });
+        eventMod.doc() = R"(
+          Module containing event objects which can be hooked to receive events driven by 
+          Excel's UI. The events correspond to COM/VBA events and are described in detail
+          in the Excel Application API.
+        
+          Event Class
+          -----------
+
+              * Events are hooked using `+=`, e.g. `event.NewWorkbook += lambda wb: print(wb_name)`
+              * Events are unhooked using `-=` passing a reference to the handler function
+              * Each event has a `handlers` property listing all currently hooked handlers
+
+          Events
+          ------
+          
+              * AfterCalculate: 
+                  Called after a calculation whether or not it completed or was interrupted
+              * CalcCancelled:
+                  Called when the user interrupts calculation by interacting with Excel.
+              * WorkbookAfterClose:
+                  Excel's event *WorkbookBeforeClose*, is  cancellable by the user so it is not 
+                  possible to know if the workbook actually closed.  When xlOil calls 
+                  `WorkbookAfterClose`, the workbook is certainly closed, but it may be some time
+                  since that closure happened.
+                  The event is not called for each workbook when xlOil exits.
+              * PyBye:
+                  An event fired just before xlOil finalises its embedded python interpreter. 
+                  All python and xlOil functionality is still available. This event is useful 
+                  to stop threads as it is called before threading module teardown, whereas 
+                  `atexit` is called afterward.
+              * UserException:
+                  An event fired when an exception is raised in a user-supplied 
+                  python callback, for example a GUI callback or and RTD publisher. 
+
+          For other events see  `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+          
+          Notes
+          -----
+
+              * The `CalcCancelled` and `WorkbookAfterClose` event are not part of the 
+                Application object, see their individual documentation.
+              * Where an event has reference parameter, for example the `cancel` bool in
+                `WorkbookBeforeSave`, you need to set the value using `cancel.value=True`.
+                This is because python does not support reference parameters for primitive types.
+
+
+          Examples
+          --------
+
+          ::
+
+              def greet(workbook, worksheet):
+                  xlo.Range(f"[{workbook}]{worksheet}!A1") = "Hello!"
+
+              xlo.event.WorkbookNewSheet += greet
+              ...
+              xlo.event.WorkbookNewSheet -= greet
+              
+              print(xlo.event.WorkbookNewSheet.handlers) # Should be empty
+
+        )";
+
+        eventMod.def("allow", 
+          []() { setAllowEvents(true); },
+          R"(
+            Resumes Excel's event handling after a pause.  Equivalent to VBA's
+            `Application.EnableEvents = True` or `xlo.app().enable_events = True` 
+          )" );
+
+        eventMod.def("pause", 
+          []() { setAllowEvents(false); },
+          R"(
+            Pauses Excel's event handling. Equivalent to VBA's 
+            `Application.EnableEvents = False` or `xlo.app().enable_events = False` 
+          )");
 
         bindArithmeticRef<bool>(eventMod);
 
+        py::class_<IPyEvent>(eventMod, "Event")
+          .def("__iadd__", &IPyEvent::add)
+          .def("__isub__", &IPyEvent::remove)
+          .def_property_readonly("handlers", &IPyEvent::handlers)
+          .def("clear", &IPyEvent::clear);
+
+        // TODO: how to set doc string for each event?
 #define XLO_PY_EVENT(r, _, NAME) \
-        bindEvent(eventMod, makeEvent(xloil::Event::NAME()), BOOST_PP_STRINGIZE(NAME));
+        bindEvent(eventMod, XLO_WSTR(NAME), makeEvent(xloil::Event::NAME()));
 
         BOOST_PP_SEQ_FOR_EACH(XLO_PY_EVENT, _, XLOIL_STATIC_EVENTS)
 #undef XLO_PY_EVENT
 
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyUserException()), "UserException");
-        bindEvent(eventMod, makeEventNoUserExcept(Event_PyBye()), "PyBye");
+        bindEvent(eventMod, 
+          L"UserException",
+          makeEventNoUserExcept(Event_PyUserException()));
+
+        bindEvent(eventMod, 
+          L"PyBye",
+          makeEventNoUserExcept(Event_PyBye()));
       });
     }
 

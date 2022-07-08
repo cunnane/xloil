@@ -61,10 +61,10 @@ namespace xloil
       int theFirstStub;
 
       ThunkHolder()
-        : theExportTable(new DllExportTable((HMODULE)State::coreModuleHandle()))
+        : theExportTable(new DllExportTable((HMODULE)Environment::coreModuleHandle()))
         , theAllocator(theExportTable->imageBase(), (BYTE*)theExportTable->imageBase() + DWORD(-1))
       {
-        theCoreDllName = State::coreDllName();
+        theCoreDllName = Environment::coreDllName();
         theFirstStub = theExportTable->findOrdinal(
           decorateCFunction(XLOIL_STUB_NAME_STR, 0).c_str());
         if (theFirstStub < 0)
@@ -126,7 +126,7 @@ namespace xloil
 
 #ifdef _DEBUG
         // Check the thunk is hooked to Windows' satisfaction
-        void* procNew = GetProcAddress((HMODULE)State::coreModuleHandle(),
+        void* procNew = GetProcAddress((HMODULE)Environment::coreModuleHandle(),
           entryPoint.c_str());
         XLO_ASSERT(procNew == thunk);
 #endif

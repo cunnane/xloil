@@ -76,7 +76,10 @@ namespace xloil
 
     return tryComCall([]()
     {
-      return COM::excelApp().Run("xloRunInXLLContext");
+      auto result = COM::attachedApplication().com().Run("xloRunInXLLContext");
+      if (result.vt == VT_ERROR)
+        XLO_THROW(L"COM Error {0:#x}", result.scode);
+      return result;
     });
   }
 
@@ -91,10 +94,12 @@ namespace xloil
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;
     theExcelCallNumArgs = nArgs;
+
     auto ret = tryComCall([]()
     { 
-      return COM::excelApp().Run("xloRunInXLLContext");
+      return COM::attachedApplication().com().Run("xloRunInXLLContext");
     });
+
     if (!ret)
       return msxll::xlretInvXlfn;
     

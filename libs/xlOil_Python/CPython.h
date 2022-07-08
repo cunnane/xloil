@@ -3,7 +3,7 @@
 // Can remove this for Python >= 3.10 as we have the debug libs
 // https://stackoverflow.com/questions/17028576/
 
-#define HAVE_SNPRINTF
+
 #if PY_VERSION_HEX < 0x03100000
 #ifdef _DEBUG
 #  define XLO_PY_HACK

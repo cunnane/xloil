@@ -5,10 +5,8 @@
 
 namespace xloil
 {
-  class AddinContext;
-
   /// Load plugins according to settings file. Called by xlAutoOpen
-  void loadPlugins(AddinContext& context, const std::vector<std::wstring>& names) noexcept;
+  void loadPluginsForAddin(AddinContext& context) noexcept;
 
   /// Unloads any plugins prior to takedown of the Core XLL. 
   /// Called by xlAutoClose
@@ -21,16 +19,21 @@ namespace xloil
   /// File source which collects and registers any declared
   /// static functions
   /// </summary>
-  class StaticFunctionSource : public FileSource
+  class StaticFunctionSource : public FuncSource
   {
   public:
-    StaticFunctionSource(const wchar_t* pluginPath);
     /// <summary>
     /// This collects all statically declared Excel functions, i.e. raw C functions
     /// It assumes that this function and hence processRegistryQueue is run after each
     /// plugin has been loaded, so that all functions on the queue belong to the 
     /// current plugin
     /// </summary>
-    void registerQueue();
+    /// 
+    StaticFunctionSource(const wchar_t* pluginPath);
+
+    const std::wstring& name() const override { return _sourcePath; }
+    void init() override;
+  private:
+    std::wstring _sourcePath;
   };
 }

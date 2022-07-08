@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <RunConfiguration>
+        <EnvironmentVariables>
+            <XLOIL_TEST_BIN_DIR>build/x64/Debug</XLOIL_TEST_BIN_DIR>
+        </EnvironmentVariables>
+    </RunConfiguration>
+</RunSettings>

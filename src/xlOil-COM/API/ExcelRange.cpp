@@ -1,6 +1,8 @@
-#include <xloil/ExcelRange.h>
+#include <xloil/Range.h>
+#include <xloil/AppObjects.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/ExcelRef.h>
+#include <xlOil/ExcelArray.h>
 #include <xlOil/AppObjects.h>
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/ComVariant.h>
@@ -15,6 +17,7 @@ namespace xloil
       return _variant_t(variant, false);
     }
   }
+
   Range* newRange(const wchar_t* address)
   {
     if (InXllContext::check())
@@ -22,22 +25,22 @@ namespace xloil
     else
       return new ExcelRange(address);
   }
-  ExcelRef refFromComRange(Excel::Range* range)
+  ExcelRef refFromComRange(Excel::Range& range)
   {
     try
     {
-      const auto nCols = range->Columns->Count;
-      const auto nRows = range->Rows->Count;
+      const auto nCols = range.Columns->Count;
+      const auto nRows = range.Rows->Count;
 
       // Excel uses 1-based indexing for these, so we adjust
-      const auto fromRow = range->Row - 1;
-      const auto fromCol = range->Column - 1;
+      const auto fromRow = range.Row - 1;
+      const auto fromCol = range.Column - 1;
 
       // Convert to an XLL SheetId
-      auto wb = (Excel::_WorkbookPtr)range->Worksheet->Parent;
+      auto wb = (Excel::_WorkbookPtr)range.Worksheet->Parent;
       const auto sheetId =
         callExcel(msxll::xlSheetId, fmt::format(L"[{0}]{1}",
-          wb->Name, range->Worksheet->Name));
+          wb->Name, range.Worksheet->Name));
 
       return ExcelRef(sheetId.val.mref.idSheet,
         fromRow, fromCol, fromRow + nRows - 1, fromCol + nCols - 1);
@@ -45,27 +48,25 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelRange::ExcelRange(const std::wstring_view& address)
+  ExcelRange::ExcelRange(const std::wstring_view& address, const Application& app)
+    : AppObject([&]() {    
+        try
+        {
+          return app.com().GetRange(stringToVariant(address)).Detach();
+        }
+        XLO_RETHROW_COM_ERROR; 
+      }(), true)
   {
-    try
-    {
-      auto addressStr = COM::stringToVariant(address);
-      auto rangePtr = excelApp().GetRange(_variant_t(addressStr, false));
-      init(rangePtr);
-    }
-    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelRange::ExcelRange(const Range& range)
+    : AppObject(nullptr)
   {
     auto excelRange = dynamic_cast<const ExcelRange*>(&range);
     if (excelRange)
-      init(excelRange->ptr());
+      *this = ExcelRange(&excelRange->com());
     else
-    {
-      init(nullptr);
       *this = ExcelRange(range.address());
-    }
   }
 
   Range* ExcelRange::range(
@@ -75,34 +76,52 @@ namespace xloil
     try
     {
       if (toRow == Range::TO_END)
-        toRow = ptr()->Row + ptr()->Rows->GetCount();
+        toRow = com().Row + com().Rows->GetCount();
       if (toCol == Range::TO_END)
-        toCol = ptr()->Column + ptr()->Columns->GetCount();
+        toCol = com().Column + com().Columns->GetCount();
 
       // Caling range->GetRange(cell1, cell2) does a very weird thing
       // which I can't make sense of. Better to call ws.range(...)
-      auto ws = (Excel::_WorksheetPtr)ptr()->Parent;
+      auto ws = (Excel::_WorksheetPtr)com().Parent;
+      auto cells = com().Cells;
       auto r = ws->GetRange(
-        ptr()->Cells->Item[fromRow + 1][fromCol + 1],
-        ptr()->Cells->Item[toRow + 1][toCol + 1]);
+        cells->Item[fromRow + 1][fromCol + 1],
+        cells->Item[toRow + 1][toCol + 1]);
       return new ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;
   }
 
+  Range* ExcelRange::trim() const
+  {
+    // Better than SpecialCells?
+    size_t nRows = 0, nCols = 0;
+    if (size() == 1 || !COM::trimmedVariantArrayBounds(com().Value2, nRows, nCols))
+      return new ExcelRange(*this);
+    // 'range' takes the last row/col inclusive so subtract one
+    if (nRows > 0) --nRows;
+    if (nCols > 0) --nCols;
+    return range(0, 0, (int)nRows, (int)nCols);
+  }
+
   std::tuple<Range::row_t, Range::col_t> ExcelRange::shape() const
   {
-    return { ptr()->Rows->GetCount(), ptr()->Columns->GetCount() };
+    try
+    {
+      return { com().Rows->GetCount(), com().Columns->GetCount() };
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::tuple<Range::row_t, Range::col_t, Range::row_t, Range::col_t> ExcelRange::bounds() const
   {
-    return {
-      ptr()->Row,
-      ptr()->Column,
-      ptr()->Row + ptr()->Rows->GetCount() - 1,
-      ptr()->Column + ptr()->Columns->GetCount() - 1
-    };
+    try
+    {
+      const auto row = com().Row - 1;
+      const auto col = com().Column - 1;
+      return { row, col, row + com().Rows->GetCount() - 1, col + com().Columns->GetCount() - 1 };
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelRange::address(bool local) const
@@ -110,8 +129,8 @@ namespace xloil
     try
     {
       auto result = local
-        ? ptr()->GetAddress(true, true, Excel::xlA1)
-        : ptr()->GetAddressLocal(true, true, Excel::xlA1);
+        ? com().GetAddress(true, true, Excel::xlA1)
+        : com().GetAddressLocal(true, true, Excel::xlA1);
       return std::wstring(result);
     }
     XLO_RETHROW_COM_ERROR;
@@ -119,12 +138,12 @@ namespace xloil
 
   ExcelObj ExcelRange::value() const
   {
-    return refFromComRange(ptr()).value();
+    return COM::variantToExcelObj(com().Value2, false, false);
   }
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const
   {
-    return COM::variantToExcelObj(ptr()->Cells->Item[i + 1][j + 1]);
+    return COM::variantToExcelObj(com().Cells->Item[i + 1][j + 1]);
   }
 
   void ExcelRange::set(const ExcelObj& value)
@@ -133,7 +152,7 @@ namespace xloil
     {
       VARIANT v;
       COM::excelObjToVariant(&v, value);
-      ptr()->PutValue2(_variant_t(v, false)); // Move variant
+      com().PutValue2(_variant_t(v, false)); // Move variant
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -143,9 +162,9 @@ namespace xloil
     try
     {
       if (size() > 1)
-        ptr()->FormulaArray = stringToVariant(formula);
+        com().FormulaArray = stringToVariant(formula);
       else
-        ptr()->Formula = stringToVariant(formula);
+        com().Formula = stringToVariant(formula);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -154,14 +173,18 @@ namespace xloil
   {
     try
     {
-      return ((_bstr_t)ptr()->Formula).GetBSTR();
+      return ((_bstr_t)com().Formula).GetBSTR();
     }
     XLO_RETHROW_COM_ERROR;
   }
 
   void ExcelRange::clear()
   {
-    ptr()->Clear();
+    try
+    {
+      com().Clear();
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   std::wstring ExcelRange::name() const
@@ -173,8 +196,12 @@ namespace xloil
   {
     try
     {
-      return ExcelWorksheet(ptr()->Worksheet);
+      return ExcelWorksheet(com().Worksheet);
     }
     XLO_RETHROW_COM_ERROR;
+  }
+  Application ExcelRange::app() const
+  {
+    return parent().app();
   }
 }

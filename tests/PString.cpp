@@ -21,22 +21,27 @@ namespace Tests
         Assert::IsTrue(str == L"Foobar");
       }
       {
-        PString<> str(wstring(L"Foo"));
+        PString str(wstring(L"Foo"));
         Assert::IsTrue(str == L"Foo");
       }
       {
-        PString<> str(3);
+        PString str(3);
         str = wstring(L"Foo");
         Assert::IsTrue(str == L"Foo");
         // Check resize is automatic
         str = L"Foobar";
         Assert::IsTrue(str == L"Foobar");
       }
+      {
+        PString str(wstring(L"Foo"));
+        PStringCRef ref(str);
+        Assert::IsTrue(str == ref);
+      }
     }
     TEST_METHOD(Test_Strtok)
     {
       PString address(L"['My Book']'My Sheet'!A1");
-      PStringView view(address);
+      PStringRef view(address);
 
       const auto delims = L"[]'!";
       const auto wb = view.strtok(delims);

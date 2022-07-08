@@ -4,6 +4,7 @@
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xloil/Log.h>
+#include <xloil/AppObjects.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
 #include <xloil/ExcelUI.h>
@@ -31,7 +32,7 @@ namespace xloil
       WNDCLASS wc;
       memset(&wc, 0, sizeof(WNDCLASS));
       wc.lpfnWndProc   = WindowProc;
-      wc.hInstance     = (HINSTANCE)App::internals().hInstance;
+      wc.hInstance     = (HINSTANCE)Environment::excelProcess().hInstance;
       wc.lpszClassName = L"xlOilHidden";
       if (RegisterClass(&wc) == 0)
         XLO_ERROR(L"Failed to register window class: {0}", writeWindowsError());
@@ -115,11 +116,14 @@ namespace xloil
     // Entirely arbitrary ID numbers
     static constexpr unsigned IDT_TIMER1     = 101;
     static constexpr unsigned WINDOW_MESSAGE = 666;
+    static constexpr unsigned WM_TIMER       = 0x0113;
 
     auto firstJobTime(ULONGLONG now) 
     {
       // The queue is a sorted map so first element is due first.
-      return std::max(0u, unsigned(_timerQueue.begin()->first - now));
+      return _timerQueue.begin()->first > now
+        ? unsigned(_timerQueue.begin()->first - now)
+        : 0;
     }
 
     void startTimer(unsigned millisecs)
@@ -134,7 +138,7 @@ namespace xloil
     {
       try
       {
-        long long now = GetTickCount64();
+        ULONGLONG now = GetTickCount64();
         {
           scoped_lock lock(_lock);
           _timerQueue.emplace(now + millisecs, item);
@@ -219,10 +223,10 @@ namespace xloil
     static LRESULT CALLBACK WindowProc(
       HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
     {
-      // TODO: handle WM_TIMER here rather than allowing DefWindowProc to do it?
       switch (uMsg)
       {
       case WINDOW_MESSAGE:
+      case WM_TIMER:
       {
         TimerCallback(hwnd, uMsg, wParam, 0);
         return S_OK;
@@ -246,8 +250,7 @@ namespace xloil
 
   bool isMainThread()
   {
-    // TODO: would a thread-local bool be quicker here?
-    return App::internals().mainThreadId == GetCurrentThreadId();
+    return Environment::excelProcess().mainThreadId == GetCurrentThreadId();
   }
 
   void runExcelThreadImpl(
@@ -261,7 +264,9 @@ namespace xloil
       waitBetweenRetries);
 
     // Try to run immediately if possible
-    const bool canRunNow = waitBeforeCall == 0 && (flags & ExcelRunQueue::ENQUEUE) == 0 && isMainThread();
+    const bool canRunNow = waitBeforeCall == 0 
+      && (flags & ExcelRunQueue::ENQUEUE) == 0 
+      && isMainThread();
     if (canRunNow)
     {
       // TODO: avoid running isComApiAvailable if we don't need it? 
@@ -285,8 +290,9 @@ namespace xloil
         COM::connectCom();
         runExcelThread(func, ExcelRunQueue::XLL_API);
       }
-      catch (const COM::ComConnectException&)
+      catch (const ComConnectException&)
       {
+        XLO_DEBUG("Could not connect COM: trying again in 1 second...");
         runExcelThread(
           RetryAtStartup{ func },
           ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,

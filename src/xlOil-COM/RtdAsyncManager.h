@@ -7,12 +7,9 @@ namespace xloil
 {
   namespace COM
   {
-    struct CellTasks;
-
-    class RtdAsyncManager
+    namespace RtdAsyncManager
     {
-    public:
-      static RtdAsyncManager& instance();
+      void init();
 
       /// <summary>
       /// Given an RtdAsync Task, returns a value, if one is has
@@ -29,19 +26,6 @@ namespace xloil
       /// Destroys all running Rtd Async tasks.  Used on teardown
       /// </summary>
       void clear();
-    
-      using CellAddress = std::pair<unsigned, unsigned>;
-      using CellTaskMap = std::unordered_map<
-        CellAddress,
-        std::shared_ptr<CellTasks>,
-        pair_hash<unsigned, unsigned>>;
-
-    private:
-      std::shared_ptr<IRtdServer> _rtd;
-      CellTaskMap _tasksPerCell;
-      mutable std::shared_mutex _mutex;
-
-      RtdAsyncManager();
-    };
+    }
   }
 }

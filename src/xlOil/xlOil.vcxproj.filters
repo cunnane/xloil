@@ -45,7 +45,7 @@
     <ClInclude Include="..\..\include\xloil\ExcelObjCache.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\xloil\ExcelRange.h">
+    <ClInclude Include="..\..\include\xloil\Range.h">
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\ExcelRef.h">
@@ -137,6 +137,9 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\AppObjects.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\EnumHelper.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

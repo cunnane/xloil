@@ -127,7 +127,7 @@
     <ProjectGuid>{164AF267-092E-441D-8BF0-2ACF18E9ADFD}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>asmjit</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -5,41 +5,20 @@ import numpy as np
 import functools
 
 from ._core import Range, CellError, CannotConvert
-from ._common import *
+from .logging import *
 
-if XLOIL_HAS_CORE:
-    import xloil_core
-    from xloil_core import (
-        set_return_converter,
-        CustomConverter as _CustomConverter,
-        CustomReturn as _CustomReturn,
-        Return_Cache as _Return_Cache,
-        Return_SingleValue as _Return_SingleValue,
-        Read_Array_object_2d as _Read_Array_object_2d,
-        Return_Array_object_2d as _Return_Array_object_2d,
-    )
-else:
-    class _CustomConverter:
-        def __init__(self, *arg, **kwargs):
-            pass
+import xloil_core
 
-    class _CustomReturn:
-        def __init__(self, *arg, **kwargs):
-            pass
-        def get_handler(self):
-            pass
-    
-    def set_return_converter(*arg, **kwargs):
-        pass
+from xloil_core import (
+    _return_converter_hook,
+    _CustomConverter,
+    _CustomReturn,
+    _Return_Cache,
+    _Return_SingleValue,
+    _Read_Array_object_2d,
+    _Return_Array_object_2d,
+)
 
-    def _Return_Cache():
-        pass
-    def _Return_SingleValue():
-        pass
-    def _Read_Array_object_2d(trim):
-        pass
-    def _Return_Array_object_2d(trim):
-        pass
 
 """
 This annotation includes all the types which can be passed from xlOil to
@@ -48,9 +27,9 @@ useful type-checking information to other software which reads annotations.
 """
 ExcelValue = typing.Union[bool, int, str, float, np.ndarray, dict, list, CellError]
 
-_READ_CONVERTER_PREFIX   = "Read_"
-_RETURN_CONVERTER_PREFIX = "Return_"
-_UNCACHED_CONVERTER_PREFIX = "Uncached_"
+_READ_CONVERTER_PREFIX   = "_Read_"
+_RETURN_CONVERTER_PREFIX = "_Return_"
+_UNCACHED_CONVERTER_PREFIX = "_Uncached_"
 
 def get_converter(type_name, read=True, cache=True):
     """
@@ -100,7 +79,7 @@ def unpack_arg_converter(obj):
 def unpack_return_converter(obj):
     return getattr(obj, "_xloil_return_writer", None)
 
-def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
+def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, check_cache=True):
 
     if inspect.isclass(impl):
         #
@@ -124,10 +103,11 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
                 # Construct the inner class with the provided args
                 instance = impl(*args, **kwargs)
                 # Embed it in a new Converter which inherits from target
-                return _make_typeconverter(base_type, 
-                                            _CustomConverter(instance.read) if hasattr(instance, "read") else None,
-                                            _CustomReturn(instance.write) if hasattr(instance, "write") else None,
-                                            allow_range)
+                return _make_typeconverter(
+                    base_type, 
+                    _CustomConverter(instance.read, check_cache) if hasattr(instance, "read") else None,
+                    _CustomReturn(instance.write) if hasattr(instance, "write") else None,
+                    allow_range)
 
         # If the target obj has a no-arg constructor, we want to write:
         # `def fn(x: target_obj)`, so MetaConverter must be a valid 
@@ -136,7 +116,7 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
             instance = impl()
             
             if hasattr(instance, "read"):
-                MetaConverter._xloil_arg_reader = _CustomConverter(instance.read), allow_range
+                MetaConverter._xloil_arg_reader = _CustomConverter(instance.read, check_cache), allow_range
             if hasattr(instance, "write"):
                 MetaConverter._xloil_return_writer = _CustomReturn(instance.write)
 
@@ -149,7 +129,12 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False):
     elif is_returner:
         return _make_typeconverter(base_type, writer=_CustomReturn(impl), source=impl)
     else:
-        return _make_typeconverter(base_type, _CustomConverter(impl), None, allow_range, source=impl)
+        return _make_typeconverter(
+                    base_type,
+                    _CustomConverter(impl, check_cache), 
+                    None, 
+                    allow_range, 
+                    source=impl)
 
 
 def _make_tuple(obj):
@@ -183,7 +168,7 @@ class _ArgConverters:
 arg_converters = _ArgConverters()
 
 
-def converter(target=typing.Callable, range=False, register=False, direction="read"):
+def converter(target=typing.Callable, range=False, register=False, direction="read", check_cache=True):
     """
     Decorator which declares a function or a class to be a type converter
     which serialises from/to a set of simple types understood by Excel and 
@@ -235,6 +220,10 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
         When decorating a function, the direction "read" or "write" determines the
         converter behaviour
 
+    check_cache:
+        For readers, setting this to False turns off xlOil's automatic cache expansion
+        for string inputs. The converter must manually expand cache strings if desired.
+
     Examples
     --------
     
@@ -254,7 +243,7 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
             
     """
     def decorate(impl):
-        result = _make_metaconverter(target, impl, direction == "write", range)
+        result = _make_metaconverter(target, impl, direction == "write", range, check_cache)
 
         if bool(register) and target is not typing.Callable:
 
@@ -271,8 +260,6 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
                     # Is register an iterable of types?
                     return_converters.add(result, register)
 
-                
-            
         return result
     return decorate
 
@@ -305,19 +292,18 @@ class _ReturnConverters:
         
         # Register this singleton object as the custom return converter tried by xlOil 
         # when a func does not specify its return type 
-        if not self._registered:
-            set_return_converter(_CustomReturn(self))
+        if not self._registered and _return_converter_hook is not None:
+            _return_converter_hook.value = _CustomReturn(self)
             self._registered = True
 
     
     def remove(self, return_type):
         self._converters.remove(return_type)
-        if not any(self._converters):
-            set_return_converter(None)
+        if not any(self._converters) and _return_converter_hook is not None:
+            _return_converter_hook.value = None
             self._registered = False
 
     def create_returner(self, return_type):
-
         """
         Creates a _CustomReturn object which handles the given type or returns None
         if no handlers can be found.  The _CustomReturn object is an internal xloil_core
@@ -353,7 +339,7 @@ def returner(target=None, register=False):
 
 Cache = _make_typeconverter(object, writer=_Return_Cache())
 """
-Using `-> xloil.Cache` in a function declaration to force the output to be 
+Use `-> xloil.Cache` in a function declaration to force the output to be 
 placed in the python object cache rather than attempting a conversion
 """
 
@@ -361,14 +347,25 @@ SingleValue = _make_typeconverter(object, writer=_Return_SingleValue())
 """
 Use `-> xloil.SingleValue` in a function declaration to force the output to
 be a single cell value. Uses the Excel object cache for returned arrays and 
-the Python object cache for unconvertable objects
+the Python object cache for unconvertable objects.  
+
+Examples
+--------
+
+::
+
+    @xloil.func
+    def single_val(n:int, m:int) -> xloil.SingleValue:
+        return np.ones((n, m))
+
 """
 
 AllowRange = typing.Union[ExcelValue, Range]
 """
 The special AllowRange annotation allows functions to receive the argument
-as an Range object if appropriate.  If a sheet reference (e.g. A1:B2) 
-was not passed from Excel, xlOil converts as per ExcelValue.
+as an Range object if possible.  It is only possible if the function was invoked
+with a sheet reference e.g. `=MyFunc(A1:B2)`.  Any other argument types are
+converted as per `xloil.ExcelValue`.
 """
 
 class Array(np.ndarray):

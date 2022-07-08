@@ -18,8 +18,8 @@ namespace xloil
     // TODO: handle range
 
     ExcelArray array(cacheCheck(inArrayOrRef));
-    auto fromRow = inFromRow.toInt(1);         
-    auto fromCol = inFromCol.toInt(1);
+    auto fromRow = inFromRow.get<int>(1);         
+    auto fromCol = inFromCol.get<int>(1);
 
     if (fromRow > 0)
       --fromRow;
@@ -35,8 +35,8 @@ namespace xloil
     if (inToRow.isMissing() && inToCol.isMissing())
       return returnValue(array(fromRow, fromCol));
 
-    auto toRow = inToRow.toInt(); 
-    auto toCol = inToCol.toInt(); 
+    auto toRow = inToRow.get<int>();
+    auto toCol = inToCol.get<int>();
 
     // Move to 1-based indexing
     if (toRow > 0) --toRow;

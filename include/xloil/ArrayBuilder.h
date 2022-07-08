@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ExcelObj.h"
+#include <xloil/ExcelObj.h>
 #include <cassert>
 
 namespace xloil
@@ -51,11 +51,11 @@ namespace xloil
         , _alloc((wchar_t*)(_buffer + nObjects), stringLen)
       {}
 
-      PStringView<> newString(size_t len)
+      auto newString(size_t len)
       {
         auto ptr = _alloc.allocate(len + 1);
         ptr[0] = wchar_t(len);
-        return PStringView<>(ptr);
+        return ptr;
       }
 
       ExcelObj& object(size_t i) { return _buffer[i]; }
@@ -112,7 +112,7 @@ namespace xloil
         assert(x.isType(ExcelType::ArrayValue));
         if (x.isType(ExcelType::Str))
         {
-          auto pstr = x.asPString();
+          auto pstr = x.cast<PStringRef>();
           copy_string(pstr.begin(), pstr.length());
         }
         else
@@ -135,7 +135,7 @@ namespace xloil
       /// <param name="pstr"></param>
       void emplace_pstr(wchar_t* pstr)
       {
-        new (&_target) ExcelObj(PString<>::steal(pstr));
+        new (&_target) ExcelObj(PString::steal(pstr));
       }
 
       /// <summary>
@@ -159,10 +159,10 @@ namespace xloil
         else
         {
           auto pstr = _alloc.newString(len);
-          wmemcpy_s(pstr.pstr(), len, str, len);
+          wmemcpy_s(pstr + 1, len, str, len);
           // This object's dtor will never be called, as it is an array element
           // so the allocated pstr will be freed when the entire array block is
-          xlObj->val.str = pstr.data();
+          xlObj->val.str = pstr;
         }
       }
 
@@ -246,7 +246,7 @@ namespace xloil
     /// </summary>
     auto string(uint16_t len)
     {
-      return PString<wchar_t, detail::ArrayBuilderCharAllocator>(len, charAllocator());
+      return BasicPString<wchar_t, detail::ArrayBuilderCharAllocator>(len, charAllocator());
     }
 
     /// <summary>

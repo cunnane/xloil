@@ -68,11 +68,12 @@ namespace xloil
         {
         case ExcelType::Multi:
         {
-          obj->trimmedArraySize(nRows, nCols);
-          auto arrData = obj->asArray();
-          auto endArray = arrData + nRows * nCols;
-          for (; arrData != endArray; ++arrData)
-            totalStrLength += arrData->stringLength();
+          ExcelArray arr(*obj);
+          nRows = arr.nRows();
+          nCols = arr.nCols();
+          for (auto& x: arr)
+            totalStrLength += x.stringLength();
+          break;
         }
         case ExcelType::Str:
           totalStrLength += obj->stringLength();

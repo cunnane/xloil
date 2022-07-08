@@ -37,6 +37,9 @@
     <ClCompile Include="TypeConversion\Numpy.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
+    <ClCompile Include="PyAddin.cpp" />
+    <ClCompile Include="PyStatusBar.cpp" />
+    <ClCompile Include="PyLogWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncFunctions.h" />
@@ -70,6 +73,7 @@
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="PyRtd.h" />
+    <ClInclude Include="PyAddin.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">

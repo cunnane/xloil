@@ -3,7 +3,7 @@ xlOil C++ Static XLLs
 ======================
 
 As explained in :any:`GettingStarted`, it is possible to create an XLL which statically links xlOil.
-This allows an all-in-on XLL without worrying about DLL search paths.  We expand on the example 
+This allows an all-in-one XLL without worrying about DLL search paths.  We expand on the example 
 in :any:`GettingStarted` to illustrate some of the other static XLL features:
 
 .. highlight:: c++

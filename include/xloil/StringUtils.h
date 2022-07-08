@@ -241,28 +241,30 @@ namespace xloil
     {
       std::basic_string<TChar> s;
       s.resize(initialSize);
-      size_t len;
+      long len;
       // We assume, hopefully correctly, that the bufWriter function on
-      // failure returns either -1 or the required buffer length.
+      // failure returns either < 0 or the required buffer length.
       while ((len = bufWriter(s.data(), s.length())) > s.length())
-        s.resize(len == size_t(-1) ? s.size() * 2 : len);
+        s.resize(len < 0 ? s.size() * 2 : (size_t)len);
 
-      // However, some windows functions, e.g. ExpandEnvironmentStrings 
-      // include the null-terminator in the returned buffer length whereas
-      // other seemingly similar ones, e.g. GetEnvironmentVariable, do not.
-      // Wonderful.
-      s.resize(s.data()[len - 1] == '\0' ? len - 1 : len);
+      // Now resize the string to the correct size.  Some windows functions, 
+      // e.g. ExpandEnvironmentStrings include the null-terminator in the 
+      // returned buffer length whereas other seemingly similar ones, e.g. 
+      // GetEnvironmentVariable, do not. Wonderful.
+      s.resize(len > 0 && s.data()[len - 1] == '\0' ? len - 1 : len);
       return s;
     }
 
     template <class TChar>
     struct char_traits : public std::char_traits<TChar>
     {};
+
     template <>
     struct char_traits<wchar_t> : public std::char_traits<wchar_t>
     {
       static wchar_t tolower(wchar_t c) { return ::towlower(c); }
     };
+
     template <>
     struct char_traits<char> : public std::char_traits<wchar_t>
     {

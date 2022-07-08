@@ -1,6 +1,6 @@
 import threading
 import queue
-from ._common import *
+from .logging import *
 from . import _core
 from .excelgui import CustomTaskPane
 import importlib
@@ -174,9 +174,6 @@ class QtThreadTaskPane(CustomTaskPane):
     def on_destroy(self):
         Qt_thread().submit(lambda: self.widget.destroy())
         super().on_destroy()
-
-    
-
 
 def _try_create_qt_pane(obj):
     try:

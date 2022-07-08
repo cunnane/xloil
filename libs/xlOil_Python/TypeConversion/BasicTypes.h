@@ -14,7 +14,7 @@
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
 #include <xloil/StringUtils.h>
-#include <xlOil/ExcelRange.h>
+#include <xlOil/Range.h>
 #include <string>
 
 using namespace std::literals::string_literals;
@@ -35,10 +35,9 @@ namespace xloil
     };
     using IPyToExcel = IConvertToExcel<PyObject>;
 
-    struct PyFromExcelImpl : public FromExcelBase<PyObject*>
+    struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
     {
     };
-
 
     namespace detail
     {
@@ -56,12 +55,16 @@ namespace xloil
         {}
 
         using TBase::operator();
-        PyObject* operator()(const PStringView<>& str) const
+        PyObject* operator()(const PStringRef& str) const
         {
           pybind11::object cached;
           if (pyCacheGet(str.view(), cached))
             return cached.release().ptr();
           return TBase::operator()(str);
+        }
+        PyObject* operator()(const PStringRef& str)
+        {
+          return const_cast<const PyFromCache<TBase>&>(*this)(str);
         }
       };
 
@@ -70,9 +73,9 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "float";
 
-        PyObject* operator()(double x) const { return PyFloat_FromDouble(x); }
-        PyObject* operator()(int x) const    { return operator()(double(x)); }
-        PyObject* operator()(bool x) const   { return operator()(double(x)); }
+        PyObject* operator()(double x) const   { return PyFloat_FromDouble(x); }
+        PyObject* operator()(int x)    const   { return operator()(double(x)); }
+        PyObject* operator()(bool x)   const   { return operator()(double(x)); }
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
@@ -85,8 +88,8 @@ namespace xloil
         {
           if (x) Py_RETURN_TRUE; else Py_RETURN_FALSE;
         }
-        PyObject* operator()(int x) const     { return operator()(bool(x)); }
-        PyObject* operator()(double x) const  { return operator()(x != 0); }
+        PyObject* operator()(int x)      const { return operator()(bool(x)); }
+        PyObject* operator()(double x)   const { return operator()(x != 0); }
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
@@ -95,15 +98,15 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "str";
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           return PyUnicode_FromWideChar(const_cast<wchar_t*>(pstr.pstr()), pstr.length());
         }
         // Return empty string for Excel Nil value
         PyObject* operator()(nullptr_t) const { return PyUnicode_New(0, 127); }
-        PyObject* operator()(int x) const { return PyUnicode_FromFormat("%i", x); }
-        PyObject* operator()(bool x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
-        PyObject* operator()(double x) const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        PyObject* operator()(int x)     const { return PyUnicode_FromFormat("%i", x); }
+        PyObject* operator()(bool x)    const { return PyUnicode_FromString(std::to_string(x).c_str()); }
+        PyObject* operator()(double x)  const { return PyUnicode_FromString(std::to_string(x).c_str()); }
 
         constexpr wchar_t* failMessage() const { return L"Expected string"; }
       };
@@ -113,8 +116,8 @@ namespace xloil
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "int";
 
-        PyObject* operator()(int x) const  { return PyLong_FromLong(long(x)); }
-        PyObject* operator()(bool x) const { return operator()(int(x)); }
+        PyObject* operator()(int x)    const { return PyLong_FromLong(long(x)); }
+        PyObject* operator()(bool x)   const { return operator()(int(x)); }
         PyObject* operator()(double x) const
         {
           long i;
@@ -126,23 +129,24 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected int"; }
       };
 
+      template<bool TTrimArray = true>
       struct PyFromAny : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "Any";
 
-        PyObject* operator()(int x) const { return PyFromInt()(x); }
-        PyObject* operator()(bool x) const { return PyFromBool()(x); }
+        PyObject* operator()(int x)    const { return PyFromInt()(x); }
+        PyObject* operator()(bool x)   const { return PyFromBool()(x); }
         PyObject* operator()(double x) const { return PyFromDouble()(x); }
-        PyObject* operator()(ArrayVal arr) const
+        PyObject* operator()(const ArrayVal& arr) const
         {
-          return excelArrayToNumpyArray(ExcelArray(arr));
+          return excelArrayToNumpyArray(ExcelArray(arr, TTrimArray));
         }
 
         // Return python None for Excel nil value
         PyObject* operator()(nullptr_t) const { Py_RETURN_NONE; }
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           return PyFromString()(pstr);
         }
@@ -152,7 +156,7 @@ namespace xloil
           auto pyObj = pybind11::cast(err);
           return pyObj.release().ptr();
         }
-        PyObject* operator()(RefVal ref) const
+        PyObject* operator()(const RefVal& ref) const
         {
           return pybind11::cast((Range*)new XllRange(ref)).release().ptr();
         }
@@ -164,13 +168,13 @@ namespace xloil
       /// Type converter which expects a cache reference string and rejects
       /// all other types.
       /// </summary>
-      class PyCacheObject : public FromExcelBase<PyObject*>
+      class PyCacheObject : public ExcelValVisitor<PyObject*>
       {
       public:
-        using FromExcelBase::operator();
+        using ExcelValVisitor::operator();
         static constexpr char* const ourName = "CacheObject";
 
-        PyObject* operator()(const PStringView<>& pstr) const
+        PyObject* operator()(const PStringRef& pstr) const
         {
           PyObject* _typeCheck = nullptr;
 
@@ -208,7 +212,7 @@ namespace xloil
 
       auto operator()(
         const ExcelObj& xl,
-        const PyObject* defaultVal) const
+        const PyObject* defaultVal)
       {
         return operator()(xl, const_cast<PyObject*>(defaultVal));
       }
@@ -218,7 +222,7 @@ namespace xloil
       /// </summary>
       auto operator()(
         const ExcelObj& xl,
-        PyObject* defaultVal = nullptr) const
+        PyObject* defaultVal = nullptr)
       {
         if (xl.isMissing() && defaultVal)
         {
@@ -228,7 +232,7 @@ namespace xloil
         }
 
         // Why return null and not throw here?
-        auto* retVal = visitExcelObj(xl, _impl);
+        auto* retVal = xl.visit(_impl);
 
         if (!retVal)
         {
@@ -247,14 +251,15 @@ namespace xloil
     using PyFromBool           = PyFromExcel<detail::PyFromBool>;
     using PyFromDouble         = PyFromExcel<detail::PyFromDouble>;
     using PyFromString         = PyFromExcel<detail::PyFromString>;
-    using PyFromAny            = PyFromExcel<detail::PyFromAny>;
+    using PyFromAny            = PyFromExcel<detail::PyFromAny<true>>;
+    using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<false>>;
     using PyCacheObject        = PyFromExcel<detail::PyCacheObject>;
 
     using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
     using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
     using PyFromDoubleUncached = PyFromExcel<detail::PyFromDouble, false>;
     using PyFromStringUncached = PyFromExcel<detail::PyFromString, false>;
-    using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny, false>;
+    using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny<>, false>;
 
     namespace detail
     {
@@ -263,8 +268,12 @@ namespace xloil
       /// </summary>
       template <class T>
       struct MakePyFromExcel { using type = PyFromExcel<T>; };
+
       template <class T, bool TUseCache>
-      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> { using type = PyFromExcel<T, TUseCache>; };
+      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> 
+      { 
+        using type = PyFromExcel<T, TUseCache>; 
+      };
     }
 
     /// <summary>
@@ -283,7 +292,7 @@ namespace xloil
       {}
 
       virtual PyObject* operator()(
-        const ExcelObj& xl, const PyObject* defaultVal = nullptr) const override
+        const ExcelObj& xl, const PyObject* defaultVal = nullptr) override
       {
         // Because ref-counting there's no notion of a const PyObject*
         // for a default value
@@ -335,12 +344,16 @@ namespace xloil
 
         const auto len = (char16_t)std::min<size_t>(
           USHRT_MAX, PyUnicode_GET_LENGTH((PyObject*)obj));
-        PString<wchar_t, TAlloc> pstr(len, allocator);
+        BasicPString<wchar_t, TAlloc> pstr(len, allocator);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ExcelObj(std::move(pstr));
       }
     };
 
+    namespace detail
+    {
+      const IPyToExcel* getCustomReturnConverter();
+    }
    
     template<bool TUseCache = true>
     struct FromPyObj
@@ -385,9 +398,9 @@ namespace xloil
         {
           return FromPyString()(p, stringAllocator);
         }
-        else if (theCustomReturnConverter)
+        else if (detail::getCustomReturnConverter())
         {
-          auto val = (*theCustomReturnConverter)(*p);
+          auto val = (*detail::getCustomReturnConverter())(*p);
           if (!val.isType(ExcelType::Nil))
             return ExcelObj(std::move(val));
         }

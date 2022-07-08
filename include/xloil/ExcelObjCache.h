@@ -28,7 +28,7 @@ namespace xloil
   {
     if (obj.isType(ExcelType::Str))
     {
-      auto cacheVal = getCached<ExcelObj>(obj.asPString().view());
+      auto cacheVal = getCached<ExcelObj>(obj.cast<PStringRef>().view());
       if (cacheVal)
         return *cacheVal;
     }
@@ -84,11 +84,11 @@ namespace xloil
     {}
 
     using TBase::operator();
-    auto operator()(const PStringView<>& str) const
+    auto operator()(const PStringRef& str) const
     {
       const ExcelObj* obj = getCached<ExcelObj>(str.view());
       if (obj)
-        return visitExcelObj(*obj, (TBase&)(*this));
+        return obj->visit((TBase&)(*this));
       
       return TBase::operator()(str);
     }

@@ -1,6 +1,5 @@
 import xloil as xlo
 
-
 class RtdSimplePublisher(xlo.RtdPublisher):
     """
     Implements the boiler-plate involved in an RtdPublisher for the vanilla case.

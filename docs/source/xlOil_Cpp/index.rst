@@ -83,7 +83,7 @@ range object.  Prefer `ExcelRef` when you are sure the range information has bee
 an XLL worksheet function.
 
 
-excelCall - calling XLL API functions
+callExcel - calling XLL API functions
 -------------------------------------
 
 The XLL SDK docs describe a number of API calls beginning with `xl` such as `xlCoerce` and
@@ -94,14 +94,14 @@ The XLL SDK docs describe a number of API calls beginning with `xl` such as `xlC
 
 ::
     
-    ExcelObj result = excelCall(msxll::xlSheetId, "Sheet1");
+    ExcelObj result = callExcel(msxll::xlSheetId, "Sheet1");
 
 
 All arguments are automatically converted to `ExcelObj` type where a conversion is possible
 before being passed to Excel.  The type of the return value is given in the documentation.
 
-excelPost - calling blocked API functions 
------------------------------------------
+runExcelThread - calling blocked API functions 
+----------------------------------------------
 
 Excel's COM API must be called on the main thread, since it's single-threaded apartment.
 Breaking this rule may lead to undefined behaviour. In addition, the COM interface must be 'ready'
@@ -110,11 +110,11 @@ which means no dialog boxes are open or other tasks which busy the COM interface
 Calls to the XLL API generally also require the main thread (with a few exceptions) and being in 
 the correct 'context', that is being in a function invoked by Excel.
 
-The `excelPost` function queues a message to a hidden window or an asynchronous procedure call 
+The `runExcelThread` function queues a message to a hidden window or an asynchronous procedure call 
 (APC) callback which will be executed on the main thread when Excel passes control to windows 
 or pumps its message loop respectively (a window message is the default, most responsive choice).
 
-The `excelPost` function can retry calls, trying to wait until the COM interface is ready (sadly 
+The `runExcelThread` function can retry calls, trying to wait until the COM interface is ready (sadly 
 there is no mechanism to allow Excel to inform applications when it is ready to work, you just 
 have to keep trying).
  

@@ -27,23 +27,24 @@ xlOil features
 --------------
 
 * Python
-  - Very concise syntax to declare an Excel function
+  - Concise syntax to declare an Excel function
   - Optional type checking of function parameters
   - Supports keyword arguments
-  - Choice of globally declared functions or code modules limited to a single workbook just
+  - Choice of globally declared functions or code modules limited to a single workbook
     like VBA workbook-level functions
-  - Tight integration with numpy - very low overheads for array functions
-  - Understands python tuples, lists, dictionarys and pandas dataframes
+  - Tight integration with *numpy* - very low overheads for array functions
+  - Understands python tuples, lists, dictionarys and *pandas* dataframes
   - Async functions
   - RTD functions and on-the-fly RTD server creation
   - Macro type functions which write to ranges on the sheet
   - Access to the Excel Application object and the full Excel object model
+  - Drive Excel through COM automation
   - Hook Excel events
-  - Pass any python object back to Excel and then use it as an argument for any python-based function
-  - Simple and quick add-in deployment
-  - Two-way connection to Jupyter notebooks: run worksheet functions in Jupyter and query variables
-    in the jupyter kernel
-  - Create Ribbons toolbars and Custom Task Panes
+  - Pass any python object back to Excel and back into another function
+  - Simple add-in deployment
+  - Two-way connection to *Jupyter* notebooks: run worksheet functions in *Jupyter* and query variables
+    in the *jupyter* kernel
+  - Create Ribbon toolbars and Custom Task Panes
   - Return *matplotlib* plots and images from worksheet functions
 * C++
   - Safe and convenient wrappers around most things in the C-API
@@ -52,7 +53,7 @@ xlOil features
   - Object cache allows returning opaque objects to Excel and passing them back to other functions
   - Simplified RTD server creation
   - RTD-based background calculation
-  - Create Ribbons toolbars and Custom Task Panes  
+  - Create Ribbon toolbars and Custom Task Panes  
 * SQL
   - Create tables from Excel ranges and arrays
   - Query and join them with the full sqlite3 SQL syntax
