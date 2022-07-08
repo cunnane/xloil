@@ -99,8 +99,8 @@ if not 'no_build' in cmd_args or cmd_args.no_build is False:
 
 # Build the docs
 # TODO: check=True should throw if the process exit code is != 0. Doesn't work.
-subprocess.run(f"cmd /C make.bat doxygen", cwd=doc_dir, check=True)
-subprocess.run(f"cmd /C make.bat -bin x64\Release html", cwd=doc_dir, check=True)
+subprocess.run(f"cmd /C make.cmd doxygen", cwd=doc_dir, check=True)
+subprocess.run(f"cmd /C make.cmd -bin x64\Release html", cwd=doc_dir, check=True)
 
 #
 # Start of file copying
