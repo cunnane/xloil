@@ -15,7 +15,7 @@ namespace xloil
   {
     void findSplitPoints(
       vector<wchar_t>& found, 
-      PStringRef& input,  // This string will be modified!
+      BasicPStringRef<wchar_t>& input,  // This string will be modified!
       const wstring& sep,
       const bool consecutiveAsOne)
     {
@@ -75,7 +75,7 @@ namespace xloil
       {
         if (val.isType(ExcelType::Str))
         {
-          auto pStr = val.cast<PStringRef>();
+          auto pStr = val.cast<PStringRef>().remove_const();
           totalStrLength += pStr.length();
           findSplitPoints(found[iVal], pStr, sep, consecutive);
           maxTokens = std::max(maxTokens, found[iVal].size());
@@ -106,7 +106,7 @@ namespace xloil
             // pretending we 'own' it, then emplacing the resulting ExcelObj
             // in the builder to avoid a copy. The emplacement uses move ctors
             // so the PString dtor will not be called on the 'owned' sub-string
-            auto pStr = inputArray(i).cast<PStringRef>();
+            auto pStr = inputArray(i).cast<PStringRef>().remove_const();
             for (size_t j = 0; j < found[i].size(); ++j)
               builder(i, j).emplace_pstr(pStr.data() + found[i][j]);
           }
@@ -120,7 +120,7 @@ namespace xloil
             builder(0, i) = inputArray(i);
           else
           {
-            auto pStr = inputArray(i).cast<PStringRef>();
+            auto pStr = inputArray(i).cast<PStringRef>().remove_const();
             for (size_t j = 0; j < found[i].size(); ++j)
               builder(j, i).emplace_pstr(pStr.data() + found[i][j]);
           }
@@ -133,7 +133,7 @@ namespace xloil
     {
       vector<wchar_t> found;
 
-      auto pStr = stringOrArray.cast<PStringRef>();
+      auto pStr = stringOrArray.cast<PStringRef>().remove_const();
       findSplitPoints(found, pStr, sep, consecutive);
 
       ExcelArrayBuilder builder((uint32_t)found.size(), 1, pStr.length());
