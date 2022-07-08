@@ -68,7 +68,7 @@ namespace Tests
 
       for (auto i = 0; i < N; ++i)
       {
-        auto* val = cache->fetch(keys[i].asPString().view());
+        auto* val = cache->fetch(keys[i].asStringView());
         Assert::IsNotNull(val);
         Assert::AreEqual<int>(i, **val);
       }
@@ -86,7 +86,7 @@ namespace Tests
 
       for (auto i = 0; i < N; ++i)
       {
-        auto* val = cache->fetch(keys2[i].asPString().view());
+        auto* val = cache->fetch(keys2[i].asStringView());
         Assert::IsNotNull(val);
         Assert::AreEqual<int>(i, **val);
       }

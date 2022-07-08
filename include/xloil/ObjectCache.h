@@ -194,7 +194,7 @@ namespace xloil
         : &found->second.obj;
     }
 
-    PString<wchar_t> add(
+    PString add(
       TObj&& obj,
       CallerInfo&& caller = CallerInfo(),
       const std::wstring_view& tag = defaultTag)
@@ -248,12 +248,12 @@ namespace xloil
 
     auto end() const { return _cache.cend(); }
 
-    PString<wchar_t> keyToStr(
+    PString keyToStr(
       const Key& key,
       const std::wstring_view& tag = defaultTag) const
     {
       const auto tagLen = (uint8_t)tag.size();
-      PString<> result(_MinKeyLength + tagLen);
+      PString result(_MinKeyLength + tagLen);
 
       auto pStr = result.pstr();
 

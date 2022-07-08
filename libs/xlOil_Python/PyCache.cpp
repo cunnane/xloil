@@ -79,7 +79,7 @@ namespace xloil
         {
           auto callerInfo = caller.empty() ? CallerInfo() : CallerInfo(ExcelObj(caller));
           const auto cacheKey = _cache->add(std::move(obj), std::move(callerInfo), tag);
-          return PySteal(detail::PyFromString()((PStringView<>)cacheKey));
+          return PySteal(detail::PyFromString()(cacheKey.view()));
         }
         py::object getitem(const std::wstring_view& str)
         {
@@ -148,7 +148,7 @@ namespace xloil
       {
         py::class_<PyCache>(mod, "ObjectCache")
           .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
-          .def("remove", &PyCache::remove, py::arg("ref"))
+          //.def("remove", &PyCache::remove, py::arg("ref"))
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
