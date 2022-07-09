@@ -91,7 +91,7 @@ namespace xloil
     struct Key
     {
       intptr_t ptr;
-      uint32_t calcId;
+      size_t calcId;
 
       auto operator==(const Key& that) const
       {
@@ -113,12 +113,12 @@ namespace xloil
     mutable std::mutex _cacheLock;
     enum class Reaper { STOPPED = 0, PAUSED = 1, RUNNING = 2 };
     mutable std::atomic<Reaper> _reaperState;
-    std::thread _reaper;
+    std::thread _reaper; // TODO: shared reaper thread?
     std::condition_variable _reaperCycle;
 
     std::unordered_set<std::wstring> _closedWorkbooks;
 
-    uint32_t _calcId;
+    size_t _calcId;
     TUniquifier _uniquifier;
 
     std::shared_ptr<const void> _calcEndHandler;
@@ -126,12 +126,23 @@ namespace xloil
     std::shared_ptr<const void> _workbookOpenHandler;
 
     static constexpr uint8_t _PrefixLength = 2;
-    static constexpr uint8_t _NumKeyBytes = sizeof(Key);
-    static constexpr uint8_t _MinKeyLength = _NumKeyBytes + _PrefixLength;
+    static constexpr uint8_t _NumKeyBytes = sizeof(intptr_t);
+    static constexpr uint8_t _MinKeyLength = _NumKeyBytes + _PrefixLength + 1;
     static constexpr auto _ReaperSleepTime = std::chrono::seconds(10);
-    static constexpr wchar_t _CachePrefix = L'©';
+    static constexpr wchar_t _CachePrefix = 0x258c;
     static constexpr uint16_t _CacheCharMask = 0x0100;
-    
+    // The purpose of this mask is to ensure the calcId never contains
+    // a zero byte. When we bit-pack the Key, if a zero byte occurs in
+    // the calcId and object pointer at the same position, we get a null
+    // string terminator. Excel happily deals with this but it feels like
+    // a recipe for unexpected behaviour.
+    static constexpr size_t _CalcIdMask = []() {
+      if constexpr (sizeof(size_t) == 8)
+        return 0x0101010101010101;
+      else
+        return 0x01010101;
+    }();
+
     // We save a comparison in valid() by comparing the first two wchars 
     // which must be "<prefix><uniquifier>" as a single uint32. Note the
     // endianness to get this the right way around.
@@ -139,7 +150,7 @@ namespace xloil
     
     // Created via factory function
     ObjectCache()
-      : _calcId(1)
+      : _calcId(_CalcIdMask)
     {
       _reaperState = Reaper::RUNNING;
       _reaper = std::thread(&this_t::reaperMain, this);
@@ -228,7 +239,8 @@ namespace xloil
     void onAfterCalculate()
     {
       // Called by Excel event so will always be synchonised
-      ++_calcId; // Wraps at MAX_UINT - but this doesn't matter
+      ++_calcId;
+      _calcId |= _CalcIdMask;
     }
 
     void onWorkbookClose(const wchar_t* wbName)
@@ -248,6 +260,11 @@ namespace xloil
 
     auto end() const { return _cache.cend(); }
 
+    /// <summary>
+    /// Packs a cache Key into a cache string in a rather unexpected way!
+    /// We start with <CachePrefix><Uniquifier><Tag>, then we interleave the
+    /// Key bytes like: <caldId[0]><ptr[0]>....<caldId[8]><ptr[8]>
+    /// </summary>
     PString keyToStr(
       const Key& key,
       const std::wstring_view& tag = defaultTag) const
@@ -266,10 +283,17 @@ namespace xloil
         pStr += tagLen;
       }
 
-      auto pKey = (const char*)&key;
-      const auto pEnd = pKey + sizeof(Key);
-      for (; pKey != pEnd; ++pStr, ++pKey)
-        *pStr = (_CacheCharMask | *pKey);
+      *pStr++ = 0x2590; // right side block character
+
+      auto keyPtr = (const char*)&key.ptr;
+      auto keyId  = (const char*)&key.calcId;
+      auto pKey   = (char*)pStr;
+
+      for (auto i = 0; i < sizeof(size_t); ++i)
+      {
+        *pKey++ = *keyId++;
+        *pKey++ = *keyPtr++;
+      }
 
       return std::move(result);
     }
@@ -279,12 +303,16 @@ namespace xloil
     Key strToKey(const std::wstring_view& str) const
     {
       Key key;
-      auto pStr = (char*)(str.data() + str.size() - _NumKeyBytes);
+      auto pKey = (const char*)(str.data() + str.size() - _NumKeyBytes);
 
-      auto pKey = (char*)&key;
-      const auto pEnd = pKey + sizeof(Key);
-      for (; pKey != pEnd; pStr += 2, ++pKey)
-        *pKey = *pStr;
+      auto keyPtr = (char*)&key.ptr;
+      auto keyId = (char*)&key.calcId;
+
+      for (auto i = 0; i < sizeof(size_t); ++i)
+      {
+        *keyId++  = *pKey++;
+        *keyPtr++ = *pKey++;
+      }
 
       return std::move(key);
     }

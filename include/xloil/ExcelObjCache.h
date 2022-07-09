@@ -12,7 +12,7 @@ namespace xloil
   struct CacheUniquifier<std::unique_ptr<const ExcelObj>>
   {
     static constexpr wchar_t value = L'\x6C38';
-    static constexpr auto tag = L"XLOBJ ";
+    static constexpr auto tag = L"XLOBJ";
   };
 
   template struct XLOIL_EXPORT ObjectCacheFactory<std::unique_ptr<const ExcelObj>>;
