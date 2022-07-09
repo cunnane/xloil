@@ -861,6 +861,8 @@ namespace xloil
   template<class TFunc>
   auto ExcelObj::visit(TFunc&& functor) const
   {
+#pragma warning(push)
+#pragma warning(disable: 4840)
     try
     {
       switch (type())
@@ -886,6 +888,7 @@ namespace xloil
         toString(),
         utf8ToUtf16(e.what()));
     }
+#pragma warning(pop)
   }
 
   template<class TFunc, class TDefault>

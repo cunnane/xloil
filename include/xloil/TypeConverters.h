@@ -54,7 +54,7 @@ namespace xloil
   {
   public:
     using return_type = std::optional<TResult>;
-    template <class T> return_type operator()(T) const
+    constexpr return_type operator()(...) const
     {
       return std::optional<TResult>();
     }
@@ -65,7 +65,7 @@ namespace xloil
   {
   public:
     using return_type = TResult*;
-    template <class T> return_type operator()(T) const
+    constexpr return_type operator()(...) const
     {
       return nullptr;
     }
