@@ -116,18 +116,11 @@ class JupyterNotReadyError(Exception):
 
 _rtd_server_object = None
 
-# We use the ipython kernel json filename as the object cache key for the 
-# connection object. To preserve this we need to provide a custom converter
-# otherwise RtdServer will resolve the cache reference when converting to 
-# a python object
-_uncached_convert = None
-
 def _rtd_server():
-    global _rtd_server_object, _uncached_convert
+    global _rtd_server_object
     if _rtd_server_object is None:
         from xloil.type_converters import get_converter
         _rtd_server_object = xlo.RtdServer()
-        _uncached_convert = get_converter("object", read=True, cache=False)
     return _rtd_server_object
 
 class _JupyterConnection:
@@ -137,13 +130,12 @@ class _JupyterConnection:
     _registered_funcs = set()
     _ready = False # Indicates whether the connection can receive commands  
 
-    def __init__(self, connection_file, xloil_path):
+    def __init__(self, connection_file):
 
         from jupyter_client.asynchronous import AsyncKernelClient
 
         self._loop = xlo.get_async_loop()
         self._client = AsyncKernelClient()
-        self._xloil_path = xloil_path.replace('\\', '/')
         self._connection_file = connection_file
 
         cf = jupyter_client.find_connection_file(self._connection_file)
@@ -267,6 +259,7 @@ class _JupyterConnection:
         async def coro():
             self._client.execute(*args, **kwargs)
 
+        import asyncio
         asyncio.run_coroutine_threadsafe(coro(), self._loop)
 
     async def aexecute(self, command:str, **kwargs):
@@ -323,7 +316,7 @@ class _JupyterConnection:
             xlo.log(f"Starting variable watch {name}", level='debug')
             _rtd_server().start(watcher)
 
-        return _rtd_server().subscribe(topic, _uncached_convert)
+        return _rtd_server().subscribe(topic)
 
     def stop_watch_variable(self, name):
         try:
@@ -431,15 +424,15 @@ class _JupyterConnection:
     #def __enter__(self):
     #def __exit__(self, exc_type, exc_value, traceback)
 
+_connections = dict()
 
 class _JupyterTopic(xlo.RtdPublisher):
 
-    def __init__(self, topic, connection_file, xloil_path): 
+    def __init__(self, topic, connection_file): 
         super().__init__()
-        self._connection = _JupyterConnection(connection_file, xloil_path)
+        self._connection = _JupyterConnection(connection_file)
         self._topic = topic
         self._task = None 
-        self._cacheRef = None
 
     def connect(self, num_subscribers):
 
@@ -451,8 +444,8 @@ class _JupyterTopic(xlo.RtdPublisher):
                     xlo.log(f"Awaiting connection to Jupyter kernel {self._topic}", level="debug")
                     await conn.connect()
                     while True:
-                        self._cacheRef = xlo.cache.add(conn, key=self._topic)
-                        _rtd_server().publish(self._topic, self._cacheRef)
+                        _connections[self._topic] = conn
+                        _rtd_server().publish(self._topic, self._topic)
                         restart = await conn.process_messages()
                         xlo.log(f"Closing connection to Jupyter kernel {self._topic}", level="debug")
                         conn.close()
@@ -475,8 +468,7 @@ class _JupyterTopic(xlo.RtdPublisher):
             self.stop()
 
             # Cleanup our cache reference
-            if self._cacheRef is not None:
-                xlo.cache.remove(self._cacheRef)
+            del _connections[self._topic]
 
             # Schedule topic for destruction
             return True 
@@ -512,6 +504,16 @@ def _find_connection_for_notebook(filename):
     return None
 
 
+@xlo.converter(_JupyterConnection, register=False)
+class JupyterConnectionLookup:
+    def read(self, x):
+        if isinstance(x, str):
+            conn = _connections.get(x, None)
+            if conn is not None:
+                return conn
+        raise Exception(f"Expected jupyter connection ref, got '{x}'")
+
+
 @xlo.func(
     help="Connects to a jupyter (ipython) kernel. Functions created in the kernel "
          "and decorated with xlo.func will be registered with Excel.",
@@ -520,7 +522,7 @@ def _find_connection_for_notebook(filename):
                            "or a URL containing a ipynb file"
          }
 )
-def xloJpyConnect(ConnectInfo):
+def xloJpyConnect(ConnectInfo: str):
     from urllib.parse import urlparse
 
     connection_file = None
@@ -546,10 +548,9 @@ def xloJpyConnect(ConnectInfo):
 
     topic = connection_file.lower()
     if _rtd_server().peek(topic) is None:
-        conn = _JupyterTopic(topic, connection_file, 
-                             os.path.join(os.path.dirname(__file__), os.pardir))
+        conn = _JupyterTopic(topic, connection_file)
         _rtd_server().start(conn)
-    return _rtd_server().subscribe(topic, _uncached_convert)
+    return _rtd_server().subscribe(topic)
 
 
 @xlo.func(
@@ -560,9 +561,7 @@ def xloJpyConnect(ConnectInfo):
         'Name': 'Case-sensitive name of a global variable in the jupyter kernel'
     }
 )
-def xloJpyWatch(Connection, Name):
-    if not isinstance(Connection, _JupyterConnection):
-        return "Expected a Jpy Connection"
+def xloJpyWatch(Connection: JupyterConnectionLookup, Name):
     return Connection.watch_variable(Name)
 
 
@@ -574,7 +573,8 @@ def xloJpyWatch(Connection, Name):
         'Command': 'A format string which is to be executed',
     }
 )
-async def xloJpyRun(Connection, Command:str, 
+async def xloJpyRun(Connection:JupyterConnectionLookup, 
+                    Command:str, 
                     Arg1=None, Arg2=None, Arg3=None, Arg4=None, 
                     Arg5=None, Arg6=None, Arg7=None, Arg8=None, 
                     Arg9=None, Arg10=None, Arg11=None, Arg12=None):
