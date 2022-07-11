@@ -24,16 +24,15 @@ namespace Tests
         CacheUniquifier<std::unique_ptr<int>>>::create();
       const int N = 100;
 
-      vector<ExcelObj> callers;
+      ExcelObj caller(L"AnInspector");
+
       vector<ExcelObj> keys(N);
-      for (auto i = 0; i < N; ++i)
-        callers.emplace_back(ExcelObj(format(L"Key_{0}", i)));
 
       for (auto i = 0; i < N; ++i)
-        keys[i] = cache->add(make_unique<int>(i), CallerInfo(callers[i]));
+        keys[i] = cache->add(make_unique<int>(i), CallerInfo(caller));
 
       for (auto i = 0; i < N; ++i)
-        cache->add(make_unique<int>(i), CallerInfo(callers[i]));
+        cache->add(make_unique<int>(i), CallerInfo(caller));
 
       for (auto i = 0; i < N; ++i)
       {

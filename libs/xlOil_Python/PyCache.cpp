@@ -17,8 +17,8 @@ namespace xloil
   };
   using pyCacheUnquifier = CacheUniquifier<py::object>;
 
-  namespace Python {
-
+  namespace Python 
+  {
     namespace
     {
       struct PyObjToPtr
@@ -44,10 +44,10 @@ namespace xloil
           _workbookCloseHandler = std::static_pointer_cast<const void>(
             xloil::Event::WorkbookAfterClose().bind(
               [this](auto wbName)
-          {
-            py::gil_scoped_acquire getGil;
-            _cache->onWorkbookClose(wbName);
-          }));
+              {
+                py::gil_scoped_acquire getGil;
+                _cache->onWorkbookClose(wbName);
+              }));
         }
 
         // Just to prevent any potential errors!
@@ -75,11 +75,12 @@ namespace xloil
           return *_theInstance;
         }
 
-        py::object add(py::object& obj, const wstring& tag, const wstring& caller)
+        py::object add(py::object& obj, wstring& tag)
         {
-          auto callerInfo = caller.empty() ? CallerInfo() : CallerInfo(ExcelObj(caller));
-          const auto cacheKey = _cache->add(std::move(obj), std::move(callerInfo), tag);
-          return PySteal(detail::PyFromString()(cacheKey.view()));
+          if (tag.empty())
+            tag = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
+          const auto cacheKey = _cache->add(std::move(obj), CallerInfo(), tag);
+          return PySteal(detail::PyFromString()(cacheKey));
         }
         py::object getitem(const std::wstring_view& str)
         {
@@ -119,13 +120,11 @@ namespace xloil
 
     ExcelObj pyCacheAdd(const py::object& obj, CallerInfo&& caller)
     {
-      // Decorate the cache ref with the python object name to 
-      // help users keep track of their objects
-      auto name = utf8ToUtf16(obj.ptr()->ob_type->tp_name) + L' ';
+      auto tag = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
       return ExcelObj(PyCache::instance()._cache->add(
         py::object(obj),
         std::move(caller),
-        name));
+        tag));
     }
 
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
@@ -147,8 +146,15 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyCache>(mod, "ObjectCache")
-          .def("add", &PyCache::add, py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
-          //.def("remove", &PyCache::remove, py::arg("ref"))
+          .def("add", 
+            &PyCache::add, 
+            R"(
+              Adds an object to the cache, returning a cache reference string. The 
+              optional `tag` helps identify the object to users and does not form
+              and integral part of the lookup. It defaults to the object type if 
+              unspecified.
+            )",
+            py::arg("obj"), py::arg("tag") = "")
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))
           .def("contains", &PyCache::contains, py::arg("ref"))
           .def("keys", &PyCache::keys)
@@ -157,7 +163,7 @@ namespace xloil
           .def("__call__", 
             &PyCache::add, 
             "Calls `add` method with provided arguments",
-            py::arg("obj"), py::arg("tag")="", py::arg("key")="");
+            py::arg("obj"), py::arg("tag")="");
 
         mod.add_object("cache", py::cast(PyCache::construct(), py::return_value_policy::take_ownership));
       });
