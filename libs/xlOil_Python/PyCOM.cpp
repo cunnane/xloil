@@ -159,10 +159,10 @@ namespace xloil
         newPic->Name = shapeName.c_str();
 
         // Remove temporary file in a separate thread.
-        std::async(std::launch::async, [file = std::move(tempFileName)]() {
+        auto future = std::async(std::launch::async, [file = std::move(tempFileName)]() {
           DeleteFile(file.c_str());
         });
-
+ 
         return shapeName;
       }
       XLO_RETHROW_COM_ERROR;
