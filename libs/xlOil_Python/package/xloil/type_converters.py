@@ -207,7 +207,7 @@ def converter(target=typing.Callable, range=False, register=False, direction="re
         The type which the converter handles
 
     register: 
-        If not True, registers the converter as a handler for ``target``, replacing
+        If True, registers the converter as a handler for ``target`` type, replacing
         any exsting handlers. For a reader, this means if ``target`` is used as an 
         argument annotation, this converter will be used.  For a writer, it enables 
         ``target`` as an return type annotation *and* it allows xlOil to try to call 
