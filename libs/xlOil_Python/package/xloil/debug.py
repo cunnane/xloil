@@ -19,18 +19,24 @@ class _Handler_pdb_window:
         ...
 
     def call(self, type, value, trace):
-        import pdb
+
+        from .tkinter import Tk_thread
+
+        console = Tk_thread().submit(self._open_console, Tk_thread().root, trace)
+        console.result() # Blocks
+
+    @staticmethod
+    def _open_console(tk_root, trace):
+
         import tkinter as tk
         import sys
-        from threading import Thread
-        import queue
-
+        
         #
         # Borrowed from
-        # https://stackoverflow.com/questions/21811464/how-can-i-embed-a-python-interpreter-frame-in-python-using-tkinter
+        # https://stackoverflow.com/questions/21811464/
         #
         class Console(tk.Frame):
-            def __init__(self, parent, console_invoke):
+            def __init__(self, parent, invoke):
                 tk.Frame.__init__(self, parent)
                 self.parent = parent
 
@@ -40,26 +46,28 @@ class _Handler_pdb_window:
                 sys.stderr = self
                 sys.stdin = self
 
+                import queue
                 self.stdin_buffer = queue.Queue()
 
-                self.createWidgets()
+                self.create_widgets()
 
-                self.consoleThread = Thread(target=lambda: self.run_console(console_invoke))
-                self.consoleThread.start()
+                from threading import Thread
 
-            def run_console(self, func):
-                try:
-                    func()
-                except:
-                    pass
-                self._root().quit() # break out of mainloop
+                def run():
+                    try:
+                        invoke()
+                    finally:
+                        from .tkinter import Tk_thread
+                        Tk_thread().submit(self.destroy)
+
+                self._console_thread = Thread(target=run)
+                self._console_thread.start()
+
 
             def destroy(self):
                 self.exit = True
                 self.stdin_buffer.put("\n\nexit()\n")
                 sys.stdin, sys.stdout, sys.stderr = self.real_std_in_out
-                if self.consoleThread.is_alive():
-                    self.consoleThread.join()
                 super().destroy()
 
             def enter(self, event):
@@ -73,7 +81,7 @@ class _Handler_pdb_window:
                 self.ttyText.mark_set("input_start", "end-1c")
                 self.ttyText.see('end')
 
-            def createWidgets(self):
+            def create_widgets(self):
                 self.ttyText = tk.Text(self.parent, wrap='word')
                 self.ttyText.pack(expand=True, fill=tk.BOTH)
                 self.ttyText.bind("<Return>", self.enter)
@@ -87,8 +95,8 @@ class _Handler_pdb_window:
                 line = self.stdin_buffer.get()
                 return line
 
-        import xloil.tkinter
-        top_level = tk.Toplevel(xloil.tkinter.tk_root())
+
+        top_level = tk.Toplevel(tk_root)
 
         def disable_debugging():
             xloil.event.UserException.clear()
@@ -97,11 +105,11 @@ class _Handler_pdb_window:
         menu.add_command(label="Disable Debugger", command=disable_debugging)
         top_level.config(menu=menu)
 
+        import pdb
         main_window = Console(top_level, lambda: pdb.post_mortem(trace))
-        main_window.mainloop()
+        main_window.show()
         
-        top_level.destroy()
-
+        
 _exception_handler = None
 
 def _handler_func(type, value, trace):

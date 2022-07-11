@@ -60,6 +60,7 @@ class QtExecutor(futures.Executor):
         self._thread = threading.Thread(target=self._main_loop, name="QtGuiThread")
         self._broken = False
         self._work_signal = None
+        self.app = None
         self._thread.start()
 
     def submit(self, fn, *args, **kwargs):
@@ -107,7 +108,6 @@ class QtExecutor(futures.Executor):
 
             # Thread cleanup
             self.app = None
-            self._enqueued = None
             self._broken = True
 
         except Exception as e:
@@ -119,10 +119,11 @@ _Qt_thread = None
 
 def Qt_thread() -> futures.Executor:
     """
-        All Qt GUI interactions (except signals) must take place on the thread
-        that the *QApplication* object was created on. This object is a 
-        *concurrent.futures.Executor* which executes commands on the dedicated
-        Qt thread.  **All Qt interaction must take place via this thread**.
+        All Qt GUI interactions (except signals) must take place on the thread on which 
+        the *QApplication* object was created.  This object is a *concurrent.futures.Executor* 
+        which creates the *QApplication* object and can run commands on a dedicated Qt thread.  
+        
+        **All QT interaction must take place via this thread**.
 
         Examples
         --------
