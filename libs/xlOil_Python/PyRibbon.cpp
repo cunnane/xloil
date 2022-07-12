@@ -204,7 +204,7 @@ namespace xloil
         py::kwargs kwargs)
       {
         kwargs["gui"] = py::cast(comAddin);
-        return py::module::import("xloil.excelgui").attr("create_task_pane")(*args, **kwargs);
+        return py::module::import("xloil").attr("create_task_pane")(*args, **kwargs);
       }
 
       class PyTaskPaneHandler : public ICustomTaskPaneHandler

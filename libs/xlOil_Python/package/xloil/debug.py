@@ -20,7 +20,7 @@ class _Handler_pdb_window:
 
     def call(self, type, value, trace):
 
-        from .tkinter import Tk_thread
+        from xloil.gui.tkinter import Tk_thread
 
         console = Tk_thread().submit(self._open_console, Tk_thread().root, trace)
         console.result() # Blocks

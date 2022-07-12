@@ -10,19 +10,18 @@ import asyncio
 # GUI: Creating Custom Task Panes
 #---------------------------------
 
-# You *must* import `xloil.qtgui` before `PyQt5`, this allows xlOil to create
+# You *must* import `xloil.gui.pyqt5` before `PyQt5`, this allows xlOil to create
 # a thread to manage the Qt GUI.  *All* interaction with the Qt GUI must be done
-# on the GUI thread or Qt _will abort_.  *This includes importing PyQt5* 
-#  `Use QtThread.run(...)` or `QtThread.send(...)`
+# on the GUI thread or Qt _will abort_.  Use `QtThread.submit(...)`
 
 try:
-    from xloil.qtgui import QtThreadTaskPane
+    import xloil.gui.pyqt5
 
     _PANE_NAME="MyPane"
 
     from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
     from PyQt5.QtCore import pyqtSignal, Qt
-
+    
     class MyTaskPane(QWidget):
         progress = pyqtSignal(int)
     
@@ -42,13 +41,14 @@ try:
         
             self.setLayout(layout)
             
+            
     async def make_task_pane():
-        global _excelgui
+        global _excelgui # Will be created in time...
         return await _excelgui.create_task_pane(
             name=_PANE_NAME, creator=MyTaskPane)
             
 except ImportError:
-    pass
+    raise
     
 #----------------------
 # GUI: Creating Ribbons

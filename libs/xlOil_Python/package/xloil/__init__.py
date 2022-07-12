@@ -33,7 +33,7 @@ from .type_converters import (
     returner
     )
 
-from .excelgui import (
+from .gui import (
     CustomTaskPane,
     find_task_pane,
     create_task_pane

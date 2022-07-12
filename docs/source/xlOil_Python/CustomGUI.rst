@@ -94,7 +94,9 @@ Currently only Qt is supported using ``PyQt5`` or ``PySide2``. Additional suppor
 
 ::
 
-    from PyQt5.QtWidgets import QWidget     # could use PySide2 instead
+    import xloil.gui.pyqt5                  # Must do this first!
+    from PyQt5.QtWidgets import QWidget     # Could use PySide2 instead
+
     class MyTaskPane(QWidget):
         def __init__(self): # Must have no args
             ... # some code to draw the widget
@@ -106,34 +108,44 @@ Currently only Qt is supported using ``PyQt5`` or ``PySide2``. Additional suppor
 
     pane.widget.send_signal(3)
 
-The ``create_task_pane`` call first looks for a pane with the specified name which is already 
+The :any:`xloil.create_task_pane` call first looks for a pane with the specified name which is already 
 attached to the active window, returning a reference to it if found.  Otherwise the ``creator``
 is used.  If ``creator`` inherits from `QWidget`, it is constructed and attached to a new
 custom task pane
-
-With Qt, all GUI interactions (other than signals) must take place in the same thread, or 
-Qt will abort.  To achieve this xlOil creates a special Qt-only thread, constructs ``MyTaskPane`` 
-on that thread, then starts the Qt event loop to run the GUI.
 
 It is also possible to pass a function as the ``creator`` argument.  The function should take an
 :obj:`xloil.TaskPaneFrame` and return a :obj:`xloil.CustomTaskPane`.
 
 To talk to your widget, it's best to set up a system of Qt 
 `signals <https://wiki.qt.io/Qt_for_Python_Signals_and_Slots>`_. 
-(the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_). It's 
-also possible to run GUI commands on xlOil's Qt thread in the following way:
+(the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_).
+
+
+Qt Thread-safety
+================
+
+With Qt, all GUI interactions (other than signals) must take place in the same thread, or 
+Qt will abort.  To achieve this, xlOil creates a special Qt thread running the Qt event loop, 
+then constructs ``MyTaskPane`` on that thread.
+
+To run GUI commands on xlOil's *Qt* thread, do the following:
 
 ::
 
-    from xloil.qtgui import Qt_thread
-    future = Qt_thread.submit(func, args) # Qt_thread is a concurrent.futures.Executor
-    future.result()                       # Blocks, no need to do this if result is discarded
+    from xloil.gui.pyqt5 import Qt_thread
+    future = Qt_thread().submit(func, args) # Qt_thread is a concurrent.futures.Executor
+    future.result()                         # Optional if result is required now
 
-The ``pane`` object is automatically stored to a registry so there is no need to hold a reference.
+
+
+Task Pane registry
+==================
+
+The ``pane`` object is automatically stored in a registry so there is no need to hold a reference.
 Task panes are attached by default to the active window and it is possible to have multiple 
 windows per open workbook.  xlOil will free the panes when the parent workbook closes.
 
-To look for a task pane without having a :obj:`xloil.ExcelGUI` object:
+To look in the regitry for a task pane without having a :obj:`xloil.ExcelGUI` object:
 
 ::
 
