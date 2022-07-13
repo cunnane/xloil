@@ -100,7 +100,7 @@ def _try_create_qt_pane(obj):
 
     from ._qtgui import QtThreadTaskPane, QT_IMPORT
     QWidget = QT_IMPORT("QtWidgets").QWidget
-    if issubclass(obj, QWidget):
+    if isinstance(obj, type) and issubclass(obj, QWidget):
         return lambda pane: QtThreadTaskPane(pane, obj)
     return None
 

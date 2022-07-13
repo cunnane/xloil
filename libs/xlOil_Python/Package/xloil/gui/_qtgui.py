@@ -23,8 +23,8 @@ def _create_Qt_app():
     ppp = os.getenv('QT_QPA_PLATFORM_PLUGIN_PATH', None)
     app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
 
-    log(f"Started Qt on thread {threading.get_native_id()}" +
-        f"with libpaths={app.libraryPaths()}", level="error")
+    log(f"Started Qt on thread {threading.get_native_id()} " +
+        f"with libpaths={app.libraryPaths()}", level="info")
 
     return app
 

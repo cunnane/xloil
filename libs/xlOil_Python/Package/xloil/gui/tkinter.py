@@ -14,7 +14,7 @@ class TkExecutor(_GuiExecutor):
         return self._root
 
     def _do_work(self):
-        super()._do_work(self)
+        super()._do_work()
         self._root.after(200, self._do_work)
 
     def _main(self):

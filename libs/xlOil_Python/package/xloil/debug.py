@@ -107,7 +107,7 @@ class _Handler_pdb_window:
 
         import pdb
         main_window = Console(top_level, lambda: pdb.post_mortem(trace))
-        main_window.show()
+        main_window.deiconify()
         
         
 _exception_handler = None
