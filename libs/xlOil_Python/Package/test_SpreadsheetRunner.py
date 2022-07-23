@@ -19,16 +19,22 @@ class Test_SpreadsheetRunner(unittest.TestCase):
         test_sheets = [(SHEET_PATH / x) for x in SHEET_PATH.glob("*.xls*")]
 
         app = xlo.Application()
-        app.visible = True
+        
+        # Excel like to have at least one workbook open. If not, then when
+        # we close our test workbook below, sometimes the COM server will
+        # become unavailable and we'll get "Remote procedure call failed"
+        dummy = app.workbooks.add()
 
         # Load addin: when running via COM automation, no addins are  
         # loaded by default
         if not app.RegisterXLL(os.path.join(XLOIL_BIN_DIR, ADDIN_NAME)):
             raise Exception("xloil load failed")
 
-        # Uncomment this to pause so the debugger can be attached to the 
-        # Excel or python processes
+        # Uncomment these lines to help debugging. Note the debugger
+        # can be attached to the Excel *or* python process
         #input("Attach debugger now...")
+        #app.visible = True
+
         test_results = {}
         for filename in test_sheets:
             print(filename)
@@ -37,10 +43,11 @@ class Test_SpreadsheetRunner(unittest.TestCase):
             app.calculate(full=True)
             names = wb.to_com().Names
     
+            # Some of the python test functions (not RTD or async) require this 
+            # wait time to work. I'm not completely sure why.
             if "settings_wait" in [x.Name.lower() for x in names]:
                 wait_time = wb["Settings_Wait"].value
                 import time
-                app.calculate()
                 time.sleep(wait_time)
                 app.calculate()
         

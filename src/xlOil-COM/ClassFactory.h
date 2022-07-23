@@ -385,7 +385,7 @@ namespace xloil
       }
 
       /// <summary>
-      /// Must be called to destroy this object because the connection creats 
+      /// Must be called to destroy this object because the connection creates 
       /// a reference to this class, preventing it from being destroyed.
       /// </summary>
       void disconnect() noexcept
