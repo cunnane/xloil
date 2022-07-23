@@ -2,7 +2,6 @@
     Do not import this module directly
 """
 
-
 import sys
 import concurrent.futures as futures
 import concurrent.futures.thread
@@ -27,17 +26,6 @@ def _create_Qt_app():
         f"with libpaths={app.libraryPaths()}", level="info")
 
     return app
-
-def _reparent_widget(widget, hwnd):
-
-    QWindow = QT_IMPORT("QtGui").QWindow
-
-    # windowHandle does not exist before show
-    widget.show()
-    nativeWindow = QWindow.fromWinId(hwnd)
-    widget.windowHandle().setParent(nativeWindow)
-    widget.update()
-    widget.move(0, 0)
 
 
 class QtExecutor(_GuiExecutor):
@@ -81,11 +69,12 @@ class QtExecutor(_GuiExecutor):
 
 _Qt_thread = None
 
-def Qt_thread() -> futures.Executor:
+def Qt_thread(fn=None, discard=False) -> futures.Executor:
     """
         All Qt GUI interactions (except signals) must take place on the thread on which 
-        the *QApplication* object was created.  This object is a *concurrent.futures.Executor* 
-        which creates the *QApplication* object and can run commands on a dedicated Qt thread.  
+        the *QApplication* object was created.  This object returns a *concurrent.futures.Executor* 
+        which creates the *QApplication* object and can run commands on a dedicated Qt thread. 
+        It can also be used a decorator.
         
         **All QT interaction must take place via this thread**.
 
@@ -97,6 +86,13 @@ def Qt_thread() -> futures.Executor:
             future = Qt_thread().submit(my_func, my_args)
             future.result() # blocks
 
+            @Qt_thread(discard=True)
+            def myfunc():
+                # This is run on the Qt thread and returns a *future* to the result.
+                # By specifying `discard=True` we tell xlOil that we're not going to
+                # keep track of that future and so it should log any exceptions.
+                ... 
+
     """
 
     global _Qt_thread
@@ -106,34 +102,54 @@ def Qt_thread() -> futures.Executor:
         # Send this blocking no-op to ensure QApplication is created on our thread now
         _Qt_thread.submit(lambda: 0).result()
 
-    return _Qt_thread
+    return _Qt_thread if fn is None else _Qt_thread._wrap(fn, discard)
 
+Qt_thread()
 
 class QtThreadTaskPane(CustomTaskPane):
     """
         Wraps a Qt QWidget to create a CustomTaskPane object. 
     """
 
-    def __init__(self, pane, draw_widget):
+    def __init__(self, widget=None):
         """
         Wraps a QWidget to create a CustomTaskPane object. The ``draw_widget`` function
         is executed on the `xloil.gui.Qt_thread` and is expected to return a *QWidget* object.
         """
-        super().__init__(pane)
+        super().__init__()
 
-        def draw_it(hwnd):
-            widget = draw_widget()
-            _reparent_widget(widget, hwnd)
-            return widget
-        self.widget = Qt_thread().submit(draw_it, self.pane.parent_hwnd).result() # Blocks
+        def _get_hwnd(obj):
+            obj.show() # window handle does not exist before show
+            return int(obj.winId())
 
-    def on_size(self, width, height):
-        Qt_thread().submit(lambda: self.widget.resize(width, height))
-             
+        def draw_it():
+            QWidget = QT_IMPORT("QtWidgets").QWidget
+
+            if isinstance(widget, QWidget):
+                obj = widget
+            elif widget is not None:
+                obj = widget()
+            else:
+                self.draw()
+
+            # Need to make the Qt window frameless using Qt's API. When we attach
+            # to the TaskPaneFrame, the attached window is turned into a 
+            # frameless child. If Qt is not informed, its geometry manager gets
+            # confused and will core dump if the pane is made too small.
+            qt = QT_IMPORT("QtCore").Qt
+            obj.setWindowFlags(qt.FramelessWindowHint)
+
+            return obj, _get_hwnd(obj)
+
+        self.contents, self._hwnd = Qt_thread().submit(draw_it).result() # Blocks
+
+    def hwnd(self):
+        return self._hwnd
+
     def on_visible(self, c):
-        Qt_thread().submit(lambda: self.widget.show() if c else self.widget.hide())
+        Qt_thread().submit(lambda: self.contents.show() if c else self.contents.hide())
 
     def on_destroy(self):
-        Qt_thread().submit(lambda: self.widget.destroy())
+        Qt_thread().submit(lambda: self.contents.destroy())
         super().on_destroy()
 

@@ -207,7 +207,7 @@ namespace xloil
 
         findAddin(app);
 
-        if (isConnected())
+        if (isComAddinConnected())
         {
           disconnect();
         }
@@ -229,11 +229,14 @@ namespace xloil
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
       }
+
     public:
       static auto create(const wchar_t* name, const wchar_t* description)
       {
         auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
-        p->_closeHandler = Event::WorkbookAfterClose().weakBind(std::weak_ptr<ComAddinCreator>(p), &ComAddinCreator::handleWorkbookClose);
+        p->_closeHandler = Event::WorkbookAfterClose().weakBind(
+          std::weak_ptr<ComAddinCreator>(p), 
+          &ComAddinCreator::handleWorkbookClose);
         return p;
       }
 
@@ -257,7 +260,7 @@ namespace xloil
         app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin);
       }
 
-      bool isConnected() const
+      bool isComAddinConnected() const
       {
         try
         {
@@ -267,12 +270,20 @@ namespace xloil
         }
         XLO_RETHROW_COM_ERROR;
       }
-      void connect() override
+
+      void connect(
+        const wchar_t* xml,
+        const RibbonMap& mapper) override
       {
         if (_connected)
           return;
         try
         {
+          if (xml)
+          {
+            _ribbon = createRibbon(xml, mapper);
+            comAddinImpl()->ribbon = _ribbon->getRibbon();
+          }
           _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
         }
@@ -301,16 +312,6 @@ namespace xloil
         XLO_RETHROW_COM_ERROR;
       }
 
-      virtual void setRibbon(
-        const wchar_t* xml,
-        const RibbonMap& mapper)
-      {
-        if (_connected)
-          XLO_THROW("Can only set Ribbon when add-in is disconnected");
-        _ribbon = createRibbon(xml, mapper);
-        comAddinImpl()->ribbon = _ribbon->getRibbon();
-      }
-
       const wchar_t* progid() const override
       {
         return _registrar.progid();
@@ -329,15 +330,22 @@ namespace xloil
 
       shared_ptr<ICustomTaskPane> createTaskPane(
         const wchar_t* name,
-        const IDispatch* window,
+        const ExcelWindow* window,
         const wchar_t* progId) override
       {
         auto factory = comAddinImpl()->ctpFactory();
         if (!factory)
           XLO_THROW("Internal error: failed to receive CTP factory");
 
-        shared_ptr<ICustomTaskPane> pane(createCustomTaskPane(*factory, name, window, progId));
+        shared_ptr<ICustomTaskPane> pane(
+          createCustomTaskPane(
+            *factory, 
+            name, 
+            window ? window->dispatchPtr() : nullptr, 
+            progId));
+
         _panes.insert(make_pair(pane->window().workbook().name(), pane));
+
         return pane;
       }
 

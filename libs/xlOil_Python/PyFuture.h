@@ -65,6 +65,7 @@ namespace xloil
 
             if (!_future._Is_ready())
               return;
+
             value = _future.get();
           }
           throw detail::StopIteration(TConverter()(value));
@@ -90,6 +91,8 @@ namespace xloil
         TValType value;
         {
           pybind11::gil_scoped_release releaseGil;
+          if (!_iter._future.valid())
+            throw pybind11::value_error();
           _iter._future.wait();
           value = _iter._future.get();
         }
@@ -147,7 +150,7 @@ namespace xloil
         std::future<void> _future;
 
         /// <summary>
-        /// Return None until the future is ready, then raises StopIteration, passing the result value 
+        /// Return None until the future is ready, then raises StopIteration, passing the result None 
         /// </summary>
         void next()
         {
@@ -159,7 +162,8 @@ namespace xloil
 
             if (!_future._Is_ready())
               return;
-            _future.get();
+
+            _future.get(); // Ensure shared state is free'd
           }
           throw detail::StopIteration(Py_None);
         };
@@ -183,6 +187,8 @@ namespace xloil
       {
         {
           pybind11::gil_scoped_release releaseGil;
+          if (!_iter._future.valid())
+            throw pybind11::value_error();
           _iter._future.get();
         }
         return pybind11::none();
