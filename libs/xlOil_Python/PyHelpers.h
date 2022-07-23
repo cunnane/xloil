@@ -196,37 +196,7 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
-    /// <summary>
-    /// Wraps a class member function to ensure the GIL is released before it
-    /// is called.  Used for pybind: e.g. mod.def("bar", wrapNoGil(&Foo::bar))
-    /// </summary>
-    template<class Return, class Class, class... Args>
-    constexpr auto wrapNoGil(Return(Class::* f)(Args...) const)
-    {
-      return [f](Class* self, Args... args)
-      {
-        py::gil_scoped_release release;
-        return (self->*f)(args...);
-      };
-    }
-
-    template<class Return, class Class, class... Args>
-    constexpr auto wrapNoGil(Return(Class::* f)(Args...))
-    {
-      return [f](Class* self, Args... args)
-      {
-        py::gil_scoped_release release;
-        return (self->*f)(args...);
-      };
-    }
-
-    template<class F>
-    constexpr auto wrapNoGil(F&& f)
-    {
-      py::gil_scoped_release release;
-      return f();
-    }
-
+   
     /// <summary>
     /// Wraps a class member function to ensure it is executed on Excel's main
     /// thread (with no GIL) Used for pybind: e.g. mod.def("bar", MainThreadWrap(&Foo::bar))
@@ -325,6 +295,13 @@ namespace xloil
         _store[_size++] = p;
       }
 
+      void push_back(const pybind11::object& obj)
+      {
+        auto p = obj.ptr();
+        Py_XINCREF(p);
+        push_back(p);
+      }
+
       constexpr auto begin() const
       {
         return _store.begin();
@@ -350,6 +327,11 @@ namespace xloil
       PyObject* call(PyObject* func, PyObject* kwargs) noexcept
       {
         return fastCall(func, _store.data() + TOffset, nArgs(), kwargs);
+      }
+
+      const pybind11::object& call(const pybind11::object& func, const pybind11::object& kwargs) noexcept
+      {
+        return PyBorrow(fastCall(func.ptr(), _store.data() + TOffset, nArgs(), kwargs.ptr()));
       }
     };
   }
