@@ -50,10 +50,9 @@ xlOil Python Module Reference
 	active_worksheet
 	active_workbook
 	ExcelGUI
-	CustomTaskPane
+	xloil.gui.CustomTaskPane
 	TaskPaneFrame
-	find_task_pane
-    create_task_pane
+	xloil.gui.find_task_pane
 	insert_cell_image
 	xloil.rtd.subscribe
 	xloil.rtd.RtdSimplePublisher
@@ -161,18 +160,23 @@ GUI Interaction
 
 .. autoclass:: ExcelGUI
 	:members:
-.. autoclass:: CustomTaskPane 
-	:members:	
 .. autoclass:: TaskPaneFrame
 	:members:
 .. autoclass:: RibbonControl
 	:members:
-	
-.. autofunction:: find_task_pane
-.. autofunction:: create_task_pane
 
-.. automodule:: xloil.qtgui
-	:members: Qt_thread, QtThreadTaskPane	
+.. automodule:: xloil.gui
+	:members: CustomTaskPane 
+
+.. autofunction:: find_task_pane
+
+.. automodule:: xloil.gui.pyqt5
+	:members: Qt_thread, QtThreadTaskPane
+	:inherited-members:
+
+.. automodule:: xloil.gui.tkinter
+	:members: Tk_thread, TkThreadTaskPane	
+	:inherited-members:
 
 Events
 ------

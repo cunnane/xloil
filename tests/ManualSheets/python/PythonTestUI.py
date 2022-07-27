@@ -8,6 +8,7 @@ import xloil as xlo
 from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
+import inspect
 
 #---------------------------------
 # GUI: Creating Custom Task Panes
@@ -50,6 +51,7 @@ try:
             layout.addWidget(progress_bar)
         
             self.setLayout(layout)
+            
 except ImportError:
 
     class OurQtPane:
@@ -66,14 +68,12 @@ from xloil.gui.tkinter import TkThreadTaskPane, Tk_thread
 # the pane's contents
 class OurTkPane(TkThreadTaskPane):
     
-    def __init__(self):
-        super().__init__()
-        
+    name = 'TkPane'
+    
     @Tk_thread
     def set_progress(self, x: int):
         self._progress_bar['value'] = x
        
-    @Tk_thread
     def draw(self):
     
         import tkinter as tk
@@ -95,32 +95,39 @@ class OurTkPane(TkThreadTaskPane):
 # pane class, then attach it to the ExcelGUI object created later.
 #
 
-_PANE_NAMES = {
-    "Tk": "MyTkPane",
-    "Qt": "MyQtPane"
-}
+_PANES = {}
 
 async def make_task_pane(toolkit):
 
-    # We could keep track of the panes we create ourselves or let xlOil
-    # do it for us - assuming the name is guaranteed unique!
-    pane = xlo.gui.find_task_pane(title=_PANE_NAMES[toolkit])
+    global _excelgui
+    
+    # We need to be careful in case the open pane button was clicked
+    # more than once before the pane got a chance to create
+    pane = _PANES.get(toolkit, None)
     if pane is not None:
-        return pane
+        if inspect.isfuture(pane):
+            return await pane
+        else:
+            return pane
     
     # Note the Qt creator just returns the type OurQtPane: it's allowable 
     # to pass a QWidget type (or an instance) into `attach_pane`. Passing
     # the type is safer so xlOil can ensure it's created on the Qt thread.
     # xlOil will wrap the widget in a QtThreadTaskPane.
-    creators = { 
-        "Tk": lambda: OurTkPane(),
-        "Qt": lambda: OurQtPane
-    }
-    
-    pane = creators[toolkit]()
-    
-    await excelgui().attach_pane(name=_PANE_NAMES[toolkit], pane=pane)
+
+    if toolkit == 'Tk':
+        future = _excelgui.attach_pane_async(OurTkPane())
+    elif toolkit == 'Qt':
+        future = _excelgui.attach_pane_async(name="MyQtPane", pane=OurQtPane)
+    else:
+        raise Exception()
+
+    _PANES[toolkit] = future
         
+    pane = await future
+    
+    _PANES[toolkit] = pane
+    
     return pane
      
 #----------------------
@@ -174,11 +181,11 @@ async def press_open_pane_button(ctrl):
 # 
 def combo_change(ctrl, value):
     
-    qt_pane = xlo.gui.find_task_pane(title=_PANE_NAMES['Qt'])
+    qt_pane = _PANES.get('Qt', None)
     if qt_pane:
         qt_pane.contents.set_progress(int(value))
         
-    tk_pane = xlo.gui.find_task_pane(title=_PANE_NAMES['Tk'])
+    tk_pane = _PANES.get('Tk', None)
     if tk_pane:
         tk_pane.set_progress(int(value))
       
@@ -188,7 +195,7 @@ def combo_change(ctrl, value):
 # We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
 #
-_excelgui_task = asyncio.create_task(xlo.gui.create_gui(ribbon=r'''
+_excelgui = xlo.ExcelGUI(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -209,22 +216,12 @@ _excelgui_task = asyncio.create_task(xlo.gui.create_gui(ribbon=r'''
         </ribbon>
     </customUI>
     ''', 
-    func_names={
+    funcmap={
         'pressOpenPane': press_open_pane_button,
         'comboChange': combo_change,
         'getButtonLabel': get_button_label,
         'buttonImg': button_image
-    }))
-
-
-_excelgui = None
-
-def excelgui():
-    global _excelgui
-    if _excelgui is None:
-        _excelgui = _excelgui_task.result()
-    return _excelgui
-    
+    })
     
 #-----------------------------------------
 # Images: returning images from functions

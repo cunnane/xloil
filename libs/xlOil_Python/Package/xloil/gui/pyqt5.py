@@ -9,6 +9,3 @@ from . import _qtconfig
 _qtconfig._QT_MODULE_NAME = "PyQt5"
 
 from ._qtgui import *
-
-# Trigger thread creation on import
-Qt_thread()

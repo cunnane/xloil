@@ -6,8 +6,8 @@
 """
 
 import xloil
-import concurrent.futures as futures
 from xloil.gui import _GuiExecutor
+from xloil._core import XLOIL_EMBEDDED
 
 class TkExecutor(_GuiExecutor):
 
@@ -48,7 +48,7 @@ class TkExecutor(_GuiExecutor):
 
 _Tk_thread = None
 
-def Tk_thread(fn=None, discard=False) -> futures.Executor:
+def Tk_thread(fn=None, discard=False) -> TkExecutor:
     """
         All Tk GUI interactions must take place on the thread on which the root object 
         was created. This function returns a *concurrent.futures.Executor* which creates   
@@ -83,36 +83,36 @@ def Tk_thread(fn=None, discard=False) -> futures.Executor:
 
     return _Tk_thread if fn is None else _Tk_thread._wrap(fn, discard)
 
-# Create thread on import - I'm not necessarily a fan of this blocking!
-Tk_thread()
+if XLOIL_EMBEDDED:
+    # Create thread on import - I'm not necessarily a fan of this blocking!
+    Tk_thread()
 
 
 from xloil.gui import CustomTaskPane
 
 class TkThreadTaskPane(CustomTaskPane):
     """
-        Wraps a Tk window to create a CustomTaskPane object. 
+        Wraps a Tk window to create a CustomTaskPane object. The constructor does 
+        nothing - override the `draw` method to draw the task pane and return a
+        *tkinter.Toplevel*.
     """
 
-    def __init__(self):
-        """
-        Wraps a  to create a CustomTaskPane object. The ``draw_widget`` function
-        is executed on the `xloil.gui.Tt_thread` and is expected to return a object.
-        """
-        super().__init__()
-
-        self.contents = self.draw().result() # Blocks
+    async def _create_contents(self):
+        contents = await Tk_thread().submit_async(self.draw)
 
         # Calling winfo_id() on a tk.Toplevel gives the hWnd of a child which 
         # represents the window client area. We want the *actual* top level window
-        # which is the parent.
+        # which is the parent. Note we don't combine self.draw and getting
+        # the hwnd in one call because that doesn't work for some reason...
         from ctypes import windll
-        self._hwnd = Tk_thread().submit(
-            lambda: windll.user32.GetParent(self.contents.winfo_id())).result()
+        hwnd = await Tk_thread().submit_async(
+            lambda: windll.user32.GetParent(contents.winfo_id()))
 
-    def hwnd(self):
-        return self._hwnd
-             
+        return contents, hwnd
+    
+    def draw(self):
+        super().draw()
+        
     def on_destroy(self):
         Tk_thread().submit(lambda: self.contents.destroy())
         super().on_destroy()

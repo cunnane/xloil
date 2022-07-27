@@ -9,6 +9,3 @@ from . import _qtconfig
 _qtconfig._QT_MODULE_NAME = "PySide2"
 
 from ._qtgui import *
-
-# Trigger thread creation on import
-Qt_thread()

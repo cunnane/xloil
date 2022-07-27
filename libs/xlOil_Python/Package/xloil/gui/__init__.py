@@ -1,4 +1,5 @@
 from xloil import TaskPaneFrame, ExcelGUI, ExcelWindow, Workbook
+
 import concurrent.futures as futures
 import concurrent.futures.thread
 import xloil
@@ -6,56 +7,6 @@ import asyncio
 import typing
 
 _task_panes = set()
-
-async def create_gui(ribbon=None, func_names=None, name=None) -> ExcelGUI:
-    """
-        Returns a coroutine which returns an ExcelGUI object. The *ExcelGUI*
-        is connected using the specified ribbon customisation XML to Excel.  
-        When the *ExcelGUI* object is deleted, it unloads the associated COM 
-        add-in and so all Ribbon customisation and attached task panes.
-
-        Parameters
-        ----------
-
-        ribbon: str
-            A Ribbon XML string, most easily created with a specialised editor.
-            The XML format is documented on Microsoft's website
-
-        func_names: Func[str -> callable] or Dict[str, callabe]
-            The ``func_names`` mapper links callbacks named in the Ribbon XML to
-            python functions. It can be either a dictionary containing named 
-            functions or any callable which returns a function given a string.
-            Each return handler should take a single ``RibbonControl``
-            argument which describes the control which raised the callback.
-
-            Callbacks declared async will be executed in the addin's event loop. 
-            Other callbacks are executed in Excel's main thread. Async callbacks 
-            cannot return values.
-
-        name: str
-            The addin name which will appear in Excel's COM addin list.
-            If None, uses the filename at the call site as the addin name.
-
-    """
-
-    if name is None:
-        import inspect
-        import os
-        caller_frame = inspect.stack()[1]
-        filepath = caller_frame.filename
-
-        # get rid of the directory and split filename and extension
-        name = os.path.splitext(os.path.basename(filepath))[0]
-
-    # Does nothing until connected
-    gui = ExcelGUI(name)
-
-    async def connect():
-        await gui.connect(ribbon, func_names)
-        return gui
-
-    return await connect()
-
 
 class CustomTaskPane:
     """
@@ -67,25 +18,41 @@ class CustomTaskPane:
     """
 
     def __init__(self):
-        pass
+        self.contents = None
+        self.hwnd = None
 
-    def _attach_frame(self, frame: TaskPaneFrame):
+    async def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
         """
             Attaches this *CustomTaskPane* to a *TaskPaneFrame*  causing it 
             to be resized/moved with the pane window.  Called by 
             `xloil.ExcelGUI.attach_frame` and generally should not need to be 
             called directly.
         """
-        self._frame = frame
+        self.contents, self.hwnd = await self._create_contents()
+        self._frame = await frame
+        await self._frame.attach(self, self.hwnd)
         _task_panes.add(self)
-        frame.attach(self, self.hwnd())
+        
+    def _create_contents(self) -> tuple:
+        """
+            Should be implemented by derived classes
+        """
+        raise NotImplementedError()
 
     def draw(self):
+        """
+            Draws the task pane using the GUI toolkit and returns a reference
+            to the top-level object. This method is always invoked on the 
+            correct thread for the GUI toolkit.
+        """
         raise NotImplementedError()
 
     def on_visible(self, value):
-        """ Called when the visible state changes, passes the new state """
-        # TODO: no longer necessary
+        """ 
+            Called when the visible state changes, `value` contains the new state.
+            It is not necessary to override this to control pane visibility - the
+            window will be shown/hidden automatically
+        """
         ...
 
     def on_docked(self):
@@ -124,7 +91,7 @@ class CustomTaskPane:
         self._frame.size = value
 
 
-def find_task_pane(title:str=None, workbook=None, window=None):
+def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane:
     """
         Finds all xlOil python task panes associated with the active window, 
         optionally filtering by the pane `title`. 
@@ -160,55 +127,9 @@ def find_task_pane(title:str=None, workbook=None, window=None):
         return next((x for x in found if x.frame.title == title), None)
 
 
-async def find_or_create_pane(
-        name: str, 
-        creator: typing.Callable[[], typing.Awaitable[CustomTaskPane]],
-        size=None, 
-        visible=True) -> CustomTaskPane:
-    """
-        Returns a task pane with title <name> attached to the active window,
-        creating it if it does not already exist.  This function is equivalent
-        to `ExcelGUI.create_task_pane(...)`
-
-        Parameters
-        ----------
-
-        name: 
-            The name of the pane to find or create.
-
-        creator: 
-            An async function which takes no arguments and returns (a coroutine to)
-            a *CustomTaskPane*. This function is called if the named pane is not
-            found and typically is something like
-            
-            ::
-
-                lambda: gui.attach_pane(name, QtThreadTaskPane(OurQWidget), window)
-            
-        size:
-            If provided, a tuple (width, height) used to set the pane size
-
-        visible:
-            Determines the pane visibility. Defaults to True.
-
-    """
-    pane = find_task_pane(name)
-    if pane is not None:
-        pane.visible = visible
-        return pane
-
-    pane = await creator()
-
-    pane.visible = visible
-    if size is not None:
-        pane.size = size
-
-    return pane
-
-
 def _try_create_from_qwidget(obj):
     """
-        If obj is a QWidget, returns a creator function which uses QtThreadTaskPane.
+        If obj is a QWidget, returns QtThreadTaskPane.
     """
     try:
         # This will raise an ImportError if Qt has not been properly
@@ -229,27 +150,34 @@ def _try_create_from_qwidget(obj):
 
 async def _attach_task_pane(
         gui: ExcelGUI,
-        name: str, 
         pane: CustomTaskPane,
+        name: str, 
         window: ExcelWindow, 
         size: tuple, 
         visible: bool):
     
-    # Implementation of ExcelGUI.attach_pane
+    # This is the implementation of ExcelGUI.attach_pane since the async
+    # stuff and checking for Qt is easier on the python side
 
     if isinstance(window, str):
         window = ExcelWindow(window)
     
+    if name is None:
+        name = getattr(pane, "name", None)
+        if name is None:
+            raise NameError("Attach pane must be given a 'name' argument or the pane must contain a 'name' attribute")
+
     pane = _try_create_from_qwidget(pane)
 
-    frame = await gui._create_task_pane_frame(name, window)
-    pane._attach_frame(frame)
+    frame_future = gui._create_task_pane_frame(name, window)
+    await pane._attach_frame(frame_future)
 
     pane.visible = visible
     if size is not None:
         pane.size = size
 
     return pane
+
 
 class _GuiExecutor(futures.Executor):
     """
@@ -268,7 +196,8 @@ class _GuiExecutor(futures.Executor):
         self._broken = False
         self._thread.start()
 
-        # PyBye is called before `threading` module teardown, whereas `atexit` comes later
+        # PyBye is called before `threading` module teardown, whereas `atexit` comes later.
+        # We definitely want threading available to shut down our threads.
         xloil.event.PyBye += self.shutdown
 
     def _do_work(self):
@@ -295,6 +224,13 @@ class _GuiExecutor(futures.Executor):
 
         return f
 
+    async def submit_async(self, fn, *args, **kwargs):
+        """
+        Behaves as `submit` but wraps the result in an asyncio.Future so it
+        can be awaited.
+        """
+        return await asyncio.wrap_future(self.submit(fn, *args, **kwargs))
+
     def shutdown(self, wait=True, cancel_futures=False):
         if not self._broken: # TODO: implement wait/cancel_futures support?
             self.submit(self._shutdown)
@@ -308,7 +244,7 @@ class _GuiExecutor(futures.Executor):
 
         self._broken = True
 
-    def _wrap(self, fn, discard=False):
+    def _wrap(self, fn, sync=True, discard=False):
         """
             Called by Tk_thread, Qt_thread to implement their decorator 
             behaviour.
@@ -320,8 +256,12 @@ class _GuiExecutor(futures.Executor):
                 except Exception as e:
                     xlo.log("Error running job on GUI thread: {str(e)}", level="error")
             fn = logged
-
-        def wrapped(*args, **kwargs):
-            return self.submit(fn, *args, **kwargs)
+        
+        if sync:
+            async def wrapped(*args, **kwargs):
+                return await self.submit_async(fn, *args, **kwargs)
+        else:
+            def wrapped(*args, **kwargs):
+                return self.submit(fn, *args, **kwargs)
 
         return wrapped
