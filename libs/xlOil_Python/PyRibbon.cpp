@@ -30,6 +30,17 @@ namespace xloil
   {
     namespace
     {
+      struct PyRibbonControl
+      {
+        PyRibbonControl(const RibbonControl& ctrl)
+        {
+          if (ctrl.Id)  Id  = ctrl.Id;
+          if (ctrl.Tag) Tag = ctrl.Tag;
+        }
+        wstring Id;
+        wstring Tag;
+      };
+
       /// <summary>
       /// Expects funcNameMap to be either a function of name -> handler or a 
       /// dict of names and handler.  The handler function arguments vary depending
@@ -62,7 +73,7 @@ namespace xloil
                   for (auto i = 0; i < nArgs; ++i)
                     args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
                   
-                  auto pyRet = callback(ctrl, *args);
+                  auto pyRet = callback(PyRibbonControl(ctrl), *args);
                   auto isAsync = py::module::import("inspect").attr("iscoroutine")(pyRet).cast<bool>();
 
                   if (isAsync)
@@ -253,7 +264,7 @@ namespace xloil
           : _handler(eventHandler)
         {
           _hasOnVisible = py::hasattr(_handler, "on_visible");
-          _hasOnDocked = py::hasattr(_handler, "on_docked");
+          _hasOnDocked  = py::hasattr(_handler, "on_docked");
           _hasOnDestory = py::hasattr(_handler, "on_destroy");
         }
 
@@ -281,7 +292,11 @@ namespace xloil
 
       VoidFuture addPaneEventHandler(ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
       {
-        return runExcelThread([&self, hwnd, handler = make_shared<PyTaskPaneHandler>(eventHandler)]()
+        return runExcelThread([
+          &self, 
+          hwnd, 
+          handler = make_shared<PyTaskPaneHandler>(eventHandler)
+        ]()
         {
           self.listen(handler);
           self.attach(hwnd);
@@ -301,16 +316,16 @@ namespace xloil
         CTPFuture::bind(mod, "_CTPFuture");
         VoidFuture::bind(mod);
 
-        py::class_<RibbonControl>(mod, 
+        py::class_<PyRibbonControl>(mod,
           "RibbonControl", R"(
             This object is passed to ribbon callback handlers to indicate which control  
             raised the callback.
           )")
           .def_readonly("id", 
-            &RibbonControl::Id,
+            &PyRibbonControl::Id,
             "A string that represents the Id attribute for the control or custom menu item")
           .def_readonly("tag", 
-            &RibbonControl::Tag,
+            &PyRibbonControl::Tag,
             "A string that represents the Tag attribute for the control or custom menu item.");
 
         py::class_<ICustomTaskPane, shared_ptr<ICustomTaskPane>>(mod, 
@@ -468,7 +483,8 @@ namespace xloil
               Given task pane contents (which can be specified in several forms) this function
               creates a new task pane displaying those contents.
 
-              Returns an instance of (a subclass of) `CustomTaskPane`. 
+              Returns the instance of `CustomTaskPane`.  If one was passed as the 'pane' argument, 
+              that is returned, if a *QWidget* was passed, a `QtThreadTaskPane` is created.
 
               Parameters
               ----------
