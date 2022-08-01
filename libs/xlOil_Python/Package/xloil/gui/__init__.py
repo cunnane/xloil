@@ -272,23 +272,33 @@ class _GuiExecutor(futures.Executor):
         return wrapped
 
 
-# A metaclass which returns a metaclass. It could have been a function,
-# just without the fun.
-class _ConstructInExecutor:
-    
-    def __new__(cls_unused, executor):
+class _ConstructInExecutor(type):
+    """
+        Metaclass used by CustomTaskPane objects to ensure their ctor is run in 
+        the thread associated with the GUI toolkit. The `executor` argument should 
+        specify a concurrent.futures.Executor. If None is passed, the functionality of 
+        this metaclass is disabled. The default is `executor=True` which means take
+        the executor from a base class, or throw if none is found.
+    """
 
-        class _ConstructInExecutorImpl(type):
-
-            def __call__(cls, *args, **kwargs):
-
-                # Strictly only the __init__ method needs to be in the executor, but
-                # this seems easier than replicating `type.__call__`
-                if kwargs.pop("_no_executor", None) is True:
-                    return type.__call__(cls, *args, **kwargs)
-                else:
-                    return executor.submit(
-                        lambda: type.__call__(cls, *args, **kwargs)
-                    ).result()
-    
-        return _ConstructInExecutorImpl
+    def __new__(cls, name, bases, namespace, executor:futures.Executor = True):
+        return type.__new__(cls, name, bases, namespace)
+        
+    def __init__(cls, name, bases, namespace, executor:futures.Executor = True):
+        # If default, try to fetch executor from base class
+        if executor == True:
+            cls._executor = next(b._executor for b in bases if type(b) is _ConstructInExecutor)
+        else:
+            cls._executor = executor
+            
+        return type.__init__(cls, name, bases, namespace)
+        
+    def __call__(cls, *args, **kwargs):
+        # Strictly only the __init__ method needs to be in the executor, but
+        # this seems easier than replicating `type.__call__`
+        if cls._executor is None:
+            return type.__call__(cls, *args, **kwargs)
+        else:
+            return cls._executor.submit(
+                lambda: type.__call__(cls, *args, **kwargs)
+            ).result()
