@@ -5,6 +5,8 @@ import concurrent.futures.thread
 import xloil
 import asyncio
 import typing
+import threading
+import inspect
 
 _task_panes = set()
 
@@ -18,7 +20,6 @@ class CustomTaskPane:
     """
 
     def __init__(self):
-        self.contents = None
         self.hwnd = None
 
     async def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
@@ -28,22 +29,14 @@ class CustomTaskPane:
             `xloil.ExcelGUI.attach_frame` and generally should not need to be 
             called directly.
         """
-        self.contents, self.hwnd = await self._create_contents()
+        self.hwnd = await self._get_hwnd()
         self._frame = await frame
         await self._frame.attach(self, self.hwnd)
         _task_panes.add(self)
         
-    def _create_contents(self) -> tuple:
+    async def _get_hwnd(self) -> int:
         """
             Should be implemented by derived classes
-        """
-        raise NotImplementedError()
-
-    def draw(self):
-        """
-            Draws the task pane using the GUI toolkit and returns a reference
-            to the top-level object. This method is always invoked on the 
-            correct thread for the GUI toolkit.
         """
         raise NotImplementedError()
 
@@ -82,12 +75,12 @@ class CustomTaskPane:
         self._frame.visible = value
 
     @property
-    def size(self) -> tuple:
+    def size(self) -> typing.Tuple[int, int]:
         """Returns a tuple (width, height)"""
         return self._frame.size
 
     @size.setter
-    def size(self, value:tuple):
+    def size(self, value: typing.Tuple[int, int]):
         self._frame.size = value
 
 
@@ -127,9 +120,11 @@ def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane
         return next((x for x in found if x.frame.title == title), None)
 
 
-def _try_create_from_qwidget(obj):
+def _try_create_from_qwidget(obj) -> typing.Awaitable[CustomTaskPane]:
     """
-        If obj is a QWidget, returns QtThreadTaskPane.
+        If obj is a QWidget, returns an Awaitable[QtThreadTaskPane] else None.
+        This is a convenience for Qt users to avoid needing to create a QtThreadTaskPane
+        explicitly
     """
     try:
         # This will raise an ImportError if Qt has not been properly
@@ -139,8 +134,8 @@ def _try_create_from_qwidget(obj):
         QWidget = QT_IMPORT("QtWidgets").QWidget
         
         if isinstance(obj, type) and issubclass(obj, QWidget) or isinstance(obj, QWidget):
-            from ._qtgui import QtThreadTaskPane
-            return QtThreadTaskPane(obj)
+            from ._qtgui import QtThreadTaskPane, Qt_thread
+            return Qt_thread().submit_async(QtThreadTaskPane, obj)
 
     except ImportError:
         pass
@@ -165,13 +160,19 @@ async def _attach_task_pane(
     if name is None:
         name = getattr(pane, "name", None)
         if name is None:
-            raise NameError("Attach pane must be given a 'name' argument or the pane must contain a 'name' attribute")
-
-    pane = _try_create_from_qwidget(pane)
+            raise NameError("Attach pane must be given a 'name' argument or the pane must "
+                "contain a 'name' attribute")
 
     frame_future = gui._create_task_pane_frame(name, window)
-    await pane._attach_frame(frame_future)
 
+    # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
+    pane = _try_create_from_qwidget(pane)
+
+    if inspect.isawaitable(pane):
+        pane = await pane
+
+    await pane._attach_frame(frame_future)
+    
     pane.visible = visible
     if size is not None:
         pane.size = size
@@ -188,7 +189,6 @@ class _GuiExecutor(futures.Executor):
     """
 
     def __init__(self, name):
-        import threading
         import queue
 
         self._work_queue = queue.SimpleQueue()
@@ -213,16 +213,21 @@ class _GuiExecutor(futures.Executor):
         except Exception as e:
              xloil.log(f"{self._thread.name} error running job: {e}", level='warn')
 
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, fn, *args, **kwargs) -> futures.Future:
         if self._broken:
             raise futures.BrokenExecutor(self._broken)
 
-        f = futures.Future()
-        w = concurrent.futures.thread._WorkItem(f, fn, args, kwargs)
+        future = futures.Future()
+        work = concurrent.futures.thread._WorkItem(future, fn, args, kwargs)
 
-        self._work_queue.put(w)
+        # In case we're called from our own thread - don't deadlock, just
+        # execute the function right now.
+        if threading.get_native_id() == self._thread.native_id:
+            work.run()
+        else:
+            self._work_queue.put(work)
 
-        return f
+        return future
 
     async def submit_async(self, fn, *args, **kwargs):
         """
@@ -265,3 +270,25 @@ class _GuiExecutor(futures.Executor):
                 return self.submit(fn, *args, **kwargs)
 
         return wrapped
+
+
+# A metaclass which returns a metaclass. It could have been a function,
+# just without the fun.
+class _ConstructInExecutor:
+    
+    def __new__(cls_unused, executor):
+
+        class _ConstructInExecutorImpl(type):
+
+            def __call__(cls, *args, **kwargs):
+
+                # Strictly only the __init__ method needs to be in the executor, but
+                # this seems easier than replicating `type.__call__`
+                if kwargs.pop("_no_executor", None) is True:
+                    return type.__call__(cls, *args, **kwargs)
+                else:
+                    return executor.submit(
+                        lambda: type.__call__(cls, *args, **kwargs)
+                    ).result()
+    
+        return _ConstructInExecutorImpl

@@ -37,7 +37,8 @@ try:
             self._progress.emit(x)
             
         def __init__(self):
-            super().__init__()
+            super().__init__() # Must call this or Qt will crash
+            
             progress_bar = QProgressBar(self)
             progress_bar.setGeometry(200, 80, 250, 20)
             self._progress.connect(progress_bar.setValue, Qt.QueuedConnection)
@@ -51,7 +52,7 @@ try:
             layout.addWidget(progress_bar)
         
             self.setLayout(layout)
-            
+                
 except ImportError:
 
     class OurQtPane:
@@ -64,21 +65,15 @@ from xloil.gui.tkinter import TkThreadTaskPane, Tk_thread
 
 # Unlike Qt, it's not common to derive the from a tkinter object.
 # Instead, we derive from `TkThreadTaskPane`, which derives from `CustomTaskPane`
-# We provide a `draw` method to create a `tkinter.Toplevel` which comprises of
-# the pane's contents
+
 class OurTkPane(TkThreadTaskPane):
-    
-    name = 'TkPane'
-    
-    @Tk_thread
-    def set_progress(self, x: int):
-        self._progress_bar['value'] = x
-       
-    def draw(self):
-    
+
+    def __init__(self):
+        super().__init__() # Important!
+        
         import tkinter as tk
         
-        top_level = tk.Toplevel()
+        top_level = self.top_level
 
         btn = tk.Button(top_level, text="This is a Button", fg='blue')
         btn.place(x=20, y=50)
@@ -86,8 +81,10 @@ class OurTkPane(TkThreadTaskPane):
         from tkinter import ttk
         self._progress_bar = ttk.Progressbar(top_level, length=200, mode='determinate')
         self._progress_bar.place(x=20, y=100)
-        
-        return top_level
+    
+    @Tk_thread
+    def set_progress(self, x: int):
+        self._progress_bar['value'] = x
 
 #
 # We define a function to create a task pane using Tk or Qt. We first check 
@@ -105,20 +102,26 @@ async def make_task_pane(toolkit):
     # more than once before the pane got a chance to create
     pane = _PANES.get(toolkit, None)
     if pane is not None:
-        if inspect.isfuture(pane):
+        if asyncio.isfuture(pane):
             return await pane
         else:
             return pane
     
-    # Note the Qt creator just returns the type OurQtPane: it's allowable 
-    # to pass a QWidget type (or an instance) into `attach_pane`. Passing
-    # the type is safer so xlOil can ensure it's created on the Qt thread.
-    # xlOil will wrap the widget in a QtThreadTaskPane.
-
+    # attach_pane can accept a CustomTaskPane instance, or a QWidget
+    # instance or an awaitable to one of those things. You can also
+    # pass a QWidget type which xlOil wrap in a QtThreadTaskPane and
+    # create in the correct thread.
+    #
+    # (We could just pass `OurTkPane` rather than using Tk_thread, this
+    # is just to demonstrate passing an awaitable)
     if toolkit == 'Tk':
-        future = _excelgui.attach_pane_async(OurTkPane())
+        future = _excelgui.attach_pane_async(
+            name="MyTkPane",
+            pane=Tk_thread().submit_async(OurTkPane))
     elif toolkit == 'Qt':
-        future = _excelgui.attach_pane_async(name="MyQtPane", pane=OurQtPane)
+        future = _excelgui.attach_pane_async(
+            name="MyQtPane", 
+            pane=OurQtPane)
     else:
         raise Exception()
 
@@ -183,7 +186,7 @@ def combo_change(ctrl, value):
     
     qt_pane = _PANES.get('Qt', None)
     if qt_pane:
-        qt_pane.contents.set_progress(int(value))
+        qt_pane.widget.set_progress(int(value))
         
     tk_pane = _PANES.get('Tk', None)
     if tk_pane:

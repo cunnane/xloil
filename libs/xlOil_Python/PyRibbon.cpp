@@ -470,7 +470,8 @@ namespace xloil
           .def("attach_pane_async", 
             attachTaskPaneAsync,
             R"(
-              Behaves as per `attach_pane`, but returns an *asyncio* coroutine.
+              Behaves as per `attach_pane`, but returns an *asyncio* coroutine. The
+              `pane` argument may be an awaitable to a `CustomTaskPane`.
             )", 
             py::arg("pane"),
             py::arg("name") = py::none(),

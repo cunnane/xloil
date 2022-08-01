@@ -5,7 +5,7 @@
 import sys
 import concurrent.futures as futures
 import concurrent.futures.thread
-from xloil.gui import CustomTaskPane, _GuiExecutor
+from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
 from xloil import log
 import xloil
 from xloil._core import XLOIL_EMBEDDED
@@ -112,45 +112,47 @@ def Qt_thread(fn=None, discard=False) -> QtExecutor:
 if XLOIL_EMBEDDED:
     Qt_thread()
 
-class QtThreadTaskPane(CustomTaskPane):
+class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor(Qt_thread())):
     """
         Wraps a Qt *QWidget* to create a `CustomTaskPane` object. The optional `widget` argument 
         must be a type deriving from *QWidget* or an instance of such a type (a lambda which
-        returns a *QWidget* is also acceptable) .  If `widget` is not provided, this class must 
-        be sub-classed and the `draw` method overridden.
+        returns a *QWidget* is also acceptable).
     """
 
     def __init__(self, widget=None):
-        self._widget = widget
+        QWidget = QT_IMPORT("QtWidgets").QWidget
 
-    async def _create_contents(self):
-        def draw_it():
-            obj = self.draw()
+        if isinstance(widget, QWidget):
+            self._widget = widget
+        elif widget is not None:
+            self._widget = widget()
+        else:
+            self._widget = QWidget()
+    
+    @property
+    def widget(self):
+        """
+            This returns the *QWidget* which is root of the the pane's contents.
+            If the class was constructed from a *QWidget*, this is that widget.
+        """
+        return self._widget
 
+    async def _get_hwnd(self):
+        def prepare(widget):
             # Need to make the Qt window frameless using Qt's API. When we attach
             # to the TaskPaneFrame, the attached window is turned into a frameless
             # child. If Qt is not informed, its geometry manager gets confused
             # and will core dump if the pane is made too small.
             qt = QT_IMPORT("QtCore").Qt
-            obj.setWindowFlags(qt.FramelessWindowHint)
+            widget.setWindowFlags(qt.FramelessWindowHint)
 
-            obj.show() # window handle does not exist before show
+            widget.show() # window handle does not exist before show
 
-            return obj, int(obj.winId())
+            return int(widget.winId())
 
-        return await Qt_thread().submit_async(draw_it)
-
-    def draw(self):
-        QWidget = QT_IMPORT("QtWidgets").QWidget
-
-        if isinstance(self._widget, QWidget):
-            return self._widget
-        elif self._widget is not None:
-            return self._widget()
-        else:
-            super().draw()
+        return await Qt_thread().submit_async(prepare, self._widget)
 
     def on_destroy(self):
-        Qt_thread().submit(lambda: self.contents.destroy())
+        Qt_thread().submit(lambda: self._widget.destroy())
         super().on_destroy()
 

@@ -97,7 +97,7 @@ Qt Custom Task Panes
 Qt support uses *PyQt5* or *PySide2* (but not both!). The examples below use *PyQt5* but
 *PySide2* can be substituted in place.  
 
-.. warning::
+.. caution::
     You *must* import :any:`xloil.gui.pyqt5` (or `xloil.gui.pyside2`) before any other
     use of Qt.  This allows xlOil to create and the *QApplication* on its own thread.
 
@@ -116,19 +116,18 @@ from a `QWidget`:
             ... # some code to emit a Qt signal
 
     excelui = xlo.create_gui(...)
-    pane = excelui.attach_pane('MyPane', pane=MyTaskPane)
+    pane = excelui.attach_pane('MyPane', pane=QtTaskPane)
 
-    # The widget is in the pane's `contents` attribute
-    pane.contents.send_signal(3) 
+    # The widget is in the pane's `widget` attribute
+    pane.widget.send_signal(3) 
 
 The :any:`xloil.ExcelGUI.attach_pane` call creates a task pane with the specified name.  If ``pane`` 
-is a type which inherits `QWidget`, it is constructed (on the Qt thread, see below)
-and attached to a new custom task pane
+is a *type* which inherits from `QWidget`, it is constructed (on the Qt thread, see below)
+and placed in a :any:`xloil.gui.pyqt5.QtThreadTaskPane` then attached to the Excel window.
 
 To talk to your widget, it's best to set up a system of Qt 
-`signals <https://wiki.qt.io/Qt_for_Python_Signals_and_Slots>`_. 
-(the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_) as
-these are thread-safe.
+`signals <https://wiki.qt.io/Qt_for_Python_Signals_and_Slots>`_ as these are thread-safe. 
+(Note the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_) 
 
 
 Qt Thread-safety
@@ -136,7 +135,7 @@ ________________
 
 All *Qt* interactions other than signals must take place in the same thread, or Qt
 will abort.  xlOil creates a special Qt thread which runs the Qt event loop, and 
-constructs ``QtTaskPane`` on that thread.
+constructs any task panes on that thread.
 
 To run commands on xlOil's *Qt* thread, use the :ref:`xloil.gui.pyqt5.Qt_thread` object
 
@@ -147,7 +146,7 @@ To run commands on xlOil's *Qt* thread, use the :ref:`xloil.gui.pyqt5.Qt_thread`
     future2 = Qt_thread().submit_async(func, *args) # returns an asyncio.Future
     future.result()                                 # Blocks if result is required now
 
-You can also use `Qt_thread` as a decorator, for example:
+You can also use `Qt_thread` as a decorator to wrap the function in a `submit` call, for example:
 
 ::
 
@@ -160,7 +159,7 @@ Tkinter Custom Task Panes
 
 Unlike Qt, it's not common to derive the from a *tkinter* object.  Instead, we derive from 
 :any:`xloil.gui.tkinter.TkThreadTaskPane`, which derives from :any:`xloil.gui.CustomTaskPane`.
-We provide a `draw` method to create a `tkinter.Toplevel` which contains of the pane's contents.
+We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
 
 ::
     
@@ -172,21 +171,28 @@ We provide a `draw` method to create a `tkinter.Toplevel` which contains of the 
         def set_x(self, x):
             ...
         
-        def draw(self):
+        def __init__(self):
+            super().__init__()
+            
+            # This name is picked up by ExcelGUI.attach_pane
+            self.name = "MyPane"
+
             import tkinter as tk
             
-            top_level = tk.Toplevel()
+            top_level = self.top_level
+            # Draw into window
             ...
-            return top_level
+            
 
     excelui = xlo.ExcelGUI(xml=..., funcmap=...)
-    pane = excelui.attach_pane('MyTkPane', pane=TkTaskPane())
+    pane = excelui.attach_pane(TkTaskPane())
 
-    pane.widget.send_signal(3)
+    pane.set_x(3)
 
 As *tkinter* does not have thread-safe signals, we use must ensure `set_x` is run on the correct
-thread. :any:`xloil.gui.tkinter.Tk_thread` behaves exactly as in :ref:`CustomGUI/Qt Thread-safety` described
-above.  The `draw` method is always called on the *tkinter* thread so we don't need to decorate it.
+thread. The :any:`xloil.gui.tkinter.Tk_thread` function behaves the same as `Qt_thread` described
+in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`.  The `__init__` method is always called on the 
+*tkinter* thread so we don't need to decorate it.
 
 
 Task Pane registry
@@ -225,8 +231,10 @@ to do this to keep Excel responsive but it could be useful in some circumstances
         # The action happens when we call connect, which returns a awaitable future
         await excelui.connect()
 
-        # We can also create the pane async
-        await excelui.attach_pane_async('MyTkPane', pane=TkTaskPane())
+        # We can also create the pane async by passing an awaitable  
+        await excelui.attach_pane_async(
+            name='TkPane',
+            pane=Tk_thread().submit_async(TkTaskPane))
 
         # We need to keep a reference to 'excelui' as deleting it disconnects the UI
         return excelui, pane

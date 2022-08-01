@@ -6,7 +6,7 @@
 """
 
 import xloil
-from xloil.gui import _GuiExecutor
+from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
 from xloil._core import XLOIL_EMBEDDED
 
 class TkExecutor(_GuiExecutor):
@@ -87,32 +87,36 @@ if XLOIL_EMBEDDED:
     # Create thread on import - I'm not necessarily a fan of this blocking!
     Tk_thread()
 
+# Safe now we've created the Tk_thread
+import tkinter
 
-from xloil.gui import CustomTaskPane
-
-class TkThreadTaskPane(CustomTaskPane):
+class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor(Tk_thread())):
     """
         Wraps a Tk window to create a CustomTaskPane object. The constructor does 
         nothing - override the `draw` method to draw the task pane and return a
         *tkinter.Toplevel*.
     """
 
-    async def _create_contents(self):
-        contents = await Tk_thread().submit_async(self.draw)
+    def __init__(self):
+        self._top_level = tkinter.Toplevel()
 
+    @property
+    def top_level(self) -> tkinter.Toplevel:
+        """
+            This returns a *tkinter.Toplevel* window into which the pane's contents
+            should be placed.
+        """
+        return self._top_level
+
+    async def _get_hwnd(self):
         # Calling winfo_id() on a tk.Toplevel gives the hWnd of a child which 
         # represents the window client area. We want the *actual* top level window
         # which is the parent. Note we don't combine self.draw and getting
         # the hwnd in one call because that doesn't work for some reason...
         from ctypes import windll
-        hwnd = await Tk_thread().submit_async(
-            lambda: windll.user32.GetParent(contents.winfo_id()))
+        return await Tk_thread().submit_async(
+            lambda: windll.user32.GetParent(self._top_level.winfo_id()))
 
-        return contents, hwnd
-    
-    def draw(self):
-        super().draw()
-        
     def on_destroy(self):
-        Tk_thread().submit(lambda: self.contents.destroy())
+        Tk_thread().submit(lambda: self._top_level.destroy())
         super().on_destroy()
