@@ -15,11 +15,28 @@ import threading
 
 def _create_Qt_app():
 
-    QApplication = QT_IMPORT("QtWidgets").QApplication
+    QtCore = QT_IMPORT("QtCore")
+    def qt_msg_handler(msg_type, msg_log_context, msg_string):
+
+        level = 'info'
+        if msg_type == QtCore.QtDebugMsg:
+            level = 'debug'
+        elif msg_type == QtCore.QtInfoMsg:
+            level = 'info'
+        elif msg_type == QtCore.QtWarningMsg:
+            level = 'warn'
+        elif msg_type == QtCore.QtCriticalMsg or msg_type == QtCore.QtFatalMsg:
+            level = 'error'
+        log(msg_string, level=level)
+
+    QtCore.qInstallMessageHandler(qt_msg_handler)
+
 
     # Qt seems to really battle with reading environment variables.  We must 
     # read the variable ourselves, then pass it as an argument. It's unclear what
     # alchemy is required to make Qt do this seemingly simple thing itself.
+    QApplication = QT_IMPORT("QtWidgets").QApplication
+
     import os
     ppp = os.getenv('QT_QPA_PLATFORM_PLUGIN_PATH', None)
     app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
