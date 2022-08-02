@@ -15,7 +15,7 @@ namespace xloil
       pybind11::object _pumpFunction;
       unsigned _asyncioTimeout;
       unsigned _sleepTime;
-      bool _stopped;
+      std::atomic<bool> _stopped;
 
     public:
       EventLoop(unsigned asyncioTimeout = 200, unsigned sleepTime = 200)
@@ -130,7 +130,9 @@ namespace xloil
       void shutdown()
       {
         stop();
-        _thread.stop();
+        // Don't empty queue on thread stop to allow our event loop to shutdown
+        // cleanly
+        _thread.stop(true);
       }
 
       auto& loop() { return _eventLoop; }
