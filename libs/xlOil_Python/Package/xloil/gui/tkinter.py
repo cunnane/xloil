@@ -90,7 +90,7 @@ if XLOIL_EMBEDDED:
 # Safe now we've created the Tk_thread
 import tkinter
 
-class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=Tk_thread()):
+class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=Tk_thread):
     """
         Wraps a Tk window to create a CustomTaskPane object. The constructor does 
         nothing - override the `draw` method to draw the task pane and return a

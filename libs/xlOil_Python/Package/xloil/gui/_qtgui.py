@@ -129,7 +129,7 @@ def Qt_thread(fn=None, discard=False) -> QtExecutor:
 if XLOIL_EMBEDDED:
     Qt_thread()
 
-class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=Qt_thread()):
+class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=Qt_thread):
     """
         Wraps a Qt *QWidget* to create a `CustomTaskPane` object. The optional `widget` argument 
         must be a type deriving from *QWidget* or an instance of such a type (a lambda which

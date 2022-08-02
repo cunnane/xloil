@@ -299,6 +299,6 @@ class _ConstructInExecutor(type):
         if cls._executor is None:
             return type.__call__(cls, *args, **kwargs)
         else:
-            return cls._executor.submit(
+            return cls._executor().submit(
                 lambda: type.__call__(cls, *args, **kwargs)
             ).result()
