@@ -1,30 +1,51 @@
 from xloil import TaskPaneFrame, ExcelGUI, ExcelWindow, Workbook
+
 import concurrent.futures as futures
 import concurrent.futures.thread
 import xloil
+import asyncio
+import typing
+import threading
+import inspect
 
 _task_panes = set()
- 
+
 class CustomTaskPane:
     """
-        Base class for custom task panes. Can be sub-classed to implement
-        task panes with different GUI toolkits.  Subclasses should implement
-        at least the `on_visible` and `on_size` events.
+        Base class for custom task panes. xlOil provides two toolkit-specfic
+        implementations: `xloil.gui.pyqt5.QtThreadTaskPane` (pyside is also 
+        supported) and `xloil.gui.tkinter.TkThreadTaskPane`.
+        
+        Can be sub-classed to implement task panes with different GUI toolkits.
     """
 
-    def __init__(self, pane: TaskPaneFrame):
-        self._pane = pane
-        self._pane.add_event_handler(self)
-        _task_panes.add(self)
+    def __init__(self):
+        self.hwnd = None
 
-    def on_size(self, width, height):
+    async def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
         """
-        Called when the task pane is resized
+            Attaches this *CustomTaskPane* to a *TaskPaneFrame*  causing it 
+            to be resized/moved with the pane window.  Called by 
+            `xloil.ExcelGUI.attach_frame` and generally should not need to be 
+            called directly.
         """
-        ...
-             
+        self.hwnd = await self._get_hwnd()
+        self._frame = await frame
+        await self._frame.attach(self, self.hwnd)
+        _task_panes.add(self)
+        
+    async def _get_hwnd(self) -> int:
+        """
+            Should be implemented by derived classes
+        """
+        raise NotImplementedError()
+
     def on_visible(self, value):
-        """ Called when the visible state changes, passes the new state """
+        """ 
+            Called when the visible state changes, `value` contains the new state.
+            It is not necessary to override this to control pane visibility - the
+            window will be shown/hidden automatically
+        """
         ...
 
     def on_docked(self):
@@ -35,35 +56,35 @@ class CustomTaskPane:
         """ Called before the pane is destroyed to release any resources """
 
         # Release internal task pane pointer
-        self._pane = None
+        self._frame = None
         # Remove ourselves from pane lookup table
         _task_panes.remove(self)
 
     @property
-    def pane(self) -> TaskPaneFrame:
-        """Returns the TaskPaneFrame a reference to the window holding the python GUI"""
-        return self._pane
+    def frame(self) -> TaskPaneFrame:
+        """Returns the TaskPaneFrame: a reference to the window holding the python GUI"""
+        return self._frame
 
     @property
     def visible(self) -> bool:
         """Returns True if the pane is currently shown"""
-        return self._pane.visible
+        return self._frame.visible
 
     @visible.setter
     def visible(self, value: bool):
-        self._pane.visible = value
+        self._frame.visible = value
 
     @property
-    def size(self) -> tuple:
+    def size(self) -> typing.Tuple[int, int]:
         """Returns a tuple (width, height)"""
-        return self._pane.size
+        return self._frame.size
 
     @size.setter
-    def size(self, value:tuple):
-        self._pane.size = value
+    def size(self, value: typing.Tuple[int, int]):
+        self._frame.size = value
 
 
-def find_task_pane(title:str=None, workbook=None, window=None):
+def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane:
     """
         Finds all xlOil python task panes associated with the active window, 
         optionally filtering by the pane `title`. 
@@ -84,64 +105,74 @@ def find_task_pane(title:str=None, workbook=None, window=None):
         if workbook is None:
             hwnds = [xloil.app().windows.active.hwnd]
         else:
-            workbook = Workbook(workbook) # TODO: string or obj....
-            hwnds = [x.hwnd for x in xloil.app().windows]
+            if isinstance(workbook, str):
+                workbook = Workbook(workbook)
+            hwnds = [x.hwnd for x in workbook.windows]
     else:
-            hwnds = [ExcelWindow(window).hwnd]
+        if isinstance(window, str):
+            window = ExcelWindow(window)
+        hwnds = [window.hwnd]
 
-    found = [x for x in _task_panes if x.pane.window.hwnd in hwnds]
+    found = [x for x in _task_panes if x.frame.window.hwnd in hwnds]
     if title is None:
         return found
     else:
-        return next((x for x in found if x.pane.title == title), None)
+        return next((x for x in found if x.frame.title == title), None)
 
 
-def _try_create_qt_pane(obj):
-
-    from ._qtgui import QtThreadTaskPane, QT_IMPORT
-    QWidget = QT_IMPORT("QtWidgets").QWidget
-    if isinstance(obj, type) and issubclass(obj, QWidget):
-        return lambda pane: QtThreadTaskPane(pane, obj)
-    return None
-
-
-async def create_task_pane(
-    name:str, creator=None, window=None, gui:ExcelGUI=None, size=None, visible=True):
+def _try_create_from_qwidget(obj) -> typing.Awaitable[CustomTaskPane]:
     """
-        Returns a task pane with title <name> attached to the active window,
-        creating it if it does not already exist.  This function is equivalent
-        to `ExcelGUI.create_task_pane(...)`
-
-        Parameters
-        ----------
-
-        creator: 
-            * a subclass of `QWidget` or
-            * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
-
-        window: 
-            a window title or `ExcelWindow` object to which the task pane should be
-            attached.  If None, the active window is used.
-
-        gui: `ExcelGUI` object
-            GUI context used when creating a pane.    
-
+        If obj is a QWidget, returns an Awaitable[QtThreadTaskPane] else None.
+        This is a convenience for Qt users to avoid needing to create a QtThreadTaskPane
+        explicitly
     """
-    pane = find_task_pane(name)
-    if pane is not None:
-        pane.visible = visible
-        return pane
-    if creator is None:
-        return None
+    try:
+        # This will raise an ImportError if Qt has not been properly
+        # setup by importing xloil.gui.pyqt5 (or pyside2). This check is
+        # very cheap: _qtconfig imports nothing.
+        from ._qtconfig import QT_IMPORT
+        QWidget = QT_IMPORT("QtWidgets").QWidget
+        
+        if isinstance(obj, type) and issubclass(obj, QWidget) or isinstance(obj, QWidget):
+            from ._qtgui import QtThreadTaskPane, Qt_thread
+            return Qt_thread().submit_async(QtThreadTaskPane, obj)
 
-    creator = _try_create_qt_pane(creator) or creator
+    except ImportError:
+        pass
+
+    return obj
+
+
+async def _attach_task_pane(
+        gui: ExcelGUI,
+        pane: CustomTaskPane,
+        name: str, 
+        window: ExcelWindow, 
+        size: tuple, 
+        visible: bool):
+    
+    # This is the implementation of ExcelGUI.attach_pane since the async
+    # stuff and checking for Qt is easier on the python side
 
     if isinstance(window, str):
         window = ExcelWindow(window)
+    
+    if name is None:
+        name = getattr(pane, "name", None)
+        if name is None:
+            raise NameError("Attach pane must be given a 'name' argument or the pane must "
+                "contain a 'name' attribute")
 
-    frame = await gui.task_pane_frame(name, window)
-    pane = creator(frame)
+    frame_future = gui._create_task_pane_frame(name, window)
 
+    # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
+    pane = _try_create_from_qwidget(pane)
+
+    if inspect.isawaitable(pane):
+        pane = await pane
+
+    await pane._attach_frame(frame_future)
+    
     pane.visible = visible
     if size is not None:
         pane.size = size
@@ -158,7 +189,6 @@ class _GuiExecutor(futures.Executor):
     """
 
     def __init__(self, name):
-        import threading
         import queue
 
         self._work_queue = queue.SimpleQueue()
@@ -166,7 +196,8 @@ class _GuiExecutor(futures.Executor):
         self._broken = False
         self._thread.start()
 
-        # PyBye is called before `threading` module teardown, whereas `atexit` comes later
+        # PyBye is called before `threading` module teardown, whereas `atexit` comes later.
+        # We definitely want threading available to shut down our threads.
         xloil.event.PyBye += self.shutdown
 
     def _do_work(self):
@@ -182,21 +213,31 @@ class _GuiExecutor(futures.Executor):
         except Exception as e:
              xloil.log(f"{self._thread.name} error running job: {e}", level='warn')
 
-
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, fn, *args, **kwargs) -> futures.Future:
         if self._broken:
             raise futures.BrokenExecutor(self._broken)
 
-        f = futures.Future()
-        w = concurrent.futures.thread._WorkItem(f, fn, args, kwargs)
+        future = futures.Future()
+        work = concurrent.futures.thread._WorkItem(future, fn, args, kwargs)
 
-        self._work_queue.put(w)
+        # In case we're called from our own thread - don't deadlock, just
+        # execute the function right now.
+        if threading.get_native_id() == self._thread.native_id:
+            work.run()
+        else:
+            self._work_queue.put(work)
 
-        return f
+        return future
+
+    async def submit_async(self, fn, *args, **kwargs):
+        """
+        Behaves as `submit` but wraps the result in an asyncio.Future so it
+        can be awaited.
+        """
+        return await asyncio.wrap_future(self.submit(fn, *args, **kwargs))
 
     def shutdown(self, wait=True, cancel_futures=False):
-        # TODO: implement wait/cancel_futures support?
-        if not self._broken:
+        if not self._broken: # TODO: implement wait/cancel_futures support?
             self.submit(self._shutdown)
 
     def _main_loop(self):
@@ -207,3 +248,57 @@ class _GuiExecutor(futures.Executor):
             xloil.log(f"{self._thread.name} failed: {e}", level='error')
 
         self._broken = True
+
+    def _wrap(self, fn, sync=True, discard=False):
+        """
+            Called by Tk_thread, Qt_thread to implement their decorator 
+            behaviour.
+        """
+        if discard:
+            def logged(*arg, **kwargs):
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as e:
+                    xlo.log("Error running job on GUI thread: {str(e)}", level="error")
+            fn = logged
+        
+        if sync:
+            async def wrapped(*args, **kwargs):
+                return await self.submit_async(fn, *args, **kwargs)
+        else:
+            def wrapped(*args, **kwargs):
+                return self.submit(fn, *args, **kwargs)
+
+        return wrapped
+
+
+class _ConstructInExecutor(type):
+    """
+        Metaclass used by CustomTaskPane objects to ensure their ctor is run in 
+        the thread associated with the GUI toolkit. The `executor` argument should 
+        specify a concurrent.futures.Executor. If None is passed, the functionality of 
+        this metaclass is disabled. The default is `executor=True` which means take
+        the executor from a base class, or throw if none is found.
+    """
+
+    def __new__(cls, name, bases, namespace, executor:futures.Executor = True):
+        return type.__new__(cls, name, bases, namespace)
+        
+    def __init__(cls, name, bases, namespace, executor:futures.Executor = True):
+        # If default, try to fetch executor from base class
+        if executor == True:
+            cls._executor = next(b._executor for b in bases if type(b) is _ConstructInExecutor)
+        else:
+            cls._executor = executor
+            
+        return type.__init__(cls, name, bases, namespace)
+        
+    def __call__(cls, *args, **kwargs):
+        # Strictly only the __init__ method needs to be in the executor, but
+        # this seems easier than replicating `type.__call__`
+        if cls._executor is None:
+            return type.__call__(cls, *args, **kwargs)
+        else:
+            return cls._executor.submit(
+                lambda: type.__call__(cls, *args, **kwargs)
+            ).result()

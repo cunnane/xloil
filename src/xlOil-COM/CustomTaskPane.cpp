@@ -4,6 +4,7 @@
 #include <xlOil/ExcelUI.h>
 #include <xloil/Throw.h>
 #include <xloil/Log.h>
+#include <xloil/State.h>
 #include <atlbase.h>
 #include <atlctl.h>
 
@@ -21,10 +22,22 @@ namespace xloil
     public:
       CustomTaskPaneEventHandler(
         ICustomTaskPane& parent, 
-        shared_ptr<ICustomTaskPaneHandler> handler)
+        shared_ptr<ICustomTaskPaneEvents> handler)
         : _parent(parent)
         , _handler(handler)
       {}
+
+      virtual ~CustomTaskPaneEventHandler() noexcept
+      {
+        try
+        {
+          _handler->onDestroy();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR(e.what());
+        }
+      }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
@@ -69,29 +82,32 @@ namespace xloil
 
     private:
       ICustomTaskPane& _parent;
-      shared_ptr<ICustomTaskPaneHandler> _handler;
+      shared_ptr<ICustomTaskPaneEvents> _handler;
     };
-
+    
     // TODO: do we really need all these interfaces?
-    class ATL_NO_VTABLE CustomTaskPaneCtrl :
+    class ATL_NO_VTABLE WindowHostControl :
       public CComObjectRootEx<CComSingleThreadModel>,
       public IDispatchImpl<IDispatch>,
-      public CComControl<CustomTaskPaneCtrl>,
-      public IOleControlImpl<CustomTaskPaneCtrl>,
-      public IOleObjectImpl<CustomTaskPaneCtrl>,
-      public IOleInPlaceActiveObjectImpl<CustomTaskPaneCtrl>,
-      public IViewObjectExImpl<CustomTaskPaneCtrl>,
-      public IOleInPlaceObjectWindowlessImpl<CustomTaskPaneCtrl>
+      public CComControl<WindowHostControl>,
+      public IOleControlImpl<WindowHostControl>,
+      public IOleObjectImpl<WindowHostControl>,
+      public IOleInPlaceActiveObjectImpl<WindowHostControl>,
+      public IViewObjectExImpl<WindowHostControl>,
+      public IOleInPlaceObjectWindowlessImpl<WindowHostControl>
     {
       GUID _clsid;
-      std::list<shared_ptr<ICustomTaskPaneHandler>> _handlers;
-
-      unsigned n_bWindowOnly = 1;
+      HWND _attachedWindow = 0;
 
     public:
-      CustomTaskPaneCtrl() noexcept
-      { }
-
+      WindowHostControl() noexcept
+      { 
+        m_bWindowOnly = 1;
+      }
+      ~WindowHostControl() noexcept
+      {
+        ::SetParent(_attachedWindow, NULL);
+      }
       void init(const GUID& clsid) noexcept
       {
         _clsid = clsid;
@@ -100,18 +116,30 @@ namespace xloil
       {
         XLO_THROW("Not supported");
       }
-      void addHandler(const shared_ptr<ICustomTaskPaneHandler>& events)
+
+      /// <summary>
+      /// Given a window handle, make it a frameless child of the one of
+      /// our parent windows
+      /// </summary>
+      void attachWindow(size_t hwnd)
       {
-        _handlers.push_back(events);
+        _attachedWindow = (HWND)hwnd;
+        ::SetParent(_attachedWindow, GetAttachableParent());
+
+        auto style = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
+        style = style | WS_CHILD;
+        style = style & ~WS_THICKFRAME;
+        style = style & ~WS_CAPTION;
+        ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, style);
+
+        // Set the z-order and reposition the child at the top left of the parent
+        // TODO: Not sure we need both of these!
+        ::SetWindowPos(m_hWnd, _attachedWindow, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        ::SetWindowPos(_attachedWindow, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
       }
-      void destroy()
-      {
-        for (auto& h : _handlers)
-          h->onDestroy();
-        _handlers.clear();
-      }
-      // TODO: should we re-enable windowless mode since we don't need the hwnd
-      BEGIN_COM_MAP(CustomTaskPaneCtrl)
+      DECLARE_WND_CLASS(_T("xlOilAXControl"))
+
+      BEGIN_COM_MAP(WindowHostControl)
         COM_INTERFACE_ENTRY(IDispatch)
         COM_INTERFACE_ENTRY(IViewObjectEx)
         COM_INTERFACE_ENTRY(IViewObject2)
@@ -123,9 +151,9 @@ namespace xloil
         COM_INTERFACE_ENTRY(IOleObject)
       END_COM_MAP()
 
-      BEGIN_MSG_MAP(CustomTaskPaneCtrl)
-        MESSAGE_HANDLER(WM_SIZE, OnSize)
-        CHAIN_MSG_MAP(CComControl<CustomTaskPaneCtrl>)
+      BEGIN_MSG_MAP(WindowHostControl)
+        MESSAGE_HANDLER(WM_WINDOWPOSCHANGING, OnPosChanging)
+        CHAIN_MSG_MAP(CComControl<WindowHostControl>)
         DEFAULT_REFLECTION_HANDLER()
       END_MSG_MAP()
 
@@ -158,40 +186,64 @@ namespace xloil
         return OleRegGetMiscStatus(_clsid, dwAspect, pdwStatus);
       }
 
-      HWND GetActualParent()
+      // We can't link GUI window to just any old parent. In particular not
+      // m_hWnd of this class. This is because the DPI awareness for this
+      // window is set to System whereas the GUI toolkit root windows
+      // are at Per-Monitor or better; this causes GetParent to fail. Because
+      // this window's parent is also System awareness, we can't make our 
+      // window Per-Monitor aware. Even if we call SetThreadDpiHostingBehavior
+      // with DPI_HOSTING_BEHAVIOR_MIXED - it just doesn't work. Instead we 
+      // walk up the parent chain unti we find "NUIPane" which experimentation
+      // has shown will be a suitable parent.
+      HWND GetAttachableParent()
       {
-        HWND hwndParent = m_hWnd;
+        // We will walk up the window stack until we find the target below.
+        // TODO: could be MsoWorkPane or NetUIHWND?
+        constexpr wchar_t target[] = L"NUIPane";  
 
-        // Get the window associated with the in-place site object,
-        // which is connected to this ActiveX control.
-        if (m_spInPlaceSite == NULL)
-          m_spInPlaceSite->GetWindow(&hwndParent);
+        constexpr auto len = 1 + _countof(target);
 
-        return hwndParent;  
+        // Create a buffer for window class names; doesn't need to be larger
+        // than the target name.  Ensure the buffer is always null terminated 
+        // for safety.
+        wchar_t winClass[len + 1];
+        winClass[len] = 0;
+
+        HWND parent = m_hWnd;
+        do
+        {
+          auto hwnd = parent;
+          parent = ::GetParent(hwnd);
+          if (parent == hwnd || parent == NULL)
+            XLO_THROW(L"Failed to find parent window with class {}", target);
+          ::GetClassName(parent, winClass, len);
+        } while (wcscmp(target, winClass) != 0);
+
+        return parent;
       }
 
-      HRESULT OnSize(UINT /*message*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& /*bHandled*/)
+      HRESULT OnPosChanging(UINT message, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
       {
-        try
+        auto windowPos = (WINDOWPOS*)lParam;
+        if (_attachedWindow != 0 && windowPos->cx > 0 && windowPos->cy > 0)
         {
-          UINT width = LOWORD(lParam);
-          UINT height = HIWORD(lParam);
-          for (auto& h : _handlers)
-            h->onSize(width, height);
+          ::SetWindowPos(
+            _attachedWindow, 
+            0, 0, 0, 
+            windowPos->cx, windowPos->cy, 
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR(e.what());
-        }
-        return S_OK;
+        bHandled = true;
+        return DefWindowProc(message, wParam, lParam);
       }
+
     };
 
     class CustomTaskPaneCreator : public ICustomTaskPane
     {
       Office::_CustomTaskPanePtr _pane;
-      std::list<CComPtr<CustomTaskPaneEventHandler>> _paneEvents;
-      CComPtr<CustomTaskPaneCtrl> _customCtrl;
+      CComPtr<CustomTaskPaneEventHandler> _paneEvents;
+      CComPtr<WindowHostControl> _hostingControl;
 
     public:
       CustomTaskPaneCreator(
@@ -204,65 +256,36 @@ namespace xloil
         auto targetWindow = window ? _variant_t(window) : vtMissing;
         if (!progId)
         {
-          RegisterCom<CustomTaskPaneCtrl> registrar(
+          RegisterCom<WindowHostControl> registrar(
             [](const wchar_t* progId, const GUID& clsid)
             {
-              auto p = new CComObject<CustomTaskPaneCtrl>;
+              auto p = new CComObject<WindowHostControl>;
               p->init(clsid);
               return p;
             },
             formatStr(L"%s.CTP", name ? name : L"xlOil").c_str());
           _pane = ctpFactory.CreateCTP(registrar.progid(), name, targetWindow);
-          _customCtrl = registrar.server();
+          _hostingControl = registrar.server();
         }
         else
           _pane = ctpFactory.CreateCTP(progId, name, targetWindow);
       }
+
       ~CustomTaskPaneCreator()
       {
         destroy();
       }
+
       IDispatch* content() const override
       {
         return _pane->ContentControl;
       }
+
       ExcelWindow window() const override
       {
         return ExcelWindow(Excel::WindowPtr(_pane->Window));
       }
 
-      size_t parentWindowHandle() const override
-      {
-        // Walk up the window stack until we find the target below.
-        // We start wwith the parent of our custom control, or the window
-        // attached to any other control type.
-        constexpr wchar_t target[] = L"NUIPane";  // TODO: could be MsoWorkPane or NetUIHWND
-
-        HWND parent = 0;
-        if (_customCtrl)
-          parent = _customCtrl->GetActualParent();
-        else
-        {
-          IOleWindowPtr oleWin(_pane->ContentControl);
-          oleWin->GetWindow(&parent);
-        }
-        
-        constexpr auto len = 1 + _countof(target);
-        wchar_t winClass[len + 1];
-        // Ensure that class_name is always null terminated for safety.
-        winClass[len] = 0;
-
-        do 
-        {
-          auto hwnd = parent;
-          parent = ::GetParent(hwnd);
-          if (parent == hwnd)
-            XLO_THROW(L"Failed to find parent window with class {}", target);
-          ::GetClassName(parent, winClass, len);
-        } while (wcscmp(target, winClass) != 0);
-
-        return (size_t)parent;
-      }
       void setVisible(bool value) override
       { 
         _pane->Visible = value;
@@ -294,20 +317,29 @@ namespace xloil
         return _pane->Title.GetBSTR();
       }
 
-      void destroy() const
+      void destroy()
       {
-        if (_customCtrl)
-          _customCtrl->destroy();
+        if (_paneEvents)
+        {
+          _paneEvents->disconnect();
+          _paneEvents.Release();
+        }
+        if (_hostingControl)
+          _hostingControl.Release();
         _pane->Delete();
       }
-      void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) override
+
+      void listen(const std::shared_ptr<ICustomTaskPaneEvents>& events) override
       {
-        _paneEvents.push_back(new CustomTaskPaneEventHandler(*this, events));
-        _paneEvents.back()->connect(_pane);
-        if (_customCtrl)
-          _customCtrl->addHandler(events);
+        _paneEvents.Attach(new CustomTaskPaneEventHandler(*this, events));
+        _paneEvents->connect(_pane);
       }
-      
+
+      void attach(size_t hwnd) override
+      {
+        if (_hostingControl)
+          _hostingControl->attachWindow(hwnd);
+      }
     };
 
     ICustomTaskPane* createCustomTaskPane(

@@ -43,7 +43,6 @@ __all__ = [
     "cache",
     "call",
     "call_async",
-    "create_gui",
     "deregister_functions",
     "event",
     "excel_callback",
@@ -351,43 +350,96 @@ class ExcelArray():
     pass
 class ExcelGUI():
     """
-    Controls an Ribbon and its associated COM addin. The methods of this object are safe
-    to call from any thread.  However, COM must be used on Excel's main thread, so the methods  
-    schedule calls to run on the main thead. This could lead to deadlocks if the call 
-    triggers event handlers on the main thread, which in turn block whilst waiting for the 
-    thread originally calling ExcelGUI.
+    Creating an ExcelGUI creates a COM addin which allows Ribbon customisation and creation
+    of custom task panes. The methods of this object are safe to call from any thread;  
+    however, since COM calls must be made on Excel's main thread, the methods schedule 
+    those calls and return an *awaitable* future to the result. This could lead to deadlocks
+    if the future's result is requested synchronously if, for example, one of Excel's event
+    handlers is triggered.  The object's properties do not return futures and are thread-safe.
+
+    *ExcelGUI* methods cannot be called until the future created by its *connect* method 
+    has returned a result.
     """
-    def activate(self, id: str) -> bool: 
+    def __init__(self, name: object = None, ribbon: object = None, funcmap: object = None, connect: bool = True) -> None: 
         """
-        Activatives the ribbon tab with the specified id.  Returns False if
-        there is no Ribbon or the Ribbon is collapsed.
-        """
-    def connect(self, xml: str = '', func_names: object = None) -> _Future: 
-        """
-        Connects this COM add-in underlying this Ribbon to Excel. Any specified 
-        ribbon XML will be passed to Excel.
-        """
-    def create_task_pane(self, *args, **kwargs) -> object: 
-        """
-        Returns a task pane with title <name> attached to the active window,
-        creating it if it does not already exist.  See `xloil.create_task_pane`.
+        The *ExcelGUI*
+        is connected using the specified ribbon customisation XML to Excel.  
+        When the *ExcelGUI* object is deleted, it unloads the associated COM 
+        add-in and so all Ribbon customisation and attached task panes.
 
         Parameters
         ----------
 
-        creator: 
-            * a subclass of `QWidget` or
-            * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+        ribbon: str
+            A Ribbon XML string, most easily created with a specialised editor.
+            The XML format is documented on Microsoft's website
+
+        func_names: Func[str -> callable] or Dict[str, callabe]
+            The ``func_names`` mapper links callbacks named in the Ribbon XML to
+            python functions. It can be either a dictionary containing named 
+            functions or any callable which returns a function given a string.
+            Each return handler should take a single ``RibbonControl``
+            argument which describes the control which raised the callback.
+
+            Callbacks declared async will be executed in the addin's event loop. 
+            Other callbacks are executed in Excel's main thread. Async callbacks 
+            cannot return values.
+
+        name: str
+            The addin name which will appear in Excel's COM addin list.
+            If None, uses the filename at the call site as the addin name.
+        """
+    def _create_task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
+        """
+        Used internally to create a custom task pane window which can be populated
+        with a python GUI.  Most users should use `create_task_pane(...)` instead.
+
+        A COM `progid` can be specified, but this will prevent displaying a python GUI
+        in the task pane using the xlOil methods. This is a specialised use case.
+        """
+    def activate(self, id: str) -> _Future: 
+        """
+        Activatives the ribbon tab with the specified id.  Returns False if
+        there is no Ribbon or the Ribbon is collapsed.
+        """
+    def attach_pane(self, arg0: object, arg1: object, arg2: object, arg3: object, arg4: object) -> object: ...
+    def attach_pane_async(self, pane: object, name: object = None, window: object = None, size: object = None, visible: object = True) -> object: 
+        """
+        Parameters
+        ----------
+
+        name: 
+            The task pane name. Will be displayed above the task pane.
+
+        pane: CustomTaskPane (or QWidget type)
+            If a QWidget instance is passed, it must have been created on the Qt thread
+            or core dumps will ensue.
 
         window: 
-            a window title or `ExcelWindow` object to which the task pane should be
+            A window title or `xloil.ExcelWindow` object to which the task pane should be
             attached.  If None, the active window is used.
+
+        size:
+            If provided, a tuple (width, height) used to set the initial pane size
+
+        visible:
+            Determines the initial pane visibility. Defaults to True.
         """
-    def disconnect(self) -> None: 
+    def connect(self) -> _Future: 
         """
-        Unloads the underlying COM add-in and any ribbon customisation.
+        Connects this COM addin to Excel, optionally specifying Ribbon XML and callbacks.
+        The Ribbon specification can only be modified on connection. No other methods may
+        be called on a *ExcelGUI* object until it has been connected.
+
+        This method is safe to call on an already connected addin.
         """
-    def invalidate(self, id: str = '') -> None: 
+    def disconnect(self) -> _Future: 
+        """
+        Unloads the underlying COM add-in and any ribbon customisation.  Avoid using
+        connect/disconnect to modify the Ribbon as it is not perfomant. Rather hide/show
+        controls with `invalidate` and the vibility callback.
+        """
+    def invalidate(self, id: str = '') -> _Future: 
         """
         Invalidates the specified control: this clears the cache of responses
         to callbacks associated with the control. For example, this can be
@@ -396,13 +448,10 @@ class ExcelGUI():
 
         If no control ID is specified, all controls are invalidated.
         """
-    def task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
+    @property
+    def connected(self) -> bool:
         """
-        Used internally to create a custom task pane window which can be populated
-        with a python GUI.  Most users should use `create_task_pane(...)` instead.
-
-        A COM `progid` can be specified, but this will prevent using a python GUI
-        in the task pane. This is a specialised use case.
+        :type: bool
         """
     @property
     def name(self) -> str:
@@ -953,24 +1002,23 @@ class StatusBar():
     pass
 class TaskPaneFrame():
     """
-    References Excel's base task pane object into which the python GUI can be drawn.
-    The methods of this object are safe to call from any thread.  COM must be used on Excel's
-    main thread, so the methods all wrap their calls to ensure to this happens. This could lead 
-    to deadlocks if the call triggers event  handlers on the main thread, which in turn block 
-    waiting for the thread originally calling `TaskPaneFrame`.
+    Excel's underlying custom task pane object into which a python GUI can be drawn.
+    It is unlikely that this object will need to be manipulated directly. Rather use
+    `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
+
+    The methods of this object are safe to call from any thread. COM must be used on 
+    Excel's main thread, so the methods all wrap their calls to ensure to this happens.
     """
-    def add_event_handler(self, handler: object) -> None: ...
+    def attach(self, handler: object, hwnd: int) -> _Future: 
+        """
+        Associates a `xloil.gui.CustomTaskPane` with this frame
+        """
     def com_control(self, lib: str = '') -> object: 
         """
         Gets the base COM control of the task pane. The ``lib`` used to provide
-        COM support can be 'comtypes' or 'win32com' (default is win32com).
-        """
-    @property
-    def parent_hwnd(self) -> int:
-        """
-        Win32 window handle used to attach a python GUI to a task pane frame
-
-        :type: int
+        COM support can be 'comtypes' or 'win32com' (default is win32com). This 
+        method is only useful if a custom `progid` was specified during the task
+        pane creation.
         """
     @property
     def size(self) -> typing.Tuple[int, int]:
@@ -1271,34 +1319,6 @@ class Worksheets():
 class WorksheetsIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> Worksheet: ...
-    pass
-class _AddinFuture():
-    """
-    A Future represents an eventual result of an asynchronous operation.
-    Future is an awaitable object. Coroutines can await on Future objects 
-    until they either have a result or an exception set. This Future cannot
-    be cancelled.
-
-    This class actually wraps a C++ future so does executes in a separate 
-    thread unrelated to an `asyncio` event loop. 
-    """
-    def __await__(self) -> _AddinFutureIter: ...
-    def done(self) -> bool: 
-        """
-        Return True if the Future is done.  A Future is done if it has a result or an exception.
-        """
-    def result(self) -> object: 
-        """
-        Return the result of the Future, blocking if the Future is not yet done.
-
-        If the Future has a result, its value is returned.
-
-        If the Future has an exception, raises the exception.
-        """
-    pass
-class _AddinFutureIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> None: ...
     pass
 class _AsyncReturn():
     def set_done(self) -> None: ...
@@ -1734,36 +1754,6 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
     to return a result.
 
     Returns an **awaitable**, i.e. a future which holds the result.
-    """
-def create_gui(ribbon: object = None, func_names: object = None, name: object = None) -> _AddinFuture:
-    """
-    Returns an **awaitable** to a ExcelGUI object which passes the specified ribbon
-    customisation XML to Excel.  When the returned object is deleted, it 
-    unloads the Ribbon customisation and the associated COM add-in.  If ribbon
-    XML is specfied the ExcelGUI object will be connected, otherwise the 
-    user must call the `connect()` method to active the object.
-
-    Parameters
-    ----------
-
-    ribbon: str
-        A Ribbon XML string, most easily created with a specialised editor.
-        The XML format is documented on Microsoft's website
-
-    func_names: Func[str -> callable] or Dict[str, callabe]
-        The ``func_names`` mapper links callbacks named in the Ribbon XML to
-        python functions. It can be either a dictionary containing named 
-        functions or any callable which returns a function given a string.
-        Each return handler should take a single ``RibbonControl``
-        argument which describes the control which raised the callback.
-
-        Callbacks declared async will be executed in the addin's event loop. 
-        Other callbacks are executed in Excel's main thread. Async callbacks 
-        cannot return values.
-
-    name: str
-        The addin name which will appear in Excel's COM addin list.
-        If None, uses the filename at the call site as the addin name.
     """
 def deregister_functions(arg0: object, arg1: object) -> None:
     """

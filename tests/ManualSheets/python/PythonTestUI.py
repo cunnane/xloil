@@ -1,35 +1,47 @@
-# If not first, gives a "specified module cannot be found" error - ?
-from PIL import Image
-
+# If PIL is not first, gives a "specified module cannot be found" error - ?
+try:
+    from PIL import Image
+except ImportError:
+    pass
+    
 import xloil as xlo
 from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
+import inspect
 
 #---------------------------------
 # GUI: Creating Custom Task Panes
 #---------------------------------
-
-# You *must* import `xloil.gui.pyqt5` before `PyQt5`, this allows xlOil to create
-# a thread to manage the Qt GUI.  *All* interaction with the Qt GUI must be done
-# on the GUI thread or Qt _will abort_.  Use `QtThread.submit(...)`
+#
+# We demonstrate how task panes can be created using Qt and Tk. We wrap the 
+# Qt pane creation in a try/except in case pyqt5 is not installed.
+#
 
 try:
+    # You must import `xloil.gui.pyqt5` before `PyQt5`, this allows xlOil to create
+    # a thread to manage the Qt GUI.  *All* interaction with the Qt GUI except emitting 
+    # signals must be done on the GUI thread or Qt _will abort_.  Use `Qt_thread.submit(...)`
+    # to send jobs to Qt's thread.
     import xloil.gui.pyqt5
-
-    _PANE_NAME="MyPane"
-
+    
     from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
     from PyQt5.QtCore import pyqtSignal, Qt
     
-    class MyTaskPane(QWidget):
-        progress = pyqtSignal(int)
-    
+    class OurQtPane(QWidget):
+        
+        _progress = pyqtSignal(int)
+        
+        def set_progress(self, x: int):
+            # Use a signal to send the progress: this is thread safe
+            self._progress.emit(x)
+            
         def __init__(self):
-            super().__init__()
+            super().__init__() # Must call this or Qt will crash
+            
             progress_bar = QProgressBar(self)
             progress_bar.setGeometry(200, 80, 250, 20)
-            self.progress.connect(progress_bar.setValue, Qt.QueuedConnection)
+            self._progress.connect(progress_bar.setValue, Qt.QueuedConnection)
         
             label = QLabel("Hello from Qt")
         
@@ -40,16 +52,87 @@ try:
             layout.addWidget(progress_bar)
         
             self.setLayout(layout)
-            
-            
-    async def make_task_pane():
-        global _excelgui # Will be created in time...
-        return await _excelgui.create_task_pane(
-            name=_PANE_NAME, creator=MyTaskPane)
-            
+                
 except ImportError:
-    raise
+
+    class OurQtPane:
+        ...
+   
+# Like Qt, xlOil's tkinter module must be imported before using the toolkit
+# to allow xlOil to create the *Tk_thread* and the tkinter root object. All
+# interactions with tkinter must take place via *Tk_thread*.
+from xloil.gui.tkinter import TkThreadTaskPane, Tk_thread
+
+# Unlike Qt, it's not common to derive the from a tkinter object.
+# Instead, we derive from `TkThreadTaskPane`, which derives from `CustomTaskPane`
+
+class OurTkPane(TkThreadTaskPane):
+
+    def __init__(self):
+        super().__init__() # Important!
+        
+        import tkinter as tk
+        
+        top_level = self.top_level
+
+        btn = tk.Button(top_level, text="This is a Button", fg='blue')
+        btn.place(x=20, y=50)
+        
+        from tkinter import ttk
+        self._progress_bar = ttk.Progressbar(top_level, length=200, mode='determinate')
+        self._progress_bar.place(x=20, y=100)
     
+    @Tk_thread
+    def set_progress(self, x: int):
+        self._progress_bar['value'] = x
+
+#
+# We define a function to create a task pane using Tk or Qt. We first check 
+# that the pane has not already been created, then construct a instance of the
+# pane class, then attach it to the ExcelGUI object created later.
+#
+
+_PANES = {}
+
+async def make_task_pane(toolkit):
+
+    global _excelgui
+    
+    # We need to be careful in case the open pane button was clicked
+    # more than once before the pane got a chance to create
+    pane = _PANES.get(toolkit, None)
+    if pane is not None:
+        if asyncio.isfuture(pane):
+            return await pane
+        else:
+            return pane
+    
+    # attach_pane can accept a CustomTaskPane instance, or a QWidget
+    # instance or an awaitable to one of those things. You can also
+    # pass a QWidget type which xlOil wrap in a QtThreadTaskPane and
+    # create in the correct thread.
+    #
+    # (We could just pass `OurTkPane` rather than using Tk_thread, this
+    # is just to demonstrate passing an awaitable)
+    if toolkit == 'Tk':
+        future = _excelgui.attach_pane_async(
+            name="MyTkPane",
+            pane=Tk_thread().submit_async(OurTkPane))
+    elif toolkit == 'Qt':
+        future = _excelgui.attach_pane_async(
+            name="MyQtPane", 
+            pane=OurQtPane)
+    else:
+        raise Exception()
+
+    _PANES[toolkit] = future
+        
+    pane = await future
+    
+    _PANES[toolkit] = pane
+    
+    return pane
+     
 #----------------------
 # GUI: Creating Ribbons
 #----------------------
@@ -59,46 +142,63 @@ except ImportError:
 # unloaded.  To create the ribbon XML use an editor such as Office RibbonX Editor:
 # https://github.com/fernandreu/office-ribbonx-editor
 #
- 
-def get_icon_path():
-    # Gets the path to an icon file to demonstrate PIL image handling
-    return os.path.join(os.path.dirname(xloil.linked_workbook()), 'icon.bmp')
-    
-def button_label(ctrl, *args):
-    return "Open Task Pane"
- 
-def button_image(ctrl):
-    import os
-    im = Image.open(get_icon_path())
-    return im
-
-#
 # GUI callbacks declared async will be executed in the addin's 
 # event loop. Other callbacks are executed in Excel's main thread.
 # Async callbacks cannot return values.
 # 
-async def pressOpenPane(ctrl):
+
+def _get_icon_path():
+    import os
+    # Gets the path to an icon file to demonstrate PIL image handling
+    return os.path.join(os.path.dirname(xloil.linked_workbook()), 'icon.bmp')
     
-    xlo.log("Button Pressed")
+
+def button_image(ctrl):
+    # Ribbon callback to determine the button's icon (see ribbon xml)
+    im = Image.open(_get_icon_path())
+    return im
+
+# Maps button ids in the ribbon xml below to GUI toolkit names
+_BUTTON_MAP = { 
+    "buttonTk": "Tk", 
+    "buttonQt": "Qt"
+} 
+
+def get_button_label(ctrl, *args):
+    # Ribbon callback to determine button label text
+    return f"Open {_BUTTON_MAP[ctrl.id]}"
+
+async def press_open_pane_button(ctrl):
     
-    pane = await make_task_pane()
+    toolkit = _BUTTON_MAP[ctrl.id]
+    
+    xlo.log(f"Open {toolkit} Pressed")
+    
+    pane = await make_task_pane(toolkit)
     pane.visible = True
     
+#
+# The combo box in the ribbon xml has the value 33, 66 or 99. We send 
+# this as the progress % to the progress bar in our task panes (if they 
+# have been created)
+# 
 def combo_change(ctrl, value):
     
-    # The combo box has the value 33, 66 or 99. We send this as the progress % 
-    # to the progress bar in our task pane (if it has been created)
-    pane = xlo.find_task_pane(title=_PANE_NAME)
-    if pane:
-        xlo.log(f"Combo: {value} sent to progress bar")
-        pane.widget.progress.emit(int(value))
+    qt_pane = _PANES.get('Qt', None)
+    if qt_pane:
+        qt_pane.widget.set_progress(int(value))
+        
+    tk_pane = _PANES.get('Tk', None)
+    if tk_pane:
+        tk_pane.set_progress(int(value))
+      
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
 #
 # We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
 #
-_excelgui = xlo.create_gui(ribbon=r'''
+_excelgui = xlo.ExcelGUI(ribbon=r'''
     <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
         <ribbon>
             <tabs>
@@ -106,7 +206,8 @@ _excelgui = xlo.create_gui(ribbon=r'''
                     <group idMso="GroupClipboard" />
                     <group idMso="GroupFont" />
                     <group id="customGroup" label="MyButtons">
-                        <button id="pyButt1" getLabel="buttonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                        <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                        <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
                          <item id="item1" label="33" />
                          <item id="item2" label="66" />
@@ -118,12 +219,12 @@ _excelgui = xlo.create_gui(ribbon=r'''
         </ribbon>
     </customUI>
     ''', 
-    func_names={
-        'pressOpenPane': pressOpenPane,
+    funcmap={
+        'pressOpenPane': press_open_pane_button,
         'comboChange': combo_change,
-        'buttonLabel': button_label,
+        'getButtonLabel': get_button_label,
         'buttonImg': button_image
-    }).result()
+    })
     
 #-----------------------------------------
 # Images: returning images from functions
@@ -141,7 +242,7 @@ try:
     # image from an xlo.func. Returning an image requires macro=True permissions
     @xlo.func(macro=True)
     def pyTestPic():
-        im = Image.open(get_icon_path())
+        im = Image.open(_get_icon_path())
         return im
     
     
@@ -152,7 +253,7 @@ try:
     def pyTestPicSized(width:float, height:float, fitCell: bool=False):
         from PIL import Image
         import os
-        im = Image.open(get_icon_path())
+        im = Image.open(_get_icon_path())
         if fitCell:
             return xlo.pillow.ReturnImage(size="cell")(im)
         else:

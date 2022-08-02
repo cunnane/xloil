@@ -33,13 +33,6 @@ from .type_converters import (
     returner
     )
 
-from .gui import (
-    CustomTaskPane,
-    find_task_pane,
-    create_task_pane
-    )
-
-
 # Small hacky workaround for the jupyter connection feature.
 # If we're imported in an ipython kernel and the variable 
 # _xloil_jpy_impl exists, it means xloil has connected to tht

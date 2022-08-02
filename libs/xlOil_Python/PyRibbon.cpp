@@ -7,13 +7,14 @@
 #include "EventLoop.h"
 #include "PyFuture.h"
 #include "PyCom.h"
+
 #include <xloil/ExcelUI.h>
 #include <xlOil/AppObjects.h>
 #include <xloil/ExcelThread.h>
 #include <xloil/RtdServer.h>
 #include <pybind11/pybind11.h>
-#include <filesystem>
 #include <OleAuto.h>
+#include <filesystem>
 
 namespace py = pybind11;
 using std::shared_ptr;
@@ -29,6 +30,17 @@ namespace xloil
   {
     namespace
     {
+      struct PyRibbonControl
+      {
+        PyRibbonControl(const RibbonControl& ctrl)
+        {
+          if (ctrl.Id)  Id  = ctrl.Id;
+          if (ctrl.Tag) Tag = ctrl.Tag;
+        }
+        wstring Id;
+        wstring Tag;
+      };
+
       /// <summary>
       /// Expects funcNameMap to be either a function of name -> handler or a 
       /// dict of names and handler.  The handler function arguments vary depending
@@ -61,7 +73,7 @@ namespace xloil
                   for (auto i = 0; i < nArgs; ++i)
                     args[i] = PyFromAny()(variantToExcelObj(*vArgs[i]));
                   
-                  auto pyRet = callback(ctrl, *args);
+                  auto pyRet = callback(PyRibbonControl(ctrl), *args);
                   auto isAsync = py::module::import("inspect").attr("iscoroutine")(pyRet).cast<bool>();
 
                   if (isAsync)
@@ -98,150 +110,196 @@ namespace xloil
         };
       }
 
-      using AddinFuture = PyFuture<shared_ptr<IComAddin>>;
       using VoidFuture = PyFuture<void, void>;
-
-      inline auto comAddin_connect(IComAddin& addin, const wstring& xml, const py::object& funcmap)
-      {
-        return new VoidFuture(runExcelThread([
-            &addin, 
-            xml, 
-            mapper = funcmap.is_none() ? IComAddin::RibbonMap() : makeRibbonNameMapper(funcmap)]
-          () {
-            if (!xml.empty())
-              addin.setRibbon(xml.c_str(), mapper);
-            addin.connect();
-          }));
-      }
-
-      inline auto makeAddin(wstring&& name)
-      {
-        return new AddinFuture(runExcelThread([name]()
-        {
-          return makeComAddin(name.c_str(), nullptr);
-        }));
-      }
-
-      inline auto makeAddin(
-        wstring&& name,
-        wstring&& xml,
-        IComAddin::RibbonMap&& mapper)
-      {
-        return new AddinFuture(runExcelThread([name, xml, mapper]()
-        {
-          auto addin = makeComAddin(name.c_str(), nullptr);
-          addin->setRibbon(xml.c_str(), mapper);
-          addin->connect();
-          return addin;
-        }));
-      }
-
-      auto createRibbon(const py::object& xml, const py::object& funcNameMap, const py::object& name)
-      {
-        wstring addinName;
-        if (name.is_none())
-        {
-          // The returned pointers here do no need to be freed or decref'd
-          auto frame = PyEval_GetFrame();
-          if (!frame)
-            throw py::cast_error();
-  #if PY_MAJOR_VERSION >= 4 || PY_MINOR_VERSION >= 9       
-          auto code = PyFrame_GetCode(frame);
-  #else
-          auto code = frame->f_code;
-  #endif
-          std::filesystem::path filePath(pyToWStr(code->co_filename));
-          addinName = filePath.filename().stem();
-        }
-        else
-          addinName = pyToWStr(name.ptr());
-        
-        if (!xml.is_none())
-        {
-          auto mapper = makeRibbonNameMapper(funcNameMap);
-          auto xmlStr = pyToWStr(xml);
-          return makeAddin(std::move(addinName), std::move(xmlStr), std::move(mapper));
-        }
-        else
-          return makeAddin(std::move(addinName));
-      }
-      
-      PyObject* callOneArg(PyObject* callable, PyObject* arg)
-      {
-#if PY_VERSION_HEX < 0x03080000
-        auto result = PyObject_CallFunctionObjArgs(callable, arg, nullptr);
-#elif PY_VERSION_HEX < 0x03090000
-          PyObject * args[] = { nullptr, arg };
-        auto result = _PyObject_Vectorcall(callable, args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
-#else
-        auto result = PyObject_CallOneArg(callable, arg);
-#endif
-
-        return result;
-      }
-
       using CTPFuture = PyFuture<shared_ptr<ICustomTaskPane>>;
 
-      CTPFuture createPaneFrame(
-        IComAddin& comAddin, 
-        const std::wstring& name,
-        const py::object& window,
-        const py::object& progId)
+      class ComAddin
       {
-        auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
-        auto winPtr    = window.is_none() ? nullptr   : window.cast<ExcelWindow>().dispatchPtr();
-
-        return runExcelThread([&comAddin, name, winPtr, progIdStr]()
+      public:
+        ComAddin(
+          const py::object& name, 
+          const py::object& xml, 
+          const py::object& funcmap,
+          bool connect)
         {
-          comAddin.connect();
-          return comAddin.createTaskPane(name.c_str(), winPtr, progIdStr.empty() ? nullptr : progIdStr.c_str());
-        });
-      }
+          if (name.is_none())
+          {
+            // The returned pointers here do no need to be freed or decref'd
+            auto frame = PyEval_GetFrame();
+            if (!frame)
+              throw py::cast_error();
+#if PY_VERSION_HEX >= 0x03090000
+            auto code = PyFrame_GetCode(frame);
+#else
+            auto code = frame->f_code;
+#endif
+            std::filesystem::path filePath(pyToWStr(code->co_filename));
+            _name = filePath.filename().stem();
+          }
+          else
+            _name = pyToWStr(name);
 
-      auto createTaskPane(
-        IComAddin& comAddin, 
-        py::args args, 
-        py::kwargs kwargs)
+          if (!xml.is_none())
+          {
+            _xml = pyToWStr(xml);
+            _functionMap = funcmap;
+          }
+          if (connect)
+          {
+            this->connect().result();
+          }
+        }
+
+        ~ComAddin()
+        {
+          py::gil_scoped_release noGil;
+          runExcelThread([this]() { _addin->disconnect(); }).get();
+          _addin.reset();
+        }
+
+        VoidFuture connect()
+        {
+          auto ribbonMap = _functionMap.is_none()
+            ? IComAddin::RibbonMap()
+            : makeRibbonNameMapper(_functionMap);
+          _functionMap = py::object();
+
+          return runExcelThread([this, mapper = std::move(ribbonMap)]() mutable
+          {
+            if (!_addin)
+              _addin = makeComAddin(_name.c_str(), nullptr);
+            _addin->connect(_xml.c_str(), mapper);
+            _connected = true;
+          });
+        }
+
+        VoidFuture disconnect()
+        {
+          if (!_connected || !_addin)
+          {
+             std::promise<void> p; 
+             p.set_value(); 
+             return p.get_future();
+          }
+          return runExcelThread([this]() mutable 
+          {
+            _addin->disconnect(); 
+            _connected = false;
+          });
+        }
+
+        VoidFuture invalidate(const wstring& id)
+        {
+          return runExcelThread([addin = addin(), id]() { addin->ribbonInvalidate(id.c_str()); });
+        }
+
+        VoidFuture activate(const wstring& id)
+        {
+          return runExcelThread([addin = addin(), id]() { addin->ribbonActivate(id.c_str()); });
+        }
+
+        CTPFuture createTaskPaneFrame(
+          const std::wstring& name,
+          const py::object& window,
+          const py::object& progId)
+        {
+          auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
+          auto winPtr = window.is_none() ? ExcelWindow(nullptr) : window.cast<ExcelWindow>();
+
+          return runExcelThread([addin = addin(), name, winPtr, progIdStr]()
+          {
+            return addin->createTaskPane(
+              name.c_str(), 
+              &winPtr, 
+              progIdStr.empty() ? nullptr : progIdStr.c_str());
+          });
+        }
+
+        IComAddin* addin()
+        {
+          if (!_addin || !_connected) XLO_THROW("Addin disconnected");
+          return _addin.get();
+        }
+
+        auto name() const { return _name; }
+
+        bool connected() const { return _connected; }
+
+      private:
+        shared_ptr<IComAddin> _addin;
+        wstring _name;
+        wstring _xml;
+        py::object _functionMap;
+        std::atomic<bool> _connected;
+      };
+    
+      auto attachTaskPaneAsync(
+        const py::object& comAddin,
+        const py::object& pane,
+        const py::object& name,
+        const py::object& window,
+        const py::object& size,
+        const py::object& visible)
       {
-        kwargs["gui"] = py::cast(comAddin);
-        return py::module::import("xloil").attr("create_task_pane")(*args, **kwargs);
+        auto attach = py::module::import("xloil.gui").attr("_attach_task_pane");
+        return attach(comAddin, pane, name, window, size, visible);
       }
 
-      class PyTaskPaneHandler : public ICustomTaskPaneHandler
+      auto attachTaskPane(
+        const py::object& comAddin,
+        const py::object& pane,
+        const py::object& name,
+        const py::object& window,
+        const py::object& size,
+        const py::object& visible)
+      {
+        return py::module::import("asyncio").attr("create_task")(
+          attachTaskPaneAsync(comAddin, pane, name, window, size, visible)).attr("result")();
+      }
+
+      class PyTaskPaneHandler : public ICustomTaskPaneEvents
       {
       public:
         PyTaskPaneHandler(const py::object& eventHandler)
           : _handler(eventHandler)
-        {}
-
-        void onSize(int width, int height) override
         {
-          py::gil_scoped_acquire gil;
-          checkUserException([=]() { _handler.attr("on_size")(width, height); });
+          _hasOnVisible = py::hasattr(_handler, "on_visible");
+          _hasOnDocked  = py::hasattr(_handler, "on_docked");
+          _hasOnDestory = py::hasattr(_handler, "on_destroy");
         }
+
         void onVisible(bool c) override
         {
+          if (!_hasOnVisible) return;
           py::gil_scoped_acquire gil;
           checkUserException([=]() { _handler.attr("on_visible")(c); });
         }
         void onDocked() override
         {
+          if (!_hasOnDocked) return;
           py::gil_scoped_acquire gil;
           checkUserException([this]() { _handler.attr("on_docked")(); });
         }
         void onDestroy() override
         {
+          if (!_hasOnDestory) return;
           py::gil_scoped_acquire gil;
           checkUserException([this]() { _handler.attr("on_destroy")(); });
         }
         PyObjectHolder _handler;
+        bool _hasOnVisible, _hasOnDocked, _hasOnDestory;
       };
 
-      void addPaneEventHandler(ICustomTaskPane& self, const py::object& eventHandler)
+      VoidFuture addPaneEventHandler(ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
       {
-        runExcelThread([&self, handler = make_shared<PyTaskPaneHandler>(eventHandler)]() 
+        return runExcelThread([
+          &self, 
+          hwnd, 
+          handler = make_shared<PyTaskPaneHandler>(eventHandler)
+        ]()
         {
-          self.addEventHandler(handler);
+          self.listen(handler);
+          self.attach(hwnd);
         });
       }
  
@@ -256,32 +314,29 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         CTPFuture::bind(mod, "_CTPFuture");
-        AddinFuture::bind(mod, "_AddinFuture");
         VoidFuture::bind(mod);
 
-        py::class_<RibbonControl>(mod, 
+        py::class_<PyRibbonControl>(mod,
           "RibbonControl", R"(
             This object is passed to ribbon callback handlers to indicate which control  
             raised the callback.
           )")
           .def_readonly("id", 
-            &RibbonControl::Id,
+            &PyRibbonControl::Id,
             "A string that represents the Id attribute for the control or custom menu item")
           .def_readonly("tag", 
-            &RibbonControl::Tag,
+            &PyRibbonControl::Tag,
             "A string that represents the Tag attribute for the control or custom menu item.");
 
         py::class_<ICustomTaskPane, shared_ptr<ICustomTaskPane>>(mod, 
           "TaskPaneFrame", R"(
-            References Excel's base task pane object into which the python GUI can be drawn.
-            The methods of this object are safe to call from any thread.  COM must be used on Excel's
-            main thread, so the methods all wrap their calls to ensure to this happens. This could lead 
-            to deadlocks if the call triggers event  handlers on the main thread, which in turn block 
-            waiting for the thread originally calling `TaskPaneFrame`.
+            Excel's underlying custom task pane object into which a python GUI can be drawn.
+            It is unlikely that this object will need to be manipulated directly. Rather use
+            `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
+
+            The methods of this object are safe to call from any thread. COM must be used on 
+            Excel's main thread, so the methods all wrap their calls to ensure to this happens.
           )")
-          .def_property_readonly("parent_hwnd", 
-            &ICustomTaskPane::parentWindowHandle,
-            "Win32 window handle used to attach a python GUI to a task pane frame")
           .def_property_readonly("window", 
             MainThreadWrap(&ICustomTaskPane::window),
             "Gives the window of the document window to which the frame is attached, can be "
@@ -304,33 +359,86 @@ namespace xloil
             },
             R"(
               Gets the base COM control of the task pane. The ``lib`` used to provide
-              COM support can be 'comtypes' or 'win32com' (default is win32com).
+              COM support can be 'comtypes' or 'win32com' (default is win32com). This 
+              method is only useful if a custom `progid` was specified during the task
+              pane creation.
             )",
             py::arg("lib") = "")
-          .def("add_event_handler", 
-            &addPaneEventHandler, py::arg("handler"));
-
-        py::class_<IComAddin, shared_ptr<IComAddin>>(mod, 
-          "ExcelGUI", R"(
-            Controls an Ribbon and its associated COM addin. The methods of this object are safe
-            to call from any thread.  However, COM must be used on Excel's main thread, so the methods  
-            schedule calls to run on the main thead. This could lead to deadlocks if the call 
-            triggers event handlers on the main thread, which in turn block whilst waiting for the 
-            thread originally calling ExcelGUI.
-          )")
-          .def("connect",
-            comAddin_connect, 
-            R"(
-              Connects this COM add-in underlying this Ribbon to Excel. Any specified 
-              ribbon XML will be passed to Excel.
+          .def("attach", 
+            &addPaneEventHandler, 
+            R"( 
+              Associates a `xloil.gui.CustomTaskPane` with this frame
             )",
-            py::arg("xml")="", 
-            py::arg("func_names")=py::none())
+            py::arg("handler"), 
+            py::arg("hwnd"));
+
+        py::class_<ComAddin>(mod, 
+          "ExcelGUI", R"(
+            An `ExcelGUI` wraps a COM addin which allows Ribbon customisation and creation
+            of custom task panes. The methods of this object are safe to call from any thread;  
+            however, since COM calls must be made on Excel's main thread, the methods schedule 
+            those calls and return an *awaitable* future to the result. This could lead to deadlocks
+            if the future's result is requested synchronously and, for example, one of Excel's event
+            handlers is triggered. The object's properties do not return futures and are thread-safe.
+          )")
+          .def(py::init<py::object, py::object, py::object, bool>(),
+            R"(
+              Creates an `ExcelGUI` using the specified ribbon customisation XML
+              and optionally connects it to Excel, ready for use.
+
+              When the *ExcelGUI* object is deleted, it unloads the associated COM 
+              add-in and so all Ribbon customisation and attached task panes.
+
+              Parameters
+              ----------
+
+              ribbon: str
+                  A Ribbon XML string, most easily created with a specialised editor.
+                  The XML format is documented on Microsoft's website
+
+              funcmap: Func[str -> callable] or Dict[str, callabe]
+                  The ``funcmap`` mapper links callbacks named in the Ribbon XML to
+                  python functions. It can be either a dictionary containing named 
+                  functions or any callable which returns a function given a string.
+                  Each return handler should take a single ``RibbonControl``
+                  argument which describes the control which raised the callback.
+
+                  Callbacks declared async will be executed in the addin's event loop. 
+                  Other callbacks are executed in Excel's main thread. Async callbacks 
+                  cannot return values.
+
+              name: str
+                  The addin name which will appear in Excel's COM addin list.
+                  If None, uses the filename at the call site as the addin name.
+
+              connect: bool
+                  Defaults to True, meaning the object creation is blocking. If False
+                  is passed, the object will not been fully constructed until the async
+                  `connect` method is called.  In this case, no *ExcelGUI* methods can 
+                  be called until the `connect` method has returned a result.
+
+            )",
+            py::arg("name") = py::none(),
+            py::arg("ribbon") = py::none(),
+            py::arg("funcmap") = py::none(),
+            py::arg("connect" ) = true)
+          .def("connect",
+            &ComAddin::connect,
+            R"(
+              Connects this COM addin to Excel, No other methods may be called 
+              on a `ExcelGUI` object until it has been connected.
+
+              This method is safe to call on an already-connected addin.
+            )")
           .def("disconnect",
-            MainThreadWrap(&IComAddin::disconnect),
-            "Unloads the underlying COM add-in and any ribbon customisation.")
+            &ComAddin::disconnect,
+            R"(
+              Unloads the underlying COM add-in and any ribbon customisation.  Avoid using
+              connect/disconnect to modify the Ribbon as it is not perfomant. Rather hide/show
+              controls with `invalidate` and the vibility callback.
+            )")
           .def("invalidate",
-            MainThreadWrap([](IComAddin* p, const wstring& id) { return p->ribbonInvalidate(id.c_str()); }),
+            &ComAddin::invalidate,
             R"(
               Invalidates the specified control: this clears the cache of responses
               to callbacks associated with the control. For example, this can be
@@ -341,78 +449,70 @@ namespace xloil
             )",
             py::arg("id") = "")
           .def("activate",
-            MainThreadWrap([](IComAddin* p, const wstring& id) { return p->ribbonActivate(id.c_str()); }),
+            &ComAddin::activate,
             R"(
               Activatives the ribbon tab with the specified id.  Returns False if
               there is no Ribbon or the Ribbon is collapsed.
             )",
             py::arg("id"))
-          .def("task_pane_frame",
-            createPaneFrame, 
+          .def("_create_task_pane_frame",
+            &ComAddin::createTaskPaneFrame,
             R"(
               Used internally to create a custom task pane window which can be populated
-              with a python GUI.  Most users should use `create_task_pane(...)` instead.
+              with a python GUI.  Most users should use `attach_pane(...)` instead.
 
-              A COM `progid` can be specified, but this will prevent using a python GUI
-              in the task pane. This is a specialised use case.
+              A COM `progid` can be specified, but this will prevent displaying a python GUI
+              in the task pane using the xlOil methods. This is a specialised use case.
             )",
             py::arg("name"), 
             py::arg("progid") = py::none(), 
             py::arg("window") = py::none())
-          .def("create_task_pane", 
-            createTaskPane,
+          .def("attach_pane_async", 
+            attachTaskPaneAsync,
             R"(
-              Returns a task pane with title <name> attached to the active window,
-              creating it if it does not already exist.  See `xloil.create_task_pane`.
+              Behaves as per `attach_pane`, but returns an *asyncio* coroutine. The
+              `pane` argument may be an awaitable to a `CustomTaskPane`.
+            )", 
+            py::arg("pane"),
+            py::arg("name") = py::none(),
+            py::arg("window")=py::none(),
+            py::arg("size")=py::none(),
+            py::arg("visible")=true)
+          .def("attach_pane",
+            attachTaskPane,
+            R"(
+              Given task pane contents (which can be specified in several forms) this function
+              creates a new task pane displaying those contents.
+
+              Returns the instance of `CustomTaskPane`.  If one was passed as the 'pane' argument, 
+              that is returned, if a *QWidget* was passed, a `QtThreadTaskPane` is created.
 
               Parameters
               ----------
 
-              creator: 
-                  * a subclass of `QWidget` or
-                  * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+              pane: CustomTaskPane (or QWidget type)
+                  Can be an instance of `CustomTaskPane`, a type deriving from `QWidget` or
+                  an instance of a `QWidget`. If a QWidget instance is passed, it must have 
+                  been created on the Qt thread.
+
+              name: 
+                  The task pane name. Will be displayed above the task pane. If not provided,
+                  the 'name' attribute of the task pane is used.
 
               window: 
-                  a window title or `ExcelWindow` object to which the task pane should be
+                  A window title or `xloil.ExcelWindow` object to which the task pane should be
                   attached.  If None, the active window is used.
+
+              size:
+                  If provided, a tuple (width, height) used to set the initial pane size
+
+              visible:
+                  Determines the initial pane visibility. Defaults to True.
             )")
           .def_property_readonly("name", 
-            &IComAddin::progid);
-
-        mod.def("create_gui", 
-          createRibbon, 
-          R"(
-            Returns an **awaitable** to a ExcelGUI object which passes the specified ribbon
-            customisation XML to Excel.  When the returned object is deleted, it 
-            unloads the Ribbon customisation and the associated COM add-in.  If ribbon
-            XML is specfied the ExcelGUI object will be connected, otherwise the 
-            user must call the `connect()` method to active the object.
-
-            Parameters
-            ----------
-
-            ribbon: str
-                A Ribbon XML string, most easily created with a specialised editor.
-                The XML format is documented on Microsoft's website
-
-            func_names: Func[str -> callable] or Dict[str, callabe]
-                The ``func_names`` mapper links callbacks named in the Ribbon XML to
-                python functions. It can be either a dictionary containing named 
-                functions or any callable which returns a function given a string.
-                Each return handler should take a single ``RibbonControl``
-                argument which describes the control which raised the callback.
-
-                Callbacks declared async will be executed in the addin's event loop. 
-                Other callbacks are executed in Excel's main thread. Async callbacks 
-                cannot return values.
-
-            name: str
-                The addin name which will appear in Excel's COM addin list.
-                If None, uses the filename at the call site as the addin name.
-          )",
-          py::arg("ribbon") = py::none(), 
-          py::arg("func_names") = py::none(), 
-          py::arg("name") = py::none());
+            &ComAddin::name)
+          .def_property_readonly("connected",
+            &ComAddin::connected);
       });
     }
   }
