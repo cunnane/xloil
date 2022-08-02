@@ -6,8 +6,21 @@ import sys
 # Tests if we have been loaded from the XLL plugin which will have
 # already injected the xloil_core module
 XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
+XLOIL_READTHEDOCS = 'READTHEDOCS' in os.environ
 
-if 'READTHEDOCS' in os.environ:
+def _fix_module_for_docs(namespace, target, replace):
+    """
+        When sphinx autodoc reads python objects, it uses their __module__
+        attribute to determine their fully-qualified name.  When importing
+        from a hidden private implementation, we'd like to rename this 
+        __module__ so the import appeared to come from the top level package
+    """
+    for name in list(namespace):
+        val = namespace[name]
+        if getattr(val, '__module__', None) == target:
+            val.__module__ = replace
+
+if XLOIL_READTHEDOCS:
 
     from .stubs import xloil_core
     sys.modules['xloil_core'] = xloil_core
@@ -51,5 +64,7 @@ elif not XLOIL_EMBEDDED:
 
 
 from xloil_core import *
+from xloil_core import _LogWriter
 
-  
+if XLOIL_READTHEDOCS:
+    _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')

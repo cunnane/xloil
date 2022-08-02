@@ -1,7 +1,5 @@
 import traceback
-from . import _core
-
-from xloil_core import _LogWriter
+from ._core import _LogWriter
 
 log = _LogWriter()
 """

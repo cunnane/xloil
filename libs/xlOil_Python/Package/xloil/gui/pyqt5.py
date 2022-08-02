@@ -8,4 +8,7 @@ from . import _qtconfig
 
 _qtconfig._QT_MODULE_NAME = "PyQt5"
 
-from ._qtgui import *
+from xloil._core import XLOIL_READTHEDOCS, _fix_module_for_docs
+if XLOIL_READTHEDOCS:
+    from . import _qtgui
+    _fix_module_for_docs(locals(), _qtgui.__name__, __name__)

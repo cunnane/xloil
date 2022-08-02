@@ -9,13 +9,12 @@ from .logging import *
 from .func_inspect import Arg
 import contextvars
 
-import xloil_core
-
 from xloil_core import (
     _Read_object,
     _Read_Cache,
     _FuncSpec,
-    _FuncArg
+    _FuncArg,
+    _register_functions
 )
 
 _LANDMARK_TAG = "_xloil_pending_funcs_"
@@ -452,8 +451,7 @@ def scan_module(module, addin=None):
             from .importer import source_addin
             addin = source_addin()
 
-        xloil_core._register_functions(
-            func_list, module, addin, append=False)
+        _register_functions(func_list, module, addin, append=False)
 
         return len(func_list)
 
@@ -498,5 +496,5 @@ def register_functions(funcs, module=None, append=True):
     from .importer import source_addin
     addin = source_addin()
 
-    xloil_core._register_functions(to_register, module, addin, append)
+    _register_functions(to_register, module, addin, append)
 
