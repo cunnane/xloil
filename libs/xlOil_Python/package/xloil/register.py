@@ -452,7 +452,7 @@ def scan_module(module, addin=None):
             from .importer import source_addin
             addin = source_addin()
 
-        xloil_core.register_functions(
+        xloil_core._register_functions(
             func_list, module, addin, append=False)
 
         return len(func_list)
@@ -498,5 +498,5 @@ def register_functions(funcs, module=None, append=True):
     from .importer import source_addin
     addin = source_addin()
 
-    xloil_core.register_functions(to_register, module, addin, append)
+    xloil_core._register_functions(to_register, module, addin, append)
 

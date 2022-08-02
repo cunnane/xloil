@@ -494,7 +494,7 @@ namespace xloil
             [](const PyFuncInfo& self) { return self.info()->help; })
           .def("__str__", pyFuncInfoToString);
 
-        mod.def("register_functions", &registerFunctions, 
+        mod.def("_register_functions", &registerFunctions, 
           py::arg("funcs"),
           py::arg("module")=py::none(),
           py::arg("addin")=py::none(),

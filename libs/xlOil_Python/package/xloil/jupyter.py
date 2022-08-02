@@ -58,7 +58,7 @@ def _register_func_description(desc: _FuncDescription, connection):
 
     xlo.log(f"Jupyter registering func: '{str(spec)}'", level="debug")
 
-    xloil_core.register_functions([spec])
+    xloil_core._register_functions([spec])
 
 
 class _VariableWatcher(xlo.RtdPublisher):
