@@ -26,6 +26,6 @@ namespace xloil
     return returnValue(CellError::NA);
   }
   XLO_FUNC_END(xloLog).threadsafe()
-    .help(L"Flushes the log and returns the location of the log file")
-    .arg(L"showWindow", L"Opens the log window");
+    .help(L"Flushes the log to file and returns the path of the main log file")
+    .arg(L"ShowWindow", L"Opens the log window if True");
 }

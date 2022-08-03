@@ -14,19 +14,45 @@ using std::string;
 using std::shared_ptr;
 
 namespace {
-  constexpr unsigned ID_CAPTURELEVEL_ERROR = 40001;
-  constexpr unsigned ID_CAPTURELEVEL_WARNING = 40002;
-  constexpr unsigned ID_CAPTURELEVEL_INFO = 40003;
-  constexpr unsigned ID_CAPTURELEVEL_DEBUG = 40004;
-  constexpr unsigned ID_CAPTURELEVEL_TRACE = 40005;
+  constexpr short ID_CAPTURELEVEL = 400u;
+  constexpr short ID_POPUPLEVEL = 500u;
+  constexpr const wchar_t* LEVEL_NAMES[] = {
+    L"Trace", L"Debug", L"Info", L"Warning", L"Error", L"Critical", L"Off"                                                                    \
+  };
 }
+
 namespace xloil
 {
   namespace MainLogWindow
   {
     HMENU theMenuBar;
-    spdlog::level::level_enum theSelectedLogLevel = spdlog::level::warn;
-    spdlog::level::level_enum thePopupLevel = spdlog::level::err;
+    auto theCaptureLogLevel = spdlog::level::err;
+    auto thePopupLevel      = spdlog::level::err;
+
+    void setLogLevelRadioGroup(int base, int item)
+    {
+      CheckMenuRadioItem(
+        theMenuBar,
+        base,                     // first item in range 
+        base + SPDLOG_LEVEL_OFF,  // last item in range 
+        base + item,              // item to check 
+        MF_BYCOMMAND              // IDs, not positions 
+      );
+    }
+
+    void setCaptureLevel(spdlog::level::level_enum level)
+    {
+      setLogLevelRadioGroup(ID_CAPTURELEVEL, level);
+      theCaptureLogLevel = level;
+    }
+
+    void setPopupLevel(spdlog::level::level_enum level)
+    {
+      setLogLevelRadioGroup(ID_POPUPLEVEL, level);
+      thePopupLevel = level;
+      if (theCaptureLogLevel > thePopupLevel)
+        setCaptureLevel(level);
+    }
 
     LRESULT CALLBACK MenuWindowProc(
       HWND hwnd,
@@ -34,34 +60,18 @@ namespace xloil
       WPARAM wParam,
       LPARAM lParam)
     {
-      constexpr int xOffset = 5, yOffset = 5;
-
       switch (message)
       {
       case WM_COMMAND:
       {
         const auto id = LOWORD(wParam);
-        switch (id)
+        if (id >= ID_CAPTURELEVEL && id <= ID_CAPTURELEVEL + SPDLOG_LEVEL_OFF)
         {
-        case ID_CAPTURELEVEL_ERROR:
-        case ID_CAPTURELEVEL_WARNING:
-        case ID_CAPTURELEVEL_INFO:
-        case ID_CAPTURELEVEL_DEBUG:
-        case ID_CAPTURELEVEL_TRACE:
-
-          CheckMenuRadioItem(
-            theMenuBar,
-            ID_CAPTURELEVEL_ERROR,   // first item in range 
-            ID_CAPTURELEVEL_TRACE,   // last item in range 
-            id,                      // item to check 
-            MF_BYCOMMAND             // IDs, not positions 
-          );
-
-          // Some sneaky but fragile enum arithmetic
-          theSelectedLogLevel = (spdlog::level::level_enum)
-            (spdlog::level::err - (id - ID_CAPTURELEVEL_ERROR));
-
-          return 0;
+          setCaptureLevel((spdlog::level::level_enum)(id - ID_CAPTURELEVEL));
+        }
+        else if (id >= ID_POPUPLEVEL && id <= ID_POPUPLEVEL + SPDLOG_LEVEL_OFF)
+        {
+          setPopupLevel((spdlog::level::level_enum)(id - ID_POPUPLEVEL));
         }
       }
       }
@@ -80,14 +90,16 @@ namespace xloil
       HINSTANCE parentInstance)
     {
       auto hMenubar = CreateMenu();
-      auto hMenu = CreateMenu();
+      auto hCaptureMenu = CreateMenu();
+      auto hPopupMenu = CreateMenu();
+      for (short level = SPDLOG_LEVEL_OFF; level >= SPDLOG_LEVEL_TRACE; --level)
+      {
+        AppendMenu(hCaptureMenu, MF_STRING, ID_CAPTURELEVEL + level, LEVEL_NAMES[level]);
+        AppendMenu(hPopupMenu,   MF_STRING, ID_POPUPLEVEL + level,   LEVEL_NAMES[level]);
+      }
 
-      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_ERROR,   L"Error");
-      AppendMenu(hMenu, MF_STRING | MF_CHECKED, ID_CAPTURELEVEL_WARNING, L"Warning");
-      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_INFO,    L"Info");
-      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_DEBUG,   L"Debug");
-      AppendMenu(hMenu, MF_STRING,              ID_CAPTURELEVEL_TRACE,   L"Trace");
-      AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)hMenu, L"Capture Level");
+      AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)hCaptureMenu, L"Capture Level");
+      AppendMenu(hMenubar, MF_POPUP, (UINT_PTR)hPopupMenu,   L"Popup Level");
 
       MainLogWindow::theMenuBar = hMenubar;
 
@@ -103,7 +115,7 @@ namespace xloil
 
     void sink_it_(const spdlog::details::log_msg& msg) override
     {
-      if (msg.level < MainLogWindow::theSelectedLogLevel)
+      if (msg.level < MainLogWindow::theCaptureLogLevel)
         return;
 
       spdlog::memory_buf_t formatted;
@@ -155,6 +167,6 @@ namespace xloil
 
   void setLogWindowPopupLevel(spdlog::level::level_enum popupLevel)
   {
-    MainLogWindow::thePopupLevel = popupLevel;
+    MainLogWindow::setPopupLevel(popupLevel);
   }
 }

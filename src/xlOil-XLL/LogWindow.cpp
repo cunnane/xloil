@@ -18,7 +18,6 @@ namespace xloil
 {
   class LogWindow : public ILogWindow
   {
-    HMENU theMenuBar;
     HWND theMainWindow;
     HWND theTextControl;
     HMENU theTextControlId = (HMENU)101;
