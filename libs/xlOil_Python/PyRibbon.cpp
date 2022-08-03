@@ -330,9 +330,9 @@ namespace xloil
 
         py::class_<ICustomTaskPane, shared_ptr<ICustomTaskPane>>(mod, 
           "TaskPaneFrame", R"(
-            Excel's underlying custom task pane object into which a python GUI can be drawn.
-            It is unlikely that this object will need to be manipulated directly. Rather use
-            `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
+            Manages Excel's underlying custom task pane object into which a python GUI can be
+            drawn. It is unlikely that this object will need to be manipulated directly. Rather 
+            use `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
 
             The methods of this object are safe to call from any thread. COM must be used on 
             Excel's main thread, so the methods all wrap their calls to ensure to this happens.
@@ -425,7 +425,7 @@ namespace xloil
           .def("connect",
             &ComAddin::connect,
             R"(
-              Connects this COM addin to Excel, No other methods may be called 
+              Connects the underlying COM addin to Excel, No other methods may be called 
               on a `ExcelGUI` object until it has been connected.
 
               This method is safe to call on an already-connected addin.
@@ -509,10 +509,12 @@ namespace xloil
               visible:
                   Determines the initial pane visibility. Defaults to True.
             )")
-          .def_property_readonly("name", 
-            &ComAddin::name)
+          .def_property_readonly("name",
+            &ComAddin::name,
+            "The name displayed in Excel's COM Addins window")
           .def_property_readonly("connected",
-            &ComAddin::connected);
+            &ComAddin::connected,
+            "True if the a connection to Excel has been made");
       });
     }
   }

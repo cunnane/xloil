@@ -51,7 +51,6 @@ __all__ = [
     "get_async_loop",
     "in_wizard",
     "insert_cell_image",
-    "register_functions",
     "run",
     "run_async"
 ]
@@ -350,20 +349,18 @@ class ExcelArray():
     pass
 class ExcelGUI():
     """
-    Creating an ExcelGUI creates a COM addin which allows Ribbon customisation and creation
+    An `ExcelGUI` wraps a COM addin which allows Ribbon customisation and creation
     of custom task panes. The methods of this object are safe to call from any thread;  
     however, since COM calls must be made on Excel's main thread, the methods schedule 
     those calls and return an *awaitable* future to the result. This could lead to deadlocks
-    if the future's result is requested synchronously if, for example, one of Excel's event
-    handlers is triggered.  The object's properties do not return futures and are thread-safe.
-
-    *ExcelGUI* methods cannot be called until the future created by its *connect* method 
-    has returned a result.
+    if the future's result is requested synchronously and, for example, one of Excel's event
+    handlers is triggered. The object's properties do not return futures and are thread-safe.
     """
     def __init__(self, name: object = None, ribbon: object = None, funcmap: object = None, connect: bool = True) -> None: 
         """
-        The *ExcelGUI*
-        is connected using the specified ribbon customisation XML to Excel.  
+        Creates an `ExcelGUI` using the specified ribbon customisation XML
+        and optionally connects it to Excel, ready for use.
+
         When the *ExcelGUI* object is deleted, it unloads the associated COM 
         add-in and so all Ribbon customisation and attached task panes.
 
@@ -374,8 +371,8 @@ class ExcelGUI():
             A Ribbon XML string, most easily created with a specialised editor.
             The XML format is documented on Microsoft's website
 
-        func_names: Func[str -> callable] or Dict[str, callabe]
-            The ``func_names`` mapper links callbacks named in the Ribbon XML to
+        funcmap: Func[str -> callable] or Dict[str, callabe]
+            The ``funcmap`` mapper links callbacks named in the Ribbon XML to
             python functions. It can be either a dictionary containing named 
             functions or any callable which returns a function given a string.
             Each return handler should take a single ``RibbonControl``
@@ -388,11 +385,17 @@ class ExcelGUI():
         name: str
             The addin name which will appear in Excel's COM addin list.
             If None, uses the filename at the call site as the addin name.
+
+        connect: bool
+            Defaults to True, meaning the object creation is blocking. If False
+            is passed, the object will not been fully constructed until the async
+            `connect` method is called.  In this case, no *ExcelGUI* methods can 
+            be called until the `connect` method has returned a result.
         """
     def _create_task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
         """
         Used internally to create a custom task pane window which can be populated
-        with a python GUI.  Most users should use `create_task_pane(...)` instead.
+        with a python GUI.  Most users should use `attach_pane(...)` instead.
 
         A COM `progid` can be specified, but this will prevent displaying a python GUI
         in the task pane using the xlOil methods. This is a specialised use case.
@@ -402,18 +405,25 @@ class ExcelGUI():
         Activatives the ribbon tab with the specified id.  Returns False if
         there is no Ribbon or the Ribbon is collapsed.
         """
-    def attach_pane(self, arg0: object, arg1: object, arg2: object, arg3: object, arg4: object) -> object: ...
-    def attach_pane_async(self, pane: object, name: object = None, window: object = None, size: object = None, visible: object = True) -> object: 
+    def attach_pane(self, arg0: object, arg1: object, arg2: object, arg3: object, arg4: object) -> object: 
         """
+        Given task pane contents (which can be specified in several forms) this function
+        creates a new task pane displaying those contents.
+
+        Returns the instance of `CustomTaskPane`.  If one was passed as the 'pane' argument, 
+        that is returned, if a *QWidget* was passed, a `QtThreadTaskPane` is created.
+
         Parameters
         ----------
 
-        name: 
-            The task pane name. Will be displayed above the task pane.
-
         pane: CustomTaskPane (or QWidget type)
-            If a QWidget instance is passed, it must have been created on the Qt thread
-            or core dumps will ensue.
+            Can be an instance of `CustomTaskPane`, a type deriving from `QWidget` or
+            an instance of a `QWidget`. If a QWidget instance is passed, it must have 
+            been created on the Qt thread.
+
+        name: 
+            The task pane name. Will be displayed above the task pane. If not provided,
+            the 'name' attribute of the task pane is used.
 
         window: 
             A window title or `xloil.ExcelWindow` object to which the task pane should be
@@ -425,13 +435,17 @@ class ExcelGUI():
         visible:
             Determines the initial pane visibility. Defaults to True.
         """
+    def attach_pane_async(self, pane: object, name: object = None, window: object = None, size: object = None, visible: object = True) -> object: 
+        """
+        Behaves as per `attach_pane`, but returns an *asyncio* coroutine. The
+        `pane` argument may be an awaitable to a `CustomTaskPane`.
+        """
     def connect(self) -> _Future: 
         """
-        Connects this COM addin to Excel, optionally specifying Ribbon XML and callbacks.
-        The Ribbon specification can only be modified on connection. No other methods may
-        be called on a *ExcelGUI* object until it has been connected.
+        Connects the underlying COM addin to Excel, No other methods may be called 
+        on a `ExcelGUI` object until it has been connected.
 
-        This method is safe to call on an already connected addin.
+        This method is safe to call on an already-connected addin.
         """
     def disconnect(self) -> _Future: 
         """
@@ -451,11 +465,15 @@ class ExcelGUI():
     @property
     def connected(self) -> bool:
         """
+        True if the a connection to Excel has been made
+
         :type: bool
         """
     @property
     def name(self) -> str:
         """
+        The name displayed in Excel's COM Addins window
+
         :type: str
         """
     pass
@@ -1002,9 +1020,9 @@ class StatusBar():
     pass
 class TaskPaneFrame():
     """
-    Excel's underlying custom task pane object into which a python GUI can be drawn.
-    It is unlikely that this object will need to be manipulated directly. Rather use
-    `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
+    Manages Excel's underlying custom task pane object into which a python GUI can be
+    drawn. It is unlikely that this object will need to be manipulated directly. Rather 
+    use `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
 
     The methods of this object are safe to call from any thread. COM must be used on 
     Excel's main thread, so the methods all wrap their calls to ensure to this happens.
@@ -1715,6 +1733,8 @@ class _Return_tuple_to_Excel(IPyToExcel):
     pass
 def _get_event_loop(arg0: str) -> None:
     pass
+def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
+    pass
 def active_workbook() -> Workbook:
     """
     Returns the currently active workbook. Will raise an exception if xlOil
@@ -1832,8 +1852,6 @@ def insert_cell_image(writer: object, size: object = None, pos: object = None, o
     compress:
         if True, compresses the resulting image before storing in the sheet
     """
-def register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
-    pass
 def run(func: object, *args) -> object:
     """
     Calls VBA's `Application.Run` taking the function name and up to 30 arguments.

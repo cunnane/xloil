@@ -52,12 +52,10 @@ xlOil Python Module Reference
 	ExcelGUI
 	xloil.gui.CustomTaskPane
 	TaskPaneFrame
-	xloil.gui.find_task_pane
 	insert_cell_image
 	xloil.rtd.subscribe
 	xloil.rtd.RtdSimplePublisher
 	xloil.debug.exception_debug
-	xloil.qtgui.Qt_thread
 	xloil.pandas.PDFrame
 	xloil.pillow.ReturnImage
 	xloil.matplotlib.ReturnFigure

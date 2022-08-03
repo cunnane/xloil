@@ -49,3 +49,8 @@ array formulae or with the Office 365 support.  The code would need to:
 Unlike the built-in support in Office 365, the written arrays would be static data so, for example,
 function dependency tracing would not work on them (except the top left entry).
 
+This application failed to start because it could not find or load the Qt platform plugin "windows"
+---------------------------------------------------------------------------------------------------
+Sometimes Qt crashes with this error. It occurs when `QT_QPA_PLATFORM_PLUGIN_PATH` is not set correctly.
+xlOil sets this when it lauches Qt but I think due to a race condition the message doesn't always get 
+through.  Just restart Excel.

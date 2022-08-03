@@ -111,6 +111,7 @@ from a `QWidget`:
 
     class QtTaskPane(QWidget):
         def __init__(self):
+            super().__init__() # Don't forget this!
             ... # some code to draw the widget
         def send_signal(self, int):
             ... # some code to emit a Qt signal
@@ -137,7 +138,7 @@ All *Qt* interactions other than signals must take place in the same thread, or 
 will abort.  xlOil creates a special Qt thread which runs the Qt event loop, and 
 constructs any task panes on that thread.
 
-To run commands on xlOil's *Qt* thread, use the :ref:`xloil.gui.pyqt5.Qt_thread` object
+To run commands on xlOil's *Qt* thread, use the :any:`xloil.gui.pyqt5.Qt_thread` object
 
 ::
 
@@ -157,8 +158,10 @@ You can also use `Qt_thread` as a decorator to wrap the function in a `submit` c
 Tkinter Custom Task Panes
 =========================
 
-Unlike Qt, it's not common to derive the from a *tkinter* object.  Instead, we derive from 
-:any:`xloil.gui.tkinter.TkThreadTaskPane`, which derives from :any:`xloil.gui.CustomTaskPane`.
+We create a class which derives from :any:`xloil.gui.tkinter.TkThreadTaskPane` (which in turn 
+derives from :any:`xloil.gui.CustomTaskPane`).  Unlike Qt, it's not common to derive the from 
+a *tkinter* object.
+
 We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
 
 ::
@@ -172,7 +175,7 @@ We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
             ...
         
         def __init__(self):
-            super().__init__()
+            super().__init__() # Don't forget this!
             
             # This name is picked up by ExcelGUI.attach_pane
             self.name = "MyPane"
@@ -198,8 +201,8 @@ in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`.  The `__init__` method is alw
 Task Pane registry
 ==================
 
-The resulting ``pane`` object is automatically stored in a registry so there is no need to hold a
-reference to it.  Task panes are attached by default to the active window and it is possible to 
+The created task panes are automatically stored in a registry so there is no need to hold a
+reference to them.  Task panes are attached by default to the active window and it is possible to 
 have multiple windows per open workbook.  xlOil will free the panes when the parent workbook ora
 addin closes.
 
@@ -231,7 +234,8 @@ to do this to keep Excel responsive but it could be useful in some circumstances
         # The action happens when we call connect, which returns a awaitable future
         await excelui.connect()
 
-        # We can also create the pane async by passing an awaitable  
+        # We can also create the pane async by passing an awaitable but we have 
+        # to then pass the name explictly
         await excelui.attach_pane_async(
             name='TkPane',
             pane=Tk_thread().submit_async(TkTaskPane))
