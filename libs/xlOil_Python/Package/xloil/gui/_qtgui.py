@@ -154,7 +154,7 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
         """
         return self._widget
 
-    async def _get_hwnd(self):
+    def _get_hwnd(self):
         def prepare(widget):
             # Need to make the Qt window frameless using Qt's API. When we attach
             # to the TaskPaneFrame, the attached window is turned into a frameless
@@ -167,7 +167,7 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
 
             return int(widget.winId())
 
-        return await Qt_thread().submit_async(prepare, self._widget)
+        return Qt_thread().submit(prepare, self._widget)
 
     def on_destroy(self):
         Qt_thread().submit(lambda: self._widget.destroy())

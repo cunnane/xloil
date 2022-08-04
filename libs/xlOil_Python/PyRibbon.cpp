@@ -241,8 +241,8 @@ namespace xloil
         const py::object& size,
         const py::object& visible)
       {
-        auto attach = py::module::import("xloil.gui").attr("_attach_task_pane");
-        return attach(comAddin, pane, name, window, size, visible);
+        auto attachPane = py::module::import("xloil.gui").attr("_attach_task_pane_async");
+        return attachPane(comAddin, pane, name, window, size, visible);
       }
 
       auto attachTaskPane(
@@ -253,8 +253,26 @@ namespace xloil
         const py::object& size,
         const py::object& visible)
       {
-        return py::module::import("asyncio").attr("create_task")(
-          attachTaskPaneAsync(comAddin, pane, name, window, size, visible)).attr("result")();
+        auto attachPane = py::module::import("xloil.gui").attr("_attach_task_pane");
+        return attachPane(comAddin, pane, name, window, size, visible);
+      }
+      
+      auto createTaskPane(
+        const py::object& comAddin,
+        const py::object& name,
+        const py::object& pane,
+        const py::object& window,
+        const py::object& size,
+        const py::object& visible)
+      {
+        auto guiModule = py::module::import("xloil.gui");
+
+        auto findPane = guiModule.attr("find_task_pane");
+        auto found = findPane(name);
+        if (!found.is_none())
+          return found;
+
+        return attachTaskPane(comAddin, pane, name, window, size, visible);
       }
 
       class PyTaskPaneHandler : public ICustomTaskPaneEvents
@@ -367,7 +385,8 @@ namespace xloil
           .def("attach", 
             &addPaneEventHandler, 
             R"( 
-              Associates a `xloil.gui.CustomTaskPane` with this frame
+              Associates a `xloil.gui.CustomTaskPane` with this frame. Returns a future
+              with no result.
             )",
             py::arg("handler"), 
             py::arg("hwnd"));
@@ -509,6 +528,14 @@ namespace xloil
               visible:
                   Determines the initial pane visibility. Defaults to True.
             )")
+          .def("create_task_pane",
+            createTaskPane,
+            "Deprecated. Use attach_pane.",
+            py::arg("name"),
+            py::arg("creator"),
+            py::arg("window") = py::none(),
+            py::arg("size") = py::none(),
+            py::arg("visible") = true)
           .def_property_readonly("name",
             &ComAddin::name,
             "The name displayed in Excel's COM Addins window")

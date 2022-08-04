@@ -108,13 +108,13 @@ class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
         """
         return self._top_level
 
-    async def _get_hwnd(self):
+    def _get_hwnd(self):
         # Calling winfo_id() on a tk.Toplevel gives the hWnd of a child which 
         # represents the window client area. We want the *actual* top level window
         # which is the parent. Note we don't combine self.draw and getting
         # the hwnd in one call because that doesn't work for some reason...
         from ctypes import windll
-        return await Tk_thread().submit_async(
+        return Tk_thread().submit(
             lambda: windll.user32.GetParent(self._top_level.winfo_id()))
 
     def on_destroy(self):

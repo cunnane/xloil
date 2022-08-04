@@ -22,7 +22,7 @@ class CustomTaskPane:
     def __init__(self):
         self.hwnd = None
 
-    async def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
+    async def _attach_frame_async(self, frame: typing.Awaitable[TaskPaneFrame]):
         """
             Attaches this *CustomTaskPane* to a *TaskPaneFrame*  causing it 
             to be resized/moved with the pane window.  Called by 
@@ -33,8 +33,20 @@ class CustomTaskPane:
         self._frame = await frame
         await self._frame.attach(self, self.hwnd)
         _task_panes.add(self)
+
+    def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
+        """
+            Attaches this *CustomTaskPane* to a *TaskPaneFrame*  causing it 
+            to be resized/moved with the pane window.  Called by 
+            `xloil.ExcelGUI.attach_frame` and generally should not need to be 
+            called directly.
+        """
+        self.hwnd = self._get_hwnd().result()
+        self._frame = frame.result()
+        self._frame.attach(self, self.hwnd).result()
+        _task_panes.add(self)
         
-    async def _get_hwnd(self) -> int:
+    def _get_hwnd(self) -> typing.Awaitable[int]:
         """
             Should be implemented by derived classes
         """
@@ -120,7 +132,7 @@ def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane
         return next((x for x in found if x.frame.title == title), None)
 
 
-def _try_create_from_qwidget(obj) -> typing.Awaitable[CustomTaskPane]:
+def _try_create_from_qwidget(obj) -> CustomTaskPane:
     """
         If obj is a QWidget, returns an Awaitable[QtThreadTaskPane] else None.
         This is a convenience for Qt users to avoid needing to create a QtThreadTaskPane
@@ -135,15 +147,21 @@ def _try_create_from_qwidget(obj) -> typing.Awaitable[CustomTaskPane]:
         
         if isinstance(obj, type) and issubclass(obj, QWidget) or isinstance(obj, QWidget):
             from ._qtgui import QtThreadTaskPane, Qt_thread
-            return Qt_thread().submit_async(QtThreadTaskPane, obj)
+            return Qt_thread().submit(QtThreadTaskPane, obj).result()
 
     except ImportError:
         pass
 
     return obj
 
+def _get_pane_name(pane):
+    name = getattr(pane, "name", None)
+    if name is None:
+        raise NameError("Attach pane must be given a 'name' argument or the pane must "
+            "contain a 'name' attribute")
+    return name
 
-async def _attach_task_pane(
+async def _attach_task_pane_async(
         gui: ExcelGUI,
         pane: CustomTaskPane,
         name: str, 
@@ -153,16 +171,11 @@ async def _attach_task_pane(
     
     # This is the implementation of ExcelGUI.attach_pane since the async
     # stuff and checking for Qt is easier on the python side
-
     if isinstance(window, str):
         window = ExcelWindow(window)
-    
-    if name is None:
-        name = getattr(pane, "name", None)
-        if name is None:
-            raise NameError("Attach pane must be given a 'name' argument or the pane must "
-                "contain a 'name' attribute")
 
+    name = name or _get_pane_name(pane)
+      
     frame_future = gui._create_task_pane_frame(name, window)
 
     # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
@@ -171,7 +184,7 @@ async def _attach_task_pane(
     if inspect.isawaitable(pane):
         pane = await pane
 
-    await pane._attach_frame(frame_future)
+    await pane._attach_frame_async(frame_future)
     
     pane.visible = visible
     if size is not None:
@@ -179,6 +192,33 @@ async def _attach_task_pane(
 
     return pane
 
+
+def _attach_task_pane(
+        gui: ExcelGUI,
+        pane: CustomTaskPane,
+        name: str, 
+        window: ExcelWindow, 
+        size: tuple, 
+        visible: bool):
+    # This is the implementation of ExcelGUI.attach_pane since the async
+    # stuff and checking for Qt is easier on the python side
+    if isinstance(window, str):
+        window = ExcelWindow(window)
+
+    name = name or _get_pane_name(pane)
+
+    frame_future = gui._create_task_pane_frame(name, window)
+
+    # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
+    pane = _try_create_from_qwidget(pane)
+
+    pane._attach_frame(frame_future)
+    
+    pane.visible = visible
+    if size is not None:
+        pane.size = size
+
+    return pane
 
 class _GuiExecutor(futures.Executor):
     """
