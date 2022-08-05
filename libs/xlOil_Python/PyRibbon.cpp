@@ -283,32 +283,40 @@ namespace xloil
         {
           _hasOnVisible = py::hasattr(_handler, "on_visible");
           _hasOnDocked  = py::hasattr(_handler, "on_docked");
-          _hasOnDestory = py::hasattr(_handler, "on_destroy");
+          _hasOnDestroy = py::hasattr(_handler, "on_destroy");
         }
-
+        ~PyTaskPaneHandler()
+        {
+          py::gil_scoped_acquire gil;
+          _handler.dec_ref();
+        }
         void onVisible(bool c) override
         {
           if (!_hasOnVisible) return;
           py::gil_scoped_acquire gil;
+          if (_handler.is_none()) return;
           checkUserException([=]() { _handler.attr("on_visible")(c); });
         }
         void onDocked() override
         {
           if (!_hasOnDocked) return;
           py::gil_scoped_acquire gil;
+          if (_handler.is_none()) return;
           checkUserException([this]() { _handler.attr("on_docked")(); });
         }
         void onDestroy() override
         {
-          if (!_hasOnDestory) return;
+          if (!_hasOnDestroy) return;
           py::gil_scoped_acquire gil;
+          if (_handler.is_none()) return;
           checkUserException([this]() { _handler.attr("on_destroy")(); });
         }
-        PyObjectHolder _handler;
-        bool _hasOnVisible, _hasOnDocked, _hasOnDestory;
+        py::weakref _handler;
+        bool _hasOnVisible, _hasOnDocked, _hasOnDestroy;
       };
 
-      VoidFuture addPaneEventHandler(ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
+      VoidFuture addPaneEventHandler(
+        ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
       {
         return runExcelThread([
           &self, 
