@@ -17,6 +17,16 @@ class CustomTaskPane:
         supported) and `xloil.gui.tkinter.TkThreadTaskPane`.
         
         Can be sub-classed to implement task panes with different GUI toolkits.
+
+        Subclasses can implement functions to recieve events:
+
+            on_visible(self, value):
+                Called when the visible state changes, `value` contains the new state.
+                It is not necessary to override this to control pane visibility - the
+                window will be shown/hidden automatically
+
+            on_docked(self):
+                Called when the pane is docked to a new location or undocked
     """
 
     def __init__(self):
@@ -52,21 +62,8 @@ class CustomTaskPane:
         """
         raise NotImplementedError()
 
-    def on_visible(self, value):
-        """ 
-            Called when the visible state changes, `value` contains the new state.
-            It is not necessary to override this to control pane visibility - the
-            window will be shown/hidden automatically
-        """
-        ...
-
-    def on_docked(self):
-        """ Called when the pane is docked to a new location or undocked """
-        ...
-
     def on_destroy(self):
         """ Called before the pane is destroyed to release any resources """
-
         # Release internal task pane pointer
         self._frame = None
         # Remove ourselves from pane lookup table
@@ -95,6 +92,12 @@ class CustomTaskPane:
     def size(self, value: typing.Tuple[int, int]):
         self._frame.size = value
 
+    @property
+    def position(self) -> str:
+        """
+        Returns the docking position: one of bottom, floating, left, right, top
+        """
+        return self._frame.position
 
 def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane:
     """

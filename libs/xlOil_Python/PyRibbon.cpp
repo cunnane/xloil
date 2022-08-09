@@ -23,6 +23,7 @@ using std::wstring;
 using std::vector;
 using std::make_shared;
 using std::make_unique;
+using std::pair;
 
 namespace xloil
 {
@@ -41,6 +42,43 @@ namespace xloil
         wstring Tag;
       };
 
+      constexpr static auto positionNames = {
+        pair(ICustomTaskPane::Bottom, "bottom"),
+        pair(ICustomTaskPane::Floating, "floating"),
+        pair(ICustomTaskPane::Left, "left"),
+        pair(ICustomTaskPane::Right, "right"),
+        pair(ICustomTaskPane::Top, "top"),
+      };
+
+      const char* TaskPane_getPosition(ICustomTaskPane& self)
+      {
+        py::gil_scoped_release noGil;
+        auto position = runExcelThread([&]() {
+          return self.getPosition();
+        }).get();
+        for (auto posName : positionNames)
+        {
+          if (position == posName.first)
+            return posName.second;
+        }
+        return "";
+      }
+
+      void TaskPane_setPosition(ICustomTaskPane& self, std::string position)
+      {
+        std::transform(position.begin(), position.end(), position.begin(), tolower);
+        for (auto posName : positionNames)
+        {
+          if (position == posName.second)
+          {
+            runExcelThread([&]() {
+              self.setPosition(posName.first);
+            });
+            return;
+          }
+        }
+        throw new py::value_error("Unrecognised position: '" + position + "'");
+      }
       /// <summary>
       /// Expects funcNameMap to be either a function of name -> handler or a 
       /// dict of names and handler.  The handler function arguments vary depending
@@ -377,6 +415,12 @@ namespace xloil
             "Gets/sets the task pane size as a tuple (width, height)")
           .def_property_readonly("title", 
             MainThreadWrap(&ICustomTaskPane::getTitle))
+          .def_property("position",
+            TaskPane_getPosition,
+            TaskPane_setPosition,
+            R"(
+              Gets/sets the dock position, one of: bottom, floating, left, right, top
+            )")
           .def("com_control", 
             [](ICustomTaskPane& self, const char* binder)
             {
