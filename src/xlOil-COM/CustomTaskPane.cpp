@@ -28,16 +28,7 @@ namespace xloil
       {}
 
       virtual ~CustomTaskPaneEventHandler() noexcept
-      {
-        try
-        {
-          _handler->onDestroy();
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR(e.what());
-        }
-      }
+      {}
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
@@ -66,6 +57,18 @@ namespace xloil
         return S_OK;
       }
 
+      void destroy() noexcept
+      {
+        try
+        {
+          _handler->onDestroy();
+          disconnect();
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR(e.what());
+        }
+      }
     private:
       HRESULT VisibleStateChange(
         struct _CustomTaskPane* /*CustomTaskPaneInst*/)
@@ -98,6 +101,7 @@ namespace xloil
     {
       GUID _clsid;
       HWND _attachedWindow = 0;
+      LONG_PTR _previousWindowStyle = 0;
 
     public:
       WindowHostControl() noexcept
@@ -107,6 +111,7 @@ namespace xloil
       ~WindowHostControl() noexcept
       {
         ::SetParent(_attachedWindow, NULL);
+        ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, _previousWindowStyle);
       }
       void init(const GUID& clsid) noexcept
       {
@@ -126,10 +131,8 @@ namespace xloil
         _attachedWindow = (HWND)hwnd;
         ::SetParent(_attachedWindow, GetAttachableParent());
 
-        auto style = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
-        style = style | WS_CHILD;
-        style = style & ~WS_THICKFRAME;
-        style = style & ~WS_CAPTION;
+        _previousWindowStyle = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
+        auto style = _previousWindowStyle | (WS_CHILD & ~WS_THICKFRAME & ~WS_CAPTION);
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, style);
 
         // Set the z-order and reposition the child at the top left of the parent
@@ -321,7 +324,7 @@ namespace xloil
       {
         if (_paneEvents)
         {
-          _paneEvents->disconnect();
+          _paneEvents->destroy();
           _paneEvents.Release();
         }
         if (_hostingControl)
@@ -331,7 +334,8 @@ namespace xloil
 
       void listen(const std::shared_ptr<ICustomTaskPaneEvents>& events) override
       {
-        _paneEvents.Attach(new CustomTaskPaneEventHandler(*this, events));
+        _paneEvents = CComPtr<CustomTaskPaneEventHandler>(
+          new CustomTaskPaneEventHandler(*this, events));
         _paneEvents->connect(_pane);
       }
 
