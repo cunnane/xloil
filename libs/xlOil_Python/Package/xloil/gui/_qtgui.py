@@ -27,6 +27,12 @@ def _create_Qt_app():
             level = 'warn'
         elif msg_type == QtCore.QtCriticalMsg or msg_type == QtCore.QtFatalMsg:
             level = 'error'
+
+        # Qt raises this on shutdown. No idea why, but don't want it to trigger
+        # a log window popup!
+        if msg_string.startswith('QWindowsBackingStore::flush: GetDC'):
+            level = 'debug'
+
         log(msg_string, level=level)
 
     QtCore.qInstallMessageHandler(qt_msg_handler)
@@ -170,6 +176,8 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
         return Qt_thread().submit(prepare, self._widget)
 
     def on_destroy(self):
+        # Call super to detach the TaskPaneFrame for a cleaner shutdown
+        super().on_destroy() 
         Qt_thread().submit(lambda: self._widget.destroy())
-        super().on_destroy()
+        
 

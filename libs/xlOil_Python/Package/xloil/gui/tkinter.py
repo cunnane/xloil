@@ -118,5 +118,6 @@ class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
             lambda: windll.user32.GetParent(self._top_level.winfo_id()))
 
     def on_destroy(self):
-        Tk_thread().submit(lambda: self._top_level.destroy())
         super().on_destroy()
+        Tk_thread().submit(lambda: self._top_level.destroy())
+        
