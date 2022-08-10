@@ -41,7 +41,6 @@ bin_dir = staging_dir / args.arch
 #
 data_files = [str(bin_dir / f) for f in [
     'xlOil.xll', 
-    'xlOil.ini', 
     'xlOil.dll',
     'xlOil_Python.dll', 
     'xlOil_Utils.dll', 
@@ -49,6 +48,8 @@ data_files = [str(bin_dir / f) for f in [
     'xlOil_Install.ps1', 
     'xlOil_NewAddin.ps1',
     'xlOil_Remove.ps1']]
+
+data_files += [str(staging_dir / 'xlOil.ini')]
 
 py_version_XY = target_py_ver.replace('.','')
 data_files += [str(bin_dir / f'xlOil_Python{py_version_XY}.pyd')]

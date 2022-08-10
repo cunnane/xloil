@@ -51,8 +51,8 @@ lib_files = [
     },
     { 
         'from': 'config',
-        'files': ['xloil.ini'],
-        'to': architectures
+        'files': ['xlOil.ini'],
+        'to': '.'
     },
     {
         'from': 'libs/xlOil_Python',
