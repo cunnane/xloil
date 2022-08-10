@@ -67,7 +67,7 @@ from xloil.gui.tkinter import TkThreadTaskPane, Tk_thread
 # Instead, we derive from `TkThreadTaskPane`, which derives from `CustomTaskPane`
 
 class OurTkPane(TkThreadTaskPane):
-
+        
     def __init__(self):
         super().__init__() # Important!
         
@@ -86,7 +86,11 @@ class OurTkPane(TkThreadTaskPane):
     def set_progress(self, x: int):
         self._progress_bar['value'] = x
 
-#
+    # Define this method to capture the docking position change event
+    def on_docked(self):
+        xlo.log(f"Tk frame docking position: {self.position:}", level='info')
+      
+        
 # We define a function to create a task pane using Tk or Qt. We first check 
 # that the pane has not already been created, then construct a instance of the
 # pane class, then attach it to the ExcelGUI object created later.

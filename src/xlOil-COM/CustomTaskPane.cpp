@@ -132,7 +132,7 @@ namespace xloil
         ::SetParent(_attachedWindow, GetAttachableParent());
 
         _previousWindowStyle = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
-        auto style = _previousWindowStyle | (WS_CHILD & ~WS_THICKFRAME & ~WS_CAPTION);
+        auto style = (_previousWindowStyle | WS_CHILD) & ~WS_THICKFRAME & ~WS_CAPTION;
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, style);
 
         // Set the z-order and reposition the child at the top left of the parent

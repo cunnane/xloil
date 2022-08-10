@@ -42,12 +42,12 @@ namespace xloil
         wstring Tag;
       };
 
-      constexpr static auto positionNames = {
+      constexpr static pair<ICustomTaskPane::DockPosition, const char*> positionNames[] = {
         pair(ICustomTaskPane::Bottom, "bottom"),
         pair(ICustomTaskPane::Floating, "floating"),
         pair(ICustomTaskPane::Left, "left"),
         pair(ICustomTaskPane::Right, "right"),
-        pair(ICustomTaskPane::Top, "top"),
+        pair(ICustomTaskPane::Top, "top")
       };
 
       const char* TaskPane_getPosition(ICustomTaskPane& self)
@@ -66,7 +66,8 @@ namespace xloil
 
       void TaskPane_setPosition(ICustomTaskPane& self, std::string position)
       {
-        std::transform(position.begin(), position.end(), position.begin(), tolower);
+#pragma warning(disable: 4244)
+        std::transform(position.begin(), position.end(), position.begin(), ::tolower);
         for (auto posName : positionNames)
         {
           if (position == posName.second)
@@ -319,9 +320,9 @@ namespace xloil
         PyTaskPaneHandler(const py::object& eventHandler)
           : _handler(eventHandler)
         {
-          _hasOnVisible = py::hasattr(_handler, "on_visible");
-          _hasOnDocked  = py::hasattr(_handler, "on_docked");
-          _hasOnDestroy = py::hasattr(_handler, "on_destroy");
+          _hasOnVisible = py::hasattr(eventHandler, "on_visible");
+          _hasOnDocked  = py::hasattr(eventHandler, "on_docked");
+          _hasOnDestroy = py::hasattr(eventHandler, "on_destroy");
         }
         ~PyTaskPaneHandler()
         {
@@ -332,22 +333,25 @@ namespace xloil
         {
           if (!_hasOnVisible) return;
           py::gil_scoped_acquire gil;
-          if (_handler.is_none()) return;
-          checkUserException([=]() { _handler.attr("on_visible")(c); });
+          auto handler = PyBorrow(_handler);
+          if (handler.is_none()) return;
+          checkUserException([=]() { handler.attr("on_visible")(c); });
         }
         void onDocked() override
         {
           if (!_hasOnDocked) return;
           py::gil_scoped_acquire gil;
-          if (_handler.is_none()) return;
-          checkUserException([this]() { _handler.attr("on_docked")(); });
+          auto handler = PyBorrow(_handler);
+          if (handler.is_none()) return;
+          checkUserException([=]() { handler.attr("on_docked")(); });
         }
         void onDestroy() override
         {
           if (!_hasOnDestroy) return;
           py::gil_scoped_acquire gil;
-          if (_handler.is_none()) return;
-          checkUserException([this]() { _handler.attr("on_destroy")(); });
+          auto handler = PyBorrow(_handler);
+          if (handler.is_none()) return;
+          checkUserException([=]() { handler.attr("on_destroy")(); });
         }
         py::weakref _handler;
         bool _hasOnVisible, _hasOnDocked, _hasOnDestroy;

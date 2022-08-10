@@ -63,7 +63,6 @@ namespace pybind11
     }
   };
 
-
   /// <summary>
   /// Provides a replacement for pybind's detail::error_string which handles
   /// the auxillary context and cause expceptions.
@@ -105,6 +104,15 @@ namespace xloil
       return pybind11::reinterpret_borrow<TType>(obj);
     }
 
+    /// <summary>
+    /// Gets a proper reference to a weakref. Strangely, this functionality is missing
+    /// in pybind11
+    /// </summary>
+    inline pybind11::object PyBorrow(const pybind11::weakref& wr)
+    {
+      return PyBorrow(PyWeakref_GetObject(wr.ptr()));
+    }
+    
     /// <summary>
     /// If PyErr_Occurred is true, returns the error message, else an empty string
     /// </summary>

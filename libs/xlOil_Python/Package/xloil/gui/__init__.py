@@ -39,7 +39,7 @@ class CustomTaskPane:
             `xloil.ExcelGUI.attach_frame` and generally should not need to be 
             called directly.
         """
-        self.hwnd = await self._get_hwnd()
+        self.hwnd = await asyncio.wrap_future(self._get_hwnd())
         self._frame = await frame
         await self._frame.attach(self, self.hwnd)
         _task_panes.add(self)
