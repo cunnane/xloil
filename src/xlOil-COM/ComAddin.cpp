@@ -245,6 +245,9 @@ namespace xloil
         try
         {
           _closeHandler.reset();
+          for (auto& pane : _panes)
+            pane.second->destroy();
+
           _panes.clear();
           disconnect();
         }
@@ -257,7 +260,7 @@ namespace xloil
       void findAddin(Excel::_Application& app)
       {
         auto ourProgid = _variant_t(progid());
-        app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin);
+        app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin); // TODO: Does this need decref/incref?
       }
 
       bool isComAddinConnected() const
@@ -291,7 +294,7 @@ namespace xloil
         {
           if (error.Error() == 0x80004004) // Operation aborted
           {
-            XLO_THROW("During add-in connect, received Operation Aborted ({}) this probably indicates  "
+            XLO_THROW("During add-in connect, received Operation Aborted ({}) this probably indicates "
               "blocking by add-in security.  Check add-ins are enabled and this add-in is not a disabled "
               "COM add-in.", (unsigned)error.Error());
           }
@@ -300,6 +303,8 @@ namespace xloil
         }
       }
 
+      // TODO: use of disconnect is fatal to any attached custom task panes, they do not
+      // reappear on connect
       void disconnect() override
       {
         if (!_connected)
@@ -353,6 +358,7 @@ namespace xloil
 
       void handleWorkbookClose(const wchar_t* wbName)
       {
+        // destroy
         _panes.erase(wbName);
       }
     };

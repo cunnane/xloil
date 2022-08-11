@@ -192,8 +192,7 @@ namespace xloil
         ~ComAddin()
         {
           py::gil_scoped_release noGil;
-          runExcelThread([this]() { _addin->disconnect(); }).get();
-          _addin.reset();
+          runExcelThread([this]() { _addin.reset(); }).get();
         }
 
         VoidFuture connect()
@@ -357,7 +356,7 @@ namespace xloil
         bool _hasOnVisible, _hasOnDocked, _hasOnDestroy;
       };
 
-      VoidFuture addPaneEventHandler(
+      VoidFuture TaskPaneFrame_attach(
         ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
       {
         return runExcelThread([
@@ -439,7 +438,7 @@ namespace xloil
             )",
             py::arg("lib") = "")
           .def("attach", 
-            &addPaneEventHandler, 
+            &TaskPaneFrame_attach,
             R"( 
               Associates a `xloil.gui.CustomTaskPane` with this frame. Returns a future
               with no result.

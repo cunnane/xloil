@@ -101,6 +101,7 @@ namespace xloil
     {
       GUID _clsid;
       HWND _attachedWindow = 0;
+      HWND _previousParent = 0;
       LONG_PTR _previousWindowStyle = 0;
 
     public:
@@ -110,7 +111,7 @@ namespace xloil
       }
       ~WindowHostControl() noexcept
       {
-        ::SetParent(_attachedWindow, NULL);
+        ::SetParent(_attachedWindow, _previousParent);
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, _previousWindowStyle);
       }
       void init(const GUID& clsid) noexcept
@@ -129,7 +130,10 @@ namespace xloil
       void attachWindow(size_t hwnd)
       {
         _attachedWindow = (HWND)hwnd;
-        ::SetParent(_attachedWindow, GetAttachableParent());
+        _previousParent = ::SetParent(_attachedWindow, GetAttachableParent());
+
+        XLO_DEBUG("Custom task pane host control attached to window {0x}. Previous parent {0x}", 
+          hwnd, (size_t)_previousParent);
 
         _previousWindowStyle = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
         auto style = (_previousWindowStyle | WS_CHILD) & ~WS_THICKFRAME & ~WS_CAPTION;
@@ -137,9 +141,10 @@ namespace xloil
 
         // Set the z-order and reposition the child at the top left of the parent
         // TODO: Not sure we need both of these!
-        ::SetWindowPos(m_hWnd, _attachedWindow, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        ::SetWindowPos(m_hWnd, _attachedWindow, 0, 0, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
         ::SetWindowPos(_attachedWindow, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
       }
+
       DECLARE_WND_CLASS(_T("xlOilAXControl"))
 
       BEGIN_COM_MAP(WindowHostControl)
@@ -255,8 +260,11 @@ namespace xloil
         const IDispatch* window,
         const wchar_t* progId)
       {
+        XLO_DEBUG(L"Creating Custom Task Pane '{}'", name);
+
         // Pasing vtMissing causes the pane to be attached to ActiveWindow
         auto targetWindow = window ? _variant_t(window) : vtMissing;
+
         if (!progId)
         {
           RegisterCom<WindowHostControl> registrar(
@@ -281,54 +289,91 @@ namespace xloil
 
       IDispatch* content() const override
       {
-        return _pane->ContentControl;
+        try
+        {
+          return _pane->ContentControl;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       ExcelWindow window() const override
       {
-        return ExcelWindow(Excel::WindowPtr(_pane->Window));
+        try
+        {
+          return ExcelWindow(Excel::WindowPtr(_pane->Window));
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       void setVisible(bool value) override
       { 
-        _pane->Visible = value;
+        try
+        {
+          _pane->Visible = value;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
       bool getVisible() override
       {
-        return _pane->Visible;
+        try
+        {
+          return _pane->Visible;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
       std::pair<int, int> getSize() override
       {
-        return std::make_pair(_pane->Width, _pane->Height);
+        try
+        {
+          return std::make_pair(_pane->Width, _pane->Height);
+        }
+        XLO_RETHROW_COM_ERROR;
       }
       void setSize(int width, int height) override
       {
-        _pane->Width = width;
-        _pane->Height = height;
+        try
+        {
+          _pane->Width = width;
+          _pane->Height = height;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
       DockPosition getPosition() const override
       {
-        return DockPosition(_pane->DockPosition);
+        try
+        {
+          return DockPosition(_pane->DockPosition);
+        }
+        XLO_RETHROW_COM_ERROR;
       }
       void setPosition(DockPosition pos) override
       {
-        _pane->DockPosition = (Office::MsoCTPDockPosition)pos;
+        try
+        {
+          _pane->DockPosition = (Office::MsoCTPDockPosition)pos;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       std::wstring getTitle() const
       {
-        return _pane->Title.GetBSTR();
+        try
+        {
+          return _pane->Title.GetBSTR();
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
-      void destroy()
+      void destroy() override
       {
+        XLO_DEBUG(L"Destroying Custom Task Pane '{}'", getTitle());
+        if (_hostingControl)
+          _hostingControl.Release();
         if (_paneEvents)
         {
           _paneEvents->destroy();
           _paneEvents.Release();
         }
-        if (_hostingControl)
-          _hostingControl.Release();
         _pane->Delete();
       }
 

@@ -80,9 +80,9 @@ namespace xloil
   public:
     enum DockPosition
     {
-      Bottom =	3,
-      Floating =	4,
-      Left =	0,
+      Bottom = 3,
+      Floating = 4,
+      Left = 0,
       Right = 2,
       Top = 1
     };
@@ -155,6 +155,8 @@ namespace xloil
     /// </summary>
     /// <param name="hwnd"></param>
     virtual void attach(size_t hwnd) = 0;
+
+    virtual void destroy() = 0;
   };
 
   /// <summary>

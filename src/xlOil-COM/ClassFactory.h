@@ -34,11 +34,11 @@ namespace xloil
         // also catch mismatched Release in debug builds
         this->m_dwRef = -(LONG_MAX / 2);
       }
-      ULONG STDMETHODCALLTYPE AddRef() noexcept
+      ULONG __stdcall AddRef() noexcept
       {
         return ::InterlockedIncrement(&m_dwRef);
       }
-      ULONG STDMETHODCALLTYPE Release() noexcept
+      ULONG __stdcall Release() noexcept
       {
         ::InterlockedDecrement(&m_dwRef);
 #ifdef _DEBUG
@@ -235,7 +235,6 @@ namespace xloil
           keyPath.c_str(),
           0,
           _clsid.c_str());
-
         
         // Note the outer key to ensure it is deleted
         addedKey(HKEY_CURRENT_USER, 
@@ -272,6 +271,7 @@ namespace xloil
         const wchar_t* value)
       {
         addedKey(hive, path);
+        XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
         return regWrite(hive, path, name, value);
       }
 
@@ -282,6 +282,7 @@ namespace xloil
         DWORD value)
       {
         addedKey(hive, path);
+        XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
         return regWrite(hive, path, name, value);
       }
 
