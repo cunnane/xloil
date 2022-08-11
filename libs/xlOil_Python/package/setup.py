@@ -1,4 +1,4 @@
-from setuptools import setup, Distribution
+from setuptools import setup, Distribution, find_packages
 import sys
 from pathlib import Path
 from argparse import ArgumentParser
@@ -81,7 +81,7 @@ setup(
     license='Apache',
     
     distclass=BinaryDistribution,
-    packages=['xloil'],
+    packages=find_packages(),
     data_files=[('share/xloil', data_files)],
     entry_points = {
         'console_scripts': ['xloil=xloil.command_line:main'],
