@@ -188,20 +188,19 @@ namespace xloil
     class RtdServer : public IRtdServer
     {
       using ComImplType = CComObject<RtdServerImpl<RtdServerThreadedWorker<ExcelObj>>>;
-      RegisterCom<ComImplType> _registrar;
+      auto& server() const { return _impl->manager(); }
+      CComPtr<ComImplType> _impl;
 
-      auto& server() const { return _registrar.server()->manager(); }
+      RegisterCom _registrar;
 
     public:
-      RtdServer(const wchar_t* progId, const wchar_t* fixedClsid)
-        : _registrar(
-          [](const wchar_t*, const GUID&) { return new ComImplType(); },
-          progId, 
+      RtdServer(const wchar_t* progId, const GUID* fixedClsid)
+        : _impl(new ComImplType())
+        , _registrar(
+          [p = _impl.p]() { return p; },
+          progId,
           fixedClsid)
-      {
-        // TODO: why doesn't this work?
-        //_registrar.cleanRegistry();
-      }
+      {}
 
       ~RtdServer()
       {
@@ -283,7 +282,12 @@ namespace xloil
     {
       if (!isMainThread())
         XLO_THROW("RtdServer must be created on main thread");
-      return make_shared<COM::RtdServer>(progId, clsid);
+
+      GUID guid;
+      if (clsid)
+        CLSIDFromString(clsid, &guid);
+
+      return make_shared<COM::RtdServer>(progId, clsid ? &guid : nullptr);
     }
   }
 }

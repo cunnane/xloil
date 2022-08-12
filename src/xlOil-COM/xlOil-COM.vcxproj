@@ -134,6 +134,7 @@
     <ClCompile Include="API\ExcelRange.cpp" />
     <ClCompile Include="API\RtdServer.cpp" />
     <ClCompile Include="AppObjects.cpp" />
+    <ClCompile Include="ClassFactory.cpp" />
     <ClCompile Include="ComAddin.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
     <ClCompile Include="ComVariant.cpp" />

@@ -43,6 +43,7 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="RtdAsyncManager.cpp" />
+    <ClCompile Include="ClassFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="API">

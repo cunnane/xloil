@@ -54,257 +54,43 @@ namespace xloil
       long m_dwRef;
     };
 
-    class ClassFactory : public ComObject<IClassFactory>
-    {
-    public:
-      IUnknown* _instance;
-
-      ClassFactory(IUnknown* p)
-        : _instance(p)
-      {}
-
-      STDMETHOD(CreateInstance)(
-        IUnknown *pUnkOuter,
-        REFIID riid,
-        void **ppvObject) override
-      {
-        if (pUnkOuter)
-          return CLASS_E_NOAGGREGATION;
-        auto ret = _instance->QueryInterface(riid, ppvObject);
-        return ret;
-      }
-
-      STDMETHOD(LockServer)(BOOL /*fLock*/) override
-      {
-        return E_NOTIMPL;
-      }
-
-      STDMETHOD(QueryInterface)(REFIID riid, void** ppv)
-      {
-        *ppv = NULL;
-        if (riid == IID_IUnknown || riid == __uuidof(IClassFactory))
-        {
-          *ppv = (IUnknown*)this;
-          AddRef();
-          return S_OK;
-        }
-        return E_NOINTERFACE;
-      }
-    };
-
-    namespace detail
-    {
-      template<int TValCode>
-      HRESULT inline regWriteImpl(
-        HKEY hive,
-        const wchar_t* path,
-        const wchar_t* name,
-        BYTE* data,
-        size_t dataLength)
-      {
-        HRESULT res;
-        HKEY key;
-
-        if (0 > (res = RegCreateKeyExW(
-          hive,
-          path,
-          0, NULL,
-          REG_OPTION_VOLATILE, // key not saved on system shutdown
-          KEY_ALL_ACCESS,      // no access restrictions
-          NULL,                // no security restrictions
-          &key, NULL)))
-          return res;
-
-        res = RegSetValueEx(
-          key,
-          name,
-          0,
-          TValCode,
-          data,
-          (DWORD)dataLength);
-
-        RegCloseKey(key);
-        return res;
-      }
-    }
-
-    HRESULT inline regWrite(
-      HKEY hive,
-      const wchar_t* path,
-      const wchar_t* name,
-      const wchar_t* value)
-    {
-      return detail::regWriteImpl<REG_SZ>(hive, path, name, 
-        (BYTE*)value, (wcslen(value) + 1) * sizeof(wchar_t));
-    }
-
-    HRESULT inline regWrite(
-      HKEY hive,
-      const wchar_t* path,
-      const wchar_t* name,
-      DWORD value)
-    {
-      return detail::regWriteImpl<REG_DWORD>(hive, path, name, 
-        (BYTE*)&value, sizeof(DWORD));
-    }
-
-    template <class TComServer>
     class RegisterCom
     {
-      CComPtr<TComServer> _server;
-      CComPtr<ClassFactory> _factory;
+      CComPtr<IUnknown> _factory;
       DWORD _comRegistrationCookie;
-      std::wstring _clsid;
+      wchar_t _clsidStr[39]; // includes braces and null-terminator
       std::wstring _progId;
       std::list<std::pair<HKEY, std::wstring>> _regKeysAdded;
 
     public:
-      template<class TCreatorFunc>
       RegisterCom(
-        TCreatorFunc createServer,
+        const std::function<IUnknown* ()>& createServer,
         const wchar_t* progId = nullptr,
-        const wchar_t* fixedClsid = nullptr)
-      {
-        GUID clsid;
+        const GUID* fixedClsid = nullptr);
 
-        if (progId)
-        {
-          // Check if ProgId is already registered by trying to find its CLSID
-          auto clsidKey = fmt::format(L"Software\\Classes\\{0}\\CLSID", progId);
-          if (getWindowsRegistryValue(L"HKCU", clsidKey.c_str(), _clsid))
-          {
-            if (fixedClsid && _wcsicmp(_clsid.c_str(), fixedClsid) != 0)
-              XLO_THROW(L"COM Server progId={0} already in registry with clsid={1}, "
-                         "but clsid={2} was requested",
-                          progId, _clsid, fixedClsid);
-            
-          }
-          _progId = progId;
-        }
-  
-        // Ensure we populate the clsid GUID and the assoicated _clsid string. If 
-        // this value has not been provided or read from the registry above, we
-        // create a new GUID.
-
-        if (fixedClsid)
-          _clsid = fixedClsid;
-         
-        if (!_clsid.empty())
-        {
-           CLSIDFromString(_clsid.c_str(), &clsid);
-        }
-        else
-        {
-          auto fail = CoCreateGuid(&clsid) != 0;
-
-          // This generates the string '{W-X-Y-Z}'
-          wchar_t clsidStr[128];
-          fail = fail || StringFromGUID2(clsid, clsidStr, _countof(clsidStr)) == 0;
-          if (fail)
-            XLO_THROW("Failed to create CLSID for COM Server");
-
-          _clsid = clsidStr;
-        }
-
-        // If no progId has been specified, use 'XlOil.<Clsid>'
-        if (!progId)
-        {
-          // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
-          _progId = std::wstring(L"XlOil.") + _clsid.substr(1, _clsid.size() - 2);
-          std::replace(_progId.begin(), _progId.end(), L'-', L'.');
-        }
-
-        // Create the COM 'server' and a class factory which returns it.  Normally
-        // a class factory creates the COM object on demand, so we are subverting
-        // the pattern slightly!
-        _server  = createServer(_progId.c_str(), clsid);
-        _factory = new ClassFactory((IDispatch*)_server.p);
-
-        // Register our class factory in the Registry
-        HRESULT res;
-        res = CoRegisterClassObject(
-          clsid,                     // the CLSID to register
-          _factory.p,                // the factory that can construct the object
-          CLSCTX_INPROC_SERVER,      // can only be used inside our process
-          REGCLS_MULTIPLEUSE,        // it can be created multiple times
-          &_comRegistrationCookie);
-        
-        auto keyPath = fmt::format(L"Software\\Classes\\{0}\\CLSID", _progId);
-        writeRegistry(
-          HKEY_CURRENT_USER,
-          keyPath.c_str(),
-          0,
-          _clsid.c_str());
-        
-        // Note the outer key to ensure it is deleted
-        addedKey(HKEY_CURRENT_USER, 
-          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
-
-        // This registry entry is not needed to call CLSIDFromProgID, nor
-        // to call CoCreateInstance, but for some reason the RTD call to
-        // Excel will fail without it.
-        keyPath = fmt::format(L"Software\\Classes\\CLSID\\{0}\\InProcServer32", _clsid);
-        writeRegistry(
-          HKEY_CURRENT_USER,
-          keyPath.c_str(),
-          0,
-          L"xlOil.dll"); // Name of dll isn't actually used.
-
-        addedKey(HKEY_CURRENT_USER,
-          std::wstring_view(keyPath).substr(0, keyPath.find_last_of(L'\\')));
-
-        // Check all is good by looking up the CLSID from our progId
-        CLSID foundClsid;
-        res = CLSIDFromProgID(_progId.c_str(), &foundClsid);
-        if (res != S_OK || !IsEqualCLSID(foundClsid, clsid))
-          XLO_THROW(L"Failed to register com server '{0}'", _progId);
-      }
+      ~RegisterCom();
 
       const wchar_t* progid() const { return _progId.c_str(); }
-      const wchar_t* clsid()  const { return _clsid.c_str(); }
-      const CComPtr<TComServer>& server() const { return _server; }
+      const wchar_t* clsid()  const { return _clsidStr; }
 
       HRESULT writeRegistry(
         HKEY hive,
         const wchar_t* path,
         const wchar_t* name,
-        const wchar_t* value)
-      {
-        addedKey(hive, path);
-        XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
-        return regWrite(hive, path, name, value);
-      }
+        const wchar_t* value);
 
       HRESULT writeRegistry(
         HKEY hive,
         const wchar_t* path,
         const wchar_t* name,
-        DWORD value)
-      {
-        addedKey(hive, path);
-        XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
-        return regWrite(hive, path, name, value);
-      }
+        DWORD value);
 
       void addedKey(HKEY hive, std::wstring_view path)
       {
         _regKeysAdded.emplace_back(std::pair(hive, std::wstring(path)));
       }
 
-      void cleanRegistry()
-      {
-        // Remove the registry keys used to locate the server (they would be 
-        // removed anyway on windows logoff)
-        for (auto&[hive, path] : _regKeysAdded)
-          RegDeleteKey(hive, path.c_str());
-        _regKeysAdded.clear();
-      }
-
-      ~RegisterCom()
-      {
-        CoRevokeClassObject(_comRegistrationCookie);
-        cleanRegistry();
-      }
+      void cleanRegistry();
     };
   
     /// <summary>

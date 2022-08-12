@@ -69,6 +69,7 @@ namespace xloil
           XLO_ERROR(e.what());
         }
       }
+
     private:
       HRESULT VisibleStateChange(
         struct _CustomTaskPane* /*CustomTaskPaneInst*/)
@@ -87,7 +88,13 @@ namespace xloil
       ICustomTaskPane& _parent;
       shared_ptr<ICustomTaskPaneEvents> _handler;
     };
-    
+
+    struct DECLSPEC_UUID("2ADAD4E5-0793-4151-8D29-07B05C4B0557") 
+      IWindowHostControl : IUnknown
+    {
+      virtual void AttachWindow(HWND hwnd) = 0;
+    };
+
     // TODO: do we really need all these interfaces?
     class ATL_NO_VTABLE WindowHostControl :
       public CComObjectRootEx<CComSingleThreadModel>,
@@ -97,55 +104,65 @@ namespace xloil
       public IOleObjectImpl<WindowHostControl>,
       public IOleInPlaceActiveObjectImpl<WindowHostControl>,
       public IViewObjectExImpl<WindowHostControl>,
-      public IOleInPlaceObjectWindowlessImpl<WindowHostControl>
+      public IOleInPlaceObjectWindowlessImpl<WindowHostControl>,
+      public IWindowHostControl
     {
-      GUID _clsid;
       HWND _attachedWindow = 0;
       HWND _previousParent = 0;
       LONG_PTR _previousWindowStyle = 0;
+
+      static const GUID _clsid;
 
     public:
       WindowHostControl() noexcept
       { 
         m_bWindowOnly = 1;
       }
+
       ~WindowHostControl() noexcept
       {
         ::SetParent(_attachedWindow, _previousParent);
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, _previousWindowStyle);
       }
-      void init(const GUID& clsid) noexcept
-      {
-        _clsid = clsid;
-      }
+
       static const CLSID& WINAPI GetObjectCLSID()
       {
-        XLO_THROW("Not supported");
+        return _clsid;
+      }
+
+      /// <summary>
+      /// Registers this COM object and returns the progid
+      /// </summary>
+      /// <returns></returns>
+      static const wchar_t* ProgId()
+      {
+        static RegisterCom registrar(
+          []() { return (IDispatch*)new CComObject<WindowHostControl>(); },
+          L"xlOilAXHostControl", &_clsid);
+        return registrar.progid();
       }
 
       /// <summary>
       /// Given a window handle, make it a frameless child of the one of
       /// our parent windows
       /// </summary>
-      void attachWindow(size_t hwnd)
+      void AttachWindow(HWND hwnd) override
       {
-        _attachedWindow = (HWND)hwnd;
+        _attachedWindow = hwnd;
         _previousParent = ::SetParent(_attachedWindow, GetAttachableParent());
 
         XLO_DEBUG("Custom task pane host control attached to window {0x}. Previous parent {0x}", 
-          hwnd, (size_t)_previousParent);
+          (size_t)hwnd, (size_t)_previousParent);
 
         _previousWindowStyle = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
         auto style = (_previousWindowStyle | WS_CHILD) & ~WS_THICKFRAME & ~WS_CAPTION;
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, style);
 
         // Set the z-order and reposition the child at the top left of the parent
-        // TODO: Not sure we need both of these!
+        // Not sure why we need both of these!
         ::SetWindowPos(m_hWnd, _attachedWindow, 0, 0, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
         ::SetWindowPos(_attachedWindow, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
       }
-
-      DECLARE_WND_CLASS(_T("xlOilAXControl"))
 
       BEGIN_COM_MAP(WindowHostControl)
         COM_INTERFACE_ENTRY(IDispatch)
@@ -157,6 +174,7 @@ namespace xloil
         COM_INTERFACE_ENTRY(IOleInPlaceActiveObject)
         COM_INTERFACE_ENTRY(IOleControl)
         COM_INTERFACE_ENTRY(IOleObject)
+        COM_INTERFACE_ENTRY(IWindowHostControl)
       END_COM_MAP()
 
       BEGIN_MSG_MAP(WindowHostControl)
@@ -168,43 +186,21 @@ namespace xloil
       // IViewObjectEx
       DECLARE_VIEW_STATUS(VIEWSTATUS_SOLIDBKGND | VIEWSTATUS_OPAQUE)
 
-    public:
-      // We need trival implementations of these four methods since we do not have a static CLSID
-      STDMETHOD(EnumVerbs)(_Outptr_ IEnumOLEVERB** ppEnumOleVerb)
-      {
-        if (!ppEnumOleVerb)
-          return E_POINTER;
-        return OleRegEnumVerbs(_clsid, ppEnumOleVerb);
-      }
-      STDMETHOD(GetUserClassID)(_Out_ CLSID* pClsid)
-      {
-        if (!pClsid)
-          return E_POINTER;
-        *pClsid = _clsid;
-        return S_OK;
-      }
-      STDMETHOD(GetUserType)(DWORD dwFormOfType, LPOLESTR* pszUserType)
-      {
-        return OleRegGetUserType(_clsid, dwFormOfType, pszUserType);
-      }
-      STDMETHOD(GetMiscStatus)(
-        _In_ DWORD dwAspect,
-        _Out_ DWORD* pdwStatus)
-      {
-        return OleRegGetMiscStatus(_clsid, dwAspect, pdwStatus);
-      }
+      DECLARE_WND_CLASS(_T("xlOilAXHostControl"))
 
-      // We can't link GUI window to just any old parent. In particular not
-      // m_hWnd of this class. This is because the DPI awareness for this
-      // window is set to System whereas the GUI toolkit root windows
-      // are at Per-Monitor or better; this causes GetParent to fail. Because
-      // this window's parent is also System awareness, we can't make our 
-      // window Per-Monitor aware. Even if we call SetThreadDpiHostingBehavior
-      // with DPI_HOSTING_BEHAVIOR_MIXED - it just doesn't work. Instead we 
-      // walk up the parent chain unti we find "NUIPane" which experimentation
-      // has shown will be a suitable parent.
+    private:
       HWND GetAttachableParent()
       {
+        // We can't link GUI window to just any old parent. In particular not
+        // m_hWnd of this class. This is because the DPI awareness for this
+        // window is set to System whereas the GUI toolkit root windows
+        // are at Per-Monitor or better; this causes GetParent to fail. Because
+        // this window's parent is also System awareness, we can't make our 
+        // window Per-Monitor aware. Even if we call SetThreadDpiHostingBehavior
+        // with DPI_HOSTING_BEHAVIOR_MIXED - it just doesn't work. Instead we 
+        // walk up the parent chain unti we find "NUIPane" which experimentation
+        // has shown will be a suitable parent.
+        // 
         // We will walk up the window stack until we find the target below.
         // TODO: could be MsoWorkPane or NetUIHWND?
         constexpr wchar_t target[] = L"NUIPane";  
@@ -244,14 +240,17 @@ namespace xloil
         bHandled = true;
         return DefWindowProc(message, wParam, lParam);
       }
-
     };
+
+    // {EBE296D2-2373-437C-9FF5-934865BAB572}
+    const GUID WindowHostControl::_clsid =
+    { 0xebe296d2, 0x2373, 0x437c, { 0x9f, 0xf5, 0x93, 0x48, 0x65, 0xba, 0xb5, 0x72 } };
 
     class CustomTaskPaneCreator : public ICustomTaskPane
     {
       Office::_CustomTaskPanePtr _pane;
       CComPtr<CustomTaskPaneEventHandler> _paneEvents;
-      CComPtr<WindowHostControl> _hostingControl;
+      CComQIPtr<IWindowHostControl> _hostingControl;
 
     public:
       CustomTaskPaneCreator(
@@ -261,25 +260,14 @@ namespace xloil
         const wchar_t* progId)
       {
         XLO_DEBUG(L"Creating Custom Task Pane '{}'", name);
-
         // Pasing vtMissing causes the pane to be attached to ActiveWindow
         auto targetWindow = window ? _variant_t(window) : vtMissing;
-
+        _pane = ctpFactory.CreateCTP(
+          progId ? progId : WindowHostControl::ProgId(), 
+          name, 
+          targetWindow);
         if (!progId)
-        {
-          RegisterCom<WindowHostControl> registrar(
-            [](const wchar_t* progId, const GUID& clsid)
-            {
-              auto p = new CComObject<WindowHostControl>;
-              p->init(clsid);
-              return p;
-            },
-            formatStr(L"%s.CTP", name ? name : L"xlOil").c_str());
-          _pane = ctpFactory.CreateCTP(registrar.progid(), name, targetWindow);
-          _hostingControl = registrar.server();
-        }
-        else
-          _pane = ctpFactory.CreateCTP(progId, name, targetWindow);
+          _hostingControl = content();
       }
 
       ~CustomTaskPaneCreator()
@@ -387,7 +375,7 @@ namespace xloil
       void attach(size_t hwnd) override
       {
         if (_hostingControl)
-          _hostingControl->attachWindow(hwnd);
+          _hostingControl->AttachWindow((HWND)hwnd);
       }
     };
 

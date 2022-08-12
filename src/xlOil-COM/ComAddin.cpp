@@ -175,12 +175,13 @@ namespace xloil
     class ComAddinCreator : public IComAddin
     {
     private:
-      auto& comAddinImpl() const
+      auto& impl() const
       {
-        return _registrar.server();
+        return *_impl;
       }
 
-      RegisterCom<ComAddinImpl> _registrar;
+      CComPtr<ComAddinImpl>     _impl;
+      RegisterCom               _registrar;
       bool                      _connected = false;
       shared_ptr<IRibbon>       _ribbon;
       COMAddIn*                 _comAddin = nullptr;
@@ -188,12 +189,13 @@ namespace xloil
       shared_ptr<const void>    _closeHandler;
     
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
-        : _registrar(
-          [](const wchar_t*, const GUID&) { return new ComAddinImpl(); },
+        : _impl(new ComAddinImpl())
+        , _registrar(
+          [p = _impl.p]() { return p; },
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         // TODO: hook OnDisconnect to stop user from disabling COM stub.
-        comAddinImpl()->events.reset(new ComAddinEvents());
+        impl().events.reset(new ComAddinEvents());
 
         if (!name)
           XLO_THROW("Com add-in name must be provided");
@@ -285,7 +287,7 @@ namespace xloil
           if (xml)
           {
             _ribbon = createRibbon(xml, mapper);
-            comAddinImpl()->ribbon = _ribbon->getRibbon();
+            impl().ribbon = _ribbon->getRibbon();
           }
           _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
@@ -338,7 +340,7 @@ namespace xloil
         const ExcelWindow* window,
         const wchar_t* progId) override
       {
-        auto factory = comAddinImpl()->ctpFactory();
+        auto factory = impl().ctpFactory();
         if (!factory)
           XLO_THROW("Internal error: failed to receive CTP factory");
 
