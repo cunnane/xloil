@@ -35,8 +35,17 @@ namespace xloil
 
       ~TaskPaneHostControl() noexcept
       {
-        ::SetParent(_attachedWindow, _previousParent);
+        detach();
+      }
+
+      void detach() noexcept
+      {
+        if (_attachedWindow == 0)
+          return;
+        auto parent = ::SetParent(_attachedWindow, _previousParent);
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, _previousWindowStyle);
+        RemoveWindowSubclass(parent, SubclassWndProc, (UINT_PTR)this);
+        _attachedWindow = 0;
       }
 
       static const CLSID& WINAPI GetObjectCLSID()
@@ -51,7 +60,13 @@ namespace xloil
       void AttachWindow(HWND hwnd) override
       {
         _attachedWindow = hwnd;
-        _previousParent = ::SetParent(_attachedWindow, GetAttachableParent());
+        auto parent = GetAttachableParent();
+        _previousParent = ::SetParent(_attachedWindow, parent);
+
+        // Subclass the parent so that when we get a WM_DESTROY, we can unattach
+        // the window. Some GUI toolkits (e.g. Qt) object to their windows being
+        // destroyed from unexpected sources.
+        SetWindowSubclass(parent, SubclassWndProc, (UINT_PTR)this, (DWORD_PTR)nullptr);
 
         XLO_DEBUG("Custom task pane host control attached to window {0x}. Previous parent {0x}",
           (size_t)hwnd, (size_t)_previousParent);
@@ -141,6 +156,18 @@ namespace xloil
         }
         bHandled = true;
         return DefWindowProc(message, wParam, lParam);
+      }
+
+      static LRESULT CALLBACK SubclassWndProc(HWND hWnd, UINT uMsg,
+        WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass,
+        DWORD_PTR /*dwRefData*/)
+      {
+        switch (uMsg)
+        {
+        case WM_DESTROY:
+          ((TaskPaneHostControl*)uIdSubclass)->detach();
+        }
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
       }
     };
 

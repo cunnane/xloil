@@ -11,7 +11,7 @@ namespace xloil
     };
 
     /// <summary>
-    /// Registers this COM object and returns the progid
+    /// Registers the task pane hosting COM control and returns the progid
     /// </summary>
     /// <returns></returns>
     const wchar_t* taskPaneHostControlProgId();
