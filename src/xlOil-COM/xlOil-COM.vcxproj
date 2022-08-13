@@ -124,6 +124,7 @@
     <ClInclude Include="RtdAsyncManager.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="RtdServerWorker.h" />
+    <ClInclude Include="TaskPaneHostControl.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
   </ItemGroup>
@@ -143,6 +144,7 @@
     <ClCompile Include="RibbonExtensibility.cpp" />
     <ClCompile Include="RtdAsyncManager.cpp" />
     <ClCompile Include="RtdManager.cpp" />
+    <ClCompile Include="TaskPaneHostControl.cpp" />
     <ClCompile Include="WorkbookScopeFunctions.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
   </ItemGroup>
