@@ -17,6 +17,7 @@ using std::wstring;
 using std::string;
 namespace py = pybind11;
 using std::make_pair;
+using ExcelProcessInfo = xloil::Environment::ExcelProcessInfo;
 
 namespace xloil 
 {
@@ -214,22 +215,22 @@ namespace xloil
           py::arg("retry") = 500,
           py::arg("api") = "");
 
-        py::class_<Environment::ExcelProcessInfo>(mod, "ExcelState", 
+        py::class_<ExcelProcessInfo>(mod, "ExcelState", 
           R"(
             Gives information about the Excel application. Cannot be constructed: call
             ``xloil.excel_state`` to get an instance.
           )")
           .def_readonly("version", 
-            &Environment::ExcelProcessInfo::version, 
+            &ExcelProcessInfo::version, 
             "Excel major version")
-          .def_readonly("hinstance",
-            &Environment::ExcelProcessInfo::hInstance,
-            "Excel Win32 HINSTANCE")
+          .def_property_readonly("hinstance",
+            [](const ExcelProcessInfo& p) { return (intptr_t)p.hInstance; },
+            "Excel Win32 HINSTANCE pointer as an int")
           .def_readonly("hwnd",
-            &Environment::ExcelProcessInfo::hWnd,
-            "Excel Win32 main window handle(as an int)")
+            &ExcelProcessInfo::hWnd,
+            "Excel Win32 main window handle as an int")
           .def_readonly("main_thread_id",
-            &Environment::ExcelProcessInfo::mainThreadId,
+            &ExcelProcessInfo::mainThreadId,
             "Excel main thread ID");
 
         mod.def("excel_state", 
