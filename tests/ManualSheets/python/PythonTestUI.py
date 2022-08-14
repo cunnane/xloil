@@ -89,8 +89,7 @@ class OurTkPane(TkThreadTaskPane):
     # Define this method to capture the docking position change event
     def on_docked(self):
         xlo.log(f"Tk frame docking position: {self.position:}", level='info')
-      
-        
+
 
 _PENDING_PANES = dict()
 
@@ -114,13 +113,14 @@ async def make_task_pane(toolkit):
     pane = xlo.gui.find_task_pane(pane_name)
     if pane is not None:
         xlo.log(f"Found pane: {key}")
-        return pane
+        pane.visible = True
+        return
 
     # Since we are using async, the open pane button may have been 
     # clicked more than once before the pane got a chance to create
     pane_future = _PENDING_PANES.get(key, None)
     if pane_future is not None:
-        return await pane_future
+        return
 
     # attach_pane can accept a CustomTaskPane instance, or a QWidget
     # instance or an awaitable to one of those things. You can also
@@ -145,6 +145,8 @@ async def make_task_pane(toolkit):
     pane = await future
     
     del _PENDING_PANES[key]
+
+    pane.visible = True
 
     return pane
      
@@ -189,8 +191,8 @@ async def press_open_pane_button(ctrl):
     
     xlo.log(f"Open {toolkit} Pressed")
     
-    pane = await make_task_pane(toolkit)
-    pane.visible = True
+    make_task_pane(toolkit)
+
     
 #
 # The combo box in the ribbon xml has the value 33, 66 or 99. We send 
