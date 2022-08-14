@@ -99,6 +99,7 @@ class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
 
     def __init__(self):
         self._top_level = tkinter.Toplevel()
+        self._top_level.withdraw() # Create hidden
 
     @property
     def top_level(self) -> tkinter.Toplevel:
