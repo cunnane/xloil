@@ -68,3 +68,10 @@ from xloil_core import _LogWriter
 
 if XLOIL_READTHEDOCS:
     _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
+
+
+def create_gui(*args, **kwargs) -> ExcelGUI:
+    # DEPRECATED. Create the ExcelGUI object directly.
+    if 'mapper' in kwargs:
+        kwargs['funcmap'] = kwargs.pop('mapper')
+    return ExcelGUI(*args, **kwargs)
