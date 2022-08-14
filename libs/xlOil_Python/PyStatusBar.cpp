@@ -43,10 +43,12 @@ namespace xloil
             Examples
             --------
 
-            with StatusBar(1000) as status:
-              status.msg('Doing slow thing')
-              ...
-              status.msg('Done slow thing')
+            ::
+
+              with StatusBar(1000) as status:
+                status.msg('Doing slow thing')
+                ...
+                status.msg('Done slow thing')
           )")
           .def(py::init<size_t>(), 
               R"(

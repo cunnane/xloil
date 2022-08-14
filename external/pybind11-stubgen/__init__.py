@@ -823,15 +823,16 @@ class ModuleStubsGenerator(StubsGenerator):
             "import typing"
         ]
 
-        for name, class_ in self.imported_classes.items():
-            class_name = getattr(class_, "__qualname__", class_.__name__)
-            if name == class_name:
-                suffix = ""
-            else:
-                suffix = " as {}".format(name)
-            result += [
-                'from {} import {}{}'.format(class_.__module__, class_name, suffix)
-            ]
+        #STC: We want stubs so we definely don't want to import from the original module
+        #for name, class_ in self.imported_classes.items():
+        #    class_name = getattr(class_, "__qualname__", class_.__name__)
+        #    if name == class_name:
+        #        suffix = ""
+        #    else:
+        #        suffix = " as {}".format(name)
+        #    result += [
+        #        'from {} import {}{}'.format(class_.__module__, class_name, suffix)
+        #    ]
 
         # import used packages
         used_modules = sorted(self.get_involved_modules_names())

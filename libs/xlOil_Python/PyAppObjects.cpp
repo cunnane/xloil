@@ -453,6 +453,8 @@ namespace xloil
 
           To get the name of the active worksheet:
 
+          ::
+
               return xlo.app().ActiveWorksheet.Name
 
           )" XLO_CITE_API_SUFFIX(Application, (object)));

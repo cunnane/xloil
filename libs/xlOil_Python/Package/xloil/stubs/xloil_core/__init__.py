@@ -74,6 +74,8 @@ class Application():
 
     To get the name of the active worksheet:
 
+    ::
+
         return xlo.app().ActiveWorksheet.Name
 
     See `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.Application(object)>`_ 
@@ -447,6 +449,11 @@ class ExcelGUI():
 
         This method is safe to call on an already-connected addin.
         """
+    def create_task_pane(self, name: object, creator: object, window: object = None, size: object = None, visible: object = True) -> object: 
+        """
+        Deprecated: use `attach_pane`. Note that `create_task_pane` tries to `find_task_pane`
+        before creation whereas `attach_pane` does not.
+        """
     def disconnect(self) -> _Future: 
         """
         Unloads the underlying COM add-in and any ribbon customisation.  Avoid using
@@ -483,16 +490,16 @@ class ExcelState():
     ``xloil.excel_state`` to get an instance.
     """
     @property
-    def hinstance(self) -> capsule:
+    def hinstance(self) -> int:
         """
-        Excel Win32 HINSTANCE
+        Excel Win32 HINSTANCE pointer as an int
 
-        :type: capsule
+        :type: int
         """
     @property
     def hwnd(self) -> int:
         """
-        Excel Win32 main window handle(as an int)
+        Excel Win32 main window handle as an int
 
         :type: int
         """
@@ -513,7 +520,7 @@ class ExcelState():
     pass
 class ExcelWindow():
     """
-    Represents a window.  A window is a view of a workbook.
+    A document window which displays a view of a workbook.
     See `Excel.Window <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowWindow>`_ 
     """
     def __getattr__(self, arg0: str) -> object: ...
@@ -556,8 +563,8 @@ class ExcelWindow():
     pass
 class ExcelWindows():
     """
-    A collection of all the Window objects in Excel.  A Window is a view of
-    a Workbook
+    A collection of all the document window objects in Excel. A document window 
+    shows a view of a Workbook.
 
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
@@ -1000,10 +1007,12 @@ class StatusBar():
     Examples
     --------
 
-    with StatusBar(1000) as status:
-      status.msg('Doing slow thing')
-      ...
-      status.msg('Done slow thing')
+    ::
+
+      with StatusBar(1000) as status:
+        status.msg('Doing slow thing')
+        ...
+        status.msg('Done slow thing')
     """
     def __enter__(self) -> object: ...
     def __exit__(self, *args) -> None: ...
@@ -1029,7 +1038,8 @@ class TaskPaneFrame():
     """
     def attach(self, handler: object, hwnd: int) -> _Future: 
         """
-        Associates a `xloil.gui.CustomTaskPane` with this frame
+        Associates a `xloil.gui.CustomTaskPane` with this frame. Returns a future
+        with no result.
         """
     def com_control(self, lib: str = '') -> object: 
         """
@@ -1037,6 +1047,19 @@ class TaskPaneFrame():
         COM support can be 'comtypes' or 'win32com' (default is win32com). This 
         method is only useful if a custom `progid` was specified during the task
         pane creation.
+        """
+    @property
+    def position(self) -> str:
+        """
+                      Gets/sets the dock position, one of: bottom, floating, left, right, top
+                    
+
+        :type: str
+        """
+    @position.setter
+    def position(self, arg1: str) -> None:
+        """
+        Gets/sets the dock position, one of: bottom, floating, left, right, top
         """
     @property
     def size(self) -> typing.Tuple[int, int]:
@@ -1077,7 +1100,7 @@ class TaskPaneFrame():
     pass
 class Workbook():
     """
-    Represents an open Excel workbook.
+    A handle to an open Excel workbook.
     See `Excel.Workbook <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbookWorkbook>`_ 
     """
     def __enter__(self) -> object: ...
@@ -1299,7 +1322,6 @@ class Worksheet():
 class Worksheets():
     """
     A collection of all the Worksheet objects in the specified or active workbook. 
-    Each Worksheet object represents a worksheet.
 
     See `Excel.Worksheets <https://docs.microsoft.com/en-us/office/vba/api/excel.WorksheetsWorksheets>`_ 
     """

@@ -156,6 +156,9 @@ GUI Interaction
 
 .. currentmodule:: xloil
 
+.. autoclass:: StatusBar
+	:members:
+
 .. autoclass:: ExcelGUI
 	:members:
 .. autoclass:: TaskPaneFrame
@@ -228,8 +231,10 @@ Everything else
 	:imported-members:
 	:undoc-members:
 
-.. autoclass::ExcelState
-	:members:
+.. autoclass:: ExcelState
+	:members: 
+	:inherited-members:
+	:undoc-members:
 	
 .. autodata:: log
 
