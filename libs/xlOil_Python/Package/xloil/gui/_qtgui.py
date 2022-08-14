@@ -38,13 +38,14 @@ def _create_Qt_app():
     QtCore.qInstallMessageHandler(qt_msg_handler)
 
 
-    # Qt seems to really battle with reading environment variables.  We must 
-    # read the variable ourselves, then pass it as an argument. It's unclear what
-    # alchemy is required to make Qt do this seemingly simple thing itself.
+    # Qt seems to really battle with reading environment variables so we must 
+    # read the variable ourselves, then pass it as an argument. This is probably
+    # because of the getenv vs GetEnvironmentVariable confusion discussed, 
+    # for example, here https://bugs.python.org/issue16633
     QApplication = QT_IMPORT("QtWidgets").QApplication
 
     import os
-    ppp = os.getenv('QT_QPA_PLATFORM_PLUGIN_PATH', None)
+    ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH', None)
     
     log(f"Starting Qt on thread {threading.get_native_id()} " +
         f"with platform-plugin-path={ppp}", level="info")
