@@ -8,7 +8,7 @@ import typing
 import threading
 import inspect
 
-_task_panes = set()
+_TASK_PANES = set()
 
 class CustomTaskPane:
     """
@@ -42,7 +42,7 @@ class CustomTaskPane:
         self.hwnd = await asyncio.wrap_future(self._get_hwnd())
         self._frame = await frame
         await self._frame.attach(self, self.hwnd)
-        _task_panes.add(self)
+        _TASK_PANES.add(self)
 
     def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
         """
@@ -54,7 +54,7 @@ class CustomTaskPane:
         self.hwnd = self._get_hwnd().result()
         self._frame = frame.result()
         self._frame.attach(self, self.hwnd).result()
-        _task_panes.add(self)
+        _TASK_PANES.add(self)
         
     def _get_hwnd(self) -> typing.Awaitable[int]:
         """
@@ -67,7 +67,7 @@ class CustomTaskPane:
         # Release internal task pane pointer
         self._frame = None
         # Remove ourselves from pane lookup table
-        _task_panes.remove(self)
+        _TASK_PANES.discard(self)
 
     @property
     def frame(self) -> TaskPaneFrame:
@@ -101,34 +101,41 @@ class CustomTaskPane:
 
 def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane:
     """
-        Finds all xlOil python task panes associated with the active window, 
-        optionally filtering by the pane `title`. 
+        Finds xlOil python task panes attached to the specified window, with the 
+        given pane `title`. The primary use of this function is to look for an existing 
+        task pane before creating a new one.
 
-        This primary use of this function is to look for an existing task pane
-        before creating a new one.
+        Parameters
+        ----------
 
-        Task panes are linked to Excel's Window objects which can have a many-to-one
-        relationship with workbooks. If a `workbook` name is specified, all task panes 
-        associated with that workbook will be searched.
+        title:
+            if `title` is specified, returns a (case-sensitive) match of a single 
+            `xloil.CustomTaskPane` object or None if not found.  Otherwise returns a list 
+            of `xloil.CustomTaskPane` objects.
 
-        Returns: if `title` is specified, returns a (case-sensitive) match of a single
-        `xloil.CustomTaskPane object` or None, otherwise returns a list of 
-        `xloil.CustomTaskPane` objects.
+        window: str or `xloil.ExcelWindow`
+            The window title to be searched    
+
+        workbook: str or `xloil.Workbook`:
+            Task panes are linked to Excel's Window objects which can have a many-to-one
+            relationship with workbooks. If a workbook is specified, all task panes 
+            associated with that workbook will be searched.
+
     """
 
-    if window is None:
-        if workbook is None:
-            hwnds = [xloil.app().windows.active.hwnd]
-        else:
-            if isinstance(workbook, str):
-                workbook = Workbook(workbook)
-            hwnds = [x.hwnd for x in workbook.windows]
-    else:
+    if window is not None:
         if isinstance(window, str):
             window = ExcelWindow(window)
         hwnds = [window.hwnd]
+    elif workbook is not None:
+        if isinstance(workbook, str):
+            workbook = Workbook(workbook)
+        hwnds = [x.hwnd for x in workbook.windows]
+    else:
+        hwnds = [xloil.app().windows.active.hwnd]
+ 
+    found = [x for x in _TASK_PANES if isinstance(x, CustomTaskPane) and x.frame.window.hwnd in hwnds]
 
-    found = [x for x in _task_panes if x.frame.window.hwnd in hwnds]
     if title is None:
         return found
     else:
@@ -178,7 +185,7 @@ async def _attach_task_pane_async(
         window = ExcelWindow(window)
 
     name = name or _get_pane_name(pane)
-      
+     
     frame_future = gui._create_task_pane_frame(name, window)
 
     # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
