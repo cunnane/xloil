@@ -303,6 +303,10 @@ namespace xloil
         const py::object& size,
         const py::object& visible)
       {
+        PyErr_WarnEx(PyExc_DeprecationWarning,
+          "createTaskPane is deprecated, use attach_pane instead.",
+          2);
+
         auto guiModule = py::module::import("xloil.gui");
 
         auto findPane = guiModule.attr("find_task_pane");

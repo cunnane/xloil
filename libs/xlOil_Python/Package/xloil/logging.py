@@ -1,4 +1,5 @@
 import traceback
+import warnings
 from ._core import _LogWriter
 
 log = _LogWriter()
@@ -11,6 +12,11 @@ log = _LogWriter()
     in the xlOil settings file will be output to the log file. Trace output can only
     be seen with a debug build of xlOil.
 """
+
+def _log_warnings(message, category, filename, lineno, file=None, line=None):
+    log(warnings.formatwarning(message, category, filename, lineno, line), level='warn')
+
+warnings.showwarning = _log_warnings
 
 def log_except(msg, level='error'):
     """

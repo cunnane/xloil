@@ -72,6 +72,10 @@ if XLOIL_READTHEDOCS:
 
 def create_gui(*args, **kwargs) -> ExcelGUI:
     # DEPRECATED. Create the ExcelGUI object directly.
+
+    import warnings
+    warnings.warn("create_gui is deprecated, create the ExcelGUI object directly", 
+                  DeprecationWarning, stacklevel=2)
     if 'mapper' in kwargs:
         kwargs['funcmap'] = kwargs.pop('mapper')
     return ExcelGUI(*args, **kwargs)
