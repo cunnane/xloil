@@ -585,7 +585,10 @@ namespace xloil
             )")
           .def("create_task_pane",
             createTaskPane,
-            "Deprecated. Use attach_pane.",
+            R"(
+              Deprecated: use `attach_pane`. Note that `create_task_pane` tries to `find_task_pane`
+              before creation whereas `attach_pane` does not.
+            )", 
             py::arg("name"),
             py::arg("creator"),
             py::arg("window") = py::none(),

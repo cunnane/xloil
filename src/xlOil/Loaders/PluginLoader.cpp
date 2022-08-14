@@ -130,11 +130,12 @@ namespace xloil
               expandEnvironmentStrings(val));
             XLO_DEBUG(L"Setting environment variable: {}='{}'", key, value);
 
-            // The CRT (getenv) makes a copy of the environment variable block of the process , 
-            // on startup so we need ensure both the getenv block and Win32 environment are .
-            // modified. The CRT actually maintains a wchar and a char enviroment block.
+            // The CRT (getenv) makes a copy of the environment variable block of the process, 
+            // on startup so we need ensure both the getenv block and Win32 environment are 
+            // modified.
             // See some of the remarks here
             // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv
+            // TODO: may not need to call win32 api func, see https://stackoverflow.com/questions/13742429
             if (!SetEnvironmentVariable(key.c_str(), value.c_str()))
               XLO_WARN(L"Failed to set environment variable '{}': {}", key, writeWindowsError());
 

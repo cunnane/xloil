@@ -61,13 +61,24 @@ namespace xloil
   };
 
   /// <summary>
-  /// Event handler to respond to custom task pane events
+  /// Event handler to respond to custom task pane events. Callbacks will made on 
+  /// Excel's main thread.
   /// </summary>
   class ICustomTaskPaneEvents
   {
   public:
-    virtual void onVisible(bool c) = 0;
+    /// <summary>
+    /// Called when the user closes/shows the pane with the new visibility in 'state'
+    /// </summary>
+    virtual void onVisible(bool state) = 0;
+    /// <summary>
+    /// Called when the user docks or undocks the pane
+    /// </summary>
     virtual void onDocked() = 0;
+    /// <summary>
+    /// Called just before the pane is destroyed when the parent window is closed.
+    /// Only triggered when the xlOil host control is used, see `createTaskPane`.
+    /// </summary>
     virtual void onDestroy() = 0;
   };
 

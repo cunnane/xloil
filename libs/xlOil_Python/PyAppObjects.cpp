@@ -486,12 +486,12 @@ namespace xloil
 
       auto declare_Workbook = py::class_<ExcelWorkbook>(mod, "Workbook",
         R"(
-          Represents an open Excel workbook.
+          A handle to an open Excel workbook.
           )" XLO_CITE_API(Workbook));
 
       auto declare_Window = py::class_<ExcelWindow>(mod, "ExcelWindow",
         R"(
-          Represents a window.  A window is a view of a workbook.
+          A document window which displays a view of a workbook.
           )" XLO_CITE_API(Window));
 
       using PyWorkbooks = BindCollection<Workbooks>;
@@ -512,15 +512,14 @@ namespace xloil
 
       PyWindows::startBinding(mod, "ExcelWindows",
         R"(
-          A collection of all the Window objects in Excel.  A Window is a view of
-          a Workbook
+          A collection of all the document window objects in Excel. A document window 
+          shows a view of a Workbook.
 
           )" XLO_CITE_API(Windows));
 
       PyWorksheets::startBinding(mod, "Worksheets",
         R"(
           A collection of all the Worksheet objects in the specified or active workbook. 
-          Each Worksheet object represents a worksheet.
           
           )" XLO_CITE_API(Worksheets))
         .def("add",

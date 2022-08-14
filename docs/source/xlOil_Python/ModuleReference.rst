@@ -230,11 +230,6 @@ Everything else
 
 .. autoclass::ExcelState
 	:members:
-	:imported-members:
-	:undoc-members:
-	:inherited-members:
-	:private-members:
-	:special-members:
 	
 .. autodata:: log
 

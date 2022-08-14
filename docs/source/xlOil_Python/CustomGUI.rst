@@ -20,48 +20,66 @@ Possibly the simplest Excel GUI interaction: writing messages to Excel's status 
         ...
         status.msg('Done slow thing')
 
-The `StatusBar` object clears the status bar after the specified number of milliseconds
+The :any:`xloil.StatusBar` object clears the status bar after the specified number of milliseconds
 once the `with` context ends
 
 
 Ribbon
 ------
 
-xlOil allows dynamic creation of Excel Ribbon components. See :any:`concepts-ribbon` for 
+xlOil allows dynamic creation of Excel Fluent Ribbon components. See :any:`concepts-ribbon` for 
 background.
 
 ::
 
-    gui = xlo.create_gui(r'''<customUI xmlns=...>....</<customUI>''', 
-        mapper={
+    gui = xlo.ExcelGUI(r'''<customUI xmlns=...>....</<customUI>''', 
+        funcmap={
             'onClick1': run_click,
             'onClick2': run_click,
             'onUpdate': update_text,
         })
 
-The ``mapper`` dictionary (or function) links callbacks named in the ribbon XML to python functions. 
+The ``gui`` object :any:`xloil.ExcelGUI` holds a handle to a COM addin created to support
+the ribbon customisation.  If the object goes out of scope and is deleted by python or if you call 
+``gui.disconnect()``, the add-in is unloaded along with the ribbon customisation and any custom task 
+panes.
+
+The ``funcmap`` dictionary (or function) links callbacks named in the ribbon XML to python functions. 
 Each handler should have a signature like the following:
 
 ::
 
-    def ribbon_callback1(ctrl: RibbonControl)
+    def ribbon_button_press(ctrl: RibbonControl)
         ...
     def ribbon_callback2(ctrl: RibbonControl, arg1, arg2)
         ...
-    def ribbon_callback3(ctrl: RibbonControl, *args)
-        ...    
+    def ribbon_get_text_label(ctrl: RibbonControl, *args)
+        return "something"
     async def ribbon_callback4(ctrl: RibbonControl, *args)
         ...    
 
-The ``RibbonControl`` describes the control which raised the callback. The number of additional
-arguments is callback dependent.  Some callbacks may be expected to return a value. 
-See the *Resources* in :any:`concepts-ribbon` for a description of the appropriate callback signature.
+The ``ctrl`` argument points to the control which raised the callback. The number of additional
+arguments is callback dependent.  Some callbacks are expected to return a value. 
+See `Customizing the Office Fluent Ribbon <https://docs.microsoft.com/en-us/previous-versions/office/developer/office-2007/aa338199(v=office.12)>`_
+for a description of the appropriate callback signature.
 
-Callbacks declared async will be executed in the addin's event loop. Other callbacks are executed 
-in Excel's main thread. Async callbacks cannot return values.
+.. note::
 
-The `getImage` callbacks must return a `PIL Image <https://pillow.readthedocs.io/en/stable/reference/Image.html>`_.
-Instead of using a `getImage` per control, a single `loadImage` attribute can be added:
+    Callbacks are executed in Excel's main thread unless declared *async*, in which case they will be 
+    executed in the addin's event loop.  Async callbacks cannot return values.
+
+
+Instead of a dictionary, the `funcmap` object can be a function which takes any string and returns a 
+callback handler.
+
+See :doc:`ExampleGUI` for an example of ribbon customisation.
+
+Setting button images
+=====================
+
+Any `getImage` callbacks must return a `PIL Image <https://pillow.readthedocs.io/en/stable/reference/Image.html>`_.
+This is converted to an appropriate COM object by xlOil. Instead of using a separate `getImage` callback 
+per control, a single `loadImage` attribute can be added:
 
 ::
 
@@ -72,30 +90,42 @@ Instead of using a `getImage` per control, a single `loadImage` attribute can be
 The `MyImageLoader` function will be called with the argument `icon.jpg` and be expected to return
 a *PIL Image*.
 
-Instead of a dictionary, the `mapper` object can be a function which takes any string and returns a 
-callback handler.
-
-The ``gui`` object returned above is actually a handle to a COM addin created to support
-the ribbon customisation.  If the object goes out of scope and is deleted by python or if you call 
-``ribbon.disconnect()``, the add-in is unloaded along with the ribbon customisation.
-
-See :doc:`ExampleGUI` for an example of ribbon customisation.
 
 Custom Task Panes
 -----------------
 
 `Custom task panes <https://docs.microsoft.com/en-us/visualstudio/vsto/custom-task-panes>`_ are user 
-interface panels that are usually docked to one side of a window in Excel application.
+interface panels that are usually docked to one side of a window in the Excel application. They can 
+contain a *Qt* or *Tk* interface, or any suitable custom COM control. 
 
-Custom task panes are created using the `ExcelGUI` object. There is no need to create a ribbon as
-well, but task panes are normally opened using a ribbon button.
+Custom task panes are created using the :any:`xloil.ExcelGUI` object. There is no need to create a ribbon 
+as well, but task panes are normally opened using a ribbon button, because Excel does not provide a 
+default way for users to show or hide custom task panes.
 
+Custom task panes are associated with a document frame window, which presents a view of a workbook 
+to the user.  If you want to display a custom task pane with multiple workbooks, create a new instance 
+of the custom task pane when the user creates or opens a workbook. To do this, either handle the 
+`WorkbookOpen` event, or require the user to press a ribbon button to open a task pane for the active
+workbook.
+
+Thread-safety
+=============
+
+The :any:`xloil.ExcelGUI` object and custom task panes can be created in any thread (internally they 
+re-direct calls to Excel's main thread). Typically GUI creation will be done on xlOil's python loader 
+thread, which also contains an *asyncio* event loop. The individual GUI toolkits are generally not 
+thread-safe and should only be accessed from dedicated threads which xlOil creates.  This is described 
+below per toolkit in more detail.
+
+.. caution:
+
+    If another non-xlOil Excel addin uses the same GUI toolkit, it is very likely that Excel will crash.
 
 Qt Custom Task Panes
 ====================
 
-Qt support uses *PyQt5* or *PySide2* (but not both!). The examples below use *PyQt5* but
-*PySide2* can be substituted in place.  
+Qt support uses *PyQt5* or *PySide2* (but not both simultaneously!). The examples below use *PyQt5* 
+but *PySide2* can be substituted in place.  
 
 .. caution::
     You *must* import :any:`xloil.gui.pyqt5` (or `xloil.gui.pyside2`) before any other
@@ -192,11 +222,38 @@ We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
 
     pane.set_x(3)
 
-As *tkinter* does not have thread-safe signals, we use must ensure `set_x` is run on the correct
-thread. The :any:`xloil.gui.tkinter.Tk_thread` function behaves the same as `Qt_thread` described
-in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`.  The `__init__` method is always called on the 
-*tkinter* thread so we don't need to decorate it.
+As *tkinter* does not have thread-safe signals, we use must ensure `set_x` is run on the *Tk*
+thread, so we decorate it with :any:`xloil.gui.tkinter.Tk_thread`.  The `__init__` method is always 
+called on the *tkinter* thread so we don't need to decorate it.
 
+Tkinter Thread-safety
+_____________________
+
+The :any:`xloil.gui.tkinter.Tk_thread` function behaves the same as `Qt_thread` described
+in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`. 
+
+
+Task Pane Events
+================
+
+Custom task panes have three events which can be handled by defining methods in the subclass of 
+:any:`xloil.gui.CustomTaskPane` used to create the pane. The callbacks occur on Excel's main thread.
+The events are:
+
+::
+
+    def on_docked(self):
+        # Called when the user docks or undocks the pane. The dock position is in 'self.position'
+        ...
+
+    def on_visible(self, state: bool):
+        # Called when the user closes/shows the pane with the new visibility in 'state'
+        ...
+
+    def on_destroy(self):
+        # Called just before the pane is destroyed when the parent window is closed
+        super().on_destroy() # Important!
+        ...
 
 Task Pane registry
 ==================
@@ -210,9 +267,9 @@ We can search the registry by name for a task pane without having the :obj:`xloi
 
 ::
 
-    pane = xloil.find_task_pane("MyPane")
+    pane = xloil.gui.find_task_pane("MyPane")
 
-By default, xlOil looks for a pane attached to the active window, but this can be changed witha
+By default, xlOil looks for a pane attached to the active window, but this can be changed with
 arguments.  It is possible to create multiple panes with the same name, in which case this search
 could return either one.
 
