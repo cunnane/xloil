@@ -91,26 +91,37 @@ class OurTkPane(TkThreadTaskPane):
         xlo.log(f"Tk frame docking position: {self.position:}", level='info')
       
         
+
+_PENDING_PANES = dict()
+
+_PANE_NAMES = { 
+    'Tk': "MyTkPane", 
+    'Qt': "MyQtPane"
+}
+
 # We define a function to create a task pane using Tk or Qt. We first check 
 # that the pane has not already been created, then construct a instance of the
 # pane class, then attach it to the ExcelGUI object created later.
-#
-
-_PANES = {}
 
 async def make_task_pane(toolkit):
 
     global _excelgui
     
-    # We need to be careful in case the open pane button was clicked
-    # more than once before the pane got a chance to create
-    pane = _PANES.get(toolkit, None)
+    pane_name = _PANE_NAMES[toolkit]
+
+    key = (pane_name, xlo.app().windows.active.name)
+
+    pane = xlo.gui.find_task_pane(pane_name)
     if pane is not None:
-        if asyncio.isfuture(pane):
-            return await pane
-        else:
-            return pane
-    
+        xlo.log(f"Found pane: {key}")
+        return pane
+
+    # Since we are using async, the open pane button may have been 
+    # clicked more than once before the pane got a chance to create
+    pane_future = _PENDING_PANES.get(key, None)
+    if pane_future is not None:
+        return await pane_future
+
     # attach_pane can accept a CustomTaskPane instance, or a QWidget
     # instance or an awaitable to one of those things. You can also
     # pass a QWidget type which xlOil wrap in a QtThreadTaskPane and
@@ -120,21 +131,21 @@ async def make_task_pane(toolkit):
     # is just to demonstrate passing an awaitable)
     if toolkit == 'Tk':
         future = _excelgui.attach_pane_async(
-            name="MyTkPane",
+            name=pane_name,
             pane=Tk_thread().submit_async(OurTkPane))
     elif toolkit == 'Qt':
         future = _excelgui.attach_pane_async(
-            name="MyQtPane", 
+            name=pane_name, 
             pane=OurQtPane)
     else:
         raise Exception()
 
-    _PANES[toolkit] = future
+    _PENDING_PANES[key] = future
         
     pane = await future
     
-    _PANES[toolkit] = pane
-    
+    del _PENDING_PANES[key]
+
     return pane
      
 #----------------------
@@ -188,11 +199,11 @@ async def press_open_pane_button(ctrl):
 # 
 def combo_change(ctrl, value):
     
-    qt_pane = _PANES.get('Qt', None)
+    qt_pane = xlo.gui.find_task_pane(_PANE_NAMES['Qt'])
     if qt_pane:
         qt_pane.widget.set_progress(int(value))
         
-    tk_pane = _PANES.get('Tk', None)
+    tk_pane = xlo.gui.find_task_pane(_PANE_NAMES['Tk'])
     if tk_pane:
         tk_pane.set_progress(int(value))
       
