@@ -41,43 +41,28 @@ namespace xloil
           switch (dispidMember)
           {
           case 1:
-            VisibleStateChange((_CustomTaskPane*)rgvarg[0].pdispVal);
+            VisibleStateChange((Office::_CustomTaskPane*)rgvarg[0].pdispVal);
             break;
           case 2:
-            DockPositionStateChange((_CustomTaskPane*)rgvarg[0].pdispVal);
+            DockPositionStateChange((Office::_CustomTaskPane*)rgvarg[0].pdispVal);
             break;
           }
         }
         catch (const std::exception& e)
         {
-          XLO_ERROR("Error during COM event handler callback: {0}", e.what());
+          XLO_ERROR("CustomTaskPaneEventHandler: error during callback: {0}", e.what());
         }
 
         return S_OK;
       }
 
-      void destroy() noexcept
-      {
-        try
-        {
-          _handler->onDestroy();
-          disconnect();
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR(e.what());
-        }
-      }
-
     private:
-      HRESULT VisibleStateChange(
-        struct _CustomTaskPane* /*CustomTaskPaneInst*/)
+      HRESULT VisibleStateChange(Office::_CustomTaskPane*)
       {
         _handler->onVisible(_parent.getVisible());
         return S_OK;
       }
-      HRESULT DockPositionStateChange(
-        struct _CustomTaskPane* /*CustomTaskPaneInst*/)
+      HRESULT DockPositionStateChange(Office::_CustomTaskPane*)
       {
         _handler->onDocked();
         return S_OK;
@@ -93,6 +78,7 @@ namespace xloil
       Office::_CustomTaskPanePtr _pane;
       CComPtr<CustomTaskPaneEventHandler> _paneEvents;
       CComQIPtr<ITaskPaneHostControl> _hostingControl;
+      std::wstring _name;
 
     public:
       CustomTaskPaneCreator(
@@ -101,13 +87,20 @@ namespace xloil
         const IDispatch* window,
         const wchar_t* progId)
       {
+        if (!name)
+          XLO_THROW("CustomTaskPaneCreator: name must be non-null");
+
         XLO_DEBUG(L"Creating Custom Task Pane '{}'", name);
+        _name = name;
+        
         // Pasing vtMissing causes the pane to be attached to ActiveWindow
         auto targetWindow = window ? _variant_t(window) : vtMissing;
+
         _pane = ctpFactory.CreateCTP(
           progId ? progId : taskPaneHostControlProgId(),
           name, 
           targetWindow);
+
         if (!progId)
           _hostingControl = content();
       }
@@ -196,28 +189,38 @@ namespace xloil
 
       void destroy() override
       {
-        XLO_DEBUG(L"Destroying Custom Task Pane '{}'", getTitle());
+        XLO_DEBUG(L"Destroying Custom Task Pane '{}'", _name);
+
         if (_hostingControl)
           _hostingControl.Release();
         if (_paneEvents)
         {
-          _paneEvents->destroy();
+          _paneEvents->disconnect();
           _paneEvents.Release();
         }
+        // This delete will trigger onDestroy to be called on the event handler
+        // if we are using a hosting control.
         _pane->Delete();
       }
 
       void listen(const std::shared_ptr<ICustomTaskPaneEvents>& events) override
       {
         _paneEvents = CComPtr<CustomTaskPaneEventHandler>(
-          new CustomTaskPaneEventHandler(*this, events));
+            new CustomTaskPaneEventHandler(*this, events));
         _paneEvents->connect(_pane);
+        if (_hostingControl)
+          _hostingControl->AttachDestroyHandler(events);
       }
 
       void attach(size_t hwnd) override
       {
         if (_hostingControl)
+        {
+          XLO_DEBUG(L"Attaching task pane host control for pane {}", _name);
           _hostingControl->AttachWindow((HWND)hwnd);
+        }
+        else
+          XLO_INFO("ICustomTaskPane::attach only works for the built-in host control");
       }
     };
 

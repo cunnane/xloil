@@ -1,9 +1,11 @@
 #include "TaskPaneHostControl.h"
 #include "ClassFactory.h"
 #include <xloil/Log.h>
+#include <xloil/ExcelUI.h>
 #include <atlbase.h>
 #include <atlctl.h>
 
+using std::shared_ptr;
 
 namespace xloil
 {
@@ -24,6 +26,7 @@ namespace xloil
       HWND _attachedWindow = 0;
       HWND _previousParent = 0;
       LONG_PTR _previousWindowStyle = 0;
+      shared_ptr<ICustomTaskPaneEvents> _destroyHandler = nullptr;
 
       static const GUID _clsid;
 
@@ -42,10 +45,30 @@ namespace xloil
       {
         if (_attachedWindow == 0)
           return;
+
+        XLO_DEBUG("Detaching and destroying task pane with hwnd={#x}", (size_t)_attachedWindow);
+
+        // Restore parent and previous window style
         auto parent = ::SetParent(_attachedWindow, _previousParent);
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, _previousWindowStyle);
+
+        // Hide the window so it doesn't jump around the screen before its creator can destroy it
+        ::ShowWindow(_attachedWindow, SW_HIDE);
+
         RemoveWindowSubclass(parent, SubclassWndProc, (UINT_PTR)this);
         _attachedWindow = 0;
+
+        if (_destroyHandler)
+        {
+          try
+          {
+            _destroyHandler->onDestroy();
+          }
+          catch (const std::exception& e)
+          {
+            XLO_ERROR(e.what());
+          }
+        }
       }
 
       static const CLSID& WINAPI GetObjectCLSID()
@@ -53,32 +76,35 @@ namespace xloil
         return _clsid;
       }
 
-      /// <summary>
-      /// Given a window handle, make it a frameless child of the one of
-      /// our parent windows
-      /// </summary>
       void AttachWindow(HWND hwnd) override
       {
         _attachedWindow = hwnd;
         auto parent = GetAttachableParent();
         _previousParent = ::SetParent(_attachedWindow, parent);
 
-        // Subclass the parent so that when we get a WM_DESTROY, we can unattach
+        // Subclass the parent so that when we get a WM_DESTROY we can unattach
         // the window. Some GUI toolkits (e.g. Qt) object to their windows being
-        // destroyed from unexpected sources.
+        // destroyed from unexpected sources. Note the subclass id is 'this' which
+        // we cast back in the WndProc.
         SetWindowSubclass(parent, SubclassWndProc, (UINT_PTR)this, (DWORD_PTR)nullptr);
 
-        XLO_DEBUG("Custom task pane host control attached to window {0x}. Previous parent {0x}",
+        XLO_DEBUG("Task pane host control attached to window {#x}. Previous parent {#x}",
           (size_t)hwnd, (size_t)_previousParent);
-
+        
+        // Change style to frameless child
         _previousWindowStyle = ::GetWindowLongPtr(_attachedWindow, GWL_STYLE);
         auto style = (_previousWindowStyle | WS_CHILD) & ~WS_THICKFRAME & ~WS_CAPTION;
         ::SetWindowLongPtr(_attachedWindow, GWL_STYLE, style);
 
-        // Set the z-order and reposition the child at the top left of the parent
+        // Set the z-order and reposition the child at the top left of the parent.
         // Not sure why we need both of these!
         ::SetWindowPos(m_hWnd, _attachedWindow, 0, 0, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
         ::SetWindowPos(_attachedWindow, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
+      }
+
+      void AttachDestroyHandler(const std::shared_ptr<ICustomTaskPaneEvents>& handler) override
+      {
+        _destroyHandler = handler;
       }
 
       BEGIN_COM_MAP(TaskPaneHostControl)
