@@ -1,8 +1,4 @@
 class Arg:
-
-    class _EMPTY:
-        ...
-
     """
     Holds the description of a function argument. Can be used with the `xloil.func`
     decorator to specify the argument description.
@@ -20,6 +16,12 @@ class Arg:
             ...
 
     """
+
+    class _EMPTY:
+        """ Indicates the absence of a default argument """
+        ...
+
+
     def __init__(self, name, help="", typeof=None, default=_EMPTY, is_keywords=False):
         """
         Parameters
@@ -56,6 +58,9 @@ class Arg:
 
     @classmethod
     def from_signature(cls, name, param):
+        """
+        Constructs an `Arg` from a name and an `inspect.param`
+        """
         import inspect
 
         kind = param.kind
@@ -79,7 +84,7 @@ class Arg:
     @classmethod
     def full_argspec(cls, func):
         """
-        Returns a list of Arg for a given function which describe the function's arguments
+        Returns a list of `Arg` for a given function which describe the function's arguments
         """
         import inspect
         sig = inspect.signature(func)
