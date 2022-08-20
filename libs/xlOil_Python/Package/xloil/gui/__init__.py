@@ -40,8 +40,8 @@ class CustomTaskPane:
             called directly.
         """
         self.hwnd = await asyncio.wrap_future(self._get_hwnd())
-        self._frame = await frame
-        await self._frame.attach(self, self.hwnd)
+        self._pane = await frame
+        await self._pane.attach(self, self.hwnd)
         _TASK_PANES.add(self)
 
     def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
@@ -52,8 +52,8 @@ class CustomTaskPane:
             called directly.
         """
         self.hwnd = self._get_hwnd().result()
-        self._frame = frame.result()
-        self._frame.attach(self, self.hwnd).result()
+        self._pane = frame.result()
+        self._pane.attach(self, self.hwnd).result()
         _TASK_PANES.add(self)
         
     def _get_hwnd(self) -> typing.Awaitable[int]:
@@ -65,39 +65,39 @@ class CustomTaskPane:
     def on_destroy(self):
         """ Called before the pane is destroyed to release any resources """
         # Release internal task pane pointer
-        self._frame = None
+        self._pane = None
         # Remove ourselves from pane lookup table
         _TASK_PANES.discard(self)
 
     @property
-    def frame(self) -> TaskPaneFrame:
+    def pane(self) -> TaskPaneFrame:
         """Returns the TaskPaneFrame: a reference to the window holding the python GUI"""
-        return self._frame
+        return self._pane
 
     @property
     def visible(self) -> bool:
         """Returns True if the pane is currently shown"""
-        return self._frame.visible
+        return self._pane.visible
 
     @visible.setter
     def visible(self, value: bool):
-        self._frame.visible = value
+        self._pane.visible = value
 
     @property
     def size(self) -> typing.Tuple[int, int]:
         """Returns a tuple (width, height)"""
-        return self._frame.size
+        return self._pane.size
 
     @size.setter
     def size(self, value: typing.Tuple[int, int]):
-        self._frame.size = value
+        self._pane.size = value
 
     @property
     def position(self) -> str:
         """
         Returns the docking position: one of bottom, floating, left, right, top
         """
-        return self._frame.position
+        return self._pane.position
 
 def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane:
     """
@@ -134,12 +134,12 @@ def find_task_pane(title:str=None, workbook=None, window=None) -> CustomTaskPane
     else:
         hwnds = [xloil.app().windows.active.hwnd]
  
-    found = [x for x in _TASK_PANES if isinstance(x, CustomTaskPane) and x.frame.window.hwnd in hwnds]
+    found = [x for x in _TASK_PANES if isinstance(x, CustomTaskPane) and x.pane.window.hwnd in hwnds]
 
     if title is None:
         return found
     else:
-        return next((x for x in found if x.frame.title == title), None)
+        return next((x for x in found if x.pane.title == title), None)
 
 
 def _try_create_from_qwidget(obj) -> CustomTaskPane:
@@ -155,13 +155,22 @@ def _try_create_from_qwidget(obj) -> CustomTaskPane:
         from ._qtconfig import QT_IMPORT
         QWidget = QT_IMPORT("QtWidgets").QWidget
         
-        if isinstance(obj, type) and issubclass(obj, QWidget) or isinstance(obj, QWidget):
+        if (isinstance(obj, type) and issubclass(obj, QWidget)) or isinstance(obj, QWidget):
             from ._qtgui import QtThreadTaskPane, Qt_thread
             return Qt_thread().submit(QtThreadTaskPane, obj).result()
 
     except ImportError:
         pass
 
+    return obj
+
+def _try_create_from_wxframe(obj) -> CustomTaskPane:
+    import sys
+    if 'wx' in sys.modules:
+        import wx
+        if (isinstance(obj, type) and issubclass(obj, wx.Frame)) or isinstance(obj, wx.Frame):
+            from .wx import WxThreadTaskPane, wx_thread
+            return wx_thread().submit(WxThreadTaskPane, obj).result()
     return obj
 
 def _get_pane_name(pane):
@@ -188,8 +197,9 @@ async def _attach_task_pane_async(
      
     frame_future = gui._create_task_pane_frame(name, window)
 
-    # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
+    # A little convenience for Qt/Wx users to avoid needing to create a QtThreadTaskPane
     pane = _try_create_from_qwidget(pane)
+    pane = _try_create_from_wxframe(pane)
 
     if inspect.isawaitable(pane):
         pane = await pane
@@ -221,6 +231,7 @@ def _attach_task_pane(
 
     # A little convenience for Qt users to avoid needing to create a QtThreadTaskPane
     pane = _try_create_from_qwidget(pane)
+    pane = _try_create_from_wxframe(pane)
 
     pane._attach_frame(frame_future)
     
@@ -292,13 +303,16 @@ class _GuiExecutor(futures.Executor):
 
     def _main_loop(self):
 
+        name = self._thread.name
         try:
+            xloil.log(f"Initialising {name}", level="info")
             self._main()
+            xloil.log(f"Finalising {name}", level="info")
         except Exception as e:
-            xloil.log(f"{self._thread.name} failed: {e}", level='error')
+            xloil.log(f"{name} failed: {e}", level='error')
 
         self._broken = True
-
+    
     def _wrap(self, fn, sync=True, discard=False):
         """
             Called by Tk_thread, Qt_thread to implement their decorator 

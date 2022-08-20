@@ -91,11 +91,42 @@ class OurTkPane(TkThreadTaskPane):
         xlo.log(f"Tk frame docking position: {self.position:}", level='info')
 
 
+from xloil.gui.wx import wx_thread
+import wx
+
+class OurWxPane(wx.Frame):
+    def __init__(self):
+        # ensure the parent's __init__ is called
+        super().__init__(None, title='Hello')
+
+        # create a panel in the frame
+        pnl = wx.Panel(self)
+
+        # put some text with a larger bold font on it
+        st = wx.StaticText(pnl, label="Hello World!")
+        font = st.GetFont()
+        font.PointSize += 10
+        font = font.Bold()
+        st.SetFont(font)
+
+        self._gauge = wx.Gauge(pnl)
+
+        # and create a sizer to manage the layout of child widgets
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(st, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
+        sizer.Add(self._gauge, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
+        pnl.SetSizer(sizer)
+
+    @wx_thread
+    def set_progress(self, x: int):
+        self._gauge.SetValue(x)
+
 _PENDING_PANES = dict()
 
 _PANE_NAMES = { 
     'Tk': "MyTkPane", 
-    'Qt': "MyQtPane"
+    'Qt': "MyQtPane",
+    'wx': "MyWxPane"
 }
 
 # We define a function to create a task pane using Tk or Qt. We first check 
@@ -137,6 +168,10 @@ async def make_task_pane(toolkit):
         future = _excelgui.attach_pane_async(
             name=pane_name, 
             pane=OurQtPane)
+    elif toolkit == 'wx':
+        future = _excelgui.attach_pane_async(
+            name=pane_name, 
+            pane=OurWxPane)
     else:
         raise Exception()
 
@@ -178,7 +213,8 @@ def button_image(ctrl):
 # Maps button ids in the ribbon xml below to GUI toolkit names
 _BUTTON_MAP = { 
     "buttonTk": "Tk", 
-    "buttonQt": "Qt"
+    "buttonQt": "Qt",
+    "buttonWx": "wx"
 } 
 
 def get_button_label(ctrl, *args):
@@ -191,7 +227,7 @@ async def press_open_pane_button(ctrl):
     
     xlo.log(f"Open {toolkit} Pressed")
     
-    make_task_pane(toolkit)
+    await make_task_pane(toolkit)
 
     
 #
@@ -208,7 +244,11 @@ def combo_change(ctrl, value):
     tk_pane = xlo.gui.find_task_pane(_PANE_NAMES['Tk'])
     if tk_pane:
         tk_pane.set_progress(int(value))
-      
+
+    wx_pane = xlo.gui.find_task_pane(_PANE_NAMES['wx'])
+    if wx_pane:
+        wx_pane.frame.set_progress(int(value))
+
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
 #
@@ -225,6 +265,7 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
                     <group id="customGroup" label="MyButtons">
                         <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                        <button id="buttonWx" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
                          <item id="item1" label="33" />
                          <item id="item2" label="66" />
