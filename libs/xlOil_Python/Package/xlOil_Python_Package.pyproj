@@ -51,6 +51,9 @@
     <Compile Include="xloil\gui\pyside2.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="xloil\gui\tk_console.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="xloil\gui\wx.py">
       <SubType>Code</SubType>
     </Compile>

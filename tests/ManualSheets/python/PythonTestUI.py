@@ -251,6 +251,24 @@ def combo_change(ctrl, value):
 
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
+async def press_open_console_button(ctrl):
+
+    def sesame(root):
+        from xloil.gui.tkinter import TkConsole
+        import tkinter
+        import code
+
+        top_level = tkinter.Toplevel(root)
+        console = TkConsole(top_level, code.interact,
+            fg='white', bg='black', font='Consolas', insertbackground='red')
+        console.pack()
+        console.bind("<<CommandDone>>", lambda e: top_level.destroy())
+
+        top_level.deiconify()
+
+    from xloil.gui.tkinter import Tk_thread
+    await Tk_thread().submit_async(sesame, Tk_thread().root)
+
 #
 # We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
@@ -266,6 +284,7 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
                         <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <button id="buttonWx" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                        <button id="tkConsole" label="Console" size="large" onAction="pressOpenConsole" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
                          <item id="item1" label="33" />
                          <item id="item2" label="66" />
@@ -279,6 +298,7 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
     ''', 
     funcmap={
         'pressOpenPane': press_open_pane_button,
+        'pressOpenConsole': press_open_console_button,
         'comboChange': combo_change,
         'getButtonLabel': get_button_label,
         'buttonImg': button_image

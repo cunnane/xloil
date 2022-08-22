@@ -46,7 +46,7 @@ class TkExecutor(_GuiExecutor):
         self._root.destroy()
 
 
-_Tk_thread = None
+_Tk_thread = TkExecutor()
 
 def Tk_thread(fn=None, discard=False) -> TkExecutor:
     """
@@ -74,27 +74,18 @@ def Tk_thread(fn=None, discard=False) -> TkExecutor:
 
     """
 
-    global _Tk_thread
-
-    if _Tk_thread is None:
-        _Tk_thread = TkExecutor()
-        # Send this blocking no-op to ensure Tk is created on our thread now
-        _Tk_thread.submit(lambda: 0).result()
-
     return _Tk_thread if fn is None else _Tk_thread._wrap(fn, discard)
 
 if XLOIL_EMBEDDED:
     # Create thread on import - I'm not necessarily a fan of this blocking!
-    Tk_thread()
+    _Tk_thread.submit(lambda: 0).result()
 
 # Safe now we've created the Tk_thread
 import tkinter
 
 class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=Tk_thread):
     """
-        Wraps a Tk window to create a CustomTaskPane object. The constructor does 
-        nothing - override the `draw` method to draw the task pane and return a
-        *tkinter.Toplevel*.
+        Wraps a Tk window to create a CustomTaskPane object.
     """
 
     def __init__(self):
@@ -121,4 +112,6 @@ class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
     def on_destroy(self):
         super().on_destroy()
         Tk_thread().submit(lambda: self._top_level.destroy())
-        
+
+
+from .tk_console import TkConsole
