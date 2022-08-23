@@ -15,22 +15,22 @@ import inspect
 #---------------------------------
 #
 # We demonstrate how task panes can be created using Qt and Tk. We wrap the 
-# Qt pane creation in a try/except in case pyqt5 is not installed.
+# Qt pane creation in a try/except in case qtpy is not installed.
 #
 
 try:
-    # You must import `xloil.gui.pyqt5` before `PyQt5`, this allows xlOil to create
+    # You must import `xloil.gui.qtpy` before `qtpy`, this allows xlOil to create
     # a thread to manage the Qt GUI.  *All* interaction with the Qt GUI except emitting 
     # signals must be done on the GUI thread or Qt _will abort_.  Use `Qt_thread.submit(...)`
     # to send jobs to Qt's thread.
-    import xloil.gui.pyqt5
+    import xloil.gui.qtpy
     
-    from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
-    from PyQt5.QtCore import pyqtSignal, Qt
+    from qtpy.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
+    from qtpy.QtCore import Signal, Qt
     
     class OurQtPane(QWidget):
         
-        _progress = pyqtSignal(int)
+        _progress = Signal(int)
         
         def set_progress(self, x: int):
             # Use a signal to send the progress: this is thread safe
@@ -54,7 +54,7 @@ try:
             self.setLayout(layout)
                 
 except ImportError:
-
+    raise
     class OurQtPane:
         ...
    

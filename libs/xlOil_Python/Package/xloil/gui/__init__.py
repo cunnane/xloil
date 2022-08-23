@@ -7,6 +7,7 @@ import asyncio
 import typing
 import threading
 import inspect
+import sys
 
 _TASK_PANES = set()
 
@@ -149,23 +150,17 @@ def _try_create_from_qwidget(obj) -> CustomTaskPane:
         explicitly
     """
     try:
-        # This will raise an ImportError if Qt has not been properly
-        # setup by importing xloil.gui.pyqt5 (or pyside2). This check is
-        # very cheap: _qtconfig imports nothing.
-        from ._qtconfig import QT_IMPORT
-        QWidget = QT_IMPORT("QtWidgets").QWidget
-        
-        if (isinstance(obj, type) and issubclass(obj, QWidget)) or isinstance(obj, QWidget):
-            from ._qtgui import QtThreadTaskPane, Qt_thread
-            return Qt_thread().submit(QtThreadTaskPane, obj).result()
-
+        if 'qtpy' in sys.modules:
+            from qtpy.QtWidgets import QWidget
+            if (isinstance(obj, type) and issubclass(obj, QWidget)) or isinstance(obj, QWidget):
+                from xloil.gui.qtpy import QtThreadTaskPane, Qt_thread
+                return Qt_thread().submit(QtThreadTaskPane, obj).result() 
     except ImportError:
         pass
 
     return obj
 
 def _try_create_from_wxframe(obj) -> CustomTaskPane:
-    import sys
     if 'wx' in sys.modules:
         import wx
         if (isinstance(obj, type) and issubclass(obj, wx.Frame)) or isinstance(obj, wx.Frame):
@@ -305,9 +300,9 @@ class _GuiExecutor(futures.Executor):
 
         name = self._thread.name
         try:
-            xloil.log(f"Initialising {name}", level="info")
+            xloil.log(f"En taro Adun executor '{name}'", level="info")
             self._main()
-            xloil.log(f"Finalising {name}", level="info")
+            xloil.log(f"Finalising executor '{name}'", level="info")
         except Exception as e:
             xloil.log(f"{name} failed: {e}", level='error')
 

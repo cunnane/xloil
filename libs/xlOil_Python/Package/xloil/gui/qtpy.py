@@ -9,13 +9,12 @@ from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
 from xloil import log
 import xloil
 from xloil._core import XLOIL_EMBEDDED
-from ._qtconfig import QT_IMPORT
 import threading
 
 
 def _create_Qt_app():
 
-    QtCore = QT_IMPORT("QtCore")
+    from qtpy import QtCore
     def qt_msg_handler(msg_type, msg_log_context, msg_string):
 
         level = 'info'
@@ -42,8 +41,7 @@ def _create_Qt_app():
     # read the variable ourselves, then pass it as an argument. This is probably
     # because of the getenv vs GetEnvironmentVariable confusion discussed, 
     # for example, here https://bugs.python.org/issue16633
-    QApplication = QT_IMPORT("QtWidgets").QApplication
-
+    from qtpy.QtWidgets import QApplication
     import os
     ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH', None)
     
@@ -77,8 +75,7 @@ class QtExecutor(_GuiExecutor):
     def _main(self):
         self._app = _create_Qt_app()
 
-        QTimer = QT_IMPORT("QtCore").QTimer
-
+        from qtpy.QtCore import QTimer
         semaphore = QTimer()
         semaphore.timeout.connect(self._do_work)
         self._work_signal = semaphore
@@ -145,8 +142,7 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
     """
 
     def __init__(self, widget=None):
-        QWidget = QT_IMPORT("QtWidgets").QWidget
-
+        from qtpy.QtWidgets import QWidget
         if isinstance(widget, QWidget):
             self._widget = widget
         elif widget is not None:
@@ -168,8 +164,8 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
             # to the TaskPaneFrame, the attached window is turned into a frameless
             # child. If Qt is not informed, its geometry manager gets confused
             # and will core dump if the pane is made too small.
-            qt = QT_IMPORT("QtCore").Qt
-            widget.setWindowFlags(qt.FramelessWindowHint)
+            from qtpy.QtCore import Qt
+            widget.setWindowFlags(Qt.FramelessWindowHint)
 
             widget.show() # window handle does not exist before show
 
@@ -181,5 +177,3 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
         # Call super to detach the TaskPaneFrame for a cleaner shutdown
         super().on_destroy() 
         Qt_thread().submit(lambda: self._widget.destroy())
-        
-
