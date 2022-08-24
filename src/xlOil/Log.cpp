@@ -3,7 +3,6 @@
 #include <xlOil/Events.h>
 #include <xlOil/Interface.h>
 #include <xloil/State.h>
-#include <xloil/State.h>
 #include <xlOil/Throw.h>
 #include <xlOilHelpers/Exception.h>
 #include "LogWindowSink.h"
