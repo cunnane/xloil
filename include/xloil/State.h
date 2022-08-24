@@ -58,7 +58,7 @@ namespace xloil
     /// <summary>
     /// Internal usage
     /// </summary>
-    void initCoreContext(void* coreHInstance);
+    void setCorePaths(void* coreHInstance);
     /// <summary>
     /// Internal usage
     /// </summary>

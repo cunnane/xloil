@@ -67,7 +67,7 @@ namespace xloil
           theAddin.reset(new T());
 
           // Do this safely in single-thread mode
-          initMessageQueue();
+          initMessageQueue(Environment::excelProcess().hInstance);
 
           registerIntellisenseHook(XllInfo::xllPath.c_str());
 

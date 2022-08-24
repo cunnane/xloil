@@ -47,7 +47,9 @@ namespace xloil
         // settings, so any logging goes to the debug output.
         detail::loggerInitialise(spdlog::level::debug);
 
-        Environment::initCoreContext(theCoreModuleHandle);
+        Environment::setCorePaths(theCoreModuleHandle);
+
+        initMessageQueue(Environment::excelProcess().hInstance);
 
         XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 

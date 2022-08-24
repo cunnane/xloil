@@ -102,5 +102,5 @@ namespace xloil
   /// <summary>
   /// Internal use: called during Core DLL startup.
   /// </summary>
-  void initMessageQueue();
+  void initMessageQueue(void* excelInstance);
 }

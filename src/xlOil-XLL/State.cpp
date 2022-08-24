@@ -56,7 +56,7 @@ namespace xloil
       ourExcelState.hWnd = (long long)getExcelHWnd();
       ourExcelState.mainThreadId = GetCurrentThreadId();
     }
-    void initCoreContext(void* coreHInstance)
+    void setCorePaths(void* coreHInstance)
     {
       if (theCoreModuleHandle)
         return;
