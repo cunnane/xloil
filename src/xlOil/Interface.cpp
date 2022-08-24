@@ -206,8 +206,6 @@ namespace xloil
     registerLocalFuncs(_localFunctions, _workbookName.c_str(), funcSpecs, append);
   }
 
-
-
   void LinkedSource::init()
   {
     if (!linkedWorkbook().empty())
@@ -244,25 +242,26 @@ namespace xloil
     const wchar_t* fileName,
     const Event::FileAction action)
   {
-    if (fs::path(fileName) != fs::path(name()))
+    // Nothing to do if filename does not mach
+    if (_wcsicmp(fileName, _sourceName) != 0)
       return;
     
+    // TODO: assert check that directory name matches (it should!)
     runExcelThread([
-      self = std::static_pointer_cast<FileSource>(shared_from_this()),
-        filePath = fs::path(dirName) / fileName,
+        self = std::static_pointer_cast<FileSource>(shared_from_this()),
         action]()
       {
         switch (action)
         {
           case Event::FileAction::Modified:
           {
-            XLO_INFO(L"Module '{0}' modified, reloading.", filePath.c_str());
+            XLO_INFO(L"Module '{0}' modified, reloading.", self->name().c_str());
             self->reload();
             break;
           }
           case Event::FileAction::Delete:
           {
-            XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", filePath.c_str());
+            XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", self->name().c_str());
             AddinContext::deleteSource(self);
             break;
           }

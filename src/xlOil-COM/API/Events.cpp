@@ -4,11 +4,14 @@
 #include <xlOil/StringUtils.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil-COM/Connect.h>
+#include <xlOil/WindowsSlim.h>
+#include <xlOil/State.h>
+#include <xlOil/Throw.h>
 #include <map>
 #include <vector>
 #include <unordered_map>
 #include <array>
-#include <simplefilewatcher/include/FileWatcher/FileWatcher.h>
+#include <rdcfswatcher/rdc_fs_watcher.h>
 #include <string>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/stringize.hpp>
@@ -19,60 +22,102 @@ using std::weak_ptr;
 using std::make_shared;
 using std::unordered_map;
 using std::wstring;
+using std::set;
+using std::wstring;
+using std::pair;
 
 namespace xloil
 {
   namespace Event
   {
-    using namespace detail;
-    
-    static FW::FileWatcher theFileWatcher;
-
-    // Not exported, so separate
-    XLOIL_DEFINE_EVENT(AutoClose);
-
-#define XLO_DEF_EVENT(r, _, name) XLOIL_EXPORT XLOIL_DEFINE_EVENT(name);
-      BOOST_PP_SEQ_FOR_EACH(XLO_DEF_EVENT, _, XLOIL_STATIC_EVENTS)
-#undef XLO_DEF_EVENT
-
-    using DirectoryWatchEventBase = Event<void(const wchar_t*, const wchar_t*, FileAction)>;
-
-    struct DirectoryWatchEvent : public DirectoryWatchEventBase, public FW::FileWatchListener
+    namespace
     {
-      DirectoryWatchEvent(const std::wstring& path)
-        : DirectoryWatchEventBase((L"Watch_" + path).c_str())
-        , _lastTickCount(0)
-        , _watchId(theFileWatcher.addWatch(path, this, false))
+      void directoryWatchChange(int64_t id, const set<pair<wstring, uint32_t>>& notifications);
+
+      void directoryWatchError(int64_t id);
+
+      auto& theFileWatcher()
       {
-        XLO_DEBUG(L"Started directory watch on '{}'", path);
+        static RdcFSWatcher instance(directoryWatchChange, directoryWatchError);
+        return instance;
       }
 
-      virtual ~DirectoryWatchEvent()
+      using DirectoryWatchEventBase = Event<void(const wchar_t*, const wchar_t*, FileAction)>;
+
+      struct DirectoryWatchEvent : public DirectoryWatchEventBase
       {
-        XLO_DEBUG(L"Ended directory watch '{}'", name());
-        theFileWatcher.removeWatch(_watchId);
+        DirectoryWatchEvent(const std::wstring& path)
+          : DirectoryWatchEventBase((L"Watch_" + path).c_str())
+          , _lastTickCount(0)
+          , _directory(path)
+        {
+          theFileWatcher().addDirectory((intptr_t)this, path);
+          XLO_DEBUG(L"Started directory watch on '{}'", path);
+        }
+
+        virtual ~DirectoryWatchEvent()
+        {
+          XLO_DEBUG(L"Ended directory watch '{}'", name());
+          theFileWatcher().removeDirectory((intptr_t)this);
+        }
+
+        void handleFileAction(
+          const wstring& filename,
+          FileAction action)
+        {
+          if (filename.find(L'\\') != wstring::npos)
+            return;
+
+          // File updates seem to generate two identical calls so implement a time granularity
+          auto ticks = GetTickCount64();
+          if (ticks - _lastTickCount < 1000)
+            return;
+          _lastTickCount = ticks;
+
+          this->fire(_directory.c_str(), filename.c_str(), action);
+        }
+
+        auto& directory() const { return _directory; }
+
+      private:
+        decltype(GetTickCount64()) _lastTickCount;
+        wstring _directory;
+      };
+
+      void directoryWatchChange(int64_t id, const set<pair<wstring, uint32_t>>& notifications)
+      {
+        auto target = (DirectoryWatchEvent*)id;
+        for (const auto& notification : notifications)
+        {
+          FileAction fwAction;
+          switch (notification.second)
+          {
+          case FILE_ACTION_RENAMED_NEW_NAME:
+          case FILE_ACTION_ADDED:
+            fwAction = FileAction::Add;
+            break;
+          case FILE_ACTION_RENAMED_OLD_NAME:
+          case FILE_ACTION_REMOVED:
+            fwAction = FileAction::Delete;
+            break;
+          case FILE_ACTION_MODIFIED:
+            fwAction = FileAction::Modified;
+            break;
+          default:
+            return;
+          };
+          target->handleFileAction(notification.first, fwAction);
+        }
       }
 
-      void handleFileAction(
-        FW::WatchID,
-        const std::wstring& dir,
-        const std::wstring& filename,
-        FW::Action action) override
+      void directoryWatchError(int64_t id)
       {
-        // File updates seem to generate two identical calls so implement a time granularity
-        auto ticks = GetTickCount64();
-        if (ticks - _lastTickCount < 1000)
-          return;
-        _lastTickCount = ticks;
-        this->fire(dir.c_str(), filename.c_str(), FileAction(action));
-      }
-    private:
-      FW::WatchID _watchId;
-      decltype(GetTickCount64()) _lastTickCount;
-    };
+        auto target = (DirectoryWatchEvent*)id;
+        XLO_ERROR(L"Directory watcher for '{}' failed: {}", target->directory(), writeWindowsError());
+      };
 
-
-    static unordered_map<wstring, weak_ptr<DirectoryWatchEvent>> theDirectoryWatchers;
+      unordered_map<wstring, weak_ptr<DirectoryWatchEvent>> theDirectoryWatchers;
+    }
 
     XLOIL_EXPORT shared_ptr<DirectoryWatchEventBase> DirectoryChange(const std::wstring& path)
     {
@@ -91,5 +136,13 @@ namespace xloil
       auto [it, ins] = theDirectoryWatchers.emplace(path, event);
       return event;
     }
+
+    // This event is not exported, so defined separately
+    XLOIL_DEFINE_EVENT(AutoClose);
+
+    // Define all standard events
+#define XLO_DEF_EVENT(r, _, name) XLOIL_EXPORT XLOIL_DEFINE_EVENT(name);
+    BOOST_PP_SEQ_FOR_EACH(XLO_DEF_EVENT, _, XLOIL_STATIC_EVENTS)
+#undef XLO_DEF_EVENT
   }
 }
