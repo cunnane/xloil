@@ -40,7 +40,7 @@ namespace
   // `<xll path>,<serverId>,<version>`.  We are only interested in the *serverId*.
 	wstring findActiveIntelliServer()
 	{
-    auto active = xloil::getEnvVar(L"EXCELDNA_INTELLISENSE_ACTIVE_SERVER");
+    auto active = xloil::getEnvironmentVar(L"EXCELDNA_INTELLISENSE_ACTIVE_SERVER");
     if (active.empty())
       return active;
     auto comma = active.find_first_of(L',');

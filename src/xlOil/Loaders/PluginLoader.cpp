@@ -130,16 +130,7 @@ namespace xloil
               expandEnvironmentStrings(val));
             XLO_DEBUG(L"Setting environment variable: {}='{}'", key, value);
 
-            // The CRT (getenv) makes a copy of the environment variable block of the process, 
-            // on startup so we need ensure both the getenv block and Win32 environment are 
-            // modified.
-            // See some of the remarks here
-            // https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/getenv-wgetenv
-            // TODO: may not need to call win32 api func, see https://stackoverflow.com/questions/13742429
-            if (!SetEnvironmentVariable(key.c_str(), value.c_str()))
-              XLO_WARN(L"Failed to set environment variable '{}': {}", key, writeWindowsError());
-
-            if (_wputenv_s(key.c_str(), value.c_str()) == EINVAL)
+            if (!setEnvironmentVar(key.c_str(), value.c_str()))
               XLO_WARN(L"Failed to set environment variable '{}'");
           }
           // Load the plugin
@@ -199,7 +190,7 @@ namespace xloil
       catch (const std::exception& e)
       {
         XLO_ERROR(L"Plugin load failed for {0}: {1}\nPath={2}", 
-          pluginPath.wstring(), utf8ToUtf16(e.what()), getEnvVar(L"PATH"));
+          pluginPath.wstring(), utf8ToUtf16(e.what()), getEnvironmentVar(L"PATH"));
       }
 
       // Undo addition to DLL search path 

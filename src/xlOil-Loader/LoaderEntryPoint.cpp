@@ -71,7 +71,7 @@ namespace
     }
   }
 
-  auto loadCore()
+  auto findAllCoreDllImports()
   {
     // If the delay load fails, it will throw a SEH exception, so we must use
     // __try/__except to avoid this crashing Excel.
@@ -152,9 +152,9 @@ struct xlOilAddin
       }
 
       if (traceLoad)
-        writeLog(formatStr("Environment PATH=%s", getEnvVar("PATH").c_str()));
+        writeLog(formatStr("Environment PATH=%s", getEnvironmentVar("PATH").c_str()));
     
-      if (!loadCore())
+      if (!findAllCoreDllImports())
         writeLog("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
 
       SetDllDirectory(NULL);

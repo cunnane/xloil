@@ -121,7 +121,7 @@ namespace xloil
       fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
     
     // Look in the user's appdata
-    path = fs::path(getEnvVar(L"APPDATA")) / L"xlOil" / settingsFileName;
+    path = fs::path(getEnvironmentVar(L"APPDATA")) / L"xlOil" / settingsFileName;
 
     std::error_code fsErr;
     // Then check the same directory as the dll itself
