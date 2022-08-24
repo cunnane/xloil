@@ -1,7 +1,9 @@
 """
-    Do not import this module directly
+    You must import this module before any other mention of Qt or Pyside: this allows xlOil to 
+    create a thread to manage the Qt GUI and the Qt app object.  *All* interaction with the 
+    *Qt* must be done on that thread or crashes will ensue.  Use `Qt_thread.submit(...)`
+    or the `@Qt_thread` to ensure functions are run on the thread.
 """
-
 import sys
 import concurrent.futures as futures
 import concurrent.futures.thread
@@ -10,7 +12,6 @@ from xloil import log
 import xloil
 from xloil._core import XLOIL_EMBEDDED
 import threading
-
 
 def _create_Qt_app():
 
@@ -36,20 +37,8 @@ def _create_Qt_app():
 
     QtCore.qInstallMessageHandler(qt_msg_handler)
 
-
-    # Qt seems to really battle with reading environment variables so we must 
-    # read the variable ourselves, then pass it as an argument. This is probably
-    # because of the getenv vs GetEnvironmentVariable confusion discussed, 
-    # for example, here https://bugs.python.org/issue16633
-    from qtpy.QtWidgets import QApplication
-    import os
-    ppp = os.environ.get('QT_QPA_PLATFORM_PLUGIN_PATH', None)
-    
-    log(f"Starting Qt on thread {threading.get_native_id()} " +
-        f"with platform-plugin-path={ppp}", level="info")
-
-    app = QApplication([] if ppp is None else ['','-platformpluginpath', ppp])
-
+    log.info(f"Starting Qt on thread {threading.get_native_id()}")
+    app = QApplication([])
     return app
 
 class QtExecutor(_GuiExecutor):

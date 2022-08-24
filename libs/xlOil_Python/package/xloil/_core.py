@@ -8,6 +8,17 @@ import sys
 XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
 XLOIL_READTHEDOCS = 'READTHEDOCS' in os.environ
 
+if XLOIL_EMBEDDED:
+    """
+    This looks like hocus pocus, but if we don't do it Qt (and possibly others)
+    will fail to find environment variables we set prior to even loading the 
+    python3.dll. I suspect this is something to do with having different environment
+    blocks per version of the C runtime. This seems like the easist workaround 
+    for now.
+    """
+    for name, val in os.environ.items():
+        os.environ[name] = val
+
 def _fix_module_for_docs(namespace, target, replace):
     """
         When sphinx autodoc reads python objects, it uses their __module__
