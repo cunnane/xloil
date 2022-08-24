@@ -37,6 +37,7 @@ def _create_Qt_app():
 
     QtCore.qInstallMessageHandler(qt_msg_handler)
 
+    from qtpy.QtWidgets import QApplication
     log.info(f"Starting Qt on thread {threading.get_native_id()}")
     app = QApplication([])
     return app
