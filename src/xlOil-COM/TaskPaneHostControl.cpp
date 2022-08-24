@@ -5,6 +5,8 @@
 #include <atlbase.h>
 #include <atlctl.h>
 
+#pragma comment(lib, "comctl32.lib")
+
 using std::shared_ptr;
 
 namespace xloil
