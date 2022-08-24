@@ -54,7 +54,6 @@ try:
             self.setLayout(layout)
                 
 except ImportError:
-    raise
     class OurQtPane:
         ...
    
@@ -63,7 +62,7 @@ except ImportError:
 # interactions with tkinter must take place via *Tk_thread*.
 from xloil.gui.tkinter import TkThreadTaskPane, Tk_thread
 
-# Unlike Qt, it's not common to derive the from a tkinter object.
+# Unlike Qt, it's not (I think) common to derive the from a tkinter object.
 # Instead, we derive from `TkThreadTaskPane`, which derives from `CustomTaskPane`
 
 class OurTkPane(TkThreadTaskPane):
@@ -91,35 +90,41 @@ class OurTkPane(TkThreadTaskPane):
         xlo.log(f"Tk frame docking position: {self.position:}", level='info')
 
 
-from xloil.gui.wx import wx_thread
-import wx
+# Create a wxPython task pane, but wrap in a try..except in case wx is not installed
+try:
+    from xloil.gui.wx import wx_thread
+    import wx
 
-class OurWxPane(wx.Frame):
-    def __init__(self):
-        # ensure the parent's __init__ is called
-        super().__init__(None, title='Hello')
+    class OurWxPane(wx.Frame):
+        def __init__(self):
+            # ensure the parent's __init__ is called
+            super().__init__(None, title='Hello')
 
-        # create a panel in the frame
-        pnl = wx.Panel(self)
+            # create a panel in the frame
+            pnl = wx.Panel(self)
 
-        # put some text with a larger bold font on it
-        st = wx.StaticText(pnl, label="Hello World!")
-        font = st.GetFont()
-        font.PointSize += 10
-        font = font.Bold()
-        st.SetFont(font)
+            # put some text with a larger bold font on it
+            st = wx.StaticText(pnl, label="Hello World!")
+            font = st.GetFont()
+            font.PointSize += 10
+            font = font.Bold()
+            st.SetFont(font)
 
-        self._gauge = wx.Gauge(pnl)
+            self._gauge = wx.Gauge(pnl)
 
-        # and create a sizer to manage the layout of child widgets
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(st, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
-        sizer.Add(self._gauge, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
-        pnl.SetSizer(sizer)
+            # and create a sizer to manage the layout of child widgets
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.Add(st, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
+            sizer.Add(self._gauge, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
+            pnl.SetSizer(sizer)
 
-    @wx_thread
-    def set_progress(self, x: int):
-        self._gauge.SetValue(x)
+        @wx_thread
+        def set_progress(self, x: int):
+            self._gauge.SetValue(x)
+
+except ImportError:
+    class OurWxPane:
+        ...
 
 _PENDING_PANES = dict()
 
@@ -251,7 +256,7 @@ def combo_change(ctrl, value):
 
     return "NotSupposedToReturnHere" # check this doesn't cause an error
 
-async def press_open_console_button(ctrl):
+async def press_open_console_button_tk(ctrl):
 
     def sesame(root):
         from xloil.gui.tkinter import TkConsole
@@ -261,13 +266,24 @@ async def press_open_console_button(ctrl):
         top_level = tkinter.Toplevel(root)
         console = TkConsole(top_level, code.interact,
             fg='white', bg='black', font='Consolas', insertbackground='red')
-        console.pack()
+        console.pack(expand=True, fill=tkinter.BOTH)
         console.bind("<<CommandDone>>", lambda e: top_level.destroy())
 
         top_level.deiconify()
 
     from xloil.gui.tkinter import Tk_thread
     await Tk_thread().submit_async(sesame, Tk_thread().root)
+
+async def press_open_console_button_qt(ctrl):
+
+    def sesame():
+        from xloil.gui.qt_console import create_qtconsole_inprocess
+        console = create_qtconsole_inprocess()
+        console.show()
+        return console
+
+    from xloil.gui.qtpy import Qt_thread
+    await Qt_thread().submit_async(sesame)
 
 #
 # We construct the ExcelGUI (actually a handle to a COM addin) using XML to describe 
@@ -284,7 +300,8 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
                         <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
                         <button id="buttonWx" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
-                        <button id="tkConsole" label="Console" size="large" onAction="pressOpenConsole" />
+                        <button id="tkConsole" label="Tk Console" size="large" onAction="pressOpenConsoleTk" />
+                        <button id="qtConsole" label="Qt Console" size="large" onAction="pressOpenConsoleQt" />
                         <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
                          <item id="item1" label="33" />
                          <item id="item2" label="66" />
@@ -298,7 +315,8 @@ _excelgui = xlo.ExcelGUI(ribbon=r'''
     ''', 
     funcmap={
         'pressOpenPane': press_open_pane_button,
-        'pressOpenConsole': press_open_console_button,
+        'pressOpenConsoleTk': press_open_console_button_tk,
+        'pressOpenConsoleQt': press_open_console_button_qt,
         'comboChange': combo_change,
         'getButtonLabel': get_button_label,
         'buttonImg': button_image
