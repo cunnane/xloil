@@ -45,7 +45,11 @@ class _Handler_pdb_window:
         import pdb
         console = TkConsole(top_level, lambda: pdb.post_mortem(trace),
             fg='white', bg='black', font='Consolas', insertbackground='red')
-        console.pack()
+        
+        # Auto resize widget with window
+        console.pack(expand=True, fill=tk.BOTH)
+
+        # Destroy window if pdb exits
         console.bind("<<CommandDone>>", lambda e: top_level.destroy())
 
         top_level.deiconify()
