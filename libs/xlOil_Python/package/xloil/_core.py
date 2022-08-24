@@ -13,8 +13,8 @@ if XLOIL_EMBEDDED:
     This looks like hocus pocus, but if we don't do it Qt (and possibly others)
     will fail to find environment variables we set prior to even loading the 
     python3.dll. I suspect this is something to do with having different environment
-    blocks per version of the C runtime. This seems like the easist workaround 
-    for now.
+    blocks per version of the C runtime. See discussion https://bugs.python.org/issue16633
+    This seems like the easist workaround for now.
     """
     for name, val in os.environ.items():
         os.environ[name] = val

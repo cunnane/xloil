@@ -398,7 +398,7 @@ def func(fn=None,
             if return_type is not None:
                 spec.return_converter = find_return_converter(return_type)
 
-            log(f"Found func: {str(spec)}", level="debug")
+            log(f"Declared excel func: {str(spec)}", level="debug")
   
             if register: # and inspect.isfunction(fn):
                 _add_pending_funcs(inspect.getmodule(fn), [spec])
@@ -431,21 +431,23 @@ def scan_module(module, addin=None):
         to import xloil.importer which registers a hook on the import function.
     """
 
+    # Enabling this generates a large amount of unhelpful output
+    # log.trace(f"Scanning module {module}")
+
     # We quickly discard modules which do not contain xloil declarations 
     pending_funcs = getattr(module, _LANDMARK_TAG, None) 
     if pending_funcs is None or not any(pending_funcs):
         return 0
 
     with _scan_module_mutex:
-        # Check the pending funcs haven't been processed by another thread
-        # then copy and clear. Other threads can enter this function triggered
-        # by Excel's events
+        # Check the pending funcs haven't been processed by another thread then copy 
+        # and clear. Other threads can enter this function triggered by Excel's events
         if not any(pending_funcs):
             return 0
         func_list = list(pending_funcs)
         pending_funcs.clear()
 
-        log(f"Found xloil functions in {module}", level="debug")
+        log.debug(f"Found xloil functions in {module}")
 
         if addin is None:
             from .importer import source_addin

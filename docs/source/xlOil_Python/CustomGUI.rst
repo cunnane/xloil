@@ -96,7 +96,7 @@ Custom Task Panes
 
 `Custom task panes <https://docs.microsoft.com/en-us/visualstudio/vsto/custom-task-panes>`_ are user 
 interface panels that are usually docked to one side of a window in the Excel application. They can 
-contain a *Qt* or *Tk* interface, or any suitable custom COM control. 
+contain a *Qt*, *Tk* or *wx* interface, or any suitable custom COM control. 
 
 Custom task panes are created using the :any:`xloil.ExcelGUI` object. There is no need to create a ribbon 
 as well, but task panes are normally opened using a ribbon button, because Excel does not provide a 
@@ -124,20 +124,20 @@ below per toolkit in more detail.
 Qt Custom Task Panes
 ====================
 
-Qt support uses *PyQt5* or *PySide2* (but not both simultaneously!). The examples below use *PyQt5* 
-but *PySide2* can be substituted in place.  
+Qt support uses *qtpy* which auto-detects the Qt bindings (PySide/PyQt) and standardises the 
+small syntactic differences between the libraries.
 
 .. caution::
-    You *must* import :any:`xloil.gui.pyqt5` (or `xloil.gui.pyside2`) before any other
-    use of Qt.  This allows xlOil to create and the *QApplication* on its own thread.
+    You *must* import :any:`xloil.gui.qtpy` before any other use of Qt.  This allows xlOil 
+    to create and the *QApplication* on its own thread.
 
 It's common in Qt GUIs to inherit from `QWidget`, so xlOil allows you to create a pane
 from a `QWidget`:
 
 ::
 
-    import xloil.gui.pyqt5  # or import xloil.gui.pyside2       
-    from PyQt5.QtWidgets import QWidget     
+    import xloil.gui.qtpy
+    from qtpy.QtWidgets import QWidget     
 
     class QtTaskPane(QWidget):
         def __init__(self):
@@ -154,11 +154,12 @@ from a `QWidget`:
 
 The :any:`xloil.ExcelGUI.attach_pane` call creates a task pane with the specified name.  If ``pane`` 
 is a *type* which inherits from `QWidget`, it is constructed (on the Qt thread, see below)
-and placed in a :any:`xloil.gui.pyqt5.QtThreadTaskPane` then attached to the Excel window.
+and placed in a :any:`xloil.gui.qtpy.QtThreadTaskPane` then attached to the Excel window.
 
 To talk to your widget, it's best to set up a system of Qt 
 `signals <https://wiki.qt.io/Qt_for_Python_Signals_and_Slots>`_ as these are thread-safe. 
-(Note the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_) 
+(Note the `syntax differs slightly in PyQt5 <https://www.pythonguis.com/faq/pyqt5-vs-pyside2/>`_
+but it is standardised by *qtpy*) 
 
 
 Qt Thread-safety
@@ -189,8 +190,8 @@ Tkinter Custom Task Panes
 =========================
 
 We create a class which derives from :any:`xloil.gui.tkinter.TkThreadTaskPane` (which in turn 
-derives from :any:`xloil.gui.CustomTaskPane`).  Unlike Qt, it's not common to derive the from 
-a *tkinter* object.
+derives from :any:`xloil.gui.CustomTaskPane`).  Unlike Qt, it's not (I think) as common to derive
+from a *tkinter.Frame* object.
 
 We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
 
@@ -222,14 +223,50 @@ We draw the window into the *tkinter.Toplevel* contained in `self.top_level`.
 
     pane.set_x(3)
 
-As *tkinter* does not have thread-safe signals, we use must ensure `set_x` is run on the *Tk*
-thread, so we decorate it with :any:`xloil.gui.tkinter.Tk_thread`.  The `__init__` method is always 
-called on the *tkinter* thread so we don't need to decorate it.
+As *tkinter* does not have thread-safe signals, although it does have events which could be used here, 
+but for illustration, we ensure `set_x` is run on the *Tk* thread, by decorating it with 
+:any:`xloil.gui.tkinter.Tk_thread`.  The `__init__` method is always called on the *tkinter* thread 
+so we don't need to decorate it.
 
 Tkinter Thread-safety
 _____________________
 
 The :any:`xloil.gui.tkinter.Tk_thread` function behaves the same as `Qt_thread` described
+in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`. 
+
+
+wxPython Custom Task Panes
+==========================
+
+It's common in wx GUIs to inherit from `wx.Frame`, so xlOil allows you to create a pane
+from a `wx.Frame`:
+
+::
+
+    from xloil.gui.wx import wx_thread
+    import wx
+
+    class OurWxPane(wx.Frame):
+        def __init__(self):
+            super().__init__(None, title='Hello')
+            ...
+
+        @wx_thread
+        def set_progress(self, x: int):
+            ...
+
+    excelui = xlo.create_gui(...)
+    pane = excelui.attach_pane('MyPane', pane=OurWxPane)
+
+    # The frame is in the pane's `frame` attribute
+    pane.frame.set_progress(3)
+
+We ensure `set_progress` is run on the *wx* thread, by decorating it with :any:`xloil.gui.wx.wx_thread`.
+
+wxPython Thread-safety
+______________________
+
+The :any:`xloil.gui.wx.wx_thread` function behaves the same as `Qt_thread` described
 in :ref:`xlOil_Python/CustomGUI:Qt Thread-safety`. 
 
 
