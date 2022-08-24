@@ -50,9 +50,16 @@ namespace xloil
           }
           return levelFromStr(toLower((string)py::str(level)));
         }
-
         void writeToLog(const char* message, const py::object& level)
         {
+          writeToLogImpl(message, toSpdLogLevel(level));
+        }
+
+        void writeToLogImpl(const char* message, spdlog::level::level_enum level)
+        {
+          if (!spdlog::default_logger_raw()->should_log(level))
+            return;
+
           auto frame = PyEval_GetFrame();
           spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
           if (frame)
@@ -62,13 +69,19 @@ namespace xloil
             source.filename = PyUnicode_AsUTF8(code->co_filename);
             source.funcname = PyUnicode_AsUTF8(code->co_name);
           }
-          const auto spdLevel = toSpdLogLevel(level);
+
           py::gil_scoped_release releaseGil;
           spdlog::default_logger_raw()->log(
             source,
-            spdLevel,
+            level,
             message);
         }
+
+        void trace(const char* message) { writeToLogImpl(message, spdlog::level::trace); }
+        void debug(const char* message) { writeToLogImpl(message, spdlog::level::debug); }
+        void info(const char* message) { writeToLogImpl(message, spdlog::level::info); }
+        void warn(const char* message) { writeToLogImpl(message, spdlog::level::warn); }
+        void error(const char* message) { writeToLogImpl(message, spdlog::level::err); }
 
         unsigned getLogLevel()
         {
@@ -104,6 +117,21 @@ namespace xloil
             )",
             py::arg("msg"),
             py::arg("level") = 20)
+          .def("trace", &LogWriter::trace, 
+            "Writes a log message at the 'trace' level",
+            py::arg("msg"))
+          .def("debug", &LogWriter::debug, 
+            "Writes a log message at the 'debug' level", 
+            py::arg("msg"))
+          .def("info", &LogWriter::info, 
+            "Writes a log message at the 'info' level", 
+            py::arg("msg"))
+          .def("warn", &LogWriter::warn, 
+            "Writes a log message at the 'warn' level", 
+            py::arg("msg"))
+          .def("error", &LogWriter::error, 
+            "Writes a log message at the 'error' level", 
+            py::arg("msg"))
           .def_property("level", 
             &LogWriter::getLogLevel,
             &LogWriter::setLogLevel,
