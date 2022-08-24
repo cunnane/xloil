@@ -166,7 +166,7 @@ def _install_hook():
     import _imp
 
     class LoadAndScan(SourceFileLoader):
-        def exec_module(self, module):
+         def exec_module(self, module):
             super().exec_module(module)
             scan_module(module)
 
@@ -175,5 +175,10 @@ def _install_hook():
     bytecode   = SourcelessFileLoader, BYTECODE_SUFFIXES
 
     sys.path_hooks.insert(0, FileFinder.path_hook(*[extensions, source, bytecode]))
+
+    importlib.invalidate_caches()
+    sys.path_importer_cache.clear()
+
+    log.debug("Installed importlib hook to call scan_module")
 
 _install_hook()
