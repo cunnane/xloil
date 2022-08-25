@@ -33,7 +33,7 @@ class Test_SpreadsheetRunner(unittest.TestCase):
         # Uncomment these lines to help debugging. Note the debugger
         # can be attached to the Excel *or* python process
         #input("Attach debugger now...")
-        #app.visible = True
+        app.visible = True
 
         test_results = {}
         for filename in test_sheets:
