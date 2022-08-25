@@ -1549,6 +1549,26 @@ class _LogWriter():
         """
         Do not construct this class - a singleton instance is created by xlOil.
         """
+    def debug(self, msg: str) -> None: 
+        """
+        Writes a log message at the 'debug' level
+        """
+    def error(self, msg: str) -> None: 
+        """
+        Writes a log message at the 'error' level
+        """
+    def info(self, msg: str) -> None: 
+        """
+        Writes a log message at the 'info' level
+        """
+    def trace(self, msg: str) -> None: 
+        """
+        Writes a log message at the 'trace' level
+        """
+    def warn(self, msg: str) -> None: 
+        """
+        Writes a log message at the 'warn' level
+        """
     @property
     def level(self) -> int:
         """

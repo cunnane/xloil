@@ -169,11 +169,11 @@ All *Qt* interactions other than signals must take place in the same thread, or 
 will abort.  xlOil creates a special Qt thread which runs the Qt event loop, and 
 constructs any task panes on that thread.
 
-To run commands on xlOil's *Qt* thread, use the :any:`xloil.gui.pyqt5.Qt_thread` object
+To run commands on xlOil's *Qt* thread, use the :any:`xloil.gui.qtpy.Qt_thread` object
 
 ::
 
-    from xloil.gui.pyqt5 import Qt_thread
+    from xloil.gui.qtpy import Qt_thread
     future = Qt_thread().submit(func, *args)        # returns a concurrent.futures.Future
     future2 = Qt_thread().submit_async(func, *args) # returns an asyncio.Future
     future.result()                                 # Blocks if result is required now

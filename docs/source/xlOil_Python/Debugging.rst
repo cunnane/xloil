@@ -19,8 +19,6 @@ do this execute the following in a loaded module:
 
 Alternatively, excecute `=xloPyDebug("pdb")` in a cell; give no argument to turn off debugging.
 
-
-
 Current debuggers supported are:
 
     * 'pdb': opens a console window with pdb active at the exception point
