@@ -241,10 +241,10 @@ namespace xloil
     {
       std::basic_string<TChar> s;
       s.resize(initialSize);
-      long len;
+      intptr_t len;
       // We assume, hopefully correctly, that the bufWriter function on
       // failure returns either < 0 or the required buffer length.
-      while ((len = bufWriter(s.data(), s.length())) > s.length())
+      while ((len = (intptr_t)bufWriter(s.data(), s.length())) > (intptr_t)s.length())
         s.resize(len < 0 ? s.size() * 2 : (size_t)len);
 
       // Now resize the string to the correct size.  Some windows functions, 
