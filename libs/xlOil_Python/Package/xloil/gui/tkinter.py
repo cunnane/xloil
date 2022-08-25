@@ -46,7 +46,12 @@ class TkExecutor(_GuiExecutor):
         self._root.destroy()
 
 
-_Tk_thread = TkExecutor()
+_Tk_thread = None
+
+if XLOIL_EMBEDDED:
+    _Tk_thread = TkExecutor()
+    # Create thread on import - I'm not necessarily a fan of this blocking!
+    _Tk_thread.submit(lambda: 0).result()
 
 def Tk_thread(fn=None, discard=False) -> TkExecutor:
     """
@@ -76,9 +81,7 @@ def Tk_thread(fn=None, discard=False) -> TkExecutor:
 
     return _Tk_thread if fn is None else _Tk_thread._wrap(fn, discard)
 
-if XLOIL_EMBEDDED:
-    # Create thread on import - I'm not necessarily a fan of this blocking!
-    _Tk_thread.submit(lambda: 0).result()
+
 
 # Safe now we've created the Tk_thread
 import tkinter

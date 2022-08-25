@@ -38,20 +38,26 @@ class WxExecutor(_GuiExecutor):
  
         # Thread main loop, run until quit
         self._app.MainLoop()
+        
+        # See https://stackoverflow.com/questions/49304429/
+        wx.DisableAsserts()
 
         for window in wx.GetTopLevelWindows():
             window.Destroy()
 
         self._app = None
 
-        # See https://stackoverflow.com/questions/49304429/
-        wx.DisableAsserts()
 
     def _shutdown(self):
         self._app.ExitMainLoop()
 
 
-_wx_thread = WxExecutor()
+_wx_thread = None
+
+if XLOIL_EMBEDDED:
+    _wx_thread = WxExecutor()
+    # Send this blocking no-op to ensure wx is created on our thread now
+    _wx_thread.submit(lambda: 0).result()
 
 def wx_thread(fn=None, discard=False) -> WxExecutor:
     """
@@ -80,12 +86,6 @@ def wx_thread(fn=None, discard=False) -> WxExecutor:
     """
     global _wx_thread
     return _wx_thread if fn is None else _wx_thread._wrap(fn, discard)
-
-if XLOIL_EMBEDDED:
-    # Create thread on import - I'm not necessarily a fan of this blocking!
-    # Send this blocking no-op to ensure wx is created on our thread now
-    _wx_thread.submit(lambda: 0).result()
-
 
 # Safe now we've created the wx_thread
 import wx
