@@ -67,6 +67,56 @@ namespace xloil
     col_t _nCols;
     col_t _baseNumCols;
   };
+
+
+  /// <summary>
+  /// Yes I know there's one in boost and there's ranges::stride_view in C++23 but we're
+  /// in 2022 and I don't want to include boost to save 20 lines!
+  /// </summary>
+  template<class T>
+  class StrideIterator
+  {
+  public:
+    using iterator = StrideIterator<T>;
+
+    StrideIterator(T start, ptrdiff_t stride)
+      : _p(start)
+      , _stride(stride)
+    {}
+    auto& operator++()
+    {
+      _p += _stride;
+      return *this;
+    }
+    auto& operator--()
+    {
+      _p -= _stride;
+      return *this;
+    }
+    auto operator++(int)
+    {
+      iterator copy = *this;
+      ++(*this);
+      return copy;
+    }
+    auto operator--(int)
+    {
+      iterator copy = *this;
+      --(*this);
+      return copy;
+    }
+
+    bool operator==(iterator other) const { return _p == other._p; }
+    bool operator!=(iterator other) const { return !(*this == other); }
+
+    const auto& operator*() const { return *_p; }
+    auto& operator*() { return *_p; }
+    auto* operator->() { return &*_p; }
+
+  private:
+    T _p;
+    ptrdiff_t _stride;
+  };
 }
 
 template<> struct std::iterator_traits<xloil::ExcelArrayIterator>
@@ -75,6 +125,15 @@ template<> struct std::iterator_traits<xloil::ExcelArrayIterator>
   using value_type = xloil::ExcelObj;
   using reference = const value_type&;
   using pointer = const value_type*;
+  using difference_type = size_t;
+};
+
+template<class T> struct std::iterator_traits<xloil::StrideIterator<T>>
+{
+  using iterator_category = std::bidirectional_iterator_tag;
+  using value_type = typename std::iterator_traits<T>::value_type;
+  using reference = typename std::iterator_traits<T>::reference;
+  using pointer = typename std::iterator_traits<T>::pointer;
   using difference_type = size_t;
 };
 
@@ -103,7 +162,7 @@ namespace xloil
     XLOIL_EXPORT explicit ExcelArray(const ExcelObj& obj, bool trim = true);
 
     /// <summary>
-    /// Creates an ExcelArray which is a subarry of a given one. It extends from 
+    /// Creates an ExcelArray which is a subarray of a given one. It extends from 
     /// (fromRow, fromCol) to (toRow, toCol) not including the right-hand ends.
     /// 
     /// Negative values for the parameters are interpreted as offsets from nRows and 
@@ -144,9 +203,8 @@ namespace xloil
     }
 
     /// <summary>
-    /// Retrives the n-th element in the array, working row-wise.
+    /// Retrives the n-th element in the array, working row-wise. Rather slow so use sparingly.
     /// </summary>
-    /// <param name="n"></param>
     /// <returns>A const reference to the n-th element</returns>
     const ExcelObj& operator()(size_t n) const
     {
@@ -157,18 +215,15 @@ namespace xloil
     /// <summary>
     /// Retrieves the i,j-th element without bounds checking
     /// </summary>
-    /// <param name="row"></param>
-    /// <param name="col"></param>
     /// <returns>A const reference to the i,j-th element</returns>
     const ExcelObj& at(row_t row, col_t col) const
     {
       return *(row_begin(row) + col);
     }
     /// <summary>
-    /// Retrives the n-th element in the array, working row-wise without
-    /// bounds checking.
+    /// Retrives the n-th element in the array, working row-wise without bounds checking.
+    /// Rather slow so use sparingly.
     /// </summary>
-    /// <param name="n"></param>
     /// <returns>A const reference to the n-th element</returns>
     const ExcelObj& at(size_t n) const
     {
@@ -217,10 +272,10 @@ namespace xloil
     /// unless the array has zero size, in which case returns zero.
     /// </summary>
     /// <returns></returns>
-    uint8_t dims() const 
+    uint8_t dims() const
     {
-      return _rows > 1 && _columns > 1 
-        ? 2 
+      return _rows > 1 && _columns > 1
+        ? 2
         : (_rows == 0 || _columns == 0 ? 0 : 1);
     }
 
@@ -229,14 +284,33 @@ namespace xloil
     /// is only valid for the specified row, it does not wrap to the next row,
     /// use <see cref="ExcelArray::begin"/> for that functionality.
     /// </summary>
-    /// <param name="i"></param>
-    const ExcelObj* row_begin(row_t i) const  { return _data + i * (row_t)_baseCols; }
+    const ExcelObj* row_begin(row_t i) const { return _data + i * (size_t)_baseCols; }
 
     /// <summary>
     /// Returns an iterator to the end of the specified row (i.e. one past the last element)
     /// </summary>
     /// <param name="i"></param>
-    const ExcelObj* row_end(row_t i)   const  { return row_begin(i) + nCols(); }
+    const ExcelObj* row_end(row_t i)   const { return row_begin(i) + nCols(); }
+
+    /// <summary>
+    /// Returns an iterator to the start of the specified column. Does not check that
+    /// `j` is a valid column.
+    /// </summary>
+    auto col_begin(col_t j) const
+    {
+      assert(j < _columns);
+      return StrideIterator<const ExcelObj*>(_data + j, _baseCols);
+    }
+
+    /// <summary>
+    /// Returns an iterator to the end of the specified column. Does not check that
+    /// `j` is a valid column.
+    /// </summary>
+    auto col_end(col_t j) const
+    {
+      assert(j < _columns);
+      return StrideIterator<const ExcelObj*>(_data + j + (_rows - 1) * _baseCols, _baseCols);
+    }
 
     /// <summary>
     /// Returns an iterator to the first element in the array
@@ -251,8 +325,8 @@ namespace xloil
     /// Returns an iterator to the end of the array (i.e. one past the last element)
     /// </summary>
     /// <returns></returns>
-    ExcelArrayIterator end() const 
-    { 
+    ExcelArrayIterator end() const
+    {
       // The whole array iterator steps beyond the end of the last start of the
       // next row which may be different if _columns != _baseCols
       return ExcelArrayIterator(row_begin(_columns > 0 ? nRows() : 0), _columns, _baseCols);

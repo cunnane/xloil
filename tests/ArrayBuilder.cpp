@@ -48,7 +48,9 @@ namespace Tests
         for (auto j = 0u; j < builder.nCols(); ++j)
           builder(i, j) = i * j;
 
-      ExcelArray array(builder.toExcelObj());
+      auto arrayData = builder.toExcelObj();
+      ExcelArray array(arrayData);
+
       Assert::AreEqual(array.nRows(), builder.nRows());
       Assert::AreEqual(array.nCols(), builder.nCols());
 
@@ -71,6 +73,28 @@ namespace Tests
       }
     }
 
+    TEST_METHOD(ArrayIterators)
+    {
+      ExcelArrayBuilder builder(6, 4);
+      builder.fillNA();
+
+      for (auto i = 0u; i < builder.nRows(); ++i)
+        for (auto j = 0u; j < builder.nCols(); ++j)
+          builder(i, j) = i * j;
+
+      auto arrayData = builder.toExcelObj();
+      ExcelArray array(arrayData);
+
+      for (auto iCol = 0; iCol < array.nCols(); ++iCol)
+      {
+        auto iRow = 0;
+        for (auto p = array.col_begin(iCol); p != array.col_end(iCol); ++p, ++iRow)
+        {
+          Assert::AreEqual(iCol * iRow, p->get<int>());
+        }
+      }
+    }
+
     TEST_METHOD(SubArrayAccess)
     {
       constexpr auto R = 6, C = 4;
@@ -81,7 +105,8 @@ namespace Tests
         for (auto j = 0u; j < builder.nCols(); ++j)
           builder(i, j) = i * j;
 
-      ExcelArray array(builder.toExcelObj());
+      auto arrayData = builder.toExcelObj();
+      ExcelArray array(arrayData);
 
       for (auto n = -R + 1; n < R - 1; ++n)
       {
