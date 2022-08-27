@@ -10,6 +10,7 @@
 #include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/Caller.h>
+#include <xloil/FPArray.h>
 #include <xloil/RtdServer.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Interface.h>
@@ -48,6 +49,8 @@ namespace xloil
 
       if (features.find("macro") != string::npos)
         funcOpts |= FuncInfo::MACRO_TYPE;
+      if (features.find("fastarray") != string::npos)
+        funcOpts |= FuncInfo::ARRAY;
       if (features.find("command") != string::npos)
         funcOpts |= FuncInfo::COMMAND;
       if (features.find("threaded") != string::npos)
@@ -118,15 +121,15 @@ namespace xloil
     {
       returnConverter = conv;
     }
-    ExcelObj PyFuncInfo::convertReturn(PyObject* retVal) const
-    {
-      return returnConverter
-        ? (*returnConverter)(*retVal)
-        : FromPyObj()(retVal);
-    }
+  
+
     struct CommandReturn
     {
-      int operator()(ExcelObj*) const
+      using return_type = int;
+
+      CommandReturn(const IPyToExcel*) {}
+
+      int operator()(PyObject* retVal) const
       {
         return 1; // Ignore return value
       }
@@ -144,8 +147,54 @@ namespace xloil
       }
     };
 
-    struct NormalReturn
+    struct FPArrayReturn
     {
+      using return_type = FPArray*;
+
+      FPArrayReturn(const IPyToExcel*) {}
+
+      FPArray* operator()(PyObject* retVal) const
+      {
+        return numpyToFPArray(*retVal).get();
+      }
+
+      FPArray* operator()(const char* err, const PyFuncInfo* info) const
+      {
+        XLO_ERROR(L"{0}: {1}", info->name(), utf8ToUtf16(err));
+        return FPArray::empty();
+      }
+
+      FPArray* operator()(CellError, const PyFuncInfo* info) const
+      {
+        XLO_ERROR(L"{0}: unknown error", info->name());
+        return FPArray::empty();
+      }
+    };
+
+    struct ExcelObjReturn
+    {
+      using return_type = ExcelObj*;
+
+      const IPyToExcel* _returnConverter;
+
+      ExcelObjReturn(const IPyToExcel* returnConverter)
+        : _returnConverter(returnConverter)
+      {}
+
+      ExcelObj* operator()(PyObject* retVal) const
+      {
+        // Static is OK since we have the GIL and are single-threaded so can
+        // must be on Excel's main thread. The args array is large enough:
+        // we cannot register a function with more arguments than that.
+        static ExcelObj result;
+
+        result = _returnConverter
+          ? (*_returnConverter)(*retVal)
+          : FromPyObj()(retVal);
+
+        return (*this)(result);
+      }
+
       template<class T> ExcelObj* operator()(T&& x, const PyFuncInfo* = nullptr) const
       {
         // No need to include function name in error messages since the calling function
@@ -154,44 +203,56 @@ namespace xloil
       }
     };
 
-    template<bool TThreadSafe=false, class TReturn = NormalReturn>
-    decltype(TReturn()(0)) pythonCallback(
+    struct ExcelObjThreadSafeReturn
+    {
+      using return_type = ExcelObj*;
+
+      const IPyToExcel* _returnConverter;
+
+      ExcelObjThreadSafeReturn(const IPyToExcel* returnConverter)
+        : _returnConverter(returnConverter)
+      {}
+
+      ExcelObj* operator()(PyObject* retVal) const
+      {
+        return returnValue(_returnConverter
+          ? (*_returnConverter)(*retVal)
+          : FromPyObj()(retVal));
+      }
+
+      template<class T> ExcelObj* operator()(T&& x, const PyFuncInfo* = nullptr) const
+      {
+        // No need to include function name in error messages since the calling function
+        // is usually clear in a worksheet
+        return returnValue(std::forward<T>(x));
+      }
+    };
+
+    template<class TReturn = ExcelObjReturn>
+    typename TReturn::return_type pythonCallback(
       const PyFuncInfo* info,
       const ExcelObj** xlArgs) noexcept
     {
+      TReturn returner(info->getReturnConverter().get());
+
       try
       {
         py::gil_scoped_acquire gilAcquired;
         PyErr_Clear(); // TODO: required?
-
-        if constexpr (TThreadSafe)
-        {
-          // Return type annotation avoids copy in debug builds
-          auto result = info->invoke([&](auto i) -> auto& { return *xlArgs[i]; });
-          return returnValue(std::move(result));
-        }
-        else
-        {
-          // Static is OK since we have the GIL and are single-threaded so can
-          // must be on Excel's main thread. The args array is large enough:
-          // we cannot register a function with more arguments than that.
-          static ExcelObj result;
-          result = info->invoke([&](auto i) -> auto& { return *xlArgs[i]; });
-          return TReturn()(&result);
-        }
+        return returner(info->invoke([&](auto i) -> auto& { return *xlArgs[i]; }).ptr());
       }
       catch (const py::error_already_set& e)
       {
         raiseUserException(e);
-        return TReturn()(e.what(), info);
+        return returner(e.what(), info);
       }
       catch (const std::exception& e)
       {
-        return TReturn()(e.what(), info);
+        return returner(e.what(), info);
       }
       catch (...)
       {
-        return TReturn()(CellError::Value, info);
+        return returner(CellError::Value, info);
       }
     }
 
@@ -209,9 +270,11 @@ namespace xloil
       else if (func->isRtdAsync)
         return make_shared<DynamicSpec>(func->info(), &pythonRtdCallback, cfunc);
       else if (func->isThreadSafe())
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<true>, cfunc);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<ExcelObjThreadSafeReturn>, cfunc);
       else if (func->isCommand())
-        return make_shared<DynamicSpec>(func->info(), &pythonCallback<false, CommandReturn>, cfunc);
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<CommandReturn>, cfunc);
+      else if (func->isFPArray())
+        return make_shared<DynamicSpec>(func->info(), &pythonCallback<FPArrayReturn>, cfunc);
       else
         return make_shared<DynamicSpec>(func->info(), &pythonCallback<>, cfunc);
     }

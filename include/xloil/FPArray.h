@@ -1,6 +1,8 @@
 #pragma once
 #include <xlOil/XlCallSlim.h>
+#include <xlOil/ExportMacro.h>
 #include <cassert>
+#include <memory>
 
 namespace xloil
 {
@@ -9,7 +11,8 @@ namespace xloil
   /// argument type for user-defined functions. It is very fast and lightweight
   /// but is less flexible and user-friendly: if any value in the array passed
   /// to the function is not a number, Excel will return VALUE! without invoking
-  /// the function.  See for example Excel's MINVERSE function.
+  /// the function.  A function returning an FPArray, cannot return error conditions
+  /// so these must be logged.  See for example Excel's MINVERSE function.
   /// </summary>
   class FPArray : public msxll::_FP12
   {
@@ -18,19 +21,21 @@ namespace xloil
 
   public:
     /// <summary>
+    /// Creates a managed `FPArray` that is deleted when AfterCalculate is invoked. You
+    /// should return a raw `FPArray*` from your function and not hold a reference.
     /// Since an FPArray is variable size struct, it cannot be created using a normal
-    /// C++ constructor. However, an FPArray cannot safely be returned to Excel 
-    /// without using static (or other persistent) memory allocation
+    /// C++ constructor. The `FPArray` must be managed as there is no xlAutoFree
+    /// callback for Excel `FP12` return types.
     /// </summary>
-    static FPArray* create(size_t nRows, size_t nCols)
-    {
-      auto n = nRows * nCols;
-      auto fp = (FPArray*)new char[sizeof(msxll::_FP12) + n * sizeof(double)];
-      assert(fp);
-      fp->rows = (int)nRows;
-      fp->columns = (int)nCols;
-      return fp;
-    }
+    XLOIL_EXPORT static std::shared_ptr<FPArray> create(size_t nRows, size_t nCols);
+
+    /// <summary>
+    /// Returns the 'empty' static array (actually a 1x1 array containing a NaN) as
+    /// a truly empty FPArray is not valid.
+    /// </summary>
+    /// <returns></returns>
+    XLOIL_EXPORT static FPArray* empty();
+
     /// <summary>
     /// Assigns a the given double to all elements of the array
     /// </summary>

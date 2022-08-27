@@ -80,6 +80,8 @@ namespace xloil
       string argTypes;
       if (opts & FuncInfo::COMMAND)
         argTypes += 'A';  // Commands always return int
+      else if (opts & FuncInfo::ARRAY)
+        argTypes += "K%";  // FP12 struct
       else
         argTypes += 'U';  // Otherwise return an XLOPER12 unless overridden below
 

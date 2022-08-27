@@ -1,6 +1,7 @@
 import sys
 import tkinter
 
+# TODO: use sys.__stdin__
 _REAL_STD_IN_OUT = (sys.stdin, sys.stdout, sys.stderr)
 
 #

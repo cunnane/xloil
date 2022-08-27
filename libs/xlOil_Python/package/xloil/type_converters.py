@@ -372,13 +372,13 @@ class FastArray(np.ndarray):
     Tells Excel to pass a 2-d array of float instead of the usual variant type
     which xlOil converts. This significantly reduces the overhead of passing large
     array arguments but is less flexible: defaults are not supported and if any value 
-    in the array is not a number, Excel will return #VALUE! before even invoking the
-    python function. This means cache auto-expansion and array auto-trimming are not 
-    possible. For example behaviour try Excel's MINVERSE function.
+    in the array is not a number, Excel will return #VALUE! before even calling xlOil.
+    This means cache auto-expansion and array auto-trimming are not possible. 
+    
+    When used as a return type, the function cannot return error conditions, only 
+    NaN, but errors will be written to the log.
 
     ** Cannot be used in local functions **
-    ** Cannot be used as a return type **
-
     """
     ...
 

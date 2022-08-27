@@ -93,9 +93,9 @@ def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 # and the function cannot be local.
 # The benefits of FastArray only become apparent when the input array is large.
 # 
-@xlo.func(local=False, args={'x': "2-dim array to sum"})
-def pyTestFastArr(x: xlo.FastArray) -> float:
-	return np.sum(x)
+@xlo.func(local=False, args={'x': "2-dim array to return"})
+def pyTestFastArr(x: xlo.FastArray) -> xlo.FastArray:
+	return x
     
 #------------------
 # The Object Cache

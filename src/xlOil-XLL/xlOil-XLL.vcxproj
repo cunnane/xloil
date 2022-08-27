@@ -110,6 +110,7 @@
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="FPArray.cpp" />
     <ClCompile Include="Intellisense.cpp" />
     <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Throw.cpp" />

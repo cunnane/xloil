@@ -385,7 +385,12 @@ def func(fn=None,
             if command: 
                 features.append("command")
 
-            if macro and not any(features):
+            if return_type is FastArray:
+                if any(features):
+                    raise ValueError(f"FastArray not compatible with {','.join(features)}")
+                features.append('fastarray')
+                
+            elif macro and not any(features):
                 features.append("macro")
 
             if local == True and is_local == False:
@@ -407,7 +412,7 @@ def func(fn=None,
                 local = is_local,
                 has_kwargs = has_kwargs)
 
-            if return_type is not None:
+            if return_type is not None and return_type is not FastArray:
                 spec.return_converter = find_return_converter(return_type)
 
             log(f"Declared excel func: {str(spec)}", level="debug")

@@ -77,7 +77,11 @@ namespace xloil
       /// <summary>
       /// Stops the function appearing in the function wizard or autocomplete
       /// </summary>
-      HIDDEN      = 1 << 4
+      HIDDEN      = 1 << 4,
+      /// <summary>
+      /// Marks the function as returning an `FPArray*` (FP12 struct)
+      /// </summary>
+      ARRAY       = 1 << 5
     };
 
     XLOIL_EXPORT virtual ~FuncInfo();

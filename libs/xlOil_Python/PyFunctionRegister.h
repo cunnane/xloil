@@ -73,7 +73,8 @@ namespace xloil
       bool isAsync;
       bool isRtdAsync;
       bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
-      bool isCommand()   const  { return (_info->options & FuncInfo::COMMAND) != 0; }
+      bool isCommand()    const { return (_info->options & FuncInfo::COMMAND) != 0; }
+      bool isFPArray()    const { return (_info->options & FuncInfo::ARRAY) != 0; }
 
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
       const pybind11::function& func() const { return _func; }
@@ -115,10 +116,8 @@ namespace xloil
         }
       }
 
-      ExcelObj convertReturn(PyObject* retVal) const;
-
       template<class TXlArgs> 
-      ExcelObj invoke(TXlArgs&& xlArgs) const
+      auto invoke(TXlArgs&& xlArgs) const
       {
         PyCallArgs<> pyArgs;
         py::object kwargs;
@@ -128,9 +127,7 @@ namespace xloil
           pyArgs,
           kwargs);
 
-        auto ret = PySteal<>(pyArgs.call(_func.ptr(), kwargs.ptr()));
-
-        return std::move(convertReturn(ret.ptr()));
+        return PySteal<>(pyArgs.call(_func.ptr(), kwargs.ptr()));
       }
 
     private:

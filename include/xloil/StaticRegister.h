@@ -310,8 +310,10 @@ namespace xloil
 #define XLOIL_STDCALL
 #endif
 
-    template<class T> struct ReturnType { static constexpr auto value = 0; };
-    template<> struct ReturnType<int> { static constexpr auto value = FuncInfo::COMMAND; };
+    template<class T> struct ReturnType    { static constexpr auto value = 0; };
+    template<> struct ReturnType<int>      { static constexpr auto value = FuncInfo::COMMAND; };
+    template<> struct ReturnType<FPArray*> { static constexpr auto value = FuncInfo::ARRAY; };
+
     /// <summary>
     /// Ultimately inherits from Defs<ReturnType, Args...> but due to the myriad
     /// ways which a callable can be expressed in C++, has a lot of specialisations

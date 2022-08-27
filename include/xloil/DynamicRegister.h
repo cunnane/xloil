@@ -12,10 +12,11 @@ namespace xloil
   /// <summary>
   /// Holds a run-time specified function spec. Can call the underlying function 
   /// or write a runtime thunk and register with UDF with Excel. Although the 
-  /// ctor is templated on return type, only 3 return types are supported:
+  /// ctor is templated on return type, only 4 return types are supported:
   ///   * ExcelObj* - normal worksheet functions
   ///   * void      - async function
   ///   * int       - commands
+  ///   * FPArray*  - fast arrays
   /// </summary>
   class DynamicSpec : public WorksheetFuncSpec
   {
@@ -35,7 +36,8 @@ namespace xloil
     {
       static_assert(std::is_same_v<TRet, void>
                  || std::is_same_v<TRet, ExcelObj*>
-                 || std::is_same_v<TRet, int>);
+                 || std::is_same_v<TRet, int>
+                 || std::is_same_v<TRet, FPArray*>);
     }
 
     ExcelObj* call(const ExcelObj** args) const override
@@ -43,11 +45,15 @@ namespace xloil
       if (_hasReturn)
       {
         auto ret = static_cast<DynamicCallback<ExcelObj*, void>>(_callback)(_context.get(), args);
+        // It's not safe to return an FPArray* or int here, so we just discard it. In practice, 
+        // call() is used for local functions which can't return FPArrays, and the return
+        // values for local Subroutines/Commands are not used by Excel.
         return  _returnNull ? nullptr : ret;
       }
       else
       {
-        // Only async functions can get here, it's not clear we would to call them ourselves
+        // Only async functions can get here, but we would never invoke call() on an 
+        // async function ourselves.
         static_cast<DynamicCallback<void, void>>(_callback)(_context.get(), args);
         return nullptr;
       }

@@ -8,6 +8,7 @@
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ArrayBuilder.h>
 #include <xloil/Date.h>
+#include <xloil/FPArray.h>
 #include <xloil/StringUtils.h>
 #include <numpy/arrayobject.h>
 #include <numpy/arrayscalars.h>
@@ -588,6 +589,41 @@ namespace xloil
           : builder.toExcelObj();
       }
     };
+
+    shared_ptr<FPArray> numpyToFPArray(const PyObject& obj)
+    {
+      auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+
+      if (isEmpty || nDims != 2)
+        XLO_THROW("Expected non-empty 2-d array");
+      
+      if (PyArray_TYPE(pyArr) != NPY_DOUBLE)
+        XLO_THROW("Expected float array (type float64)");
+
+      const auto itemsize = PyArray_ITEMSIZE(pyArr);
+      const auto strides = PyArray_STRIDES(pyArr);
+
+      auto result = FPArray::create(dims[0], dims[1]);
+
+      // Check if the array is in row-major order like the FPArray so we can
+      // use memcpy (note the strides are in bytes).
+      if (strides[0] == itemsize * dims[0] && strides[1] == itemsize)
+      {
+        const auto* raw = PyArray_BYTES(pyArr);
+        const auto databytes = itemsize * dims[0] * dims[1];
+        memcpy(result->begin(), raw, databytes);
+      }
+      else
+      {
+        // Do it the old-fashioned way: elementwise copy
+        auto pArr = result->begin();
+        for (auto i = 0; i < dims[0]; ++i)
+          for (auto j = 0; j < dims[1]; ++j)
+            *pArr++ = *(double*)PyArray_GETPTR2(pyArr, i, j);
+      }
+
+      return result;
+    }
 
     int excelTypeToNumpyDtype(ExcelType t)
     {
