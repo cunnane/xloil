@@ -74,6 +74,9 @@
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="PyRtd.h" />
     <ClInclude Include="PyAddin.h" />
+    <ClInclude Include="TypeConversion\ConverterInterface.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">

@@ -13,10 +13,10 @@ namespace xloil
   {
     namespace
     {
-      class PyFromRange : public PyFromExcelImpl
+      class PyFromRange : public detail::PyFromExcelImpl
       {
       public:
-        using PyFromExcelImpl::operator();
+        using detail::PyFromExcelImpl::operator();
         static constexpr char* const ourName = "Range";
 
         PyObject* operator()(const RefVal& obj) const 

@@ -51,10 +51,10 @@ namespace xloil
       }
     }
 
-    class PyFromDate : public PyFromExcelImpl
+    class PyFromDate : public detail::PyFromExcelImpl
     {
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "date";
 
       PyObject* operator()(int x) const 
@@ -78,10 +78,10 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
 
-    class PyFromDateTime : public PyFromExcelImpl
+    class PyFromDateTime : public detail::PyFromExcelImpl
     {
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "datetime";
 
       PyObject* operator()(int x) const

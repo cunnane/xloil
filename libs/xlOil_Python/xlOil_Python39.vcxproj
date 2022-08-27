@@ -115,6 +115,7 @@
     <ClInclude Include="PyRtd.h" />
     <ClInclude Include="PySource.h" />
     <ClInclude Include="Main.h" />
+    <ClInclude Include="TypeConversion\ConverterInterface.h" />
     <ClInclude Include="TypeConversion\PyDateType.h" />
     <ClInclude Include="TypeConversion\PyDictType.h" />
     <ClInclude Include="PyFunctionRegister.h" />

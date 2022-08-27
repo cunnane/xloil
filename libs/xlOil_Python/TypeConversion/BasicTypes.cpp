@@ -11,6 +11,11 @@ namespace xloil
 {
   namespace Python
   {
+    const char* IPyFromExcel::name() const
+    {
+      return "type";
+    }
+
     namespace
     {
       struct CustomReturnConverter
@@ -25,24 +30,63 @@ namespace xloil
       return theConverter->value.get();
     }
 
-    const char* IPyFromExcel::name() const
-    {
-      return "type";
-    }
-
     namespace
     {
-      template <class T>
-      void convertPy(pybind11::module& mod, const char* type)
+      /// <summary>
+      /// Type converter which expects a cache reference string and rejects
+      /// all other types.
+      /// </summary>
+      class PyCacheObject : public ExcelValVisitor<PyObject*>
       {
-        bindPyConverter<PyFromExcelConverter<T>>(mod, type).def(py::init<>());
-      }
+      public:
+        using ExcelValVisitor::operator();
+        static constexpr char* const ourName = "CacheObject";
 
-      template <class T>
-      void convertXl(pybind11::module& mod, const char* type)
+        PyObject* operator()(const PStringRef& pstr) const
+        {
+          PyObject* _typeCheck = nullptr;
+
+          pybind11::object cached;
+          if (pyCacheGet(pstr.view(), cached))
+          {
+            // Type checking seems nice, but it's unpythonic to raise an error here
+            if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
+              XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
+            return cached.release().ptr();
+          }
+          return nullptr;
+        }
+
+        constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
+      };
+
+      struct FromPyLong
       {
-        bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
-      }
+        auto operator()(const PyObject* obj) const
+        {
+          if (!PyLong_Check(obj))
+            XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
+          return ExcelObj(PyLong_AsLong((PyObject*)obj));
+        }
+      };
+      struct FromPyFloat
+      {
+        auto operator()(const PyObject* obj) const
+        {
+          if (!PyFloat_Check(obj))
+            XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
+          return ExcelObj(PyFloat_AS_DOUBLE(obj));
+        }
+      };
+      struct FromPyBool
+      {
+        auto operator()(const PyObject* obj) const
+        {
+          if (!PyBool_Check(obj))
+            XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
+          return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
+        }
+      };
 
       struct FromPyToCache
       {
@@ -66,6 +110,23 @@ namespace xloil
           return makeCached<ExcelObj>(std::move(excelObj));
         }
       };
+
+    }
+    
+#pragma region PYBIND_BINDINGS
+    namespace
+    {
+      template <class T>
+      void convertPy(pybind11::module& mod, const char* type)
+      {
+        bindPyConverter<PyFromExcelConverter<T>>(mod, type).def(py::init<>());
+      }
+
+      template <class T>
+      void convertXl(pybind11::module& mod, const char* type)
+      {
+        bindXlConverter<PyFuncToExcel<T>>(mod, type).def(py::init<>());
+      }
 
       static int theBinder = addBinder([](py::module& mod)
       {
@@ -98,5 +159,6 @@ namespace xloil
           py::cast(theConverter, py::return_value_policy::take_ownership));
       });
     }
+#pragma endregion
   }
 }

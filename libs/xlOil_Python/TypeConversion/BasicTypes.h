@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConverterInterface.h"
 #include "Numpy.h"
 #include "PyCache.h"
 #include "PyDateType.h"
@@ -10,7 +11,7 @@
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelRef.h>
-#include <xlOil/TypeConverters.h>
+
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
 #include <xloil/StringUtils.h>
@@ -23,24 +24,12 @@ namespace xloil
 {
   namespace Python
   {
-    class IPyFromExcel : public IConvertFromExcel<PyObject*>
-    {
-    public:
-      /// <summary>
-      /// A useful name for the converter, typically the type supported.
-      /// Currently used only for log diagnostics.
-      /// </summary>
-      /// <returns></returns>
-      virtual const char* name() const;
-    };
-    using IPyToExcel = IConvertToExcel<PyObject>;
-
-    struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
-    {
-    };
-
     namespace detail
     {
+      struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
+      {
+      };
+
       /// <summary>
       /// Wraps a type conversion functor, interpreting the string conversion to
       /// look for a python cache reference.  If found, returns the cache object,
@@ -163,34 +152,6 @@ namespace xloil
 
         constexpr wchar_t* failMessage() const { return L"Unknown type"; }
       };
-
-      /// <summary>
-      /// Type converter which expects a cache reference string and rejects
-      /// all other types.
-      /// </summary>
-      class PyCacheObject : public ExcelValVisitor<PyObject*>
-      {
-      public:
-        using ExcelValVisitor::operator();
-        static constexpr char* const ourName = "CacheObject";
-
-        PyObject* operator()(const PStringRef& pstr) const
-        {
-          PyObject* _typeCheck = nullptr;
-
-          pybind11::object cached;
-          if (pyCacheGet(pstr.view(), cached))
-          {
-            // Type checking seems nice, but it's unpythonic to raise an error here
-            if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
-              XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
-            return cached.release().ptr();
-          }
-          return nullptr;
-        }
-
-        constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
-      };
     }
     
     /// <summary>
@@ -253,7 +214,6 @@ namespace xloil
     using PyFromString         = PyFromExcel<detail::PyFromString>;
     using PyFromAny            = PyFromExcel<detail::PyFromAny<true>>;
     using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<false>>;
-    using PyCacheObject        = PyFromExcel<detail::PyCacheObject>;
 
     using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
     using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
@@ -301,34 +261,6 @@ namespace xloil
       const char* name() const override
       {
         return _impl.name();
-      }
-    };
-
-    struct FromPyLong
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyLong_Check(obj))
-          XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyLong_AsLong((PyObject*)obj));
-      }
-    };
-    struct FromPyFloat
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyFloat_Check(obj))
-          XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyFloat_AS_DOUBLE(obj));
-      }
-    };
-    struct FromPyBool
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyBool_Check(obj))
-          XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
       }
     };
 

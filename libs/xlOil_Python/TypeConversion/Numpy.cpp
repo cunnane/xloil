@@ -275,17 +275,18 @@ namespace xloil
     }
 
     template <int TNpType>
-    class PyFromArray1d : public PyFromExcelImpl
+    class PyFromArray1d : public detail::PyFromExcelImpl
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
       using data_type = typename TypeTraits<TNpType>::storage;
+
     public:
       PyFromArray1d(bool trim = true) : _trim(trim), _conv()
       {}
 
-      using PyFromExcelImpl::operator();
-      static constexpr char* const ourName = "ndarray(1d)";
+      using detail::PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "array(1d)";
 
       PyObject* operator()(const ArrayVal& obj) const
       {
@@ -308,8 +309,8 @@ namespace xloil
         auto* data = (char*) PyDataMem_NEW(dataSize);
 
         auto d = data;
-        for (ExcelArray::size_type i = 0; i < arr.size(); ++i, d += itemsize)
-          _conv((data_type*)d, itemsize, arr.at(i));
+        for (auto p = arr.begin(); p != arr.end(); ++p, d += itemsize)
+          _conv((data_type*)d, itemsize, *p);
         
         return newNumpyArray(TNpType, dims, data, itemsize);
       }
@@ -318,7 +319,7 @@ namespace xloil
     };
 
     template <int TNpType>
-    class PyFromArray2d : public PyFromExcelImpl
+    class PyFromArray2d : public detail::PyFromExcelImpl
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
@@ -328,8 +329,8 @@ namespace xloil
       PyFromArray2d(bool trim = true) : _trim(trim), _conv()
       {}
 
-      using PyFromExcelImpl::operator();
-      static constexpr char* const ourName = "ndarray(2d)";
+      using detail::PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "array(2d)";
 
       PyObject* operator()(const ArrayVal& obj) const
       {
@@ -367,8 +368,6 @@ namespace xloil
 
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
-    
-
 
     PyObject* numpyArrayFromCArray(size_t rows, size_t columns, const double* array)
     {
@@ -395,7 +394,7 @@ namespace xloil
       }
       const char* name() const override
       {
-        return "FPArray";
+        return "FloatArray";
       }
     };
 

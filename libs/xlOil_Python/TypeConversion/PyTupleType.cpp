@@ -105,11 +105,11 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public PyFromExcelImpl
+    class PyTupleFromArray : public detail::PyFromExcelImpl
     {
       TValConv _valConv;
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "tuple";
 
       PyObject* operator()(const ArrayVal& obj)
