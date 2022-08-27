@@ -94,9 +94,14 @@ namespace xloil {
       else
       {
         auto str = PyObject_Str((PyObject*)p);
+        if (!str)
+          throw py::error_already_set();
         wstr = PyUnicode_AsWideCharString(str, &len);
         Py_XDECREF(str);
       }
+
+      if (!wstr) 
+        throw py::error_already_set();
 
       auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
       return wstring(wstr, len);
