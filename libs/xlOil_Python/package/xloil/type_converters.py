@@ -369,14 +369,15 @@ converted as per `xloil.ExcelValue`.
 
 class FastArray(np.ndarray):
     """
-    Tells Excel to pass a 2-d array of float instead of the usual variant type
-    which xlOil converts. This significantly reduces the overhead of passing large
-    array arguments but is less flexible: defaults are not supported and if any value 
-    in the array is not a number, Excel will return #VALUE! before even calling xlOil.
-    This means cache auto-expansion and array auto-trimming are not possible. 
+    Tells Excel to pass a 2-d array of float, which appears in python as a 2-d *numpy.array*
+    of float.  No other types are allowed. This significantly reduces the overhead 
+    of passing large array arguments but is less flexible: defaults are not supported and
+    if any value in the input array is not a number, Excel will return #VALUE! before even 
+    calling xlOil.This means cache auto-expansion and array auto-trimming are not possible. 
     
-    When used as a return type, the function cannot return error conditions, only 
-    NaN, but errors will be written to the log.
+    When used as a return type, the function must return a 2-d *numpy.array* of float and  
+    cannot return error conditions: errors raised will be written to the log, but the   
+    function will return NaN.
 
     ** Cannot be used in local functions **
     """
@@ -440,7 +441,7 @@ class Array(np.ndarray):
 
     fast: bool
         Specifies a `xloil.FastArray`. This can only be used with 2-dim float arrays.
-        Cannot currently be used as a return type.
+        See the doc string for the class for more details.
 
     cache_return: bool
         If used in a return value annotation, returns a cache reference to the result.
