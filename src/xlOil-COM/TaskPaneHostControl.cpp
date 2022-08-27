@@ -183,7 +183,7 @@ namespace xloil
             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
         bHandled = true;
-        return DefWindowProc(message, wParam, lParam);
+        return (HRESULT)DefWindowProc(message, wParam, lParam);
       }
 
       static LRESULT CALLBACK SubclassWndProc(HWND hWnd, UINT uMsg,

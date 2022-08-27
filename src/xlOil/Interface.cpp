@@ -238,7 +238,7 @@ namespace xloil
   }
 
   void FileSource::handleDirChange(
-    const wchar_t* dirName,
+    const wchar_t* /*dirName*/,
     const wchar_t* fileName,
     const Event::FileAction action)
   {
