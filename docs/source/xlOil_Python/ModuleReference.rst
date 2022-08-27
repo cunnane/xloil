@@ -11,11 +11,14 @@ Declaring Worksheet Functions
 .. currentmodule:: xloil
 
 .. autosummary::
+	AllowRange
 	Arg
+	Array
+	Cache
 	CannotConvert
 	CellError
 	ExcelArray
-	Cache
+	FastArray	
 	SingleValue
 	func
 	converter
@@ -24,7 +27,7 @@ Declaring Worksheet Functions
 	deregister_functions
 
 .. automodule:: xloil
-	:members: Arg,CannotConvert,CellError,ExcelArray,Cache,SingleValue,func,converter,returner,register_functions,deregister_functions
+	:members: Arg,Array,Cache,CannotConvert,CellError,ExcelArray,FastArray,SingleValue,func,converter,returner,register_functions,deregister_functions
 	:imported-members:
 	:undoc-members:
 

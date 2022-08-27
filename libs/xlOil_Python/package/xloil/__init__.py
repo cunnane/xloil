@@ -29,6 +29,7 @@ from .type_converters import (
     SingleValue,
     AllowRange,
     Array,
+    FastArray,
     converter,
     returner
     )

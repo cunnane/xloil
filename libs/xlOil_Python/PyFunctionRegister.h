@@ -42,7 +42,7 @@ namespace xloil
       std::wstring name;
       std::wstring help;
       pybind11::object default;
-      bool allowRange;
+      std::string type;
     };
 
     class PyFuncInfo

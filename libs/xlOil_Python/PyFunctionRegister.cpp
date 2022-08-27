@@ -166,7 +166,8 @@ namespace xloil
 
         if constexpr (TThreadSafe)
         {
-          auto result = info->invoke([&](auto i) { return *xlArgs[i]; });
+          // Return type annotation avoids copy in debug builds
+          auto result = info->invoke([&](auto i) -> auto& { return *xlArgs[i]; });
           return returnValue(std::move(result));
         }
         else
@@ -175,7 +176,7 @@ namespace xloil
           // must be on Excel's main thread. The args array is large enough:
           // we cannot register a function with more arguments than that.
           static ExcelObj result;
-          result = info->invoke([&](auto i) { return *xlArgs[i]; });
+          result = info->invoke([&](auto i) -> auto& { return *xlArgs[i]; });
           return TReturn()(&result);
         }
       }
@@ -226,12 +227,20 @@ namespace xloil
         infoArgs.emplace_back(nullptr, nullptr, FuncArg::AsyncHandle);
 
       for (auto& arg : _args)
+      {
+        int flags = FuncArg::Obj;
+        if (_stricmp(arg.type.c_str(), "array") == 0) flags = FuncArg::Array;
+        else if (_stricmp(arg.type.c_str(), "range") == 0) flags |= FuncArg::Range;
+        if (arg.default) flags |= FuncArg::Optional;
+        
         infoArgs.emplace_back(
-          arg.name.c_str(), 
-          arg.help.c_str(), 
-          FuncArg::Obj 
-            | (arg.default ? FuncArg::Optional : 0) 
-            | (arg.allowRange ? FuncArg::Range : 0));
+          arg.name.c_str(),
+          arg.help.c_str(),
+          flags);
+
+        if ((flags & FuncArg::Array) != 0)
+          arg.converter.reset(createFPArrayConverter());
+      }
 
       _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
 
@@ -457,7 +466,7 @@ namespace xloil
         if (!info.constArgs().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
-        if (info.getReturnConverter())
+        if (info.getReturnConverter()) // TODO: fix this!
           result += formatStr(" -> ", typeid(*info.getReturnConverter()).name());
         return result;
       }
@@ -470,7 +479,7 @@ namespace xloil
           .def_readwrite("help", &PyFuncArg::help)
           .def_readwrite("converter", &PyFuncArg::converter)
           .def_readwrite("default", &PyFuncArg::default)
-          .def_readwrite("allow_range", &PyFuncArg::allowRange);
+          .def_readwrite("special_type", &PyFuncArg::type);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
           .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool, bool>(),

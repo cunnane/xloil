@@ -48,6 +48,14 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
 
     arg_type = arg.typeof
     converter = 0
+    allow_range = False
+
+    # FastArray is handled separately as converters/defaults are not used 
+    if arg_type is FastArray:
+        this_arg.special_type = "array"
+        if arg.has_default:
+            log.warn(f"Defaults not supported for FastArray parameter {arg.name}")
+        return this_arg
 
     # If a typing annotation is None or not a type, ignore it and use the
     # generic converter which gives a python type based on the Excel type
@@ -57,7 +65,7 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
         # support. It's a typing.Union so not an instance of type.
         if arg_type is AllowRange:
             converter = _Read_object()
-            this_arg.allow_range = True
+            allow_range = True
         else:
             converter = _Read_object()
     else:
@@ -65,20 +73,24 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
 
         # xloil_core.Range is special: the only core class in typing annotations
         if arg_type is Range:
-            this_arg.allow_range = True
+            allow_range = True
             
         # If internal converter was found, nothing more to do
         if converter is not None:
             pass
         # A designated xloil @converter type contains the internal converter
         elif unpack_arg_converter(arg_type) is not None:
-            converter, this_arg.allow_range = unpack_arg_converter(arg_type)
+            converter, allow_range = unpack_arg_converter(arg_type)
         # Attempt to find a registered user-converter, otherwise assume the object
         # should be read from the cache 
         else:
             converter = arg_converters.get_converter(arg_type)
             if converter is None:
                 converter = _Read_Cache()
+
+    if allow_range:
+        this_arg.special_type= "range"
+    
     if arg.has_default:
         this_arg.default = arg.default
 
@@ -379,8 +391,8 @@ def func(fn=None,
             if local == True and is_local == False:
                 raise ValueError(f"'threaded' or 'async' functions cannot be 'local'")
 
-            # Optional overrides of function arg information that we read
-            # by reflection
+            # Optional overrides of function arg information that we read by reflection
+
             func_args = Arg.override_arglist(func_args, args)
             core_argspec = [arg_to_funcarg(arg) for arg in func_args]
 

@@ -18,9 +18,9 @@ namespace xloil
 
   public:
     /// <summary>
-    /// Since an FPArray is variable size struct, it cannot be created using a 
-    /// normal C++ constructor. But, since an FPArray cannot be returned to Excel 
-    /// it's unclear when you would need to create one!
+    /// Since an FPArray is variable size struct, it cannot be created using a normal
+    /// C++ constructor. However, an FPArray cannot safely be returned to Excel 
+    /// without using static (or other persistent) memory allocation
     /// </summary>
     static FPArray* create(size_t nRows, size_t nCols)
     {
@@ -56,7 +56,7 @@ namespace xloil
       return rows * columns;
     }
     /// <summary>
-    /// Retrieves the i-th element (data is stored in columnm-major order)
+    /// Retrieves the i-th element (data is stored in column-major order)
     /// </summary>
     double& operator[](size_t i)
     {
@@ -64,7 +64,7 @@ namespace xloil
       return array[i];
     }
     /// <summary>
-    /// Retrieves the i-th element (data is stored in columnm-major order)
+    /// Retrieves the i-th element (data is stored in column-major order)
     /// </summary>
     double operator[](size_t i) const
     {

@@ -50,8 +50,7 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
     class _TypeConverter(base_type):
         _xloil_arg_reader = (reader, allow_range) if reader is not None else None
         _xloil_return_writer = writer
-
-
+       
         def __new__(cls, *args, **kwargs):
             """
             Allows return type converters to be "called" in the expected way.
@@ -64,6 +63,8 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
             Allows return type converters to be "called" in the expected way.
             """
             return cls._xloil_return_writer.get_handler()(value)
+
+    _TypeConverter.__name__ = f"{base_type.__name__}_Converter}"
 
     if source:
         functools.update_wrapper(_TypeConverter, source, updated=[])
@@ -368,6 +369,21 @@ with a sheet reference e.g. `=MyFunc(A1:B2)`.  Any other argument types are
 converted as per `xloil.ExcelValue`.
 """
 
+class FastArray(np.ndarray):
+    """
+    Tells Excel to pass a 2-d array of float instead of the usual variant type
+    which xlOil converts. This significantly reduces the overhead of passing large
+    array arguments but is less flexible: defaults are not supported and if any value 
+    in the array is not a number, Excel will return #VALUE! before even invoking the
+    python function. This means cache auto-expansion and array auto-trimming are not 
+    possible. For example behaviour try Excel's MINVERSE function.
+
+    ** Cannot be used in local functions **
+    ** Cannot be used as a return type **
+
+    """
+    ...
+
 class Array(np.ndarray):
     """
     This object can be used in annotations or @xlo.arg decorators
@@ -424,13 +440,27 @@ class Array(np.ndarray):
         string or non-#N/A value. This is generally desirable, but can be disabled with 
         this paramter.  Has no effect when used for return values.
 
+    fast: bool
+        Specifies a `xloil.FastArray`. This can only be used with 2-dim float arrays.
+        Cannot currently be used as a return type.
+
+    cache_return: bool
+        If used in a return value annotation, returns a cache reference to the result.
+        This avoids copying the array data back to Excel and can improve performance
+        where the array is passed to another xlOil function.
+
     """
  
     _xloil_arg_converter = _Read_Array_object_2d(True)
     _xloil_return_converter = _Return_Array_object_2d(False)
     _xloil_allow_range = False
 
-    def __new__(cls, dtype=object, dims=2, trim=True, cache_return=False):
+    def __new__(cls, dtype=object, dims=2, trim=True, fast=False, cache_return=False):
+        if fast:
+            if dtype is not float or dims !=2:
+                raise Exception("The 'fast' parameter can only be used with 2-dim float arrays")
+            return FastArray
+
         name = f"{_READ_CONVERTER_PREFIX}Array_{dtype.__name__}_{dims or 2}d" 
         arg_conv = getattr(xloil_core, name)(trim)
 

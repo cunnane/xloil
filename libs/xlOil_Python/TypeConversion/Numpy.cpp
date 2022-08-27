@@ -36,6 +36,7 @@ namespace xloil
       auto ret = _import_array();
       return ret == 0;
     }
+
     bool isArrayDataType(PyTypeObject* t)
     {
       return (t == &PyGenericArrType_Type || PyType_IsSubtype(t, &PyGenericArrType_Type));
@@ -253,6 +254,25 @@ namespace xloil
         XLO_THROW("Unsupported numpy date type");
       }
     }
+    
+
+    /// <summary>
+    /// Helper to call PyArray_New.  Allocate data using PyDataMem_NEW
+    /// </summary>
+    template<int N>
+    PyObject* newNumpyArray(int numpyType, Py_intptr_t (&dims)[N], void* data, size_t itemsize)
+    {
+      return PyArray_New(
+        &PyArray_Type,
+        N,
+        dims,
+        numpyType,
+        nullptr, // strides
+        data,
+        (int)itemsize,
+        NPY_ARRAY_OWNDATA,
+        nullptr); // array finaliser
+    }
 
     template <int TNpType>
     class PyFromArray1d : public PyFromExcelImpl
@@ -261,7 +281,7 @@ namespace xloil
       typename TypeTraits<TNpType>::from_excel _conv;
       using data_type = typename TypeTraits<TNpType>::storage;
     public:
-      PyFromArray1d(bool trim = true) : _trim(trim) 
+      PyFromArray1d(bool trim = true) : _trim(trim), _conv()
       {}
 
       using PyFromExcelImpl::operator();
@@ -291,16 +311,7 @@ namespace xloil
         for (ExcelArray::size_type i = 0; i < arr.size(); ++i, d += itemsize)
           _conv((data_type*)d, itemsize, arr.at(i));
         
-        return PyArray_New(
-          &PyArray_Type,
-          _countof(dims), 
-          dims, 
-          TNpType, 
-          nullptr,  // strides
-          data, 
-          (int)itemsize, 
-          NPY_ARRAY_OWNDATA, 
-          nullptr); // array finalizer
+        return newNumpyArray(TNpType, dims, data, itemsize);
       }
 
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
@@ -314,7 +325,7 @@ namespace xloil
       using TDataType = typename TypeTraits<TNpType>::storage;
 
     public:
-      PyFromArray2d(bool trim = true) : _trim(trim) 
+      PyFromArray2d(bool trim = true) : _trim(trim), _conv()
       {}
 
       using PyFromExcelImpl::operator();
@@ -344,24 +355,54 @@ namespace xloil
 
         auto d = data;
         for (auto i = 0; i < dims[0]; ++i)
-          for (auto j = 0; j < dims[1]; ++j, d += itemsize)
-            _conv((TDataType*)d, itemsize, arr.at(i, j));
+        {
+          auto* pObj = arr.row_begin(i);
+          const auto* rowEnd = pObj + dims[1];
+          for (; pObj != rowEnd; d += itemsize, ++pObj)
+            _conv((TDataType*)d, itemsize, *pObj);
+        }
 
-        return PyArray_New(
-          &PyArray_Type,
-          _countof(dims), 
-          dims, 
-          TNpType, 
-          nullptr, // strides
-          data, 
-          (int)itemsize,
-          NPY_ARRAY_OWNDATA, 
-          nullptr); // array inalizer
-         
+        return newNumpyArray(TNpType, dims, data, itemsize);
       }
 
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
+    
+
+
+    PyObject* numpyArrayFromCArray(size_t rows, size_t columns, const double* array)
+    {
+      Py_intptr_t dims[] = { (intptr_t)rows, (intptr_t)columns };
+
+      constexpr auto itemsize = sizeof(double);
+      const auto dataSize = rows * columns * itemsize;
+
+      auto data = (char*)PyDataMem_NEW(dataSize);
+
+      memcpy(data, array, dataSize);
+
+      return newNumpyArray(NPY_DOUBLE, dims, data, itemsize);
+    }
+
+    class FPArrayConverter : public IPyFromExcel
+    {
+    public:
+      virtual PyObject* operator()(
+        const ExcelObj& xl, const PyObject* /*defaultVal*/) override
+      {
+        auto& fp = reinterpret_cast<const msxll::FP12&>(xl);
+        return numpyArrayFromCArray(fp.rows, fp.columns, fp.array);
+      }
+      const char* name() const override
+      {
+        return "FPArray";
+      }
+    };
+
+    IPyFromExcel* createFPArrayConverter()
+    {
+      return new FPArrayConverter();
+    }
 
     template<
       int TNpType, 
@@ -549,7 +590,7 @@ namespace xloil
       }
     };
 
-    int excelTypeToDtype(ExcelType t)
+    int excelTypeToNumpyDtype(ExcelType t)
     {
       switch (t)
       {
@@ -564,7 +605,7 @@ namespace xloil
     PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims, int dtype)
     {
       if (dtype < 0)
-        dtype = excelTypeToDtype(arr.dataType());
+        dtype = excelTypeToNumpyDtype(arr.dataType());
       switch (dims)
       {
       case 1:
@@ -649,19 +690,24 @@ namespace xloil
         }
         static inline auto prefix = string(theReturnConverterPrefix);
       };
-      template<template<template<int> class, int, int> class Func, template<int N> class T, int TNDims>
+      template<
+        template<template<int> class, int, int> class Declarer, 
+        template<int N> class Converter, 
+        int TNDims>
       void declare(pybind11::module& mod)
       {
-        Func<T, NPY_INT,    TNDims>()(mod);
-        Func<T, NPY_DOUBLE, TNDims>()(mod);
-        Func<T, NPY_BOOL,   TNDims>()(mod);
-        Func<T, NPY_STRING, TNDims>()(mod);
-        Func<T, NPY_OBJECT, TNDims>()(mod);
+        Declarer<Converter, NPY_INT,    TNDims>()(mod);
+        Declarer<Converter, NPY_DOUBLE, TNDims>()(mod);
+        Declarer<Converter, NPY_BOOL,   TNDims>()(mod);
+        Declarer<Converter, NPY_STRING, TNDims>()(mod);
+        Declarer<Converter, NPY_OBJECT, TNDims>()(mod);
 
-        auto datetime = Func<T, NPY_DATETIME, TNDims>()(mod);
+        auto datetime = Declarer<Converter, NPY_DATETIME, TNDims>()(mod);
         // Alias so that either date or datetime arrays can be requested.
         // TODO: strictly should drop time information if it exists
-        mod.add_object((Func<T, 1, 1>::prefix + string("Array_date_") + dims(TNDims)).c_str(), datetime);
+        mod.add_object(
+          (Declarer<Converter, 1, 1>::prefix + string("Array_date_") + dims(TNDims)).c_str(), 
+          datetime);
       }
 
       static int theBinder = addBinder([](py::module& mod)
