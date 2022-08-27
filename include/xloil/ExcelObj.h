@@ -2,6 +2,7 @@
 #include <xlOil/XlCallSlim.h>
 #include <xlOil/ExportMacro.h>
 #include <xlOil/PString.h>
+#include <xlOil/Throw.h>
 #include <string>
 #include <cassert>
 #include <optional>
