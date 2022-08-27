@@ -65,19 +65,15 @@ class Arg:
 
         kind = param.kind
         if kind == param.POSITIONAL_ONLY or kind == param.POSITIONAL_OR_KEYWORD:
-            arg = cls(name, default=
-                       cls._EMPTY if param.default is inspect._empty else param.default)
-            anno = param.annotation
-            if anno is not param.empty:
-                arg.typeof = anno
-                # Add a little help string based on the type annotation
-                if isinstance(anno, type):
-                    arg.help = f"({anno.__name__})"
-                else:
-                    arg.help = f"({str(anno)})"
+            arg = cls(name, 
+                      default= cls._EMPTY if param.default is inspect._empty else param.default)
+            if param.annotation is not param.empty:
+                arg.typeof = param.annotation
             return arg
+
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
             return cls(name, is_keywords=True)
+
         else: 
             raise Exception(f"Unhandled argument '{name}' with type '{kind}'")
 

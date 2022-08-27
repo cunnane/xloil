@@ -220,26 +220,46 @@ namespace xloil
     {
       const auto numArgs = _args.size();
 
-      auto& infoArgs = _info->args;
+      auto& registerArgs = _info->args;
 
-      infoArgs.reserve(numArgs + isAsync ? 1 : 0);
+      registerArgs.reserve(numArgs + isAsync ? 1 : 0);
       if (isAsync)
-        infoArgs.emplace_back(nullptr, nullptr, FuncArg::AsyncHandle);
+        registerArgs.emplace_back(nullptr, nullptr, FuncArg::AsyncHandle);
 
       for (auto& arg : _args)
       {
         int flags = FuncArg::Obj;
-        if (_stricmp(arg.type.c_str(), "array") == 0) flags = FuncArg::Array;
-        else if (_stricmp(arg.type.c_str(), "range") == 0) flags |= FuncArg::Range;
-        if (arg.default) flags |= FuncArg::Optional;
+
+        if (_stricmp(arg.type.c_str(), "array") == 0) 
+          flags = FuncArg::Array;
+        else if (_stricmp(arg.type.c_str(), "range") == 0) 
+          flags |= FuncArg::Range;
+
+        if (arg.default) 
+          flags |= FuncArg::Optional;
         
-        infoArgs.emplace_back(
+        if ((flags & FuncArg::Array) != 0)
+          arg.converter.reset(createFPArrayConverter());
+
+        // If no help string has been provided, give a type hint based on 
+        // the arg converter
+        if (arg.help.empty() && arg.converter)
+        {
+          wstring argType = utf8ToUtf16(arg.converter->name());
+          if (arg.default)
+          {
+            arg.help = formatStr(L"[%s]", argType.c_str());
+            // Could do this but we'd need to reacquire the GIL
+            //arg.help = formatStr(L"[%s]='%s'", argType.c_str(), pyToWStr(arg.default).c_str());
+          }
+          else
+            arg.help = formatStr(L"<%s>", argType.c_str());
+        }
+
+        registerArgs.emplace_back(
           arg.name.c_str(),
           arg.help.c_str(),
           flags);
-
-        if ((flags & FuncArg::Array) != 0)
-          arg.converter.reset(createFPArrayConverter());
       }
 
       _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));

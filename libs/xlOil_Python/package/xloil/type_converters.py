@@ -64,8 +64,6 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
             """
             return cls._xloil_return_writer.get_handler()(value)
 
-    _TypeConverter.__name__ = f"{base_type.__name__}_Converter}"
-
     if source:
         functools.update_wrapper(_TypeConverter, source, updated=[])
         #_TypeConverter.__doc__      = source.__doc__
@@ -466,5 +464,7 @@ class Array(np.ndarray):
 
         name = f"{_RETURN_CONVERTER_PREFIX}Array_{dtype.__name__}_{dims or 2}d" 
         return_conv = getattr(xloil_core, name)(cache_return)
-        return _make_typeconverter(np.ndarray, arg_conv, return_conv, False)
+        type_converter = _make_typeconverter(np.ndarray, arg_conv, return_conv, False)
+        type_converter.__name__ = "Array"
+        return type_converter
      
