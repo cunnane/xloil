@@ -32,8 +32,9 @@ sys.argv = [sys.argv[0]] + unknown
 #
 # Define directoies
 #
- 
-staging_dir = Path('..')
+# We are run from staging/pypackage
+
+staging_dir = Path(__file__) / '..'
 bin_dir = staging_dir / args.arch
 
 #
