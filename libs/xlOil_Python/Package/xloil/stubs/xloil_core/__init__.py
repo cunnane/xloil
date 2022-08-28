@@ -1455,14 +1455,6 @@ class _ExcelObjFutureIter():
 class _FuncArg():
     def __init__(self) -> None: ...
     @property
-    def allow_range(self) -> bool:
-        """
-        :type: bool
-        """
-    @allow_range.setter
-    def allow_range(self, arg0: bool) -> None:
-        pass
-    @property
     def converter(self) -> IPyFromExcel:
         """
         :type: IPyFromExcel
@@ -1493,6 +1485,14 @@ class _FuncArg():
         """
     @name.setter
     def name(self, arg0: str) -> None:
+        pass
+    @property
+    def special_type(self) -> str:
+        """
+        :type: str
+        """
+    @special_type.setter
+    def special_type(self, arg0: str) -> None:
         pass
     pass
 class _FuncSpec():
