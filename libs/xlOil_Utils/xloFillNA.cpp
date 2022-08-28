@@ -49,18 +49,16 @@ namespace xloil
       // to memory Excel allocated for the input argument, but when
       // we delete an array in xlOil, we don't recursively free over
       // each element so we won't double delete.
-      auto newArray = builder.toExcelObj();
-      memcpy_s(newArray.val.array.lparray, arrayNumBytes, 
+      memcpy_s(builder.data(), arrayNumBytes,
         array.val.array.lparray, arrayNumBytes);
 
-      // Now replace all N/As with the specified value. Note the builder
-      // and our newArray both point to the same underlying data
+      // Now replace all N/As with the specified value.
       for (auto i = 0u; i < nRows; ++i)
         for (auto j = 0u; j < nCols; ++j)
           if (arr.at(i, j).isNA())
             builder(i, j).emplace_pstr(arrayStr.release());
 
-      return returnValue(std::move(newArray));
+      return returnValue(builder.toExcelObj());
     }   
     else if (inplace)
     {
@@ -82,8 +80,7 @@ namespace xloil
 
       const auto arrayNumBytes = nRows * nCols * sizeof(ExcelObj);
 
-      auto newArray = builder.toExcelObj();
-      memcpy_s(newArray.val.array.lparray, arrayNumBytes,
+      memcpy_s(builder.data(), arrayNumBytes,
         array.val.array.lparray, arrayNumBytes);
 
       // Now replace all N/As with the specified value. Note the builder
@@ -93,7 +90,7 @@ namespace xloil
           if (arr.at(i, j).isNA())
             builder(i, j) = *value;
 
-      return returnValue(std::move(newArray));
+      return returnValue(builder.toExcelObj());
     }
   }
   XLO_FUNC_END(xloFillNA).threadsafe()

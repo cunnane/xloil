@@ -39,21 +39,26 @@ namespace xloil
     class ArrayBuilderAlloc
     {
     public:
-      ArrayBuilderAlloc()
-      {}
-
       // TODO: we could support resize on this class, with a small amount
       // of string fiddling 
       ArrayBuilderAlloc(size_t nObjects, size_t stringLen)
         : _buffer((ExcelObj*)
-            new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
+          new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
         , _nObjects(nObjects)
-        , _alloc((wchar_t*)(_buffer + nObjects), stringLen)
-      {}
+        , _stringAllocator((wchar_t*)(_buffer + nObjects), stringLen)
+      {
+        assert(nObjects > 0);
+      }
+
+      ~ArrayBuilderAlloc()
+      {
+        if (_buffer)
+          delete[] _buffer;
+      }
 
       auto newString(size_t len)
       {
-        auto ptr = _alloc.allocate(len + 1);
+        auto ptr = _stringAllocator.allocate(len + 1);
         ptr[0] = wchar_t(len);
         return ptr;
       }
@@ -68,20 +73,29 @@ namespace xloil
           memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
       }
 
-      const auto& charAllocator() const { return _alloc; }
+      const auto& charAllocator() const { return _stringAllocator; }
+
+      ExcelObj* release() 
+      {
+        auto buffer = _buffer;
+        _buffer = nullptr;
+        return buffer;
+      }
 
     private:
       ExcelObj* _buffer;
       size_t _nObjects;
-      ArrayBuilderCharAllocator _alloc;
+      ArrayBuilderCharAllocator _stringAllocator;
     };
+
+    class ArrayBuilderIterator;
 
     class ArrayBuilderElement
     {
     public:
-      ArrayBuilderElement(ExcelObj& target, ArrayBuilderAlloc& allocator)
-        : _target(target)
-        , _alloc(allocator)
+      ArrayBuilderElement(size_t index, ArrayBuilderAlloc& allocator)
+        : _target(&allocator.object(index))
+        , _alloc(&allocator)
       {}
 
       template <class T, 
@@ -90,11 +104,11 @@ namespace xloil
       { 
         // Note that _target is uninitialised memory, so we cannot
         // call *_target = ExcelObj(x)
-        new (&_target) ExcelObj(x); 
+        new (_target) ExcelObj(x); 
       }
 
-      void operator=(double x) { new (&_target) ExcelObj(x); }
-      void operator=(CellError x) { new (&_target) ExcelObj(x); }
+      void operator=(double x) { new (_target) ExcelObj(x); }
+      void operator=(CellError x) { new (_target) ExcelObj(x); }
 
       /// <summary>
       /// Assign by copying data from a string_view.
@@ -116,7 +130,7 @@ namespace xloil
           copy_string(pstr.begin(), pstr.length());
         }
         else
-          ExcelObj::overwrite(_target, x);
+          ExcelObj::overwrite(*_target, x);
       }
 
       /// <summary>
@@ -125,7 +139,7 @@ namespace xloil
       /// </summary>
       void emplace(ExcelObj&& x)
       {
-        new (&_target) ExcelObj(std::forward<ExcelObj>(x));
+        new (_target) ExcelObj(std::forward<ExcelObj>(x));
       }
 
       /// <summary>
@@ -135,7 +149,7 @@ namespace xloil
       /// <param name="pstr"></param>
       void emplace_pstr(wchar_t* pstr)
       {
-        new (&_target) ExcelObj(PString::steal(pstr));
+        new (_target) ExcelObj(PString::steal(pstr));
       }
 
       /// <summary>
@@ -144,12 +158,12 @@ namespace xloil
       /// </summary>
       void overwrite(const ExcelObj& x)
       {
-        ExcelObj::overwrite(_target, x);
+        ExcelObj::overwrite(*_target, x);
       }
 
       void copy_string(const wchar_t* str, size_t len)
       {
-        auto xlObj = new (&_target) ExcelObj();
+        auto xlObj = new (_target) ExcelObj();
         xlObj->xltype = msxll::xltypeStr;
 
         if (len == 0)
@@ -158,7 +172,7 @@ namespace xloil
         }
         else
         {
-          auto pstr = _alloc.newString(len);
+          auto pstr = _alloc->newString(len);
           wmemcpy_s(pstr + 1, len, str, len);
           // This object's dtor will never be called, as it is an array element
           // so the allocated pstr will be freed when the entire array block is
@@ -167,8 +181,53 @@ namespace xloil
       }
 
     private:
-      ExcelObj& _target;
-      ArrayBuilderAlloc& _alloc;
+      ExcelObj* _target;
+      ArrayBuilderAlloc* _alloc;
+
+      friend class ArrayBuilderIterator;
+    };
+
+    class ArrayBuilderIterator
+    {
+    public:
+      using iterator = ArrayBuilderIterator;
+
+      ArrayBuilderIterator(ArrayBuilderElement&& element)
+        : _current(element)
+      {}
+
+      auto& operator++()
+      {
+        ++_current._target;
+        return *this;
+      }
+      auto& operator--()
+      {
+        --_current._target;
+        return *this;
+      }
+      auto operator++(int)
+      {
+        iterator copy = *this;
+        ++(*this);
+        return copy;
+      }
+      auto operator--(int)
+      {
+        iterator copy = *this;
+        --(*this);
+        return copy;
+      }
+
+      bool operator==(iterator other) const { return _current._target == other._current._target; }
+      bool operator!=(iterator other) const { return !(*this == other); }
+
+      const auto& operator*() const { return _current; }
+      auto& operator*() { return _current; }
+      auto* operator->() { return &_current; }
+
+    private:
+      ArrayBuilderElement _current;
     };
   }
 
@@ -190,6 +249,27 @@ namespace xloil
     using row_t = ExcelObj::row_t;
     using col_t = ExcelObj::col_t;
 
+  private:
+    static auto initialiseAllocator(
+      row_t& nRows, col_t& nCols, size_t strLength, bool padTo2DimArray)
+    {
+      // Add the terminators and string counts to total length. Maybe 
+      // not every cell will be a string so this is an over-estimate
+      if (strLength > 0)
+        strLength += nCols * nRows * 2;
+
+      if (padTo2DimArray)
+      {
+        if (nRows == 1) nRows = 2;
+        if (nCols == 1) nCols = 2;
+      }
+
+      auto arrSize = nRows * nCols;
+
+      return detail::ArrayBuilderAlloc(arrSize, strLength);
+    }
+
+  public:
     /// <summary>
     /// Creates an ArrayBuilder of specified size (it cannot be resized later).
     /// It does not default-initialise any ExcelObj in the array, so this must
@@ -202,36 +282,19 @@ namespace xloil
     /// <param name="padTo2DimArray">Adds # N/A to ensure the array is at least 2x2</param>
     ExcelArrayBuilder(row_t nRows, col_t nCols,
       size_t totalStrLength = 0, bool padTo2DimArray = false)
+      : _nRows(nRows)
+      , _nColumns(nCols)
+      , _allocator(initialiseAllocator(_nRows, _nColumns, totalStrLength, padTo2DimArray))
     {
-      // Add the terminators and string counts to total length. Maybe 
-      // not every cell will be a string so this is an over-estimate
-      if (totalStrLength > 0)
-        totalStrLength += nCols * nRows * 2;
-
-      auto nPaddedRows = (row_t)nRows;
-      auto nPaddedCols = (col_t)nCols;
-      if (padTo2DimArray)
-      {
-        if (nPaddedRows == 1) nPaddedRows = 2;
-        if (nPaddedCols == 1) nPaddedCols = 2;
-      }
-
-      auto arrSize = nPaddedRows * nPaddedCols;
-
-      
-      _allocator = detail::ArrayBuilderAlloc(arrSize, totalStrLength);
-      _nRows = nPaddedRows;
-      _nColumns = nPaddedCols;
-
       if (padTo2DimArray)
       {
         // Add padding
-        if (nCols < nPaddedCols)
+        if (nCols < _nColumns)
           for (row_t i = 0; i < nRows; ++i)
             (*this)(i, nCols) = CellError::NA;
 
-        if (nRows < nPaddedRows)
-          for (col_t j = 0; j < nPaddedCols; ++j)
+        if (nRows < _nRows)
+          for (col_t j = 0; j < _nColumns; ++j)
             (*this)(nRows, j) = CellError::NA;
       }
     }
@@ -255,12 +318,12 @@ namespace xloil
     /// </summary>
     detail::ArrayBuilderElement operator()(size_t i, size_t j)
     {
-      return detail::ArrayBuilderElement(element(i, j), _allocator);
+      return detail::ArrayBuilderElement(i * _nColumns + j, _allocator);
     }
 
     detail::ArrayBuilderElement operator()(size_t i)
     {
-      return detail::ArrayBuilderElement(_allocator.object(i), _allocator);
+      return detail::ArrayBuilderElement(i, _allocator);
     }
 
     ExcelObj& element(size_t i, size_t j)
@@ -270,13 +333,15 @@ namespace xloil
     }
 
     /// <summary>
-    /// Create an ExcelObj of type array from this builder. Note you
-    /// can still write data using the builder after this call.
+    /// Create an ExcelObj of type array from this builder. This releases control
+    /// of the data block and invalidates the builder.
     /// </summary>
     ExcelObj toExcelObj()
     {
-      return ExcelObj(&_allocator.object(0), int(_nRows), int(_nColumns));
+      return ExcelObj(_allocator.release(), int(_nRows), int(_nColumns));
     }
+
+    operator ExcelObj() { return toExcelObj(); }
 
     row_t nRows() const { return _nRows; }
     col_t nCols() const { return _nColumns; }
@@ -290,9 +355,24 @@ namespace xloil
       _allocator.fillNA(); 
     }
 
+    auto begin()
+    {
+      return detail::ArrayBuilderIterator((*this)(0));
+    }
+
+    auto end()
+    {
+      return detail::ArrayBuilderIterator((*this)(_nRows, _nColumns));
+    }
+
+    /// <summary>
+    /// Returns a pointer to the data of the ExcelObj array being built
+    /// </summary>
+    auto* data() { return &_allocator.object(0); }
+
   private:
-    detail::ArrayBuilderAlloc _allocator;
     row_t _nRows;
     col_t _nColumns;
+    detail::ArrayBuilderAlloc _allocator;
   };
 }

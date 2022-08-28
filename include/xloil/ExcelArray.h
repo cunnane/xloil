@@ -61,6 +61,8 @@ namespace xloil
     bool operator==(iterator other) const { return _p == other._p; }
     bool operator!=(iterator other) const { return !(*this == other); }
     const ExcelObj& operator*() const { return *_p; }
+    auto* operator->() { return &*_p; }
+
   private:
     const ExcelObj* _p;
     const ExcelObj* _pRowEnd;
@@ -207,6 +209,12 @@ namespace xloil
     /// </summary>
     /// <returns>A const reference to the n-th element</returns>
     const ExcelObj& operator()(size_t n) const
+    {
+      checkRange(n);
+      return at(n);
+    }
+
+    const ExcelObj& operator[](size_t n) const
     {
       checkRange(n);
       return at(n);

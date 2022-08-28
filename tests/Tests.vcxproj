@@ -69,7 +69,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ArrayBuilder.cpp" />
+    <ClCompile Include="TestArrayBuilder.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="CodePageConversion.cpp" />

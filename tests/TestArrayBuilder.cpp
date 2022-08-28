@@ -2,11 +2,13 @@
 #include <xlOil/ArrayBuilder.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelObj.h>
+#include <vector>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 using namespace xloil;
 using std::wstring;
+using std::vector;
 
 namespace Tests
 {
@@ -37,6 +39,19 @@ namespace Tests
       Assert::AreEqual(arr(0, 1).toString(), wstring(row0[1]));
       Assert::AreEqual(arr(1, 0).get<double>(), row1[0]);
       Assert::AreEqual(arr(1, 1).get<double>(), row1[1]);
+    }
+
+    TEST_METHOD(ArrayIteratorSyntax)
+    {
+      vector<double> data = { 1, 2, 3, 4, 5, 6 };
+      ExcelArrayBuilder builder(3, 2);
+      std::copy(data.begin(), data.end(), builder.begin());
+
+      auto arrayData = builder.toExcelObj();
+      ExcelArray array(arrayData);
+
+      for (auto i = 0u; i < data.size(); ++i)
+        Assert::AreEqual(array[i].get<double>(), data[i]);
     }
 
     TEST_METHOD(ArrayAccess)
