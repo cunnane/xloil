@@ -60,6 +60,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\xloil\AppObjects.h" />
+    <ClInclude Include="..\..\include\xloil\AutoBind.h" />
     <ClInclude Include="..\..\include\xloil\EnumHelper.h" />
     <ClInclude Include="..\..\include\xloil\ExcelThread.h" />
     <ClInclude Include="..\..\include\xloil\ArrayBuilder.h" />

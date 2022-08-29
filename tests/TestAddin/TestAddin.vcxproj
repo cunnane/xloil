@@ -75,6 +75,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AutoBind.cpp" />
     <ClCompile Include="CacheTest.cpp" />
     <ClCompile Include="CacheTest2.cpp" />
     <ClCompile Include="CallbackTest.cpp">

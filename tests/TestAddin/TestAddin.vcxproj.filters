@@ -7,5 +7,6 @@
     <ClCompile Include="CacheTest.cpp" />
     <ClCompile Include="CacheTest2.cpp" />
     <ClCompile Include="CallbackTest.cpp" />
+    <ClCompile Include="AutoBind.cpp" />
   </ItemGroup>
 </Project>

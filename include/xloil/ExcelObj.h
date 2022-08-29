@@ -7,7 +7,7 @@
 #include <cassert>
 #include <optional>
 
-#define XLOIL_XLOPER msxll::xloper12
+#define XLOIL_XLOPER ::msxll::xloper12
 
 namespace xloil
 {

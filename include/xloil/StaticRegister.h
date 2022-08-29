@@ -29,34 +29,34 @@ namespace xloil {
 #ifdef XLO_RETURN_COM_ERROR
 #define XLO_FUNC_END(func) \
     XLO_RETURN_COM_ERROR \
-    catch (const std::exception& err) \
+    catch (const ::std::exception& err) \
     { \
-      return xloil::returnValue(err); \
+      return ::xloil::returnValue(err); \
     } \
     catch (...) \
     { \
-      return xloil::returnValue(xloil::CellError::Value); \
+      return ::xloil::returnValue(::xloil::CellError::Value); \
     } \
   } \
-  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
+  extern auto _xloil_register_##func = XLO_REGISTER_LATER(func)
 #else
 #define XLO_FUNC_END(func) \
-    catch (const std::exception& err) \
+    catch (const ::std::exception& err) \
     { \
-      return xloil::returnValue(err); \
+      return ::xloil::returnValue(err); \
     } \
     catch (...) \
     { \
-      return xloil::returnValue(xloil::CellError::Value); \
+      return ::xloil::returnValue(::xloil::CellError::Value); \
     } \
   } \
-  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
+  extern auto _xloil_register_##func = XLO_REGISTER_LATER(func)
 #endif // XLO_RETURN_COM_ERROR
 
 
-#define XLO_REGISTER_LATER(func) xloil::detail::registrationMemo(#func, func)
+#define XLO_REGISTER_LATER(func) ::xloil::detail::registrationMemo(#func, func)
 
-#define XLO_START_REGISTER(func) xloil::StaticRegistrationBuilder(#func, func)
+#define XLO_START_REGISTER(func) ::xloil::StaticRegistrationBuilder(#func, func)
 
 namespace xloil
 {
