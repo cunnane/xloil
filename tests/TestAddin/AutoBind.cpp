@@ -9,7 +9,12 @@ namespace AnotherCLib
 
   std::vector<double> AddVectors(const std::vector<double>& x, const std::vector<double>& y)
   {
-    return x;
+    std::vector<double> result;
+
+    for (auto i = 0; i < std::min(x.size(), y.size()); ++i)
+      result.push_back(x[i] + y[i]);
+    
+    return result;
   }
 
   std::wstring DoStringThing(const wchar_t* str)

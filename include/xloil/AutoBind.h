@@ -10,10 +10,46 @@ namespace xloil
 {
   namespace AutoBind
   {
-    struct NoneType {};
+    /// <summary>
+    /// XLO_BIND attempts to register a wrapped C++ function. It can be called with 2, 3 or 4 
+    /// arguments:
+    /// 
+    ///    * `XLO_BIND(FunctionName, NumArgs)`
+    ///    * `XLO_BIND(FunctionName, NumArgs, Defaults)`
+    ///    * `XLO_BIND(FunctionName, NumArgs, Defaults, Converters)`
+    /// 
+    /// The function is registered as `FunctionName` in Excel.
+    /// 
+    /// The `FunctionName` must be imported into the current namespace.
+    /// 
+    /// `Defaults` must be specified as `XLO_DEFAULTS(None, None, 1, 3.14)` where `None` indicates   
+    /// no default.  The defaults do not have to match those specified by the C++ funding being bound.   
+    /// 
+    /// xlOil attempts to convert arguments from the `ExcelObj` type provided by Excel to the 
+    /// type in the function definition by using the `ArgConvert` class.  The excel arguments must
+    /// correspond 1-1 with the arguments in the bound function.
+    ///  
+    /// </summary>
+#define XLO_BIND(...) XLO_EXPAND( _XLO_BIND_SELECT(__VA_ARGS__, _XLO_BIND4, _XLO_BIND3, _XLO_BIND2)(__VA_ARGS__) )
 
+#define XLO_DEFAULTS(...) ::std::make_tuple(__VA_ARGS__)
+
+    /// <summary>
+    /// Can be used in the 4-arg version of XLO_BIND when no defaults are required
+    /// </summary>
+#define XLO_NODEFAULTS(NumArgs) ::std::make_tuple(BOOST_PP_ENUM(NumArgs, _XLO_NODEFAULTS_TEXT, None))
+
+    /// <summary>
+    /// Indicates an argument is not defaulted
+    /// </summary>
+    struct NoneType {};
     constexpr NoneType None;
 
+    /// <summary>
+    /// During auto-binding, arguments are convertered via `ArgConvert<T>(const ExcelObj& x)`, 
+    /// so to add support for more argument types, provide specialisations of this class.
+    /// A number of specialisations for standard C++ types are already given.
+    /// </summary>
     template<class T> struct ArgConvert {};
 
     template<> struct ArgConvert<double>
@@ -54,6 +90,11 @@ namespace xloil
       }
     };
 
+    /// <summary>
+    /// During auto-binding, the return value is convertered via `ReturnConvert<T>(T x)`, 
+    /// so to add support for more return types, provide specialisations of this class.
+    /// The call operator must return an un-owned `ExcelObj*`
+    /// </summary>
     template<class T> struct ReturnConvert
     {
       ExcelObj* operator()(T val)
@@ -126,26 +167,19 @@ namespace xloil
 
 #define _XLO_NODEFAULTS_TEXT(z, n, text) text
 
-
 #define _XLO_BIND4(FUNC, NUM_ARGS, DEFAULTS, CONVERTERS) \
     XLO_FUNC_START(FUNC##_XLOIL(XLO_DECLARE_ARGS(NUM_ARGS, arg)))\
     { \
         auto defaults = DEFAULTS; \
         return ::xloil::AutoBind::detail::ConvertAndInvoke<CONVERTERS::Arg, CONVERTERS::Return, decltype(FUNC)>()( \
           FUNC, defaults, BOOST_PP_ENUM_SHIFTED_PARAMS(BOOST_PP_ADD(NUM_ARGS,1), arg)); \
-    } XLO_FUNC_END(FUNC##_XLOIL)
+    } XLO_FUNC_END(FUNC##_XLOIL).name(XLO_WSTR(FUNC))
 
 #define _XLO_BIND3(FUNC, NUM_ARGS, DEFAULTS) _XLO_BIND4(FUNC, NUM_ARGS, DEFAULTS, ::xloil::AutoBind::DefaultConverters)
 
 #define _XLO_BIND2(FUNC, NUM_ARGS) _XLO_BIND3(FUNC, NUM_ARGS, XLO_NODEFAULTS(NUM_ARGS))
 
 #define _XLO_BIND_SELECT(_1,_2,_3,_4, NAME,...) NAME
-
-#define XLO_DEFAULTS(...) ::std::make_tuple(__VA_ARGS__)
-
-#define XLO_NODEFAULTS(N) ::std::make_tuple(BOOST_PP_ENUM(N, _XLO_NODEFAULTS_TEXT, None))
-
-#define XLO_BIND(...) XLO_EXPAND( _XLO_BIND_SELECT(__VA_ARGS__, _XLO_BIND4, _XLO_BIND3, _XLO_BIND2)(__VA_ARGS__) )
 
   }
 }
