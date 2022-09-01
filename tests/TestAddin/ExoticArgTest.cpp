@@ -14,7 +14,7 @@ namespace xloil
 {
   XLO_ENTRY_POINT(void) testInPlace(
     ExcelObj* retVal,
-    ExcelObj* nRows,
+    const ExcelObj* nRows,
     const ExcelObj* nCols)
   {
     try
@@ -22,8 +22,8 @@ namespace xloil
       if (retVal->isType(ExcelType::Multi))
       {
         auto& arr = retVal->val.array;
-        arr.rows = std::min(nRows->toInt(1), arr.rows);
-        arr.columns = std::min(nCols->toInt(1), arr.columns);
+        arr.rows = std::min(nRows->get<int>(1), arr.rows);
+        arr.columns = std::min(nCols->get<int>(1), arr.columns);
       }
     }
     catch (const std::exception& e)
@@ -31,7 +31,7 @@ namespace xloil
       *retVal = *returnValue(e);
     }
   }
-  XLO_REGISTER_FUNC(testInPlace).threadsafe();
+  XLO_STATIC_REGISTER(testInPlace).threadsafe();
 
   XLO_ENTRY_POINT(void) testAsync(
     const AsyncHandle& handle,
@@ -47,9 +47,9 @@ namespace xloil
       handle.returnValue(e.what());
     }
   }
-  XLO_REGISTER_FUNC(testAsync);
+  XLO_STATIC_REGISTER(testAsync);
 
-  XLO_FUNC_START(testFP(const FPArray& array))
+  XLO_FUNC_START( testFP(const FPArray& array))
   {
     ExcelArrayBuilder builder(array.rows, array.columns);
     for (auto i = 0; i < array.rows; ++i)
@@ -73,7 +73,7 @@ namespace xloil
       for (auto j = i + 1; j < array.columns; ++j)
         std::swap(array(j, i), array(i, j));
   }
-  XLO_REGISTER_FUNC(testTranspose).threadsafe();
+  XLO_STATIC_REGISTER(testTranspose).threadsafe();
 
   XLO_ENTRY_POINT(int) testCommand(
     const ExcelObj*, const ExcelObj*
@@ -81,5 +81,5 @@ namespace xloil
   {
     return 1;
   }
-  XLO_REGISTER_FUNC(testCommand);
+  XLO_STATIC_REGISTER(testCommand);
 }

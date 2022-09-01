@@ -112,7 +112,9 @@
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="FPArray.cpp" />
     <ClCompile Include="Intellisense.cpp" />
+    <ClCompile Include="Log.cpp" />
     <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
@@ -128,6 +130,7 @@
     <ClInclude Include="ExcelCallMapping.h" />
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="Intellisense.h" />
+    <ClInclude Include="LogWindowSink.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

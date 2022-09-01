@@ -57,22 +57,25 @@ namespace xloil
       {
         try
         {
-          State::initAppContext();
-          State::initCoreContext(XllInfo::dllHandle);
+          Environment::initAppContext();
+          
+          // A statically linked addin is its own core
+          Environment::setCoreHandle(XllInfo::dllHandle);
+
           // Handle this event even if we have no registered async functions as they could be 
           // dynamically registered later
           tryCallExcel(msxll::xlEventRegister,
             "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
 
-          theAddin.reset(new T());
-
           // Do this safely in single-thread mode
           initMessageQueue(Environment::excelProcess().hInstance);
 
-          registerIntellisenseHook(XllInfo::xllPath.c_str());
+          theAddin.reset(new T());
+
+          Environment::registerIntellisense(XllInfo::xllPath.c_str());
 
           std::wstring errorMessages;
-          theFunctions = xloil::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
+          theFunctions = xloil::detail::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
           if (!errorMessages.empty())
             loadFailureLogWindow(XllInfo::dllHandle, errorMessages.c_str());
 
@@ -80,7 +83,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          loadFailureLogWindow(XllInfo::dllHandle, e.what());
+          loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(e.what()));
         }
       }
       static void autoClose()

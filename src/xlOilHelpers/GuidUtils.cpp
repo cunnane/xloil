@@ -8,6 +8,8 @@
 #include <combaseapi.h> // StringFromGUID2
 #include <bcrypt.h>
 
+#pragma comment(lib, "bcrypt.lib")
+
 using std::string;
 using std::wstring;
 using std::make_shared;

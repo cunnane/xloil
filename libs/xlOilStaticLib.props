@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(xlOilRoot)external\boost-1.67;$(xlOilRoot)\external\spdlog\include;$(xlOilRoot)\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(xlOilRoot)external\boost-1.67;$(xlOilRoot)\external\spdlog\include;$(xlOilRoot)\src;$(xlOilRoot)\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <LibraryPath>$(xlOilRoot)\external\Excel2013SDK\LIB\x64;$(LibraryPath)</LibraryPath>
@@ -23,8 +23,8 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4251</DisableSpecificWarnings>
     </ClCompile>
-	<Link>
-	  <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    <Link>
+      <AdditionalDependencies>xlcall32.lib;Oleacc.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>

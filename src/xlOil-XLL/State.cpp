@@ -3,6 +3,7 @@
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
 #include <xloil/AppObjects.h>
+#include "Intellisense.h"
 #include <filesystem>
 
 namespace xloil
@@ -56,7 +57,7 @@ namespace xloil
       ourExcelState.hWnd = (long long)getExcelHWnd();
       ourExcelState.mainThreadId = GetCurrentThreadId();
     }
-    void setCorePaths(void* coreHInstance)
+    void setCoreHandle(void* coreHInstance)
     {
       if (theCoreModuleHandle)
         return;
@@ -88,6 +89,11 @@ namespace xloil
     XLOIL_EXPORT const ExcelProcessInfo& excelProcess() noexcept
     {
       return ourExcelState;
+    }
+
+    void registerIntellisense(const wchar_t* xllPath)
+    {
+      registerIntellisenseHook(xllPath);
     }
   }
 }

@@ -18,7 +18,8 @@ namespace xloil {
 
 
 /// <summary>
-/// Marks the start of an function registered in Excel
+/// Marks the start of an function registered in Excel. This declares an extern 'C'
+/// DLL-exported function, so the function name must be unique as namespaces are ignored.
 /// </summary>
 #define XLO_FUNC_START(func) \
   XLO_ENTRY_POINT(XLOIL_XLOPER*) func; \
@@ -50,13 +51,14 @@ namespace xloil {
       return ::xloil::returnValue(::xloil::CellError::Value); \
     } \
   } \
-  extern auto _xloil_register_##func = XLO_REGISTER_LATER(func)
+  XLO_STATIC_REGISTER(func)
 #endif // XLO_RETURN_COM_ERROR
 
 
 #define XLO_REGISTER_LATER(func) ::xloil::detail::registrationMemo(#func, func)
 
-#define XLO_START_REGISTER(func) ::xloil::StaticRegistrationBuilder(#func, func)
+#define XLO_STATIC_REGISTER(func) \
+  extern auto _xloil_register_##func = ::xloil::detail::registrationMemo(#func, func)
 
 namespace xloil
 {

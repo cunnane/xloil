@@ -8,7 +8,7 @@
 #include <xlOil/Events.h>
 #include <xloil/State.h>
 #include <xloil/RtdServer.h>
-#include <xloil/LogWindowSink.h>
+#include <xloil-XLL/LogWindowSink.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil-COM/Connect.h>
 #include <tomlplusplus/toml.hpp>
@@ -47,7 +47,8 @@ namespace xloil
       auto logLevel = Settings::logLevel(addinRoot);
       auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
 
-      detail::loggerAddFile(
+      loggerAddRotatingFileSink(
+        spdlog::default_logger(),
         logFile.c_str(), logLevel.c_str(), 
         logMaxSize, logNumFiles);
 

@@ -35,14 +35,42 @@
 
 namespace xloil
 {
-  namespace detail
-  {
-    void loggerInitialise(spdlog::level::level_enum level);
-    void loggerInitPopupWindow();
-    void loggerAddFile(
-      const wchar_t* logFilePath, const char* logLevel, 
-      size_t maxFileSizeKb, size_t numFiles = 1);
-  }
+  /// <summary>
+  /// Create an initialise a spdlog logger.
+  /// <param name="debugStringLevel">
+  ///   If set to a spdlog level other than "off", a sink which writes to `OutputDebugString`
+  ///   is created with the given log level and added to the logger's sinks
+  /// </param>
+  /// <param name="makeDefault">
+  ///   Make this logger the default logger, which can be accessed with `spdlog::default_logger()`
+  /// </param>
+  /// </summary>
+  std::shared_ptr<spdlog::logger> 
+    loggerInitialise(const char* debugStringLevel, bool makeDefault = true);
+
+  /// <summary>
+  /// Sets the log level at which the logger's sinks should be flushed (written to disk for
+  /// file based sinks). Also optionally adds an event handler which flushes the logger after
+  /// each Excel calc cycle.
+  /// </summary>
+  void loggerSetFlush(
+    const std::shared_ptr<spdlog::logger>& logger,
+    const char* flushLevel,
+    bool flushAfterCalc);
+
+  /// <summary>
+  /// Adds a logger sink which pops up a log window when log messages exceed a certain
+  /// threshold (which defaults to "warn") 
+  /// </summary>
+  void loggerAddPopupWindowSink(const std::shared_ptr<spdlog::logger>& logger);
+
+  /// <summary>
+  /// Add a rotating file sink to the logger
+  /// </summary>
+  void loggerAddRotatingFileSink(
+    const std::shared_ptr<spdlog::logger>& logger,
+    const std::wstring_view& logFilePath, const char* logLevel,
+    size_t maxFileSizeKb, size_t numFiles = 1);
 
   /// <summary>
   /// Gets the logger registry for the core dll so plugins can output to the same

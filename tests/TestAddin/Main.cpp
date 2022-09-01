@@ -4,6 +4,7 @@
 #include <xloil/DynamicRegister.h>
 #include <xloil/Async.h>
 #include <xloil/XllEntryPoint.h>
+#include <xloilHelpers/Environment.h>
 
 #include <map>
 using namespace xloil;
@@ -25,6 +26,15 @@ struct MyAddin
 
   MyAddin()
   {
+    auto logger = loggerInitialise("warn");
+    // It's not a great idea to put your log file in the same directory as the XLL
+    // because if the XLL has been added to Excel's `XLSTART` folder, Excel will
+    // attempt to open the log file when it is next started.
+    loggerAddRotatingFileSink(logger,
+      getEnvironmentVar(L"APPDATA") + L"\\xlOil\\" + XllInfo::xllName + L".log",
+      "debug",
+      1000);
+
     theFuncs.push_back(RegisterLambda<>(
       [](const ExcelObj& arg1, const ExcelObj& arg2)
       {
@@ -61,7 +71,7 @@ struct MyAddin
       handlers[L"comboChange"] = ribbonHandler;
       auto mapper = [=](const wchar_t* name) mutable { return handlers[name]; };
 
-      theComAddin->setRibbon(LR"(
+      theComAddin->connect(LR"(
       <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
 	      <ribbon>
 		      <tabs>
@@ -82,8 +92,6 @@ struct MyAddin
 	      </ribbon>
       </customUI>
       )", mapper);
-
-      theComAddin->connect();
 
       theComAddin->ribbonInvalidate();
       theComAddin->ribbonActivate(L"customTab");

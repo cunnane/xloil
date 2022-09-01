@@ -58,10 +58,14 @@ namespace xloil
     /// <summary>
     /// Internal usage
     /// </summary>
-    void setCorePaths(void* coreHInstance);
+    void setCoreHandle(void* coreHInstance);
     /// <summary>
     /// Internal usage
     /// </summary>
     XLOIL_EXPORT void initAppContext();
+    /// <summary>
+    /// Internal usage
+    /// </summary>
+    void registerIntellisense(const wchar_t* xllPath);
   }
 }

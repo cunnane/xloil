@@ -45,15 +45,15 @@ namespace xloil
       {
         // There's no log file until createAddinContext figures out our 
         // settings, so any logging goes to the debug output.
-        detail::loggerInitialise(spdlog::level::debug);
+        auto logger = loggerInitialise("debug");
 
-        Environment::setCorePaths(theCoreModuleHandle);
+        Environment::setCoreHandle(theCoreModuleHandle);
 
         initMessageQueue(Environment::excelProcess().hInstance);
 
         XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 
-        detail::loggerInitPopupWindow();
+        loggerAddPopupWindowSink(logger);
       }
 
       bool isXloilCoreAddin = _wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0;

@@ -2,7 +2,8 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/Preprocessor.h>
 #include <xloil/Log.h>
-#include <xloil/LogWindowSink.h>
+#include <xloil/LogWindow.h>
+#include <xloil-XLL/LogWindowSink.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
 namespace xloil
