@@ -46,6 +46,7 @@ namespace xloil
         // There's no log file until createAddinContext figures out our 
         // settings, so any logging goes to the debug output.
         auto logger = loggerInitialise("debug");
+        loggerSetFlush(logger, "warning", true);
 
         Environment::setCoreHandle(theCoreModuleHandle);
 
