@@ -1,5 +1,6 @@
 #include <xloil/Plugin.h>
 #include <xloil/StringUtils.h>
+#include <xlOilHelpers/Environment.h>
 #include <xloil/Throw.h>
 #include <xloil/WindowsSlim.h>
 #include <cstdlib>
@@ -27,31 +28,42 @@ namespace xloil
           linkPluginToCoreLogger(context, plugin);
           throwIfNotExactVersion(plugin);
 
-          // This means we need to link python3.dll. If python 4 comes along and 
-          // the old python3.dll is no longer around, we could sniff the dependencies
-          // of python.exe in PYTHONHOME to work out which version we need to load
-          auto pyVersion = Py_GetVersion();
-
           string dllName = "xlOil_Python";
 
-          // Version string looks like "X.Y.Z blahblahblah"
-          // Convert X.Y version to XY and append to dllname. Stop processing
-          // when we hit something else
-          auto periods = 0;
-          for (auto c = pyVersion; ;++c)
+          auto userVersion = getEnvironmentVar("XLOIL_PYTHON_VERSION");
+
+          if (!userVersion.empty())
           {
-            if (isdigit(*c))
-              dllName.push_back(*c);
-            else if (*c == '.')
+            userVersion.erase(std::remove(userVersion.begin(), userVersion.end(), '.'), userVersion.end());
+            dllName += userVersion;
+          }
+          else
+          {
+            // This means we need to link python3.dll. If python 4 comes along and 
+            // the old python3.dll is no longer around, we could sniff the dependencies
+            // of python.exe in PYTHONHOME to work out which version we need to load
+            auto pyVersion = Py_GetVersion();
+
+            // Version string looks like "X.Y.Z blahblahblah"
+            // Convert X.Y version to XY and append to dllname. Stop processing
+            // when we hit something else
+            auto periods = 0;
+            for (auto c = pyVersion; ; ++c)
             {
-              if (++periods > 1)
+              if (isdigit(*c))
+                dllName.push_back(*c);
+              else if (*c == '.')
+              {
+                if (++periods > 1)
+                  break;
+              }
+              else
                 break;
             }
-            else
-              break;
           }
+
           dllName += ".pyd";
-         
+
           // Load the library - the xlOil loader should already have set the DLL
           // load directory and we expect to find the versioned python plugins
           // in the directory this DLL is in.
