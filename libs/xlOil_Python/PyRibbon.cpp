@@ -91,7 +91,7 @@ namespace xloil
           ? funcNameMap.attr("__getitem__")
           : funcNameMap;
         
-        return [pyMapper = PyObjectHolder(pyMapper), eventLoop = getEventLoop()](
+        return [pyMapper = PyObjectHolder(pyMapper), eventLoop = getEventLoop().get()](
           const wchar_t* name)
         {
           try
