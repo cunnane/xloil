@@ -65,7 +65,7 @@ namespace xloil
       // Add any requested date formats
       auto dateFormats = Settings::dateFormats(addinRoot);
       for (auto& form : dateFormats)
-        dateTimeAddFormat(form.c_str());
+        theDateTimeFormats().push_back(form);
 
       return settings;
     }

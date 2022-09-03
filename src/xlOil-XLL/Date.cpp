@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 using namespace std::chrono;
-using std::unordered_set;
+using std::vector;
 using std::string;
 using std::wstring;
 
@@ -146,7 +146,7 @@ namespace xloil
     }
   };
 
-  unordered_set<wstring> theDateFormats;
+  vector<wstring> theDateFormats;
 
   bool stringToDateTime(
     const std::wstring_view& str,
@@ -175,8 +175,8 @@ namespace xloil
     }
   }
 
-  void dateTimeAddFormat(const wchar_t* f)
+  vector<wstring>& theDateTimeFormats()
   {
-    theDateFormats.insert(f);
+    return theDateFormats;
   }
 }

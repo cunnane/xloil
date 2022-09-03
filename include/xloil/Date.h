@@ -3,6 +3,7 @@
 #include <xloil/ExcelObj.h>
 #include <string_view>
 #include <time.h>
+#include <vector>
 
 namespace std { struct tm; }
 namespace xloil
@@ -80,13 +81,10 @@ namespace xloil
   }
 
   /// <summary>
-  /// Registers a date time format to try when parsing strings with
-  /// <see cref="stringToDateTime"/>.  See `std::get_time` for 
-  /// format syntax.
+  /// Registers date time formats to try when parsing strings with
+  /// <see cref="stringToDateTime"/>.  See `std::get_time` for format syntax.
   /// </summary>
-  XLOIL_EXPORT void dateTimeAddFormat(const wchar_t* f);
-
-
+  XLOIL_EXPORT std::vector<std::wstring>& theDateTimeFormats();
 
   struct DateVisitor : public ExcelValVisitor<bool>
   {
