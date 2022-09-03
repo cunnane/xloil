@@ -129,7 +129,7 @@ namespace xloil
 
       CommandReturn(const IPyToExcel*) {}
 
-      int operator()(PyObject* retVal) const
+      int operator()(PyObject* /*retVal*/) const
       {
         return 1; // Ignore return value
       }
@@ -491,19 +491,20 @@ namespace xloil
     void registerFunctions(
       const vector<shared_ptr<PyFuncInfo>>& functions,
       py::object& module,
-      const py::object& addinCtx,
+      const py::object& addinContext,
       const bool append)
     {
       // Called from python so we have the GIL
       // A "null" module handle is used by jupyter
       const auto modulePath = getModulePath(module);
 
+      auto& context = addinContext.is_none()
+        ? theCoreAddin()->context
+        : py::cast<PyAddin&>(addinContext).context;
+      
       py::gil_scoped_release releaseGil;
-
       auto registeredMod = FunctionRegistry::addModule(
-        addinCtx.is_none() 
-          ? theCoreAddin()->context 
-          : findAddin(pyToWStr(addinCtx).c_str()).context,
+        context,
         modulePath, 
         nullptr);
       registeredMod->registerPyFuncs(module.release(), functions, append);
