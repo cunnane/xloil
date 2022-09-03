@@ -93,7 +93,8 @@ setup(
     
     python_requires=f'>=3.6',
     install_requires=[
-        'numpy>=1.18'
+        'numpy>=1.18',
+        'tomlkit'
     ],
     
     classifiers=[
