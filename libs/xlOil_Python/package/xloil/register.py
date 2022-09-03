@@ -127,20 +127,6 @@ def _get_event_loop():
     asyncio.set_event_loop(_async_function_loop) # Required?
     return _async_function_loop
 
-    
-def _pump_message_loop(loop, timeout):
-    """
-    Called internally to run the asyncio message loop. Returns the number of active tasks
-    """
-    import asyncio
-
-    async def wait():
-        await asyncio.sleep(timeout)
-    
-    loop.run_until_complete(wait())
-
-    return len([task for task in asyncio.all_tasks(loop) if not task.done()])
-
 def _logged_wrapper(func):
     """
     Wraps func so that any errors are logged. Invoked from the core.

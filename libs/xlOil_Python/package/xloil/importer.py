@@ -39,33 +39,46 @@ class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
 _module_finder = _SpecifiedPathFinder()
 sys.meta_path.append(_module_finder)
 
+def _pump_message_loop(loop, timeout:float):
+    """
+    Called internally to run the asyncio message loop. Returns the number of active tasks
+    """
+    import asyncio
 
-def linked_workbook(mod=None) -> str:
+    async def wait():
+        await asyncio.sleep(timeout)
+    
+    loop.run_until_complete(wait())
+
+    return len([task for task in asyncio.all_tasks(loop) if not task.done()])
+
+def linked_workbook() -> str:
     """
-        Returns the full path of the workbook linked to the specified module
+        Returns the full path of the workbook linked to the calling module
         or None if the module was not loaded with an associated workbook.
-        If no module is specified, the calling module is used.
     """
-    if mod is None:
-        # Get immediate caller
-        frame = inspect.stack()[1]
+    # Get immediate caller
+    frame = inspect.stack()[1]
     return _linked_workbooks.get(frame.filename, None)
 
 
-def source_addin(mod=None) -> str:
+def source_addin() -> str:
     """
-        Returns the full path of the source add-in (XLL file) assoicated with
+        Returns the full path of the source add-in (XLL file) associated with
         the current code. That is the add-in which has caused the current code
         to be executed
     """
+    import xloil_core
 
-    if mod is None:
-        # Get the highest level caller we recognise
-        for frame in inspect.stack()[::-1]:
-            addin = _module_addin_map.get(frame.filename, None)
-            if addin is not None:
-                return addin
-    return None
+    addin_path = None
+
+    # Get the highest level caller we recognise
+    for frame in inspect.stack()[::-1]:
+        addin_path = _module_addin_map.get(frame.filename, None)
+        if addin_path is not None:
+            break
+
+    return None if addin_path is None else xloil_core.xloil_addins[addin_path] 
 
 
 def get_event_loop():
@@ -74,9 +87,7 @@ def get_event_loop():
         Unless specified in the settings, all add-ins are loaded in the same thread  
         and event loop.
     """
-    import xloil_core
-    addin = source_addin()
-    return xloil_core._get_event_loop(addin)
+    return source_addin().event_loop
 
 
 def _import_and_scan(what, addin):
@@ -88,9 +99,9 @@ def _import_and_scan(what, addin):
     """
     
     if isinstance(what, str):
-        module = importlib.import_module(what)
         # Remember which addin loaded this module
-        _module_addin_map[module.__file__] = addin ## TODO: hasattr
+        _module_addin_map[what] = addin.pathname
+        module = importlib.import_module(what)
     elif inspect.ismodule(what):
         module = importlib.reload(what)
     else:
@@ -106,7 +117,7 @@ def _import_and_scan(what, addin):
     scan_module(module, addin)
     return module
 
-def _import_file_and_scan(path, addin, workbook_name=None):
+def _import_file_and_scan(path, addin=None, workbook_name:str=None):
 
     """
     Imports the specifed py file as a module without adding its path to sys.modules.
@@ -129,7 +140,9 @@ def _import_file_and_scan(path, addin, workbook_name=None):
             if len(directory) > 0 or workbook_name is not None:
                 _module_finder.add_path(module_name, path)
 
-            _module_addin_map[path] = addin
+            addin = addin or source_addin()
+
+            _module_addin_map[path] = addin.pathname
 
             # Force a reload if an attempt is made to load a module again.
             # This can happen if a workbook is closed and reopened - it is
@@ -153,6 +166,22 @@ def _import_file_and_scan(path, addin, workbook_name=None):
             status.msg(f"Error loading {path}, see log")
             raise ImportError(f"{str(e)} whilst loading {path}", path=path, name=module_name) from e
 
+from importlib.machinery import SourceFileLoader
+
+class _LoadAndScanHook(SourceFileLoader):
+    def exec_module(self, module):
+        global _module_addin_map
+
+        # See if _import_and_scan has written addin info for this module
+        addin = _module_addin_map.get(module.__name__)
+        if addin is not None:
+            _module_addin_map[module.__file__] = addin
+
+        # Exec module as normal
+        super().exec_module(module)
+
+        # Look for xlOil functions to register
+        scan_module(module)
 
 def _install_hook():
     # Hooks the import mechanism to run register.scan_module on all .py files.
@@ -161,17 +190,12 @@ def _install_hook():
 
     from importlib.machinery import (
         SOURCE_SUFFIXES, BYTECODE_SUFFIXES, FileFinder, 
-        ExtensionFileLoader, SourcelessFileLoader, SourceFileLoader
+        ExtensionFileLoader, SourcelessFileLoader
         )
     import _imp
 
-    class LoadAndScan(SourceFileLoader):
-         def exec_module(self, module):
-            super().exec_module(module)
-            scan_module(module)
-
     extensions = ExtensionFileLoader, _imp.extension_suffixes()
-    source     = LoadAndScan, SOURCE_SUFFIXES
+    source     = _LoadAndScanHook, SOURCE_SUFFIXES
     bytecode   = SourcelessFileLoader, BYTECODE_SUFFIXES
 
     sys.path_hooks.insert(0, FileFinder.path_hook(*[extensions, source, bytecode]))

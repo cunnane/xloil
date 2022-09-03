@@ -2,13 +2,13 @@
 #include <pybind11/pybind11.h>
 #include <memory>
 #include <string>
+#include <map>
 
 namespace xloil
 {
   class AddinContext;
   namespace Python { class EventLoop; }
 }
-
 
 namespace xloil
 {
@@ -19,11 +19,11 @@ namespace xloil
     /// separate context to keep track of the functions it registers. It also
     /// has separate thread and event loop on which all importing is done
     /// </summary>
-    struct PyAddin
+    struct PyAddin : std::enable_shared_from_this<PyAddin>
     {
       PyAddin(AddinContext&, bool, const wchar_t*);
 
-      AddinContext& context;
+      AddinContext&              context;
       std::shared_ptr<EventLoop> thread;
       std::string                comBinder;
 
@@ -55,6 +55,25 @@ namespace xloil
 
     private:
       std::wstring _workbookPattern;
+
+      pybind11::object self() const;
     };
+
+    /// <summary>
+    /// Only called from Main.cpp on plugin startup
+    /// </summary>
+    std::map<std::wstring, std::shared_ptr<PyAddin>>& getAddins();
+
+    /// <summary>
+    /// Returns the PyAddin object corresponding to the given XLL,
+    /// or throws if none found.
+    /// </summary>
+    PyAddin& findAddin(const wchar_t* xllPath);
+    
+    /// <summary>
+    /// Gets the event loop associated with the current thread or throws
+    /// </summary>
+    /// <returns></returns>
+    std::shared_ptr<EventLoop> getEventLoop();
   }
 }

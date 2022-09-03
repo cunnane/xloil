@@ -39,7 +39,7 @@ namespace xloil
             getGil.inc_ref();
 
             _eventLoop = pybind11::module::import("asyncio").attr("new_event_loop")();
-            _pumpFunction = pybind11::module::import("xloil.register").attr("_pump_message_loop");
+            _pumpFunction = pybind11::module::import("xloil.importer").attr("_pump_message_loop");
             _callSoonFunction = _eventLoop.attr("call_soon_threadsafe");
           }
           catch (const std::exception& e)

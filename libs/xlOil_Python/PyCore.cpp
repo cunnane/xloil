@@ -269,10 +269,6 @@ namespace xloil
 
           cellErrorType = (PyTypeObject*)eType.ptr();
         }
-
-        // No doc string - not exposed
-        mod.def("_get_event_loop", 
-          [](const wchar_t* addin) { findAddin(addin).thread->loop(); });
       }
     }
 } }

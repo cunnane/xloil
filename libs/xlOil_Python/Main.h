@@ -9,13 +9,6 @@ namespace xloil
 
   namespace Python
   {
-    PyAddin& findAddin(const wchar_t* xllPath);
-    /// <summary>
-    /// Gets the event loop associated with the current thread or throws
-    /// </summary>
-    /// <returns></returns>
-    std::shared_ptr<EventLoop> getEventLoop();
-
     /// <summary>
     /// The core context corresponds to xlOil.dll - it always exists and is
     /// used for loading any modules specified in the core settings and addin 
