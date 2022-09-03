@@ -234,6 +234,14 @@ namespace xloil
     {
       switch (variant.vt)
       {
+      case VT_I2:   return ExcelObj(variant.iVal);
+      case VT_I4:   return ExcelObj(variant.lVal);
+      case VT_I8:   return ExcelObj(variant.llVal);
+      case VT_INT:  return ExcelObj(variant.intVal);
+      case VT_UI2:  return ExcelObj(variant.uiVal);
+      case VT_UI4:  return ExcelObj(variant.ulVal);
+      case VT_UI8:  return ExcelObj(variant.ullVal);
+      case VT_UINT: return ExcelObj(variant.uintVal);
       case VT_R8:   return ExcelObj(variant.dblVal);
       case VT_BOOL: return ExcelObj(variant.boolVal == VARIANT_TRUE);
       case VT_BSTR: return ExcelObj((const wchar_t*)variant.bstrVal);
