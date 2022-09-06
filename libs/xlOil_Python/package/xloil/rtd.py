@@ -8,7 +8,7 @@ class RtdSimplePublisher(xlo.RtdPublisher):
     """
 
     def __init__(self, topic):
-        # Must call this ctor explicitly or the pybind will crash
+        # Must call this ctor explicitly or pybind will crash
         super().__init__()  
         self._topic = topic
         self._task = None
@@ -46,9 +46,10 @@ def subscribe(server:xlo.RtdServer, topic:str, coro):
     be published 
     """
     if server.peek(topic) is None:
-        from .register import async_wrapper, find_return_converter, function_arg_info
+        from .register import async_wrapper, find_return_converter
+        from .func_inspect import Arg
 
-        func_args, return_type = function_arg_info(coro)
+        func_args, return_type = Arg.full_argspec(coro)
         if any(func_args):
             raise ValueError("Cororoutine should have zero args")
 
