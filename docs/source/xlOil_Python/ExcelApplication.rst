@@ -238,6 +238,23 @@ in that if the tuple specifies a single cell, it returns the value in that cell,
 it returns a :any:`xloil.Range` object.  To create a range consisting of a single cell
 use the `cells` method of :any:`xloil.Range`.
 
+Using Excel COM options
+==============================
+
+The Excel COM options/constants can be called by referencing *win32com*.
+The full list can be `found here <https://docs.microsoft.com/en-us/office/vba/api/excel(enumerations)>`_.
+::
+
+    import xloil as xlo
+    import win32com.client as win32
+
+    xl = xlo.app().to_com()
+    
+    win32.gencache.GetClassForProgID('Excel.Application') # May not need this, depending on context
+    
+    xl.Calculation = win32.constants.xlCalculationManual
+    # Do long calculation...
+    xl.Calculation = win32.constants.xlCalculationAutomatic
 
 Troubleshooting
 ---------------
