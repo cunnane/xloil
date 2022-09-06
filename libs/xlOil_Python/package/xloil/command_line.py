@@ -92,27 +92,28 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
     def do_replace(pat, repl):
         nonlocal ini_txt
-        ini_txt, count = re.subn(pat, repl, ini_txt, flags=re.M)
-        return count
+        ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
+        return True
 
     def check_replace(pat, repl):
-        nonlocal fails
-        count = do_replace(pat, repl)
-        if count != 1:
+        nonlocal fails, ini_txt
+        if re.search(pat, ini_txt, flags=re.M) is None:
             print(f"Failed to match pattern {pat}")
             fails += 1
+        else:
+            do_replace(pat, repl)
     
     # Set PYTHONPATH - note we append to the path as that seems the least surprising
     check_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
     # Set xlOil_PythonRoot
-    check_replace(r'^(\s*xlOil_PythonRoot\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
+    check_replace(r'^(\s*PYTHONHOME\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
     # Set XLOIL_PATH
     check_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
     
     # Comment out the now usused code to get the python paths from the registry
     # Don't error if this fails as it's not critical
     if comment_reg_keys:
-        for key in ["xlOil_RegistryPythonRoot", "xlOil_RegistryPythonPath", "xlOil_PythonRegKey"]:
+        for key in ["xlOil_PythonRegKey"]:
             do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
 
     return ini_txt, fails == 0
