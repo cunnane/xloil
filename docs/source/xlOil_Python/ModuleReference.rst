@@ -237,10 +237,14 @@ Everything else
 	call
 	call_async
 	excel_callback
-	xloil.debug.exception_debug
+	Addin
+	source_addin
+	_AddinsDict
+	_DateFormatList
+	xloil.debug.use_debugger
 
 .. automodule:: xloil
-	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin
 	:imported-members:
 	:undoc-members:
 
@@ -248,7 +252,16 @@ Everything else
 	:members: 
 	:inherited-members:
 	:undoc-members:
-	
+
+.. autoclass:: Addin
+	:members:
+
+.. autoclass:: _AddinsDict
+	:members:
+
+.. autoclass:: _DateFormatList
+	:members:
+
 .. autodata:: log
 
 .. automodule:: xloil.logging

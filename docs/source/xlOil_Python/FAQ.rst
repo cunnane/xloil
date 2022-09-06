@@ -1,6 +1,6 @@
-=============================================
-xlOil Python Questions (anticipated or asked)
-=============================================
+======================
+xlOil Python Questions
+======================
 
 .. contents::
     :local:
@@ -29,6 +29,13 @@ Intellisense / Function Context Help
 To activate pop-up function help, follow the instructions here: :any:`concepts-intellisense`.
 
 
+Auto-reload doesn't reload a module
+-----------------------------------
+
+xlOil only watches for changes in modules which contain :any:`xloil.func` regisrations: it does
+not do a deep scan / reload of all dependent modules as this could include large portions of your
+python distribution!
+
 Dynamically Resized Arrays
 --------------------------
 
@@ -48,6 +55,7 @@ array formulae or with the Office 365 support.  The code would need to:
 
 Unlike the built-in support in Office 365, the written arrays would be static data so, for example,
 function dependency tracing would not work on them (except the top left entry).
+
 
 This application failed to start because it could not find or load the Qt platform plugin "windows"
 ---------------------------------------------------------------------------------------------------

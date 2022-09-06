@@ -72,7 +72,8 @@ for a description of the appropriate callback signature.
 Instead of a dictionary, the `funcmap` object can be a function which takes any string and returns a 
 callback handler.
 
-See :doc:`ExampleGUI` for an example of ribbon customisation.
+See :doc:`ExampleGUI` for an example of ribbon customisation, or look at xlOil's own ribbon in the 
+`xloil/xloil_ribbon.py` module.
 
 Setting button images
 =====================
