@@ -9,6 +9,7 @@ from __future__ import annotations
 import typing
 
 __all__ = [
+    "Addin",
     "Application",
     "Caller",
     "CannotConvert",
@@ -43,6 +44,8 @@ __all__ = [
     "cache",
     "call",
     "call_async",
+    "core_addin",
+    "date_formats",
     "deregister_functions",
     "event",
     "excel_callback",
@@ -52,10 +55,49 @@ __all__ = [
     "in_wizard",
     "insert_cell_image",
     "run",
-    "run_async"
+    "run_async",
+    "xloil_addins"
 ]
 
 
+class Addin():
+    def functions(self) -> typing.List[_FuncSpec]: 
+        """
+        Returns a list of all functions declared by this addin.
+        """
+    def source_files(self) -> typing.List[str]: ...
+    @property
+    def event_loop(self) -> object:
+        """
+                      The asyncio event loop used for background tasks by this addin
+                    
+
+        :type: object
+        """
+    @property
+    def pathname(self) -> str:
+        """
+        :type: str
+        """
+    @property
+    def settings(self) -> object:
+        """
+                      Gives access to the settings in the addin's ini file as nested dictionaries.
+                      These are the settings on load and do not allow for modifications made in the 
+                      ribbon toolbar.
+                    
+
+        :type: object
+        """
+    @property
+    def settings_file(self) -> str:
+        """
+                      The full pathname of the settings ini file used by this addin
+                    
+
+        :type: str
+        """
+    pass
 class Application():
     """
     Manages a handle to the *Excel.Application* object. This object is the root 
@@ -919,9 +961,17 @@ class RtdPublisher():
         """
     pass
 class RtdReturn():
-    def set_done(self) -> None: ...
+    def set_done(self) -> None: 
+        """
+        Indicates that the task has completed and the RtdReturn can drop its reference
+        to the task. Further calls to `set_result()` will be ignored.
+        """
     def set_result(self, arg0: object) -> None: ...
-    def set_task(self, arg0: object) -> None: ...
+    def set_task(self, task: object) -> None: 
+        """
+        Set the task object to keep it alive until the task indicates it is done. The
+        task object should respond to the `cancel()` method.
+        """
     @property
     def caller(self) -> Caller:
         """
@@ -977,12 +1027,13 @@ class RtdServer():
         """
     def start(self, topic: RtdPublisher) -> None: 
         """
-        Registers an RtdPublisher publisher with this manager. The RtdPublisher receives
+        Registers an RtdPublisher with this manager. The RtdPublisher receives
         notification when the number of subscribers changes
         """
     def start_task(self, topic: str, func: object, converter: IPyToExcel = None) -> None: 
         """
-        Launch a publishing task for a `topic` given a func and a return converter
+        Launch a publishing task for a `topic` given a func and a return converter.
+        The function should take a single `xloil.RtdReturn` argument.
         """
     def subscribe(self, topic: str, converter: IPyFromExcel = None) -> object: 
         """
@@ -1360,6 +1411,19 @@ class WorksheetsIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> Worksheet: ...
     pass
+class _AddinsDict():
+    """
+    A dictionary of all addins using the xlOil_Python plugin keyed
+    by the addin pathname.
+    """
+    def __contains__(self, arg0: str) -> bool: ...
+    def __getitem__(self, arg0: str) -> Addin: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def __len__(self) -> int: ...
+    def items(self) -> typing.Iterator: ...
+    def keys(self) -> typing.Iterator: ...
+    def values(self) -> typing.Iterator: ...
+    pass
 class _AsyncReturn():
     def set_done(self) -> None: ...
     def set_result(self, arg0: object) -> None: ...
@@ -1423,6 +1487,95 @@ class _CustomReturnConverter():
     @value.setter
     def value(self, arg0: IPyToExcel) -> None:
         pass
+    pass
+class _DateFormatList():
+    """
+    Registers date time formats to try when parsing strings to dates.
+    See `std::get_time` for format syntax.
+    """
+    def __bool__(self) -> bool: 
+        """
+        Check whether the list is nonempty
+        """
+    def __contains__(self, x: str) -> bool: 
+        """
+        Return true the container contains ``x``
+        """
+    @typing.overload
+    def __delitem__(self, arg0: int) -> None: 
+        """
+        Delete the list elements at index ``i``
+
+        Delete list elements using a slice object
+        """
+    @typing.overload
+    def __delitem__(self, arg0: slice) -> None: ...
+    def __eq__(self, arg0: _DateFormatList) -> bool: ...
+    @typing.overload
+    def __getitem__(self, arg0: int) -> str: 
+        """
+        Retrieve list elements using a slice object
+        """
+    @typing.overload
+    def __getitem__(self, s: slice) -> _DateFormatList: ...
+    @typing.overload
+    def __init__(self) -> None: 
+        """
+        Copy constructor
+        """
+    @typing.overload
+    def __init__(self, arg0: _DateFormatList) -> None: ...
+    @typing.overload
+    def __init__(self, arg0: typing.Iterable) -> None: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def __len__(self) -> int: ...
+    def __ne__(self, arg0: _DateFormatList) -> bool: ...
+    @typing.overload
+    def __setitem__(self, arg0: int, arg1: str) -> None: 
+        """
+        Assign list elements using a slice object
+        """
+    @typing.overload
+    def __setitem__(self, arg0: slice, arg1: _DateFormatList) -> None: ...
+    def append(self, x: str) -> None: 
+        """
+        Add an item to the end of the list
+        """
+    def clear(self) -> None: 
+        """
+        Clear the contents
+        """
+    def count(self, x: str) -> int: 
+        """
+        Return the number of times ``x`` appears in the list
+        """
+    @typing.overload
+    def extend(self, L: _DateFormatList) -> None: 
+        """
+        Extend the list by appending all the items in the given list
+
+        Extend the list by appending all the items in the given list
+        """
+    @typing.overload
+    def extend(self, L: typing.Iterable) -> None: ...
+    def insert(self, i: int, x: str) -> None: 
+        """
+        Insert an item at a given position.
+        """
+    @typing.overload
+    def pop(self) -> str: 
+        """
+        Remove and return the last item
+
+        Remove and return the item at index ``i``
+        """
+    @typing.overload
+    def pop(self, i: int) -> str: ...
+    def remove(self, x: str) -> None: 
+        """
+        Remove the first item from the list whose value is x. It is an error if there is no such item.
+        """
+    __hash__ = None
     pass
 class _ExcelObjFuture():
     """
@@ -1504,9 +1657,41 @@ class _FuncSpec():
         :type: typing.List[_FuncArg]
         """
     @property
+    def func(self) -> function:
+        """
+        :type: function
+        """
+    @func.setter
+    def func(self, arg1: function) -> None:
+        pass
+    @property
     def help(self) -> str:
         """
         :type: str
+        """
+    @property
+    def is_async(self) -> bool:
+        """
+                      True if the function used Excel's native async
+                    
+
+        :type: bool
+        """
+    @property
+    def is_rtd(self) -> bool:
+        """
+                      True if the function uses RTD to provide async returns
+                    
+
+        :type: bool
+        """
+    @property
+    def is_threaded(self) -> bool:
+        """
+                      True if the function can be multi-threaded during Excel calcs
+                    
+
+        :type: bool
         """
     @property
     def name(self) -> str:
@@ -1557,6 +1742,11 @@ class _LogWriter():
         """
         Writes a log message at the 'error' level
         """
+    def flush(self) -> None: 
+        """
+        Forces a log file 'flush', i.e write pending log messages to the log file.
+        For performance reasons the file is not by default flushed for every message.
+        """
     def info(self, msg: str) -> None: 
         """
         Writes a log message at the 'info' level
@@ -1570,14 +1760,29 @@ class _LogWriter():
         Writes a log message at the 'warn' level
         """
     @property
-    def level(self) -> int:
+    def flush_on(self) -> str:
+        """
+                      Returns or sets the log level which will trigger a 'flush', i.e a writing pending
+                      log messages to the log file.
+                    
+
+        :type: str
+        """
+    @flush_on.setter
+    def flush_on(self, arg1: object) -> None:
+        """
+        Returns or sets the log level which will trigger a 'flush', i.e a writing pending
+        log messages to the log file.
+        """
+    @property
+    def level(self) -> str:
         """
                       Returns or sets the current log level. The returned value will always be an 
                       integer corresponding to levels in the `logging` module.  The level can be
                       set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
                     
 
-        :type: int
+        :type: str
         """
     @level.setter
     def level(self, arg1: object) -> None:
@@ -1585,6 +1790,30 @@ class _LogWriter():
         Returns or sets the current log level. The returned value will always be an 
         integer corresponding to levels in the `logging` module.  The level can be
         set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
+        """
+    @property
+    def level_int(self) -> int:
+        """
+                      Returns the log level as an integer corresponding to levels in the `logging` module.
+                      Useful if you want to condition some output based on being above a certain log
+                      level.
+                    
+
+        :type: int
+        """
+    @property
+    def levels(self) -> typing.List[str]:
+        """
+        A list of the available log levels
+
+        :type: typing.List[str]
+        """
+    @property
+    def path(self) -> str:
+        """
+        The full pathname of the log file
+
+        :type: str
         """
     pass
 class _PyObjectFuture():
@@ -1773,7 +2002,8 @@ class _Return_str(IPyToExcel):
 class _Return_tuple_to_Excel(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-def _get_event_loop(arg0: str) -> None:
+class _TomlTable():
+    def __getitem__(self, arg0: str) -> object: ...
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
@@ -1817,6 +2047,8 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
+def core_addin() -> Addin:
+    pass
 def deregister_functions(arg0: object, arg1: object) -> None:
     """
     Deregisters worksheet functions linked to specified module. Generally, there
@@ -1917,3 +2149,5 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
     """
 _return_converter_hook: xloil_core._CustomReturnConverter = None
 cache: xloil_core.ObjectCache = None
+date_formats: xloil_core._DateFormatList = None
+xloil_addins: xloil_core._AddinsDict = None

@@ -67,6 +67,8 @@
     </Compile>
     <Compile Include="xloil\matplotlib.py" />
     <Compile Include="xloil\pandas.py" />
+    <Compile Include="xloil\stubs\xloil_core\event\__init__.py" />
+    <Compile Include="xloil\stubs\xloil_core\__init__.py" />
     <Compile Include="xloil\xloil_ribbon.py" />
     <Compile Include="xloil\_core.py" />
     <Compile Include="xloil\_paths.py" />
@@ -81,9 +83,18 @@
   <ItemGroup>
     <Folder Include="xloil" />
     <Folder Include="xloil\gui\" />
+    <Folder Include="xloil\stubs\" />
+    <Folder Include="xloil\stubs\xloil_core\" />
+    <Folder Include="xloil\stubs\xloil_core\event\" />
+    <Folder Include="xloil\stubs\xloil_core\event\__pycache__\" />
+    <Folder Include="xloil\stubs\xloil_core\__pycache__\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda39-64" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="xloil\stubs\xloil_core\event\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="xloil\stubs\xloil_core\__pycache__\__init__.cpython-39.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>
