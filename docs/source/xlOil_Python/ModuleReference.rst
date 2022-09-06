@@ -229,6 +229,7 @@ Everything else
 	get_async_loop
 	get_event_loop
 	from_excel_date
+	date_formats
 	linked_workbook
 	source_addin
 	excel_state
@@ -239,13 +240,16 @@ Everything else
 	excel_callback
 	Addin
 	source_addin
+	xloil_addins
+	core_addin
 	xloil._core._AddinsDict
 	xloil._core._DateFormatList
-	xloil.logging._LogWriter
+	xloil._core._LogWriter
+	xloil.logging.log
 	xloil.debug.use_debugger
 
 .. automodule:: xloil
-	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,date_formats,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin
 	:imported-members:
 	:undoc-members:
 
@@ -258,12 +262,10 @@ Everything else
 	:members:
 
 .. automodule:: xloil._core
-	:members: _AddinsDict, _DateFormatList
+	:members: _AddinsDict, _DateFormatList, _LogWriter
 
 .. automodule:: xloil.logging
-	:members: _LogWriter
-
-.. autodata:: log
+	:members: 
 
 .. automodule:: xloil.debug
 	:members:
