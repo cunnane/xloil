@@ -6,7 +6,7 @@ xlOil C++ provides a layer above the `XLL API <https://docs.microsoft.com/en-us/
 and includes features not available via the XLL API, such as RTD Servers, Ribbon customisation
 and event handling.
 
-The xlOil C++ interface has a `doxygen API description <../../build/docs/doxygen/html/doxygen/index.html>`_.
+The xlOil C++ interface has a `doxygen API description <../../doxygen/html/doxygen/index.html>`_.
 
 .. toctree::
     :maxdepth: 4

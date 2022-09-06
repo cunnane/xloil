@@ -74,8 +74,10 @@ Create a `MyTest.py` file with the following lines:
     def Greeting(who):
         return "Hello  " + who
 
-Open Excel and use the *xlOil* ribbon toolbar to add 'MyTest' to the loaded modules.
-Ensure the search paths include the directory containing `MyTest.py`.
+Open Excel and use the *xlOil* ribbon toolbar to ensure the search paths include
+the directory containing `MyTest.py`.  *Then* add 'MyTest' to the loaded modules.
+(the order matters because editing the *Load Modules* triggers a load of all newly
+added modules)
 
 Call the `=Greeting("world")` function in a cell.
 
@@ -118,8 +120,8 @@ but can be disabled by removing it from the specified *Load Modules*.
 
 .. note::
 
-    If you have an old ini file, you will need to upgrade it to use the ribbon toolbar. 
-    Remove the old file and remove/install xlOil.
+    If you have an old ini file (prior to v0.15), you will need to upgrade it to use the  
+    ribbon toolbar. Remove the old ini file and remove/install xlOil.
 
 Troubleshooting
 ---------------
