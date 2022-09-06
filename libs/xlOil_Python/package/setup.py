@@ -32,9 +32,9 @@ sys.argv = [sys.argv[0]] + unknown
 #
 # Define directoies
 #
-# We are run from staging/pypackage
+# We are run from ./staging/pypackage so need to go up a directory
 
-staging_dir = Path(__file__).parent.parent
+staging_dir = staging_dir = Path(__file__).resolve().parent.parent
 bin_dir = staging_dir / args.arch
 
 #
