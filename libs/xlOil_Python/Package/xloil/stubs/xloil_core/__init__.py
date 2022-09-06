@@ -1659,11 +1659,18 @@ class _FuncSpec():
     @property
     def func(self) -> function:
         """
+                      Yes you can change the function which is called by Excel! Use
+                      with caution.
+                    
+
         :type: function
         """
     @func.setter
     def func(self, arg1: function) -> None:
-        pass
+        """
+        Yes you can change the function which is called by Excel! Use
+        with caution.
+        """
     @property
     def help(self) -> str:
         """

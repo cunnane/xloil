@@ -239,8 +239,9 @@ Everything else
 	excel_callback
 	Addin
 	source_addin
-	_AddinsDict
-	_DateFormatList
+	xloil._core._AddinsDict
+	xloil._core._DateFormatList
+	xloil.logging._LogWriter
 	xloil.debug.use_debugger
 
 .. automodule:: xloil
@@ -256,16 +257,13 @@ Everything else
 .. autoclass:: Addin
 	:members:
 
-.. autoclass:: _AddinsDict
-	:members:
-
-.. autoclass:: _DateFormatList
-	:members:
-
-.. autodata:: log
+.. automodule:: xloil._core
+	:members: _AddinsDict, _DateFormatList
 
 .. automodule:: xloil.logging
 	:members: _LogWriter
+
+.. autodata:: log
 
 .. automodule:: xloil.debug
 	:members:

@@ -75,7 +75,10 @@ elif not XLOIL_EMBEDDED:
 
 
 from xloil_core import *
-from xloil_core import _LogWriter
+
+# These classes back singletons, so we want their docstrings but we don't 
+# want to suggest they are part of the API, hence the leading underscore
+from xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
 
 if XLOIL_READTHEDOCS:
     _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')

@@ -7,7 +7,7 @@ import os
 import inspect
 
 from .register import scan_module, _clear_pending_registrations
-from ._core import StatusBar
+from ._core import StatusBar, Addin
 from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
@@ -62,7 +62,7 @@ def linked_workbook() -> str:
     return _linked_workbooks.get(frame.filename, None)
 
 
-def source_addin() -> xloil.Addin:
+def source_addin() -> Addin:
     """
         Returns the full path of the source add-in (XLL file) associated with
         the current code. That is the add-in which has caused the current code
