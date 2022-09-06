@@ -34,13 +34,12 @@ def xloPyLoad(ModuleName:str = ""):
 
 @xlo.func(macro=True,
           args={
-              'Debugger': "Choose from 'pdb', 'vs' (VS Code), or empty string to disable"
+              'Debugger': "Choose from 'pdb', 'vscode', or empty string to disable"
               })
 def xloPyDebug(Debugger:str = ""):
     """
     Sets the user-code exception debugger. 
     Pdb opens in a new window.
-    For VS Code, connect on localhost:5678.
     """
 
     if xlo.in_wizard():
@@ -48,8 +47,8 @@ def xloPyDebug(Debugger:str = ""):
 
     import xloil.debug
     if len(Debugger) > 0:
-        xloil.debug.exception_debug(Debugger)
+        xloil.debug.use_debugger(Debugger)
         return Debugger
     else:
-        xloil.debug.exception_debug(None)
+        xloil.debug.use_debugger(None)
         return "OFF"

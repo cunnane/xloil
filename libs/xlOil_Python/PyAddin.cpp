@@ -2,7 +2,10 @@
 #include "Main.h"
 #include "EventLoop.h"
 #include "PyCore.h"
+#include "PyFunctionRegister.h"
+#include "PyHelpers.h"
 #include <xlOil/Interface.h>
+#include <xlOil/DynamicRegister.h>
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <tomlplusplus/toml.hpp>
@@ -94,6 +97,25 @@ namespace xloil
       XLO_THROW("Internal: could not find addin associated with current thread");
     }
 
+    auto findAllAddinFuncs(PyAddin& addin)
+    {
+      vector<shared_ptr<PyFuncInfo>> funcInfo;
+      for (auto&[name, source] : addin.context.sources())
+      {
+        auto pySource = std::dynamic_pointer_cast<RegisteredModule>(source);
+        if (!pySource)
+          continue; // Unexpected - give warning?
+
+        for (auto& funcSpec : pySource->functions())
+        {
+          auto pySpec = std::static_pointer_cast<const DynamicSpec>(funcSpec);
+          auto pyFuncInfo = std::static_pointer_cast<const PyFuncInfo>(pySpec->context());
+          funcInfo.push_back(std::const_pointer_cast<PyFuncInfo>(pyFuncInfo));
+        }
+      }
+      return funcInfo;
+    }
+
     // TODO: replace with pybind11::bind_map
     template<class TMap>
     class PyWrapMap
@@ -134,10 +156,14 @@ namespace xloil
       using this_t = PyWrapMap<TMap>;
       static void bind(py::module& mod, const char* name)
       {
-        py::class_<this_t>(mod, name)
+        py::class_<this_t>(mod, name, 
+           R"(
+             A dictionary of all addins using the xlOil_Python plugin keyed
+             by the addin pathname.
+           )")
           .def("__getitem__", &this_t::getItem)
           .def("__len__", &this_t::len)
-          .def("__iter__", &this_t::items)
+          .def("__iter__", &this_t::keys)
           .def("__contains__", &this_t::contains)
           .def("items", &this_t::items)
           .def("values", &this_t::values)
@@ -145,16 +171,56 @@ namespace xloil
       }
     };
 
+    auto tomlTableGetItem(toml::table& table, const char* name)
+    {
+      using toml::node_type;
+      auto node = table.get(name);
+      switch (node->type())
+      {
+      case node_type::table:          return py::cast(py::ReferenceHolder(node->as_table()));
+      case node_type::string:         return py::cast(**node->as_string());
+      case node_type::integer:        return py::cast(**node->as_integer());
+      case node_type::floating_point: return py::cast(**node->as_floating_point());
+      case node_type::boolean:        return py::cast(**node->as_boolean());
+      case node_type::array: // TODO: support the remaining types
+      case node_type::date:
+      case node_type::time:
+      case node_type::date_time:
+      case node_type::none:
+      default:
+        throw py::type_error(formatStr("Unsupported node type for %s", name));
+      }
+    }
     namespace
     {
       static int theBinder = addBinder([](py::module& mod)
       {
+        py::class_<toml::table, py::ReferenceHolder<toml::table>>(mod, "_TomlTable")
+          .def("__getitem__", tomlTableGetItem);
+
         py::class_<PyAddin, shared_ptr<PyAddin>>(mod, "Addin")
           .def_property_readonly("pathname", &PyAddin::pathName)
           .def_property_readonly("event_loop",
-            [](PyAddin& addin) { return addin.thread->loop(); })
+            [](PyAddin& addin) { return addin.thread->loop(); },
+            R"(
+              The asyncio event loop used for background tasks by this addin
+            )")
           .def_property_readonly("settings_file",
-            [](PyAddin& addin) { return *addin.context.settings()->source().path; })
+            [](PyAddin& addin) { return *addin.context.settings()->source().path; },
+            R"(
+              The full pathname of the settings ini file used by this addin
+            )")
+          .def_property_readonly("settings",
+            [](PyAddin& addin) { return py::cast(py::ReferenceHolder(addin.context.settings())); },
+            R"(
+              Gives access to the settings in the addin's ini file as nested dictionaries.
+              These are the settings on load and do not allow for modifications made in the 
+              ribbon toolbar.
+            )")
+          .def("functions", findAllAddinFuncs,
+            R"(
+              Returns a list of all functions declared by this addin.
+            )")
           .def("source_files",
             [](PyAddin& addin)
             {
@@ -166,6 +232,7 @@ namespace xloil
 
         PyWrapMap<decltype(theAddins)>::bind(mod, "_AddinsDict");
 
+        mod.def("core_addin", theCoreAddin);
         mod.add_object("xloil_addins", 
           py::cast(new PyWrapMap(theAddins), py::return_value_policy::take_ownership));
       });

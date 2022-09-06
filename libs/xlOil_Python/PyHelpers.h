@@ -79,7 +79,25 @@ namespace pybind11
       : error_already_set(error_full_traceback())
     {}
   };
+
+  /// <summary>
+  /// A non-owning holder class used to bind references to static C++ objects
+  /// </summary>
+  template< typename T >
+  class ReferenceHolder
+  {
+  public:
+    explicit ReferenceHolder(T* ptr = nullptr) : ptr_(ptr) {}
+
+    T* get() const { return ptr_; }
+    T* operator-> () const { return ptr_; }
+
+  private:
+    T* ptr_;
+  };
 }
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, pybind11::ReferenceHolder<T>, true);
 
 namespace xloil
 {

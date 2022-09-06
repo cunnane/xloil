@@ -120,13 +120,6 @@ def find_return_converter(ret_type: type):
 
     return ret_con
 
-
-def _get_event_loop():
-    import asyncio
-    _async_function_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(_async_function_loop) # Required?
-    return _async_function_loop
-
 def _logged_wrapper(func):
     """
     Wraps func so that any errors are logged. Invoked from the core.
@@ -192,25 +185,24 @@ def async_wrapper(fn):
     This function is used by the `func` decorator and generally should not be invoked
     directly.
     """
-
     import asyncio
     import traceback
-
     @functools.wraps(fn)
     def synchronised(xloil_thread_context, *args, **kwargs):
 
         ctx = xloil_thread_context
-
+        is_async_generator = inspect.isasyncgenfunction(fn)
+        
         async def run_async():
             _async_caller.set(ctx.caller)
             try:
-                # TODO: is inspect.isasyncgenfunction expensive?
-                if inspect.isasyncgenfunction(fn):
+                if is_async_generator:
                     async for result in fn(*args, **kwargs):
                         ctx.set_result(result)
                 else:
                     result = await fn(*args, **kwargs)
                     ctx.set_result(result)
+
             except (asyncio.CancelledError, StopAsyncIteration):
                 ctx.set_done()
                 raise
@@ -222,7 +214,6 @@ def async_wrapper(fn):
         ctx.set_task(asyncio.run_coroutine_threadsafe(run_async(), ctx.loop))
 
     return synchronised
-
 
 class _WorksheetFunc:
     """
@@ -342,29 +333,37 @@ def func(fn=None,
             func_args, return_type = Arg.full_argspec(fn)
             has_kwargs = any(func_args) and func_args[-1].is_keywords
 
-            is_coroutine = False
-            if inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn):
-                fn = async_wrapper(fn)
-                is_coroutine = True
+            # For async/rtd functions, the target function passed to the FuncSpec 
+            # should not be the 'fn' argument to this decorator. We also wrap threaded
+            # functions if the debugpy debugger is present
+            target_func = fn
+            is_coroutine = inspect.iscoroutinefunction(fn)
+            is_asyncgen = inspect.isasyncgenfunction(fn)
+
+            # Coroutines need to be "synchronised" using an async/rtd return object.
+            # Manual async functions need their arguments shuffled as the first one
+            # is the async return.
+            if is_coroutine or is_asyncgen:
+                target_func = async_wrapper(target_func)
             elif is_async:
                 func_args = func_args[1:]
+            elif threaded:
+                from .debug import _debugpy_activate_thread_decorator
+                target_func = _debugpy_activate_thread_decorator(fn)
 
             # Determine the 'features' string based on our bool flags
             features = []
-
-            # is_local defaults to true unless overridden - the parameter is 
-            # ignored if a workbook has not been linked
-            is_local = True if local is None else local
+            local_allowed = True
 
             if threaded:
                 features.append("threaded")
-                is_local = False
+                local_allowed = False
 
-            if (is_async or is_coroutine):
+            if (is_async or is_coroutine or is_asyncgen):
                 # RTD-async is default unless rtd=False was explicitly specified.
                 if rtd == False:
                     features.append("async")
-                    is_local = False
+                    local_allowed = False
                 else:
                     features.append("rtd")
 
@@ -379,8 +378,12 @@ def func(fn=None,
             elif macro and not any(features):
                 features.append("macro")
 
-            if local == True and is_local == False:
+            if local == True and not local_allowed:
                 raise ValueError(f"'threaded' or 'async' functions cannot be 'local'")
+
+            # is_local defaults to true unless overridden - the parameter is ignored if 
+            # a workbook is not linked to the declaring module
+            is_local = True if local is None else local
 
             # Optional overrides of function arg information that we read by reflection
 
@@ -388,9 +391,9 @@ def func(fn=None,
             core_argspec = [arg_to_funcarg(arg) for arg in func_args]
 
             spec = _FuncSpec(
-                func = fn,
+                func = target_func,
                 args = core_argspec,
-                name = name if name else "",
+                name = name if name else fn.__name__,
                 features = ','.join(features),
                 help = help if help else (fn.__doc__ if fn.__doc__ else ""),
                 category = group if group else "",

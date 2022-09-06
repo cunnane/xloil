@@ -1,24 +1,16 @@
 import xloil
 
-
-class _Handler_debugpy:
-
-    def __init__(self):    
-        import debugpy
-        debugpy.listen(5678)
-    def call(self, type, value, trace):
-        import debugpy
-        # This doesn't actually do post-mortem debuggin so it fairly useless
-        # It just breaks on a different python thread!
-        debugpy.breakpoint()
-
-
 class _Handler_pdb_window:
 
     def __init__(self):
         ...
 
     def call(self, type, value, trace):
+
+        # Don't pop the debugger up whilst the user is trying to enter function
+        # args in the wizard: that's just rude!
+        if not xloil.in_wizard():
+            _exception_handler.call(type, value, trace)
 
         from xloil.gui.tkinter import Tk_thread
 
@@ -54,46 +46,121 @@ class _Handler_pdb_window:
 
         top_level.deiconify()
         
-        
-_exception_handler = None
 
-def _handler_func(type, value, trace):
-    # Don't pop the debugger up whilst the user is trying to enter function
-    # args in the wizard: that's just rude!
-    if not xloil.in_wizard():
-        _exception_handler.call(type, value, trace)
+def debugpy_listen(port=None):
+    
+    if _is_debugpy_listening():
+        return
+ 
+    if port is None:
+        addin = xloil.source_addin() 
+        port = int(addin.settings['xlOil_Python']['DebugPyPort'])
 
-def exception_debug(debugger):
+    import debugpy
+    connection = debugpy.listen(port)
+
+    xloil.log(f"Debugpy listening on {connection}")
+
+    def enable_debug():
+        import debugpy, threading
+        xloil.log.debug(f"Debugpy enabling debugging on thread {threading.get_native_id()}")
+        #debugpy.debug_this_thread()
+        debugpy.trace_this_thread()
+
+
+    # Set main thread listener
+    xloil.excel_callback(enable_debug)
+
+    # This enables debugging of async/rtd functions running on the event loop.
+    # Except it doesn't.  VS code refuses to hit breakpoints in them. No idea
+    # why, guess it's just buggy.
+    xloil.get_async_loop().call_soon_threadsafe(enable_debug)
+
+    # Add listener for addin background workers
+    for addin in xloil.xloil_addins.values():
+        addin.event_loop.call_soon_threadsafe(enable_debug)
+    
+    # We monkey-patch all existing threaded functions!
+    for addin in xloil.xloil_addins.values():
+        registrations = addin.functions()
+        for f in registrations:
+            if f.is_threaded:
+                f.func = _debugpy_activate_thread_decorator(f.func)
+
+
+def _is_debugpy_listening() -> bool:
+    import sys
+    if not 'debugpy' in sys.modules:
+        return False
+
+    import debugpy
+    return debugpy.server.api._adapter_process is not None
+
+def _debugpy_activate_thread():
+
+    if not _is_debugpy_listening():
+        return
+
+    import debugpy
+    debugpy.debug_this_thread()
+
+def _debugpy_activate_thread_decorator(fn):
+    """
+    If debugpy.listen has not been invoked, just returns its argument
+    """
+
+    if not _is_debugpy_listening():
+        return fn
+
+    import functools, debugpy
+
+    already_called = False
+
+    @functools.wraps(fn)
+    def wrap(*args, **kwargs):
+        nonlocal already_called
+        if not already_called:
+            debugpy.debug_this_thread()
+            already_called = True
+        return fn(*args, **kwargs)
+
+    return wrap
+
+
+DEBUGGERS = ['', 'pdb', 'debugpy', 'vscode']
+
+def use_debugger(debugger, **kwargs):
     """
         Selects a debugger for exceptions in user code. Only effects exceptions
         which are handled by xlOil. Choices are:
 
-        **'pdb'**
+        **pdb**
         
         opens a console window with pdb active at the exception point
 
+        **vscode** or **debugpy**
+
+        listens
+
         **None**
         
-        Turns off exception debugging
+        Turns off exception debugging (does not turn off debugpy)
 
     """
-    global _exception_handler
 
-    if debugger is None:
-        _exception_handler = None
+    if debugger is None or debugger == '':
         xloil.event.UserException.clear()
         return
 
-    handlers = {
-        'pdb': _Handler_pdb_window,
-        'vs': _Handler_debugpy
-    }
+    if debugger == 'pdb':
+        xloil.log.debug("Setting pdb as exception post-mortem debugger")
 
-    if not debugger in handlers:
-        raise Exception(f"Unsupported debugger {debugger}. Choose from: {handlers.keys()}")
-    
-    _exception_handler = handlers[debugger]()
+        # No more than one exception handler: clear event first
+        xloil.event.UserException.clear()
+        xloil.event.UserException += _Handler_pdb_window
 
-    # No more than one exception handler, so clear event first
-    xloil.event.UserException.clear()
-    xloil.event.UserException += _handler_func
+    elif debugger == "vscode" or debugger == "debugpy":
+        debugpy_listen(**kwargs)
+
+    else:
+        raise KeyError(f"Unsupported debugger {debugger}. Choose from: {DEBUGGERS}")

@@ -3,6 +3,7 @@
 #include "TypeConversion/PyDictType.h"
 #include <xlOil/Register.h>
 #include <xlOil/Throw.h>
+#include <xlOil/Interface.h>
 #include <map>
 #include <string>
 #include <pybind11/pybind11.h>
@@ -63,8 +64,8 @@ namespace xloil
 
       const auto& name() const { return _info->name; }
 
-      auto& args() { return _args; }
-      const auto& constArgs() const { return _args; }
+      auto& args()             { return _args; }
+      const auto& args() const { return _args; }
 
       auto getReturnConverter() const { return returnConverter; }
       void setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv);
@@ -78,6 +79,7 @@ namespace xloil
 
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
       const pybind11::function& func() const { return _func; }
+      void setFunc(const pybind11::function& f) { _func = f; }
 
       static std::shared_ptr<const DynamicSpec> createSpec(
         const std::shared_ptr<PyFuncInfo>& funcInfo);
@@ -139,6 +141,34 @@ namespace xloil
       uint16_t _numPositionalArgs;
 
       void describeFuncArgs();
+    };
+
+    class RegisteredModule : public LinkedSource
+    {
+    public:
+      /// <summary>
+      /// If provided, a linked workbook can be used for local functions
+      /// </summary>
+      /// <param name="modulePath"></param>
+      /// <param name="workbookName"></param>
+      RegisteredModule(
+        const std::wstring& modulePath,
+        const wchar_t* workbookName);
+
+      ~RegisteredModule();
+
+      void registerPyFuncs(
+        const pybind11::handle& pyModule,
+        const std::vector<std::shared_ptr<PyFuncInfo>>& functions,
+        const bool append);
+
+      void reload() override;
+
+      void renameWorkbook(const wchar_t* newPathName) override;
+    
+    private:
+      bool _linkedWorkbook;
+      pybind11::object _module;
     };
   }
 }

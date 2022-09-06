@@ -207,6 +207,16 @@ namespace xloil
         server().join();
       }
 
+      void testConnect(long topicId, const std::wstring_view& topicName)
+      {
+        _impl->manager().connect(topicId, wstring(topicName));
+      }
+
+      void testDisconnect(long topicId)
+      {
+        _impl->manager().disconnect(topicId);
+      }
+
       void start(
         const shared_ptr<IRtdPublisher>& topic) override
       {

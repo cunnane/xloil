@@ -61,6 +61,8 @@ namespace xloil
 
     XLOIL_EXPORT std::shared_ptr<RegisteredWorksheetFunc> registerFunc() const override;
 
+    auto context() const { return _context; }
+
   private:
     std::shared_ptr<const void> _context;
     void* _callback;

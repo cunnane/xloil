@@ -1,6 +1,7 @@
 #include "BasicTypes.h"
 #include "PyDateType.h"
 #include "PyCore.h"
+#include "PyHelpers.h"
 #include <xloil/Date.h>
 #include <Python.h>
 #include <datetime.h>
@@ -139,25 +140,8 @@ namespace xloil
   }
 }
 
-// Define a non-owning holder and make vector<wstring> opaque so we
-// can bind a reference to a vector using py::bind_vector. Note the
-// opaqueness only affects this compliation unit.
-namespace
-{
-  template< typename T >
-  class MyHolder
-  {
-  public:
-    explicit MyHolder(T* ptr = nullptr) : ptr_(ptr) {}
-
-    T* get() const { return ptr_; }
-    T* operator-> () const { return ptr_; }
-
-  private:
-    T* ptr_;
-  };
-}
-PYBIND11_DECLARE_HOLDER_TYPE(T, MyHolder<T>, true);
+// Make vector<wstring> opaque so we can bind a reference to a vector using
+// py::bind_vector. Note the opacity only affects this compliation unit.
 PYBIND11_MAKE_OPAQUE(std::vector<std::wstring>);
 
 namespace xloil
@@ -199,14 +183,14 @@ namespace xloil
             if conversion is not possible.
           )");
 
-        py::bind_vector<vector<wstring>, MyHolder<vector<wstring>>>(mod, "_DateFormatList",
+        py::bind_vector<vector<wstring>, py::ReferenceHolder<vector<wstring>>>(mod, "_DateFormatList",
           R"(
             Registers date time formats to try when parsing strings to dates.
             See `std::get_time` for format syntax.
           )");
 
         mod.add_object("date_formats", 
-          py::cast(MyHolder(&theDateTimeFormats())));
+          py::cast(py::ReferenceHolder(&theDateTimeFormats())));
       });
     }
   }

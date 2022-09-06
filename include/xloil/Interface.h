@@ -60,6 +60,11 @@ namespace xloil
     /// <returns></returns>
     bool deregister(const std::wstring& name);
 
+    /// <summary>
+    /// A list of all functions declared by this Source.
+    /// </summary>
+    std::vector<std::shared_ptr<const WorksheetFuncSpec>> functions() const;
+
   private:
     std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>> _functions;
   };
@@ -77,6 +82,7 @@ namespace xloil
     /// <summary>
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
+    /// <param name="watchFile">If true enables a file watch</param>
     FileSource(const wchar_t* sourcePath, bool watchFile = false);
     virtual ~FileSource();
 
@@ -124,9 +130,9 @@ namespace xloil
 
     /// <summary>
     /// Registers the given functions as local functions in the specified
-    /// workbook
+    /// workbook.  Either appends to or overwrites the existing functions
+    /// depending on the 'append' parameter.
     /// </summary>
-    /// <param name="funcSpecs"></param>
     void registerLocal(
       const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs, 
       const bool append);
@@ -181,7 +187,7 @@ namespace xloil
     /// <summary>
     /// Gets the root of the addin's ini file
     /// </summary>
-    const toml::table* settings() const { return _settings.get(); }
+    auto settings() const { return _settings.get(); }
 
     /// <summary>
     /// Returns a map of all Sources associated with this XLL addin

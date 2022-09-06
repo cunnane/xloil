@@ -336,15 +336,13 @@ namespace xloil
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed
     // via the core, then a reference to the FileSource can be held and closed by the module itself
-    class RegisteredModule : public LinkedSource
-    {
-    public:
+
       /// <summary>
       /// If provided, a linked workbook can be used for local functions
       /// </summary>
       /// <param name="modulePath"></param>
       /// <param name="workbookName"></param>
-      RegisteredModule(
+      RegisteredModule::RegisteredModule(
         const wstring& modulePath,
         const wchar_t* workbookName)
         : LinkedSource(
@@ -355,7 +353,7 @@ namespace xloil
         _linkedWorkbook = workbookName;
       }
 
-      ~RegisteredModule()
+      RegisteredModule::~RegisteredModule()
       {
         try
         {
@@ -381,7 +379,7 @@ namespace xloil
         }
       }
 
-      void registerPyFuncs(
+      void RegisteredModule::registerPyFuncs(
         const py::handle& pyModule,
         const vector<shared_ptr<PyFuncInfo>>& functions,
         const bool append)
@@ -418,7 +416,7 @@ namespace xloil
           registerLocal(localFuncs, append);
       }
 
-      void reload() override
+      void RegisteredModule::reload()
       {
         auto[source, addin] = Python::findSource(name().c_str());
         if (source.get() != this)
@@ -432,7 +430,7 @@ namespace xloil
           addin->importFile(name().c_str(), linkedWorkbook().c_str());
       }
 
-      void renameWorkbook(const wchar_t* newPathName) override
+      void RegisteredModule::renameWorkbook(const wchar_t* newPathName)
       {
         if (!_linkedWorkbook) // Should never be called without a linked wb
           return;
@@ -458,10 +456,6 @@ namespace xloil
           XLO_WARN(L"On workbook rename, failed to copy source '{0}' to '{1}' because: {3}",
             currentSourcePath, newSourcePath, utf8ToUtf16(ec.message()));
       }
-    private:
-      bool _linkedWorkbook;
-      py::object _module;
-    };
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
@@ -545,9 +539,9 @@ namespace xloil
       string pyFuncInfoToString(const PyFuncInfo& info)
       {
         string result = utf16ToUtf8(info.info()->name) + "(";
-        for (auto& arg : info.constArgs())
+        for (auto& arg : info.args())
           result += utf16ToUtf8(arg.name) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
-        if (!info.constArgs().empty())
+        if (!info.args().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
         if (info.getReturnConverter()) // TODO: fix this!
@@ -580,11 +574,32 @@ namespace xloil
             &PyFuncInfo::getReturnConverter, 
             &PyFuncInfo::setReturnConverter)
           .def_property_readonly("args", 
-            &PyFuncInfo::args)
+            [](const PyFuncInfo& self) { return self.args(); })
           .def_property_readonly("name", 
             [](const PyFuncInfo& self) { return self.info()->name; })
           .def_property_readonly("help", 
             [](const PyFuncInfo& self) { return self.info()->help; })
+          .def_property("func", 
+            &PyFuncInfo::func, &PyFuncInfo::setFunc,
+            R"(
+              Yes you can change the function which is called by Excel! Use
+              with caution.
+            )")
+          .def_property_readonly("is_threaded", 
+            &PyFuncInfo::isThreadSafe,
+            R"(
+              True if the function can be multi-threaded during Excel calcs
+            )")
+          .def_property_readonly("is_rtd", 
+            [](const PyFuncInfo& self) { return self.isRtdAsync; },
+            R"(
+              True if the function uses RTD to provide async returns
+            )")
+          .def_property_readonly("is_async", 
+            [](const PyFuncInfo& self) { return self.isAsync; },
+            R"(
+              True if the function used Excel's native async
+            )")
           .def("__str__", pyFuncInfoToString);
 
         mod.def("_register_functions", &registerFunctions, 
@@ -599,7 +614,7 @@ namespace xloil
             Deregisters worksheet functions linked to specified module. Generally, there
             is no need to call this directly.
           )");
-      });
+      }, 20); // Need to declare before PyAddin
     }
   }
 }

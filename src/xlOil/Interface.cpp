@@ -133,6 +133,13 @@ namespace xloil
     return false;
   }
 
+  std::vector<std::shared_ptr<const WorksheetFuncSpec>> FuncSource::functions() const
+  {
+    vector<shared_ptr<const WorksheetFuncSpec>> result;
+    for (auto& item : _functions)
+      result.push_back(item.second->spec());
+    return result;
+  }
 
   std::pair<std::shared_ptr<FuncSource>, std::shared_ptr<AddinContext>>
     AddinContext::findSource(const wchar_t* source)

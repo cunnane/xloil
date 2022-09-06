@@ -62,7 +62,7 @@ def linked_workbook() -> str:
     return _linked_workbooks.get(frame.filename, None)
 
 
-def source_addin() -> str:
+def source_addin() -> xloil.Addin:
     """
         Returns the full path of the source add-in (XLL file) associated with
         the current code. That is the add-in which has caused the current code
@@ -78,7 +78,8 @@ def source_addin() -> str:
         if addin_path is not None:
             break
 
-    return None if addin_path is None else xloil_core.xloil_addins[addin_path] 
+    return xloil_core.core_addin() if addin_path is None \
+        else xloil_core.xloil_addins[addin_path] 
 
 
 def get_event_loop():

@@ -15,7 +15,7 @@ namespace xloil
     /// non-specific stuff such as workbook modules and jupyter functions. 
     /// </summary>
     /// <returns></returns>
-    PyAddin* theCoreAddin();
+    const std::shared_ptr<PyAddin>& theCoreAddin();
 
     /// <summary>
     /// Similar to the function in FileSource, but retrieve the PyAddin
