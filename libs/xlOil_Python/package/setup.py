@@ -34,7 +34,7 @@ sys.argv = [sys.argv[0]] + unknown
 #
 # We are run from staging/pypackage
 
-staging_dir = Path(__file__) / '..'
+staging_dir = Path(__file__).parent.parent
 bin_dir = staging_dir / args.arch
 
 #
