@@ -21,8 +21,8 @@ from pathlib import Path
 # to processes run by VS code.
 #
 
-soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{__file__}/../../..")).resolve()
-bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", f"{__file__}/../../../build/x64/Debug")).resolve()
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{os.path.abspath(__file__)}/../../..")).resolve()
+bin_dir  = Path(os.environ.get("XLOIL_BIN_DIR",  f"{os.path.abspath(__file__)}/../../../build/x64/Debug")).resolve()
 
 sys.path.append(str(bin_dir))
 sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
@@ -114,11 +114,13 @@ try: os.makedirs('_build')
 except FileExistsError: pass
 
 zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
- 
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
- 
+try:
+    zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+    zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
+    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
+    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
+except FileNotFoundError as err: 
+    print("WARNING: Could not create xlOilExamples.zip due to: ", str(err))
+
 zipObj.close()
