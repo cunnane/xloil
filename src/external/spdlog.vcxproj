@@ -145,12 +145,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\external\spdlog\src\async.cpp" />
-    <ClCompile Include="..\..\..\external\spdlog\src\color_sinks.cpp" />
-    <ClCompile Include="..\..\..\external\spdlog\src\file_sinks.cpp" />
-    <ClCompile Include="..\..\..\external\spdlog\src\fmt.cpp" />
-    <ClCompile Include="..\..\..\external\spdlog\src\spdlog.cpp" />
-    <ClCompile Include="..\..\..\external\spdlog\src\stdout_sinks.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\async.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\color_sinks.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\file_sinks.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\fmt.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\spdlog.cpp" />
+    <ClCompile Include="..\..\external\spdlog\src\stdout_sinks.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

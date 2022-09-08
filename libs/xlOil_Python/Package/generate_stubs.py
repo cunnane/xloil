@@ -14,15 +14,13 @@ sys.path.append(str(PACKAGE_PATH))
 import xloil
 
 # Setup paths to import pybind11_stubgen
-sys.path.append(str(SOLUTION_PATH / "external"))
-from pybind11_stubgen import ModuleStubsGenerator, DirectoryWalkerGuard
+sys.path.append(str(SOLUTION_PATH / "external" / "pybind11-stubgen"))
+from pybind11_stubgen import write_documentation_stubs
 
 # Run the stub generator
 out_dir = PACKAGE_PATH / 'stubs'
-mod = ModuleStubsGenerator('xloil_core')
-mod.parse()
-with DirectoryWalkerGuard(out_dir):
-    mod.write()
+
+write_documentation_stubs('xloil_core', out_dir)
 
 # Seems awfully hard to copy/delete directories in python, you'd
 # think pathlib would have it covered

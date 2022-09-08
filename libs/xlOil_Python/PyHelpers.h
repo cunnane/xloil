@@ -14,72 +14,6 @@
 
 namespace pybind11
 {
-  // Adds a logically missing wstr class to pybind11
-  class wstr : public object {
-  public:
-    PYBIND11_OBJECT_CVT(wstr, object, PYBIND11_STR_CHECK_FUN, raw_str)
-
-    wstr(const wchar_t* c, size_t n)
-      : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
-    {
-      if (!m_ptr)
-        pybind11_fail("Could not allocate string object!");
-    }
-
-    // 'explicit' is omitted from the following constructors to allow implicit 
-    // conversion to py::str from C++ string-like objects
-    wstr(const wchar_t* c = L"")
-      : object(PyUnicode_FromWideChar(c, -1), stolen_t{})
-    {
-      if (!m_ptr)
-        pybind11_fail("Could not allocate string object!");
-    }
-
-    wstr(const std::wstring_view& s) : wstr(s.data(), s.size()) { }
-
-    // Not sure how to implement
-    //explicit str(const bytes &b);
-
-    explicit wstr(handle h) : object(raw_str(h.ptr()), stolen_t{}) { }
-
-    operator std::wstring() const {
-      if (!PyUnicode_Check(m_ptr))
-        pybind11_fail("Unable to extract string contents!");
-      ssize_t length;
-      wchar_t* buffer = PyUnicode_AsWideCharString(ptr(), &length);
-      return std::wstring(buffer, (size_t)length);
-    }
-
-    template <typename... Args>
-    wstr format(Args &&...args) const {
-      return attr("format")(std::forward<Args>(args)...);
-    }
-
-  private:
-    /// Return string representation -- always returns a new reference, even if already a str
-    static PyObject* raw_str(PyObject* op) {
-      PyObject* str_value = PyObject_Str(op);
-      return str_value;
-    }
-  };
-
-  /// <summary>
-  /// Provides a replacement for pybind's detail::error_string which handles
-  /// the auxillary context and cause expceptions.
-  /// </summary>
-  /// <returns></returns>
-  std::string error_full_traceback();
-
-  class error_traceback_set : public error_already_set
-  {
-  public:
-    // Note: When pybind is upgraded, we need to add a ctor to 
-    // error_already_set which takes a string msg
-    error_traceback_set()
-      : error_already_set(error_full_traceback())
-    {}
-  };
-
   /// <summary>
   /// A non-owning holder class used to bind references to static C++ objects
   /// </summary>
@@ -106,19 +40,19 @@ namespace xloil
     inline PyObject* PyCheck(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return obj;
     }
     template<class TType = pybind11::object> inline TType PySteal(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return pybind11::reinterpret_steal<TType>(obj);
     }
     template<class TType = pybind11::object> inline TType PyBorrow(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return pybind11::reinterpret_borrow<TType>(obj);
     }
 
@@ -137,7 +71,7 @@ namespace xloil
     inline std::wstring pyErrIfOccurred(bool clear = true)
     {
       const auto result = PyErr_Occurred()
-        ? utf8ToUtf16(pybind11::error_full_traceback())
+        ? utf8ToUtf16(pybind11::detail::error_fetch_and_normalize("").format_value_and_trace())
         : std::wstring();
       if (clear)
         PyErr_Clear();

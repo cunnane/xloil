@@ -30,8 +30,11 @@
     <ClCompile Include="xloSplit.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
+    <ProjectReference Include="..\..\src\external\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\xlOil\xlOil.vcxproj">
+      <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -57,7 +57,7 @@ namespace xloil
       template<class T>
       struct ReplaceArithmeticRef<T&, true>
       {
-        ArithmeticRef<T> operator()(T& x) const {
+        auto operator()(T& x) const {
           return ArithmeticRef<T> { x };
         }
       };

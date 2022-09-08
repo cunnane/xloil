@@ -69,7 +69,7 @@
       <AdditionalDependencies>python38.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-   <ItemGroup>
+  <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
     <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
@@ -124,7 +124,7 @@
     <ClInclude Include="TypeConversion\PyTupleType.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
+    <ProjectReference Include="..\..\src\external\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\src\xlOil\xlOil.vcxproj">

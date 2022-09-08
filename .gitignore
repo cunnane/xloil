@@ -34,10 +34,22 @@ build/
 packages/
 graveyard/
 *.vcxproj.user
+.vscode
+
+# Other caches
 __pycache__
+.ipynb_checkpoints
+
+# External libraries
 /external/python
 /external/sqlite
+/external/pybind11-stubgen
+/external/CTPL
+/external/tomlplusplus
+/external/spdlog
+/external/pybind11
+/external/rdcfswatcher
+
 /docs/source/_build
-.vscode
-.ipynb_checkpoints
+
 ~$*
