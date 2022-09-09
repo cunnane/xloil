@@ -2,9 +2,14 @@
 #include "Exception.h"
 #include <xlOil/StringUtils.h>
 #include <xloilHelpers/Environment.h>
-#include <tomlplusplus/toml.hpp>
+
 #include <filesystem>
 #include <fstream>
+
+// We need access to a private ctor - yikes!
+#define private public
+#include <tomlplusplus/toml.hpp>
+#undef private
 
 namespace fs = std::filesystem;
 using xloil::Helpers::Exception;
@@ -106,8 +111,8 @@ namespace xloil
       if (table)
         for (auto i = table->cbegin(); i != table->cend(); ++i)
         {
-          if (_stricmp((*i).key.c_str(), name) == 0)
-            return &(*i).value;
+          if (_stricmp((*i).first.c_str(), name) == 0)
+            return &(*i).second;
         }
    
       return toml::node_view<const toml::node>();
@@ -120,18 +125,25 @@ namespace xloil
     const auto settingsFileName = 
       fs::path(dllPath).filename().replace_extension(XLOIL_SETTINGS_FILE_EXT);
     
-    // Look in the user's appdata
-    path = fs::path(getEnvironmentVar(L"APPDATA")) / L"xlOil" / settingsFileName;
-
+    auto directoryOverride = getEnvironmentVar("XLOIL_SETTINGS_DIR");
+    if (!directoryOverride.empty())
+      path = fs::path(directoryOverride) / settingsFileName;
+    else
+    {
+      // Look in the user's appdata
+      path = fs::path(getEnvironmentVar(L"APPDATA")) / L"xlOil" / settingsFileName;
+    }
+    
+    // If not found, check the same directory as the dll itself
     std::error_code fsErr;
-    // Then check the same directory as the dll itself
     if (!fs::exists(path, fsErr))
       path = fs::path(dllPath).remove_filename() / settingsFileName;
+
     try
     {
       if (!fs::exists(path, fsErr))
         return shared_ptr<const toml::table>();
-
+      
       auto ifs = std::ifstream{ path.wstring() };
 
       return make_shared<toml::table>(
