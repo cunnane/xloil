@@ -49,6 +49,7 @@ __pycache__
 /external/spdlog
 /external/pybind11
 /external/rdcfswatcher
+/external/asmjit
 
 /docs/source/_build
 

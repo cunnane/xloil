@@ -15,7 +15,10 @@ tar -xf sqlite.zip
 rename sqlite-amalgamation-3390300 sqlite
 
 REM asmjit doesn't appear to have versioning, so we keep with our copy of the source
-REM git clone --single-branch --depth=1 --branch=master https://github.com/asmjit/asmjit.git asmjit
+git clone https://github.com/asmjit/asmjit.git asmjit
+pushd asmjit
+git reset --hard ac77dfcd7
+popd
 
 popd
 
