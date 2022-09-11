@@ -100,28 +100,30 @@ namespace xloil
 
       template <class T, 
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
-      void operator=(T x) 
+        auto& operator=(T x)
       { 
         // Note that _target is uninitialised memory, so we cannot
         // call *_target = ExcelObj(x)
         new (_target) ExcelObj(x); 
+        return *this;
       }
 
-      void operator=(double x) { new (_target) ExcelObj(x); }
-      void operator=(CellError x) { new (_target) ExcelObj(x); }
+      auto& operator=(double x) { new (_target) ExcelObj(x); return *this; }
+      auto& operator=(CellError x) { new (_target) ExcelObj(x); return *this; }
 
       /// <summary>
       /// Assign by copying data from a string_view.
       /// </summary>
-      void operator=(const std::wstring_view& str)
+      auto& operator=(const std::wstring_view& str)
       {
         copy_string(str.data(), str.length());
+        return *this;
       }
 
       /// <summary>
       /// Copy from an ExcelObj
       /// </summary>
-      void operator=(const ExcelObj& x)
+      auto& operator=(const ExcelObj& x)
       {
         assert(x.isType(ExcelType::ArrayValue));
         if (x.isType(ExcelType::Str))
@@ -131,7 +133,10 @@ namespace xloil
         }
         else
           ExcelObj::overwrite(*_target, x);
+        return *this;
       }
+
+      operator const ExcelObj& () const { return *_target; }
 
       /// <summary>
       /// Move emplacement for an ExcelObj. Only safe if it is not a string or
