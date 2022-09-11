@@ -53,7 +53,7 @@ namespace xloil
       ~ArrayBuilderAlloc()
       {
         if (_buffer)
-          delete[] _buffer;
+          delete[] (char*)_buffer;
       }
 
       auto newString(size_t len)
