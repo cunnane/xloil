@@ -26,6 +26,8 @@
     <ClCompile Include="xloFillNA.cpp" />
     <ClCompile Include="xloIndex.cpp" />
     <ClCompile Include="xloPad.cpp" />
+    <ClCompile Include="xloRegex.cpp" />
+    <ClCompile Include="xloSearch.cpp" />
     <ClCompile Include="xloSort.cpp" />
     <ClCompile Include="xloSplit.cpp" />
   </ItemGroup>
@@ -33,6 +35,9 @@
     <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RegexHelpers.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

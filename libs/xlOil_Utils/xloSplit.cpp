@@ -58,12 +58,14 @@ namespace xloil
     // then pass it back as the return value to avoid copies. That 
     // is, Excel appears to copy the function result before freeing the
     // memory associated with the inputs.
-    auto consecutive = consecutiveAsOne.get<bool>(true);
-    auto sep = separators.toString();
+    const auto consecutive = consecutiveAsOne.get<bool>(true);
+    const auto sep = separators.toString();
 
-    if (stringOrArray.isType(ExcelType::Multi))
+    const auto& input = cacheCheck(stringOrArray);
+
+    if (input.isType(ExcelType::Multi))
     {
-      ExcelArray inputArray(cacheCheck(stringOrArray));
+      ExcelArray inputArray(input);
       if (inputArray.dims() != 1)
         XLO_THROW("Input array must be 1-dim");
 
@@ -129,11 +131,11 @@ namespace xloil
 
       return returnValue(builder.toExcelObj());
     }
-    else if (stringOrArray.isType(ExcelType::Str))
+    else if (input.isType(ExcelType::Str))
     {
       vector<wchar_t> found;
 
-      auto pStr = stringOrArray.cast<PStringRef>().remove_const();
+      auto pStr = input.cast<PStringRef>().remove_const();
       findSplitPoints(found, pStr, sep, consecutive);
 
       ExcelArrayBuilder builder((uint32_t)found.size(), 1, pStr.length());
@@ -143,7 +145,7 @@ namespace xloil
       return returnValue(builder.toExcelObj());
     }
     else // Not a string or array, so do not modify
-      return returnValue(stringOrArray);
+      return returnValue(input);
   }
   XLO_FUNC_END(xloSplit).threadsafe()
     .help(L"Splits a string or array of strings on a given separator. The array must be"
