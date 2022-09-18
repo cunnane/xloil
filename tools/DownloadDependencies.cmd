@@ -2,7 +2,7 @@ set SOLN_DIR=%~dp0\..
 
 pushd %SOLN_DIR%\external
 
-git clone --single-branch --depth=1 --branch=2.10.0-xloil-support git@github.com:cunnane/pybind11.git pybind11
+git clone --single-branch --depth=1 --branch=2.10.0-xloil git@github.com:cunnane/pybind11.git pybind11
 git clone --single-branch --depth=1 --branch=v1.3.3 https://github.com/marzer/tomlplusplus.git tomlplusplus
 git clone --single-branch --depth=1 --branch=v1.4.2 https://github.com/gabime/spdlog.git spdlog
 git clone --single-branch --depth=1 --branch=v.0.0.2 https://github.com/vit-vit/CTPL.git ctpl
