@@ -26,6 +26,8 @@
     <ClCompile Include="xloFillNA.cpp" />
     <ClCompile Include="xloIndex.cpp" />
     <ClCompile Include="xloPad.cpp" />
+    <ClCompile Include="xloRegex.cpp" />
+    <ClCompile Include="xloSearch.cpp" />
     <ClCompile Include="xloSort.cpp" />
     <ClCompile Include="xloSplit.cpp" />
   </ItemGroup>
@@ -36,6 +38,9 @@
     <ProjectReference Include="..\..\src\xlOil\xlOil.vcxproj">
       <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RegexHelpers.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
