@@ -10,6 +10,7 @@
 #include <xlOil/StringUtils.h>
 #include <tomlplusplus/toml.hpp>
 #include <pybind11/stl.h>
+#include <datetime.h> // From CPython
 
 using std::vector;
 using std::wstring;
@@ -171,25 +172,57 @@ namespace xloil
       }
     };
 
-    auto tomlTableGetItem(toml::table& table, const char* name)
+    py::object tomlNodeToPyObject(const toml::node& node)
     {
       using toml::node_type;
-      auto node = table.get(name);
-      switch (node->type())
+      
+      switch (node.type())
       {
-      case node_type::table:          return py::cast(py::ReferenceHolder(node->as_table()));
-      case node_type::string:         return py::cast(**node->as_string());
-      case node_type::integer:        return py::cast(**node->as_integer());
-      case node_type::floating_point: return py::cast(**node->as_floating_point());
-      case node_type::boolean:        return py::cast(**node->as_boolean());
-      case node_type::array: // TODO: support the remaining types
+      case node_type::table:          return py::cast(py::ReferenceHolder(node.as_table()));
+      case node_type::string:         return py::cast(**node.as_string());
+      case node_type::integer:        return py::cast(**node.as_integer());
+      case node_type::floating_point: return py::cast(**node.as_floating_point());
+      case node_type::boolean:        return py::cast(**node.as_boolean());
+      case node_type::none:           return py::none();
       case node_type::date:
-      case node_type::time:
-      case node_type::date_time:
-      case node_type::none:
-      default:
-        throw py::type_error(formatStr("Unsupported node type for %s", name));
+      {
+        const auto& date = **node.as_date();
+        return PySteal<>(PyDate_FromDate(date.year, date.month, date.day));
       }
+      case node_type::time:
+      {
+        const auto& time = **node.as_time();
+        return PySteal<>(PyTime_FromTime(time.hour, time.minute, time.second, time.nanosecond * 100));
+      }
+      case node_type::date_time:
+      {
+        const auto& datetime = **node.as_date_time();
+        return PySteal<>(PyDateTime_FromDateAndTime(
+          datetime.date.year, datetime.date.month, datetime.date.day,
+          datetime.time.hour, datetime.time.minute, datetime.time.second,
+          datetime.time.nanosecond * 100));
+      }
+      
+      case node_type::array:
+      {
+        const auto& array = *node.as_array();
+        auto list = py::list(array.size());
+        for (auto i = 0; i < array.size(); ++i)
+          list[i] = tomlNodeToPyObject(array[i]);
+        return list;
+      }
+      default:
+        // We support all types as of Sept 2022, so if we get here something 
+        // was corrupted or a new type has been added..
+        throw py::type_error("Unsupported toml node type");
+      }
+    }
+    auto tomlTableGetItem(toml::table& table, const char* name)
+    {
+      const auto* node = table.get(name);
+      if (!node)
+        throw py::key_error(name);
+      return tomlNodeToPyObject(*node);
     }
     namespace
     {
