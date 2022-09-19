@@ -14,9 +14,16 @@ namespace xloil
       /// A useful name for the converter, typically the type supported.
       /// Currently used only for log diagnostics.
       /// </summary>
-      /// <returns></returns>
-      virtual const char* name() const;
+      virtual const char* name() const = 0;
     };
-    using IPyToExcel = IConvertToExcel<PyObject>;
+    class IPyToExcel : public IConvertToExcel<PyObject>
+    {
+    public:
+      /// <summary>
+      /// A useful name for the converter, typically the type supported.
+      /// Currently used only for log diagnostics.
+      /// </summary>
+      virtual const char* name() const = 0;
+    };
   }
 }
