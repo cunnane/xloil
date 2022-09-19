@@ -147,6 +147,7 @@ namespace xloil
         {
           return nestedIterableToExcel(std::forward<Args>(args)...);
         }
+        static constexpr char* ourName = "iterable";
       };
       static int theBinder = addBinder([](pybind11::module& mod)
       {

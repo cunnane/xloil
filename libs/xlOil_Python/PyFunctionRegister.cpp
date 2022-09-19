@@ -581,8 +581,8 @@ namespace xloil
         if (!info.args().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
-        if (info.getReturnConverter()) // TODO: fix this!
-          result += formatStr(" -> ", typeid(*info.getReturnConverter()).name());
+        if (info.getReturnConverter())
+          result += formatStr(" -> %s", info.getReturnConverter()->name());
         return result;
       }
 

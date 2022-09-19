@@ -122,7 +122,7 @@ namespace xloil
       struct PyFromAny : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
-        static constexpr char* const ourName = "Any";
+        static constexpr char* const ourName = "object";
 
         PyObject* operator()(int x)    const { return PyFromInt()(x); }
         PyObject* operator()(bool x)   const { return PyFromBool()(x); }
@@ -165,6 +165,8 @@ namespace xloil
       typename std::conditional_t<TUseCache,
         detail::PyFromCache<CacheConverter<TImpl>>,
         TImpl> _impl;
+
+      static constexpr auto ourName = TImpl::ourName;
 
       template <class...Args>
       PyFromExcel(Args&&...args)
@@ -280,6 +282,7 @@ namespace xloil
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ExcelObj(std::move(pstr));
       }
+      static constexpr char* ourName = "str";
     };
 
     namespace detail
@@ -357,6 +360,10 @@ namespace xloil
       ExcelObj operator()(const PyObject& obj) const override
       {
         return TFunc()(&obj);
+      }
+      const char* name() const override
+      {
+        return TFunc::ourName;
       }
     };
   }

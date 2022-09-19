@@ -102,6 +102,10 @@ namespace xloil
 
         return builder.toExcelObj();
       }
+      const char* name() const override
+      {
+        return "dict";
+      }
     };
 
     namespace

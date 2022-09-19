@@ -7,6 +7,7 @@
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
+using std::string;
 
 namespace xloil
 {
@@ -47,11 +48,13 @@ namespace xloil
     private:
       py::object _callable;
       bool _checkCache;
+      string _name;
 
     public:
-      CustomConverter(py::object&& callable, bool checkCache)
+      CustomConverter(py::object&& callable, bool checkCache, const char* name)
         : _callable(callable)
         , _checkCache(checkCache)
+        , _name(name)
       {}
 
       virtual ~CustomConverter()
@@ -86,7 +89,7 @@ namespace xloil
 
       const char* name() const override
       {
-        return _callable.ptr()->ob_type->tp_name;
+        return _name.c_str();
       }
     };
  
@@ -94,16 +97,19 @@ namespace xloil
     {
     private:
       py::object _callable;
+      string _name;
     public:
-      CustomReturn(py::object&& callable)
+      CustomReturn(py::object&& callable, const char* name)
         : _callable(callable)
-      {}
+        , _name(name)
+      {
+      }
       virtual ~CustomReturn()
       {
         py::gil_scoped_acquire getGil;
         _callable = py::object();
       }
-      virtual ExcelObj operator()(const PyObject& pyObj) const override
+      virtual ExcelObj operator()(const PyObject& target) const override
       {
         auto* result = invokeImpl(target);
         if (!result)
@@ -151,14 +157,15 @@ namespace xloil
           This is the interface class for custom type converters to allow them
           to be called from the Core.
         )")
-        .def(py::init<py::object, bool>(), 
+        .def(py::init<py::object, bool, const char*>(),
           py::arg("callable"), 
-          py::arg("check_cache")=true);
+          py::arg("check_cache")=true,
+          py::arg("name")="custom");
 
       py::class_<CustomReturn, IPyToExcel, std::shared_ptr<CustomReturn>>(mod, 
         "_CustomReturn")
-        .def(py::init<py::object>(), py::arg("callable"))
-        .def("get_handler", &CustomReturn::handler);
+        .def(py::init<py::object, const char*>(), py::arg("callable"), py::arg("name")="custom")
+        .def("invoke", &CustomReturn::invoke);
     });
   }
 }

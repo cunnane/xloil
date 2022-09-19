@@ -14,7 +14,7 @@ from xloil_core import (
     _CustomConverter,
     _CustomReturn,
     _Return_Cache,
-    _Return_SingleValue,
+    _Return_Single,
     _Read_Array_object_2d,
     _Return_Array_object_2d,
 )
@@ -80,6 +80,8 @@ def unpack_return_converter(obj):
 
 def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, check_cache=True):
 
+    type_name = getattr(base_type, "__name__", "object")
+
     if inspect.isclass(impl):
         #
         # We use a metaclass approach to allow some linting with nice syntax: 
@@ -101,11 +103,15 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, ch
             def __new__(cls, *args, **kwargs):
                 # Construct the inner class with the provided args
                 instance = impl(*args, **kwargs)
+                reader = _CustomConverter(instance.read, check_cache, type_name) \
+                    if hasattr(instance, "read") else None
+                writer = _CustomReturn(instance.write, type_name) \
+                    if hasattr(instance, "write") else None
                 # Embed it in a new Converter which inherits from target
                 return _make_typeconverter(
                     base_type, 
-                    _CustomConverter(instance.read, check_cache) if hasattr(instance, "read") else None,
-                    _CustomReturn(instance.write) if hasattr(instance, "write") else None,
+                    reader,
+                    writer,
                     allow_range)
 
         # If the target obj has a no-arg constructor, we want to write:
@@ -115,9 +121,12 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, ch
             instance = impl()
             
             if hasattr(instance, "read"):
-                MetaConverter._xloil_arg_reader = _CustomConverter(instance.read, check_cache), allow_range
+                MetaConverter._xloil_arg_reader = (
+                    _CustomConverter(instance.read, check_cache, type_name), 
+                    allow_range)
             if hasattr(instance, "write"):
-                MetaConverter._xloil_return_writer = _CustomReturn(instance.write)
+                MetaConverter._xloil_return_writer = _CustomReturn(
+                    instance.write, type_name)
 
         except TypeError:
             pass
@@ -126,11 +135,11 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, ch
 
         return MetaConverter
     elif is_returner:
-        return _make_typeconverter(base_type, writer=_CustomReturn(impl), source=impl)
+        return _make_typeconverter(base_type, writer=_CustomReturn(impl, type_name), source=impl)
     else:
         return _make_typeconverter(
                     base_type,
-                    _CustomConverter(impl, check_cache), 
+                    _CustomConverter(impl, check_cache, type_name), 
                     None, 
                     allow_range, 
                     source=impl)
@@ -167,7 +176,12 @@ class _ArgConverters:
 arg_converters = _ArgConverters()
 
 
-def converter(target=typing.Callable, range=False, register=False, direction="read", check_cache=True):
+def converter(
+    target=object, 
+    range=False, 
+    register=False, 
+    direction="read",
+    check_cache=True):
     """
     Decorator which declares a function or a class to be a type converter
     which serialises from/to a set of simple types understood by Excel and 
@@ -272,9 +286,8 @@ class _ReturnConverters:
         """
         Registers a return converter for a given single or iterable of types.
         """
-        # We unpack the python implementation of the converter so we can iterate 
-        # through them trying to find one which doesn't raise CannotConvert
-        converter_impl = unpack_return_converter(converter).get_handler()
+       
+        converter_impl = unpack_return_converter(converter)
 
         name = getattr(converter_impl, "__name__", type(converter_impl).__name__)
         log(f"Added return converter {name} for types {types}", level='info')
@@ -304,13 +317,11 @@ class _ReturnConverters:
 
     def create_returner(self, return_type):
         """
-        Creates a _CustomReturn object which handles the given type or returns None
+        Returns a _CustomReturn object which handles the given type or returns None
         if no handlers can be found.  The _CustomReturn object is an internal xloil_core
         wrapper for a python-based return converter
         """
-
-        found = self._converters.get(return_type, None)
-        return _CustomReturn(found) if found is not None else None
+        return self._converters.get(return_type, None)
 
     def __call__(self, obj):
         """
@@ -319,7 +330,7 @@ class _ReturnConverters:
         for typ, converter in self._converters.items():
             try:
                 if isinstance(obj, typ):
-                    return converter(obj)
+                    return converter.invoke(obj)
             except (CannotConvert):
                 continue
         
@@ -342,7 +353,7 @@ Use `-> xloil.Cache` in a function declaration to force the output to be
 placed in the python object cache rather than attempting a conversion
 """
 
-SingleValue = _make_typeconverter(object, writer=_Return_SingleValue())
+SingleValue = _make_typeconverter(object, writer=_Return_Single())
 """
 Use `-> xloil.SingleValue` in a function declaration to force the output to
 be a single cell value. Uses the Excel object cache for returned arrays and 

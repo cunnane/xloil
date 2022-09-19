@@ -1,15 +1,17 @@
 #pragma once
-
+#include "TypeConversion/ConverterInterface.h"
 #include <pybind11/pybind11.h>
 #include <functional>
 
+struct _typeobject;
 
+namespace xloil {
+  template<class T> class IConvertToExcel;
+}
 namespace xloil
 {
   namespace Python
   {
-    using IPyToExcel = IConvertToExcel<PyObject>;
-
     constexpr char* const theInjectedModuleName = "xloil_core";
     constexpr char* const theReadConverterPrefix = "_Read_";
     constexpr char* const theReturnConverterPrefix = "_Return_";

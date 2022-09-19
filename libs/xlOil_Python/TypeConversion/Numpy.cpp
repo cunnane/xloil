@@ -527,7 +527,7 @@ namespace xloil
       }
     }
     template <int TNpType>
-    class XlFromArray1d : public IConvertToExcel<PyObject>
+    class XlFromArray1d : public IPyToExcel
     {
       bool _cache;
       using TImpl = FromArrayImpl<TNpType>;
@@ -535,7 +535,7 @@ namespace xloil
     public:
       XlFromArray1d(bool cache = false) : _cache(cache) {}
 
-      virtual ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject& obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -555,10 +555,14 @@ namespace xloil
           ? makeCached<ExcelObj>(builder.toExcelObj())
           : builder.toExcelObj();
       }
+      const char* name() const override
+      {
+        return "array(1d)";
+      }
     };
 
     template <int TNpType>
-    class XlFromArray2d : public IConvertToExcel<PyObject>
+    class XlFromArray2d : public IPyToExcel
     {
       bool _cache;
       using TImpl = FromArrayImpl<TNpType>;
@@ -566,7 +570,7 @@ namespace xloil
     public:
       XlFromArray2d(bool cache = false) : _cache(cache) {}
 
-      virtual ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject& obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -587,6 +591,10 @@ namespace xloil
         return _cache
           ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
           : builder.toExcelObj();
+      }
+      const char* name() const override
+      {
+        return "array(2d)";
       }
     };
 
@@ -714,6 +722,7 @@ namespace xloil
         }
         static inline auto prefix = string(theReadConverterPrefix);
       };
+
       template<template<int N> class T, int TNpType, int TNDims>
       struct Writer
       {
@@ -725,6 +734,7 @@ namespace xloil
         }
         static inline auto prefix = string(theReturnConverterPrefix);
       };
+
       template<
         template<template<int> class, int, int> class Declarer, 
         template<int N> class Converter, 

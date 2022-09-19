@@ -125,6 +125,10 @@ namespace xloil
           ? ExcelObj(pyDateToSerial((PyObject*)&obj))
           : ExcelObj();
       }
+      const char* name() const override
+      {
+        return "date";
+      }
     };
     class PyDateTimeToExcel : public IPyToExcel
     {
@@ -135,8 +139,11 @@ namespace xloil
           ? ExcelObj(pyDateTimeToSerial((PyObject*)&obj))
           : ExcelObj();
       }
+      const char* name() const override
+      {
+        return "datetime";
+      }
     };
-
   }
 }
 

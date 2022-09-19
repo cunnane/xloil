@@ -11,11 +11,6 @@ namespace xloil
 {
   namespace Python
   {
-    const char* IPyFromExcel::name() const
-    {
-      return "type";
-    }
-
     namespace
     {
       struct CustomReturnConverter
@@ -40,7 +35,7 @@ namespace xloil
       {
       public:
         using ExcelValVisitor::operator();
-        static constexpr char* const ourName = "CacheObject";
+        static constexpr char* const ourName = "Cache";
 
         PyObject* operator()(const PStringRef& pstr) const
         {
@@ -68,6 +63,7 @@ namespace xloil
             XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
           return ExcelObj(PyLong_AsLong((PyObject*)obj));
         }
+        static constexpr char* ourName = "int";
       };
       struct FromPyFloat
       {
@@ -77,6 +73,7 @@ namespace xloil
             XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
           return ExcelObj(PyFloat_AS_DOUBLE(obj));
         }
+        static constexpr char* ourName = "float";
       };
       struct FromPyBool
       {
@@ -86,6 +83,7 @@ namespace xloil
             XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
           return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
         }
+        static constexpr char* ourName = "bool";
       };
 
       struct FromPyToCache
@@ -94,6 +92,7 @@ namespace xloil
         {
           return pyCacheAdd(PyBorrow<>(const_cast<PyObject*>(obj)));
         }
+        static constexpr char* ourName = "Cache";
       };
 
       /// <summary>
@@ -109,6 +108,7 @@ namespace xloil
             return std::move(excelObj);
           return makeCached<ExcelObj>(std::move(excelObj));
         }
+        static constexpr char* ourName = "Single";
       };
 
     }
@@ -131,12 +131,12 @@ namespace xloil
       static int theBinder = addBinder([](py::module& mod)
       {
         // Bind converters for standard types
-        convertPy<PyFromInt>(mod, "int");
-        convertPy<PyFromDouble>(mod, "float");
-        convertPy<PyFromBool>(mod, "bool");
-        convertPy<PyFromString>(mod, "str");
-        convertPy<PyFromAny>(mod, "object");
-        convertPy<PyCacheObject>(mod, "Cache");
+        convertPy<PyFromInt>    (mod, PyFromInt::ourName);
+        convertPy<PyFromDouble> (mod, PyFromDouble::ourName);
+        convertPy<PyFromBool>   (mod, PyFromBool::ourName);
+        convertPy<PyFromString> (mod, PyFromString::ourName);
+        convertPy<PyFromAny>    (mod, PyFromAny::ourName);
+        convertPy<PyCacheObject>(mod, PyCacheObject::ourName);
 
         convertPy<PyFromIntUncached>(mod, XLOPY_UNCACHED_PREFIX "int");
         convertPy<PyFromDoubleUncached>(mod, XLOPY_UNCACHED_PREFIX "float");
@@ -144,12 +144,12 @@ namespace xloil
         convertPy<PyFromStringUncached>(mod, XLOPY_UNCACHED_PREFIX "str");
         convertPy<PyFromAnyUncached>(mod, XLOPY_UNCACHED_PREFIX "object");
 
-        convertXl<FromPyLong>(mod, "int");
-        convertXl<FromPyFloat>(mod, "float");
-        convertXl<FromPyBool>(mod, "bool");
-        convertXl<FromPyString>(mod, "str");
-        convertXl<FromPyToCache>(mod, "Cache");
-        convertXl<FromPyToSingleValue>(mod, "SingleValue");
+        convertXl<FromPyLong>         (mod, FromPyLong::ourName);
+        convertXl<FromPyFloat>        (mod, FromPyFloat::ourName);
+        convertXl<FromPyBool>         (mod, FromPyBool::ourName);
+        convertXl<FromPyString>       (mod, FromPyString::ourName);
+        convertXl<FromPyToCache>      (mod, FromPyToCache::ourName);
+        convertXl<FromPyToSingleValue>(mod, FromPyToSingleValue::ourName);
 
         py::class_<CustomReturnConverter>(mod, "_CustomReturnConverter")
           .def_readwrite("value", &CustomReturnConverter::value);
