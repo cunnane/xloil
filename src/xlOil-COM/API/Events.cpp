@@ -38,8 +38,14 @@ namespace xloil
 
       auto& theFileWatcher()
       {
-        static RdcFSWatcher instance(directoryWatchChange, directoryWatchError);
-        return instance;
+        static std::unique_ptr<RdcFSWatcher> instance([]()
+        {
+          auto instance = new RdcFSWatcher();
+          instance->changeEvent = directoryWatchChange;
+          instance->errorEvent = directoryWatchError;
+          return instance;
+        }());
+        return *instance;
       }
 
       using DirectoryWatchEventBase = Event<void(const wchar_t*, const wchar_t*, FileAction)>;

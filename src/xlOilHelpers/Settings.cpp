@@ -8,7 +8,7 @@
 
 // We need access to a private ctor - yikes!
 #define private public
-#include <tomlplusplus/toml.hpp>
+#include <toml++/toml.h>
 #undef private
 
 namespace fs = std::filesystem;

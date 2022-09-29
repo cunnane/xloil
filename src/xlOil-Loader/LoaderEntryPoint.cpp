@@ -8,7 +8,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/LogWindow.h>
 #include <xloil/XllEntryPoint.h>
-#include <tomlplusplus/toml.hpp>
+#include <toml++/toml.h>
 #include <filesystem>
 #define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #include <delayimp.h>

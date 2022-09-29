@@ -8,7 +8,7 @@
 #include <xlOil/DynamicRegister.h>
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
-#include <tomlplusplus/toml.hpp>
+#include <toml++/toml.h>
 #include <pybind11/stl.h>
 #include <datetime.h> // From CPython
 

@@ -10,7 +10,7 @@
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/Version.h>
-#include <tomlplusplus/toml.hpp>
+#include <toml++/toml.h>
 #include <vector>
 #include <string>
 #include <filesystem>

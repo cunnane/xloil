@@ -11,7 +11,7 @@
 #include <xloil-XLL/LogWindowSink.h>
 #include <xloil/StaticRegister.h>
 #include <xlOil-COM/Connect.h>
-#include <tomlplusplus/toml.hpp>
+#include <toml++/toml.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
