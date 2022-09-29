@@ -11,7 +11,7 @@ namespace xloil
   inline std::string utf16ToUtf8(const std::wstring_view& str)
   {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    return converter.to_bytes(str.data());
+    return converter.to_bytes(str.data(), str.data() + str.length());
   }
 
   /// <summary>
@@ -20,7 +20,7 @@ namespace xloil
   inline std::wstring utf8ToUtf16(const std::string_view& str)
   {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    return converter.from_bytes(str.data());
+    return converter.from_bytes(str.data(), str.data() + str.length());
   }
 
   namespace detail
