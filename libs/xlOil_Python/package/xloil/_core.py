@@ -16,8 +16,12 @@ if XLOIL_EMBEDDED:
     blocks per version of the C runtime. See discussion https://bugs.python.org/issue16633
     This seems like the easist workaround for now.
     """
-    for name, val in os.environ.items():
-        os.environ[name] = val
+
+    import win32profile
+    env_vars = win32profile.GetEnvironmentStrings()
+    for name, val in win32profile.GetEnvironmentStrings().items():
+        if not name.startswith("="):
+            os.environ[name] = val
 
 def _fix_module_for_docs(namespace, target, replace):
     """
