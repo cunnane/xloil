@@ -55,24 +55,38 @@ namespace xloil
           return levelFromStr(toLower((string)py::str(level)));
         }
 
-        void writeToLog(const char* message, const py::object& level)
+        void writeToLog(
+          const char* message, const py::object& level, 
+          const char* file, const size_t line, const char* func)
         {
-          writeToLogImpl(message, toSpdLogLevel(level));
+          writeToLogImpl(message, toSpdLogLevel(level), file, line, func);
         }
 
-        void writeToLogImpl(const char* message, spdlog::level::level_enum level)
+        void writeToLogImpl(
+          const char* message, spdlog::level::level_enum level, 
+          const char* file = nullptr, const size_t line = 0, const char* func = nullptr)
         {
           if (!spdlog::default_logger_raw()->should_log(level))
             return;
 
-          auto frame = PyEval_GetFrame();
+          
           spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
-          if (frame)
+          if (file && strlen(file) > 0)
           {
-            auto code = frame->f_code; // Guaranteed never null
-            source.line = PyCode_Addr2Line(code, frame->f_lasti);
-            source.filename = PyUnicode_AsUTF8(code->co_filename);
-            source.funcname = PyUnicode_AsUTF8(code->co_name);
+            source.line = line;
+            source.filename = file;
+            source.funcname = func;
+          }
+          else
+          {
+            auto frame = PyEval_GetFrame();
+            if (frame)
+            {
+              auto code = frame->f_code; // Guaranteed never null
+              source.line = PyCode_Addr2Line(code, frame->f_lasti);
+              source.filename = PyUnicode_AsUTF8(code->co_filename);
+              source.funcname = PyUnicode_AsUTF8(code->co_name);
+            }
           }
 
           py::gil_scoped_release releaseGil;
@@ -157,7 +171,10 @@ namespace xloil
               level is 'info'.
             )",
             py::arg("msg"),
-            py::arg("level") = 20)
+            py::arg("level") = 20,
+            py::arg("file") = "",
+            py::arg("line") = 0,
+            py::arg("func") = "")
           .def("flush", &LogWriter::flush,
             R"(
               Forces a log file 'flush', i.e write pending log messages to the log file.

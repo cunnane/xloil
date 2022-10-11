@@ -23,3 +23,25 @@ def log_except(msg, level='error'):
        Logs '{msg}: {stack trace}' with a default level of 'error'
     """
     log(f"{msg}: {traceback.format_exc()}", level='error')
+
+
+def get_logging_handler():
+    """
+    Returns a logging.Handler class which writes to the xlOil log. For use 
+    with python's logging library. 
+    """
+    import logging
+    class XlOilLoggerHandler(logging.NullHandler):
+
+        def emit(self, record: logging.LogRecord):
+            log(
+                msg=self.format(record), 
+                level=record.levelno,
+                file=record.filename,
+                line=record.lineno,
+                func=record.funcName)
+
+        def handle(self, record: logging.LogRecord):
+            self.emit(record)
+
+    return XlOilLoggerHandler()
