@@ -288,21 +288,22 @@ async def press_open_log(ctrl):
 #
 async def press_open_console(ctrl):
 
-    def open_console(root):
-        from xloil.gui.tkinter import TkConsole
-        import tkinter
-        import code
+    console_choice = _settings.python['RibbonConsole'].lower()
 
-        top_level = tkinter.Toplevel(root)
-        console = TkConsole(top_level, code.interact,
-            fg='white', bg='black', font='Consolas', insertbackground='red')
-        console.pack(expand=True, fill=tkinter.BOTH)
-        console.bind("<<CommandDone>>", lambda e: top_level.destroy())
+    if console_choice == "tk":
 
-        top_level.deiconify()
+        from xloil.gui.tkinter import Tk_thread, create_tk_console_window
+        await Tk_thread().submit_async(create_tk_console_window, Tk_thread().root)
 
-    from xloil.gui.tkinter import Tk_thread
-    await Tk_thread().submit_async(open_console, Tk_thread().root)
+    elif console_choice == "ipython" or console_choice == "ipythonmain":
+
+        def open_console_qt():
+            from xloil.gui.qt_console import create_qt_ipython_console
+            console = create_qt_ipython_console(console_choice == "ipythonmain")
+            console.show()
+
+        from xloil.gui.qtpy import Qt_thread
+        await Qt_thread().submit_async(open_console_qt)
 
 
 #

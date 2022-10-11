@@ -134,11 +134,11 @@ namespace xloil
 
   Application::Application(size_t hWnd)
     : AppObject([hWnd]() {
-        auto p = COM::applicationObjectFromWindow((HWND)hWnd);
-        if (!p)
-          throw ComConnectException("Failed to create Application object from window handle");
-        return p;
-      }(), true)
+    auto p = COM::applicationObjectFromWindow((HWND)hWnd);
+    if (!p)
+      throw ComConnectException("Failed to create Application object from window handle");
+    return p;
+  }(), true)
   {
   }
 
@@ -213,7 +213,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  bool Application::getVisible() const 
+  bool Application::getVisible() const
   {
     try
     {
@@ -225,7 +225,7 @@ namespace xloil
   void Application::setVisible(bool x)
   {
     try
-    { 
+    {
       com().PutVisible(0, x ? VARIANT_TRUE : VARIANT_FALSE);
     }
     XLO_RETHROW_COM_ERROR;
@@ -245,6 +245,15 @@ namespace xloil
     try
     {
       com().EnableEvents = _variant_t(value);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelRange Application::selection()
+  {
+    try
+    {
+      return fromComPtr<ExcelRange>(com().Selection);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -299,8 +308,8 @@ namespace xloil
   }
 
   ExcelWorkbook Application::open(
-    const std::wstring& filepath, 
-    bool updateLinks, 
+    const std::wstring& filepath,
+    bool updateLinks,
     bool readOnly)
   {
     try
@@ -314,15 +323,15 @@ namespace xloil
 
   ExcelWindow::ExcelWindow(const std::wstring_view& caption, Application app)
     : AppObject([&]() {
-        try
-        {
-          if (caption.empty())
-            return app.com().ActiveWindow.Detach();
-          else
-            return app.com().Windows->GetItem(stringToVariant(caption)).Detach();
-        }
-        XLO_RETHROW_COM_ERROR;
-      }(), true)
+    try
+    {
+      if (caption.empty())
+        return app.com().ActiveWindow.Detach();
+      else
+        return app.com().Windows->GetItem(stringToVariant(caption)).Detach();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }(), true)
   {}
 
   size_t ExcelWindow::hwnd() const
@@ -351,18 +360,18 @@ namespace xloil
 
   ExcelWorkbook::ExcelWorkbook(const std::wstring_view& name, Application app)
     : AppObject([&]() {
-        try
-        {
-          if (name.empty())
-            return app.com().ActiveWorkbook.Detach();
-          else
-          {
-            auto workbooks = app.com().Workbooks;
-            return workbooks->GetItem(stringToVariant(name)).Detach();
-          }
-        }
-        XLO_RETHROW_COM_ERROR;
-      }(), true)
+    try
+    {
+      if (name.empty())
+        return app.com().ActiveWorkbook.Detach();
+      else
+      {
+        auto workbooks = app.com().Workbooks;
+        return workbooks->GetItem(stringToVariant(name)).Detach();
+      }
+    }
+    XLO_RETHROW_COM_ERROR;
+  }(), true)
   {}
 
   std::wstring ExcelWorkbook::name() const
@@ -386,8 +395,8 @@ namespace xloil
   }
 
   ExcelWorksheet ExcelWorkbook::add(
-    const std::wstring_view& name, 
-    const ExcelWorksheet& before, 
+    const std::wstring_view& name,
+    const ExcelWorksheet& before,
     const ExcelWorksheet& after) const
   {
     try
@@ -397,7 +406,7 @@ namespace xloil
 
       auto ws = fromComPtr<ExcelWorksheet>(com().Worksheets->Add(
         before.valid() ? _variant_t(&before.com()) : vtMissing,
-        after.valid()  ? _variant_t(&after.com())  : vtMissing));
+        after.valid() ? _variant_t(&after.com()) : vtMissing));
       if (!name.empty())
         ws.setName(name);
       return ws;
@@ -412,8 +421,8 @@ namespace xloil
       if (filepath.empty())
         com().Save();
       else
-        com().SaveAs(stringToVariant(filepath), 
-          vtMissing, vtMissing, vtMissing, vtMissing, vtMissing, 
+        com().SaveAs(stringToVariant(filepath),
+          vtMissing, vtMissing, vtMissing, vtMissing, vtMissing,
           Excel::XlSaveAsAccessMode::xlNoChange);
     }
     XLO_RETHROW_COM_ERROR;
@@ -475,9 +484,9 @@ namespace xloil
     try
     {
       return ExcelRange(
-        formatStr(L"'[%s]%s'!%s", 
-          parent().name().c_str(), 
-          name().c_str(), 
+        formatStr(L"'[%s]%s'!%s",
+          parent().name().c_str(),
+          name().c_str(),
           wstring(address).data()),
         app());
     }
@@ -487,6 +496,15 @@ namespace xloil
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
   {
     return COM::variantToExcelObj(com().Cells->Item[i][j]);
+  }
+
+  ExcelRange ExcelWorksheet::usedRange() const
+  {
+    try
+    {
+      return com().UsedRange;
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   void ExcelWorksheet::activate()

@@ -159,3 +159,13 @@ class TkConsole(tkinter.Frame):
         line = self.stdin_buffer.get()
         return line
 
+def create_tk_console_window(root: tkinter.Root) -> TkConsole:
+    top_level = tkinter.Toplevel(root)
+    console = TkConsole(top_level, code.interact,
+        fg='white', bg='black', font='Consolas', insertbackground='red')
+    console.pack(expand=True, fill=tkinter.BOTH)
+    console.bind("<<CommandDone>>", lambda e: top_level.destroy())
+
+    top_level.deiconify()
+
+    return console

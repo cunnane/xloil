@@ -49,8 +49,12 @@ namespace xloil
         const py::object& toR,   const py::object& toC,
         const py::object& nRows, const py::object& nCols)
       {
-        const auto toRow = !toR.is_none() ? toR.cast<int>() : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
-        const auto toCol = !toC.is_none() ? toC.cast<int>() : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
+        const auto toRow = !toR.is_none() 
+          ? toR.cast<int>() 
+          : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
+        const auto toCol = !toC.is_none() 
+          ? toC.cast<int>() 
+          : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
         py::gil_scoped_release noGil;
         return r.range(fromR, fromC, toRow, toCol);
       }
@@ -136,6 +140,15 @@ namespace xloil
           return Range_getItem(ws, loc);
       }
       
+      void worksheet_UsedRangeSet(const ExcelWorksheet& ws, const py::object& value)
+      {
+        const auto val = FromPyObj()(value.ptr());
+        // Must release gil when setting values in as this may trigger calcs 
+        // which call back into other python functions.
+        py::gil_scoped_release noGil;
+        ws.usedRange().set(val);
+      }
+
       py::object application_range(const Application& app, const std::wstring& address)
       {
         return createPyRange([&]() { return ExcelRange(address, app); });
@@ -187,7 +200,6 @@ namespace xloil
             else
               return workbook_range(wb, address);
           }
-            
         }
       }
 
@@ -363,12 +375,15 @@ namespace xloil
     }
 
     template<class T>
-    auto getComAttr(T& p, const char* attrName)
+    py::object getComAttr(T& p, const char* attrName)
     {
+      // If the name doesn't start with upper-case it's definitely not a COM method
+      if (!isupper(attrName[0]))
+        return py::none();
       return py::getattr(toCom(p, ""), attrName);
     }
 
-    Application application_Construct(
+    Application Application_Construct(
       const py::object& com,
       const py::object& hwnd,
       const py::object& wbName)
@@ -769,6 +784,9 @@ namespace xloil
           call_release_gil(),
           "Returns the range specified by the local address, e.g. ``.at('B3:D6')``",
           py::arg("address"))
+        .def_property("used_range",
+          &ExcelWorksheet::usedRange,
+          worksheet_UsedRangeSet)
         .def("calculate", 
           &ExcelWorksheet::calculate,
           call_release_gil(),
@@ -893,7 +911,7 @@ namespace xloil
             getComAttr<ExcelWindow>);
 
       declare_Application
-        .def(py::init(std::function(application_Construct)),
+        .def(py::init(std::function(Application_Construct)),
           R"(
             Creates a new Excel Application if no arguments are specified. Gets a handle to 
             an existing COM Application object based on the arguments.
@@ -991,6 +1009,11 @@ namespace xloil
             in workbooks is discarded, otherwise a prompt is displayed.
           )",
           py::arg("silent") = true)
+        .def_property_readonly("selection",
+          &Application::selection,
+          R"(
+            Returns a Range if a range is selected otherwise throws
+          )")
         .def("__enter__", Context_Enter)
         .def("__exit__", Application_Exit);
 
@@ -1052,7 +1075,14 @@ namespace xloil
       mod.def("app", excelApp, py::return_value_policy::reference,
         R"(
           Returns the parent Excel Application object when xlOil is loaded as an
-          addin. Will throw if xlOil has been imported to run automation.
+          addin. Will throw if xlOil has been imported to run via automation.
+        )");
+
+      mod.def("selection", 
+        []() { return excelApp().selection(); },
+        R"(
+          Returns the range Application.Selection when xlOil is loaded as an
+          addin. Will throw if xlOil has been imported to run via automation.
         )");
 
       // We can only define these objects when running embedded in existing Excel

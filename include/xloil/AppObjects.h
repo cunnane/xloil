@@ -27,6 +27,7 @@ namespace xloil
 {
   class ExcelWindow;
   class ExcelWorksheet;
+  class ExcelRange;
   class Windows;
   class Workbooks;
   class Worksheets;
@@ -181,6 +182,11 @@ namespace xloil
 
     bool getEnableEvents();
     void setEnableEvents(bool value);
+
+    /// <summary>
+    /// Returns an invalid ExcelRange is the selection is not a range
+    /// </summary>
+    ExcelRange selection();
   };
 
   /// <summary>
@@ -301,6 +307,12 @@ namespace xloil
     /// Convenience wrapper for cell(i,j)->value()
     /// </summary>
     ExcelObj value(Range::row_t i, Range::col_t j) const;
+
+    /// <summary>
+    /// Returns a range object representing the range used in this worksheet. It 
+    /// is bounded by the top-left and the bottom right-used cells.
+    /// </summary>
+    ExcelRange usedRange() const;
 
     /// <summary>
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
