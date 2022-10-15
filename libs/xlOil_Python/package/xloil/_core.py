@@ -88,6 +88,13 @@ if XLOIL_READTHEDOCS:
     _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
 
 
+def xloil_bin_path():
+    import win32api
+
+    return os.path.dirname(
+        win32api.GetModuleFileName(
+            win32api.GetModuleHandle("xloil.dll")))
+
 def create_gui(*args, **kwargs) -> ExcelGUI:
     # DEPRECATED. Create the ExcelGUI object directly.
 

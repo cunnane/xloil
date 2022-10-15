@@ -1,9 +1,8 @@
-
 import asyncio
 import sys
 import xloil
+import os
 
-from .logging import get_logging_handler
 from ipykernel.inprocess.ipkernel import InProcessKernel
 from background_zmq_ipython import IPythonBackgroundKernelWrapper
 
@@ -40,7 +39,9 @@ class MainThreadInProcessKernel(InProcessKernel):
 
 
 class _OurIPythonBackgroundKernelWrapper(IPythonBackgroundKernelWrapper):
-
+    """
+    An in-process kernel which can be accessed over ZMQ
+    """
     def _create_kernel(self):
 
         super()._create_kernel()
@@ -48,13 +49,10 @@ class _OurIPythonBackgroundKernelWrapper(IPythonBackgroundKernelWrapper):
         from jupyter_client.utils import run_sync
         real_do_execute = run_sync(self._kernel.do_execute)
 
-        async def patched_do_execute(self, *args, **kwargs):
+        async def patched_do_execute(*args, **kwargs):
             def run():
                 return real_do_execute(*args, **kwargs)
             return await asyncio.ensure_future(xloil.excel_callback(run))
-
-        #def patched_do_execute(*args, **kwargs):
-        #    return xloil.excel_callback(lambda: real_do_execute(*args, **kwargs)).result()
 
         self._kernel.do_execute = patched_do_execute
      
@@ -65,11 +63,16 @@ class _OurIPythonBackgroundKernelWrapper(IPythonBackgroundKernelWrapper):
 
 _main_thread_kernel = None
 
-def start_zmq_main_thread_kernel():
+def start_main_thread_zmq_kernel() -> _OurIPythonBackgroundKernelWrapper:
     """
     Starts an IPython kernel which runs commands on the main thread and can be connected
     to in the usual way via ZMQ.
     """
+
+    import logging
+    from xloil.logging import get_logging_handler
+
+    # Create logger with an xlOil handler
     logger = logging.Logger(name="xloil")
     log_handler = get_logging_handler()
     log_handler.setFormatter(logging.Formatter())
@@ -78,8 +81,15 @@ def start_zmq_main_thread_kernel():
     sys.stdout = _DummyStream()
     sys.stderr = _DummyStream()
 
+    from jupyter_core.paths import jupyter_runtime_dir
+    connection_filename = os.path.join(jupyter_runtime_dir(), "xloil_kernel.json")
+
     manager = _OurIPythonBackgroundKernelWrapper(
-        logger=logger, banner="xlOil Kernel: Commands are run on Excel's main thread")
+        connection_filename=connection_filename,
+        logger=logger, 
+        banner="xlOil Kernel: Commands are run on Excel's main thread")
     manager.start()
     
     _main_thread_kernel = manager
+
+    return manager

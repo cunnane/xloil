@@ -61,11 +61,14 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="xloil\importer.py" />
-    <Compile Include="xloil\ipython_kernel.py">
+    <Compile Include="xloil\inprocess_kernel.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="xloil\jupyter.py" />
     <Compile Include="xloil\jupyter_kernel.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\jupyter_launcher.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="xloil\matplotlib.py" />

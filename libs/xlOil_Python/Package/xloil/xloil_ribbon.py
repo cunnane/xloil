@@ -306,6 +306,19 @@ async def press_open_console(ctrl):
         await Qt_thread().submit_async(open_console_qt)
 
 
+async def press_open_jupyter(ctrl):
+    from xloil.jupyter_launcher import open_attached_notebook
+    from xloil.inprocess_kernel import start_main_thread_zmq_kernel
+    start_main_thread_zmq_kernel()
+    await open_attached_notebook()
+
+
+def get_image_open_jupyter(ctrl):
+    from PIL import Image
+    icon_path = Path(sys.prefix) / "Menu/jupyter.ico"
+    return Image.open(str(icon_path))
+
+
 #
 # Restart Notify callbacks
 # ------------------------
@@ -403,6 +416,10 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 supertip="Uses 'std::get_time' formats: %Y year, %m month number, %b month name, etc." 
                 getText="get_date_formats" 
                 onChange="set_date_formats"  />
+            </group>
+            <group id="grp4" autoScale="false" centerVertically="false" label="Jupyter" >
+                <button id="btnOpenJuputer" size="large" label="Jupyter" getImage="get_image_open_jupyter" 
+                    onAction="press_open_jupyter"/>
             </group>
           </tab>
         </tabs>
