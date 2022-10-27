@@ -340,7 +340,7 @@ namespace xloil
             return ExcelObj(std::move(val));
         }
         
-        if (PyIterable_Check(p))
+        if (PyIter_Check(p))
         {
           return nestedIterableToExcel(p);
         }

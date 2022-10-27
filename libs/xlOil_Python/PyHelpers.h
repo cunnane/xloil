@@ -7,10 +7,12 @@
 #include <pybind11/stl.h>
 #include <string>
 
-// Seems useful, wonder why it's not in the API?
-#define PyIterable_Check(obj) \
+
+#if PY_VERSION_HEX < 0x03080000
+#define PyIter_Check(obj) \
     ((obj)->ob_type->tp_iter != NULL && \
      (obj)->ob_type->tp_iter != &_PyObject_NextNotImplemented)
+#endif
 
 namespace pybind11
 {
