@@ -348,11 +348,19 @@ namespace xloil
       {
         *p = rem + '0';
       }
+      else if constexpr (TRadix <= 10 + 26)
+      {
+        *p = rem < 10
+          ? rem + '0'
+          : rem + 'A' - 10;
+      }
       else
       {
         *p = rem < 10
           ? rem + '0'
-          : rem + 'a' - 10;
+          : rem < 36
+            ? rem + 'A' - 10
+            : rem + 'a' - 36;
       }
       ++p;
     } while (value > 0);

@@ -146,6 +146,7 @@ namespace xloil
   private:
     std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>> _localFunctions;
     std::wstring _workbookName;
+    std::wstring _vbaModuleName;
     std::shared_ptr<const void> _workbookCloseHandler;
     std::shared_ptr<const void> _workbookRenameHandler;
 

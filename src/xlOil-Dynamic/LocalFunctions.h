@@ -24,6 +24,7 @@ namespace xloil
     std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>>& existing,
     const wchar_t* workbookName,
     const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcs,
+    const wchar_t* vbaModuleName,
     const bool append);
 
   void clearLocalFunctions(

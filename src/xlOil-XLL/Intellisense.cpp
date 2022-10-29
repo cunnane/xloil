@@ -31,7 +31,7 @@ namespace
 	{
     GUID guid;
     xloil::stableGuidFromString(guid, theExcelDnaNamespaceGuid, xllPath);
-    return wstring(L"RegistrationInfo_") + xloil::guidToWString(guid, false);
+    return wstring(L"RegistrationInfo_") + xloil::guidToWString(guid, xloil::GuidToString::HEX);
 	}
 
   // Multiple Intellisense servers can exist in the same Excel session, but only one

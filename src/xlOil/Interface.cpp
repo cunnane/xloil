@@ -7,6 +7,7 @@
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xloil/State.h>
+#include <xlOilHelpers/GuidUtils.h>
 #include <xlOil-COM/Connect.h>
 #include <filesystem>
 using std::make_pair;
@@ -210,7 +211,28 @@ namespace xloil
   {
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
-    registerLocalFuncs(_localFunctions, _workbookName.c_str(), funcSpecs, append);
+
+    if (_vbaModuleName.empty())
+    {
+      // Limits: alphanumeric and underscore, 31 chars
+      _vbaModuleName = wstring(L"xlOil_") + filename();
+
+      auto invalidChars = std::any_of(_vbaModuleName.begin(), _vbaModuleName.end(),
+        [](auto c) { return isalnum((int)c) == 0 && c != '.' && c != '_'; });
+
+      if (_vbaModuleName.size() > 31 || invalidChars)
+      {
+        GUID guid;
+        if (!createGuid(guid))
+          XLO_THROW("Failed to create GUID");
+        _vbaModuleName = wstring(L"xlOil_") + guidToWString(guid, GuidToString::BASE62);
+      }
+      else
+        std::replace(_vbaModuleName.begin(), _vbaModuleName.end(), L'.', L'_');
+    }
+
+    registerLocalFuncs(
+      _localFunctions, _workbookName.c_str(), funcSpecs, _vbaModuleName.c_str(), append);
   }
 
   void LinkedSource::init()

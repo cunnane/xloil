@@ -1,5 +1,5 @@
 #include "ClassFactory.h"
-
+#include <xlOilHelpers/GuidUtils.h>
 
 namespace
 {
@@ -145,21 +145,16 @@ namespace xloil
 
       if (clsid.Data1 == 0)
       {
-        auto fail = CoCreateGuid(&clsid) != 0;
-
-        // This generates the string '{W-X-Y-Z}'
-        fail = fail || StringFromGUID2(clsid, _clsidStr, _countof(_clsidStr)) == 0;
-        if (fail)
+        if (CoCreateGuid(&clsid) != 0)
           XLO_THROW("Failed to create CLSID for COM Server");
+        StringFromGUID2(clsid, _clsidStr, _countof(_clsidStr));
       }
 
       // If no progId has been specified, use 'XlOil.<Clsid>'
       if (!progId)
       {
         // COM ProgIds must have 39 or fewer chars and no punctuation other than '.'
-        // _clsidStr will include the braces.
-        _progId = std::wstring(L"XlOil.") + std::wstring(_clsidStr + 1, _countof(_clsidStr) - 3);
-        std::replace(_progId.begin(), _progId.end(), L'-', L'.');
+        _progId = std::wstring(L"XlOil.") + guidToWString(clsid, GuidToString::BASE62);
       }
 
       // Create the COM 'server' and a class factory which returns it.  Normally
@@ -214,7 +209,7 @@ namespace xloil
       const wchar_t* value)
     {
       addedKey(hive, path);
-      XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
+      XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name ? name : L"", value);
       return regWrite(hive, path, name, value);
     }
 
