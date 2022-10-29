@@ -24,14 +24,15 @@ namespace xloil
 {
   namespace
   {
-    map<intptr_t, shared_ptr<const WorksheetFuncSpec>> theRegistry2;
+    // Only write/read this from the main thread
+    map<intptr_t, shared_ptr<const WorksheetFuncSpec>> theLocalFuncRegistry;
 
     using LocalFunctionMap = std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>>;
 
     void unregisterLocalFuncs(LocalFunctionMap& toRemove)
     {
       for (auto& [k, v] : toRemove)
-        theRegistry2.erase(v->registerId());
+        theLocalFuncRegistry.erase(v->registerId());
     }
   }
 
@@ -61,6 +62,7 @@ namespace xloil
     LocalFunctionMap& existing,
     const wchar_t* workbookName,
     const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcs,
+    const wchar_t* vbaModuleName,
     const bool append)
   {
     LocalFunctionMap toRemove;
@@ -95,23 +97,30 @@ namespace xloil
     for (auto i = toRegister.begin(); i != iNewFuncsEnd; ++i)
       existing.emplace(i->get()->info()->name, *i);
 
+    runExcelThread([
+        workbookName = wstring(workbookName), 
+        vbaModuleName = wstring(vbaModuleName),
+        funcsToWrite= move(toRegister),
+        toRemove = move(toRemove), 
+        rewriteVBAModule
+    ]() mutable
+    {
+      unregisterLocalFuncs(toRemove);
+      COM::writeLocalFunctionsToVBA(
+        workbookName.c_str(), 
+        funcsToWrite, 
+        vbaModuleName.c_str(), 
+        !rewriteVBAModule);
+      for (auto& f : funcsToWrite)
+        theLocalFuncRegistry.emplace(f->registerId(), f->spec());
+    });
+
+    // FuncInfo for Intellisense
     vector<shared_ptr<const FuncInfo>> funcInfos;
     for (auto& f : toRegister)
       funcInfos.emplace_back(f->info());
 
-    runExcelThread([
-        append, 
-        workbookName = wstring(workbookName), 
-        newRegisteredFuncs = move(toRegister),
-        toRemove = move(toRemove) 
-    ]() mutable
-    {
-      unregisterLocalFuncs(toRemove);
-      COM::writeLocalFunctionsToVBA(workbookName.c_str(), newRegisteredFuncs, append);
-      for (auto& f : newRegisteredFuncs)
-        theRegistry2.emplace(f->registerId(), f->spec());
-    });
-
+    // We send this a separate call because it requires the XLL API
     runExcelThread([funcInfos = std::move(funcInfos)]()
     {
       publishIntellisenseInfo(funcInfos);
@@ -146,8 +155,8 @@ int __stdcall localFunctionEntryPoint(
    /* if (funcId->vt != VT_INT)
       XLO_THROW("WorkbookName and funcName parameters must be strings");*/
 
-    auto found = theRegistry2.find(*funcId);
-    if (found == theRegistry2.end())
+    auto found = theLocalFuncRegistry.find(*funcId);
+    if (found == theLocalFuncRegistry.end())
       XLO_THROW("Local funcId {0} not found", *funcId);
 
     auto& func = *found->second;

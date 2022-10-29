@@ -5,6 +5,7 @@
 
 using namespace xloil;
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using std::wstring;
 
 const GUID theExcelDnaNamespaceGuid =
   { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
@@ -12,7 +13,7 @@ const GUID theExcelDnaNamespaceGuid =
 
 namespace Tests
 {
-  TEST_CLASS(TestStableGuid)
+  TEST_CLASS(TestGuidUtils)
   {
   public:
 
@@ -40,6 +41,27 @@ namespace Tests
         stableGuidFromString(result, theExcelDnaNamespaceGuid, L"c:\\path\\addin.xll");
         StringFromGUID2(result, str, _countof(str));
         Assert::AreEqual(L"{C5C4A7E8-1D08-521B-A539-957E3E62568B}", str);
+      }
+    }
+    TEST_METHOD(TestGuidToString)
+    {
+      GUID guid;
+      //createGuid(guid);
+      //auto result = guidToWString(guid, GuidToString::BASE62);
+
+      const GUID testGuid =
+        { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
+      {
+        auto result = guidToWString(testGuid, GuidToString::PUNCTUATED);
+        Assert::AreEqual<wstring>(L"{306D016E-CCE8-4861-9DA1-51A27CBE341A}", result);
+      }
+      {
+        auto result = guidToWString(testGuid, GuidToString::HEX);
+        Assert::AreEqual(L"306D016ECCE848619DA151A27CBE341A", result.c_str(), true);
+      }
+      {
+        auto result = guidToWString(testGuid, GuidToString::BASE62);
+        Assert::AreEqual<wstring>(L"6DHqXiKeG5u2FUdHmh8HsL", result);
       }
     }
   };

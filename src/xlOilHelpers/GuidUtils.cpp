@@ -2,13 +2,16 @@
 #include "Exception.h"
 
 #include <xloil/WindowsSlim.h>
+#include <xloil/StringUtils.h>
 #include <string>
 #include <vector>
 #include <memory>
 #include <combaseapi.h> // StringFromGUID2
 #include <bcrypt.h>
+#include <wincrypt.h>
 
 #pragma comment(lib, "bcrypt.lib")
+//#pragma comment(lib, "crypt32.lib")
 
 using std::string;
 using std::wstring;
@@ -40,7 +43,7 @@ namespace
         NULL,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptOpenAlgorithmProvider", status);
+        throw Exception(L"Error 0x{x} returned by BCryptOpenAlgorithmProvider", status);
       }
 
       //calculate the size of the buffer to hold the hash object
@@ -52,7 +55,7 @@ namespace
         &cbData,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
+        throw Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
       }
 
       //allocate the hash object on the heap
@@ -67,7 +70,7 @@ namespace
         &cbData,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
+        throw Exception(L"Error 0x{x} returned by BCryptGetProperty", status);
       }
 
       //allocate the hash buffer on the heap
@@ -83,7 +86,7 @@ namespace
         0,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptCreateHash", status);
+        throw Exception(L"Error 0x{x} returned by BCryptCreateHash", status);
       }
     }
 
@@ -98,7 +101,7 @@ namespace
         dataBytes,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptHashData", status);
+        throw Exception(L"Error 0x{x} returned by BCryptHashData", status);
       }
     }
 
@@ -113,7 +116,7 @@ namespace
         cbHash,
         0)))
       {
-        Exception(L"Error 0x{x} returned by BCryptFinishHash", status);
+        throw Exception(L"Error 0x{x} returned by BCryptFinishHash", status);
       }
 
       return std::vector<BYTE>(pbHash, pbHash + cbHash);
@@ -211,19 +214,45 @@ namespace xloil
     return Create(result, id, utf8);
   }
 
-  std::wstring guidToWString(const GUID& guid, bool withPunctuation) 
+  std::wstring guidToWString(const GUID& guid, GuidToString mode)
   {
     wchar_t result[39]; // 32 hex chars + 4 hyphens + two braces + null terminator
-    if (withPunctuation)
-      StringFromGUID2(guid, result, _countof(result));
-    else
-      _snwprintf_s(
+    int ret = 0;
+
+    switch (mode)
+    {
+    case GuidToString::PUNCTUATED:
+      ret = StringFromGUID2(guid, result, _countof(result));
+      break;
+    case GuidToString::HEX:
+      ret = _snwprintf_s(
         result, sizeof(result),
         L"%08x%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x",
         guid.Data1,    guid.Data2,    guid.Data3,
         guid.Data4[0], guid.Data4[1], guid.Data4[2],
         guid.Data4[3], guid.Data4[4], guid.Data4[5],
         guid.Data4[6], guid.Data4[7]);
+      break;
+    case GuidToString::BASE62:
+    {
+#ifdef _WIN64
+      auto written = unsignedToString<62>(((size_t*)&guid)[0], result, _countof(result));
+      written     += unsignedToString<62>(((size_t*)&guid)[1], result + written, _countof(result) - written);
+#endif
+      result[written] = 0;
+      ret = written > 0;
+      break;
+    }
+    }
+
+    if (ret <= 0)
+      throw Exception("Failed to write GUID as string");
+
     return result;
+  }
+
+  bool createGuid(_GUID& guid)
+  {
+    return CoCreateGuid(&guid) == 0;
   }
 }
