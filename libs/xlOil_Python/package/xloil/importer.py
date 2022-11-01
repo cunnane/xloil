@@ -50,7 +50,8 @@ def _pump_message_loop(loop, timeout:float):
     
     loop.run_until_complete(wait())
 
-    return len([task for task in asyncio.all_tasks(loop) if not task.done()])
+    all_tasks = asyncio.all_tasks if sys.version_info[:2] > (3, 6) else asyncio.Task.all_tasks
+    return len([task for task in all_tasks(loop) if not task.done()])
 
 def linked_workbook() -> str:
     """
