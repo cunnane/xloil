@@ -7,14 +7,6 @@
 #include <pybind11/stl.h>
 #include <string>
 
-<<<<<<< HEAD
-// Seems useful, wonder why it's not in the API?
-#define PyIterable_Check(obj) \
-    ((obj)->ob_type->tp_iter != NULL && \
-     (obj)->ob_type->tp_iter != &_PyObject_NextNotImplemented)
-
-=======
->>>>>>> 9433e6a (Python bug: fix ref count bug in main function call causing crashes in Py 3.7 and below)
 namespace pybind11
 {
   // Adds a logically missing wstr class to pybind11
@@ -22,7 +14,7 @@ namespace pybind11
   public:
     PYBIND11_OBJECT_CVT(wstr, object, PYBIND11_STR_CHECK_FUN, raw_str)
 
-    wstr(const wchar_t* c, size_t n)
+      wstr(const wchar_t* c, size_t n)
       : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
     {
       if (!m_ptr)
@@ -133,7 +125,7 @@ namespace xloil
     {
       return PyBorrow(PyWeakref_GetObject(wr.ptr()));
     }
-    
+
     /// <summary>
     /// If PyErr_Occurred is true, returns the error message, else an empty string
     /// </summary>
@@ -225,7 +217,7 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
-   
+
     /// <summary>
     /// Wraps a class member function to ensure it is executed on Excel's main
     /// thread (with no GIL) Used for pybind: e.g. mod.def("bar", MainThreadWrap(&Foo::bar))
@@ -303,7 +295,7 @@ namespace xloil
       size_t TOffset = 0u
 #endif
     >
-    class PyCallArgs
+      class PyCallArgs
     {
       // Use array<PyObject*> as an array<py::object> would result in TSize dtor calls
       std::array<PyObject*, TSize + TOffset>  _store;
@@ -352,7 +344,6 @@ namespace xloil
           Py_DECREF(*p);
         _size = TOffset;
       }
-
 
       pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs) noexcept
       {

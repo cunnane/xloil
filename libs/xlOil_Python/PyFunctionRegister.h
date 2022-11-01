@@ -19,15 +19,9 @@ namespace xloil
 {
   namespace Python
   {
-<<<<<<< HEAD
     class RegisteredModule; 
     class IPyFromExcel; 
     using IPyToExcel = IConvertToExcel<PyObject>;
-=======
-    class RegisteredModule;
-    class IPyFromExcel;
-    class IPyToExcel;
->>>>>>> 9433e6a (Python bug: fix ref count bug in main function call causing crashes in Py 3.7 and below)
 
     namespace FunctionRegistry
     {
