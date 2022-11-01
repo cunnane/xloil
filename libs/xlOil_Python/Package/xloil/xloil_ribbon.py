@@ -174,7 +174,7 @@ _python_enviroments = list(_find_python_enviroments().values())
 async def set_python_environment(ctrl, id, index):
     environment = _python_enviroments[index]
 
-    _settings.set_env_var("PYTHONPATH", environment['PythonPath'])
+    _settings.set_env_var("PYTHONPATH", "%PYTHONPATH%;" + environment['PythonPath'])
     _settings.set_env_var("PYTHONHOME", environment['InstallPath'])
     _settings.set_env_var("XLOIL_PYTHON_VERSION", environment['SysVersion'])
     _settings.save()
