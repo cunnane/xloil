@@ -7,6 +7,11 @@
 #include <pybind11/stl.h>
 #include <string>
 
+/// Returns true if the object implements __iter__, compare with PyIter_Check which
+/// tests if an object is an iterator. It seems useful, wonder why it's not in the API?
+#define PyIterable_Check(obj) (obj)->ob_type->tp_iter != NULL
+
+
 namespace pybind11
 {
   /// <summary>
@@ -207,7 +212,7 @@ namespace xloil
     }
 
     /// <summary>
-
+    /// Returns a dangling reference
     /// </summary>
     PyObject* fastCall(
       PyObject* func, PyObject* const* args, size_t nArgs, PyObject* kwargs) noexcept;
@@ -280,9 +285,9 @@ namespace xloil
       }
 
 
-      pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs) noexcept
+      pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs)
       {
-        return PyBorrow(fastCall(func.ptr(), _store.data() + TOffset, nArgs(), kwargs.ptr()));
+        return PySteal(fastCall(func.ptr(), _store.data() + TOffset, nArgs(), kwargs.ptr()));
       }
     };
   }
