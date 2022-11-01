@@ -112,12 +112,16 @@ namespace xloil {
     {
 #if PY_VERSION_HEX < 0x03080000
       auto argTuple = PyTuple_New(nArgs);
-      for (auto i = 0u; i < nArgs; ++i)
-        PyTuple_SET_ITEM(argTuple, i, args[i]);
+      if (!argTuple)
+        return nullptr;
 
-      auto retVal = kwargs
-        ? PyObject_Call(func, argTuple, kwargs)
-        : PyObject_CallObject(func, argTuple);
+      for (auto i = 0u; i < nArgs; ++i)
+      {
+        PyTuple_SET_ITEM(argTuple, i, args[i]);
+        Py_XINCREF(args[i]);
+      }
+
+      auto retVal = PyObject_Call(func, argTuple, kwargs);
 
       Py_XDECREF(argTuple);
 #else
