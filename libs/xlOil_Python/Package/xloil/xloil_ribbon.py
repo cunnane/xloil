@@ -174,7 +174,7 @@ _python_enviroments = list(_find_python_enviroments().values())
 async def set_python_environment(ctrl, id, index):
     environment = _python_enviroments[index]
 
-    _settings.set_env_var("PYTHONPATH", environment['PythonPath'])
+    _settings.set_env_var("PYTHONPATH", "%PYTHONPATH%;" + environment['PythonPath'])
     _settings.set_env_var("PYTHONHOME", environment['InstallPath'])
     _settings.set_env_var("XLOIL_PYTHON_VERSION", environment['SysVersion'])
     _settings.save()
@@ -308,8 +308,6 @@ async def press_open_console(ctrl):
 
 async def press_open_jupyter(ctrl):
     from xloil.jupyter_launcher import open_attached_notebook
-    from xloil.inprocess_kernel import start_main_thread_zmq_kernel
-    start_main_thread_zmq_kernel()
     await open_attached_notebook()
 
 
