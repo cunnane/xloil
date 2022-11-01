@@ -7,13 +7,6 @@
 #include <pybind11/stl.h>
 #include <string>
 
-
-#if PY_VERSION_HEX < 0x03080000
-#define PyIter_Check(obj) \
-    ((obj)->ob_type->tp_iter != NULL && \
-     (obj)->ob_type->tp_iter != &_PyObject_NextNotImplemented)
-#endif
-
 namespace pybind11
 {
   /// <summary>
@@ -283,15 +276,11 @@ namespace xloil
         const auto last = end();
         for (auto p = _store.begin() + TOffset; p != last; ++p)
           Py_DECREF(*p);
-        _size = 0;
+        _size = TOffset;
       }
 
-      PyObject* call(PyObject* func, PyObject* kwargs) noexcept
-      {
-        return fastCall(func, _store.data() + TOffset, nArgs(), kwargs);
-      }
 
-      const pybind11::object& call(const pybind11::object& func, const pybind11::object& kwargs) noexcept
+      pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs) noexcept
       {
         return PyBorrow(fastCall(func.ptr(), _store.data() + TOffset, nArgs(), kwargs.ptr()));
       }

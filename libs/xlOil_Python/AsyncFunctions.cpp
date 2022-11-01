@@ -121,7 +121,7 @@ namespace xloil
           pyCallArgs,
           kwargs);
 
-        pyCallArgs.call(info->func().ptr(), kwargs.ptr());
+        pyCallArgs.call(info->func(), kwargs);
       }
       catch (const py::error_already_set& e)
       {
@@ -182,7 +182,7 @@ namespace xloil
             pyArgs,
             kwargs);
 
-          pyArgs.call(_info.func().ptr(), kwargs.ptr());
+          pyArgs.call(_info.func(), kwargs);
         }
         catch (const py::error_already_set& e)
         {
