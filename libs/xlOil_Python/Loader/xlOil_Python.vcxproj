@@ -54,12 +54,27 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\..\src\BuildPaths.props" />
     <Import Project="..\..\..\libs\xlOilPlugin.props" />
-    <Import Project="..\PySettings310.props" />
-    <Import Project="..\PySettings.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\..\src\Release.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
+    <Import Project="..\..\..\src\Debug.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <IncludePath>$(xlOilRoot)external\python\3.10\include;$(xlOilRoot)src;$(IncludePath);$(ProjectDir)</IncludePath>
+    <LibraryPath>$(xlOilRoot)external\python\3\$(Platform);$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>PYTHON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>xloilHelpers.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>  
   <ItemGroup>
     <ClCompile Include="StubLoader.cpp" />
   </ItemGroup>
