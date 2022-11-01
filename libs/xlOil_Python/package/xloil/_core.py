@@ -8,6 +8,51 @@ import sys
 XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
 XLOIL_READTHEDOCS = 'READTHEDOCS' in os.environ
 
+
+def _get_environment_strings():
+    """
+        Does the same as:
+            import win32profile
+            win32profile.GetEnvironmentStrings()
+        But avoids the depedency on pywin32
+    """
+   
+    import ctypes
+
+    kernel_func = ctypes.windll.kernel32.GetEnvironmentStringsA
+    char_ptr = ctypes.POINTER(ctypes.c_char)
+    kernel_func.restype = char_ptr
+
+    # P will point to an block of char formatted as:
+    #     name1=val1/0
+    #     ...
+    #     nameN=valN/0/0
+    # (line-breaks added for clarity, they aren't present in the string)
+    p = kernel_func()
+    try:
+    
+        result = {}
+        start = end = 0
+        null = b'\x00' # Null-terminator for C-strings
+
+        while True:
+            while p[end] != null:
+                end += 1
+            if end == start:
+                break
+                
+            keyval = p[start:end].decode('utf-8').split('=')
+            # GetEnvironmentStrings returns some strange entries starting with '='
+            if any(keyval[0]):
+                result[keyval[0]] = keyval[1]
+                
+            end += 1    # Step over null terminator
+            start = end # Move string start pointer
+    finally:
+        ctypes.windll.kernel32.FreeEnvironmentStringsA(p)
+    
+    return result
+
 if XLOIL_EMBEDDED:
     """
     This looks like hocus pocus, but if we don't do it Qt (and possibly others)
@@ -16,10 +61,8 @@ if XLOIL_EMBEDDED:
     blocks per version of the C runtime. See discussion https://bugs.python.org/issue16633
     This seems like the easist workaround for now.
     """
-
-    import win32profile
-    env_vars = win32profile.GetEnvironmentStrings()
-    for name, val in win32profile.GetEnvironmentStrings().items():
+    env_vars = _get_environment_strings()
+    for name, val in env_vars.items():
         if not name.startswith("="):
             os.environ[name] = val
 
