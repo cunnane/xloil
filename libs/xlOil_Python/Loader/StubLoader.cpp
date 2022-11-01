@@ -6,7 +6,7 @@
 #include <cstdlib>
 
 #define Py_LIMITED_API
-#include <Python.h>
+#include <..\CPython.h>
 
 using std::vector;
 using std::wstring;

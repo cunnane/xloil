@@ -34,7 +34,7 @@ namespace xloil
       {
         if (++nRows > XL_MAX_ROWS)
           XLO_THROW("Max rows exceeded when returning iterator");
-        if (PyIter_Check(item) && !PyUnicode_Check(item))
+        if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           decltype(nCols) j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
@@ -74,7 +74,7 @@ namespace xloil
       while ((item = PyIter_Next(iter)) != 0)
       {
         j = 0;
-        if (PyIter_Check(item) && !PyUnicode_Check(item))
+        if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while ((innerItem = PyIter_Next(innerIter)) != 0)
