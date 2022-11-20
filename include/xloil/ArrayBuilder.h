@@ -43,7 +43,7 @@ namespace xloil
       // of string fiddling 
       ArrayBuilderAlloc(size_t nObjects, size_t stringLen)
         : _buffer((ExcelObj*)
-          new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
+            new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
         , _nObjects(nObjects)
         , _stringAllocator((wchar_t*)(_buffer + nObjects), stringLen)
       {
@@ -53,7 +53,7 @@ namespace xloil
       ~ArrayBuilderAlloc()
       {
         if (_buffer)
-          delete[] _buffer;
+          delete[] (char*)_buffer;
       }
 
       auto newString(size_t len)
@@ -68,7 +68,7 @@ namespace xloil
       void fillNA()
       {
         new (_buffer) ExcelObj(CellError::NA);
-        auto* source = _buffer;
+        const auto* source = _buffer;
         for (auto i = 1u; i < _nObjects; ++i)
           memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
       }
