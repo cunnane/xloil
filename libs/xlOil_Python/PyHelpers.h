@@ -64,7 +64,7 @@ namespace xloil
     {
       return PyBorrow(PyWeakref_GetObject(wr.ptr()));
     }
-    
+
     /// <summary>
     /// If PyErr_Occurred is true, returns the error message, else an empty string
     /// </summary>
@@ -156,7 +156,7 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
-   
+
     /// <summary>
     /// Wraps a class member function to ensure it is executed on Excel's main
     /// thread (with no GIL) Used for pybind: e.g. mod.def("bar", MainThreadWrap(&Foo::bar))
@@ -234,7 +234,7 @@ namespace xloil
       size_t TOffset = 0u
 #endif
     >
-    class PyCallArgs
+      class PyCallArgs
     {
       // Use array<PyObject*> as an array<py::object> would result in TSize dtor calls
       std::array<PyObject*, TSize + TOffset>  _store;
@@ -281,12 +281,7 @@ namespace xloil
         const auto last = end();
         for (auto p = _store.begin() + TOffset; p != last; ++p)
           Py_DECREF(*p);
-        _size = 0;
-      }
-
-      PyObject* call(PyObject* func, PyObject* kwargs) noexcept
-      {
-        return fastCall(func, _store.data() + TOffset, nArgs(), kwargs);
+        _size = TOffset;
       }
 
       pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs)

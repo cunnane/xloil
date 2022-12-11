@@ -9,13 +9,13 @@
 #include <pybind11/pybind11.h>
 
 namespace xloil {
-  class AddinContext; 
-  struct FuncInfo; 
-  class ExcelObj; 
+  class AddinContext;
+  struct FuncInfo;
+  class ExcelObj;
   class DynamicSpec;
   template <class T> class IConvertToExcel;
 }
-namespace xloil 
+namespace xloil
 {
   namespace Python
   {
@@ -32,7 +32,7 @@ namespace xloil
       /// </summary>
       std::shared_ptr<RegisteredModule>
         addModule(
-          AddinContext& context, 
+          AddinContext& context,
           const std::wstring& modulePath,
           const wchar_t* workbookName);
     };
@@ -59,12 +59,12 @@ namespace xloil
         bool isLocal,
         bool isVolatile,
         bool hasKeywordArgs);
-      
+
       ~PyFuncInfo();
 
       const auto& name() const { return _info->name; }
 
-      auto& args()             { return _args; }
+      auto& args() { return _args; }
       const auto& args() const { return _args; }
 
       auto getReturnConverter() const { return returnConverter; }
@@ -83,7 +83,7 @@ namespace xloil
 
       static std::shared_ptr<const DynamicSpec> createSpec(
         const std::shared_ptr<PyFuncInfo>& funcInfo);
-  
+
       /// <summary>
       /// Convert the array of ExcelObj arguments to PyObject values, with 
       /// option kwargs.
@@ -118,7 +118,7 @@ namespace xloil
         }
       }
 
-      template<class TXlArgs> 
+      template<class TXlArgs>
       auto invoke(TXlArgs&& xlArgs) const
       {
         PyCallArgs<> pyArgs;
@@ -129,7 +129,7 @@ namespace xloil
           pyArgs,
           kwargs);
 
-        return PySteal<>(pyArgs.call(_func.ptr(), kwargs.ptr()));
+        return pyArgs.call(_func, kwargs);
       }
 
     private:
@@ -165,7 +165,7 @@ namespace xloil
       void reload() override;
 
       void renameWorkbook(const wchar_t* newPathName) override;
-    
+
     private:
       bool _linkedWorkbook;
       pybind11::object _module;
