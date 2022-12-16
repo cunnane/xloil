@@ -72,6 +72,7 @@
     <ClInclude Include="..\..\include\xloil\ExcelCall.h" />
     <ClInclude Include="..\..\include\xloil\ExcelObj.h" />
     <ClInclude Include="..\..\include\xloil\ExcelObjCache.h" />
+    <ClInclude Include="..\..\include\xloil\Limits.h" />
     <ClInclude Include="..\..\include\xloil\Range.h" />
     <ClInclude Include="..\..\include\xloil\ExcelRef.h" />
     <ClInclude Include="..\..\include\xloil\Caller.h" />

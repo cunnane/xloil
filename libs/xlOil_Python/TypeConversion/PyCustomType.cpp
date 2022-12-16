@@ -105,15 +105,7 @@ namespace xloil
       }
       virtual ExcelObj operator()(const PyObject& pyObj) const override
       {
-        // Use raw C API for extra speed as this code is on a critical path
-#if PY_VERSION_HEX < 0x03080000
-        auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&pyObj), nullptr);
-#elif PY_VERSION_HEX < 0x03090000
-        PyObject* args[] = { nullptr, const_cast<PyObject*>(&pyObj) };
-        auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
-#else
-        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&pyObj));
-#endif
+        auto* result = invokeImpl(target);
         if (!result)
         {
           auto error = PyErr_Occurred();
@@ -127,8 +119,29 @@ namespace xloil
         // TODO: the user could create an infinite loop which cycles between two type converters - best way to avoid?
         return FromPyObj()(converted.ptr());
       }
+      auto invoke(const py::object& target) const
+      {
+        return PySteal<>(invokeImpl(*target.ptr()));
+      }
 
-      const py::object& handler() const { return _callable; }
+      PyObject* invokeImpl(const PyObject& target) const
+      {
+      // Use raw C API for extra speed as this code is on a critical path
+#if PY_VERSION_HEX < 0x03080000
+        auto result = PyObject_CallFunctionObjArgs(_callable.ptr(), const_cast<PyObject*>(&target), nullptr);
+#elif PY_VERSION_HEX < 0x03090000
+        PyObject* args[] = { nullptr, const_cast<PyObject*>(&target) };
+        auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
+#else
+        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&target));
+#endif
+        return result;
+      }
+
+      const char* name() const override
+      {
+        return _name.c_str();
+      }
     };
 
     static int theBinder = addBinder([](py::module& mod)

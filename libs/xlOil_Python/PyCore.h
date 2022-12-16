@@ -3,10 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <functional>
 
-struct _typeobject;
-namespace xloil {
-  template<class T> class IConvertToExcel;
-}
+
 namespace xloil
 {
   namespace Python

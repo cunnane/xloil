@@ -25,11 +25,11 @@ namespace xloil
     };
 
     FuncArg(
-      const wchar_t* argName = nullptr, 
-      const wchar_t* argHelp = nullptr,
+      std::wstring_view argName = std::wstring_view(),
+      std::wstring_view argHelp = std::wstring_view(),
       const int argType = Obj)
-      : name(argName ? argName : L"")
-      , help(argHelp ? argHelp : L"")
+      : name(argName)
+      , help(argHelp)
       , type(argType)
     {}
     /// <summary>

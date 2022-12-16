@@ -43,7 +43,8 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
     this_arg.name = arg.name
     this_arg.help = arg.help
 
-    if arg.is_keywords:
+    if arg.kind == Arg.KEYWORD_ARGS:
+        this_arg.special_type = "keywords"
         return this_arg
 
     arg_type = arg.typeof
@@ -89,13 +90,16 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
                 converter = _Read_Cache()
 
     if allow_range:
-        this_arg.special_type= "range"
+        this_arg.special_type = "range"
     
     if arg.has_default:
         this_arg.default = arg.default
 
     assert converter is not None
     this_arg.converter = converter
+
+    if arg.kind == Arg.VARIABLE_ARGS:
+        this_arg.special_type += ",vargs"
 
     return this_arg
 
@@ -259,12 +263,19 @@ def func(fn=None,
     * **datetime.date**
     * **datetime.datetime**
     * **dict / kwargs**: this converter expects a two column array of key/value pairs
+    * **arg list / *args**
 
     If no annotations are specified, xlOil will pass a type from the first eight above types
     based on the value provided from Excel.
 
-    If a parameter default is given in the function signature, that parameter becomes optional in 
-    the declared Excel function.
+    If a parameter default is given in the function signature, that parameter becomes
+    optional in the declared Excel function.
+
+    If keyword args (`**kwargs`) are specified, xlOil expects a two-column array of 
+    (string, value) to be passed. For variable args (`*args`) xlOil adds a large number
+    of trailing optional arguments. The variable argument list is ended by the first 
+    missing argument.  If both *kwargs* and *args* are specified, their order is reversed 
+    in the Excel function declaration.
 
     Parameters
     ----------
@@ -331,7 +342,6 @@ def func(fn=None,
 
         try:
             func_args, return_type = Arg.full_argspec(fn)
-            has_kwargs = any(func_args) and func_args[-1].is_keywords
 
             # For async/rtd functions, the target function passed to the FuncSpec 
             # should not be the 'fn' argument to this decorator. We also wrap threaded
@@ -398,8 +408,7 @@ def func(fn=None,
                 help = help if help else (fn.__doc__ if fn.__doc__ else ""),
                 category = group if group else "",
                 volatile = volatile,
-                local = is_local,
-                has_kwargs = has_kwargs)
+                local = is_local)
 
             if return_type is not None and return_type is not FastArray:
                 spec.return_converter = find_return_converter(return_type)

@@ -206,23 +206,33 @@ Excel does not understand timezones and neither does ``std::get_time``, so these
 are currently unsupported.
 
 
-Dicts and Keyword Arguments
----------------------------
+Dicts
+-----
 
-If an Excel function has a ``**kwargs`` argument, it will expect a two column array of 
-keystring-value pairs, which xlOil will convert to a dictionary.
+When the ``dict`` *argument type* annotation is specified, xlOil expects a two-column 
+array of(*string*, *value*) to be passed.
 
-The  ``dict`` return type annotation returns a ``dict`` as a two column array.
-Without the annotation, the default iterable converter would be invoked, resulting
-in only the keys being output 
+Using a ``dict`` *return type* annotation allows a ``dict`` to be returned as as a 
+two column array. Without the annotation, the default iterable converter would be invoked, 
+resulting in only the keys being output.
 
-The following example uses both of these by round-tripping the provided keyword arguments:
+Variable and Keyword Arguments
+-------------------------------
+
+If keyword args (`**kwargs`) are specified, xlOil expects a two-column array of 
+(*string*, *value*) to be passed, the same as using a ``dict`` annotation. For variable
+args (`*args`) xlOil adds a large numberof trailing optional arguments. The variable
+argument list is ended by the first missing argument.  If both *kwargs* and *args* are 
+specified, their order is reversed in the Excel function declaration.
+
+The following example shows dictionary and keyword aruments:
 
 ::
 
-    @xlo.func
-    def pyTestKwargs(**kwargs) -> dict:
-        return kwargs
+  @xlo.func
+  def pyTestKwargs(lookup: dict, **kwargs) -> dict:
+      lookup.update(kwargs)
+      return lookup
 
 
 Range Arguments

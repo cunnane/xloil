@@ -149,20 +149,36 @@ def pyTestDate(x: dt.datetime) -> dt.datetime:
     return x + dt.timedelta(days=1)
  
 
-#------------------
-# Keyword args
-#------------------
+#---------------------------
+# Variable and Keyword args
+#---------------------------
 #
 # Keyword args are supported by passing a two-column array of (string, value)
 # This function also tests the dict return conversion (without specifying the
 # return as dict, the iterable converter would be used resulting in output of
 # only the keys)
 #
+# For variable args (i.e. *args) xlOil adds a large number of trailing optional 
+# arguments.
+#
+# If both args and kwargs are specified, their order is reversed in the Excel  
+# function declaration.
+#
 @xlo.func
-def pyTestKwargs(**kwargs) -> dict:
-    return kwargs
+def pyTestKwargs(lookup: dict, **kwargs) -> dict:
+    lookup.update(kwargs)
+    return lookup
 
+@xlo.func(
+    args={'args': 'A variable argument list of numbers to sum'}
+    )
+def pyTestVargs(*args) -> float:
+    return sum(args)
 
+@xlo.func
+def pyTestVargsKwargs(*args, **kwargs) -> float:
+    return sum(args) + np.sum([float(x) for x in kwargs.values()])
+    
 #------------------------------
 # Macros and Excel.Application
 #------------------------------

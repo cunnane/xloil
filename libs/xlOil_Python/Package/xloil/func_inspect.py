@@ -21,8 +21,11 @@ class Arg:
         """ Indicates the absence of a default argument """
         ...
 
+    POSITIONAL    = 0
+    KEYWORD_ARGS  = 1
+    VARIABLE_ARGS = 2
 
-    def __init__(self, name, help="", typeof=None, default=_EMPTY, is_keywords=False):
+    def __init__(self, name, help="", typeof=None, default=_EMPTY, kind=POSITIONAL):
         """
         Parameters
         ----------
@@ -35,18 +38,19 @@ class Arg:
             Selects the type converter used to pass the argument value
         default: object, optional
             A default value to pass if the argument is not specified in Excel
-        is_keywords: bool, optional
-            Denotes the special kwargs argument. xlOil will expect a two-column array
-            in Excel which it will interpret as (key, value) pairs and convert to a
-            dictionary. A `**kwargs` argument is auto-detected by xlOil so it is 
-            unusual to set this parameter explicitly.
+        kind: int, optional
+            Denotes the special *args or **kwargs arguments. For kwargs, xlOil will 
+            expect a two-column array in Excel which it will interpret as (key, value) 
+            pairs and convert to a dictionary. For *args, xlOil adds a large number of 
+            extra trailing optional arguments. Both of these are auto-detected by xlOil 
+            so it is unusual to set this parameter explicitly.
         """
 
         self.typeof = typeof
         self.name = str(name)
         self.help = help
         self.default = default
-        self.is_keywords = is_keywords
+        self.kind = kind
 
     @property
     def has_default(self):
@@ -72,7 +76,10 @@ class Arg:
             return arg
 
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            return cls(name, is_keywords=True)
+            return cls(name, kind=cls.KEYWORD_ARGS)
+
+        elif param.kind == param.VAR_POSITIONAL:
+            return cls(name, kind=cls.VARIABLE_ARGS)
 
         else: 
             raise Exception(f"Unhandled argument '{name}' with type '{kind}'")
