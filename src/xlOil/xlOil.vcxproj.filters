@@ -143,6 +143,9 @@
     <ClInclude Include="..\..\include\xloil\AutoBind.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Limits.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Loaders">

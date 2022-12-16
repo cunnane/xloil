@@ -25,6 +25,7 @@ using std::vector;
 using std::pair;
 using std::map;
 using std::wstring;
+using std::wstring_view;
 using std::string;
 using std::make_shared;
 using std::make_pair;
@@ -41,8 +42,8 @@ namespace xloil
 
     unsigned readFuncFeatures(
       const string& features,
-      PyFuncInfo& info, 
-      bool isVolatile, 
+      PyFuncInfo& info,
+      bool isVolatile,
       bool& isLocalFunc)
     {
       unsigned funcOpts = isVolatile ? FuncInfo::VOLATILE : 0;
@@ -75,29 +76,27 @@ namespace xloil
 
     PyFuncInfo::PyFuncInfo(
       const pybind11::function& func,
-      const std::vector<PyFuncArg> args,
+      const std::vector<PyFuncArg>& args,
       const std::wstring& name,
       const std::string& features,
       const std::wstring& help,
       const std::wstring& category,
       bool isLocal,
-      bool isVolatile,
-      bool hasKeywordArgs)
+      bool isVolatile)
       : _info(new FuncInfo())
       , _func(func)
       , _args(args)
-      , _hasKeywordArgs(hasKeywordArgs)
       , isLocalFunc(isLocal)
       , isRtdAsync(false)
       , isAsync(false)
     {
-      _info->name = name.empty() 
+      _info->name = name.empty()
         ? py::wstr(func.attr("__name__"))
         : name;
 
       _info->help = help;
       _info->category = category;
-      
+
       if (!func.ptr() || func.is_none())
         XLO_THROW(L"No python function specified for {0}", name);
 
@@ -121,7 +120,7 @@ namespace xloil
     {
       returnConverter = conv;
     }
-  
+
 
     struct CommandReturn
     {
@@ -256,14 +255,14 @@ namespace xloil
       }
     }
 
-    shared_ptr<const DynamicSpec> 
+    shared_ptr<const DynamicSpec>
       PyFuncInfo::createSpec(
         const std::shared_ptr<PyFuncInfo>& func)
     {
       // We implement this as a static function taking a shared_ptr rather than using 
       // shared_from_this with PyFuncInfo as the latter causes pybind to catch a 
       // std::bad_weak_ptr during construction which seems rather un-C++ like and irksome
-      func->describeFuncArgs();
+      func->writeExcelArgumentDescription();
       auto cfunc = std::const_pointer_cast<const PyFuncInfo>(func);
       if (func->isAsync)
         return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, cfunc);
@@ -279,28 +278,54 @@ namespace xloil
         return make_shared<DynamicSpec>(func->info(), &pythonCallback<>, cfunc);
     }
 
-    void PyFuncInfo::describeFuncArgs()
+    void PyFuncInfo::writeExcelArgumentDescription()
     {
       const auto numArgs = _args.size();
+      _numPositionalArgs = (uint16_t)numArgs;
+
+      if (numArgs == 0)
+        return;
+
+      auto lastArg = _args.end() - 1;
+
+      if (lastArg->isKeywords())
+      {
+        _hasKeywordArgs = true;
+        --_numPositionalArgs;
+        if (_numPositionalArgs > 0)
+          --lastArg;
+      }
+
+      if (lastArg->isVargs())
+      {
+        if (_hasKeywordArgs)
+          std::iter_swap(lastArg, _args.end() - 1);
+        _hasVariableArgs = true;
+        --_numPositionalArgs;
+      }
 
       auto& registerArgs = _info->args;
 
-      registerArgs.reserve(numArgs + isAsync ? 1 : 0);
+      registerArgs.reserve(
+        numArgs
+        + (isAsync ? 1 : 0) 
+        + (_hasVariableArgs ? 100 : 0));
+
       if (isAsync)
-        registerArgs.emplace_back(nullptr, nullptr, FuncArg::AsyncHandle);
+        registerArgs.emplace_back(wstring_view(), wstring_view(), FuncArg::AsyncHandle);
 
       for (auto& arg : _args)
       {
         int flags = FuncArg::Obj;
 
-        if (_stricmp(arg.type.c_str(), "array") == 0) 
+        if (arg.type.find("array") != string::npos)
           flags = FuncArg::Array;
-        else if (_stricmp(arg.type.c_str(), "range") == 0) 
+        else if (arg.type.find("range") != string::npos)
           flags |= FuncArg::Range;
 
-        if (arg.default) 
+        if (arg.default)
           flags |= FuncArg::Optional;
-        
+
         if ((flags & FuncArg::Array) != 0)
           arg.converter.reset(createFPArrayConverter());
 
@@ -319,143 +344,154 @@ namespace xloil
             arg.help = formatStr(L"<%s>", argType.c_str());
         }
 
+        if (!arg.converter && !arg.isKeywords())
+          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, arg.name);
+
         registerArgs.emplace_back(
-          arg.name.c_str(),
-          arg.help.c_str(),
+          arg.name,
+          arg.help,
           flags);
       }
 
-      _numPositionalArgs = (uint16_t)(_args.size() - (_hasKeywordArgs ? 1u : 0));
-
-      // TODO: handle kwargs
-      for (auto i = 0u; i < _args.size() - (_hasKeywordArgs ? 1u : 0); ++i)
-        if (!_args[i].converter)
-          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, _args[i].name);
+      if (_hasVariableArgs)
+      {
+        // Note that having 255 args means the concatenated argument names will certainly
+        // exceed 255 chars, which will generate a notification in the log file
+        auto numVariableArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) - numArgs;
+        auto varArgType = registerArgs.back().type | FuncArg::Optional;
+        for (size_t i = 1; i < numVariableArgs; ++i)
+        {
+          registerArgs.emplace_back(
+            isLocalFunc ? formatStr(L"a%d", i) : L"",
+            formatStr(L"[%s-%d]", _args.back().name, i),
+            varArgType);
+        }
+      }
     }
 
     //TODO: Refactor Python FileSource
     // It might be better for lifetime management if the whole FileSource interface was exposed
     // via the core, then a reference to the FileSource can be held and closed by the module itself
 
-      /// <summary>
-      /// If provided, a linked workbook can be used for local functions
-      /// </summary>
-      /// <param name="modulePath"></param>
-      /// <param name="workbookName"></param>
-      RegisteredModule::RegisteredModule(
-        const wstring& modulePath,
-        const wchar_t* workbookName)
-        : LinkedSource(
-            modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
-            true,
-            workbookName)
+    /// <summary>
+    /// If provided, a linked workbook can be used for local functions
+    /// </summary>
+    /// <param name="modulePath"></param>
+    /// <param name="workbookName"></param>
+    RegisteredModule::RegisteredModule(
+      const wstring& modulePath,
+      const wchar_t* workbookName)
+      : LinkedSource(
+        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
+        true,
+        workbookName)
+    {
+      _linkedWorkbook = workbookName;
+    }
+
+    RegisteredModule::~RegisteredModule()
+    {
+      try
       {
-        _linkedWorkbook = workbookName;
-      }
-
-      RegisteredModule::~RegisteredModule()
-      {
-        try
-        {
-          if (!_module)
-            return;
-
-          // TODO: cancel running async tasks?
-          py::gil_scoped_acquire getGil;
-
-          // Call module cleanup function
-          if (py::hasattr(_module, XLOPY_CLEANUP_FUNCTION))
-            _module.attr(XLOPY_CLEANUP_FUNCTION)();
-         
-          auto success = unloadModule(_module.release());
-
-          XLO_DEBUG(L"Python module unload {1} for '{0}'", 
-            filename(), success ? L"succeeded" : L"failed");
-        }
-        catch (const std::exception& e)
-        {
-          XLO_ERROR("Error unloading python module '{0}': {1}", 
-            utf16ToUtf8(filename()), e.what());
-        }
-      }
-
-      void RegisteredModule::registerPyFuncs(
-        const py::handle& pyModule,
-        const vector<shared_ptr<PyFuncInfo>>& functions,
-        const bool append)
-      {
-        // This function takes a handle from .release() rather than a py::object
-        // to avoid needing the GIL to change the refcount.
-        _module = py::reinterpret_steal<py::object>(pyModule);
-        vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
-
-        bool usesRtdAsync = false;
-
-        for (auto& f : functions)
-        {
-          if (!_linkedWorkbook)
-            f->isLocalFunc = false;
-          auto spec = PyFuncInfo::createSpec(f);
-
-          if (f->isLocalFunc)
-            localFuncs.emplace_back(std::move(spec));
-          else
-            nonLocal.emplace_back(std::move(spec));
-
-          if (f->isRtdAsync)
-            usesRtdAsync = true;
-        }
-
-        // Prime the RTD pump now as a background task to avoid it blocking 
-        // in calculation later.
-        if (usesRtdAsync)
-          runExcelThread([]() { rtdAsync(shared_ptr<IRtdAsyncTask>()); });
-
-        registerFuncs(nonLocal, append);
-        if (!localFuncs.empty())
-          registerLocal(localFuncs, append);
-      }
-
-      void RegisteredModule::reload()
-      {
-        auto[source, addin] = Python::findSource(name().c_str());
-        if (source.get() != this)
-          XLO_THROW(L"Error reloading '{0}': source ptr mismatch", name());
-        
-        // Rescan the module, passing in the module handle if it exists
-        py::gil_scoped_acquire get_gil;
-        if (_module && !_module.is_none())
-          addin->importModule(_module);
-        else
-          addin->importFile(name().c_str(), linkedWorkbook().c_str());
-      }
-
-      void RegisteredModule::renameWorkbook(const wchar_t* newPathName)
-      {
-        if (!_linkedWorkbook) // Should never be called without a linked wb
+        if (!_module)
           return;
 
-        // This is all great but...background thread?
-        auto [source, addin] = Python::findSource(name().c_str());
+        // TODO: cancel running async tasks?
+        py::gil_scoped_acquire getGil;
 
-        AddinContext::deleteSource(shared_from_this());
+        // Call module cleanup function
+        if (py::hasattr(_module, XLOPY_CLEANUP_FUNCTION))
+          _module.attr(XLOPY_CLEANUP_FUNCTION)();
 
-        const auto newSourcePath = addin->getLocalModulePath(newPathName);
-        const auto& currentSourcePath = name();
+        auto success = unloadModule(_module.release());
 
-        std::error_code ec;
-        if (fs::copy_file(currentSourcePath, newSourcePath, ec))
-        {
-          const auto wbName = wcsrchr(newPathName, '\\') + 1;
-          auto newSource = make_shared<RegisteredModule>(newSourcePath, wbName);
-          addin->context.addSource(newSource);
-          py::gil_scoped_acquire get_gil;
-          addin->importFile(newSourcePath.c_str(), newPathName);
-        }
-        else
-          XLO_WARN(L"On workbook rename, failed to copy source '{0}' to '{1}' because: {3}",
-            currentSourcePath, newSourcePath, utf8ToUtf16(ec.message()));
+        XLO_DEBUG(L"Python module unload {1} for '{0}'",
+          filename(), success ? L"succeeded" : L"failed");
       }
+      catch (const std::exception& e)
+      {
+        XLO_ERROR("Error unloading python module '{0}': {1}",
+          utf16ToUtf8(filename()), e.what());
+      }
+    }
+
+    void RegisteredModule::registerPyFuncs(
+      const py::handle& pyModule,
+      const vector<shared_ptr<PyFuncInfo>>& functions,
+      const bool append)
+    {
+      // This function takes a handle from .release() rather than a py::object
+      // to avoid needing the GIL to change the refcount.
+      _module = py::reinterpret_steal<py::object>(pyModule);
+      vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
+
+      bool usesRtdAsync = false;
+
+      for (auto& f : functions)
+      {
+        if (!_linkedWorkbook)
+          f->isLocalFunc = false;
+        auto spec = PyFuncInfo::createSpec(f);
+
+        if (f->isLocalFunc)
+          localFuncs.emplace_back(std::move(spec));
+        else
+          nonLocal.emplace_back(std::move(spec));
+
+        if (f->isRtdAsync)
+          usesRtdAsync = true;
+      }
+
+      // Prime the RTD pump now as a background task to avoid it blocking 
+      // in calculation later.
+      if (usesRtdAsync)
+        runExcelThread([]() { rtdAsync(shared_ptr<IRtdAsyncTask>()); });
+
+      registerFuncs(nonLocal, append);
+      if (!localFuncs.empty())
+        registerLocal(localFuncs, append);
+    }
+
+    void RegisteredModule::reload()
+    {
+      auto [source, addin] = Python::findSource(name().c_str());
+      if (source.get() != this)
+        XLO_THROW(L"Error reloading '{0}': source ptr mismatch", name());
+
+      // Rescan the module, passing in the module handle if it exists
+      py::gil_scoped_acquire get_gil;
+      if (_module && !_module.is_none())
+        addin->importModule(_module);
+      else
+        addin->importFile(name().c_str(), linkedWorkbook().c_str());
+    }
+
+    void RegisteredModule::renameWorkbook(const wchar_t* newPathName)
+    {
+      if (!_linkedWorkbook) // Should never be called without a linked wb
+        return;
+
+      // This is all great but...background thread?
+      auto [source, addin] = Python::findSource(name().c_str());
+
+      AddinContext::deleteSource(shared_from_this());
+
+      const auto newSourcePath = addin->getLocalModulePath(newPathName);
+      const auto& currentSourcePath = name();
+
+      std::error_code ec;
+      if (fs::copy_file(currentSourcePath, newSourcePath, ec))
+      {
+        const auto wbName = wcsrchr(newPathName, '\\') + 1;
+        auto newSource = make_shared<RegisteredModule>(newSourcePath, wbName);
+        addin->context.addSource(newSource);
+        py::gil_scoped_acquire get_gil;
+        addin->importFile(newSourcePath.c_str(), newPathName);
+      }
+      else
+        XLO_WARN(L"On workbook rename, failed to copy source '{0}' to '{1}' because: {3}",
+          currentSourcePath, newSourcePath, utf8ToUtf16(ec.message()));
+    }
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
@@ -463,7 +499,7 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto[source, addin] = AddinContext::findSource(modulePath.c_str());
+      auto [source, addin] = AddinContext::findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
@@ -495,11 +531,11 @@ namespace xloil
       auto& context = addinContext.is_none()
         ? theCoreAddin()->context
         : py::cast<PyAddin&>(addinContext).context;
-      
+
       py::gil_scoped_release releaseGil;
       auto registeredMod = FunctionRegistry::addModule(
         context,
-        modulePath, 
+        modulePath,
         nullptr);
       registeredMod->registerPyFuncs(module.release(), functions, append);
     }
@@ -512,7 +548,7 @@ namespace xloil
 
       const auto modulePath = getModulePath(moduleHandle);
 
-      auto[foundSource, foundAddin] = AddinContext::findSource(
+      auto [foundSource, foundAddin] = AddinContext::findSource(
         modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
 
       if (!foundSource)
@@ -540,7 +576,8 @@ namespace xloil
       {
         string result = utf16ToUtf8(info.info()->name) + "(";
         for (auto& arg : info.args())
-          result += utf16ToUtf8(arg.name) + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
+          result += utf16ToUtf8(arg.name) 
+            + (arg.converter ? formatStr(": %s, ", arg.converter->name()) : ", ");
         if (!info.args().empty())
           result.resize(result.size() - 2);
         result.push_back(')');
@@ -548,7 +585,7 @@ namespace xloil
           result += formatStr(" -> %s", info.getReturnConverter()->name());
         return result;
       }
-      
+
       static int theBinder = addBinder([](py::module& mod)
       {
         py::class_<PyFuncArg>(mod, "_FuncArg")
@@ -560,7 +597,7 @@ namespace xloil
           .def_readwrite("special_type", &PyFuncArg::type);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
-          .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool, bool>(),
+          .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool>(),
             py::arg("func"),
             py::arg("args"),
             py::arg("name") = "",
@@ -568,47 +605,46 @@ namespace xloil
             py::arg("help") = "",
             py::arg("category") = "",
             py::arg("local") = true,
-            py::arg("volatile") = false,
-            py::arg("has_kwargs") = false)
-          .def_property("return_converter", 
-            &PyFuncInfo::getReturnConverter, 
+            py::arg("volatile") = false)
+          .def_property("return_converter",
+            &PyFuncInfo::getReturnConverter,
             &PyFuncInfo::setReturnConverter)
-          .def_property_readonly("args", 
+          .def_property_readonly("args",
             [](const PyFuncInfo& self) { return self.args(); })
-          .def_property_readonly("name", 
+          .def_property_readonly("name",
             [](const PyFuncInfo& self) { return self.info()->name; })
-          .def_property_readonly("help", 
+          .def_property_readonly("help",
             [](const PyFuncInfo& self) { return self.info()->help; })
-          .def_property("func", 
+          .def_property("func",
             &PyFuncInfo::func, &PyFuncInfo::setFunc,
             R"(
               Yes you can change the function which is called by Excel! Use
               with caution.
             )")
-          .def_property_readonly("is_threaded", 
+          .def_property_readonly("is_threaded",
             &PyFuncInfo::isThreadSafe,
             R"(
               True if the function can be multi-threaded during Excel calcs
             )")
-          .def_property_readonly("is_rtd", 
+          .def_property_readonly("is_rtd",
             [](const PyFuncInfo& self) { return self.isRtdAsync; },
             R"(
               True if the function uses RTD to provide async returns
             )")
-          .def_property_readonly("is_async", 
+          .def_property_readonly("is_async",
             [](const PyFuncInfo& self) { return self.isAsync; },
             R"(
               True if the function used Excel's native async
             )")
           .def("__str__", pyFuncInfoToString);
 
-        mod.def("_register_functions", &registerFunctions, 
+        mod.def("_register_functions", &registerFunctions,
           py::arg("funcs"),
-          py::arg("module")=py::none(),
-          py::arg("addin")=py::none(),
-          py::arg("append")=false);
+          py::arg("module") = py::none(),
+          py::arg("addin") = py::none(),
+          py::arg("append") = false);
 
-        mod.def("deregister_functions", 
+        mod.def("deregister_functions",
           &deregisterFunctions,
           R"(
             Deregisters worksheet functions linked to specified module. Generally, there
