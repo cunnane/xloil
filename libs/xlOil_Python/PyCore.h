@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 #include <functional>
 
-struct _typeobject;
+//struct _typeobject;
 
 namespace xloil
 {

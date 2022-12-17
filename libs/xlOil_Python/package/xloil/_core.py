@@ -18,6 +18,7 @@ def _get_environment_strings():
     """
    
     import ctypes
+    import locale
 
     kernel_func = ctypes.windll.kernel32.GetEnvironmentStringsA
     char_ptr = ctypes.POINTER(ctypes.c_char)
@@ -41,7 +42,7 @@ def _get_environment_strings():
             if end == start:
                 break
                 
-            keyval = p[start:end].decode('utf-8').split('=')
+            keyval = p[start:end].decode(locale.getpreferredencoding()).split('=')
             # GetEnvironmentStrings returns some strange entries starting with '='
             if any(keyval[0]):
                 result[keyval[0]] = keyval[1]

@@ -116,7 +116,10 @@ namespace xloil
         totalStrLen += info->category.size();
         totalStrLen += info->help.size();
         for (auto x : info->args)
-          totalStrLen += x.help.size() + 1 + 2; // allow for comma and []
+        {
+          totalStrLen += x.name.size() + 1 + 2; // allow for comma and []
+          totalStrLen += x.help.size();
+        }
         maxNumArgs = std::max(maxNumArgs, info->args.size());
         ++nFuncs;
       }

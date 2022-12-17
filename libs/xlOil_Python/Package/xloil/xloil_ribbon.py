@@ -138,34 +138,47 @@ def get_python_path(ctrl):
 # ----------------------------
 #
 
-def _find_python_enviroments():
+def _find_python_enviroments_from_key(pythons_key):
 
     environments = {}
-    with reg.OpenKey(reg.HKEY_LOCAL_MACHINE, "Software\\Python") as kPythons:
-        try:
-            i = 0
-            while True:
-                vendor = reg.EnumKey(kPythons, i)
-                i += 1
-                with reg.OpenKey(kPythons, vendor) as kVendor:
+    try:
+        i = 0
+        while True:
+            vendor = reg.EnumKey(pythons_key, i)
+            i += 1
+            with reg.OpenKey(pythons_key, vendor) as vendor_key:
                     
-                    try:
-                        j = 0
-                        while True:
-                            version = reg.EnumKey(kVendor, j)
-                            j += 1
-                            with reg.OpenKey(kVendor, version) as kVersion:
-                                name = reg.QueryValueEx(kVersion, 'DisplayName')[0]
-                                environments[name] = {
-                                    'DisplayName': name,
-                                    'SysVersion':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
-                                    'PythonPath':  reg.QueryValue(kVersion,   'PythonPath'),
-                                    'InstallPath': reg.QueryValue(kVersion,   'InstallPath')
-                                }
-                    except OSError:
-                        ...
-        except OSError:
-            ...
+                try:
+                    j = 0
+                    while True:
+                        version = reg.EnumKey(vendor_key, j)
+                        j += 1
+                        with reg.OpenKey(vendor_key, version) as kVersion:
+                            name = reg.QueryValueEx(kVersion, 'DisplayName')[0]
+                            environments[name] = {
+                                'DisplayName': name,
+                                'SysVersion':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
+                                'PythonPath':  reg.QueryValue(kVersion,   'PythonPath'),
+                                'InstallPath': reg.QueryValue(kVersion,   'InstallPath')
+                            }
+                except OSError:
+                    ...
+    except OSError:
+        ...
+
+    return environments
+
+def _find_python_enviroments():
+
+    roots = [reg.HKEY_LOCAL_MACHINE, reg.HKEY_CURRENT_USER]
+    environments = {}
+
+    for root in roots:
+        try:
+            with reg.OpenKey(root, "Software\\Python") as pythons_key:
+                environments.update(_find_python_enviroments_from_key(pythons_key))
+        except FileNotFoundError:
+            ... # Reg key doesn't exist, try the next one
 
     return environments
 

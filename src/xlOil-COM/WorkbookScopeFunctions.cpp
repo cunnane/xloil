@@ -17,6 +17,7 @@
 using std::vector;
 using std::shared_ptr;
 using std::wstring;
+using std::wstring_view;
 using namespace VBIDE;
 
 namespace xloil
@@ -45,6 +46,24 @@ namespace xloil
       void write(const S& fmtStr, Args&&... args)
       {
         mod->InsertLines(line++, fmt::format(fmtStr, std::forward<Args>(args)...).c_str());
+      }
+
+      /// <summary>
+      /// Write a line which is save to auto-break at spaces. Such a line should
+      /// not contain strings which may contain spaces. The line length limit
+      /// in VBA is 1024 chars.
+      /// </summary>
+      template <typename S, typename... Args>
+      void writeBreakable(const S& fmtStr, Args&&... args)
+      {
+        wstring text = fmt::format(fmtStr, std::forward<Args>(args)...);
+        while (text.length() > 1000)
+        {
+          auto lastSpace = wstring_view(text.data(), 1000).find_last_of(L' ');
+          mod->InsertLines(line++, (wstring(text.data(), lastSpace + 1) + L'_').c_str());
+          text.erase(0, lastSpace + 1);
+        }
+        mod->InsertLines(line++, text.c_str());
       }
     };
 
@@ -92,6 +111,10 @@ namespace xloil
         for (size_t i = 0; i < registeredFuncs.size(); ++i)
         {
           auto& func = *registeredFuncs[i]->info();
+
+          if (func.args.size() > XL_MAX_VBA_FUNCTION_ARGS)
+            XLO_THROW("Local functions may have at most 60 arguements due to VBA limitations");
+
           // We declare all args as optional variant and let the called 
           // function handle things.
           wstring args, optionalArgs;
@@ -117,17 +140,17 @@ namespace xloil
           //
           const bool isSub = (func.options & FuncInfo::COMMAND) != 0;
           const auto& name = func.name;
-          const auto declaration = isSub ? L"Sub" : L"Function";
+          const auto funcType = isSub ? L"Sub" : L"Function";
           const auto retVar = isSub ? L"dummy" : name;
           const auto funcId = registeredFuncs[i]->registerId();
 
-          writer.write(L"Public {2} {0}({1})", name, optionalArgs, declaration);
-          writer.write(L"  Dim args: args=Array({0})", args);
+          writer.writeBreakable(L"Public {2} {0}({1})", name, optionalArgs, funcType);
+          writer.writeBreakable(L"  Dim xlo_args: xlo_args=Array({0})", args);
           if (isSub)
             writer.write(L"  Dim dummy");
-          writer.write(L"  localFunctionEntryPoint {0}, {1}, args",
+          writer.write(L"  localFunctionEntryPoint {0}, {1}, xlo_args",
             funcId, retVar);
-          writer.write(L"End {0}", declaration);
+          writer.write(L"End {0}", funcType);
         }
       }
       XLO_RETHROW_COM_ERROR;

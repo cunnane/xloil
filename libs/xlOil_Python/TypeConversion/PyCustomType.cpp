@@ -111,7 +111,7 @@ namespace xloil
       }
       virtual ExcelObj operator()(const PyObject& target) const override
       {
-        auto* result = invoke(target);
+        auto* result = invokeImpl(target);
         if (!result)
         {
           auto error = PyErr_Occurred();
@@ -125,8 +125,12 @@ namespace xloil
         // TODO: the user could create an infinite loop which cycles between two type converters - best way to avoid?
         return FromPyObj()(converted.ptr());
       }
+      auto invoke(const py::object& target) const
+      {
+        return PySteal<>(invokeImpl(*target.ptr()));
+      }
 
-      PyObject* invoke(const PyObject& target) const
+      PyObject* invokeImpl(const PyObject& target) const
       {
       // Use raw C API for extra speed as this code is on a critical path
 #if PY_VERSION_HEX < 0x03080000

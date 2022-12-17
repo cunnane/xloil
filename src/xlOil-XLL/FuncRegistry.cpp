@@ -54,7 +54,8 @@ namespace xloil
   class FunctionRegistry
   {
   public:
-    static FunctionRegistry& get() {
+    static FunctionRegistry& get() 
+    {
       static FunctionRegistry instance;
       return instance;
     }
@@ -159,7 +160,7 @@ namespace xloil
 
       // Truncate argument help strings to 255 chars
       for (auto& h : argHelp)
-        if (h.size() > 255)
+        if (h.size() > XL_ARG_HELP_STRING_MAX_LENGTH)
         {
           XLO_INFO(L"Excel does not support argument help strings longer than 255 chars. "
             "Truncating for function '{0}'", info->name);
@@ -175,12 +176,13 @@ namespace xloil
 
       // Function help string. Yup, more 255 char limits, those MS folks are terse
       auto truncatedHelp = info->help;
-      if (info->help.length() > 255)
+      if (info->help.length() > XL_ARG_HELP_STRING_MAX_LENGTH)
       {
-        XLO_INFO(L"Excel does not support help strings longer than 255 chars. "
-          "Truncating for function '{0}'", info->name);
-        truncatedHelp.assign(info->help.c_str(), 255);
-        truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
+        constexpr auto maxLen = XL_ARG_HELP_STRING_MAX_LENGTH;
+        XLO_INFO(L"Excel does not support help strings longer than {1} chars. "
+          "Truncating for function '{0}'", info->name, maxLen);
+        truncatedHelp.assign(info->help.c_str(), maxLen);
+        truncatedHelp[maxLen-3] = '.'; truncatedHelp[maxLen-2] = '.'; truncatedHelp[maxLen-1] = '.';
       }
 
       // TODO: entrypoint will always be ascii

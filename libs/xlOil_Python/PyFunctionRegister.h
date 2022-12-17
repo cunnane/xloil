@@ -44,6 +44,14 @@ namespace xloil
       std::wstring help;
       pybind11::object default;
       std::string type;
+
+      bool isKeywords() const {
+        return type.find("keywords") != std::string::npos;
+      }
+
+      bool isVargs() const {
+        return type.find("vargs") != std::string::npos;
+      }
     };
 
     class PyFuncInfo
@@ -51,14 +59,13 @@ namespace xloil
     public:
       PyFuncInfo(
         const pybind11::function& func,
-        const std::vector<PyFuncArg> args,
+        const std::vector<PyFuncArg>& args,
         const std::wstring& name,
         const std::string& features,
         const std::wstring& help,
         const std::wstring& category,
         bool isLocal,
-        bool isVolatile,
-        bool hasKeywordArgs);
+        bool isVolatile);
 
       ~PyFuncInfo();
 
@@ -107,8 +114,22 @@ namespace xloil
             auto* defaultValue = _args[i].default.ptr();
             pyArgs.push_back((*_args[i].converter)(xlArgs(i), defaultValue));
           }
+
           if (_hasKeywordArgs)
-            kwargs = PySteal<>(readKeywordArgs(xlArgs(_numPositionalArgs)));
+          {
+            kwargs = PySteal<>(readKeywordArgs(xlArgs(i)));
+            ++i;
+          }
+
+          if (_hasVariableArgs)
+          {
+            auto& converter = *_args[i].converter;
+            const auto* defaultValue = _args[i].default.ptr();
+            const auto maxArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) 
+              - _args.size();
+            for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
+              pyArgs.push_back(converter(xlArgs(i), defaultValue));
+          }
         }
         catch (const std::exception& e)
         {
@@ -138,9 +159,10 @@ namespace xloil
       std::shared_ptr<FuncInfo> _info;
       pybind11::function _func;
       bool _hasKeywordArgs;
+      bool _hasVariableArgs;
       uint16_t _numPositionalArgs;
 
-      void describeFuncArgs();
+      void writeExcelArgumentDescription();
     };
 
     class RegisteredModule : public LinkedSource
