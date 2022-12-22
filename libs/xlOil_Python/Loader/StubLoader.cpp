@@ -41,7 +41,7 @@ namespace xloil
           {
             // This means we need to link python3.dll. If python 4 comes along and 
             // the old python3.dll is no longer around, we could sniff the dependencies
-            // of python.exe in PYTHONHOME to work out which version we need to load
+            // of python.exe to work out which version we need to load
             auto pyVersion = Py_GetVersion();
 
             // Version string looks like "X.Y.Z blahblahblah"
