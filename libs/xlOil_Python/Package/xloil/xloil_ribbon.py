@@ -41,10 +41,14 @@ class Settings:
     @staticmethod
     def _find_table(array_of_tables, key):
         """
-            We can have multiple (ordered) tables with the same name, e.g.
+            We may have multiple (ordered) tables with the same name, e.g.
             the enviroment blocks. This function returns the table containing
             the specified key.
         """
+        # May be just a single table
+        if key in array_of_tables:
+            return array_of_tables
+
         for table in array_of_tables:
             if key in table:
                 return table
@@ -160,7 +164,6 @@ def _find_python_enviroments_from_key(pythons_key):
                             environments[name] = {
                                 'DisplayName': name,
                                 'Version':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
-                                'PythonPath':  reg.QueryValue(kVersion, 'PythonPath'),
                                 'ExecutablePath': reg.QueryValueEx(install_path, 'ExecutablePath')[0]
                             }
                 except OSError:
@@ -189,16 +192,14 @@ _python_enviroments = list(_find_python_enviroments().values())
 async def set_python_environment(ctrl, id, index):
     environment = _python_enviroments[index]
 
-    _settings.set_env_var("PYTHONPATH", "%PYTHONPATH%;" + environment['PythonPath'])
     _settings.set_env_var("PYTHONEXECUTABLE", environment['ExecutablePath'])
-    _settings.set_env_var("xlOil_PythonBase", 
-                          environment.get('BasePath', 
-                                          os.path.dirname(environment['ExecutablePath'])))
-    _settings.set_env_var("XLOIL_PYTHON_VERSION", environment['Version'])
+
+    # Clear the version override if set (it shouldn't generally be required)
+    _settings.set_env_var("XLOIL_PYTHON_VERSION", "")
+
     _settings.save()
 
     # Invalidate controls
-    _ribbon_ui.invalidate("PYTHONPATH")
     _ribbon_ui.invalidate("PYTHONEXECUTABLE")
 
     restart_notify()
@@ -214,9 +215,7 @@ def get_python_environment_count(ctrl):
     _python_enviroments.append({
         'DisplayName': 'Current',
         'Version':  f'{sys.version_info.major}.{sys.version_info.minor}',
-        'PythonPath':  _settings.get_env_var("PYTHONPATH"),
-        'ExecutablePath': _settings.get_env_var("PYTHONEXECUTABLE"),
-        'BasePath':    _settings.get_env_var("xlOil_PythonBase")
+        'ExecutablePath': _settings.get_env_var("PYTHONEXECUTABLE")
     })
 
     return len(_python_enviroments)
@@ -372,7 +371,7 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 onChange="set_python_home" />
               <editBox id="PYTHONPATH" label="PYTHONPATH" sizeString="c:/a/path/is/this/size"
                 screentip="A semi-colon separated list of module search directories"
-                supertip="Prefer to add user directories to the user search path and leave PYTHONPATH for system directories"
+                supertip="Prefer to use this for system paths and add user directories to the Search Paths (which are included via XLOIL_PYTHON_PATH)"
                 getText="get_python_path" 
                 onChange="set_python_path" />
             </group>
@@ -384,7 +383,7 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 onChange="set_load_modules"/>
               <editBox id="ebx4" label="Search Paths" sizeString="a module; another module; another"
                 screentip="Paths added to python's sys.path"
-                supertip="Prefer to add user directories here and and leave PYTHONPATH for system directories. Use a semi-colon separator"
+                supertip="Prefer to add user directories here rather than editing PYTHONPATH directly. Use a semi-colon separator"
                 getText="get_user_search_path"
                 onChange="set_user_search_path"/>
               <labelControl id="RestartLabel" label="!Restart Required!" 

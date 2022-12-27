@@ -12,6 +12,7 @@ from xloil import log
 import xloil
 from xloil._core import XLOIL_EMBEDDED
 import threading
+from pathlib import Path
 
 def _create_Qt_app():
 
@@ -38,8 +39,31 @@ def _create_Qt_app():
     QtCore.qInstallMessageHandler(qt_msg_handler)
 
     from qtpy.QtWidgets import QApplication
+    
+    #
+    # Attempt to workaround an apparent oversight in Qt initialisation on Windows.
+    # Under Anaconda, Qt is installed outside the usual site-packages location.
+    # A qt.conf file in Anaconda's root dir directs Qt to the correct place.
+    # However under Windows, Qt will only look for this file in the directory 
+    # returned by GetModuleFileName or in :/qt/etc/ which is unlikely to exist
+    # or be easily creatable on Windows.  (See https://doc.qt.io/qt-6/qt-conf.html)
+    # In our case GetModuleFileName always returns Excel.exe.
+    # 
+    # We do not apply the workaround if QT_QPA_PLATFORM_PLUGIN_PATH has been set
+    #
+    # Should Qt fail to load it will dump core: very unfriendly when embedded in another
+    # application. For unknown reasons, I have not been able to trap the SIGABRT.
+    #
+
+    platform_plugin_dir = Path(sys.prefix) / "Library/plugins/platforms"
+    args = []
+    if platform_plugin_dir.exists() and not 'QT_QPA_PLATFORM_PLUGIN_PATH' in sys.environ:
+        args = ["", "-platformpluginpath", str(platform_plugin_dir)]
+    
+    log.error("Qt Args are: " + str(args))
+
     log.info(f"Starting Qt on thread {threading.get_native_id()}")
-    app = QApplication([])
+    app = QApplication(args)
     return app
 
 class QtExecutor(_GuiExecutor):

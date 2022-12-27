@@ -4,20 +4,89 @@
 #include <xloil/Throw.h>
 #include <xloil/WindowsSlim.h>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
-#define Py_LIMITED_API
-#include <..\CPython.h>
-
+namespace fs = std::filesystem;
 using std::vector;
 using std::wstring;
 using std::string;
 
+namespace
+{
+  /// <summary>
+  /// Finds the value of the home= directive in a pyvenv.cfg.
+  /// Verbatim from CPython's launcher.c
+  /// </summary>
+  int find_home_value(const char* buffer, const char** start, size_t* length)
+  {
+    for (const char* s = strstr(buffer, "home"); s; s = strstr(s + 1, "\nhome")) {
+      if (*s == '\n') {
+        ++s;
+      }
+      for (auto i = 4; i > 0 && *s; --i, ++s);
+
+      while (*s && iswspace(*s)) {
+        ++s;
+      }
+      if (*s != L'=') {
+        continue;
+      }
+
+      do {
+        ++s;
+      } while (*s && iswspace(*s));
+
+      *start = s;
+      auto* nl = strchr(s, '\n');
+      if (nl) {
+        *length = (ptrdiff_t)nl - (ptrdiff_t)s;
+      }
+      else {
+        *length = strlen(s);
+      }
+      return 1;
+    }
+    return 0;
+  }
+}
 namespace xloil
 {
   namespace Python
   {
-    static HMODULE thePythonLib = nullptr;
-    static PluginInitFunc theInitFunc = nullptr;
+    namespace
+    {
+      std::string findPythonHomeDir()
+      {
+        constexpr auto PYVENVCFG = "pyvenv.cfg";
+
+        auto pyExecutableDir = fs::path(getEnvironmentVar("PYTHONEXECUTABLE")).parent_path();
+        auto pyvenvCfg = pyExecutableDir / PYVENVCFG;
+
+        if (!fs::exists(pyvenvCfg))
+        {
+          pyvenvCfg = pyExecutableDir.parent_path() / PYVENVCFG;
+          if (!fs::exists(pyvenvCfg))
+          {
+            // Not a venv
+            return pyExecutableDir.string();
+          }
+        }
+
+        std::ifstream file(pyvenvCfg);
+        std::string contents(std::istreambuf_iterator<char>{file}, {});
+        const char* pHomeDir;
+        size_t homeDirLength;
+        if (find_home_value(contents.c_str(), &pHomeDir, &homeDirLength) == 1)
+          return std::string(pHomeDir, homeDirLength);
+
+        else
+          XLO_THROW("Could not find 'home' in {0}", pyvenvCfg.string());
+      }
+
+      static HMODULE thePythonLib = nullptr;
+      static PluginInitFunc theInitFunc = nullptr;
+    }
 
     XLO_PLUGIN_INIT(AddinContext* context, const PluginContext& plugin)
     {
@@ -32,17 +101,34 @@ namespace xloil
 
           auto userVersion = getEnvironmentVar("XLOIL_PYTHON_VERSION");
 
+          auto pythonHome = findPythonHomeDir();
+          auto path = getEnvironmentVar("PATH")
+            .append(";").append(pythonHome)
+            .append(";").append(pythonHome).append("\\Library\\bin");
+          setEnvironmentVar("PATH", path.c_str());
+
           if (!userVersion.empty())
           {
-            userVersion.erase(std::remove(userVersion.begin(), userVersion.end(), '.'), userVersion.end());
+            userVersion.erase(
+              std::remove(userVersion.begin(), userVersion.end(), '.'), 
+              userVersion.end());
             dllName += userVersion;
           }
           else
           {
+            // Load the plugin
+            const auto py3dll = LoadLibrary(L"python3.dll");
+            if (!py3dll)
+              XLO_THROW(writeWindowsError());
+
+            typedef const char*(*Py_GetVersion_t)();
+            const auto pyGetVersion = (Py_GetVersion_t)
+              GetProcAddress(py3dll, "Py_GetVersion");
+
             // This means we need to link python3.dll. If python 4 comes along and 
             // the old python3.dll is no longer around, we could sniff the dependencies
             // of python.exe to work out which version we need to load
-            auto pyVersion = Py_GetVersion();
+            auto pyVersion = pyGetVersion();
 
             // Version string looks like "X.Y.Z blahblahblah"
             // Convert X.Y version to XY and append to dllname. Stop processing

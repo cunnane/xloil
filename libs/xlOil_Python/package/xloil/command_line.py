@@ -89,16 +89,8 @@ def _get_python_paths():
         must already exist). Several paths are required to handle the virtual
         enviroment case
     """
-    import sysconfig
-    python_path = ( f'%PYTHONPATH%;'
-        + f'{sysconfig.get_path("platstdlib")};'
-        + f'{sysconfig.get_path("stdlib")};'
-        + f'{os.path.join(sys.base_prefix, "DLLs")}' )
-
     return { 
-        'PYTHONPATH': python_path,
-        'PYTHONEXECUTABLE': sys.executable,
-        'xlOil_PythonBase': sys.base_prefix
+        'PYTHONEXECUTABLE': sys.executable
     }
 
 def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
