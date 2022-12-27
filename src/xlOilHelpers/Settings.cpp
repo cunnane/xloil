@@ -79,7 +79,7 @@ namespace xloil
       template<class TTable, class TResult>
       void writeTableAsPairs(const TTable& table, TResult& container)
       {
-        for (auto& [key, val] : table)
+        for (auto [key, val] : table)
         {
           container.emplace_back(make_pair(
             utf8ToUtf16(key),
