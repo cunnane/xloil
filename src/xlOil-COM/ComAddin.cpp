@@ -235,11 +235,15 @@ namespace xloil
     public:
       static auto create(const wchar_t* name, const wchar_t* description)
       {
-        auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
-        p->_closeHandler = Event::WorkbookAfterClose().weakBind(
-          std::weak_ptr<ComAddinCreator>(p), 
-          &ComAddinCreator::handleWorkbookClose);
-        return p;
+        try
+        {
+          auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
+          p->_closeHandler = Event::WorkbookAfterClose().weakBind(
+            std::weak_ptr<ComAddinCreator>(p),
+            &ComAddinCreator::handleWorkbookClose);
+          return p;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       ~ComAddinCreator()
@@ -256,6 +260,10 @@ namespace xloil
         catch (const std::exception& e)
         {
           XLO_ERROR("ComAddin failed to close: {0}", e.what());
+        }
+        catch (_com_error& e)
+        {
+          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)e.Error(), e.ErrorMessage()); \
         }
       }
 
