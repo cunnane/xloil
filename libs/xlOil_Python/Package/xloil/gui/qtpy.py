@@ -5,6 +5,7 @@
     or the `@Qt_thread` to ensure functions are run on the thread.
 """
 import sys
+import os
 import concurrent.futures as futures
 import concurrent.futures.thread
 from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
@@ -57,11 +58,9 @@ def _create_Qt_app():
 
     platform_plugin_dir = Path(sys.prefix) / "Library/plugins/platforms"
     args = []
-    if platform_plugin_dir.exists() and not 'QT_QPA_PLATFORM_PLUGIN_PATH' in sys.environ:
+    if platform_plugin_dir.exists() and not 'QT_QPA_PLATFORM_PLUGIN_PATH' in os.environ:
         args = ["", "-platformpluginpath", str(platform_plugin_dir)]
     
-    log.error("Qt Args are: " + str(args))
-
     log.info(f"Starting Qt on thread {threading.get_native_id()}")
     app = QApplication(args)
     return app
