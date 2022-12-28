@@ -263,7 +263,8 @@ namespace xloil
         }
         catch (_com_error& e)
         {
-          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)e.Error(), e.ErrorMessage()); \
+          XLO_ERROR(L"ComAddin failed to close with COM Error {0:#x}: {1}", 
+            (unsigned)e.Error(), e.ErrorMessage());
         }
       }
 
@@ -308,8 +309,10 @@ namespace xloil
               "blocking by add-in security.  Check add-ins are enabled and this add-in is not a disabled "
               "COM add-in.", (unsigned)error.Error());
           }
+          else if (error.Error() == VBA_E_IGNORE)
+            throw xloil::ComBusyException();
           else
-            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
       }
 
