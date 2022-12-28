@@ -131,9 +131,10 @@ be turned off). If it succesfully loaded the core DLL a log file will also be cr
 in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `=xloLog()` will tell 
 you where this file is.
 
-You may need to set the python paths, i.e. the `PATH` and `PYTHONPATH` values, in 
-the `xlOil.ini` file for xlOil to find your python distribution.  They can also be 
-changed in the xlOil ribbon, but this requires python to have loaded succesfully.
+Normally a python distribution or environment can be loaded with only the location of 
+*python.exe* passed via the `PYTHONEXECUTABLE` environment varaible.  For more complex
+setups, you may need to set the python paths, i.e. `PATH` and `PYTHONPATH` and maybe even 
+`PYTHONHOME`, in the `xlOil.ini` file for xlOil to load your python distribution.
 
 If the xlOil ribbon does not appear, check that `xloil.xloil_ribbon` appears in the
 *LoadModules* key in the ini file.

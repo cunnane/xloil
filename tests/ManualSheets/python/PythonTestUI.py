@@ -5,7 +5,6 @@ except ImportError:
     pass
     
 import xloil as xlo
-from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
 import inspect

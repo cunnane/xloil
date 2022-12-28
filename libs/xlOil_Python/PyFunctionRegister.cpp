@@ -363,7 +363,7 @@ namespace xloil
         {
           registerArgs.emplace_back(
             isLocalFunc ? formatStr(L"a%d", i) : L"",
-            formatStr(L"[%s-%d]", _args.back().name, i),
+            formatStr(L"[%s-%d]", _args.back().name.c_str(), i),
             varArgType);
         }
       }

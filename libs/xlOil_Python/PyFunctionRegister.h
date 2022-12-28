@@ -19,8 +19,8 @@ namespace xloil
 {
   namespace Python
   {
-    class RegisteredModule;
-    class IPyFromExcel;
+    class RegisteredModule; 
+    class IPyFromExcel; 
     class IPyToExcel;
 
     namespace FunctionRegistry

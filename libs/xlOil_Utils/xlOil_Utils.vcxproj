@@ -42,6 +42,9 @@
   <ItemGroup>
     <ClInclude Include="RegexHelpers.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RegexHelpers.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{3A73598C-38CA-4ADB-B0BB-F634A1A97C56}</ProjectGuid>

@@ -221,7 +221,7 @@ Variable and Keyword Arguments
 
 If keyword args (`**kwargs`) are specified, xlOil expects a two-column array of 
 (*string*, *value*) to be passed, the same as using a ``dict`` annotation. For variable
-args (`*args`) xlOil adds a large numberof trailing optional arguments. The variable
+args (`*args`) xlOil adds a large number of trailing optional arguments. The variable
 argument list is ended by the first missing argument.  If both *kwargs* and *args* are 
 specified, their order is reversed in the Excel function declaration.
 
@@ -234,6 +234,8 @@ The following example shows dictionary and keyword aruments:
       lookup.update(kwargs)
       return lookup
 
+The number of trailing optional arguments is limited by the maxiumum number of arguments 
+allowed by Excel, which is 255 for a worksheet function and 60 for a local function.
 
 Range Arguments
 ---------------

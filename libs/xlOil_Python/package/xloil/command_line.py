@@ -83,18 +83,27 @@ def _toml_lit_string(s:str):
     # TOML literal strings have a lot of quotes and escapes, this function does the encoding
     return "'''" + s.replace('\\','\\\\') + "'''"
 
+def _get_python_paths():
+    """
+        Returns the paths to be set in the xlOil.ini file (the appropriate stubs
+        must already exist). Several paths are required to handle the virtual
+        enviroment case
+    """
+    return { 
+        'PYTHONEXECUTABLE': sys.executable
+    }
+
 def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
-    python_path = f'%PYTHONPATH%;{os.path.join(sys.prefix, "Lib")};{os.path.join(sys.prefix, "DLLs")}' 
-    python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
-    
+    env_vars = _get_python_paths()
+
     fails = 0
 
     def do_replace(pat, repl):
-        nonlocal ini_txt
-        ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
-        return True
-
+            nonlocal ini_txt
+            ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
+            return True
+            
     def check_replace(pat, repl):
         nonlocal fails, ini_txt
         if re.search(pat, ini_txt, flags=re.M) is None:
@@ -103,16 +112,16 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
         else:
             do_replace(pat, repl)
     
-    # Set PYTHONPATH - note we append to the path as that seems the least surprising
-    check_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
-    # Set xlOil_PythonRoot
-    check_replace(r'^(\s*PYTHONHOME\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
+    for var, value in env_vars.items():
+        check_replace(r'^(\s*' + var + r'\s*=).*', r'\g<1>' + _toml_lit_string(value))
+        
     # Set XLOIL_PATH
-    check_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
+    check_replace(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(bin_dir)))
     
     # Comment out the now usused code to get the python paths from the registry
     # Don't error if this fails as it's not critical
     if comment_reg_keys:
+        
         for key in ["xlOil_PythonRegKey"]:
             do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
 
