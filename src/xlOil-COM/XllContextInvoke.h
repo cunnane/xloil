@@ -26,7 +26,7 @@ namespace xloil
   /// This function runs the supplied function object under that context.
   /// Should only be called from the main thread.
   /// </summary>
-  bool runInXllContext(const std::function<void()>& f);
+  bool runInXllContext(const std::function<bool()>& f);
 
   /// <summary>
   /// Calling XLL specific functions is generally not allowed unless you
