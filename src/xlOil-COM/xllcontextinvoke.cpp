@@ -19,7 +19,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  static const std::function<void()>* theVoidFunc = nullptr;
+  static const std::function<bool()>* theBoolFunc = nullptr;
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
   static XLOIL_XLOPER** theExcelCallArgs = nullptr;
@@ -31,8 +31,8 @@ namespace xloil
     try
     {
       InXllContext context;
-      if (theVoidFunc)
-        (*theVoidFunc)();
+      if (theBoolFunc)
+        result.val.w = (*theBoolFunc)() ? 1 : 0;
       else
         result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
@@ -59,20 +59,19 @@ namespace xloil
 
   int InXllContext::_count = 0;
 
-  bool runInXllContext(const std::function<void()>& f)
+  bool runInXllContext(const std::function<bool()>& f)
   {
     // May go wrong in a multi-thread evironment.
     if (InXllContext::check())
     {
-      f();
-      return true;
+      return f();
     }
 
     // Crashes when called from window proc at startup - investigate?
     //auto[result, xlret] = tryCallExcel(msxll::xlfGetDocument, 1);
     //if (xlret == 0)
 
-    theVoidFunc = &f;
+    theBoolFunc = &f;
 
     return tryComCall([]()
     {
@@ -89,7 +88,7 @@ namespace xloil
     {
       return Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
     }
-    theVoidFunc = nullptr;
+    theBoolFunc = nullptr;
     theExcelCallFunc = func;
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;

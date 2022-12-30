@@ -62,15 +62,15 @@ namespace xloil
 
       struct QueueItem
       {
-        std::function<void()> _func;
+        std::function<bool()> _func;
         int _flags;
         unsigned _waitTime;
 
         QueueItem(
-          const std::function<void()>& func,
+          std::function<bool()>&& func,
           int flags,
           unsigned waitTime)
-          : _func(func)
+          : _func(std::move(func))
           , _flags(flags)
           , _waitTime(waitTime)
         {}
@@ -94,23 +94,21 @@ namespace xloil
           try
           {
             if (useXLL())
-              runInXllContext(_func);
+              return runInXllContext(_func);
             else
-              _func();
+              return _func();
           }
           catch (const xloil::ComBusyException&)
           {
-            // Even though we previously called the COM interface, it can still
-            // become 'busy' later
             return false;
           }
           catch (const std::exception& e)
           {
-            XLO_ERROR("Error running on main thread: {}", e.what());
+            XLO_ERROR("Internal error running main thread queue: {}", e.what());
           }
           catch (...)
           {
-            XLO_ERROR("Error running on main thread: unknown");
+            XLO_ERROR("Unexpected error thrown by main thread queue item");
           }
           return true;
         }
@@ -259,60 +257,63 @@ namespace xloil
     return Environment::excelProcess().mainThreadId == GetCurrentThreadId();
   }
 
-  void runExcelThreadImpl(
-    std::function<void()>&& func,
-    int flags, 
-    unsigned waitBeforeCall,
-    unsigned waitBetweenRetries)
+  namespace detail
   {
-    auto queueItem = make_shared<Messenger::QueueItem>(func,
-      flags,
-      waitBetweenRetries);
-
-    // Try to run immediately if possible
-    const bool canRunNow = waitBeforeCall == 0 
-      && (flags & ExcelRunQueue::ENQUEUE) == 0 
-      && isMainThread();
-    if (canRunNow)
+    void runExcelThreadImpl(
+      std::function<bool()>&& func,
+      int flags,
+      unsigned waitBeforeCall,
+      unsigned waitBetweenRetries)
     {
-      // TODO: avoid running isComApiAvailable if we don't need it? 
-      // Generally functions scheduled for the main thread do need the COM or XLL interface
-      const auto comAvailable = COM::isComApiAvailable();
-      const auto xllAvailable = InXllContext::check();
-      if ((*queueItem)(comAvailable, xllAvailable))
-        return;
+      auto queueItem = make_shared<Messenger::QueueItem>(
+        std::move(func),
+        flags,
+        waitBetweenRetries);
+
+      // Try to run immediately if possible
+      const bool canRunNow = waitBeforeCall == 0
+        && (flags & ExcelRunQueue::ENQUEUE) == 0
+        && isMainThread();
+      if (canRunNow)
+      {
+        // TODO: avoid running isComApiAvailable if we don't need it? 
+        // Generally functions scheduled for the main thread do need the COM or XLL interface
+        const auto comAvailable = COM::isComApiAvailable();
+        const auto xllAvailable = InXllContext::check();
+        if ((*queueItem)(comAvailable, xllAvailable))
+          return;
+      }
+
+      Messenger::instance().enqueue(queueItem, waitBeforeCall);
     }
 
-    Messenger::instance().enqueue(queueItem, waitBeforeCall);
+    struct RetryAtStartup
+    {
+      void operator()()
+      {
+        try
+        {
+          COM::connectCom();
+          runExcelThread(func, ExcelRunQueue::XLL_API);
+        }
+        catch (const ComConnectException&)
+        {
+          XLO_DEBUG("Could not connect COM: trying again in 1 second...");
+          runExcelThread(
+            RetryAtStartup{ func },
+            ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,
+            1000); // wait 1 second before call
+        }
+        catch (const std::exception& e)
+        {
+          XLO_ERROR(e.what());
+        }
+      }
+      std::function<void()> func;
+    };
   }
-
-  struct RetryAtStartup
-  {
-    void operator()()
-    {
-      try
-      {
-        COM::connectCom();
-        runExcelThread(func, ExcelRunQueue::XLL_API);
-      }
-      catch (const ComConnectException&)
-      {
-        XLO_DEBUG("Could not connect COM: trying again in 1 second...");
-        runExcelThread(
-          RetryAtStartup{ func },
-          ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,
-          1000); // wait 1 second before call
-      }
-      catch (const std::exception& e)
-      {
-        XLO_ERROR(e.what());
-      }
-    }
-    std::function<void()> func;
-  };
-
   void runComSetupOnXllOpen(const std::function<void()>& func)
   {
-    runExcelThread(RetryAtStartup{ func }, ExcelRunQueue::ENQUEUE);
+    runExcelThread(detail::RetryAtStartup{ func }, ExcelRunQueue::ENQUEUE);
   }
 }
