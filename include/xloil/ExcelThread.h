@@ -47,19 +47,70 @@ namespace xloil
     ComBusyException(const char* message = nullptr)
       : std::runtime_error(message 
         ? message 
-        : "Excel COM is busy; a dialog box may be open. Retry the action and if this error persists, restart Excel.")
+        : "Excel COM is busy; a dialog box may be open. Retry the action and if this "
+          "error persists, restart Excel.")
     {}
   };
 
-  XLOIL_EXPORT void
-    runExcelThreadImpl(
-      std::function<void()>&& func,
-      int flags,
-      unsigned waitBeforeCall,
-      unsigned waitBetweenRetries);
+  namespace detail
+  {
+    /// <summary>
+    /// Should not be called directly.
+    /// Excepts a function which returns true if sucessful and false if it should be 
+    /// rescheduled for a retry.
+    /// </summary>
+    XLOIL_EXPORT void
+      runExcelThreadImpl(
+        std::function<bool()>&& func,
+        int flags,
+        unsigned waitBeforeCall,
+        unsigned waitBetweenRetries);
 
+    template<typename F, class ReturnType>
+    auto packagedFunction(F&& f, const std::shared_ptr<std::promise<ReturnType>>& result)
+    {
+      return std::function<bool()>([result, f]() mutable
+      {
+        try
+        {
+          result->set_value(f());
+        }
+        catch (const ComBusyException&)
+        {
+          return false;
+        }
+        catch (...)
+        {
+          result->set_exception(std::current_exception());
+        }
+        return true;
+      });
+    }
+
+    template<typename F>
+    auto packagedFunction(F&& f, const std::shared_ptr<std::promise<void>>& result)
+    {
+      return std::function<bool()>([result, f]() mutable
+      {
+        try
+        {
+          f();
+          result->set_value();
+        }
+        catch (const ComBusyException&)
+        {
+          return false;
+        }
+        catch (...)
+        {
+          result->set_exception(std::current_exception());
+        }
+        return true;
+      });
+    }
+  }
   /// <summary>
-  /// Excel's COM interface, that is any called based on the Excel::Application object,
+  /// Excel's COM interface, used by any call based on the Excel::Application object,
   /// must be called on the main thread. This function schedules a callback from the
   /// main thread or executes immediately if called from the main thread (a  
   /// callback can be forced with the ENQUEUE flag).
@@ -91,12 +142,19 @@ namespace xloil
     unsigned waitBeforeCall = 0,
     unsigned waitBetweenRetries = 200) -> std::future<decltype(func())>
   {
-    auto task = std::make_shared<std::packaged_task<decltype(func())()>>(std::forward<F>(func));
-    auto voidFunc = std::function<void()>( [task]() { (*task)(); });
-    runExcelThreadImpl(std::move(voidFunc), flags, waitBeforeCall, waitBetweenRetries);
-    return task->get_future();
+    using namespace detail;
+    using returnType = decltype(func());
+    // Need to create a ptr to the promise as the right ctors to move the
+    // promise into the packaged object as missing as of C++17
+    auto result = std::make_shared<std::promise<returnType>>();
+    runExcelThreadImpl(packagedFunction(std::move(func), result),
+      flags, waitBeforeCall, waitBetweenRetries);
+    return result->get_future();
   }
 
+  /// <summary>
+  /// Internal use: called during Core DLL startup.
+  /// </summary>
   void runComSetupOnXllOpen(const std::function<void()>& func);
 
   /// <summary>
