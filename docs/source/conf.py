@@ -24,7 +24,7 @@ from pathlib import Path
 file_dir = Path(__file__).parent
 xloil_dir = file_dir.parent.parent
 soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", xloil_dir)).resolve()
-bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", bin_dir / "build/x64/Debug")).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", xloil_dir / "build/x64/Debug")).resolve()
 
 sys.path = [str(bin_dir), str(soln_dir / "libs/xlOil_Python/Package")] + sys.path
 
