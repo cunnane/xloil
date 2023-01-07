@@ -10,6 +10,7 @@ xlOil documentation
 	Introduction
 	Core
 	Concepts
+	Events
 	xlOil_Core_Functions
 	xlOil_Cpp/index
 	xlOil_Python/index

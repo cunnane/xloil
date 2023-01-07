@@ -319,15 +319,15 @@ class CellError():
         """
         :type: int
         """
-    DIV: xloil_core.CellError = None # value = <CellError.DIV: 7>
-    GETTING_DATA: xloil_core.CellError = None # value = <CellError.GETTING_DATA: 43>
-    NA: xloil_core.CellError = None # value = <CellError.NA: 42>
-    NAME: xloil_core.CellError = None # value = <CellError.NAME: 29>
-    NULL: xloil_core.CellError = None # value = <CellError.NULL: 0>
-    NUM: xloil_core.CellError = None # value = <CellError.NUM: 36>
-    REF: xloil_core.CellError = None # value = <CellError.REF: 23>
-    VALUE: xloil_core.CellError = None # value = <CellError.VALUE: 15>
-    __members__: dict = None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
+    DIV: xloil_core.CellError=None # value = <CellError.DIV: 7>
+    GETTING_DATA: xloil_core.CellError=None # value = <CellError.GETTING_DATA: 43>
+    NA: xloil_core.CellError=None # value = <CellError.NA: 42>
+    NAME: xloil_core.CellError=None # value = <CellError.NAME: 29>
+    NULL: xloil_core.CellError=None # value = <CellError.NULL: 0>
+    NUM: xloil_core.CellError=None # value = <CellError.NUM: 36>
+    REF: xloil_core.CellError=None # value = <CellError.REF: 23>
+    VALUE: xloil_core.CellError=None # value = <CellError.VALUE: 15>
+    __members__: dict=None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
     pass
 class ComBusyError(Exception, BaseException):
     pass
@@ -1472,11 +1472,11 @@ class _CustomConverter(IPyFromExcel):
     This is the interface class for custom type converters to allow them
     to be called from the Core.
     """
-    def __init__(self, callable: object, check_cache: bool = True) -> None: ...
+    def __init__(self, callable: object, check_cache: bool = True, name: str = 'custom') -> None: ...
     pass
 class _CustomReturn(IPyToExcel):
-    def __init__(self, callable: object) -> None: ...
-    def get_handler(self) -> object: ...
+    def __init__(self, callable: object, name: str = 'custom') -> None: ...
+    def invoke(self, arg0: object) -> object: ...
     pass
 class _CustomReturnConverter():
     @property
@@ -1649,7 +1649,7 @@ class _FuncArg():
         pass
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, has_kwargs: bool = False) -> None: ...
+    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
     def __str__(self) -> str: ...
     @property
     def args(self) -> typing.List[_FuncArg]:
@@ -1982,7 +1982,7 @@ class _Return_Array_str_2d(IPyToExcel):
 class _Return_Cache(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_SingleValue(IPyToExcel):
+class _Return_Single(IPyToExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_bool(IPyToExcel):
@@ -2154,7 +2154,7 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-_return_converter_hook: xloil_core._CustomReturnConverter = None
-cache: xloil_core.ObjectCache = None
-date_formats: xloil_core._DateFormatList = None
-xloil_addins: xloil_core._AddinsDict = None
+_return_converter_hook: xloil_core._CustomReturnConverter=None
+cache: xloil_core.ObjectCache=None
+date_formats: xloil_core._DateFormatList=None
+xloil_addins: xloil_core._AddinsDict=None

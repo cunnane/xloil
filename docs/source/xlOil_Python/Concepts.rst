@@ -56,17 +56,20 @@ what happens if ``x`` is two-dimensional?  To avoid this possibility we can spec
 Events
 ------
 
-Events request a callback on various user interactions. If you are familiar  
-with VBA, you may have used Excel's event model already.  Most of the workbook events 
-described in `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
-are available in xlOil. See the xloil.Event documention for the complete list.
+Events allow for a callback on user interaction. If you are familiar with VBA, you may have used 
+Excel's event model already.  Most of the workbook events described in 
+`Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+are available in xlOil. 
+
+See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :ref:`Events:Introduction` for 
+a description of the available Excel events.
 
 Some events take reference parameters, which do not exist in python. For example, setting 
 the `cancel` bool in `WorkbookBeforeSave` cancels the event.  In xlOil you need to set this
 value using `cancel.value=True`.
 
-Events are (currently) global to the Excel instance, so you may need to filter by workbook name when 
-handling events.
+Event handlers are (currently) global to the Excel instance, so you may need to filter by workbook name 
+when handling events.
 
 xlOil has some extra events:
 
