@@ -21,11 +21,12 @@ from pathlib import Path
 # to processes run by VS code.
 #
 
-soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{os.path.abspath(__file__)}/../../..")).resolve()
-bin_dir  = Path(os.environ.get("XLOIL_BIN_DIR",  f"{os.path.abspath(__file__)}/../../../build/x64/Debug")).resolve()
+file_dir = Path(__file__).parent
+xloil_dir = file_dir.parent.parent
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", xloil_dir)).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", bin_dir / "build/x64/Debug")).resolve()
 
-sys.path.append(str(bin_dir))
-sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
+sys.path = [str(bin_dir), str(soln_dir / "libs/xlOil_Python/Package")] + sys.path
 
 # May as well fail here if this doesn't work
 try:
