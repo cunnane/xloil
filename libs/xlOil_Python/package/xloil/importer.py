@@ -7,7 +7,7 @@ import os
 import inspect
 
 from .register import scan_module, _clear_pending_registrations
-from ._core import StatusBar, Addin
+from ._core import StatusBar, Addin, XLOIL_EMBEDDED
 from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
@@ -185,6 +185,7 @@ class _LoadAndScanHook(SourceFileLoader):
         # Look for xlOil functions to register
         scan_module(module)
 
+
 def _install_hook():
     # Hooks the import mechanism to run register.scan_module on all .py files.
     # We copy _bootstrap_external._install, replacing the source loader with one which 
@@ -207,4 +208,5 @@ def _install_hook():
 
     log.debug("Installed importlib hook to call scan_module")
 
-_install_hook()
+if XLOIL_EMBEDDED:
+    _install_hook()
