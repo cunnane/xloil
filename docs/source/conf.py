@@ -26,14 +26,15 @@ xloil_dir = file_dir.parent.parent
 soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", xloil_dir)).resolve()
 bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", xloil_dir / "build/x64/Debug")).resolve()
 
-sys.path = [str(bin_dir), str(soln_dir / "libs/xlOil_Python/Package")] + sys.path
-
-print("Using sys.path=", sys.path)
+if bin_dir.exists():
+    sys.path.append(str(bin_dir))
+sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
 
 # May as well fail here if we can't find xloil
-import xloil
-
-print("Found xloil at:", xloil.__spec__.origin)
+try:
+    import xloil
+except Exception as e:
+    raise Exception(f'{e}. SysPath={sys.path}', e)
 
 # -- Project information -----------------------------------------------------
 
