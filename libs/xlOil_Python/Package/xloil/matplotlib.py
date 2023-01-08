@@ -1,8 +1,16 @@
-import matplotlib
-matplotlib.use('Agg')
-from matplotlib import pyplot
-from xloil import *
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    from matplotlib import pyplot
+except ImportError:
+    from ._core import XLOIL_READTHEDOCS
+    if XLOIL_READTHEDOCS:
+        class pyplot:
+            class Figure:
+                # Placeholder for matplotlib.pyplot.Figure
+                ...
 
+from xloil import *
 
 @func(macro=True)
 def xloPyPlot(x, y, width:float=None, height:float=None, **kwargs):
