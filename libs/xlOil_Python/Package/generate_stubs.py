@@ -14,7 +14,7 @@ sys.path.append(str(PACKAGE_PATH))
 import xloil
 
 # Setup paths to import pybind11_stubgen
-sys.path.append(str(SOLUTION_PATH / "external"))
+sys.path.append(str(SOLUTION_PATH / "external" / "pybind11-stubgen"))
 from pybind11_stubgen import ModuleStubsGenerator, DirectoryWalkerGuard
 
 # Run the stub generator
