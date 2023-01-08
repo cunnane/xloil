@@ -128,8 +128,9 @@ from xloil_core import *
 # want to suggest they are part of the API, hence the leading underscore
 from xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
 
-if XLOIL_READTHEDOCS:
-    _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
+# Temporarily disabled whilst debugging RTD build issue
+#if XLOIL_READTHEDOCS:
+#    _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
 
 
 def create_gui(*args, **kwargs) -> ExcelGUI:

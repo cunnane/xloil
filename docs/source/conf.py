@@ -28,11 +28,12 @@ bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", xloil_dir / "build/x64/Debug")).r
 
 sys.path = [str(bin_dir), str(soln_dir / "libs/xlOil_Python/Package")] + sys.path
 
-# May as well fail here if this doesn't work
-try:
-    import xloil
-except Exception as e:
-    raise Exception(f'{e}. SysPath={sys.path}', e)
+print("Using sys.path=", sys.path)
+
+# May as well fail here if we can't find xloil
+import xloil
+
+print("Found xloil at:", xloil.__spec__.origin)
 
 # -- Project information -----------------------------------------------------
 
@@ -93,14 +94,18 @@ html_static_path = []# ['_static']
 
 autodoc_default_flags = ['members']
 
+#
+# If autosummary_generate is True, stub .rst files for for items in the autosummary
+# toctree are automatically generated. We prefer to keep a flatter structure.
+#
 autosummary_generate = False
 
 # See https://stackoverflow.com/questions/34216659/
 numpydoc_show_class_members=False
 
 #
-# Required for readthedocs build as the master_doc seems to default to 'contents' there
-# Locally build is fine without this
+# Required for readthedocs build as the master_doc seems to default to 'contents' in
+# their environment. Locally sphinx builds fine without this
 #
 master_doc = 'index'
 
