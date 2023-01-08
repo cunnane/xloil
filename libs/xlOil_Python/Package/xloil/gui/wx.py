@@ -87,8 +87,15 @@ def wx_thread(fn=None, discard=False) -> WxExecutor:
     global _wx_thread
     return _wx_thread if fn is None else _wx_thread._wrap(fn, discard)
 
-# Safe now we've created the wx_thread
-import wx
+try:
+    import wx
+except ImportError:
+    from ._core import XLOIL_READTHEDOCS
+    if not XLOIL_EMBEDDED:
+        class wx:
+            class Frame:
+                # Placeholder for wx.Frame
+                ...
 
 class WxThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=wx_thread):
     """

@@ -1,4 +1,17 @@
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    from ._core import XLOIL_READTHEDOCS
+    if XLOIL_READTHEDOCS:
+        class pd:
+            class DataFrame:
+                # Placeholder for pandas.DataFrame
+                ...
+
+            class Timestamp:
+                # Placeholder for pandas.Timestamp
+                ...
+
 import numpy as np
 from xloil import *
 import typing
