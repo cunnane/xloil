@@ -3,7 +3,7 @@ import os
 
 ADDIN_NAME        = "xlOil.xll"
 INIFILE_NAME      = "xlOil.ini"
-APP_DATA_DIR      = os.path.join(os.environ['APPDATA'], "xlOil")
+APP_DATA_DIR      = os.path.join(os.environ.get('APPDATA','.'), "xlOil")
 XLOIL_INSTALL_DIR = os.path.join(sys.prefix, "share", "xloil")
 XLOIL_BIN_DIR     = os.environ.get("XLOIL_BIN_DIR", XLOIL_INSTALL_DIR)
 
