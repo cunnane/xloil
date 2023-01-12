@@ -31,15 +31,25 @@ namespace
 
 namespace xloil
 {
-  XLOIL_EXPORT int autoOpenHandler(const wchar_t* xllPath) noexcept
+  namespace
+  {
+    void asyncLoadPluginsWhenComReady(AddinContext& ctx)
+    {
+      runComSetupOnXllOpen([&]() { loadPluginsForAddin(ctx); });
+    }
+  }
+
+  XLOIL_EXPORT int coreAutoOpenHandler(const wchar_t* xllPath) noexcept
   {
     try
     {
       InXllContext xllContext;
-      // A return val of 1 tells the XLL to hook XLL-api events. There may be
-      // multiple XLLs, but we only want to hook the events once, when we load 
-      // the core DLL.
+      // A return val of 1 tells the XLL to hook XLL-API events. There may be
+      // multiple XLLs calling this function, but we only want to hook the events 
+      // the first time.
       int retVal = 0;
+
+      shared_ptr<FuncSource> coreRegisteredFunctions;
 
       if (!theCoreIsLoaded)
       {
@@ -55,29 +65,40 @@ namespace xloil
         XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 
         loggerAddPopupWindowSink(logger);
+
+        // Run before staticSource so the function registration gets picked up
+        registerIntellisenseHook(xllPath);
+
+        // Collect all static UDFs for registration
+        coreRegisteredFunctions = std::make_shared<StaticFunctionSource>(
+          Environment::coreDllName());
+
+        // Do the registration
+        coreRegisteredFunctions->init();
       }
 
-      bool isXloilCoreAddin = _wcsicmp(L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0;
-      AddinContext* addinContext = nullptr;
+      const bool isXloilCoreAddin = _wcsicmp(
+        L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0;
 
+      AddinContext* addinToLoad = nullptr;
+
+      // If we are not the core addin, create our context and check if we 
+      // should process our settings before the core does
       if (!isXloilCoreAddin)
       {
-        addinContext = &createAddinContext(xllPath);
-        auto loadFirst = Settings::loadBeforeCore(*addinContext->settings());
+        addinToLoad = &createAddinContext(xllPath);
+        auto loadFirst = Settings::loadBeforeCore(*addinToLoad->settings());
         if (loadFirst)
-          runComSetupOnXllOpen([&]() { loadPluginsForAddin(*addinContext); });
-        addinContext = nullptr;
+          asyncLoadPluginsWhenComReady(*addinToLoad);
+        // Set to null to disable plugin load below
+        addinToLoad = nullptr; 
       }
 
       if (!theCoreIsLoaded)
       {
-        // Run *before* createCoreContext so the function registration memo gets
-        // picked up
-        registerIntellisenseHook(xllPath);
+        auto& coreCtx = createCoreAddinContext(coreRegisteredFunctions);
 
-        createCoreContext();
-
-        runComSetupOnXllOpen([&]() { loadPluginsForAddin(theCoreContext()); });
+        asyncLoadPluginsWhenComReady(coreCtx);
 
         theCoreIsLoaded = true;
         retVal = 1;
@@ -85,10 +106,8 @@ namespace xloil
 
       // If we have an addin context here it means we are not
       // xloil.xll and have not yet loaded our plugins
-      if (addinContext)
-      {
-        runComSetupOnXllOpen([&]() { loadPluginsForAddin(*addinContext); });
-      }
+      if (addinToLoad)
+        asyncLoadPluginsWhenComReady(*addinToLoad);
 
       return retVal;
     }
@@ -96,9 +115,10 @@ namespace xloil
     {
       XLO_ERROR("Initialisation error: {0}", e.what());
     }
-    return -1;
+
+    return 0;
   }
-  XLOIL_EXPORT int autoCloseHandler(const wchar_t* xllPath) noexcept
+  XLOIL_EXPORT int coreAutoCloseHandler(const wchar_t* xllPath) noexcept
   {
     try
     {
