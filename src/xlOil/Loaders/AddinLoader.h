@@ -5,7 +5,7 @@
 
 namespace xloil
 {
-  class AddinContext; class FileSource;
+  class AddinContext; class FileSource; class FuncSource;
 
   AddinContext& theCoreContext();
 
@@ -13,7 +13,8 @@ namespace xloil
   /// Called by the core entry point to initialise all the xloil.dll
   /// paths and register functions
   /// </summary>
-  void createCoreContext();
+  AddinContext& createCoreAddinContext(
+    const std::shared_ptr<FuncSource>& staticFunctions);
 
   const std::map<std::wstring, std::shared_ptr<AddinContext>>& currentAddinContexts();
 

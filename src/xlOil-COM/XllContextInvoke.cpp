@@ -34,7 +34,8 @@ namespace xloil
       if (theBoolFunc)
         result.val.w = (*theBoolFunc)() ? 1 : 0;
       else
-        result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
+        result.val.w = Excel12v(
+          theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
     {
@@ -77,7 +78,7 @@ namespace xloil
     {
       auto result = COM::attachedApplication().com().Run("xloRunInXLLContext");
       if (result.vt == VT_ERROR)
-        XLO_THROW(L"COM Error {0:#x}", result.scode);
+        XLO_THROW(L"COM Error {0:#x}", (unsigned)result.scode);
       return result;
     });
   }
@@ -88,6 +89,7 @@ namespace xloil
     {
       return Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
     }
+
     theBoolFunc = nullptr;
     theExcelCallFunc = func;
     theExcelCallResult = result;

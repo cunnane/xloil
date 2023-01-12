@@ -25,6 +25,7 @@ namespace xloil
   namespace
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
+    xloil::AddinContext* theCoreContextPtr;
 
     /// <summary>
     /// Finds the settings file <XllName>.ini either in %APPDATA%\xlOil
@@ -71,11 +72,10 @@ namespace xloil
     }
   }
 
-  static xloil::AddinContext* ourCoreContext;
 
   AddinContext& theCoreContext()
   {
-    return *ourCoreContext;
+    return *theCoreContextPtr;
   }
 
   const std::map<std::wstring, std::shared_ptr<AddinContext>>& currentAddinContexts()
@@ -83,11 +83,12 @@ namespace xloil
     return theAddinContexts;
   }
 
-  void createCoreContext() 
+  AddinContext& createCoreAddinContext(const std::shared_ptr<FuncSource>& staticFunctions)
   {
-    ourCoreContext = &createAddinContext(Environment::coreDllPath());
-    auto staticSource = make_shared<StaticFunctionSource>(Environment::coreDllName());
-    ourCoreContext->addSource(staticSource);
+    theCoreContextPtr = &createAddinContext(Environment::coreDllPath());
+    // Adding the source will call init() possibly a second time, but this has no effect
+    theCoreContextPtr->addSource(staticFunctions);
+    return *theCoreContextPtr;
   }
 
   AddinContext& createAddinContext(const wchar_t* pathName)
