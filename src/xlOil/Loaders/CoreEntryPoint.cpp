@@ -77,38 +77,39 @@ namespace xloil
         coreRegisteredFunctions->init();
       }
 
-      const bool isXloilCoreAddin = _wcsicmp(
-        L"xloil.xll", fs::path(xllPath).filename().c_str()) == 0;
-
-      AddinContext* addinToLoad = nullptr;
-
-      // If we are not the core addin, create our context and check if we 
-      // should process our settings before the core does
-      if (!isXloilCoreAddin)
-      {
-        addinToLoad = &createAddinContext(xllPath);
-        auto loadFirst = Settings::loadBeforeCore(*addinToLoad->settings());
-        if (loadFirst)
-          asyncLoadPluginsWhenComReady(*addinToLoad);
-        // Set to null to disable plugin load below
-        addinToLoad = nullptr; 
-      }
+      auto* addinContext = &createAddinContext(xllPath);
+      auto* coreContext  = &createCoreAddinContext();
 
       if (!theCoreIsLoaded)
       {
-        auto& coreCtx = createCoreAddinContext(coreRegisteredFunctions);
-
-        asyncLoadPluginsWhenComReady(coreCtx);
-
-        theCoreIsLoaded = true;
+        // Associate registed functions with the core 
+        coreContext->addSource(coreRegisteredFunctions);
+        // Signal that the XLL events should be hooked
         retVal = 1;
       }
 
-      // If we have an addin context here it means we are not
-      // xloil.xll and have not yet loaded our plugins
-      if (addinToLoad)
-        asyncLoadPluginsWhenComReady(*addinToLoad);
+      // Check if we should process the settings for a non-core addin first
+      // and/or we need to load the core addin. We also check we don't call
+      // loadPluginsForAddin twice (although it would be harmless)
+      const bool loadBeforeCore = Settings::loadBeforeCore(*addinContext->settings());
+      const auto loadCoreContext = theCoreIsLoaded || addinContext == coreContext
+        ? nullptr 
+        : coreContext;
 
+      auto* firstLoad = loadBeforeCore ? addinContext : loadCoreContext;
+      auto* secondLoad = !loadBeforeCore ? addinContext : loadCoreContext;
+
+      // Although we are on the main thread, Excel's COM interface may not
+      // be ready yet. Plugins may use that interface so we delay load them.
+      runComSetupOnXllOpen([=]() 
+      {
+        if (firstLoad)
+          loadPluginsForAddin(*firstLoad);
+        if (secondLoad)
+          loadPluginsForAddin(*secondLoad);
+      });
+
+      theCoreIsLoaded = true;
       return retVal;
     }
     catch (const std::exception& e)

@@ -86,7 +86,8 @@ namespace xloil
     }
     
     auto& loadedPlugins = getLoadedPlugins();
-    
+    XLO_INFO("Loading plugins from settings file {}", *context.settings()->source().path);
+
     for (const auto& pluginName : plugins)
     {
       // Look for the plugin in the same directory as xloil.dll, 

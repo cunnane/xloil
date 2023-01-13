@@ -13,8 +13,7 @@ namespace xloil
   /// Called by the core entry point to initialise all the xloil.dll
   /// paths and register functions
   /// </summary>
-  AddinContext& createCoreAddinContext(
-    const std::shared_ptr<FuncSource>& staticFunctions);
+  AddinContext& createCoreAddinContext();
 
   const std::map<std::wstring, std::shared_ptr<AddinContext>>& currentAddinContexts();
 
