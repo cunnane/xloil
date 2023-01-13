@@ -70,11 +70,21 @@ namespace xloil
 
       return settings;
     }
+
+    auto& createContext(const wchar_t* pathName)
+    {
+      auto settings = processAddinSettings(pathName);
+      auto [ctx, isNew] = theAddinContexts.insert_or_assign(
+        wstring(pathName), make_shared<AddinContext>(pathName, settings));
+
+      return *ctx->second;
+    }
   }
 
 
   AddinContext& theCoreContext()
   {
+    assert(theCoreContextPtr);
     return *theCoreContextPtr;
   }
 
@@ -83,21 +93,25 @@ namespace xloil
     return theAddinContexts;
   }
 
-  AddinContext& createCoreAddinContext(const std::shared_ptr<FuncSource>& staticFunctions)
+  AddinContext& createCoreAddinContext()
   {
-    theCoreContextPtr = &createAddinContext(Environment::coreDllPath());
-    // Adding the source will call init() possibly a second time, but this has no effect
-    theCoreContextPtr->addSource(staticFunctions);
+    if (!theCoreContextPtr)
+      theCoreContextPtr = &createContext(Environment::coreDllPath());
     return *theCoreContextPtr;
   }
 
   AddinContext& createAddinContext(const wchar_t* pathName)
   {
-    auto settings = processAddinSettings(pathName);
-    auto [ctx, isNew] = theAddinContexts.insert_or_assign(
-      wstring(pathName), make_shared<AddinContext>(pathName, settings));
-
-    return *ctx->second;
+    // Compare the filename stem to our core dll name (which should end in 'dll')
+    const auto lastSlash = wcsrchr(pathName, L'\\');
+    const auto coreDll = Environment::coreDllName();
+    const bool isCore = 0 == _wcsnicmp(
+      coreDll,
+      lastSlash ? lastSlash + 1 : pathName,
+      wcslen(coreDll) - 3);
+    return (isCore)
+      ? createCoreAddinContext()
+      : createContext(pathName);
   }
 
   void addinCloseXll(const wchar_t* xllPath)
