@@ -1,13 +1,11 @@
-===========
-xlOil Core
-===========
-
-Here we tell you how to get started using xlOil and how to distribute addins
+=====================
+xlOil Getting Started
+=====================
 
 .. _core-getting-started:
 
-Getting Started
----------------
+Installation
+------------
 
 You need **Excel 2010** or later on a desktop PC. xlOil will not work with online 
 or Mac versions of Office.
@@ -28,7 +26,7 @@ xlOil should now load when you open Excel, try following
 :any:`sql-getting-started`
 
 To configure the plugins being loaded, see :any:`core-edit-settings-files`.
-Some plugings, such as the python one, have several paths which must be set 
+Some plugins, such as the python one, have several paths which must be set 
 correctly - it will generally be easier to use these plugins by following their
 specific installation instructions.
 
@@ -45,7 +43,10 @@ To check your setup and see some of the capabilities of xlOil, try:
 Editing the settings file
 -------------------------
 
-There is an `xlOil.ini` file linked to the main `xlOil.xll` addin. (This ini file 
+If you installed xlOil via the python `xloil install` command, the settings should be
+automatically set to allow xlOil to load.
+
+The setting file `xlOil.ini` is linked to the main `xlOil.xll` addin (this ini file 
 is actually parsed as TOML, an extension of the ini format). xlOil searches for
 this file first in `%APPDATA%/xlOil` then in the directory containing the `xlOil.xll` 
 addin. 
@@ -58,13 +59,13 @@ The two most important setting in `xlOil.ini` are:
     XLOIL_PATH='''C:\lib\xloil```
     ...
     Plugins=["xloil_Python.dll", "xlOil_SQL.dll"]
+    ...
 
-``XLOIL_PATH`` allows the `xlOil.xll` addin to locate the main xlOil DLL if the 
-addin is being run from a different directory.  When the main DLL has loaded, 
-xlOil loads the specified plugins. It searches for these plugins first in the 
-directory containing `xlOil.dll`, then the directory containing the XLL, then 
-the usual DLL search paths. 
-
+``XLOIL_PATH`` allows the *xlOil.xll* addin to locate the main xlOil DLL if the 
+addin is being run from a different directory, which is normally the case.  When 
+the main *xlOil.dll* has loaded, xlOil loads the specified plugins. It searches for these
+plugins first in the directory containing *xlOil.dll*, then the directory containing 
+the XLL, then the usual DLL search paths. 
 
 Setting enviroment variables in settings files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -73,33 +74,27 @@ Each plugin can have an *Environment* section in the settings file. Within this 
 tokens are interpreted as enviroment variables to set. A plugin's environment settings 
 are processed before the plugin is loaded. 
 
-Keys are interpreted as environement variables to set. Values can reference other enviroment 
-variables by surrounding the name with `%` characters.
-
-In addition you can pull values from the registry by surrounding the registry
-path with angle brackets `<>`. Leaving a trailing backslash `\\` in the 
-registry path fetches the default value for that key.
-
-The TOML syntax of three single quotes indicates a string literal, this avoids escaping 
-all the backslashes.
-
-The default enviroment block for Python looks like this:
+The default enviroment block for xlOil Core looks like this:
 
 ::
 
-    [[xlOil_Python.Environment]]
-    xlOilPythonVersion="3.7"
+    [[Addin.Environment]]
+    XLOIL_PATH='''C:\lib\conda39\share\xloil'''
+    [[Addin.Environment]]
+    PATH='''%PATH%;%XLOIL_PATH%'''
 
-    [[xlOil_Python.Environment]]
-    PYTHONPATH='''<HKLM\SOFTWARE\Python\PythonCore\%xlOilPythonVersion%\PythonPath\>'''
-    PYTHON_LIB='''<HKLM\SOFTWARE\Python\PythonCore\%xlOilPythonVersion%\InstallPath\>'''
-
-    [[xlOil_Python.Environment]]
-    PATH='''%PATH%;%PYTHON_LIB%;%PYTHON_LIB%\Library\bin'''
+Keys are interpreted as environment variables to set. Values can reference other enviroment 
+variables by surrounding the name with `%` characters.  The TOML syntax of three single 
+quotes indicates a string literal, this avoids escaping all the backslashes.
 
 The double brackets tell TOML that the order of these declarations is important,
 this means we can refer to previously set enviroment variables.
 
+In addition you can pull values from the registry by surrounding the registry
+path with angle brackets `<>`, for example, 
+`<HKLM\SOFTWARE\Python\PythonCore\3.6\InstallPath\ExecutablePath>`. 
+Leaving a trailing backslash `\\` in the registry path fetches the default 
+value for that key.
 
 Troubleshooting
 ---------------
@@ -160,56 +155,3 @@ To really scrub the registry, you may find references to the addin under:
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Resiliency\DisabledItems`
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\Addins`
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\AddinsData`
-
-
-.. _core-distributing-addins:
-
-Distributing Addins
--------------------
-
-You can distribute your own package of code and plugins by renaming a copy of `xloil.xll`
-and creating an assoicated `ini` file.  xlOil still needs to find the core and plugin dlls, 
-so you can do one of:
-
-1) Include them with your xll
-2) Ensure the main `xloil.xll` is registerd as an Excel addin.
-3) Add an ``[Environment]`` block to your ini file, adding the location of the dlls to
-   the `%PATH%` enviroment variable.
-
-For example suppose you create the following files in the same directory:
-
-    Copy `xloil.xll` to ``myfuncs.xll``
-
-Create a ``myfuncs.ini`` file:
-
-::
-
-    Plugins = ["xlOil_Python"]
-
-    [xlOil_Python]
-
-    LoadModules=["mypyfuncs"]
-
-Create a file ``mypyfuncs.py``:
-
-::
-
-    import xloil
-    @xloil.func
-    def greet(who):
-        return "Hello " + who
-
-Now you can load ``myfuncs.xll`` in Excel and call the `greet` function. Note there 
-is no need to register ``myfuncs.xll`` in Excel's addin manager, you can just drop
-the file onto your Excel window.
-
-Optionally you can load all plugins in the same directory as the XLL with 
-a pattern match:
-
-::
-
-    PluginSearchPattern="xloil_*.dll"
-
-xlOil won't complain if this methods attempt to load the same plugin as specified
-in the ``Plugins`` key.
-

@@ -2,7 +2,6 @@
 xlOil C++ Getting Started
 =========================
 
-
 There are a few ways to build a C++ project with xlOil:
 
    1. xlOil plugin: writing a DLL which can be loaded by xlOil after the loader XLL 

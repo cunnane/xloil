@@ -112,7 +112,7 @@ xlOil's Ribbon toolbar can:
     * Select modules to load at startup and *sys.path* to set
     * Open the log file
     * Open a console to interact with the embedded python environment
-    * Choose a debugger, see :ref:'xlOil_Python/Debugging'
+    * Choose a debugger, see :doc:`/xlOil_Python/Debugging`
     * Select date formats to use when parsing strings
 
 The toolbar edits the settings file so that changes persist.  The ribbon is enabled by

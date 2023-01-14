@@ -17,7 +17,7 @@ The function :any:`xloil.linked_workbook` when called from a workbook module ret
 the associated workbook path.
 
 Another way to package python code for distribution is to create an XLL, see
-:ref:`core-distributing-addins`
+:doc:`/xlOil_Cpp/DistributingAddins` or :doc:`/xlOil_Python/DistributingAddins`
 
 
 Array Functions
@@ -56,24 +56,21 @@ what happens if ``x`` is two-dimensional?  To avoid this possibility we can spec
 Events
 ------
 
-Events request a callback on various user interactions. If you are familiar  
-with VBA, you may have used Excel's event model already.  Most of the workbook events 
-described in `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
-are available in xlOil. See the xloil.Event documention for the complete list.
+vents allow for a callback on user interaction. If you are familiar with VBA, you may have used 
+Excel's event model already.  Most of the workbook events described in 
+`Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+are available in xlOil. 
 
-Some events take reference parameters, which do not exist in python. For example, setting 
-the `cancel` bool in `WorkbookBeforeSave` cancels the event.  In xlOil you need to set this
+See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :doc:`/Events`
+for a description of the available Excel events.
+
+Excel events do not use return values.  However, some events take reference parameters. 
+For example, `WorkbookBeforeSave` has a boolean `cancel` parameter. Setting this to True cancels the 
+save.  As references to primitive types aren't supported in python, in xlOil you need to set this 
 value using `cancel.value=True`.
 
-Events are (currently) global to the Excel instance, so you may need to filter by workbook name when 
-handling events.
-
-xlOil has some extra events:
-
-    * `WorkbookAfterClose`: Excel's event *WorkbookBeforeClose*, is cancellable by the user so it is 
-      not possible to know if the workbook actually closed. `WorkbookAfterClose` fixes this but there
-      may be a long delay before the event is fired.
-    * `CalcCancelled`: called when the user interrupts calculation, maybe useful for async functions
+Event handlers are (currently) global to the Excel instance, so you may need to filter by workbook name 
+when handling events even if you have hooked the event in a local workbook module.
 
 Examples
 ~~~~~~~~

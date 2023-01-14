@@ -2,12 +2,12 @@
 xlOil
 ===========
 
-xlOil is a framework for linking programming languages with Excel language. 
-That is, a way to write functions in a language of your choice and have them
+xlOil is a framework for linking programming languages with Excel. 
+It provides a way to write functions in a language of your choice and have them
 appear in Excel as worksheet functions and macros, as well as manipulating
-the application and GUI similar to VBA.
+the application and GUI similar to what is possible with VBA.
 
-xlOil is designed to have very low overheads when calling your own worksheet 
+xlOil is designed to have very low overheads when calling your worksheet 
 functions.
 
 xlOil supports different languages via plugins. The languages currently 
@@ -120,8 +120,7 @@ prominent Excel addin software.
   almost all Excel API features, but only for .Net languages.  I strongly
   recommend this software if you are using .Net languages.
 - XLL Plus: (commercial) seems to be fully-featured with GUI wizards
-  to help developers, but only for C++ and the most expensive sofware 
-  here.
+  to help developers, but only for C++ and the most expensive sofware here.
 - PyXLL: (commercial) Python-only.  Supports the full range of Excel
   API features and some functionality to run on remote servers.
 - XlWings: (mostly free) Python-only. More mature sofware, but considerably

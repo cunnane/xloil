@@ -20,6 +20,7 @@ The xlOil C++ interface has a `doxygen API description <../../doxygen/html/doxyg
     CppRtd
     DynamicRegistration
     StaticXLLs
+    DistributingAddins
     COM
 
 
