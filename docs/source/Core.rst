@@ -100,6 +100,11 @@ The default enviroment block for Python looks like this:
 The double brackets tell TOML that the order of these declarations is important,
 this means we can refer to previously set enviroment variables.
 
+In addition you can pull values from the registry by surrounding the registry
+path with angle brackets `<>`, for example, 
+`<HKLM\SOFTWARE\Python\PythonCore\3.6\InstallPath\ExecutablePath>`. 
+Leaving a trailing backslash `\\` in the registry path fetches the default 
+value for that key.
 
 Troubleshooting
 ---------------
@@ -115,7 +120,7 @@ The log file
 
 If xlOil detects a serious load error, it pops up a log window to alert you (this can
 be turned off). If it succesfully loaded the core DLL a log file will also be created
-next to `xlOil.ini`, which by default is in `%APPDATA%/xlOil`.  If xlOil loaded, the 
+next to `xlOil.ini`, which by default is in ``%APPDATA%\xlOil``.  If xlOil loaded, the 
 worksheet function `xloLog` can tell you where this file is.  A setting in `xlOil.ini` 
 controls the log level.
 
@@ -125,8 +130,8 @@ Manual installation
 The `xlOil_Install.ps1` script does the following:
 
    1. Check xlOil is not in Excel's disabled add-ins
-   2. Copy xlOil.xll to the `%APPDATA%\\Microsoft\\Excel\\XLSTART` directory
-   3. Copy xlOil.ini in the `%APPDATA%\\xlOil` directory
+   2. Copy xlOil.xll to the ``%APPDATA%\Microsoft\Excel\XLSTART`` directory
+   3. Copy xlOil.ini in the ``%APPDATA%\xlOil``` directory
    4. Check VBA Object Model access is allowed in 
       `Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings``
 
@@ -136,8 +141,8 @@ Manual removal
 
 Should you need to force remove xlOil, do the following:
 
-   1. Remove *xlOil.xll* from `%APPDATA%\\Microsoft\\Excel\\XLSTART`
-   2. Remove the directory `%APPDATA%\\xlOil`
+   1. Remove *xlOil.xll* from ``%APPDATA%\Microsoft\Excel\XLSTART``
+   2. Remove the directory ``%APPDATA%\xlOil```
 
 If you have added *xlOil.xll* or another xll add-in (xlOil does not do this by default)
 and you want to remove it go to:
@@ -146,11 +151,11 @@ and you want to remove it go to:
    2. If the previous step fails to remove the addin, start Excel with elevated/admin 
       priviledges and retry
    3. If that fails, try to remove the add-in from the registry key
-      `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Options`.
+      ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\<Version>\Excel\Options``.
       You should see values *OPEN*, *OPEN1*, etc with add-in names to be loaded. After removing
       a value, you need to rename the others to preserve the numeric sequence.
    4. If that does not work, also look at this registry key:
-      `HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Options`.
+      ``HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\<Version>\Excel\Options``.
 
 Note you may need to run the registry editor with elevated priviledges.
 
@@ -160,56 +165,3 @@ To really scrub the registry, you may find references to the addin under:
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Resiliency\DisabledItems`
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\Addins`
    * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\AddinsData`
-
-
-.. _core-distributing-addins:
-
-Distributing Addins
--------------------
-
-You can distribute your own package of code and plugins by renaming a copy of `xloil.xll`
-and creating an assoicated `ini` file.  xlOil still needs to find the core and plugin dlls, 
-so you can do one of:
-
-1) Include them with your xll
-2) Ensure the main `xloil.xll` is registerd as an Excel addin.
-3) Add an ``[Environment]`` block to your ini file, adding the location of the dlls to
-   the `%PATH%` enviroment variable.
-
-For example suppose you create the following files in the same directory:
-
-    Copy `xloil.xll` to ``myfuncs.xll``
-
-Create a ``myfuncs.ini`` file:
-
-::
-
-    Plugins = ["xlOil_Python"]
-
-    [xlOil_Python]
-
-    LoadModules=["mypyfuncs"]
-
-Create a file ``mypyfuncs.py``:
-
-::
-
-    import xloil
-    @xloil.func
-    def greet(who):
-        return "Hello " + who
-
-Now you can load ``myfuncs.xll`` in Excel and call the `greet` function. Note there 
-is no need to register ``myfuncs.xll`` in Excel's addin manager, you can just drop
-the file onto your Excel window.
-
-Optionally you can load all plugins in the same directory as the XLL with 
-a pattern match:
-
-::
-
-    PluginSearchPattern="xloil_*.dll"
-
-xlOil won't complain if this methods attempt to load the same plugin as specified
-in the ``Plugins`` key.
-
