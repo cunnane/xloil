@@ -1,6 +1,6 @@
 .. raw:: html
 
-	<iframe src="https://github.com/sponsors/cunnane/card" title="Sponsor xlOil" height="200" width="500" style="border: 0;"></iframe>
+	<iframe src="https://github.com/sponsors/cunnane/card" title="Sponsor xlOil" height="200" width="600" style="border: 0;"></iframe>
 
 xlOil documentation
 ===================

@@ -92,7 +92,7 @@ this means we can refer to previously set enviroment variables.
 
 In addition you can pull values from the registry by surrounding the registry
 path with angle brackets `<>`, for example, 
-`<HKLM\SOFTWARE\Python\PythonCore\3.6\InstallPath\ExecutablePath>`. 
+``<HKLM\SOFTWARE\Python\PythonCore\3.6\InstallPath\ExecutablePath>``. 
 Leaving a trailing backslash `\\` in the registry path fetches the default 
 value for that key.
 
@@ -110,7 +110,7 @@ The log file
 
 If xlOil detects a serious load error, it pops up a log window to alert you (this can
 be turned off). If it succesfully loaded the core DLL a log file will also be created
-next to `xlOil.ini`, which by default is in `%APPDATA%/xlOil`.  If xlOil loaded, the 
+next to `xlOil.ini`, which by default is in ``%APPDATA%\xlOil``.  If xlOil loaded, the 
 worksheet function `xloLog` can tell you where this file is.  A setting in `xlOil.ini` 
 controls the log level.
 
@@ -120,8 +120,8 @@ Manual installation
 The `xlOil_Install.ps1` script does the following:
 
    1. Check xlOil is not in Excel's disabled add-ins
-   2. Copy xlOil.xll to the `%APPDATA%\\Microsoft\\Excel\\XLSTART` directory
-   3. Copy xlOil.ini in the `%APPDATA%\\xlOil` directory
+   2. Copy xlOil.xll to the ``%APPDATA%\Microsoft\Excel\XLSTART`` directory
+   3. Copy xlOil.ini in the ``%APPDATA%\xlOil``` directory
    4. Check VBA Object Model access is allowed in 
       `Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings``
 
@@ -131,8 +131,8 @@ Manual removal
 
 Should you need to force remove xlOil, do the following:
 
-   1. Remove *xlOil.xll* from `%APPDATA%\\Microsoft\\Excel\\XLSTART`
-   2. Remove the directory `%APPDATA%\\xlOil`
+   1. Remove *xlOil.xll* from ``%APPDATA%\Microsoft\Excel\XLSTART``
+   2. Remove the directory ``%APPDATA%\xlOil```
 
 If you have added *xlOil.xll* or another xll add-in (xlOil does not do this by default)
 and you want to remove it go to:
@@ -141,17 +141,17 @@ and you want to remove it go to:
    2. If the previous step fails to remove the addin, start Excel with elevated/admin 
       priviledges and retry
    3. If that fails, try to remove the add-in from the registry key
-      `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Options`.
+      ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\<Version>\Excel\Options``.
       You should see values *OPEN*, *OPEN1*, etc with add-in names to be loaded. After removing
       a value, you need to rename the others to preserve the numeric sequence.
    4. If that does not work, also look at this registry key:
-      `HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Options`.
+      ``HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\<Version>\Excel\Options``.
 
 Note you may need to run the registry editor with elevated priviledges.
 
 To really scrub the registry, you may find references to the addin under:
-   * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Add-in Manager`
-   * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\AddInLoadTimes`
-   * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\<Version>\\Excel\\Resiliency\DisabledItems`
-   * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\Addins`
-   * `HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Office\\Excel\\AddinsData`
+   * ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\<Version>\Excel\Add-in Manager``
+   * ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\<Version>\Excel\AddInLoadTimes``
+   * ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\<Version>\Excel\Resiliency\DisabledItems``
+   * ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Excel\Addins``
+   * ``HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\Excel\AddinsData``

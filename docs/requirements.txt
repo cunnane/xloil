@@ -1,3 +1,5 @@
 numpy
 numpydoc
 autodocsumm
+sphinx-rtd-theme 
+docutils==0.16 
