@@ -115,15 +115,7 @@ namespace xloil
         auto pluginData = loadedPlugins.find(pluginName);
         if (pluginData == loadedPlugins.end())
         {
-          // First load the plugin using any settings that have been specified in the
-          // core config file, otherwise the ones in the add-in's ini file. This avoids
-          // race conditions with different add-in load orders.
-
-          auto loadSettings = theCoreContext().settings()
-            ? Settings::findPluginSettings(theCoreContext().settings(), pluginNameUtf8.c_str())
-            : pluginSettings;
-
-          auto environment = Settings::environmentVariables(loadSettings);
+          auto environment = Settings::environmentVariables(pluginSettings);
 
           for (auto&[key, val] : environment)
           {
@@ -150,7 +142,7 @@ namespace xloil
           {
             PluginContext::Load,
             pluginName.c_str(),
-            loadSettings ? *loadSettings.as_table() : emptyTomlTable,
+            pluginSettings ? *pluginSettings.as_table() : emptyTomlTable,
             XLOIL_MAJOR_VERSION,
             XLOIL_MINOR_VERSION,
             XLOIL_PATCH_VERSION
