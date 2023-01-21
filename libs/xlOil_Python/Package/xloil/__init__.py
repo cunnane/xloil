@@ -18,7 +18,8 @@ from .importer import (
     )
 
 from .com import (
-    EventsPaused
+    constants,
+    PauseExcel
     )
 
 from .rtd import RtdSimplePublisher
