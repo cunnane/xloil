@@ -770,3 +770,10 @@ for i in range(3):
 
 xlo.register_functions(funcs, sys.modules[__name__])
 
+
+def click_handler(sheet_name, target, cancel):
+    ws = xlo.worksheets[sheet_name]
+    ws['A1'] = ws['A5']
+    ws['A1'] += target.address()
+
+xlo.event.SheetBeforeDoubleClick += click_handler
