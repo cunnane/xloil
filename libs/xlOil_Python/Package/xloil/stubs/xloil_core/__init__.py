@@ -610,6 +610,7 @@ class ExcelWindows():
 
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> ExcelWindow: ...
     def __iter__(self) -> ExcelWindowsIter: ...
     def __len__(self) -> int: ...
@@ -711,7 +712,7 @@ class Range():
 
     ::
 
-        x[1, 1] # The value at (1, 1) as a python type: int, str, float, etc.
+        x[1, 1] # The *value* at (1, 1) as a python type: int, str, float, etc.
 
         x[1, :] # The second row as another Range object
 
@@ -727,8 +728,12 @@ class Range():
         numbers are offset from the end.If the tuple specifies a single cell, returns
         the value in that cell, otherwise returns a Range object.
         """
+    def __iadd__(self, arg0: object) -> object: ...
+    def __imul__(self, arg0: object) -> object: ...
     def __init__(self, address: str) -> None: ...
+    def __isub__(self, arg0: object) -> object: ...
     def __iter__(self) -> RangeIter: ...
+    def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
     def __str__(self) -> str: ...
     def address(self, local: bool = False) -> str: 
@@ -1251,6 +1256,7 @@ class Workbooks():
 
     See `Excel.Workbooks <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbooksWorkbooks>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Workbook: ...
     def __iter__(self) -> WorkbooksIter: ...
     def __len__(self) -> int: ...
@@ -1288,18 +1294,19 @@ class Worksheet():
     def __getitem__(self, arg0: object) -> object: 
         """
         If the argument is a string, returns the range specified by the local address, 
-        equivalent to ``at_address``.  
+        equivalent to ``at``.  
 
-        If the argument is a 2-tuple, slices the sheet to return a Range or a single element. 
+        If the argument is a 2-tuple, slices the sheet to return an xloil.Range.
         Uses normal python slicing conventions, i.e [left included, right excluded), negative
         numbers are offset from the end.
         """
+    def __setitem__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def activate(self) -> None: 
         """
         Makes this worksheet the active sheet
         """
-    def at(self, address: str) -> Range: 
+    def at(self, address: str) -> _ExcelRange: 
         """
         Returns the range specified by the local address, e.g. ``.at('B3:D6')``
         """
@@ -1307,7 +1314,7 @@ class Worksheet():
         """
         Calculates this worksheet
         """
-    def cell(self, row: int, col: int) -> Range: 
+    def cell(self, row: int, col: int) -> _ExcelRange: 
         """
         Returns a Range object which consists of a single cell. The indices are zero-based 
         from the top left of the parent range.
@@ -1376,6 +1383,7 @@ class Worksheets():
 
     See `Excel.Worksheets <https://docs.microsoft.com/en-us/office/vba/api/excel.WorksheetsWorksheets>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
     def __iter__(self) -> WorksheetsIter: ...
     def __len__(self) -> int: ...
@@ -1604,6 +1612,8 @@ class _ExcelObjFuture():
 class _ExcelObjFutureIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> None: ...
+    pass
+class _ExcelRange(Range):
     pass
 class _FuncArg():
     def __init__(self) -> None: ...
@@ -2011,6 +2021,8 @@ class _Return_tuple_to_Excel(IPyToExcel):
     pass
 class _TomlTable():
     def __getitem__(self, arg0: str) -> object: ...
+    pass
+class _XllRange(Range):
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass

@@ -3,7 +3,8 @@
           Excel's UI. The events correspond to COM/VBA events and are described in detail
           in the Excel Application API.
         
-          See :ref:`Events:Introduction` and `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+          See :ref:`Events:Introduction` and 
+          `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
 
           Using the Event Class
           ---------------------
@@ -29,12 +30,14 @@
                 `WorkbookBeforePrint`, you need to set the value using `cancel.value=True`.
                 This is because python does not support reference parameters for primitive types.
 
-              ::
+                ::
 
                     def no_printing(wbName, cancel):
                       cancel.value = True
                     xlo.event.WorkbookBeforePrint += no_printing
 
+              * Workbook and worksheet names are passed a string, Ranges as passed as a 
+                :ref:`xloil.Range`
     
           Python-only Events
           ------------------
@@ -63,6 +66,14 @@
               xlo.event.WorkbookNewSheet -= greet
               
               print(xlo.event.WorkbookNewSheet.handlers) # Should be empty
+
+
+          ::
+
+              def click_handler(sheet_name, target, cancel):
+                  xlo.worksheets[sheet_name]['A5'].value = target.address()
+    
+              xlo.event.SheetBeforeDoubleClick += click_handler
 
         """
 from __future__ import annotations
