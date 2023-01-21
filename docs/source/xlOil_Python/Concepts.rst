@@ -61,22 +61,16 @@ Excel's event model already.  Most of the workbook events described in
 `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
 are available in xlOil. 
 
-See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :ref:`Events:Introduction` for 
-a description of the available Excel events.
+See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :ref:`Events`
+for a description of the available Excel events.
 
-Some events take reference parameters, which do not exist in python. For example, setting 
-the `cancel` bool in `WorkbookBeforeSave` cancels the event.  In xlOil you need to set this
+Excel events do not use return values.  However, some events take reference parameters. 
+For example, `WorkbookBeforeSave` has a boolean `cancel` parameter. Setting this to True cancels the 
+save.  As references to primitive types aren't supported in python, in xlOil you need to set this 
 value using `cancel.value=True`.
 
 Event handlers are (currently) global to the Excel instance, so you may need to filter by workbook name 
-when handling events.
-
-xlOil has some extra events:
-
-    * `WorkbookAfterClose`: Excel's event *WorkbookBeforeClose*, is cancellable by the user so it is 
-      not possible to know if the workbook actually closed. `WorkbookAfterClose` fixes this but there
-      may be a long delay before the event is fired.
-    * `CalcCancelled`: called when the user interrupts calculation, maybe useful for async functions
+when handling events even if you have hooked the event in a local workbook module.
 
 Examples
 ~~~~~~~~

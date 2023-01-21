@@ -77,7 +77,14 @@ COM methods can be called directly on xlOil's application objects, so the follow
     xlo.Application().RegisterXLL(...)
     xlo.Application().to_com().RegisterXLL(...)
 
-There is no ambiguity as COM methods and properties all start with a capital letter.
+There is no ambiguity with other methods on the *Application* object as COM methods and properties 
+all start with a capital letter.
+
+COM methods can be called with keyword arguments - note COM arguments start with a capital letter.
+
+::
+
+    xloil.app().Selection.PasteSpecial(Paste=xloil.constants.xlPasteFormulas)
 
 
 Excel Automation
@@ -190,6 +197,10 @@ array is trimmed to the last non-blank. This behaviour can be replicated with
     r.set(1)
     r.trim().value # returns the array [1, 1, 1]
 
+The square bracket (getitem) operator for a Range behaves like a numpy array,
+in that if the tuple specifies a single cell, it returns the value in that cell, otherwise 
+it returns a :any:`xloil.Range` object.  To create a range consisting of a single cell
+use :any:`xloil.Range.cells`.
 
 Writing to a range
 ==================
@@ -199,11 +210,15 @@ Writing to a range
     # Using the COM object
     xlo.app().Range("A1", "B2").Value = ((1, 2), (3, 4))
 
+    rng = xlo.Range("A1:B2")
     # Using xlOil syntax (can use numpy array)
-    xlo.Range("A1:B2").value = np.array([[1, 2], [3, 4]])
+    rng.value = np.array([[1, 2], [3, 4]])
 
     # Set the entire range to a single value
-    xlo.Range("A1:B2").set("hello")
+    rng.set("hello")
+
+    # Add something
+    rng += " world!"
 
 
 Using Worksheets and Workbooks
@@ -233,10 +248,67 @@ There are several ways to address or refer to part of a worksheet:
     r3 = ws[1:3, 1:4]
 
 
-The square bracket (getitem) operator for ranges behaves like that for numpy arrays,
-in that if the tuple specifies a single cell, it returns the value in that cell, otherwise 
-it returns a :any:`xloil.Range` object.  To create a range consisting of a single cell
-use the `cells` method of :any:`xloil.Range`.
+The square bracket (getitem) operator for :ref:`xloil.Worksheet` always returns
+a :ref:`xloil.Range`. For :ref:`xloil.Workbook` it may return a :ref:`xloil.Range`
+or a :ref:`xloil.Worksheet`.
+
+Writing to a worksheet
+~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    data = np.array([[1, 2], [3, 4]])
+
+    ws = xloil.worksheets['Sheet1']
+
+    # ws[...] gives a Range, so  
+    ws["A1:B2"].value = data
+
+    # However, value is optional when writing to a sheet
+    ws["A1:B2"] = data  
+
+    # You can copy another part of the sheet, it's faster to
+    # drop the value property here
+    ws["A1:B2"] = ws["D1:E2"] 
+
+    # Also works for Workbooks
+    wb = xloil.active_workbook()
+    wb['Sheet1!B2:D3'] = ws["D1:E2"] 
+
+
+
+Pausing Excel Calculations
+--------------------------
+
+When writing to worksheets, performance can often be improved by disabling Excel's auto calculation 
+and Event model, otherwise calculation cycles and events will be triggered on each write.
+
+This is straightforward using :any:`xloil.PauseExcel`:
+
+::
+
+    with xloil.PauseExcel() as paused:
+        for i in range(100):
+            worksheet[i, 1].value = i
+
+
+The context manager can be replicated manually with
+
+::
+
+    try:
+
+        xloil.app().ScreenUpdating = False
+        xloil.app().EnableEvents = False
+        xloil.app().Calculation = xloil.constants.xlCalculationManual
+
+        ...
+
+    finally:
+    
+        xloil.app().ScreenUpdating = True
+        xloil.app().EnableEvents = True
+        xloil.app().Calculation = xloil.constants.xlCalculationAutomatic
 
 
 Troubleshooting
@@ -244,7 +316,7 @@ Troubleshooting
 
 Both *comtypes* and *win32com* have caches for the python code backing the Excel object model. If 
 these caches somehow become corrupted, it can result in strange COM errors.  It is safe to delete 
-these caches and let the library regenerate them. The caches are at:
+these caches and let the library regenerate them. The caches are located at:
 
    * *comtypes*: `<your python install>/site-packages/comtypes/gen`
    * *win32com*: run ``import win32com; print(win32com.__gen_path__)``

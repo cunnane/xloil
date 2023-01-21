@@ -16,6 +16,16 @@ contains more complete descriptions of most of these events, with the exception 
 
 For the syntax used to hook these events, see the individual language documentation.
 
+Parameter types
+===============
+Most events use some of the parameter types described below:
+
+* *Workbook name*: passed as a string (not a ``Workbook`` object)
+* *Worksheet name*: passed as a string 
+* *Range*: passed as a ``Range`` object
+* *Cancel*: a bool which starts as False If the event handler sets this argument to True,
+  further processing of the event will stop
+  
 AfterCalculate
 --------------
 
@@ -27,35 +37,37 @@ a key or mouse button).
 
 WorkbookOpen
 ------------
-
 Occurs when a workbook is opened. Takes a single parameter containing the workbook name.
 
 NewWorkbook
 -----------
-
 Occurs when a new workbook is created. Takes a single parameter containing the workbook name.
 
 SheetSelectionChange
 --------------------
+Occurs when the selection changes on any worksheet (doesn't occur if the selection is on a 
+chart sheet). Takes two paramters:
 
-Occurs when the selection changes on any worksheet (doesn't occur if the selection is on a chart sheet).
-The first parameter is the worksheet name, the second is the target range.
+* Worksheet name
+* Target / selected Range
 
 SheetBeforeDoubleClick
 ----------------------
-Occurs when any worksheet is double-clicked, before the default double-click action. Takes three parameters
+Occurs when any worksheet is double-clicked, before the default double-click action. 
+Takes three parameters
 
  * Worksheet name
- * Target - The cell nearest to the mouse pointer when the double-click occurred.
+ * Target - A Range giving cell nearest to the mouse pointer when the double-click occurred.
  * Cancel - False when the event occurs. If the event procedure sets this argument to True, the default 
    double-click action isn't performed when the procedure is finished.
 
 SheetBeforeRightClick
 ---------------------
-Occurs when any worksheet is right-clicked, before the default right-click action. Takes three parameters
+Occurs when any worksheet is right-clicked, before the default right-click action. 
+Takes three parameters
 
  * Worksheet name
- * Target - The cell nearest to the mouse pointer when the right-click occurred.
+ * Target - A Range giving the cell nearest to the mouse pointer when the right-click occurred.
  * Cancel - False when the event occurs. If the event procedure sets this argument to True, the default 
    right-click action isn't performed when the procedure is finished.
 
@@ -74,8 +86,11 @@ Takes a single parameter containing the sheet name.
 
 SheetChange
 -----------
-Occurs when cells in any worksheet are changed by the user or by an external link.
-The first parameter is the worksheet name, the second is the changed range.
+Occurs when cells in any worksheet are changed by the user or by an external link. Takes 
+two paramters:
+
+* Worksheet name
+* Changed Range
 
 WorkbookActivate
 ----------------
@@ -92,6 +107,8 @@ Occurs immediately before any open workbook closes. Takes two parameters
  * Workbook name
  * Cancel - False when the event occurs. If the event procedure sets this argument to True, the 
    workbook doesn't close when the procedure is finished.
+
+The event is not called for each workbook when Excel exits.
 
 WorkbookBeforeSave
 ------------------
@@ -114,12 +131,12 @@ Occurs immediately before any open workbook is printed. Takes two parameters
 WorkbookAfterClose
 ------------------
 Excel's *WorkbookBeforeClose* event is cancellable by the user so it is not possible to know if 
-the workbook actually closed.  When xlOil calls `WorkbookAfterClose`, the workbook is certainly closed, 
-but it may be some time since that closure happened.
+the workbook actually closed.  When xlOil calls `WorkbookAfterClose`, the workbook is certainly 
+closed, but it may be some time since that closure happened. Takes a single parameter containing the 
+workbook name.
 
-The event is not called for each workbook when xlOil exits.
-
-This event is not part of the *Excel* API.
+The event is not called for each workbook when xlOil exits. This event is not part of the 
+*Excel.Application* API.
 
 WorkbookNewSheet
 ----------------

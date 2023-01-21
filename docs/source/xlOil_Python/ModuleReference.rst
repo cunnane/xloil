@@ -40,6 +40,7 @@ Excel Object Model
 
 .. autosummary::
 	workbooks
+	worksheets
 	app
 	active_worksheet
 	active_workbook
@@ -53,7 +54,7 @@ Excel Object Model
 	Workbooks
 	Worksheets
 
-.. autodata:: workbooks
+.. autodata:: workbooks, worksheets
 	
 .. autofunction:: app
 
@@ -109,6 +110,9 @@ Excel Object Model
 	:members: 
 	:inherited-members:
 	:undoc-members:
+
+.. autoclass:: PauseExcel
+	:members: 
 
 RTD Functions
 -------------
