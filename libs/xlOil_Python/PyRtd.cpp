@@ -3,6 +3,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyAddin.h"
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelThread.h>
 #include <pybind11/pybind11.h>

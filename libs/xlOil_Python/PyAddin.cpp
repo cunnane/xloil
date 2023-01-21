@@ -1,5 +1,4 @@
 #include "PyAddin.h"
-#include "Main.h"
 #include "EventLoop.h"
 #include "PyCore.h"
 #include "PyFunctionRegister.h"

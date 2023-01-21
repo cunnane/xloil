@@ -3,7 +3,7 @@
 #include "PyCore.h"
 #include "PyImage.h"
 #include "PyEvents.h"
-#include "Main.h"
+#include "PyAddin.h"
 #include <xlOil/ExcelTypeLib.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>

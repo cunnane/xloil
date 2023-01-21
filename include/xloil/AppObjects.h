@@ -222,9 +222,14 @@ namespace xloil
 
     void set(const ExcelObj& value) final override;
 
-    std::wstring formula() final override;
+    std::wstring formula() const final override;
 
     void clear() final override;
+
+    virtual Excel::Range* asComPtr() const final override
+    {
+      return &com();
+    }
 
     /// <summary>
     /// Sets the forumula for the range to the specified string. If the 

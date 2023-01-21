@@ -131,7 +131,7 @@ namespace xloil
     /// string if there is no formula or array formula.
     /// </summary>
     /// <returns></returns>
-    virtual std::wstring formula() = 0;
+    virtual std::wstring formula() const = 0;
 
     Range& operator=(const ExcelObj& value)
     {
@@ -143,5 +143,11 @@ namespace xloil
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
     virtual void clear() = 0;
+
+    /// <summary>
+    /// Returns a pointer to the the underlying Excel API Range object
+    /// if this Range is based on one, otherwise returns null.
+    /// </summary>
+    virtual Excel::Range* asComPtr() const = 0;
   };
 }

@@ -1,11 +1,11 @@
 #include "PyFunctionRegister.h"
 #include "PyCore.h"
-#include "Main.h"
 #include "TypeConversion/BasicTypes.h"
 #include "TypeConversion/PyDictType.h"
 #include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
+#include "PyAddin.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
@@ -233,6 +233,9 @@ namespace xloil
       const ExcelObj** xlArgs) noexcept
     {
       TReturn returner(info->getReturnConverter().get());
+
+      unique_ptr<InXllContext> xllContext(
+        info->isLocalFunc ? nullptr : new InXllContext());
 
       try
       {

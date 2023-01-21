@@ -47,7 +47,6 @@
     <ClInclude Include="PyCache.h" />
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="PySource.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="PyFunctionRegister.h" />
     <ClInclude Include="PyCore.h" />
     <ClInclude Include="PyEvents.h" />

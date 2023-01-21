@@ -1,4 +1,3 @@
-#include "Main.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyHelpers.h"
 #include "PyCore.h"
@@ -7,6 +6,7 @@
 #include "EventLoop.h"
 #include "PyFuture.h"
 #include "PyCom.h"
+#include "PyAddin.h"
 
 #include <xloil/ExcelUI.h>
 #include <xlOil/AppObjects.h>

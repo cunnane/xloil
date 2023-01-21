@@ -163,7 +163,7 @@ namespace xloil
     }
 
     operator const ExcelObj& () const noexcept { return _obj; }
-
+    operator ExcelObj&& ()            noexcept { return std::move(_obj); }
 
   protected:
     msxll::IDSHEET  sheetId() const noexcept { return _obj.val.mref.idSheet; }
@@ -376,7 +376,7 @@ namespace xloil
     /// </summary>
     void setFormula(const std::wstring_view& formula);
 
-    std::wstring formula() final override
+    std::wstring formula() const final override
     {
       // xlfGetFormula always returns RC references, but GetCell uses the
       // workspace settings to return RC or A1 style.
@@ -392,6 +392,7 @@ namespace xloil
     }
 
     const ExcelRef& asRef() const { return _ref; }
+    Excel::Range* asComPtr() const final override { return nullptr; }
 
   private:
     ExcelRef _ref;

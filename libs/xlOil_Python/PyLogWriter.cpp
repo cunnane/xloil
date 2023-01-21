@@ -1,5 +1,5 @@
 #include "PyCore.h"
-#include "Main.h"
+#include "PyAddin.h"
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/Interface.h>

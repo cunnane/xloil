@@ -23,39 +23,44 @@ namespace xloil
 {
   namespace Python 
   {
-    using BinderFunc = std::function<void(pybind11::module&)>;
-
-    PyTypeObject* cellErrorType;
+    PyTypeObject* theCellErrorType;
     PyObject*     comBusyException;
     PyObject*     cannotConvertException;
 
-    namespace
+    bool isErrorType(const PyObject* obj)
     {
-      void initialiseCore(py::module& mod);
+      return Py_TYPE(obj) == theCellErrorType;
     }
 
-    class BinderRegistry
+    namespace
     {
-    public:
-      static BinderRegistry& get() {
-        static BinderRegistry instance;
-        return instance;
-      }
+      using BinderFunc = std::function<void(pybind11::module&)>;
 
-      auto add(BinderFunc f, size_t priority)
+      void initialiseCore(py::module& mod);
+   
+      class BinderRegistry
       {
-        return theFunctions.insert(make_pair(priority, f));
-      }
+      public:
+        static BinderRegistry& get() {
+          static BinderRegistry instance;
+          return instance;
+        }
 
-      void bindAll(py::module& mod)
-      {
-        std::for_each(theFunctions.rbegin(), theFunctions.rend(),
-          [&mod](auto f) { f.second(mod); });
-      }
-    private:
-      BinderRegistry() {}
-      std::multimap<size_t, BinderFunc> theFunctions;
-    };
+        auto add(BinderFunc f, size_t priority)
+        {
+          return theFunctions.insert(make_pair(priority, f));
+        }
+
+        void bindAll(py::module& mod)
+        {
+          std::for_each(theFunctions.rbegin(), theFunctions.rend(),
+            [&mod](auto f) { f.second(mod); });
+        }
+      private:
+        BinderRegistry() {}
+        std::multimap<size_t, BinderFunc> theFunctions;
+      };
+    }
 
     PyObject* buildInjectedModule()
     {
@@ -67,7 +72,7 @@ namespace xloil
     }
 
     // This unfortunate block of code is a copy of PYBIND11_MODULE with the name of 
-    // the module tweaked. This allows the module name to be consistent accross the 
+    // the module tweaked. This allows the module name to be consistent across the 
     // various xloil_PythonXX.pyd implemenations which reduces surprise and makes 
     // the documentation nicer
 
@@ -110,6 +115,7 @@ namespace xloil
 
     namespace
     {
+      // TODO: define in another cpp
       auto runLater(
         const py::object& callable, 
         const unsigned delay, 
@@ -254,6 +260,7 @@ namespace xloil
           cannotConvertException = e.ptr();
         }
 
+        // TODO: move to basictypes but beware of pybind declaration order!
         {
           // Bind CellError type to xloil::CellError enum
           auto eType = py::enum_<CellError>(mod, "CellError", 
@@ -267,7 +274,7 @@ namespace xloil
           for (auto e : theCellErrors)
             eType.value(cellErrorSymbol(e).c_str(), e);
 
-          cellErrorType = (PyTypeObject*)eType.ptr();
+          theCellErrorType = (PyTypeObject*)eType.ptr();
         }
       }
     }

@@ -13,7 +13,6 @@
 #include <xlOil/WindowsSlim.h>
 #include <xlOil-XLL/Intellisense.h>
 #include <xlOil-COM/Connect.h>
-#include <xlOil-COM/XllContextInvoke.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;

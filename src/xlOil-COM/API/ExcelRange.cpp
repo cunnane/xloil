@@ -4,7 +4,7 @@
 #include <xlOil/ExcelRef.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/AppObjects.h>
-#include <xlOil-COM/XllContextInvoke.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil-COM/ComVariant.h>
 
 namespace xloil
@@ -62,9 +62,9 @@ namespace xloil
   ExcelRange::ExcelRange(const Range& range)
     : AppObject(nullptr)
   {
-    auto excelRange = dynamic_cast<const ExcelRange*>(&range);
-    if (excelRange)
-      *this = ExcelRange(&excelRange->com());
+    auto* comPtr = range.asComPtr();
+    if (comPtr)
+      *this = ExcelRange(comPtr);
     else
       *this = ExcelRange(range.address());
   }
@@ -128,9 +128,7 @@ namespace xloil
   {
     try
     {
-      auto result = local
-        ? com().GetAddress(true, true, Excel::xlA1)
-        : com().GetAddressLocal(true, true, Excel::xlA1);
+      auto result = com().GetAddress(true, true, Excel::xlA1, !local);
       return std::wstring(result);
     }
     XLO_RETHROW_COM_ERROR;
@@ -169,7 +167,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  std::wstring ExcelRange::formula()
+  std::wstring ExcelRange::formula() const
   {
     try
     {

@@ -10,7 +10,7 @@
 #include <string>
 
 
-namespace xloil { class Range; }
+namespace xloil { class ExcelRange; }
 
 namespace xloil
 {
@@ -215,13 +215,13 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       NewWorkbook();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
       SheetSelectionChange();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
       SheetBeforeDoubleClick();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
       SheetBeforeRightClick();
 
     XLOIL_EXPORT EventNameParam&
@@ -233,7 +233,7 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       SheetCalculate();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
       SheetChange();
 
     /// <summary>

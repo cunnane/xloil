@@ -6,6 +6,7 @@
 #include "PyHelpers.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyAddin.h"
 #include <xloil/ExcelObj.h>
 #include <xloil/Async.h>
 #include <xloil/RtdServer.h>

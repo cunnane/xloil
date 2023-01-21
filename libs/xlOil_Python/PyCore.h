@@ -49,9 +49,7 @@ namespace xloil
         (theReturnConverterPrefix + std::string(type)).c_str());
     }
 
-    extern _typeobject* cellErrorType;
-    extern _typeobject* rangeType; // in PyAppObjects.cpp
-    extern PyObject*    comBusyException;
-    extern PyObject*    cannotConvertException;
+    extern PyObject* comBusyException;
+    extern PyObject* cannotConvertException;
   }
 }

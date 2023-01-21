@@ -1,5 +1,6 @@
 #include "XllContextInvoke.h"
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/ExcelThread.h>
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/AppObjects.h>
@@ -44,21 +45,6 @@ namespace xloil
   }
   auto dummy = XLO_REGISTER_LATER(xloRunInXLLContext)
     .macro().hidden();
-
-  InXllContext::InXllContext()
-  {
-    ++_count;
-  }
-  InXllContext::~InXllContext()
-  {
-    --_count;
-  }
-  bool InXllContext::check()
-  {
-    return _count > 0;
-  }
-
-  int InXllContext::_count = 0;
 
   bool runInXllContext(const std::function<bool()>& f)
   {

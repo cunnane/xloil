@@ -257,6 +257,24 @@ namespace xloil
     return Environment::excelProcess().mainThreadId == GetCurrentThreadId();
   }
 
+  namespace
+  {
+    static thread_local int theXllContextCount = 0;
+  }
+
+  InXllContext::InXllContext()
+  {
+    ++theXllContextCount;
+  }
+  InXllContext::~InXllContext()
+  {
+    --theXllContextCount;
+  }
+  bool InXllContext::check()
+  {
+    return theXllContextCount > 0;
+  }
+
   namespace detail
   {
     void runExcelThreadImpl(

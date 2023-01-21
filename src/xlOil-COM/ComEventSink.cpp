@@ -2,7 +2,6 @@
 #include <xlOil/AppObjects.h>
 #include "ClassFactory.h"
 #include "Connect.h"
-#include "XllContextInvoke.h"
 #include <xlOil/Events.h>
 #include <xlOil/ExcelThread.h>
 #include <set>

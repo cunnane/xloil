@@ -12,6 +12,20 @@ namespace xloil
   XLOIL_EXPORT bool isMainThread();
 
   /// <summary>
+  /// Having this class in scope declares that you are in an XLL function 
+  /// called by Excel.  This allows XLL API requests to runExcelThread 
+  /// made on the main thread to pass straight through without expensive
+  /// context switching.
+  /// </summary>
+  class InXllContext
+  {
+  public:
+    XLOIL_EXPORT InXllContext();
+    XLOIL_EXPORT ~InXllContext();
+    static bool check();
+  };
+  
+  /// <summary>
   /// Determines how <see cref="excelRunOnMainThread"/> will dispatch the provided
   /// function. 
   /// </summary>
