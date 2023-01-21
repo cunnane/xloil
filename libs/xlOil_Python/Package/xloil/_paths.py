@@ -34,3 +34,48 @@ def add_dll_path(path):
     except (AttributeError, FileNotFoundError):
         # Either Py < 3.8 or path does not exist (but we have to return a context mgr)
         return _SetPathContext(path)
+
+def _get_environment_strings():
+    """
+        Does the same as:
+            import win32profile
+            win32profile.GetEnvironmentStrings()
+        But avoids the depedency on pywin32
+    """
+   
+    import ctypes
+    import locale
+
+    kernel_func = ctypes.windll.kernel32.GetEnvironmentStringsA
+    char_ptr = ctypes.POINTER(ctypes.c_char)
+    kernel_func.restype = char_ptr
+
+    # P will point to an block of char formatted as:
+    #     name1=val1/0
+    #     ...
+    #     nameN=valN/0/0
+    # (line-breaks added for clarity, they aren't present in the string)
+    p = kernel_func()
+    try:
+    
+        result = {}
+        start = end = 0
+        null = b'\x00' # Null-terminator for C-strings
+
+        while True:
+            while p[end] != null:
+                end += 1
+            if end == start:
+                break
+                
+            keyval = p[start:end].decode(locale.getpreferredencoding()).split('=')
+            # GetEnvironmentStrings returns some strange entries starting with '='
+            if any(keyval[0]):
+                result[keyval[0]] = keyval[1]
+                
+            end += 1    # Step over null terminator
+            start = end # Move string start pointer
+    finally:
+        ctypes.windll.kernel32.FreeEnvironmentStringsA(p)
+    
+    return result
