@@ -1,4 +1,7 @@
 #pragma once
+// Include corecrt fixes this issue in pybind11 
+// https://github.com/microsoft/onnxruntime/issues/9735
+#include <corecrt.h>
 #include "CPython.h"
 #include <xloil/StringUtils.h>
 #include <xloil/ExcelThread.h>

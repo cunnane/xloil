@@ -81,7 +81,7 @@ namespace xloil
 
     // This class does not need a disp-interface
     class ComAddinImpl :
-        public NoIDispatchImpl<ComObject<AddInDesignerObjects::IDTExtensibility2>>
+        public NoIDispatchImpl<ComObject<AddInDesignerObjects::_IDTExtensibility2>>
     {
     public:
       ComAddinImpl()
@@ -93,9 +93,9 @@ namespace xloil
       {
         *ppv = NULL;
         if (riid == IID_IUnknown 
-          || riid == __uuidof(AddInDesignerObjects::IDTExtensibility2))
+          || riid == __uuidof(AddInDesignerObjects::_IDTExtensibility2))
         {
-          auto p = (AddInDesignerObjects::IDTExtensibility2*)this;
+          auto p = (AddInDesignerObjects::_IDTExtensibility2*)this;
           *ppv = p;
           p->AddRef();
           return S_OK;

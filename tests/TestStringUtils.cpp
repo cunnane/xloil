@@ -28,7 +28,6 @@ namespace Tests
 
     TEST_METHOD(TestIntStringParse)
     {
-      const int N = 63;
       for (size_t i = 1; i < 32; ++i)
       {
         size_t value = 1ull << i;

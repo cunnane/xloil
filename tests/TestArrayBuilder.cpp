@@ -100,12 +100,12 @@ namespace Tests
       auto arrayData = builder.toExcelObj();
       ExcelArray array(arrayData);
 
-      for (auto iCol = 0; iCol < array.nCols(); ++iCol)
+      for (auto iCol = 0u; iCol < array.nCols(); ++iCol)
       {
-        auto iRow = 0;
+        auto iRow = 0u;
         for (auto p = array.col_begin(iCol); p != array.col_end(iCol); ++p, ++iRow)
         {
-          Assert::AreEqual(iCol * iRow, p->get<int>());
+          Assert::AreEqual<int>(iCol * iRow, p->get<int>());
         }
       }
     }

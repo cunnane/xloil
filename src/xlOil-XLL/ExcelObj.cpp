@@ -459,7 +459,6 @@ namespace
           {
           case xltypeStr:
           {
-            const auto len = pSrc->val.str[0];
             arr(i, j) = pSrc->cast<PStringRef>();
             break;
           }

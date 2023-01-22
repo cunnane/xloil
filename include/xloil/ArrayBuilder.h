@@ -196,6 +196,11 @@ namespace xloil
     {
     public:
       using iterator = ArrayBuilderIterator;
+      using reference = ArrayBuilderElement&;
+      using pointer = ArrayBuilderElement*;
+      using difference_type = size_t;
+      using value_type = ArrayBuilderElement;
+      using iterator_category = std::bidirectional_iterator_tag;
 
       ArrayBuilderIterator(ArrayBuilderElement&& element)
         : _current(element)
@@ -228,8 +233,8 @@ namespace xloil
       bool operator!=(iterator other) const { return !(*this == other); }
 
       const auto& operator*() const { return _current; }
-      auto& operator*() { return _current; }
-      auto* operator->() { return &_current; }
+      reference operator*() { return _current; }
+      pointer operator->() { return &_current; }
 
     private:
       ArrayBuilderElement _current;
