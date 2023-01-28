@@ -39,19 +39,30 @@ namespace xloil
 
     struct PyFuncArg
     {
+      PyFuncArg(
+        std::wstring&& name, 
+        std::wstring&& help, 
+        const std::shared_ptr<IPyFromExcel>& converter,
+        std::string&& flags);
+
       std::shared_ptr<IPyFromExcel> converter;
       std::wstring name;
       std::wstring help;
       pybind11::object default;
-      std::string type;
+      std::string flags;
 
       bool isKeywords() const {
-        return type.find("keywords") != std::string::npos;
+        return flags.find("keywords") != std::string::npos;
       }
 
       bool isVargs() const {
-        return type.find("vargs") != std::string::npos;
+        return flags.find("vargs") != std::string::npos;
       }
+
+      bool isArray() const {
+        return flags.find("array") != std::string::npos;
+      }
+      std::string str() const;
     };
 
     class PyFuncInfo
@@ -126,8 +137,7 @@ namespace xloil
           {
             auto& converter = *_args[i].converter;
             const auto* defaultValue = _args[i].default.ptr();
-            const auto maxArgs = XL_MAX_VBA_FUNCTION_ARGS;
-              - _args.size();
+            const auto maxArgs = XL_MAX_VBA_FUNCTION_ARGS - _args.size();
             for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
               pyArgs.push_back(converter(xlArgs(i), defaultValue));
           }

@@ -37,26 +37,22 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
     # Determine the internal C++ arg converter to run on the Excel values
     # before they are passed to python.
 
-    this_arg = _FuncArg()
-    this_arg.name = arg.name
-    this_arg.help = arg.help
+    flags = ""
+    arg_type = arg.typeof
+    converter = None
+    allow_range = False
 
     if arg.kind == Arg.KEYWORD_ARGS:
-        this_arg.special_type = "keywords"
-        return this_arg
-
-    arg_type = arg.typeof
-    converter = 0
-    allow_range = False
+        flags = "keywords"
+        return _FuncArg(arg.name, arg.help, None, "keywords")
 
     # FastArray is handled separately as converters/defaults are not used 
     if arg_type is FastArray:
-        this_arg.special_type = "array"
+        flags = "array"
         if arg.has_default:
             log.warn(f"Defaults not supported for FastArray parameter {arg.name}")
-        return this_arg
+        return _FuncArg(arg.name, arg.help, None, "array")
 
-    
     if arg_type is ExcelValue:
         # ExcelValue is just the explicit generic type
         converter = _Read_object()
@@ -96,18 +92,18 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
                 converter = _Read_Cache()
 
     if allow_range:
-        this_arg.special_type = "range"
-    
-    if arg.has_default:
-        this_arg.default = arg.default
-
-    assert converter is not None
-    this_arg.converter = converter
-
+        flags = "range"
+ 
     if arg.kind == Arg.VARIABLE_ARGS:
-        this_arg.special_type += ",vargs"
+        flags += ",vargs"
 
-    return this_arg
+    result = _FuncArg(arg.name, arg.help, converter, flags)
+    if arg.has_default:
+        result.default = arg.default
+
+    log.debug(f"Interpreted arg {arg} => {result}")
+
+    return result
 
 
 def find_return_converter(ret_type: type):

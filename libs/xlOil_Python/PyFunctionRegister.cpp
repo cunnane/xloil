@@ -27,6 +27,7 @@ using std::map;
 using std::wstring;
 using std::wstring_view;
 using std::string;
+using std::move;
 using std::make_shared;
 using std::make_pair;
 using std::unique_ptr;
@@ -321,20 +322,18 @@ namespace xloil
       {
         int flags = FuncArg::Obj;
 
-        if (arg.type.find("array") != string::npos)
+        if (arg.isArray())
           flags = FuncArg::Array;
-        else if (arg.type.find("range") != string::npos)
+        else if (arg.flags.find("range") != string::npos)
           flags |= FuncArg::Range;
 
         if (arg.default)
           flags |= FuncArg::Optional;
 
-        if ((flags & FuncArg::Array) != 0)
-          arg.converter.reset(createFPArrayConverter());
-
+        auto help = arg.help;
         // If no help string has been provided, give a type hint based on 
         // the arg converter
-        if (arg.help.empty() && arg.converter)
+        if (help.empty() && arg.converter)
         {
           wstring argType = utf8ToUtf16(arg.converter->name());
           if (arg.default)
@@ -347,12 +346,9 @@ namespace xloil
             arg.help = formatStr(L"<%s>", argType.c_str());
         }
 
-        if (!arg.converter && !arg.isKeywords())
-          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, arg.name);
-
         registerArgs.emplace_back(
           arg.name,
-          arg.help,
+          std::move(help),
           flags);
       }
 
@@ -511,6 +507,30 @@ namespace xloil
       return fileSrc;
     }
 
+    PyFuncArg::PyFuncArg(
+      std::wstring&& name, 
+      std::wstring&& help, 
+      const std::shared_ptr<IPyFromExcel>& converter,
+      std::string&& flags)
+      : name(move(name))
+      , help(move(help))
+      , converter(converter)
+      , flags(move(flags))
+    {
+      if (isArray())
+        this->converter.reset(createFPArrayConverter());
+
+      else if (!converter && !isKeywords())
+        XLO_THROW(L"No converter for arg '{}'", this->name);
+    
+      // TODO: create FuncArg in the FuncInfo at this stage?
+    }
+
+    std::string PyFuncArg::str() const
+    {
+      return formatStr("%s:%s (%s)", utf16ToUtf8(name).c_str(), converter->name(), flags.c_str());
+    }
+
     namespace
     {
       auto getModulePath(const py::object& module)
@@ -591,13 +611,14 @@ namespace xloil
 
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<PyFuncArg>(mod, "_FuncArg")
-          .def(py::init<>())
-          .def_readwrite("name", &PyFuncArg::name)
-          .def_readwrite("help", &PyFuncArg::help)
-          .def_readwrite("converter", &PyFuncArg::converter)
-          .def_readwrite("default", &PyFuncArg::default)
-          .def_readwrite("special_type", &PyFuncArg::type);
+          py::class_<PyFuncArg>(mod, "_FuncArg")
+            .def(py::init<wstring&&, wstring&&, const std::shared_ptr<IPyFromExcel>&, string&&>())
+            .def_readonly("name", &PyFuncArg::name)
+            .def_readonly("help", &PyFuncArg::help)
+            .def_readwrite("converter", &PyFuncArg::converter)
+            .def_readwrite("default", &PyFuncArg::default)
+            .def_readonly("flags", &PyFuncArg::flags)
+            .def("__str__", &PyFuncArg::str);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
           .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool>(),
