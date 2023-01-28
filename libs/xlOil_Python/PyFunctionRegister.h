@@ -126,7 +126,7 @@ namespace xloil
           {
             auto& converter = *_args[i].converter;
             const auto* defaultValue = _args[i].default.ptr();
-            const auto maxArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) 
+            const auto maxArgs = XL_MAX_VBA_FUNCTION_ARGS;
               - _args.size();
             for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
               pyArgs.push_back(converter(xlArgs(i), defaultValue));

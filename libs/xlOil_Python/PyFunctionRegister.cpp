@@ -360,12 +360,12 @@ namespace xloil
       {
         // Note that having 255 args means the concatenated argument names will certainly
         // exceed 255 chars, which will generate a notification in the log file
-        auto numVariableArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) - numArgs;
+        auto numVariableArgs = XL_MAX_VBA_FUNCTION_ARGS - numArgs;
         auto varArgType = registerArgs.back().type | FuncArg::Optional;
         for (size_t i = 1; i < numVariableArgs; ++i)
         {
           registerArgs.emplace_back(
-            isLocalFunc ? formatStr(L"a%d", i) : L"",
+            isLocalFunc ? formatStr(L"a%d", i) : L".",
             formatStr(L"[%s-%d]", _args.back().name.c_str(), i),
             varArgType);
         }
@@ -447,7 +447,7 @@ namespace xloil
 
       // Prime the RTD pump now as a background task to avoid it blocking 
       // in calculation later.
-      if (usesRtdAsync)
+      if (usesRtdAsync) // TODO: don't run it now?
         runExcelThread([]() { rtdAsync(shared_ptr<IRtdAsyncTask>()); });
 
       registerFuncs(nonLocal, append);
