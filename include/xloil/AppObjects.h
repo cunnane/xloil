@@ -6,7 +6,7 @@
 #include <string>
 #include <memory>
 #include <vector>
-
+#include <set>
 
 // Forward Declarations from Typelib
 struct IDispatch;
@@ -165,6 +165,11 @@ namespace xloil
     ExcelObj run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
     ExcelWorkbook open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
+
+    /// <summary>
+    /// The set of full path names of all open workbooks
+    /// </summary>
+    const std::set<std::wstring>& workbookPaths();
 
     /// <summary>
     /// Calls Application.Quit to close the Excel instance and frees the COM resources.
@@ -517,6 +522,7 @@ namespace xloil
 
     Application app() const;
   };
+
 
   // Some function definitions which need to live down here due to
   // the order of declarations
