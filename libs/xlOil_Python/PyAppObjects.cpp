@@ -263,7 +263,6 @@ namespace xloil
             else
               return workbook_range(wb, address);
           }
-            
         }
       }
 
@@ -458,6 +457,15 @@ namespace xloil
       auto getComAttr(T& p, const char* attrName)
       {
         return py::getattr(toCom(p, ""), attrName);
+      }
+
+      template<class T>
+      void setComAttr(py::object& self, const py::object& attrName, const py::object& value)
+      {
+        if (PyBaseObject_Type.tp_setattro(self.ptr(), attrName.ptr(), value.ptr()) == 0)
+          return;
+        PyErr_Clear();
+        py::setattr(toCom(py::cast<T&>(self), ""), attrName, value);
       }
 
       Application application_Construct(
@@ -779,6 +787,8 @@ namespace xloil
           py::arg("lib") = "")
         .def("__getattr__",
           getComAttr<Range>)
+        .def("__setattr__",
+          setComAttr<Range>)
         .def_property_readonly("parent", 
           [](const Range& r) { return ExcelRange(r).parent(); },
           call_release_gil(),
@@ -887,7 +897,9 @@ namespace xloil
           toComDocString, 
           py::arg("lib") = "")
         .def("__getattr__",
-            getComAttr<ExcelWorksheet>);
+          getComAttr<ExcelWorksheet>)
+        .def("__setattr__",
+          setComAttr<ExcelWorksheet>);
         
       declare_Workbook
         .def("__str__", 
@@ -943,6 +955,8 @@ namespace xloil
           py::arg("lib") = "")
         .def("__getattr__",
           getComAttr<ExcelWorkbook>)
+        .def("__setattr__",
+          setComAttr<ExcelWorkbook>)
         .def("add", 
           addWorksheetToWorkbook,
           workbookAddDocString,
@@ -995,7 +1009,9 @@ namespace xloil
           toComDocString, 
           py::arg("lib") = "")
         .def("__getattr__",
-            getComAttr<ExcelWindow>);
+          getComAttr<ExcelWindow>)
+        .def("__setattr__",
+          setComAttr<ExcelWindow>);
 
       declare_Application
         .def(py::init(std::function(application_Construct)),
@@ -1034,6 +1050,8 @@ namespace xloil
           py::arg("lib") = "")
         .def("__getattr__", 
           getComAttr<Application>)
+        .def("__setattr__",
+          setComAttr<Application>)
         .def_property("visible",
           &Application::getVisible,
           [](Application& app, bool x) { app.setVisible(x); },
