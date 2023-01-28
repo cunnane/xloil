@@ -6,7 +6,7 @@
 #include <memory>
 #include <map>
 
-namespace toml { class table; }
+namespace toml { inline namespace v3 { class table; } }
 namespace xloil { 
   class RegisteredWorksheetFunc; 
   class LocalWorksheetFunc;

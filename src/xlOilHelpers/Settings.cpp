@@ -27,9 +27,9 @@ namespace xloil
   {
     namespace
     {
-      auto findStr(const toml::view_node& root, const char* tag, const char* default)
+      auto findStr(const toml::view_node& root, const char* tag, const string& default)
       {
-        return root[tag].value_or<string>(default);
+        return root[tag].value_or(default);
       }
       auto findVecStr(const toml::view_node& root, const char* tag)
       {
@@ -69,8 +69,8 @@ namespace xloil
       // (size_t) cast needed for 32-bit as TOML lib is hard-coded to 
       // return int64 for all integer types
       return std::make_pair(
-        (size_t)root["LogMaxSize"].value_or<unsigned>(1024),
-        (size_t)root["LogNumberOfFiles"].value_or<unsigned>(2));
+        (size_t)root["LogMaxSize"].value_or(1024u),
+        (size_t)root["LogNumberOfFiles"].value_or(2u));
     }
     std::vector<std::wstring> dateFormats(const toml::view_node& root)
     {
@@ -126,11 +126,11 @@ namespace xloil
       if (table)
         for (auto i = table->cbegin(); i != table->cend(); ++i)
         {
-          if (_stricmp((*i).first.c_str(), name) == 0)
-            return &(*i).second;
+          if (_stricmp((*i).first.data(), name) == 0)
+            return toml::view_node((*i).second);
         }
    
-      return toml::node_view<const toml::node>();
+      return toml::view_node();
     }
   }
   std::shared_ptr<const toml::table> findSettingsFile(const wchar_t* dllPath)

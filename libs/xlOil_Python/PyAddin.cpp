@@ -238,7 +238,7 @@ namespace xloil
               The asyncio event loop used for background tasks by this addin
             )")
           .def_property_readonly("settings_file",
-            [](PyAddin& addin) { return *addin.context.settings()->source().path; },
+            [](PyAddin& addin) { return string(* addin.context.settings()->source().path); },
             R"(
               The full pathname of the settings ini file used by this addin
             )")
