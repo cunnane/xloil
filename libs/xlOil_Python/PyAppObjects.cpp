@@ -1044,6 +1044,11 @@ namespace xloil
           [](Application& app) { return PyWindows(app); },
           call_release_gil(),
           "A collection of all Windows open in this Application")
+        .def_property_readonly("workbook_paths",
+          [](Application& app) { app.workbookPaths(); },
+          call_release_gil(),
+          "A set of the full path names of all workbooks open in this Application. "
+          "Does not use COM interface.")
         .def("to_com",
           toCom<Application>,
           toComDocString,

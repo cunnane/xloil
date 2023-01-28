@@ -10,6 +10,7 @@
 namespace fs = std::filesystem;
 using std::set;
 using std::wstring;
+using std::pair;
 
 namespace xloil
 {
@@ -70,24 +71,28 @@ namespace xloil
 
       static void check()
       {
-        set<wstring> openWorkbooks;
+        decltype(_workbooks) openWorkbooks;
         auto& app = excelApp().com();
         auto numWorkbooks = app.Workbooks->Count;
         for (auto i = 1; i <= numWorkbooks; ++i)
-          openWorkbooks.emplace(app.Workbooks->Item[i]->Name);
+          openWorkbooks.emplace(app.Workbooks->Item[i]->FullName);
 
         std::vector<wstring> closedWorkbooks;
         std::set_difference(_workbooks.begin(), _workbooks.end(),
           openWorkbooks.begin(), openWorkbooks.end(), std::back_inserter(closedWorkbooks));
 
         for (auto& wb : closedWorkbooks)
-          Event::WorkbookAfterClose().fire(wb.c_str());
+        {
+          auto lastSlash = wb.find_last_of(L'\\');
+          Event::WorkbookAfterClose().fire(wb.c_str() + (lastSlash == wstring::npos ? 0 : lastSlash + 1));
+        }
 
         _workbooks = openWorkbooks;
       }
 
-    private:
       static set<wstring> _workbooks;
+
+    private:
       static fs::path _wbPathBeforeSave;
     };
 
@@ -356,6 +361,10 @@ namespace xloil
         }); 
       p->AddRef();
       return p;
+    }
+    const std::set<std::wstring>& workbookPaths()
+    {
+      return WorkbookMonitor::_workbooks;
     }
   }
 }

@@ -1,6 +1,7 @@
 #include <xloil/AppObjects.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
+#include <xlOil-COM/ComEventSink.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/Range.h>
 #include <xloil/Log.h>
@@ -631,5 +632,10 @@ namespace xloil
   size_t Windows::count() const
   {
     return com().GetCount();
+  }
+
+  const std::set<std::wstring>& Application::workbookPaths()
+  {
+    return COM::workbookPaths();
   }
 }
