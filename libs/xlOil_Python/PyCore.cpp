@@ -179,9 +179,11 @@ namespace xloil
             [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
             {
               XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
-            });
+            })
+          .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
 
-        py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
+        py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel")
+          .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
 
         mod.def("in_wizard", &inFunctionWizard,
           R"(
