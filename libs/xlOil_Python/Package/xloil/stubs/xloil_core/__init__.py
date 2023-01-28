@@ -144,6 +144,7 @@ class Application():
           Tries to gets a handle to the Excel.Application which has the specified workbook
           open.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def calculate(self, full: bool = False, rebuild: bool = False) -> None: 
         """
         Calculates all open workbooks
@@ -221,6 +222,13 @@ class Application():
         A collection of all Windows open in this Application
 
         :type: ExcelWindows
+        """
+    @property
+    def workbook_paths(self) -> None:
+        """
+        A set of the full path names of all workbooks open in this Application
+
+        :type: None
         """
     @property
     def workbooks(self) -> Workbooks:
@@ -566,6 +574,7 @@ class ExcelWindow():
     See `Excel.Window <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowWindow>`_ 
     """
     def __getattr__(self, arg0: str) -> object: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def to_com(self, lib: str = '') -> object: 
         """
@@ -634,8 +643,10 @@ class ExcelWindowsIter():
     pass
 class IPyFromExcel():
     def __call__(self, arg0: object) -> None: ...
+    def __str__(self) -> str: ...
     pass
 class IPyToExcel():
+    def __str__(self) -> str: ...
     pass
 class ObjectCache():
     """
@@ -735,6 +746,7 @@ class Range():
     def __iter__(self) -> RangeIter: ...
     def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def address(self, local: bool = False) -> str: 
         """
@@ -1167,6 +1179,7 @@ class Workbook():
         If the index is a worksheet name, returns the `Worksheet` object,
         otherwise treats the string as a workbook address and returns a `Range`.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def add(self, name: object = None, before: object = None, after: object = None) -> Worksheet: 
         """
@@ -1300,6 +1313,7 @@ class Worksheet():
         Uses normal python slicing conventions, i.e [left included, right excluded), negative
         numbers are offset from the end.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __setitem__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def activate(self) -> None: 
@@ -1616,7 +1630,8 @@ class _ExcelObjFutureIter():
 class _ExcelRange(Range):
     pass
 class _FuncArg():
-    def __init__(self) -> None: ...
+    def __init__(self, arg0: str, arg1: str, arg2: IPyFromExcel, arg3: str) -> None: ...
+    def __str__(self) -> str: ...
     @property
     def converter(self) -> IPyFromExcel:
         """
@@ -1634,29 +1649,20 @@ class _FuncArg():
     def default(self, arg0: object) -> None:
         pass
     @property
+    def flags(self) -> str:
+        """
+        :type: str
+        """
+    @property
     def help(self) -> str:
         """
         :type: str
         """
-    @help.setter
-    def help(self, arg0: str) -> None:
-        pass
     @property
     def name(self) -> str:
         """
         :type: str
         """
-    @name.setter
-    def name(self, arg0: str) -> None:
-        pass
-    @property
-    def special_type(self) -> str:
-        """
-        :type: str
-        """
-    @special_type.setter
-    def special_type(self, arg0: str) -> None:
-        pass
     pass
 class _FuncSpec():
     def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
@@ -1940,13 +1946,16 @@ class _Read_float(IPyFromExcel):
 class _Read_int(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
+class _Read_list(IPyFromExcel):
+    def __init__(self) -> None: ...
+    pass
 class _Read_object(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Read_str(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
-class _Read_tuple_from_Excel(IPyFromExcel):
+class _Read_tuple(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_Array_bool_1d(IPyToExcel):
@@ -2013,11 +2022,15 @@ class _Return_float(IPyToExcel):
 class _Return_int(IPyToExcel):
     def __init__(self) -> None: ...
     pass
+class _Return_tuple(IPyToExcel):
+    def __init__(self) -> None: ...
+    pass
+class _Return_tuple():
+    pass
 class _Return_str(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_tuple_to_Excel(IPyToExcel):
-    def __init__(self) -> None: ...
+class _Return_tuple():
     pass
 class _TomlTable():
     def __getitem__(self, arg0: str) -> object: ...

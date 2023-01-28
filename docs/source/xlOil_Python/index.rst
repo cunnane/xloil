@@ -13,11 +13,13 @@ xlOil Python
     ExcelApplication
     CustomGUI
     ExternalPackages
+    BuiltInUDFs
     Jupyter
     Rtd
     Debugging
     DistributingAddins
     Example
     ExampleGUI
+    ExampleRTD
     FAQ
     ModuleReference

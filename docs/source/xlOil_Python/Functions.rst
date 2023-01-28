@@ -114,3 +114,82 @@ speed gains may be possible.
         ...
         # Return the thread ID to prove the functions were executed on different threads
         return ctypes.windll.kernel32.GetCurrentThreadId(None)
+
+
+Dynamic Registration
+--------------------
+
+Functions for registration can be specified at runtime without the need to decorate them
+with :ref:`xloil.func`. 
+
+.. note::
+    Although Excel will let you, avoid doing this from (non-async) worksheet functions
+    since creating new functions *during* Excel's calculation cycle is likely to cause
+    instability.
+
+The :ref:`xloil.import_functions` call provides an analogue of ``from X import Y as Z`` 
+with Excel UDFS.  A simple usage is:
+
+::
+
+    xloil.import_functions("c:/lib/AnotherFile.py", names=["greet"], as_names=["PyGreet"])
+
+
+where AnotherFile.py contains:
+
+::
+
+    def greet(x:str):
+        return f"Hello {x}!"
+
+We specify the Excel name of the function explicitly, if we omitted this, the function 
+would be registered with its python name.  In Excel you can then use the formula 
+``=greet("World")``.
+
+Typing annotations are respected, as are doc-strings - the import behaves as if we had 
+decorated the function with :ref:`xloil.func`.
+
+In a worksheet, :ref:`xloil.import_functions` is exposed as ``xloImport`` with the same 
+arguments.
+
+Since the import machinery can register *any* callable, including class constructors,
+you cane be a little creative.  For example, the following cell formulae will
+create a *pandas* *DataFrame* from the range `C1:F5`, sum over rows and take the average
+of the result.
+
+::
+
+    [A1] := xloImport("pandas","DataFrame")
+
+    [A2] := DataFrame(C1:F5)
+
+    [A3] := xloAttr(xloAttrObj(A2,"sum",{"axis",1}), "mean")
+
+
+Notice we used ``xloAttrObj`` - the output of this is always a cache reference.  This stops 
+xlOil from trying to convert the result to an Excel value.  Since a *DataFrame* is iterable
+it would otherwise output *DataFrame.index* as an array.  Also note the convenient use of
+`array constants <https://support.microsoft.com/en-us/office/use-array-constants-in-array-formulas-477443ea-5e71-4242-877d-fcae47454eb8>`_
+to specify keyword arguments.
+
+More controlled registration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    class Closure:
+        def __call__(self, x):
+            return x * 3
+    
+    funcs.append(
+        xlo.func(fn=Closure(), name=f"dynamic1", register=False)
+        )
+
+    xlo.register_functions(funcs, sys.modules[__name__])
+
+  Loads functions from the specified source and registers them in Excel. The functions
+        do not have to be decorated, but are imported as if they were decorated with ``xloil.func``.
+        So if the functions have typing annotations, they are respected where possible.
+
+        This function is intended 
+
