@@ -1,6 +1,14 @@
-import xloil as xlo
+#import xloil as xlo
 
-@xlo.func
+
 def pyTestLoadMod():
     return "Great Success!"
 
+
+class pyFooBar():
+    def __init__(self, x):
+        self.x = x
+        
+    def xplus(self, y, z):
+        return (self.x + y) * z
+        

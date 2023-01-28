@@ -1,14 +1,14 @@
 import importlib
 import importlib.util
 import importlib.abc
-import builtins
 import sys
 import os
 import inspect
+from importlib.machinery import SourceFileLoader
 
-from .register import scan_module, _clear_pending_registrations
+from .register import scan_module
 from ._core import StatusBar, Addin, XLOIL_EMBEDDED
-from .logging import log, log_except
+from .logging import log
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
@@ -92,12 +92,53 @@ def get_event_loop():
     return source_addin().event_loop
 
 
+def _import_file(path, addin=None, workbook_name:str=None):
+
+    """
+    Imports the specifed py file as a module without adding its path to sys.modules.
+
+    Optionally also adds xlOil linked workbook information.
+    """
+
+    directory, filename = os.path.split(path)
+    filestem = os.path.splitext(filename)[0]
+            
+    module_name = filestem
+    
+    # avoid name collisions with any installed python modules when loading a
+    # workbook modules (e.g. if your workbook was called sys.xlsx)
+   
+    if len(directory) > 0:
+        if workbook_name is not None:
+            module_name = "xloil_wb_" + filestem # Uniquify accross wb?
+        _module_finder.add_path(module_name, path)
+
+    addin = addin or source_addin()
+
+    _module_addin_map[path] = addin.pathname
+
+    if workbook_name is not None:
+        _linked_workbooks[path] = workbook_name
+
+    # Force a reload if an attempt is made to load a module again.
+    # This can happen if a workbook is closed and reopened - it is
+    # difficult to get python to delete the module. Without a reload
+    # the 'pending funcs' won't be populated for the registration 
+    # machinery.
+    try:
+        module = importlib.reload(sys.modules[module_name])
+    except KeyError:
+        module = importlib.import_module(module_name)
+
+    return module
+
+
 def _import_and_scan(what, addin):
     """
     Loads or reloads the specifed module, which can be a string name
     or module object, then calls scan_module.
 
-    Internal use only.
+    Internal use only: called from xlOil Core
     """
     
     if isinstance(what, str):
@@ -107,6 +148,7 @@ def _import_and_scan(what, addin):
     elif inspect.ismodule(what):
         module = importlib.reload(what)
     else:
+        # Assume it's an iterable
         # We don't care about the return value currently
         result = []
         with StatusBar(2000) as status:
@@ -119,56 +161,111 @@ def _import_and_scan(what, addin):
     scan_module(module, addin)
     return module
 
+
 def _import_file_and_scan(path, addin=None, workbook_name:str=None):
-
     """
-    Imports the specifed py file as a module without adding its path to sys.modules.
-
-    Optionally also adds xlOil linked workbook information.
+        Internal use only: called from xlOil Core
     """
 
     with StatusBar(3000) as status:
         try:
             status.msg(f"Loading {path}...")
-            directory, filename = os.path.split(path)
-            filename = os.path.splitext(filename)[0]
-            
-            # avoid name collisions when loading workbook modules
-            module_name = filename
-            if workbook_name is not None:
-                module_name = "xloil_wb_" + filename
-                _linked_workbooks[path] = workbook_name
-
-            if len(directory) > 0 or workbook_name is not None:
-                _module_finder.add_path(module_name, path)
-
-            addin = addin or source_addin()
-
-            _module_addin_map[path] = addin.pathname
-
-            # Force a reload if an attempt is made to load a module again.
-            # This can happen if a workbook is closed and reopened - it is
-            # difficult to get python to delete the module. Without a reload
-            # the 'pending funcs' won't be populated for the registration 
-            # machinery.
-            try:
-                module = importlib.reload(sys.modules[module_name])
-            except KeyError:
-                module = importlib.import_module(module_name)
+            module = _import_file(path, addin, workbook_name)
 
             # Calling import_module will bypass our import hook, so scan_module explicitly
             n_funcs = scan_module(module, addin)
-
             status.msg(f"Registered {n_funcs} funcs for {path}")
-
-            return module
-
         except Exception as e:
 
             status.msg(f"Error loading {path}, see log")
-            raise ImportError(f"{str(e)} whilst loading {path}", path=path, name=module_name) from e
+            raise ImportError(f"{str(e)} whilst loading {path}", path=path) from e
 
-from importlib.machinery import SourceFileLoader
+
+def import_functions(source:str, names=None, as_names=None, addin:Addin=None, workbook_name:str=None) -> None:
+    """
+        Loads functions from the specified source and registers them in Excel. The functions
+        do not have to be decorated, but are imported as if they were decorated with ``xloil.func``.
+        So if the functions have typing annotations, they are respected where possible.
+
+        This function provides an analogue of ``from X import Y as Z`` but with Excel UDFS.
+
+        Note: registering a large number of Excel UDFs will impair the function name-lookup performance 
+        (which is by linear search through the name table).
+
+        Parameters
+        ----------
+
+        source: str
+            A module name or full path name to the target py file
+
+        names: [Iterable[str] | dict | str]
+            If not provided, the specified module is imported and any ``xloil.func`` decorated 
+            functions are registered, i.e. call ``xloil.scan_module``. 
+            
+            If a str or an iterable of str, xlOil registers only the specified names regardless of whether 
+            they are decorated. 
+            
+            If it is a ``dict``, it is interpreted as a map of source names to registered function
+            names, i.e.``names = keys(), as_names=values()``. 
+
+            If it is the string '*', xlOil will try to register all callables in the specified module,
+            including async functions and class constructors.
+
+        as_names: [Iterable[str]]
+            If provided, specifies the Excel function names to register in the same order as `names`.
+            Should have the same length as `names`.  If this is omitted, functions are registered under
+            their python names.
+
+        addin:
+            Optional xlOil.Addin which the registered functions are associated with. If ommitted the
+            currently executing addin is used, or the Core addin if this cannot be determined.
+
+        workbook_name: [str]
+            Optional workbook associated with the registered functions.
+
+    """
+    addin = addin or source_addin()
+    
+    module = source if inspect.ismodule(source) else \
+        _import_file(source, addin, workbook_name)
+
+    if names is None: 
+        scan_module(module, addin)
+        return
+
+    if isinstance(names, str):
+        if names == "*":
+            from inspect import getmembers, isfunction, isclass, iscoroutinefunction, isasyncgenfunction
+            source_names = [x[0] for x in getmembers(module, lambda x: 
+                isfunction(x) or isclass(x) or iscoroutinefunction(x) or isasyncgenfunction(x))]
+            target_names = source_names
+        else:
+            source_names = [names]
+            target_names = source_names if as_names is None \
+                else ([as_names] if isinstance(as_names, str) else as_names)
+    else:
+        try:
+            source_names = names.keys()
+            target_names = names.values()
+        except AttributeError:
+            source_names = names
+            target_names = as_names or source_names
+
+    from xloil.register import _register_functions, func
+
+    def get_spec(obj, name):
+        spec = getattr(obj, '_xloil_spec', func(obj, register=False)._xloil_spec)
+        spec.name = name
+        return spec
+
+    to_register = [
+        get_spec(getattr(module, source_name), target_name)
+        for source_name, target_name in zip(source_names, target_names)
+    ]
+   
+    _register_functions(to_register, module, addin, append=True)
+
+
 
 class _LoadAndScanHook(SourceFileLoader):
     def exec_module(self, module):

@@ -14,7 +14,8 @@ from .register import (
 from .importer import (
     linked_workbook,
     source_addin,
-    get_event_loop
+    get_event_loop,
+    import_functions
     )
 
 from .com import (
