@@ -1,16 +1,16 @@
 import inspect
 import functools
-import os
-import sys
 from .type_converters import *
 from ._core import *
 from .logging import *
 from .func_inspect import Arg
 import contextvars
+import typing
 
 from xloil_core import (
     _Read_object,
     _Read_Cache,
+    _Return_Cache,
     _FuncSpec,
     _FuncArg,
     _register_functions
@@ -28,7 +28,6 @@ def _add_pending_funcs(module, objects):
     pending.update(objects)
     setattr(module, _LANDMARK_TAG, pending)
  
-
 def arg_to_funcarg(arg: Arg) -> _FuncArg:
 
     # Set the arg converters based on the typeof provided for 
@@ -57,17 +56,25 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
             log.warn(f"Defaults not supported for FastArray parameter {arg.name}")
         return this_arg
 
-    # If a typing annotation is None or not a type, ignore it and use the
-    # generic converter which gives a python type based on the Excel type
-    if not isinstance(arg_type, type):
-        # if arg_type is ExcelValue: ExcelValue is just the explicit generic 
-        # type available for linting, so do nothing. AllowRange adds range
-        # support. It's a typing.Union so not an instance of type.
-        if arg_type is AllowRange:
-            converter = _Read_object()
-            allow_range = True
-        else:
-            converter = _Read_object()
+    
+    if arg_type is ExcelValue:
+        # ExcelValue is just the explicit generic type
+        converter = _Read_object()
+    
+    elif arg_type is AllowRange:
+        converter = _Read_object()
+        allow_range = True
+
+    # Prior to Py 3.9, type annotions for builtins looked like typing.List[int]
+    # We resolve this to the base type. 
+    # TODO: user-defined converters for these types won't get called
+    elif isinstance(arg_type, (typing._SpecialGenericAlias, typing._GenericAlias)):
+        type_name = type_._name.lower()
+        converter = get_converter(type_name)
+
+    elif not isinstance(arg_type, type):
+        converter = _Read_object()
+
     else:
         converter = get_converter(arg_type.__name__)
 
@@ -411,6 +418,12 @@ def func(fn=None,
 
             if return_type is not None and return_type is not FastArray:
                 spec.return_converter = find_return_converter(return_type)
+
+            # If we are decorating a class, we assume we want to call the class
+            # ctor and return the new object as a cache reference, rather than 
+            # trying to convert to Excel values
+            elif inspect.isclass(fn):
+                spec.return_converter = _Return_Cache()
 
             log(f"Declared excel func: {str(spec)}", level="debug")
   
