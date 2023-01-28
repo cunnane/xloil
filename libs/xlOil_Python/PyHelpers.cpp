@@ -87,8 +87,15 @@ namespace xloil {
 
       Py_XDECREF(argTuple);
 #else
-      auto retVal = _PyObject_FastCallDict(
-        func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs);
+      
+#if PY_VERSION_HEX < 0x03090000
+#  define PyObject_VectorcallDict _PyObject_FastCallDict 
+#  define PyObject_Vectorcall _PyObject_Vectorcall 
+#endif
+
+      auto retVal = kwargs
+        ? PyObject_VectorcallDict(func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs)
+        : PyObject_Vectorcall(func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #endif
       return retVal;
     }

@@ -117,7 +117,8 @@ namespace xloil
 
           if (_hasKeywordArgs)
           {
-            kwargs = PySteal<>(readKeywordArgs(xlArgs(i)));
+            if (!xlArgs(i).isMissing())
+              kwargs = PySteal<>(readKeywordArgs(xlArgs(i)));
             ++i;
           }
 
