@@ -341,14 +341,6 @@ def pyTestRangeFormula(r: xlo.Range):
 @xlo.func(macro=True, local=False)
 def pyTestRangeFormula2(r: xlo.Range):
     return r.formula
-  
-#
-# Retrieve the address of calling cell (assuming we are called from a sheet)
-# Note we don't need macro permissions to do this.
-#  
-@xlo.func
-async def pyTestCaller():
-    return xlo.Caller().address()
     
 
 #

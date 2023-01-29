@@ -226,7 +226,7 @@ class Application():
     @property
     def workbook_paths(self) -> None:
         """
-        A set of the full path names of all workbooks open in this Application
+        A set of the full path names of all workbooks open in this Application. Does not use COM interface.
 
         :type: None
         """
