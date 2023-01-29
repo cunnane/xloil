@@ -75,6 +75,14 @@ namespace xloil
       return py::cast(shared_from_this());
     }
 
+    std::shared_ptr<FuncSource> PyAddin::findSource(const wchar_t* sourcePath) const
+    {
+      auto found = context.sources().find(sourcePath);
+      if (found != context.sources().end())
+        return found->second;
+      return std::shared_ptr<FuncSource>();
+    }
+
     PyAddin& findAddin(const wchar_t* xllPath)
     {
       const auto found = xllPath ? theAddins.find(xllPath) : theAddins.end();

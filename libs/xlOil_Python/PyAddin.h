@@ -19,8 +19,9 @@ namespace xloil
     /// separate context to keep track of the functions it registers. It also
     /// has separate thread and event loop on which all importing is done
     /// </summary>
-    struct PyAddin : std::enable_shared_from_this<PyAddin>
+    class PyAddin : public std::enable_shared_from_this<PyAddin>
     {
+    public:
       PyAddin(AddinContext&, bool, const wchar_t*);
 
       AddinContext&              context;
@@ -53,6 +54,8 @@ namespace xloil
       /// </summary>
       void importFile(const wchar_t* filePath, const wchar_t* linkedWorkbook);
 
+      std::shared_ptr<FuncSource> findSource(const wchar_t* sourcePath) const;
+
     private:
       std::wstring _workbookPattern;
 
@@ -83,14 +86,5 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     const std::shared_ptr<PyAddin>& theCoreAddin();
-
-    /// <summary>
-    /// Similar to the function in FileSource, but retrieve the PyAddin
-    /// instead of the AddinContext
-    /// </summary>
-    /// <param name="sourcePath"></param>
-    /// <returns></returns>
-    std::pair<std::shared_ptr<FuncSource>, PyAddin*>
-      findSource(const wchar_t* sourcePath);
   }
 }

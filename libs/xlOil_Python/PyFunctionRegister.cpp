@@ -31,6 +31,7 @@ using std::move;
 using std::make_shared;
 using std::make_pair;
 using std::unique_ptr;
+using std::weak_ptr;
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -379,14 +380,15 @@ namespace xloil
     /// <param name="workbookName"></param>
     RegisteredModule::RegisteredModule(
       const wstring& modulePath,
+      const std::weak_ptr<PyAddin>& addin,
       const wchar_t* workbookName)
       : LinkedSource(
         modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
         true,
         workbookName)
-    {
-      _linkedWorkbook = workbookName;
-    }
+      , _linkedWorkbook(workbookName)
+      , _addin(addin)
+    {}
 
     RegisteredModule::~RegisteredModule()
     {
@@ -453,10 +455,7 @@ namespace xloil
 
     void RegisteredModule::reload()
     {
-      auto [source, addin] = Python::findSource(name().c_str());
-      if (source.get() != this)
-        XLO_THROW(L"Error reloading '{0}': source ptr mismatch", name());
-
+      auto addin = _addin.lock();
       // Rescan the module, passing in the module handle if it exists
       py::gil_scoped_acquire get_gil;
       if (_module && !_module.is_none())
@@ -470,10 +469,9 @@ namespace xloil
       if (!_linkedWorkbook) // Should never be called without a linked wb
         return;
 
+      auto addin = _addin.lock();
       // This is all great but...background thread?
-      auto [source, addin] = Python::findSource(name().c_str());
-
-      AddinContext::deleteSource(shared_from_this());
+      addin->context.erase(shared_from_this());
 
       const auto newSourcePath = addin->getLocalModulePath(newPathName);
       const auto& currentSourcePath = name();
@@ -482,7 +480,7 @@ namespace xloil
       if (fs::copy_file(currentSourcePath, newSourcePath, ec))
       {
         const auto wbName = wcsrchr(newPathName, '\\') + 1;
-        auto newSource = make_shared<RegisteredModule>(newSourcePath, wbName);
+        auto newSource = make_shared<RegisteredModule>(newSourcePath, addin, wbName);
         addin->context.addSource(newSource);
         py::gil_scoped_acquire get_gil;
         addin->importFile(newSourcePath.c_str(), newPathName);
@@ -494,16 +492,16 @@ namespace xloil
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
-        AddinContext& context,
+        const weak_ptr<PyAddin>& addin,
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto [source, addin] = AddinContext::findSource(modulePath.c_str());
+      auto source = addin.lock()->findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
-      auto fileSrc = make_shared<RegisteredModule>(modulePath, workbookName);
-      context.addSource(fileSrc);
+      auto fileSrc = make_shared<RegisteredModule>(modulePath, addin, workbookName);
+      addin.lock()->context.addSource(fileSrc);
       return fileSrc;
     }
 
@@ -552,12 +550,12 @@ namespace xloil
       const auto modulePath = getModulePath(module);
 
       auto& context = addinContext.is_none()
-        ? theCoreAddin()->context
-        : py::cast<PyAddin&>(addinContext).context;
+        ? theCoreAddin()
+        : py::cast<shared_ptr<PyAddin>>(addinContext);
 
       py::gil_scoped_release releaseGil;
       auto registeredMod = FunctionRegistry::addModule(
-        context,
+        weak_ptr<PyAddin>(context),
         modulePath,
         nullptr);
       registeredMod->registerPyFuncs(module.release(), functions, append);

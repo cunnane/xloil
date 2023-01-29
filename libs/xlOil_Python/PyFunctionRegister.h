@@ -22,6 +22,7 @@ namespace xloil
     class RegisteredModule; 
     class IPyFromExcel; 
     class IPyToExcel;
+    class PyAddin;
 
     namespace FunctionRegistry
     {
@@ -32,7 +33,7 @@ namespace xloil
       /// </summary>
       std::shared_ptr<RegisteredModule>
         addModule(
-          AddinContext& context,
+          const std::weak_ptr<PyAddin>& context,
           const std::wstring& modulePath,
           const wchar_t* workbookName);
     };
@@ -186,6 +187,7 @@ namespace xloil
       /// <param name="workbookName"></param>
       RegisteredModule(
         const std::wstring& modulePath,
+        const std::weak_ptr<PyAddin>& addin,
         const wchar_t* workbookName);
 
       ~RegisteredModule();
@@ -201,6 +203,7 @@ namespace xloil
 
     private:
       bool _linkedWorkbook;
+      std::weak_ptr<PyAddin> _addin;
       pybind11::object _module;
     };
   }

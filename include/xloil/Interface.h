@@ -180,10 +180,12 @@ namespace xloil
       findSource(const wchar_t* sourcePath);
 
     /// <summary>
-    /// Removes the specified source from all add-in contexts
+    /// Removes the specified source
     /// </summary>
-    /// <param name="context"></param>
-    XLOIL_EXPORT static void deleteSource(const std::shared_ptr<FuncSource>& context);
+    void erase(const std::shared_ptr<FuncSource>& context)
+    {
+      _files.erase(context->name());
+    }
 
     /// <summary>
     /// Gets the root of the addin's ini file

@@ -154,17 +154,6 @@ namespace xloil
     return make_pair(shared_ptr<FuncSource>(), shared_ptr<AddinContext>());
   }
 
-  void
-    AddinContext::deleteSource(const std::shared_ptr<FuncSource>& context)
-  {
-    for (auto& [name, addinCtx] : currentAddinContexts())
-    {
-      auto found = addinCtx->sources().find(context->name());
-      if (found != addinCtx->sources().end())
-        addinCtx->_files.erase(found);
-    }
-  }
-
   FileSource::FileSource(
     const wchar_t* sourcePath, bool watchFile)
     : _sourcePath(sourcePath)
@@ -245,15 +234,26 @@ namespace xloil
       _workbookRenameHandler = Event::WorkbookRename().weakBind(
         static_pointer_cast<LinkedSource>(weak_from_this()),
         &LinkedSource::handleRename);
-
     }
     FileSource::init();
   }
-
+  namespace
+  {
+    // TODO: is this really necessary or is further refactoring needed?
+    void deleteSource(const std::shared_ptr<FuncSource>& context)
+    {
+      for (auto& [name, addinCtx] : currentAddinContexts())
+      {
+        auto found = addinCtx->sources().find(context->name());
+        if (found != addinCtx->sources().end())
+          addinCtx->erase(found->second);
+      }
+    }
+  }
   void LinkedSource::handleClose(const wchar_t* wbName)
   {
     if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
-      AddinContext::deleteSource(shared_from_this());
+      deleteSource(shared_from_this());
   }
 
   void LinkedSource::handleRename(const wchar_t* wbName, const wchar_t* prevName)
@@ -291,7 +291,7 @@ namespace xloil
           case Event::FileAction::Delete:
           {
             XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", self->name().c_str());
-            AddinContext::deleteSource(self);
+            deleteSource(self);
             break;
           }
         }

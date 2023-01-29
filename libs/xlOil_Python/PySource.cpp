@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 using std::vector;
 using std::string;
 using std::wstring;
+using std::weak_ptr;
 namespace py = pybind11;
 
 namespace xloil
@@ -56,15 +57,16 @@ namespace xloil
     {
       struct WorkbookOpenHandler
       {
-        PyAddin& _loadContext;
+        weak_ptr<PyAddin> _loadContext;
 
-        WorkbookOpenHandler(PyAddin& loadContext)
+        WorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext)
           : _loadContext(loadContext)
         {}
 
         void operator()(const wchar_t* wbPath, const wchar_t* wbName) const
         {
-          auto modulePath = _loadContext.getLocalModulePath(
+          auto addin = _loadContext.lock();
+          auto modulePath = addin->getLocalModulePath(
             fmt::format(L"{0}\\{1}", wbPath, wbName).c_str());
 
           std::error_code err;
@@ -74,11 +76,11 @@ namespace xloil
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
-          FunctionRegistry::addModule(_loadContext.context, modulePath, wbName);
+          FunctionRegistry::addModule(_loadContext, modulePath, wbName);
           auto wbPathName = (fs::path(wbPath) / wbName).wstring();
 
           py::gil_scoped_acquire getGil;
-          _loadContext.importFile(modulePath.c_str(), wbPathName.c_str());
+          addin->importFile(modulePath.c_str(), wbPathName.c_str());
         }
       };
 
@@ -89,7 +91,7 @@ namespace xloil
       }
     }
     std::shared_ptr<const void>
-      createWorkbookOpenHandler(PyAddin& loadContext, Application& app)
+      createWorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext, Application& app)
     {
       WorkbookOpenHandler handler(loadContext);
 
