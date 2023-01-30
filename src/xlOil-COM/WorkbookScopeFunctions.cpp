@@ -87,25 +87,23 @@ namespace xloil
         auto vbProj = workbook.com().VBProject;
 
         struct _VBComponent* vbFound = 0;
-        vbProj->VBComponents->raw_Item(_variant_t(oldAutoGenModuleName), &vbFound);
-        if (vbFound)
+        if (SUCCEEDED(vbProj->VBComponents->raw_Item(_variant_t(oldAutoGenModuleName), &vbFound)))
           vbProj->VBComponents->Remove(vbFound);
 
-        vbProj->VBComponents->raw_Item(_variant_t(vbaModuleName), &vbFound);
         _VBComponentPtr vbMod;
         auto startLine = 1;
-        if (!vbFound)
-        {
-          vbMod = vbProj->VBComponents->Add(vbext_ct_StdModule);
-          vbMod->PutName(vbaModuleName);
-        }
-        else
+        if (SUCCEEDED(vbProj->VBComponents->raw_Item(_variant_t(vbaModuleName), &vbFound)))
         {
           vbMod = vbProj->VBComponents->Item(vbaModuleName);
           if (!append)
             vbMod->CodeModule->DeleteLines(1, vbMod->CodeModule->CountOfLines);
           else
             startLine = vbMod->CodeModule->CountOfLines + 1;
+        }
+        else
+        {
+          vbMod = vbProj->VBComponents->Add(vbext_ct_StdModule);
+          vbMod->PutName(vbaModuleName);
         }
 
         Writer writer{ startLine, vbMod->CodeModule };
