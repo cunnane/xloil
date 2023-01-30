@@ -319,7 +319,7 @@ namespace xloil
     handRoll64(_holder, (void*)callback, contextData, numArgs, hasReturnVal);
 #else
     if (numArgs > 16)
-      XLO_THROW("In Win32 builds, there is a limit of 16 args for non-local UDFs. Raise a github issue if this is a problem!");
+      throw Exception("In Win32 builds, there is a limit of 16 args for non-local UDFs. Raise a github issue if this is a problem!");
     buildThunk(callback, contextData, numArgs, hasReturnVal, *_holder);
 #endif
   }

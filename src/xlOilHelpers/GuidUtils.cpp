@@ -235,11 +235,18 @@ namespace xloil
       break;
     case GuidToString::BASE62:
     {
+      auto written = 0u;
+      auto uintPtr = (const size_t*)&guid;
+      for (auto i = 0; i < sizeof(guid) / sizeof(*uintPtr); ++i)
+        written += unsignedToString<62>(uintPtr[i], result + written, _countof(result) - written);
+
 #ifdef _WIN64
-      auto written = unsignedToString<62>(((size_t*)&guid)[0], result, _countof(result));
-      written     += unsignedToString<62>(((size_t*)&guid)[1], result + written, _countof(result) - written);
+      static_assert(sizeof(guid) == 2 * sizeof(*uintPtr));
+#else
+      static_assert(sizeof(guid) == 4 * sizeof(*uintPtr));
 #endif
-      result[written] = 0;
+
+      result[written] = 0; // null terminator
       ret = written > 0;
       break;
     }
