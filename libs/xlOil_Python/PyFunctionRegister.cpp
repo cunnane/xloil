@@ -633,8 +633,9 @@ namespace xloil
             &PyFuncInfo::setReturnConverter)
           .def_property_readonly("args",
             [](const PyFuncInfo& self) { return self.args(); })
-          .def_property_readonly("name",
-            [](const PyFuncInfo& self) { return self.info()->name; })
+          .def_property("name", // TOOD: writing to name property doesn't make sense when registered
+            [](const PyFuncInfo& self) { return self.info()->name; },
+            [](const PyFuncInfo& self, wstring&& value) { self.info()->name = std::move(value); })
           .def_property_readonly("help",
             [](const PyFuncInfo& self) { return self.info()->help; })
           .def_property("func",
