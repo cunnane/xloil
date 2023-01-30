@@ -101,7 +101,7 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
     if arg.has_default:
         result.default = arg.default
 
-    log.debug(f"Interpreted arg {arg} => {result}")
+    log.debug(f"Interpreted arg '{arg}' => '{result}'")
 
     return result
 
