@@ -489,7 +489,7 @@ def event_writeTimeToA1():
         return
     
     wb = xlo.active_workbook()
-    rng = wb["RTD"]["A1"]
+    rng = wb["Test 1"]["A1"]
     
     time = str(dt.datetime.now())
 

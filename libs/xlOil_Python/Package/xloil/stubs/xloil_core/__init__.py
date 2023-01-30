@@ -1721,6 +1721,9 @@ class _FuncSpec():
         """
         :type: str
         """
+    @name.setter
+    def name(self, arg1: str) -> None:
+        pass
     @property
     def return_converter(self) -> IPyToExcel:
         """
