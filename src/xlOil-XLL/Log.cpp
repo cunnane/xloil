@@ -65,7 +65,7 @@ namespace xloil
     logger->sinks().push_back(logWindow);
   }
 
-  void loggerAddRotatingFileSink(
+  std::wstring loggerAddRotatingFileSink(
     const std::shared_ptr<spdlog::logger>& logger,
     const std::wstring_view& logFilePath, const char* logLevel,
     const size_t maxFileSizeKb, const size_t numFiles)
@@ -75,9 +75,9 @@ namespace xloil
     // Open for exclusive acces to check if another Excel instance is using the log file
     auto handle = CreateFile(
       filename.c_str(), 
-      GENERIC_READ, 
+      GENERIC_READ,
       0, // no sharing, exclusive
-      NULL, OPEN_EXISTING, 0, NULL);
+      NULL, OPEN_ALWAYS, 0, NULL);
 
     if ((handle != NULL) && (handle != INVALID_HANDLE_VALUE))
       CloseHandle(handle);
@@ -88,7 +88,10 @@ namespace xloil
       filename, maxFileSizeKb * 1024, numFiles);
     fileWrite->set_level(spdlog::level::from_str(logLevel));
     logger->sinks().push_back(fileWrite);
+
     if (fileWrite->level() < logger->level())
       logger->set_level(fileWrite->level());
+
+    return fileWrite->filename();
   }
 }

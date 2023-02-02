@@ -65,9 +65,11 @@ namespace xloil
   void loggerAddPopupWindowSink(const std::shared_ptr<spdlog::logger>& logger);
 
   /// <summary>
-  /// Add a rotating file sink to the logger
+  /// Add a rotating file sink to the logger, returning the name of the file
+  /// which was created.  This may be different to the requested file if that
+  /// file cannot be opened.
   /// </summary>
-  void loggerAddRotatingFileSink(
+  std::wstring loggerAddRotatingFileSink(
     const std::shared_ptr<spdlog::logger>& logger,
     const std::wstring_view& logFilePath, const char* logLevel,
     size_t maxFileSizeKb, size_t numFiles = 1);

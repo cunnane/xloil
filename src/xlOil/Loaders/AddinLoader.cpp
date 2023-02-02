@@ -32,51 +32,48 @@ namespace xloil
     /// or in the same directory as the XLL.  Adds any log sink specified
     /// and any date formats.
     /// </summary>
-    auto processAddinSettings(const wchar_t* xllPath)
+    auto& createContext(const wchar_t* xllPath)
     {
       auto settings = findSettingsFile(xllPath);
+      wstring logFile;
       if (!settings)
       {
         XLO_DEBUG(L"No settings file found for '{}'", xllPath);
-        return settings;
+      }
+      else
+      {
+        auto addinRoot = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION];
+
+        // Log file settings
+        logFile = Settings::logFilePath(*settings);
+        auto logLevel = Settings::logLevel(addinRoot);
+        auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
+
+        logFile = loggerAddRotatingFileSink(
+          spdlog::default_logger(),
+          logFile.c_str(), logLevel.c_str(),
+          logMaxSize, logNumFiles);
+
+        // Write the log message *after* we set up the log file!
+        XLO_INFO(L"Found core settings file '{}' for '{}'",
+          utf8ToUtf16(*settings->source().path), xllPath);
+
+        // If this is specified in multiple addins and/or the core, 
+        // the last value overrides: not easy to workaround
+        setLogWindowPopupLevel(
+          spdlog::level::from_str(
+            Settings::logPopupLevel(addinRoot).c_str()));
+
+        // Add any requested date formats
+        auto dateFormats = Settings::dateFormats(addinRoot);
+        for (auto& form : dateFormats)
+          theDateTimeFormats().push_back(form);
       }
 
-      auto addinRoot = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION];
-
-      // Log file settings
-      auto logFile = Settings::logFilePath(*settings);
-      auto logLevel = Settings::logLevel(addinRoot);
-      auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
-
-      loggerAddRotatingFileSink(
-        spdlog::default_logger(),
-        logFile.c_str(), logLevel.c_str(), 
-        logMaxSize, logNumFiles);
-
-      // Write the log message *after* we set up the log file!
-      XLO_INFO(L"Found core settings file '{}' for '{}'",
-        utf8ToUtf16(*settings->source().path), xllPath);
-
-      // If this is specified in multiple addins and/or the core, 
-      // the last value overrides: not easy to workaround
-      setLogWindowPopupLevel(
-        spdlog::level::from_str(
-          Settings::logPopupLevel(addinRoot).c_str()));
-
-      // Add any requested date formats
-      auto dateFormats = Settings::dateFormats(addinRoot);
-      for (auto& form : dateFormats)
-        theDateTimeFormats().push_back(form);
-
-      return settings;
-    }
-
-    auto& createContext(const wchar_t* pathName)
-    {
-      auto settings = processAddinSettings(pathName);
       auto [ctx, isNew] = theAddinContexts.insert_or_assign(
-        wstring(pathName), make_shared<AddinContext>(pathName, settings));
+        wstring(xllPath), make_shared<AddinContext>(xllPath, settings));
 
+      ctx->second->logFilePath = std::move(logFile);
       return *ctx->second;
     }
   }

@@ -217,6 +217,8 @@ namespace xloil
       source->init();
     }
 
+    std::wstring logFilePath;
+
   private:
     AddinContext(const AddinContext&) = delete;
     AddinContext& operator=(const AddinContext&) = delete;

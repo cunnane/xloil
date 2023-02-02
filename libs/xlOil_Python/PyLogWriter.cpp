@@ -132,7 +132,7 @@ namespace xloil
 
         auto logFilePath()
         {
-          return Settings::logFilePath(*theCoreAddin()->context.settings());
+          return theCoreAddin()->context.logFilePath;
         }
       };
 
