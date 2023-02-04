@@ -19,10 +19,9 @@ namespace Tests
 
       auto len = unsignedToString<Radix>(value, buffer, sizeof(buffer));
       auto parsed = (size_t)parseUnsigned<Radix>(buffer + 0, buffer + len);
-
       _ui64toa_s(value, buf_itoa, _countof(buf_itoa), Radix);
       buffer[len] = '\0';
-      Assert::AreEqual<string>(buf_itoa, buffer);
+      Assert::AreEqual(buf_itoa, buffer, true);
       Assert::AreEqual(value, parsed);
     }
 

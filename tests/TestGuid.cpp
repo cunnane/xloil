@@ -61,7 +61,10 @@ namespace Tests
       }
       {
         auto result = guidToWString(testGuid, GuidToString::BASE62);
+#ifdef _WIN64
         Assert::AreEqual<wstring>(L"6DHqXiKeG5u2FUdHmh8HsL", result);
+#endif 
+        Assert::AreEqual<wstring>(L"syxOo1KBMqm2yIW0jTkmku", result);
       }
     }
   };

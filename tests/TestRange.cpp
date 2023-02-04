@@ -155,12 +155,12 @@ namespace Tests
         auto len = unsignedToString<10>(i, s1);
         s1[len] = '\0';
         _itoa_s(i, s2, 10);
-        Assert::AreEqual(s1, s2);
+        Assert::AreEqual(s1, s2, true);
 
         len = unsignedToString<16>(i, s1);
         s1[len] = '\0';
         _itoa_s(i, s2, 16);
-        Assert::AreEqual(s1, s2);
+        Assert::AreEqual(s1, s2, true);
       }
 
       if constexpr (NRepeats > 1)
