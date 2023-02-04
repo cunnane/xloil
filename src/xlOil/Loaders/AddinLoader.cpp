@@ -78,7 +78,6 @@ namespace xloil
     }
   }
 
-
   AddinContext& theCoreContext()
   {
     assert(theCoreContextPtr);

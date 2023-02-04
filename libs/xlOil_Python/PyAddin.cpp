@@ -214,7 +214,7 @@ namespace xloil
       {
         const auto& array = *node.as_array();
         auto list = py::list(array.size());
-        for (auto i = 0; i < array.size(); ++i)
+        for (size_t i = 0; i < array.size(); ++i)
           list[i] = tomlNodeToPyObject(array[i]);
         return list;
       }

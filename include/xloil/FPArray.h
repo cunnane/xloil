@@ -81,7 +81,7 @@ namespace xloil
     /// </summary>
     double& operator()(size_t i, size_t j)
     {
-      assert(i < rows && j < columns);
+      assert(i < (size_t)rows && j < (size_t)columns);
       return operator[](i * columns + j);
     }
     /// <summary>
@@ -89,7 +89,7 @@ namespace xloil
     /// </summary>
     double operator()(size_t i, size_t j) const
     {
-      assert(i < rows && j < columns);
+      assert(i < (size_t)rows && j < (size_t)columns);
       return operator[](i * columns + j);
     }
     double* begin()
