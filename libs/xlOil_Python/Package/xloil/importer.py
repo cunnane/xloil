@@ -254,7 +254,7 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
     from xloil.register import _register_functions, func
 
     def get_spec(obj, name):
-        spec = getattr(obj, '_xloil_spec', func(obj, register=False)._xloil_spec)
+        spec = getattr(obj, '_xloil_spec', None) or func(obj, register=False)._xloil_spec
         spec.name = name
         return spec
 
