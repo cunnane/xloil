@@ -138,7 +138,11 @@ namespace xloil
           {
             auto& converter = *_args[i].converter;
             const auto* defaultValue = _args[i].default.ptr();
+#ifdef _WIN64
             const auto maxArgs = XL_MAX_VBA_FUNCTION_ARGS - _args.size();
+#else
+            const auto maxArgs = 16 - _args.size();
+#endif
             for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
               pyArgs.push_back(converter(xlArgs(i), defaultValue));
           }
