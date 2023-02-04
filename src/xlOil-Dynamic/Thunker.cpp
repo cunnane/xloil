@@ -97,7 +97,7 @@ namespace xloil
     void* callback,
     const void* data,
     size_t numArgs,
-    bool hasReturnVal)
+    bool /*hasReturnVal*/)
   {
     asmjit::x86::Assembler asmb(code);
 
@@ -190,7 +190,8 @@ namespace xloil
 
     asmb.call(imm((void*)callback));
 
-    // We just pass on the value (an xloper*) returned by the callback
+    // We don't care whether the callback returns an (an xloper*) or not
+    // we just don't touch anthing and return to the caller
     asmb.emitEpilog(frame);
   }
 
@@ -353,6 +354,7 @@ namespace xloil
 
     char bufferBefore[10], bufferAfter[10];
     auto bufsize = sizeof(bufferBefore);
+
     {
       CodeHolder code;
       code.init(theCodeInfo);
@@ -360,10 +362,19 @@ namespace xloil
 #ifdef _WIN64
       as.mov(x86::rcx, imm(fromData));
 #else
-      as.mov(x86::esp, imm(fromData));
+      // the size of the opcode, 4, is required for asmjit
+      as.mov(as.ptr_zsp(0, 4), imm(fromData)); 
 #endif
-      asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize);
+      if (kErrorOk != asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize))
+        return false;
     }
+
+    auto found = std::search(thunk, thunk + thunkSize, 
+      bufferBefore, bufferBefore + bufsize);
+    if (found == thunk + thunkSize)
+      return false;
+
+    // Do not change bufsize to ensure we  only write the same amount of code
     {
       CodeHolder code;
       code.init(theCodeInfo);
@@ -371,14 +382,11 @@ namespace xloil
 #ifdef _WIN64
       as.mov(x86::rcx, imm(toData));
 #else
-      as.mov(x86::esp, imm(toData));
+      as.mov(as.ptr_zsp(0, 4), imm(toData));
 #endif
-      asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize);
+      if (kErrorOk != asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize))
+        return false;
     }
-   
-    auto found = std::search(thunk, thunk + thunkSize, bufferBefore, bufferBefore + bufsize);
-    if (found == thunk + thunkSize)
-      return false;
 
     memcpy(found, bufferAfter, bufsize);
 
