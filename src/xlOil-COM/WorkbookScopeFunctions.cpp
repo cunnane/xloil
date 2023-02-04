@@ -84,7 +84,18 @@ namespace xloil
 
         auto workbook = excelApp().workbooks().get(workbookName);
 
-        auto vbProj = workbook.com().VBProject;
+        VBIDE::_VBProjectPtr vbProj;
+        try
+        {
+          vbProj = workbook.com().VBProject;
+        }
+        catch (const _com_error& e)
+        {
+          if (e.Error() == 0x800A03EC) // Name not found
+            XLO_THROW("Could not get VBProject object: allow access to the VBA Object Model in "
+              "Excel > File > Options > Trust Center > Trust Center Settings > Macro Settings");
+          throw;
+        }
 
         struct _VBComponent* vbFound = 0;
         if (SUCCEEDED(vbProj->VBComponents->raw_Item(_variant_t(oldAutoGenModuleName), &vbFound)))
