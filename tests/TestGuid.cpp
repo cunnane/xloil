@@ -45,10 +45,6 @@ namespace Tests
     }
     TEST_METHOD(TestGuidToString)
     {
-      GUID guid;
-      //createGuid(guid);
-      //auto result = guidToWString(guid, GuidToString::BASE62);
-
       const GUID testGuid =
         { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
       {
