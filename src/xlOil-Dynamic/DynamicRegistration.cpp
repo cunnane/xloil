@@ -62,7 +62,8 @@ namespace xloil
 
       ThunkHolder()
         : theExportTable(new DllExportTable((HMODULE)Environment::coreModuleHandle()))
-        , theAllocator(theExportTable->imageBase(), (BYTE*)theExportTable->imageBase() + DWORD(-1))
+        , theAllocator(
+            theExportTable->imageBase(), theExportTable->maxFunctionAddress())
       {
         theCoreDllName = Environment::coreDllName();
         theFirstStub = theExportTable->findOrdinal(
