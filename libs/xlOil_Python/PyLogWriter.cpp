@@ -13,6 +13,10 @@ using std::wstring;
 using std::string;
 namespace py = pybind11;
 
+#if PY_VERSION_HEX < 0x030B0000
+inline int PyFrame_GetLasti(PyFrameObject* frame) { return frame->f_lasti; }
+#endif
+
 namespace xloil
 {
   namespace Python
@@ -69,8 +73,8 @@ namespace xloil
           spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
           if (frame)
           {
-            auto code = frame->f_code; // Guaranteed never null
-            source.line = PyCode_Addr2Line(code, frame->f_lasti);
+            PyCodeObject* code = PyFrame_GetCode(frame); // Guaranteed never null
+            source.line = PyCode_Addr2Line(code, PyFrame_GetLasti(frame));
             source.filename = PyUnicode_AsUTF8(code->co_filename);
             source.funcname = PyUnicode_AsUTF8(code->co_name);
           }

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31019.35
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32819.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil", "src\xlOil\xlOil.vcxproj", "{DF88A189-295A-4AC8-BEFC-D199155EC8CB}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -107,6 +107,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rdcfswatcher", "src\external\rdcfswatcher.vcxproj", "{94CB9502-B5A4-473D-8A2E-4A67950049B6}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "src\external\spdlog.vcxproj", "{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python311", "libs\xlOil_Python\xlOil_Python311.vcxproj", "{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -516,6 +518,30 @@ Global
 		{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}.ReleaseStatic|Win32.Build.0 = Release|Win32
 		{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}.ReleaseStatic|x64.ActiveCfg = Release|x64
 		{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}.ReleaseStatic|x64.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Win32.Build.0 = Debug|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|x64.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Win32.Build.0 = Debug|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|x64.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|Win32.Build.0 = Release|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|x64.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Release|x64.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Win32.Build.0 = Release|Win32
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|x64.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -533,6 +559,7 @@ Global
 		{164AF267-092E-441D-8BF0-2ACF18E9ADFD} = {79C6BF29-1665-4E79-9D16-DA9B6E30F06F}
 		{94CB9502-B5A4-473D-8A2E-4A67950049B6} = {79C6BF29-1665-4E79-9D16-DA9B6E30F06F}
 		{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8} = {79C6BF29-1665-4E79-9D16-DA9B6E30F06F}
+		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4C948047-E838-4EA3-AD64-392D149AD565}
