@@ -37,7 +37,7 @@
                     xlo.event.WorkbookBeforePrint += no_printing
 
               * Workbook and worksheet names are passed a string, Ranges as passed as a 
-                :ref:`xloil.Range`
+                :any:`xloil.Range`
     
           Python-only Events
           ------------------

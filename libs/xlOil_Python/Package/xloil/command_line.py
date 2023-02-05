@@ -191,11 +191,12 @@ def _create_addin(args):
     ini_path = basename.with_suffix(".ini")
 
     bin_dir = _get_xloil_bin_dir()
+    print("xlOil binaries found at:", str(bin_dir))
 
     sh.copy(bin_dir / ADDIN_NAME,    xll_path)
     sh.copy(bin_dir / INIFILE_NAME,  ini_path)
     
-    print("New addin created at: ", xll_path)
+    print("New addin created at:", xll_path)
 
     # Edit ini file
     ini_txt = ini_path.read_text(encoding='utf-8')

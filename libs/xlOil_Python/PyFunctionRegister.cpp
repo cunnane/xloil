@@ -285,8 +285,8 @@ namespace xloil
 
     void PyFuncInfo::writeExcelArgumentDescription()
     {
-      const auto numArgs = _args.size();
-      _numPositionalArgs = (uint16_t)numArgs;
+      const auto numArgs = (uint16_t)_args.size();
+      _numPositionalArgs = numArgs;
 
       if (numArgs == 0)
         return;
@@ -358,14 +358,14 @@ namespace xloil
         // Note that having 255 args means the concatenated argument names will certainly
         // exceed 255 chars, which will generate a notification in the log file
 #ifdef _WIN64
-        auto numVariableArgs = XL_MAX_VBA_FUNCTION_ARGS - numArgs;
+        int numVariableArgs = XL_MAX_VBA_FUNCTION_ARGS - numArgs;
 #else
-        auto numVariableArgs = 16 - numArgs; // Due to thunker limitations!
+        int numVariableArgs = 16u - numArgs; // Due to thunker limitations!
 #endif
         if (numVariableArgs < 0)
           XLO_THROW("Cannot construct variable arg list as max number of UDF args has been exceeded");
         auto varArgType = registerArgs.back().type | FuncArg::Optional;
-        for (auto i = 1; i <numVariableArgs + 1; ++i)
+        for (auto i = 1; i < numVariableArgs + 1; ++i)
         {
           registerArgs.emplace_back(
             isLocalFunc ? formatStr(L"a%d", i) : L".",
