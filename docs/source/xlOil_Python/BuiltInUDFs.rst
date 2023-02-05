@@ -17,13 +17,13 @@ xloPyLoad: import and scan a python module (worksheet function)
         A module name or a full path name to a target py file. If empty, the workbook module
         with the same name as the calling workbook is (re)loaded.
     From: 
-        If omitted, imports the specified module as normal, i.e. :ref:`xloil.scan_module.` If a 
+        If omitted, imports the specified module as normal, i.e. :any:`xloil.scan_module` If a 
         value or array, registers only the specified object names.  If "*", all objects are registered.
     To: 
         Optionally specifies the Excel function names to register in the same order as `From`.
         Should have the same length as `From`.
 
-    See :ref:`xloil.import_functions`
+    See :any:`xloil.import_functions`
 
 .. function:: xloAttr(Object, Name:str, *Args, **Kwargs)
     Returns the named attribute value, or the result of calling it if possible. ie, ``object.attr`` 

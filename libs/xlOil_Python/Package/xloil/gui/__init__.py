@@ -270,6 +270,10 @@ class _GuiExecutor(futures.Executor):
              xloil.log(f"{self._thread.name} error running job: {e}", level='warn')
 
     def submit(self, fn, *args, **kwargs) -> futures.Future:
+        """
+        Schedules the callable, fn, to be executed as ``fn(*args, **kwargs)`` and returns 
+        a ``Future`` object representing the execution of the callable.
+        """
         if self._broken:
             raise futures.BrokenExecutor(self._broken)
 

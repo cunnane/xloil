@@ -200,7 +200,7 @@ array is trimmed to the last non-blank. This behaviour can be replicated with
 The square bracket (getitem) operator for a Range behaves like a numpy array,
 in that if the tuple specifies a single cell, it returns the value in that cell, otherwise 
 it returns a :any:`xloil.Range` object.  To create a range consisting of a single cell
-use :any:`xloil.Range.cells`.
+use the `cells` method.
 
 Writing to a range
 ==================
@@ -248,9 +248,9 @@ There are several ways to address or refer to part of a worksheet:
     r3 = ws[1:3, 1:4]
 
 
-The square bracket (getitem) operator for :ref:`xloil.Worksheet` always returns
-a :ref:`xloil.Range`. For :ref:`xloil.Workbook` it may return a :ref:`xloil.Range`
-or a :ref:`xloil.Worksheet`.
+The square bracket (getitem) operator for :any:`xloil.Worksheet` always returns
+a :any:`xloil.Range`. For :any:`xloil.Workbook` it may return a :any:`xloil.Range`
+or a :any:`xloil.Worksheet`.
 
 Writing to a worksheet
 ~~~~~~~~~~~~~~~~~~~~~~

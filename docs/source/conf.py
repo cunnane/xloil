@@ -80,8 +80,14 @@ exclude_patterns = []
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = 'bizstyle'
+
+USE_READTHEDOCS_THEME = True
+if USE_READTHEDOCS_THEME:
+    import sphinx_rtd_theme
+    extensions.append('sphinx_rtd_theme')
+    html_theme = "sphinx_rtd_theme"
+else:
+    html_theme = 'bizstyle'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -111,25 +117,26 @@ numpydoc_show_class_members=False
 master_doc = 'index'
 
 # -- Generate examples file ---------------------------------------------------
+#
+# Only do this when XLOIL_BIN_DIR is explicitly set so not on ad-hoc run
+#
+if "XLOIL_BIN_DIR" in os.environ:
+    import zipfile
+    from zipfile import ZipFile
 
-# TODO: want to disable this when running previews in VS Code
+    try: os.makedirs('_build')
+    except FileExistsError: pass
 
-import zipfile
-from zipfile import ZipFile
-
-try: os.makedirs('_build')
-except FileExistsError: pass
-
-zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
-try:
-    zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
-    zipObj.write(soln_dir / "tests" / "ManualSheets" / "python" / "PythonTestAsync.xlsm", "PythonTestAsync.xlsm")
-    zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
-    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
-    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
-    zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
+    zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
+    try:
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+        zipObj.write(soln_dir / "tests" / "ManualSheets" / "python" / "PythonTestAsync.xlsm", "PythonTestAsync.xlsm")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
     
-except FileNotFoundError as err: 
-    print("WARNING: Could not create xlOilExamples.zip due to: ", str(err))
+    except FileNotFoundError as err: 
+        print("WARNING: Could not create xlOilExamples.zip due to: ", str(err))
 
-zipObj.close()
+    zipObj.close()

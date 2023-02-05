@@ -61,7 +61,7 @@ Excel's event model already.  Most of the workbook events described in
 `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
 are available in xlOil. 
 
-See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :ref:`Events`
+See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :doc:`Events`
 for a description of the available Excel events.
 
 Excel events do not use return values.  However, some events take reference parameters. 
@@ -83,25 +83,18 @@ Examples
     xlo.event.WorkbookNewSheet += greet
 
 
-Looking for xlOil functions in imported modules
------------------------------------------------
+Registering functions in other modules
+--------------------------------------
 
-This happens automatically when a module is imported or reloaded as xlOil
-hooks python's import mechanism.  
+xlOil automatically scans modules when they are imported or reloaded via a
+hook in python's import mechanism.  This ensures any :any:`xloil.func` 
+decorated functions are registered. 
 
 If you load a module outside the normal ``import`` mechanism, you can tell 
-xlOil to look for functions to register with ``xloil.scan_module(module)``. 
+xlOil to look for functions to register with :any:`xloil.scan_module`. 
 
-
-xloPyLoad: import and scan a python module (worksheet function)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. function:: xloPyLoad(ModuleName)
-
-    Imports the specifed python module and registers any it for xloil 
-    functions it contains.  Leaving the argument blank loads or reloads the
-    workbook module for the calling sheet, i.e. the file `WorkbookName.py`.
-
+Also see :any:`xlOil_Python/Functions:Dynamic Registration`, which explains
+how any python callable can be registered as an Excel function.
 
 
 Multiple addins and event loops
