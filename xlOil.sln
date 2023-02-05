@@ -14,16 +14,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil", "src\xlOil\xlOil.vc
 		{A310C8C5-CE14-4DD3-8A0D-61491741558A} = {A310C8C5-CE14-4DD3-8A0D-61491741558A}
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{67EB80BB-D718-428C-80BD-E409C27FAD25}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "[Scripts]", "[Scripts]", "{67EB80BB-D718-428C-80BD-E409C27FAD25}"
 	ProjectSection(SolutionItems) = preProject
-		tools\BuildRelease.cmd = tools\BuildRelease.cmd
-		docs\source\conf.py = docs\source\conf.py
-		tools\DownloadDependencies.cmd = tools\DownloadDependencies.cmd
-		docs\make.cmd = docs\make.cmd
-		README.md = README.md
-		tools\stage.py = tools\stage.py
-		tools\WriteInclude.ps1 = tools\WriteInclude.ps1
-		docs\source\xloil.doxyfile = docs\source\xloil.doxyfile
 		config\xloil.ini = config\xloil.ini
 		tools\xlOil_Install.ps1 = tools\xlOil_Install.ps1
 		tools\xlOil_NewAddin.ps1 = tools\xlOil_NewAddin.ps1
@@ -109,6 +101,23 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "spdlog", "src\external\spdlog.vcxproj", "{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python311", "libs\xlOil_Python\xlOil_Python311.vcxproj", "{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{4070F602-F283-47B1-802F-773D01991AE5}"
+	ProjectSection(SolutionItems) = preProject
+		docs\source\conf.py = docs\source\conf.py
+		docs\make.cmd = docs\make.cmd
+		README.md = README.md
+		docs\source\xloil.doxyfile = docs\source\xloil.doxyfile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{B853DF1D-B9D1-43BC-A655-41224C5EAFCF}"
+	ProjectSection(SolutionItems) = preProject
+		tools\BuildRelease.cmd = tools\BuildRelease.cmd
+		tools\DownloadDependencies.cmd = tools\DownloadDependencies.cmd
+		libs\xlOil_Python\Package\setup.py = libs\xlOil_Python\Package\setup.py
+		tools\stage.py = tools\stage.py
+		tools\WriteInclude.ps1 = tools\WriteInclude.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -560,6 +569,8 @@ Global
 		{94CB9502-B5A4-473D-8A2E-4A67950049B6} = {79C6BF29-1665-4E79-9D16-DA9B6E30F06F}
 		{C4DA7637-9D07-4D52-8DB2-82B73D95E1B8} = {79C6BF29-1665-4E79-9D16-DA9B6E30F06F}
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
+		{4070F602-F283-47B1-802F-773D01991AE5} = {67EB80BB-D718-428C-80BD-E409C27FAD25}
+		{B853DF1D-B9D1-43BC-A655-41224C5EAFCF} = {67EB80BB-D718-428C-80BD-E409C27FAD25}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4C948047-E838-4EA3-AD64-392D149AD565}
