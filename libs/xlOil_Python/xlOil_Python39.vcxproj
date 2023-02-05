@@ -72,7 +72,7 @@
     <Link>
       <AdditionalDependencies>python39.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
+    <PostBuildEvent Condition="'$(Platform)'=='x64'">
       <Command>set XLOIL_BIN_DIR=$(OutDir)
 py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     </PostBuildEvent>
