@@ -14,7 +14,10 @@ using std::string;
 namespace py = pybind11;
 
 #if PY_VERSION_HEX < 0x030B0000
-inline int PyFrame_GetLasti(PyFrameObject* frame) { return frame->f_lasti; }
+inline auto PyFrame_GetLasti(PyFrameObject* frame) { return frame->f_lasti; }
+#endif
+#if PY_VERSION_HEX < 0x03090000
+inline auto PyFrame_GetCode(PyFrameObject* frame) { return frame->f_code; }
 #endif
 
 namespace xloil
