@@ -75,9 +75,9 @@ Create a `MyTest.py` file with the following lines:
         return "Hello  " + who
 
 Open Excel and use the *xlOil* ribbon toolbar to ensure the search paths include
-the directory containing `MyTest.py`.  *Then* add 'MyTest' to the loaded modules.
-(the order matters because editing the *Load Modules* triggers a load of all newly
-added modules)
+the directory containing `MyTest.py`.  Then add 'MyTest' to the *Load Modules* 
+field, separating entries with a comma. The order of these steps matters because 
+editing the *Load Modules* field triggers a load of all newly added modules.
 
 Call the `=Greeting("world")` function in a cell.
 
