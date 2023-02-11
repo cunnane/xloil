@@ -52,7 +52,7 @@ class Settings:
         for table in array_of_tables:
             if key in table:
                 return table
-        raise Exception(f"No table contains {key}")
+        raise KeyError(f"No table contains {key}")
 
 _settings = Settings(xloil.source_addin().settings_file)
 
@@ -98,16 +98,19 @@ def get_date_formats(ctrl):
 #
 
 async def set_user_search_path(ctrl, value):
-    _settings.set_env_var("XLOIL_PYTHON_PATH", value)
-    _settings.save()
     paths = value.split(";")
     for path in paths: 
         if not path in sys.path:
             sys.path.append(path)
+
+    # Save the settings afterwards in case the above fails
+    _settings.set_env_var("XLOIL_PYTHON_PATH",";" if len(value) == 0 else value)
+    _settings.save()
     
 def get_user_search_path(ctrl):
-    xloil.log(f"Search Path: {_settings.get_env_var('XLOIL_PYTHON_PATH')}")
-    return _settings.get_env_var("XLOIL_PYTHON_PATH")
+    value = _settings.get_env_var("XLOIL_PYTHON_PATH")
+    xloil.log(f"Search Path: {value}")
+    return "" if value == ";" else value
 
 #
 # PYTHONEXECUTABLE path callbacks
@@ -371,7 +374,7 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 onChange="set_python_home" />
               <editBox id="PYTHONPATH" label="PYTHONPATH" sizeString="c:/a/path/is/this/size"
                 screentip="A semi-colon separated list of module search directories"
-                supertip="Prefer to use this for system paths and add user directories to the Search Paths (which are included via XLOIL_PYTHON_PATH)"
+                supertip="Prefer to use this for system paths and add user directories to the Search Paths"
                 getText="get_python_path" 
                 onChange="set_python_path" />
             </group>
@@ -383,7 +386,7 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 onChange="set_load_modules"/>
               <editBox id="ebx4" label="Search Paths" sizeString="a module; another module; another"
                 screentip="Paths added to python's sys.path"
-                supertip="Prefer to add user directories here rather than editing PYTHONPATH directly. Use a semi-colon separator"
+                supertip="Prefer to add user directories here rather than editing PYTHONPATH directly. Use the usual semi-colon (;) separator and the path separator (\)"
                 getText="get_user_search_path"
                 onChange="set_user_search_path"/>
               <labelControl id="RestartLabel" label="!Restart Required!" 
