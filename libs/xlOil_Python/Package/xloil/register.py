@@ -70,8 +70,8 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
     # Prior to Py 3.9, type annotions for builtins looked like typing.List[int]
     # We resolve this to the base type. 
     # TODO: user-defined converters for these types won't get called
-    elif isinstance(arg_type, (typing._SpecialGenericAlias, typing._GenericAlias)):
-        type_name = type_._name.lower()
+    elif isinstance(arg_type, _TYPING_GENERIC_CLASSES):
+        type_name = arg_type._name.lower()
         converter = get_converter(type_name)
 
     elif not isinstance(arg_type, type):
