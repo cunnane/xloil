@@ -17,6 +17,12 @@ from xloil_core import (
 )
 
 _LANDMARK_TAG = "_xloil_pending_funcs_"
+
+# typing.List (no square brackets) is a _SpecialGenericAlias in Py 3.9, but this type 
+# doesn't exist in 3.8
+_TYPING_GENERIC_CLASSES = (typing._SpecialGenericAlias, typing._GenericAlias) \
+    if hasattr(typing, "_SpecialGenericAlias") else typing._GenericAlias
+
 """
     Tag used to mark modules which contain functions to register. It is added 
     by the xloil.func decorator to the module's __dict__ and contains a list
