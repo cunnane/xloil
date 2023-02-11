@@ -116,7 +116,7 @@ namespace xloil
         TPyArgs& pyArgs,
         pybind11::object& kwargs) const
       {
-        assert(pyArgs.capacity() >= _numPositionalArgs + (isRtdAsync || isAsync ? 1 : 0));
+        assert(pyArgs.capacity() >= _numPositionalArgs + (isRtdAsync || isAsync ? 1u : 0u));
 
         size_t i = 0;
         try
