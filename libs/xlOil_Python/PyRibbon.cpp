@@ -172,15 +172,15 @@ namespace xloil
 #else
             auto code = frame->f_code;
 #endif
-            std::filesystem::path filePath(pyToWStr(code->co_filename));
+            std::filesystem::path filePath(to_wstring(code->co_filename));
             _name = filePath.filename().stem();
           }
           else
-            _name = pyToWStr(name);
+            _name = to_wstring(name);
 
           if (!xml.is_none())
           {
-            _xml = pyToWStr(xml);
+            _xml = to_wstring(xml);
             _functionMap = funcmap;
           }
           if (connect)
@@ -241,7 +241,7 @@ namespace xloil
           const py::object& window,
           const py::object& progId)
         {
-          auto progIdStr = progId.is_none() ? wstring() : pyToWStr(progId).c_str();
+          auto progIdStr = progId.is_none() ? wstring() : to_wstring(progId).c_str();
           auto winPtr = window.is_none() ? ExcelWindow(nullptr) : window.cast<ExcelWindow>();
 
           return runExcelThread([addin = addin(), name, winPtr, progIdStr]()

@@ -166,7 +166,7 @@ namespace xloil
       {
         if (PyUnicode_Check(loc.ptr()))
         {
-          const auto address = pyToWStr(loc);
+          const auto address = to_wstring(loc);
           py::gil_scoped_release noGil;
           return finaliser(ws.range(address));
         }
@@ -241,7 +241,7 @@ namespace xloil
           // If loc string contains '!' it must an address. Otherwise it
           // might be a worksheet name. If it isn't that it may be a named
           // range we just pass it to Application.Range
-          auto address = pyToWStr(loc);
+          auto address = to_wstring(loc);
           if (address.empty())
             throw py::value_error();
           else if (address.find(L'!') != wstring::npos)
@@ -424,7 +424,7 @@ namespace xloil
         const py::object& before,
         const py::object& after)
       {
-        auto cname = name.is_none() ? wstring() : pyToWStr(name);
+        auto cname = name.is_none() ? wstring() : to_wstring(name);
         auto cbefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
         auto cafter = after.is_none() ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
 
@@ -484,7 +484,7 @@ namespace xloil
         else if (!hwnd.is_none())
           hWnd = py::cast<size_t>(hwnd);
         else if (!wbName.is_none())
-          workbook = pyToWStr(wbName);
+          workbook = to_wstring(wbName);
 
         py::gil_scoped_release noGil;
         if (hWnd != 0)

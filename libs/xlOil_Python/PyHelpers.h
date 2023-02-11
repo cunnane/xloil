@@ -15,6 +15,18 @@
 #define PyIterable_Check(obj) (obj)->ob_type->tp_iter != NULL
 
 
+/// <summary>
+/// Converts a PyObject to a str, then to a C++ string
+/// </summary>
+inline auto to_string(const PyObject* p)
+{
+  return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
+}
+/// <summary>
+/// Converts a PyObject to a str, then to a C++ wstring
+/// </summary>
+std::wstring to_wstring(const PyObject* p);
+
 namespace pybind11
 {
   /// <summary>
@@ -32,6 +44,16 @@ namespace pybind11
   private:
     T* ptr_;
   };
+
+  inline auto to_string(const pybind11::object& p)
+  {
+    return to_string(p.ptr());
+  }
+
+  inline std::wstring to_wstring(const pybind11::object& p)
+  {
+    return to_wstring(p.ptr());
+  }
 }
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, pybind11::ReferenceHolder<T>, true);
@@ -80,23 +102,6 @@ namespace xloil
         PyErr_Clear();
       return result;
     }
-
-    /// <summary>
-    /// Converts a PyObject to a str, then to a C++ string
-    /// </summary>
-    inline auto pyToStr(const PyObject* p)
-    {
-      // Is morally const: py::handle doesn't change refcount
-      return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
-    }
-
-    /// <summary>
-    /// Converts a PyObject to a str, then to a C++ wstring
-    /// </summary>
-    std::wstring pyToWStr(const PyObject* p);
-
-    inline std::wstring
-      pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
 
     /// <summary>
     /// Reads an argument to __getitem__ i.e. [] using the following rules

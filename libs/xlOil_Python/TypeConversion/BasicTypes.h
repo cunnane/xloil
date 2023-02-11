@@ -280,7 +280,7 @@ namespace xloil
         const TAlloc& allocator = PStringAllocator<wchar_t>()) const
       {
         if (!PyUnicode_Check(obj))
-          XLO_THROW("Expected python str, got '{0}'", pyToStr(obj));
+          XLO_THROW("Expected python str, got '{0}'", to_string(obj));
 
         const auto len = (char16_t)std::min<size_t>(
           USHRT_MAX, PyUnicode_GET_LENGTH((PyObject*)obj));

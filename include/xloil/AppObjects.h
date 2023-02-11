@@ -460,6 +460,8 @@ namespace xloil
     ExcelWorkbook workbook() const;
   };
 
+  inline std::wstring to_wstring(const ExcelRange& x) { return x.name(); }
+
   XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range& range);
 
   inline ExcelRef refFromRange(const Range& range)

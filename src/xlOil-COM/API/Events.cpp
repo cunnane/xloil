@@ -125,6 +125,16 @@ namespace xloil
       unordered_map<wstring, weak_ptr<DirectoryWatchEvent>> theDirectoryWatchers;
     }
 
+    XLOIL_EXPORT std::wstring to_wstring(const FileAction x)
+    {
+      switch (x)
+      {
+      case FileAction::Add: return L"add";
+      case FileAction::Delete: return L"delete";
+      case FileAction::Modified: return L"modified";
+      }
+    }
+
     XLOIL_EXPORT shared_ptr<DirectoryWatchEventBase> DirectoryChange(const std::wstring& path)
     {
       auto found = theDirectoryWatchers.find(path);

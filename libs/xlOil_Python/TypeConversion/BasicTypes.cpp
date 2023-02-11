@@ -60,7 +60,7 @@ namespace xloil
         auto operator()(const PyObject* obj) const
         {
           if (!PyLong_Check(obj))
-            XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
+            XLO_THROW("Expected python int, got '{0}'", to_string(obj));
           return ExcelObj(PyLong_AsLong((PyObject*)obj));
         }
         static constexpr char* ourName = "int";
@@ -70,7 +70,7 @@ namespace xloil
         auto operator()(const PyObject* obj) const
         {
           if (!PyFloat_Check(obj))
-            XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
+            XLO_THROW("Expected python float, got '{0}'", to_string(obj));
           return ExcelObj(PyFloat_AS_DOUBLE(obj));
         }
         static constexpr char* ourName = "float";
@@ -80,7 +80,7 @@ namespace xloil
         auto operator()(const PyObject* obj) const
         {
           if (!PyBool_Check(obj))
-            XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
+            XLO_THROW("Expected python bool, got '{0}'", to_string(obj));
           return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
         }
         static constexpr char* ourName = "bool";

@@ -108,7 +108,7 @@ namespace xloil
       for (auto i = 0u; i < nArgs; ++i)
         xlArgs.emplace_back(ArgFromPyObj()(args[i]));
 
-      auto funcName = pyToWStr(func);
+      auto funcName = to_wstring(func);
 
       py::gil_scoped_release releaseGil;
 

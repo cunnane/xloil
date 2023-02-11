@@ -3,6 +3,31 @@
 namespace py = pybind11;
 using std::wstring;
 
+
+std::wstring to_wstring(const PyObject* p)
+{
+  Py_ssize_t len;
+  wchar_t* wstr;
+  if (!p)
+    return wstring();
+  else if (PyUnicode_Check(p))
+    wstr = PyUnicode_AsWideCharString((PyObject*)p, &len);
+  else
+  {
+    auto str = PyObject_Str((PyObject*)p);
+    if (!str)
+      throw py::error_already_set();
+    wstr = PyUnicode_AsWideCharString(str, &len);
+    Py_XDECREF(str);
+  }
+
+  if (!wstr)
+    throw py::error_already_set();
+
+  auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
+  return wstring(wstr, len);
+}
+
 namespace xloil {
   namespace Python
   {
@@ -43,30 +68,6 @@ namespace xloil {
       auto singleElement = getItemIndexReader1d(loc[0], nRows, fromRow, toRow);
       singleElement &= getItemIndexReader1d(loc[1], nCols, fromCol, toCol);
       return singleElement;
-    }
-
-    std::wstring pyToWStr(const PyObject* p)
-    {
-      Py_ssize_t len;
-      wchar_t* wstr;
-      if (!p)
-        return wstring();
-      else if (PyUnicode_Check(p))
-        wstr = PyUnicode_AsWideCharString((PyObject*)p, &len);
-      else
-      {
-        auto str = PyObject_Str((PyObject*)p);
-        if (!str)
-          throw py::error_already_set();
-        wstr = PyUnicode_AsWideCharString(str, &len);
-        Py_XDECREF(str);
-      }
-
-      if (!wstr) 
-        throw py::error_already_set();
-
-      auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
-      return wstring(wstr, len);
     }
 
     PyObject* fastCall(
