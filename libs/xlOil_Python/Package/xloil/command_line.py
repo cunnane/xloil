@@ -180,6 +180,21 @@ def _remove_xloil():
     os.remove(_XLL_INSTALL_PATH)
 
 
+def _clean_xloil():
+
+    _remove_xloil()
+
+    ini_path = Path(APP_DATA_DIR) / INIFILE_NAME
+    try:
+        os.remove(os.path.join(APP_DATA_DIR, INIFILE_NAME))
+        os.remove(os.path.join(APP_DATA_DIR, "xlOil.log"))
+    except FileNotFoundError:
+        ...
+    import subprocess
+    import sys
+
+    subprocess.Popen(f"{sys.executable} -m pip uninstall --yes xloil", shell=True)
+
 def _create_addin(args):
     if len(args) != 1:
         raise Exception("'create' should have one argument, the target filename")
@@ -223,6 +238,8 @@ def main():
         _remove_xloil()
     elif command == 'create':
         _create_addin(sys.argv[2:])
+    elif command == 'clean':
+        _clean_xloil()
     else:
         raise Exception("Syntax: xloil {install, remove, uninstall, create}")
 
