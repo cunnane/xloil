@@ -40,6 +40,7 @@
     <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyRunLater.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncFunctions.h" />

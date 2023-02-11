@@ -83,6 +83,7 @@ py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyRunLater.cpp" />
     <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />

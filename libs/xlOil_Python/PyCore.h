@@ -49,7 +49,6 @@ namespace xloil
         (theReturnConverterPrefix + std::string(type)).c_str());
     }
 
-    extern PyObject* comBusyException;
     extern PyObject* cannotConvertException;
   }
 }
