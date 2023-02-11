@@ -134,10 +134,9 @@ namespace xloil
           checkUserException([&]() {saveFunction(tempFileName); });
         }
 
-
         auto shapes = caller->Worksheet->Shapes;
         auto shapeName = wstring(L"XLOIMG_") + 
-          (const wchar_t*)(caller->GetAddressLocal(true, true, Excel::xlA1));
+          (const wchar_t*)(caller->GetAddress(true, true, Excel::xlA1, false));
 
         // I don't think it's possible to check if the shape exists prior to deletion
         // so we have to catch the error unfortunately.
