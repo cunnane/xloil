@@ -8,7 +8,7 @@ from importlib.machinery import SourceFileLoader
 
 from .register import scan_module
 from ._core import StatusBar, Addin, XLOIL_EMBEDDED
-from .logging import log
+from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
@@ -148,19 +148,27 @@ def _import_and_scan(what, addin):
     elif inspect.ismodule(what):
         module = importlib.reload(what)
     else:
-        # Assume it's an iterable
-        # We don't care about the return value currently
-        result = []
-        with StatusBar(2000) as status:
-            for m in what:
-                status.msg(f"Loading {m}")
-                result.append(_import_and_scan(m, addin))
-            status.msg("xlOil load complete")
-        return result
+        return _import_and_scan_mutiple(what, addin)
     
     scan_module(module, addin)
     return module
 
+def _import_and_scan_mutiple(module_names, addin):
+    result = []
+    success = True
+    with StatusBar(2000) as status:
+        for m in module_names:
+            status.msg(f"Loading {m}")
+            log.debug(f"Loading python module '{m}' for addin '{str(addin)}'")
+            try:
+                result.append(_import_and_scan(m, addin))
+            except Exception as e:
+                log_except("Failed to load '{m}'")
+                status.msg(f"Failed to load '{m}'. See log")
+                success = False
+        if success:
+            status.msg("xlOil python module load complete")
+    return result
 
 def _import_file_and_scan(path, addin=None, workbook_name:str=None):
     """

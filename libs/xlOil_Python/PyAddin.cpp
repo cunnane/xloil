@@ -239,6 +239,8 @@ namespace xloil
           .def("__getitem__", tomlTableGetItem);
 
         py::class_<PyAddin, shared_ptr<PyAddin>>(mod, "Addin")
+          .def("__repr__", &PyAddin::pathName)
+          .def("__str__", &PyAddin::pathName)
           .def_property_readonly("pathname", &PyAddin::pathName)
           .def_property_readonly("event_loop",
             [](PyAddin& addin) { return addin.thread->loop(); },

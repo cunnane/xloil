@@ -507,7 +507,12 @@ namespace xloil
         return std::static_pointer_cast<RegisteredModule>(source);
 
       auto fileSrc = make_shared<RegisteredModule>(modulePath, addin, workbookName);
-      addin.lock()->context.addSource(fileSrc);
+      auto addin_ptr = addin.lock();
+      addin_ptr->context.addSource(fileSrc);
+
+      XLO_DEBUG(L"Registered Python module '{}' with linked workbook '{}' for addin '{}'",
+        modulePath, workbookName ? workbookName : L"none", addin_ptr->pathName());
+
       return fileSrc;
     }
 

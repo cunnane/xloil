@@ -69,6 +69,8 @@ namespace xloil
           auto modulePath = addin->getLocalModulePath(
             fmt::format(L"{0}\\{1}", wbPath, wbName).c_str());
 
+          XLO_DEBUG(L"Looking for workbook module at '{}'", modulePath);
+
           std::error_code err;
           if (!fs::exists(modulePath, err))
             return;

@@ -61,6 +61,8 @@ __all__ = [
 
 
 class Addin():
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
     def functions(self) -> typing.List[_FuncSpec]: 
         """
         Returns a list of all functions declared by this addin.
