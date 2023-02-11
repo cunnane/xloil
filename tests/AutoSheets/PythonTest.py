@@ -323,16 +323,17 @@ def pyTestRange(r: xlo.Range):
 
     try:
         range = r.to_com('comtypes')
+        
+        # This import comes *after* the to_com call above. Calling to_com("comtypes") 
+        # ensures that auto-generated 'comtypes.gen' package and the Excel module
+        # are created. You can do this manually with `comtypes.client.GetModule`
+        from comtypes.gen import Excel
+        
+        return range.Cells[2, 2].Address(False, False, Excel.xlA1, True)
+        
     except ModuleNotFoundError:
         range = r.to_com()
-
-    # This import comes *after* the to_com call above. Calling to_com("comtypes") 
-    # ensures that auto-generated 'comtypes.gen' package and the Excel module
-    # are created. You can do this manually with `comtypes.client.GetModule`
-    from comtypes.gen import Excel
-    
-    return range.Cells[2, 2].Address(False, False, Excel.xlA1, True)
-
+        return range.Cells(2, 2).GetAddress(False, False, xlo.constants.xlA1, True)
 #  
 # We check we can retrieve the formula from a cell using both local and 
 # non-local functions 
