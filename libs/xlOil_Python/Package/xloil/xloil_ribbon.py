@@ -288,8 +288,31 @@ async def set_debugger(ctrl, id, index):
         choice, 
         port=int(_settings.python['DebugPyPort']))
 
+def _find_free_port():
+    #https://stackoverflow.com/questions/1365265
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
+
+def _is_port_in_use(port: int) -> bool:
+    # https://stackoverflow.com/questions/2470971/
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('localhost', port))
+            return False
+    except OSError:
+        return True
+
 def get_debugpy_port(ctrl):
-    return _settings.python['DebugPyPort']
+    port = int(_settings.python['DebugPyPort'])
+    if _is_port_in_use(port):
+        port = _find_free_port()
+        _settings.python['DebugPyPort'] = port
+        # We don't save the setting as the port may be free next time
+    return port
 
 async def set_debugpy_port(ctrl, value):
     _settings.python['DebugPyPort'] = value
