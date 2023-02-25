@@ -92,7 +92,7 @@ namespace xloil
       if (!_running)
         return;
       
-      XLO_TRACE(L"Received result for RTD task started in '{0}'", _caller.writeAddress());
+      XLO_TRACE(L"Received result for RTD task started in '{0}'", _caller.address());
 
       try
       {
@@ -103,7 +103,7 @@ namespace xloil
 
         // If nil, conversion wasn't possible, so use the cache
         if (result.isType(ExcelType::Nil))
-          result = pyCacheAdd(value, _caller.writeAddress().c_str());
+          result = pyCacheAdd(value, _caller.address().c_str());
 
         _notify.publish(std::move(result));
       }
@@ -127,7 +127,7 @@ namespace xloil
       
       _running = false;
 
-      XLO_TRACE(L"Sending cancellation to RTD task started in '{0}'", _caller.writeAddress());
+      XLO_TRACE(L"Sending cancellation to RTD task started in '{0}'", _caller.address());
       if (_task)
         asyncEventLoop().callback(_task.attr("cancel"));
     }

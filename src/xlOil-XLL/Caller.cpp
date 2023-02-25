@@ -392,13 +392,33 @@ namespace xloil
       buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
   }
   
-  std::wstring CallerInfo::writeAddress(AddressStyle style) const
+  std::wstring CallerInfo::address(AddressStyle style) const
   {
     std::wstring result;
     result.resize(addressLength(style));
     const auto nChars = writeAddress(result.data(), result.size(), style);
     result.resize(nChars);
     return result;
+  }
+
+  std::wstring CallerInfo::localAddress(AddressStyle style) const
+  {
+    wchar_t buf[XL_CELL_ADDRESS_RC_MAX_LEN];
+
+    const msxll::XLREF12* sheetRef;
+    switch (_address.type())
+    {
+    case ExcelType::SRef: sheetRef = &_address.val.sref.ref; break;
+    case ExcelType::Ref:  sheetRef = _address.val.mref.lpmref->reftbl;  break;
+    default:
+      return std::wstring();
+    }
+
+    auto nWritten = style == AddressStyle::A1
+      ? writeLocalAddress<WriteA1>(*sheetRef, buf, _countof(buf))
+      : writeLocalAddress<WriteRC>(*sheetRef, buf, _countof(buf));
+
+    return std::wstring(buf, nWritten);
   }
 
   uint8_t writeColumnName(size_t colIndex, char buf[4])

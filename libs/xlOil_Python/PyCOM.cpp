@@ -6,6 +6,7 @@
 #include "PyAddin.h"
 #include <xlOil/ExcelTypeLib.h>
 #include <xloil/Log.h>
+#include <xlOil/Caller.h>
 #include <xloil/Throw.h>
 #include <xlOil/AppObjects.h>
 #include <xlOilHelpers/Environment.h>
@@ -62,8 +63,12 @@ namespace xloil
     {
       try
       {
-        auto& app = excelApp().com();
-        auto caller = Excel::RangePtr(app.Caller);
+        if (!isMainThread())
+          XLO_THROW("writeCellImage: must be called on main thread");
+
+        CallerInfo callerInfo;
+        ExcelRange callerRange(callerInfo.address());
+        auto& caller = callerRange.com();
 
         // AddPicture2 takes -1 to retain the size of the existing file
         float width = -1, height = -1; 
@@ -72,8 +77,8 @@ namespace xloil
           string sz = toLower((string)py::str(size));
           if (strcmp(sz.c_str(), "cell") == 0)
           { 
-            width = float(caller->Width);
-            height = float(caller->Height);
+            width = float(caller.Width);
+            height = float(caller.Height);
           }
           else if (strcmp(sz.c_str(), "img") == 0)
           {} // Matches the default
@@ -102,8 +107,8 @@ namespace xloil
         float absX, absY;
         if (coord.empty() || strcmp(coord.c_str(), "top") == 0)
         {
-          absX = float(caller->Left) + posX;
-          absY = float(caller->Top) + posY;
+          absX = float(caller.Left) + posX;
+          absY = float(caller.Top) + posY;
         }
         else if (strcmp(coord.c_str(), "sheet") == 0)
         {
@@ -112,14 +117,15 @@ namespace xloil
         }
         else if (strcmp(coord.c_str(), "bottom") == 0)
         {
-          absX = float(caller->Left) + float(caller->Width) + posX;
-          absY = float(caller->Top) + float(caller->Height) + posY;
+          absX = float(caller.Left) + float(caller.Width) + posX;
+          absY = float(caller.Top) + float(caller.Height) + posY;
         }
         else
-          throw py::value_error("Coord argument is invalid");
-
+          throw py::value_error("Coord argument '" + coord + "' is invalid. Should be {top, sheet, bottom}");
 
         py::gil_scoped_release releaseGil;
+
+        XLO_DEBUG("WriteCellImage: writing to x={}, y={}, w={}, h={}", absX, absY, width, height);
 
         // Create temp file and call the file write function. Release
         // the GIL in case any file system issues cause a delay
@@ -128,15 +134,18 @@ namespace xloil
         std::tie(tempFileHandle, tempFileName) = Helpers::makeTempFile();
         CloseHandle(tempFileHandle);
 
+        XLO_DEBUG(L"WriteCellImage: using temp file '{}'", tempFileName);
+
         // Need the GIL back again to call the provided saveFunction
         {
           py::gil_scoped_acquire getGil;
           checkUserException([&]() {saveFunction(tempFileName); });
         }
 
-        auto shapes = caller->Worksheet->Shapes;
-        auto shapeName = wstring(L"XLOIMG_") + 
-          (const wchar_t*)(caller->GetAddress(true, true, Excel::xlA1, false));
+        auto shapes = caller.Worksheet->Shapes;
+        const auto shapeName = wstring(L"XLOIMG_") + callerInfo.localAddress();;
+
+        XLO_DEBUG(L"WriteCellImage: Calling AddPicture with name '{}'", shapeName);
 
         // I don't think it's possible to check if the shape exists prior to deletion
         // so we have to catch the error unfortunately.

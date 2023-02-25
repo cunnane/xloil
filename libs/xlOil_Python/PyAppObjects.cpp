@@ -498,7 +498,7 @@ namespace xloil
       auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
       {
         py::gil_scoped_release noGil;
-        return self.writeAddress(a1style ? AddressStyle::A1 : AddressStyle::RC);
+        return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
       }
 
     } // namespace anon
@@ -1162,7 +1162,7 @@ namespace xloil
         .def_property_readonly("range",
           [](const CallerInfo& self)
           {
-            return createPyRange([&]() { return self.writeAddress(); });
+            return createPyRange([&]() { return self.address(); });
           },
           "Range object corresponding to caller address");
 
