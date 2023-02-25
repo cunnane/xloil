@@ -26,6 +26,10 @@ namespace
   {
     return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
   }
+
+  // {9B8C6F9F-B0FF-46B7-8376-2A6DDECD1B5E}
+  static const GUID theXloilNamespace =
+    { 0x9b8c6f9f, 0xb0ff, 0x46b7, { 0x83, 0x76, 0x2a, 0x6d, 0xde, 0xcd, 0x1b, 0x5e } };
 }
 
 namespace xloil
@@ -159,7 +163,9 @@ namespace xloil
     : _sourcePath(sourcePath)
     , _watchFile(watchFile)
   {
-    auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
+    const auto isUrl = wcsncmp(sourcePath, L"http", 4) == 0;
+    const auto separator = isUrl ? L'/' : L'\\';
+    auto lastSlash = wcsrchr(_sourcePath.c_str(), separator);
     _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
     // TODO: implement std::string _functionPrefix;
     //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
@@ -212,8 +218,7 @@ namespace xloil
       if (_vbaModuleName.size() > 31 || invalidChars)
       {
         GUID guid;
-        if (!createGuid(guid))
-          XLO_THROW("Failed to create GUID");
+        stableGuidFromString(guid, theXloilNamespace, filename());
         _vbaModuleName = wstring(L"xlOil_") + guidToWString(guid, GuidToString::BASE62);
       }
       else
@@ -221,7 +226,11 @@ namespace xloil
     }
 
     registerLocalFuncs(
-      _localFunctions, _workbookName.c_str(), funcSpecs, _vbaModuleName.c_str(), append);
+      _localFunctions, 
+      _workbookName.c_str(), 
+      funcSpecs, 
+      _vbaModuleName.c_str(), 
+      append);
   }
 
   void LinkedSource::init()
