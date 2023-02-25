@@ -22,4 +22,4 @@ def log_except(msg, level='error'):
     """
        Logs '{msg}: {stack trace}' with a default level of 'error'
     """
-    log(f"{msg}: {traceback.format_exc()}", level='error')
+    log.error(f"{msg}: {traceback.format_exc()}")

@@ -159,7 +159,7 @@ class Application():
           For all open workbooks, forces a full calculation of the data 
           and rebuilds the dependencies. (Implies `full`)
         """
-    def open(self, filepath: str, update_links: bool = True, read_only: bool = False) -> Workbook: 
+    def open(self, filepath: str, update_links: bool = True, read_only: bool = False, delimiter: str = 0) -> Workbook: 
         """
         Opens a workbook given its full `filepath`.
 
@@ -1392,6 +1392,13 @@ class Worksheet():
 
         :type: Workbook
         """
+    @property
+    def used_range(self) -> _ExcelRange:
+        """
+        Returns a Range object that represents the used range on the worksheet
+
+        :type: _ExcelRange
+        """
     pass
 class Worksheets():
     """
@@ -1753,20 +1760,22 @@ class _LogWriter():
     to the value in the xlOil settings will be output to the log file. Trace output
     can only be seen with a debug build of xlOil.
     """
-    def __call__(self, msg: str, level: object = 20) -> None: 
+    def __call__(self, msg: object, *args, **kwargs) -> None: 
         """
-        Writes a message to the log at the optionally specifed level. The default 
-        level is 'info'.
+        Writes a message to the log at the specifed keyword paramter `level`. The default 
+        level is 'info'.  The message can contain format specifiers which are expanded
+        using any additional positional arguments. This allows for lazy contruction of the 
+        log string like python's own 'logging' module.
         """
     def __init__(self) -> None: 
         """
         Do not construct this class - a singleton instance is created by xlOil.
         """
-    def debug(self, msg: str) -> None: 
+    def debug(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'debug' level
         """
-    def error(self, msg: str) -> None: 
+    def error(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'error' level
         """
@@ -1775,15 +1784,15 @@ class _LogWriter():
         Forces a log file 'flush', i.e write pending log messages to the log file.
         For performance reasons the file is not by default flushed for every message.
         """
-    def info(self, msg: str) -> None: 
+    def info(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'info' level
         """
-    def trace(self, msg: str) -> None: 
+    def trace(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'trace' level
         """
-    def warn(self, msg: str) -> None: 
+    def warn(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'warn' level
         """
@@ -2041,6 +2050,8 @@ class _TomlTable():
     def __getitem__(self, arg0: str) -> object: ...
     pass
 class _XllRange(Range):
+    pass
+def _get_onedrive_source(arg0: str) -> str:
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass

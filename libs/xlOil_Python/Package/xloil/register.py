@@ -476,7 +476,7 @@ def scan_module(module, addin=None):
         func_list = list(pending_funcs)
         pending_funcs.clear()
 
-        log.debug(f"Found xloil functions in {module}")
+        log.debug("Found %d xloil functions in %s", len(func_list), module)
 
         if addin is None:
             from .importer import source_addin

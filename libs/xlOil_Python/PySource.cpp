@@ -74,7 +74,7 @@ namespace
     auto firstSheet = wb.worksheets().list()[0];
     auto textRange = firstSheet.usedRange();
     wstring text;
-    for (auto i = 0; i < textRange.nRows(); ++i)
+    for (auto i = 0u; i < textRange.nRows(); ++i)
     {
       auto value = textRange.value(i, 0);
       (text += value.toString()) += L"\n";
