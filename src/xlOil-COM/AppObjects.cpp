@@ -302,12 +302,21 @@ namespace xloil
   ExcelWorkbook Application::open(
     const std::wstring& filepath, 
     bool updateLinks, 
-    bool readOnly)
+    bool readOnly,
+    wchar_t delimiter)
   {
     try
     {
       return fromComPtr<ExcelWorkbook>(com().Workbooks->Open(
-        _bstr_t(filepath.c_str()), updateLinks ? 3 : 0, _variant_t(readOnly)
+        _bstr_t(filepath.c_str()),
+        updateLinks ? 3 : 0,
+        _variant_t(readOnly),
+        delimiter == 0 ? 5 : 6,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        delimiter != 0 ? _variant_t(wstring(delimiter, 1).c_str()) : vtMissing
       ));
     }
     XLO_RETHROW_COM_ERROR;
@@ -487,7 +496,17 @@ namespace xloil
 
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
   {
-    return COM::variantToExcelObj(com().Cells->Item[i][j]);
+    Excel::RangePtr pRange(com().Cells->Item[i][j].pdispVal);
+    return COM::variantToExcelObj(pRange->Value2);
+  }
+
+  ExcelRange ExcelWorksheet::usedRange() const
+  {
+    try
+    {
+      return ExcelRange(com().GetUsedRange(0));
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   void ExcelWorksheet::activate()

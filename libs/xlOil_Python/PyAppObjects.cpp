@@ -892,6 +892,10 @@ namespace xloil
           &ExcelWorksheet::activate,
           call_release_gil(),
           "Makes this worksheet the active sheet")
+        .def_property_readonly("used_range",
+          &ExcelWorksheet::usedRange,
+          call_release_gil(),
+          "Returns a Range object that represents the used range on the worksheet")
         .def("to_com", 
           toCom<ExcelWorksheet>, 
           toComDocString, 
@@ -1094,7 +1098,8 @@ namespace xloil
           )",
           py::arg("filepath"),
           py::arg("update_links") = true,
-          py::arg("read_only") = false)
+          py::arg("read_only") = false,
+          py::arg("delimiter") = 0)
         .def("calculate",
           &Application::calculate,
           call_release_gil(),

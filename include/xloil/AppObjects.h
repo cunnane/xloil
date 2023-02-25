@@ -164,7 +164,11 @@ namespace xloil
 
     ExcelObj run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
-    ExcelWorkbook open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
+    ExcelWorkbook open(
+      const std::wstring& filepath, 
+      bool updateLinks=true, 
+      bool readOnly=false,
+      wchar_t delimiter = 0);
 
     /// <summary>
     /// The set of full path names of all open workbooks
@@ -209,11 +213,11 @@ namespace xloil
 
     using AppObject<Excel::Range>::AppObject;
 
-    Range* range(
+    std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
-    Range* trim() const final override;
+    std::unique_ptr<Range> trim() const final override;
 
     std::tuple<row_t, col_t> shape() const final override;
 
@@ -311,6 +315,11 @@ namespace xloil
     /// Convenience wrapper for cell(i,j)->value()
     /// </summary>
     ExcelObj value(Range::row_t i, Range::col_t j) const;
+
+    /// <summary>
+    /// Returns a ExcelRange object that represents the used range on the worksheet.
+    /// </summary>
+    ExcelRange usedRange() const;
 
     /// <summary>
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
