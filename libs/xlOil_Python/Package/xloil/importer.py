@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
 import importlib.abc
+from logging import root
 import sys
 import os
 import inspect
@@ -12,6 +13,38 @@ from .logging import log, log_except
 
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
+
+
+class _UrlLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
+    """
+    Loads a python module from a URL, then runs `scan_module` on the result
+    """
+    def get_data(self, path):
+        
+        url = self.get_filename()
+
+        log.debug("Loading module name '%s' from URL '%s'", self.name, url)
+
+        # The core already loads the contents onedrive/sharepoint URLs
+        # so we first try to fetch that cached copy, then otherwise fetch
+        # the URL in the normal way with 'requests' 
+        try:
+            from xloil_core import _get_onedrive_source
+            preloaded = _get_onedrive_source(url)
+            return preloaded.encode('utf-8')
+
+        except:
+            import requests
+            response = requests.get(url)
+            return response.text.encode('utf-8')
+
+    def exec_module(self, module):
+        # Exec module as normal
+        super().exec_module(module)
+
+        # Look for xlOil functions to register
+        scan_module(module)
+
 
 class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
     """
@@ -26,12 +59,22 @@ class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
         path = self._path_map.get(fullname, None)
         if path is None:
             return None
-        return importlib.util.spec_from_file_location(fullname, path)
+
+        loader = None 
+
+        if path.startswith("http"):
+            loader = _UrlLoader(fullname, path)
+
+        log.debug("Found spec for '%s' with location '%s'", fullname, path)
+        return importlib.util.spec_from_file_location(
+            fullname, path, 
+            loader=loader, submodule_search_locations=[])
 
     def find_module(self, fullname, path):
         return None
 
     def add_path(self, name, path):
+        log.debug("Associating module name '%s' with path '%s'", name, path)
         self._path_map[name] = path
 
 # Install a sys.meta_path hook. This allows reloads to work for modules 
@@ -100,15 +143,15 @@ def _import_file(path, addin=None, workbook_name:str=None):
     Optionally also adds xlOil linked workbook information.
     """
 
-    directory, filename = os.path.split(path)
+    root_path, filename = os.path.split(path)
     filestem = os.path.splitext(filename)[0]
             
     module_name = filestem
     
     # avoid name collisions with any installed python modules when loading a
     # workbook modules (e.g. if your workbook was called sys.xlsx)
-   
-    if len(directory) > 0:
+    
+    if len(root_path) > 0:
         if workbook_name is not None:
             module_name = "xloil_wb_" + filestem # Uniquify accross wb?
         _module_finder.add_path(module_name, path)
@@ -120,14 +163,17 @@ def _import_file(path, addin=None, workbook_name:str=None):
     if workbook_name is not None:
         _linked_workbooks[path] = workbook_name
 
+    log.info("Importing module %s from file '%s' at '%s' for addin '%s'. Linked workbook '%s'", 
+             module_name, filename, root_path, addin, workbook_name)
+
     # Force a reload if an attempt is made to load a module again.
     # This can happen if a workbook is closed and reopened - it is
     # difficult to get python to delete the module. Without a reload
     # the 'pending funcs' won't be populated for the registration 
     # machinery.
-    try:
+    if module_name in sys.modules:
         module = importlib.reload(sys.modules[module_name])
-    except KeyError:
+    else:
         module = importlib.import_module(module_name)
 
     return module
@@ -159,7 +205,7 @@ def _import_and_scan_mutiple(module_names, addin):
     with StatusBar(2000) as status:
         for m in module_names:
             status.msg(f"Loading {m}")
-            log.debug(f"Loading python module '{m}' for addin '{str(addin)}'")
+            log.debug("Loading python module '%s' for addin '%s'", m, addin)
             try:
                 result.append(_import_and_scan(m, addin))
             except Exception as e:
@@ -183,8 +229,8 @@ def _import_file_and_scan(path, addin=None, workbook_name:str=None):
             # Calling import_module will bypass our import hook, so scan_module explicitly
             n_funcs = scan_module(module, addin)
             status.msg(f"Registered {n_funcs} funcs for {path}")
-        except Exception as e:
 
+        except Exception as e:
             status.msg(f"Error loading {path}, see log")
             raise ImportError(f"{str(e)} whilst loading {path}", path=path) from e
 
