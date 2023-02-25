@@ -1,5 +1,6 @@
 #include "PyCore.h"
 #include "PyAddin.h"
+#include "PyHelpers.h"
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/Interface.h>
@@ -62,12 +63,15 @@ namespace xloil
           return levelFromStr(toLower((string)py::str(level)));
         }
 
-        void writeToLog(const char* message, const py::object& level)
+        void writeToLog(const py::object& msg, const py::args& args, const py::kwargs& kwargs)
         {
-          writeToLogImpl(message, toSpdLogLevel(level));
+          spdlog::level::level_enum level = spdlog::level::info;
+          if (kwargs.contains("level"))
+            level = toSpdLogLevel(kwargs["level"]);
+          writeToLogImpl(msg, args, level);
         }
 
-        void writeToLogImpl(const char* message, spdlog::level::level_enum level)
+        void writeToLogImpl(const py::object& msg, const py::args& args, spdlog::level::level_enum level)
         {
           if (!spdlog::default_logger_raw()->should_log(level))
             return;
@@ -82,6 +86,10 @@ namespace xloil
             source.funcname = PyUnicode_AsUTF8(code->co_name);
           }
 
+          const string message = to_string(args.size() > 0
+            ? PySteal<>(PyUnicode_Format(msg.ptr(), args.ptr()))
+            : msg);
+  
           py::gil_scoped_release releaseGil;
           spdlog::default_logger_raw()->log(
             source,
@@ -95,11 +103,11 @@ namespace xloil
           spdlog::default_logger()->flush();
         }
 
-        void trace(const char* message) { writeToLogImpl(message, spdlog::level::trace); }
-        void debug(const char* message) { writeToLogImpl(message, spdlog::level::debug); }
-        void info(const char* message) { writeToLogImpl(message, spdlog::level::info); }
-        void warn(const char* message) { writeToLogImpl(message, spdlog::level::warn); }
-        void error(const char* message) { writeToLogImpl(message, spdlog::level::err); }
+        void trace(const py::object& msg, const py::args& args) { writeToLogImpl(msg, args, spdlog::level::trace); }
+        void debug(const py::object& msg, const py::args& args) { writeToLogImpl(msg, args, spdlog::level::debug); }
+        void info(const py::object& msg,  const py::args& args) { writeToLogImpl(msg, args, spdlog::level::info); }
+        void warn(const py::object& msg,  const py::args& args) { writeToLogImpl(msg, args, spdlog::level::warn); }
+        void error(const py::object& msg, const py::args& args) { writeToLogImpl(msg, args, spdlog::level::err); }
 
         auto getLogLevel()
         {
@@ -160,11 +168,12 @@ namespace xloil
           .def("__call__",
             &LogWriter::writeToLog,
             R"(
-              Writes a message to the log at the optionally specifed level. The default 
-              level is 'info'.
+              Writes a message to the log at the specifed keyword paramter `level`. The default 
+              level is 'info'.  The message can contain format specifiers which are expanded
+              using any additional positional arguments. This allows for lazy contruction of the 
+              log string like python's own 'logging' module.
             )",
-            py::arg("msg"),
-            py::arg("level") = 20)
+            py::arg("msg"))
           .def("flush", &LogWriter::flush,
             R"(
               Forces a log file 'flush', i.e write pending log messages to the log file.
