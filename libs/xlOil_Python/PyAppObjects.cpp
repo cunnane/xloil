@@ -495,6 +495,18 @@ namespace xloil
           return Application();
       }
 
+      auto application_Open(
+        Application& app,
+        const wstring& filepath,
+        bool updateLinks,
+        bool readOnly,
+        const py::object& delimiter)
+      {
+        auto delim = delimiter.is_none() ? wchar_t(0) : to_wstring(delimiter).front();
+        py::gil_scoped_release noGil;
+        return app.open(filepath, updateLinks, readOnly, delim);
+      }
+
       auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
       {
         py::gil_scoped_release noGil;
@@ -1081,8 +1093,7 @@ namespace xloil
           "Create a range object from an external address such as \"[Book]Sheet!A1\"",
           py::arg("address"))
         .def("open",
-          &Application::open,
-          call_release_gil(),
+          application_Open,
           R"(
             Opens a workbook given its full `filepath`.
 
@@ -1099,7 +1110,7 @@ namespace xloil
           py::arg("filepath"),
           py::arg("update_links") = true,
           py::arg("read_only") = false,
-          py::arg("delimiter") = 0)
+          py::arg("delimiter") = py::none())
         .def("calculate",
           &Application::calculate,
           call_release_gil(),
