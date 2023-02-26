@@ -159,7 +159,7 @@ class Application():
           For all open workbooks, forces a full calculation of the data 
           and rebuilds the dependencies. (Implies `full`)
         """
-    def open(self, filepath: str, update_links: bool = True, read_only: bool = False, delimiter: str = 0) -> Workbook: 
+    def open(self, filepath: str, update_links: bool = True, read_only: bool = False, delimiter: object = None) -> Workbook: 
         """
         Opens a workbook given its full `filepath`.
 
