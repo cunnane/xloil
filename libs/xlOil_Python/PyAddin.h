@@ -22,7 +22,7 @@ namespace xloil
     class PyAddin : public std::enable_shared_from_this<PyAddin>
     {
     public:
-      PyAddin(AddinContext&, bool, const wchar_t*);
+      PyAddin(AddinContext&, bool, const std::wstring_view&);
 
       AddinContext&              context;
       std::shared_ptr<EventLoop> thread;
@@ -55,6 +55,8 @@ namespace xloil
       void importFile(const wchar_t* filePath, const wchar_t* linkedWorkbook);
 
       std::shared_ptr<FuncSource> findSource(const wchar_t* sourcePath) const;
+      
+      bool loadLocalModules() const { return !_workbookPattern.empty(); }
 
     private:
       std::wstring _workbookPattern;

@@ -27,11 +27,11 @@ namespace xloil
       std::map<wstring, std::shared_ptr<PyAddin>> theAddins;
     }
 
-    PyAddin::PyAddin(AddinContext& ctx, bool newThread, const wchar_t* wbPattern)
+    PyAddin::PyAddin(AddinContext& ctx, bool newThread, const std::wstring_view& wbPattern)
       : context(ctx)
       , thread(newThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
     {
-      if (wbPattern)
+      if (!wbPattern.empty())
       {
         _workbookPattern = wbPattern;
         const auto star = _workbookPattern.find(L'*');
