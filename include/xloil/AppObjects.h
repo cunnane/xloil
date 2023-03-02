@@ -189,7 +189,10 @@ namespace xloil
     void setVisible(bool x);
 
     bool getEnableEvents();
-    void setEnableEvents(bool value);
+    bool setEnableEvents(bool value);
+
+    bool getDisplayAlerts();
+    bool setDisplayAlerts(bool value);
   };
 
   /// <summary>

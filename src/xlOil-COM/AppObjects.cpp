@@ -236,20 +236,41 @@ namespace xloil
   {
     try
     {
-      return com().EnableEvents;
+      return com().EnableEvents == VARIANT_TRUE;
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  void Application::setEnableEvents(bool value)
+  bool Application::setEnableEvents(bool value)
   {
     try
     {
+      auto previousValue = com().EnableEvents == VARIANT_TRUE;
       com().EnableEvents = _variant_t(value);
+      return previousValue;
     }
     XLO_RETHROW_COM_ERROR;
   }
 
+  bool Application::getDisplayAlerts()
+  {
+    try
+    {
+      return com().GetDisplayAlerts() == VARIANT_TRUE;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::setDisplayAlerts(bool value)
+  {
+    try
+    {
+      auto previousValue = com().GetDisplayAlerts() == VARIANT_TRUE;
+      com().PutDisplayAlerts(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
   namespace
   {
     template <typename F, typename T, std::size_t N, std::size_t... Idx>

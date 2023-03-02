@@ -3,6 +3,7 @@
 #include "PyHelpers.h"
 #include "PyFunctionRegister.h"
 #include "PyAddin.h"
+#include "PyCOM.h"
 
 #include <winreg/WinReg/WinReg.hpp>
 #include <xlOil/AppObjects.h>
@@ -63,14 +64,28 @@ namespace
   /// Loads a text file directly from a URL. It does this via the Application.Open
   /// method so that if the URL is on OneDrive/Sharepoint Excel's own access tokens
   /// are leveraged.  Otherwise the user would need to get a Graph API token for xlOil,
-  /// unless there is another way?  
+  /// unless there is another way?  Returns an empty string if the load fails
   /// 
-  /// Note this needs to be run on the main thread as it uses COM
+  /// Note this needs to be run on the main thread as it uses COM.
   /// </summary>
   wstring loadOneDriveUrl(const wstring& url)
   {
     XLO_DEBUG(L"Loading module from OneDrive URL '{}'", url);
-    auto wb = xloil::Application().open(url);
+    auto app = xloil::Application();
+    xloil::ExcelWorkbook wb;
+    // Turning off alerts means that a failed open happens quickly,
+    // otherwise there can be 30s timeout
+    auto previousAlertSetting = app.setDisplayAlerts(false);
+    try
+    {
+      wb = app.open(url, false, true);
+    }
+    catch (std::exception) {}
+
+    app.setDisplayAlerts(previousAlertSetting);
+    if (!wb.valid())
+      return wstring();
+
     auto firstSheet = wb.worksheets().list()[0];
     auto textRange = firstSheet.usedRange();
     wstring text;
@@ -160,7 +175,11 @@ namespace xloil
               }
               else
               {
-                theOneDriveSources[modulePath] = loadOneDriveUrl(modulePath);
+                auto sourceText = loadOneDriveUrl(modulePath);
+                // If no source was found, then we're done 
+                if (sourceText.empty())
+                  return;
+                theOneDriveSources[modulePath] = move(sourceText);
               }
             }
           }
@@ -188,10 +207,11 @@ namespace xloil
     std::shared_ptr<const void>
       createWorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext, Application& app)
     {
+      if (!loadContext.lock()->loadLocalModules())
+        return std::shared_ptr<const void>();
+
       WorkbookOpenHandler handler(loadContext);
-
       checkExistingWorkbooks(handler, app);
-
       return Event::WorkbookOpen().bind(handler);
     }
 
