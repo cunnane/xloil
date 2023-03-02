@@ -130,5 +130,7 @@ namespace xloil
 
       COM::disconnectCom();
     }
+
+    spdlog::default_logger()->flush();
   }
 }
