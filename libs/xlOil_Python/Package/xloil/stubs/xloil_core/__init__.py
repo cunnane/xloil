@@ -2097,7 +2097,7 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
     """
 def core_addin() -> Addin:
     pass
-def deregister_functions(arg0: object, arg1: object) -> None:
+def deregister_functions(funcs: object, module: object = None) -> None:
     """
     Deregisters worksheet functions linked to specified module. Generally, there
     is no need to call this directly.
