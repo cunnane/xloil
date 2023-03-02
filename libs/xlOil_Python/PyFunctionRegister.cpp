@@ -39,7 +39,7 @@ namespace xloil
 {
   namespace Python
   {
-    constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
+    constexpr wchar_t* XLOPY_ANON_SOURCE = L"[PyFuncs]";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
     unsigned readFuncFeatures(
@@ -389,8 +389,8 @@ namespace xloil
       const std::weak_ptr<PyAddin>& addin,
       const wchar_t* workbookName)
       : LinkedSource(
-        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
-        true,
+        modulePath.c_str(),
+        modulePath != XLOPY_ANON_SOURCE,
         workbookName)
       , _linkedWorkbook(workbookName)
       , _addin(addin)
@@ -400,7 +400,7 @@ namespace xloil
     {
       try
       {
-        if (!_module)
+        if (!_module || name() == XLOPY_ANON_SOURCE)
           return;
 
         // TODO: cancel running async tasks?
@@ -542,11 +542,13 @@ namespace xloil
 
     namespace
     {
+      // Check if the provided module has a file attribute and return if present,
+      // otherwise use the generic "anon" source
       auto getModulePath(const py::object& module)
       {
         return !module.is_none() && py::hasattr(module, "__file__")
           ? module.attr("__file__").cast<wstring>()
-          : L"";
+          : XLOPY_ANON_SOURCE;
       }
     }
 
@@ -573,27 +575,32 @@ namespace xloil
     }
 
     void deregisterFunctions(
-      const py::object& moduleHandle,
-      const py::object& functionNames)
+      const py::object& functionNames,
+      const py::object& moduleHandle)
     {
       // Called from python so we have the GIL
 
       const auto modulePath = getModulePath(moduleHandle);
 
-      auto [foundSource, foundAddin] = AddinContext::findSource(
-        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
+      auto [foundSource, foundAddin] = AddinContext::findSource(modulePath.c_str());
 
       if (!foundSource)
       {
         XLO_WARN(L"Call to deregisterFunctions with unknown source '{0}'", modulePath);
         return;
       }
+
       vector<wstring> funcNames;
-      auto iter = py::iter(functionNames);
-      while (iter != py::iterator::sentinel())
+      if (PyUnicode_Check(functionNames.ptr()))
+        funcNames.push_back(to_wstring(functionNames));
+      else
       {
-        funcNames.push_back(iter->cast<wstring>());
-        ++iter;
+        auto iter = py::iter(functionNames);
+        while (iter != py::iterator::sentinel())
+        {
+          funcNames.push_back(iter->cast<wstring>());
+          ++iter;
+        }
       }
 
       py::gil_scoped_release releaseGil;
@@ -683,7 +690,9 @@ namespace xloil
           R"(
             Deregisters worksheet functions linked to specified module. Generally, there
             is no need to call this directly.
-          )");
+          )",
+          py::arg("funcs"),
+          py::arg("module") = py::none());
       }, 20); // Need to declare before PyAddin
     }
   }
