@@ -297,14 +297,17 @@ class _GuiExecutor(futures.Executor):
         return await asyncio.wrap_future(self.submit(fn, *args, **kwargs))
 
     def shutdown(self, wait=True, cancel_futures=False):
-        if not self._broken: # TODO: implement wait/cancel_futures support?
+        if not self._broken: # TODO: implement cancel_futures?
             self.submit(self._shutdown)
+        if wait:
+            self._thread.join()
+            xloil.log.debug("Joined GUI thread '%s'", self._thread.name)
 
     def _main_loop(self):
 
         name = self._thread.name
         try:
-            xloil.log(f"En taro Adun executor '{name}'", level="info")
+            xloil.log(f"Starting executor '{name}'", level="info")
             self._main()
             xloil.log(f"Finalising executor '{name}'", level="info")
         except Exception as e:
