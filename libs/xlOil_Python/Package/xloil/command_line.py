@@ -176,9 +176,10 @@ def _remove_xloil():
     
     # Ensure no xlOil addins are in the registry
     _remove_addin(excel_version)
-    
-    os.remove(_XLL_INSTALL_PATH)
-
+    try:
+        os.remove(_XLL_INSTALL_PATH)
+    except FileNotFoundError:
+        ...
 
 def _clean_xloil():
 
