@@ -84,7 +84,12 @@ namespace xloil
         ExcelObj result;
         auto ret = xloil::callExcelRaw(funcNum, &result, args.size(), args.begin());
         if (ret != 0)
-          result = wstring(L"#") + xlRetCodeToString(ret);
+        {
+          if (ret == msxll::xlretInvXloper && funcNum == msxll::xlUDF)
+            result = formatStr(L"#Unrecognised function '%s'", args[0].toString().c_str());
+          else
+            result = wstring(L"#") + xlRetCodeToString(ret);
+        }
         return std::move(result);
       }, ExcelRunQueue::XLL_API));
     }
