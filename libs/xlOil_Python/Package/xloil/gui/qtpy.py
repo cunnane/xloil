@@ -63,6 +63,9 @@ def _create_Qt_app():
     
     log.info(f"Starting Qt on thread {threading.get_native_id()}")
     app = QApplication(args)
+
+    app.setQuitOnLastWindowClosed(False)
+
     return app
 
 class QtExecutor(_GuiExecutor):
@@ -86,6 +89,8 @@ class QtExecutor(_GuiExecutor):
         return future
 
     def _main(self):
+        log.debug("Qt: Creating Qt App in executor thread")
+
         self._app = _create_Qt_app()
 
         from qtpy.QtCore import QTimer
@@ -99,10 +104,15 @@ class QtExecutor(_GuiExecutor):
         # Thread main loop, run until quit
         self._app.exec()
 
+        log.debug("Qt: Finished running exec loop, finalising Application")
+
         # Thread cleanup
+        self._work_signal = None
+        del self._app
         self._app = None
 
     def _shutdown(self):
+        log.debug("Qt: Recieved shutdown: sending quit call")
         self._app.quit()
 
 
@@ -143,7 +153,7 @@ def Qt_thread(fn=None, discard=False) -> QtExecutor:
 
     return _Qt_thread if fn is None else _Qt_thread._wrap(fn, discard)
 
-# For safety, initialise Qt when we this module is imported
+# For safety, initialise Qt when this module is imported
 if XLOIL_EMBEDDED:
     Qt_thread()
 
@@ -189,4 +199,4 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
     def on_destroy(self):
         # Call super to detach the TaskPaneFrame for a cleaner shutdown
         super().on_destroy() 
-        Qt_thread().submit(lambda: self._widget.destroy())
+        Qt_thread().submit(lambda: self._widget.destroy()) ## TODO: call close? or del?

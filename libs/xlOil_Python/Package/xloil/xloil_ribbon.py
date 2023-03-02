@@ -329,8 +329,8 @@ async def press_open_log(ctrl):
     os.startfile(xloil.log.path)
 
 #
-# Open Console callback
-# ---------------------
+# Open Console callbacks
+# ----------------------
 #
 async def press_open_console(ctrl):
 
@@ -349,6 +349,23 @@ async def press_open_console(ctrl):
 
     from xloil.gui.tkinter import Tk_thread
     await Tk_thread().submit_async(open_console, Tk_thread().root)
+
+
+theConsoleQt=None
+
+async def press_open_qtconsole(ctrl):
+
+    def open_console():
+        global theConsoleQt
+        from xloil.gui.qt_console import create_qtconsole_inprocess
+        from qtpy.QtCore import Qt
+        console = create_qtconsole_inprocess()
+        console.show()
+        theConsoleQt = console
+        #console.setAttribute(Qt.WA_DeleteOnClose)
+
+    from xloil.gui.qtpy import Qt_thread
+    await Qt_thread().submit_async(open_console)
 
 
 #
@@ -418,6 +435,10 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
             <group id="grp2" autoScale="false" centerVertically="false" label="Debugging" >
               <button id="btn5" size="large" label="Console" imageMso="ContainerGallery" 
                 onAction="press_open_console"/>
+              <button id="qtconsole" size="large" label="QtConsole" imageMso="ContainerGallery" 
+                onAction="press_open_qtconsole"
+                screentip="Opens a Jupyter console to an inprocess kernel"
+                supertip="The console is connected to the Excel application, so can register functions and manipulate workbooks"/>
               <button id="btn6" size="large" label="Open Log" imageMso="ZoomCurrent75" 
                 onAction="press_open_log"
                 screentip="Opens the log file"
