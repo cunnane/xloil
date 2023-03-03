@@ -12,6 +12,7 @@ xlOil Python
     TypeConversion
     ExcelApplication
     CustomGUI
+    Dynamic
     ExternalPackages
     BuiltInUDFs
     Jupyter
