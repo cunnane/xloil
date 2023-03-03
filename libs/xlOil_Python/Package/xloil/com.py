@@ -34,7 +34,7 @@ class PauseExcel():
         app = _core.app()
 
         if not events:
-            _events = app.EnableEvents
+            self._events = app.EnableEvents
             app.EnableEvents = False
 
         if not calculation:
