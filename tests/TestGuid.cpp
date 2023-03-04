@@ -45,10 +45,6 @@ namespace Tests
     }
     TEST_METHOD(TestGuidToString)
     {
-      GUID guid;
-      //createGuid(guid);
-      //auto result = guidToWString(guid, GuidToString::BASE62);
-
       const GUID testGuid =
         { 0x306D016E, 0xCCE8, 0x4861, { 0x9D, 0xA1, 0x51, 0xA2, 0x7C, 0xBE, 0x34, 0x1A} };
       {
@@ -61,7 +57,10 @@ namespace Tests
       }
       {
         auto result = guidToWString(testGuid, GuidToString::BASE62);
+#ifdef _WIN64
         Assert::AreEqual<wstring>(L"6DHqXiKeG5u2FUdHmh8HsL", result);
+#endif 
+        Assert::AreEqual<wstring>(L"syxOo1KBMqm2yIW0jTkmku", result);
       }
     }
   };

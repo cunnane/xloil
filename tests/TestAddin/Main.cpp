@@ -36,7 +36,7 @@ struct MyAddin
       1000);
 
     theFuncs.push_back(RegisterLambda<>(
-      [](const ExcelObj& arg1, const ExcelObj& arg2)
+      [](const ExcelObj& /*arg1*/, const ExcelObj& /*arg2*/)
       {
         return returnValue(7);
       })
@@ -44,7 +44,7 @@ struct MyAddin
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<void>(
-      [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
+      [](const FuncInfo& /*info*/, const ExcelObj& /*arg1*/, const AsyncHandle& handle)
       {
         handle.returnValue(8);
       })
@@ -52,7 +52,7 @@ struct MyAddin
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<int>(
-      [](const FuncInfo& info, const ExcelObj& arg1)
+      [](const FuncInfo& /*info*/, const ExcelObj& /*arg1*/)
       {
         return 1;
       })

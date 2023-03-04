@@ -56,24 +56,21 @@ what happens if ``x`` is two-dimensional?  To avoid this possibility we can spec
 Events
 ------
 
-Events request a callback on various user interactions. If you are familiar  
-with VBA, you may have used Excel's event model already.  Most of the workbook events 
-described in `Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
-are available in xlOil. See the xloil.Event documention for the complete list.
+Events allow for a callback on user interaction. If you are familiar with VBA, you may have used 
+Excel's event model already.  Most of the workbook events described in 
+`Excel.Appliction <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
+are available in xlOil. 
 
-Some events take reference parameters, which do not exist in python. For example, setting 
-the `cancel` bool in `WorkbookBeforeSave` cancels the event.  In xlOil you need to set this
+See :ref:`xlOil_Python/ModuleReference:Events` for more details on python events and :doc:`Events`
+for a description of the available Excel events.
+
+Excel events do not use return values.  However, some events take reference parameters. 
+For example, `WorkbookBeforeSave` has a boolean `cancel` parameter. Setting this to True cancels the 
+save.  As references to primitive types aren't supported in python, in xlOil you need to set this 
 value using `cancel.value=True`.
 
-Events are (currently) global to the Excel instance, so you may need to filter by workbook name when 
-handling events.
-
-xlOil has some extra events:
-
-    * `WorkbookAfterClose`: Excel's event *WorkbookBeforeClose*, is cancellable by the user so it is 
-      not possible to know if the workbook actually closed. `WorkbookAfterClose` fixes this but there
-      may be a long delay before the event is fired.
-    * `CalcCancelled`: called when the user interrupts calculation, maybe useful for async functions
+Event handlers are (currently) global to the Excel instance, so you may need to filter by workbook name 
+when handling events even if you have hooked the event in a local workbook module.
 
 Examples
 ~~~~~~~~
@@ -86,25 +83,18 @@ Examples
     xlo.event.WorkbookNewSheet += greet
 
 
-Looking for xlOil functions in imported modules
------------------------------------------------
+Registering functions in other modules
+--------------------------------------
 
-This happens automatically when a module is imported or reloaded as xlOil
-hooks python's import mechanism.  
+xlOil automatically scans modules when they are imported or reloaded via a
+hook in python's import mechanism.  This ensures any :any:`xloil.func` 
+decorated functions are registered. 
 
 If you load a module outside the normal ``import`` mechanism, you can tell 
-xlOil to look for functions to register with ``xloil.scan_module(module)``. 
+xlOil to look for functions to register with :any:`xloil.scan_module`. 
 
-
-xloPyLoad: import and scan a python module (worksheet function)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. function:: xloPyLoad(ModuleName)
-
-    Imports the specifed python module and registers any it for xloil 
-    functions it contains.  Leaving the argument blank loads or reloads the
-    workbook module for the calling sheet, i.e. the file `WorkbookName.py`.
-
+Also see :any:`xlOil_Python/Functions:Dynamic Registration`, which explains
+how any python callable can be registered as an Excel function.
 
 
 Multiple addins and event loops

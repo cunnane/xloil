@@ -91,6 +91,8 @@ namespace xloil
 
   shared_ptr<ExcelObj> rtdAsync(const shared_ptr<IRtdAsyncTask>& task)
   {
+    // TODO: the worker thread for this RTD server will be terminated by Excel once all tasks have done
+    // ... is it a good idea to keep it alive?
     if (!task)
     {
       COM::RtdAsyncManager::init();

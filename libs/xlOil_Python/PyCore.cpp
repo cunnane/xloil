@@ -5,7 +5,6 @@
 #include "PyFuture.h"
 #include "TypeConversion/Numpy.h"
 #include <TypeConversion/BasicTypes.h>
-#include <xlOil/ExcelThread.h>
 #include <xloil/Caller.h>
 #include <xloil/State.h>
 #include <xlOil/StringUtils.h>
@@ -23,39 +22,43 @@ namespace xloil
 {
   namespace Python 
   {
-    using BinderFunc = std::function<void(pybind11::module&)>;
-
-    PyTypeObject* cellErrorType;
-    PyObject*     comBusyException;
+    PyTypeObject* theCellErrorType;
     PyObject*     cannotConvertException;
+
+    bool isErrorType(const PyObject* obj)
+    {
+      return Py_TYPE(obj) == theCellErrorType;
+    }
 
     namespace
     {
+      using BinderFunc = std::function<void(pybind11::module&)>;
+
       void initialiseCore(py::module& mod);
+   
+      class BinderRegistry
+      {
+      public:
+        static BinderRegistry& get() {
+          static BinderRegistry instance;
+          return instance;
+        }
+
+        auto add(BinderFunc f, size_t priority)
+        {
+          return theFunctions.insert(make_pair(priority, f));
+        }
+
+        void bindAll(py::module& mod)
+        {
+          std::for_each(theFunctions.rbegin(), theFunctions.rend(),
+            [&mod](auto f) { f.second(mod); });
+        }
+      private:
+        BinderRegistry() {}
+        std::multimap<size_t, BinderFunc> theFunctions;
+      };
     }
-
-    class BinderRegistry
-    {
-    public:
-      static BinderRegistry& get() {
-        static BinderRegistry instance;
-        return instance;
-      }
-
-      auto add(BinderFunc f, size_t priority)
-      {
-        return theFunctions.insert(make_pair(priority, f));
-      }
-
-      void bindAll(py::module& mod)
-      {
-        std::for_each(theFunctions.rbegin(), theFunctions.rend(),
-          [&mod](auto f) { f.second(mod); });
-      }
-    private:
-      BinderRegistry() {}
-      std::multimap<size_t, BinderFunc> theFunctions;
-    };
 
     PyObject* buildInjectedModule()
     {
@@ -67,7 +70,7 @@ namespace xloil
     }
 
     // This unfortunate block of code is a copy of PYBIND11_MODULE with the name of 
-    // the module tweaked. This allows the module name to be consistent accross the 
+    // the module tweaked. This allows the module name to be consistent across the 
     // various xloil_PythonXX.pyd implemenations which reduces surprise and makes 
     // the documentation nicer
 
@@ -108,41 +111,8 @@ namespace xloil
       return 0;
     }
 
-    namespace
+    namespace 
     {
-      auto runLater(
-        const py::object& callable, 
-        const unsigned delay, 
-        const unsigned retryPause, 
-        wstring& api)
-      {
-        int flags = 0;
-        toLower(api);
-        if (api.empty() || api.find(L"com") != wstring::npos)
-          flags |= ExcelRunQueue::COM_API;
-        if (api.find(L"xll") != wstring::npos)
-          flags |= ExcelRunQueue::XLL_API;
-        if (retryPause == 0)
-          flags |= ExcelRunQueue::NO_RETRY;
-        return PyFuture<PyObject*>(runExcelThread([callable=PyObjectHolder(callable)]()
-          {
-            py::gil_scoped_acquire getGil;
-            try
-            {
-              return callable().release().ptr();
-            }
-            catch (py::error_already_set& err)
-            {
-              if (err.matches(comBusyException))
-                throw ComBusyException();
-              throw;
-            }
-          },
-          flags,
-          delay,
-          retryPause));
-      }
-
       struct CannotConvert {};
 
       /// <summary>
@@ -173,9 +143,11 @@ namespace xloil
             [](const IPyFromExcel& /*self*/, const py::object& /*arg*/)
             {
               XLO_THROW("Internal IPyFromExcel converters cannot be called from python");
-            });
+            })
+          .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
 
-        py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel");
+        py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel")
+          .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
 
         mod.def("in_wizard", &inFunctionWizard,
           R"(
@@ -185,35 +157,6 @@ namespace xloil
           )");
 
         PyFuture<PyObject*>::bind(mod, "_PyObjectFuture");
-
-        mod.def("excel_callback",
-          &runLater,
-          R"(
-          Schedules a callback to be run in the main thread. Much of the COM API in unavailable
-          during the calc cycle, in particular anything which involves writing to the sheet.
-          Returns a future which can be awaited.
-
-          Parameters
-          ----------
-
-          func: callable
-          A callable which takes no arguments and returns nothing
-
-          retry : int
-          Millisecond delay between retries if Excel's COM API is busy, e.g. a dialog box
-          is open or it is running a calc cycle.If zero, does no retry
-
-          wait : int
-          Number of milliseconds to wait before first attempting to run this function
-
-          api : str
-          Specify 'xll' or 'com' or both to indicate which APIs the call requires.
-          The default is 'com': 'xll' would only be required in rare cases.
-          )",
-          py::arg("func"),
-          py::arg("wait") = 0,
-          py::arg("retry") = 500,
-          py::arg("api") = "");
 
         py::class_<ExcelProcessInfo>(mod, "ExcelState", 
           R"(
@@ -242,8 +185,6 @@ namespace xloil
           )",
           py::return_value_policy::reference);
 
-        comBusyException = py::register_exception<ComBusyException>(mod, "ComBusyError").ptr();
-
         {
           auto e = py::exception<CannotConvert>(mod, "CannotConvert");
           e.doc() = R"(
@@ -254,6 +195,7 @@ namespace xloil
           cannotConvertException = e.ptr();
         }
 
+        // TODO: move to basictypes but beware of pybind declaration order!
         {
           // Bind CellError type to xloil::CellError enum
           auto eType = py::enum_<CellError>(mod, "CellError", 
@@ -267,7 +209,7 @@ namespace xloil
           for (auto e : theCellErrors)
             eType.value(cellErrorSymbol(e).c_str(), e);
 
-          cellErrorType = (PyTypeObject*)eType.ptr();
+          theCellErrorType = (PyTypeObject*)eType.ptr();
         }
       }
     }

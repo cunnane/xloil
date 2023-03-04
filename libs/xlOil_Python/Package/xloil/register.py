@@ -1,23 +1,28 @@
 import inspect
 import functools
-import os
-import sys
 from .type_converters import *
 from ._core import *
-from .com import EventsPaused
 from .logging import *
 from .func_inspect import Arg
 import contextvars
+import typing
 
 from xloil_core import (
     _Read_object,
     _Read_Cache,
+    _Return_Cache,
     _FuncSpec,
     _FuncArg,
     _register_functions
 )
 
 _LANDMARK_TAG = "_xloil_pending_funcs_"
+
+# typing.List (no square brackets) is a _SpecialGenericAlias in Py 3.9, but this type 
+# doesn't exist in 3.8
+_TYPING_GENERIC_CLASSES = (typing._SpecialGenericAlias, typing._GenericAlias) \
+    if hasattr(typing, "_SpecialGenericAlias") else typing._GenericAlias
+
 """
     Tag used to mark modules which contain functions to register. It is added 
     by the xloil.func decorator to the module's __dict__ and contains a list
@@ -29,7 +34,6 @@ def _add_pending_funcs(module, objects):
     pending.update(objects)
     setattr(module, _LANDMARK_TAG, pending)
  
-
 def arg_to_funcarg(arg: Arg) -> _FuncArg:
 
     # Set the arg converters based on the typeof provided for 
@@ -39,36 +43,40 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
     # Determine the internal C++ arg converter to run on the Excel values
     # before they are passed to python.
 
-    this_arg = _FuncArg()
-    this_arg.name = arg.name
-    this_arg.help = arg.help
+    flags = ""
+    arg_type = arg.typeof
+    converter = None
+    allow_range = False
 
     if arg.kind == Arg.KEYWORD_ARGS:
-        this_arg.special_type = "keywords"
-        return this_arg
-
-    arg_type = arg.typeof
-    converter = 0
-    allow_range = False
+        flags = "keywords"
+        return _FuncArg(arg.name, arg.help, None, "keywords")
 
     # FastArray is handled separately as converters/defaults are not used 
     if arg_type is FastArray:
-        this_arg.special_type = "array"
+        flags = "array"
         if arg.has_default:
             log.warn(f"Defaults not supported for FastArray parameter {arg.name}")
-        return this_arg
+        return _FuncArg(arg.name, arg.help, None, "array")
 
-    # If a typing annotation is None or not a type, ignore it and use the
-    # generic converter which gives a python type based on the Excel type
-    if not isinstance(arg_type, type):
-        # if arg_type is ExcelValue: ExcelValue is just the explicit generic 
-        # type available for linting, so do nothing. AllowRange adds range
-        # support. It's a typing.Union so not an instance of type.
-        if arg_type is AllowRange:
-            converter = _Read_object()
-            allow_range = True
-        else:
-            converter = _Read_object()
+    if arg_type is ExcelValue:
+        # ExcelValue is just the explicit generic type
+        converter = _Read_object()
+    
+    elif arg_type is AllowRange:
+        converter = _Read_object()
+        allow_range = True
+
+    # Prior to Py 3.9, type annotions for builtins looked like typing.List[int]
+    # We resolve this to the base type. 
+    # TODO: user-defined converters for these types won't get called
+    elif isinstance(arg_type, _TYPING_GENERIC_CLASSES):
+        type_name = arg_type._name.lower()
+        converter = get_converter(type_name)
+
+    elif not isinstance(arg_type, type):
+        converter = _Read_object()
+
     else:
         converter = get_converter(arg_type.__name__)
 
@@ -90,18 +98,18 @@ def arg_to_funcarg(arg: Arg) -> _FuncArg:
                 converter = _Read_Cache()
 
     if allow_range:
-        this_arg.special_type = "range"
-    
-    if arg.has_default:
-        this_arg.default = arg.default
-
-    assert converter is not None
-    this_arg.converter = converter
-
+        flags = "range"
+ 
     if arg.kind == Arg.VARIABLE_ARGS:
-        this_arg.special_type += ",vargs"
+        flags += ",vargs"
 
-    return this_arg
+    result = _FuncArg(arg.name, arg.help, converter, flags)
+    if arg.has_default:
+        result.default = arg.default
+
+    log.debug(f"Interpreted arg '{arg}' => '{result}'")
+
+    return result
 
 
 def find_return_converter(ret_type: type):
@@ -262,20 +270,21 @@ def func(fn=None,
     * **cached objects**
     * **datetime.date**
     * **datetime.datetime**
-    * **dict / kwargs**: this converter expects a two column array of key/value pairs
+    * **dict / kwargs**: this converter expects a two column array of key/value
+      pairs
     * **arg list / *args**
 
-    If no annotations are specified, xlOil will pass a type from the first eight above types
-    based on the value provided from Excel.
+    If no annotations are specified, xlOil will pass a type from the first 
+    eight above types based on the value provided from Excel.
 
-    If a parameter default is given in the function signature, that parameter becomes
-    optional in the declared Excel function.
+    If a parameter default is given in the function signature, that parameter 
+    becomes optional in the declared Excel function.
 
-    If keyword args (`**kwargs`) are specified, xlOil expects a two-column array of 
-    (string, value) to be passed. For variable args (`*args`) xlOil adds a large number
-    of trailing optional arguments. The variable argument list is ended by the first 
-    missing argument.  If both *kwargs* and *args* are specified, their order is reversed 
-    in the Excel function declaration.
+    If keyword args (`**kwargs`) are specified, xlOil expects a two-column 
+    array of (string, value) to be passed. For variable args (`*args`) xlOil
+    adds a large number of trailing optional arguments. The variable argument 
+    list is ended by the first missing argument.  If both *kwargs* and *args* 
+    are specified, their order is reversed in the Excel function declaration.
 
     Parameters
     ----------
@@ -413,6 +422,12 @@ def func(fn=None,
             if return_type is not None and return_type is not FastArray:
                 spec.return_converter = find_return_converter(return_type)
 
+            # If we are decorating a class, we assume we want to call the class
+            # ctor and return the new object as a cache reference, rather than 
+            # trying to convert to Excel values
+            elif inspect.isclass(fn):
+                spec.return_converter = _Return_Cache()
+
             log(f"Declared excel func: {str(spec)}", level="debug")
   
             if register: # and inspect.isfunction(fn):
@@ -441,9 +456,10 @@ _scan_module_mutex = threading.Lock()
 
 def scan_module(module, addin=None):
     """
-        Parses a specified module to look for functions with with the xloil.func 
-        decorator and register them. Rather than call this manually, it is easer
-        to import xloil.importer which registers a hook on the import function.
+        Parses a specified module to look for functions with with the 
+        `xloil.func` decorator and register them. Rather than call this
+        manually, it is easer to import xloil.importer which registers a 
+        hook on the import function.
     """
 
     # Enabling this generates a large amount of unhelpful output
@@ -462,7 +478,7 @@ def scan_module(module, addin=None):
         func_list = list(pending_funcs)
         pending_funcs.clear()
 
-        log.debug(f"Found xloil functions in {module}")
+        log.debug("Found %d xloil functions in %s", len(func_list), module)
 
         if addin is None:
             from .importer import source_addin
@@ -475,22 +491,25 @@ def scan_module(module, addin=None):
 
 def register_functions(funcs, module=None, append=True):
     """
-        Registers the provided callables and associates them with the given modeule
+        Registers the provided callables and associates them with the given 
+        module
 
         Parameters
         ----------
 
         funcs: iterable
-            An iterable of `_WorksheetFunc` (a callable decorated with `func`), callables or
-            `_FuncSpec`.  A callable is registered by using `func` with the default settings.
-            Passing one of the other two allows control over the registration such as changing
-            the function or argument names.
+            An iterable of `_WorksheetFunc` (a callable decorated with `func`), 
+            callables or `_FuncSpec`.  A callable is registered by using `func`
+            with the default settings. Passing one of the other two allows control 
+            over the registration such as changing the function or argument names.
         module: python module
-            A python module which contains the source of the functions (it does not have to be the. 
-            module calling this function). If this module is edited it is automatically reloaded
-            and the functions re-registered. Passing None disables this behaviour.
+            A python module which contains the source of the functions (it does 
+            not have to equal the module calling this function). If this module is 
+            edited it is automatically reloaded and the functions re-registered.
+            Passing None disables this behaviour.
         append: bool
-            Whether to append to or overwrite any existing functions associated with the module
+            Whether to append to or overwrite any existing functions associated 
+            with the module
     """
 
     # Check if we have a _FuncSpec, else call the decorator to get one 
@@ -508,7 +527,8 @@ def register_functions(funcs, module=None, append=True):
     # overwrite all existing functions, we both register now and add to the pending list 
     # Registering the same function twice is optimised by xlOil to avoid overhead
     # TODO: check we are called from exec_module for the matching module object
-    _add_pending_funcs(module, to_register)
+    if module:
+        _add_pending_funcs(module, to_register)
 
     from .importer import source_addin
     addin = source_addin()

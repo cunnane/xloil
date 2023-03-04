@@ -172,6 +172,7 @@ namespace xloil
       {
         try
         {
+          XLO_DEBUG(L"Server terminate received for '{}'", _progId);
           // Clearing _updateCallback prevents the sending of further updates 
           // which might crash Excel if sent during teardown.
           _updateCallback = nullptr;
@@ -183,6 +184,8 @@ namespace xloil
         }
         return S_OK;
       }
+
+      const wchar_t* _progId = nullptr;
     };
 
     class RtdServer : public IRtdServer
@@ -200,7 +203,9 @@ namespace xloil
           [p = _impl.p]() { return p; },
           progId,
           fixedClsid)
-      {}
+      {
+        _impl->_progId = _registrar.progid();
+      }
 
       ~RtdServer()
       {

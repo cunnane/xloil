@@ -81,7 +81,7 @@ namespace xloil
 
     // This class does not need a disp-interface
     class ComAddinImpl :
-        public NoIDispatchImpl<ComObject<AddInDesignerObjects::IDTExtensibility2>>
+        public NoIDispatchImpl<ComObject<AddInDesignerObjects::_IDTExtensibility2>>
     {
     public:
       ComAddinImpl()
@@ -93,9 +93,9 @@ namespace xloil
       {
         *ppv = NULL;
         if (riid == IID_IUnknown 
-          || riid == __uuidof(AddInDesignerObjects::IDTExtensibility2))
+          || riid == __uuidof(AddInDesignerObjects::_IDTExtensibility2))
         {
-          auto p = (AddInDesignerObjects::IDTExtensibility2*)this;
+          auto p = (AddInDesignerObjects::_IDTExtensibility2*)this;
           *ppv = p;
           p->AddRef();
           return S_OK;
@@ -235,11 +235,15 @@ namespace xloil
     public:
       static auto create(const wchar_t* name, const wchar_t* description)
       {
-        auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
-        p->_closeHandler = Event::WorkbookAfterClose().weakBind(
-          std::weak_ptr<ComAddinCreator>(p), 
-          &ComAddinCreator::handleWorkbookClose);
-        return p;
+        try
+        {
+          auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
+          p->_closeHandler = Event::WorkbookAfterClose().weakBind(
+            std::weak_ptr<ComAddinCreator>(p),
+            &ComAddinCreator::handleWorkbookClose);
+          return p;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       ~ComAddinCreator()
@@ -256,6 +260,11 @@ namespace xloil
         catch (const std::exception& e)
         {
           XLO_ERROR("ComAddin failed to close: {0}", e.what());
+        }
+        catch (_com_error& e)
+        {
+          XLO_ERROR(L"ComAddin failed to close with COM Error {0:#x}: {1}", 
+            (unsigned)e.Error(), e.ErrorMessage());
         }
       }
 
@@ -300,8 +309,10 @@ namespace xloil
               "blocking by add-in security.  Check add-ins are enabled and this add-in is not a disabled "
               "COM add-in.", (unsigned)error.Error());
           }
+          else if (error.Error() == VBA_E_IGNORE)
+            throw xloil::ComBusyException();
           else
-            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
       }
 

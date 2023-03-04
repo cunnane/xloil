@@ -5,6 +5,7 @@
     or the `@Qt_thread` to ensure functions are run on the thread.
 """
 import sys
+import os
 import concurrent.futures as futures
 import concurrent.futures.thread
 from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
@@ -12,6 +13,7 @@ from xloil import log
 import xloil
 from xloil._core import XLOIL_EMBEDDED
 import threading
+from pathlib import Path
 
 def _create_Qt_app():
 
@@ -38,8 +40,32 @@ def _create_Qt_app():
     QtCore.qInstallMessageHandler(qt_msg_handler)
 
     from qtpy.QtWidgets import QApplication
+    
+    #
+    # Attempt to workaround an apparent oversight in Qt initialisation on Windows.
+    # Under Anaconda, Qt is installed outside the usual site-packages location.
+    # A qt.conf file in Anaconda's root dir directs Qt to the correct place.
+    # However under Windows, Qt will only look for this file in the directory 
+    # returned by GetModuleFileName or in :/qt/etc/ which is unlikely to exist
+    # or be easily creatable on Windows.  (See https://doc.qt.io/qt-6/qt-conf.html)
+    # In our case GetModuleFileName always returns Excel.exe.
+    # 
+    # We do not apply the workaround if QT_QPA_PLATFORM_PLUGIN_PATH has been set
+    #
+    # Should Qt fail to load it will dump core: very unfriendly when embedded in another
+    # application. For unknown reasons, I have not been able to trap the SIGABRT.
+    #
+
+    platform_plugin_dir = Path(sys.prefix) / "Library/plugins/platforms"
+    args = []
+    if platform_plugin_dir.exists() and not 'QT_QPA_PLATFORM_PLUGIN_PATH' in os.environ:
+        args = ["", "-platformpluginpath", str(platform_plugin_dir)]
+    
     log.info(f"Starting Qt on thread {threading.get_native_id()}")
-    app = QApplication([])
+    app = QApplication(args)
+
+    app.setQuitOnLastWindowClosed(False)
+
     return app
 
 class QtExecutor(_GuiExecutor):
@@ -63,6 +89,8 @@ class QtExecutor(_GuiExecutor):
         return future
 
     def _main(self):
+        log.debug("Qt: Creating Qt App in executor thread")
+
         self._app = _create_Qt_app()
 
         from qtpy.QtCore import QTimer
@@ -76,10 +104,15 @@ class QtExecutor(_GuiExecutor):
         # Thread main loop, run until quit
         self._app.exec()
 
+        log.debug("Qt: Finished running exec loop, finalising Application")
+
         # Thread cleanup
+        self._work_signal = None
+        del self._app
         self._app = None
 
     def _shutdown(self):
+        log.debug("Qt: Recieved shutdown: sending quit call")
         self._app.quit()
 
 
@@ -120,7 +153,7 @@ def Qt_thread(fn=None, discard=False) -> QtExecutor:
 
     return _Qt_thread if fn is None else _Qt_thread._wrap(fn, discard)
 
-# For safety, initialise Qt when we this module is imported
+# For safety, initialise Qt when this module is imported
 if XLOIL_EMBEDDED:
     Qt_thread()
 
@@ -166,4 +199,4 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
     def on_destroy(self):
         # Call super to detach the TaskPaneFrame for a cleaner shutdown
         super().on_destroy() 
-        Qt_thread().submit(lambda: self._widget.destroy())
+        Qt_thread().submit(lambda: self._widget.destroy()) ## TODO: call close? or del?

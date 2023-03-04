@@ -28,7 +28,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -72,6 +72,10 @@
     <Link>
       <AdditionalDependencies>python39.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent Condition="'$(Platform)'=='x64'">
+      <Command>set XLOIL_BIN_DIR=$(OutDir)
+py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AsyncFunctions.cpp" />
@@ -79,6 +83,7 @@
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyRunLater.cpp" />
     <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="TypeConversion\BasicTypes.cpp" />
     <ClCompile Include="PyCache.cpp" />
@@ -114,7 +119,6 @@
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="PyRtd.h" />
     <ClInclude Include="PySource.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="TypeConversion\ConverterInterface.h" />
     <ClInclude Include="TypeConversion\PyDateType.h" />
     <ClInclude Include="TypeConversion\PyDictType.h" />

@@ -56,6 +56,19 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     void* imageBase() const { return _imageBase; }
+
+    /// <summary>
+    /// The highest possible address of a function in the export table
+    /// </summary>
+    /// <returns></returns>
+    void* maxFunctionAddress() const 
+    { 
+#ifdef _WIN64
+      return (BYTE*)_imageBase + MAXDWORD; 
+#else
+      return (void*)MAXDWORD;
+#endif
+    }
   };
 
 

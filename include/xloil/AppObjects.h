@@ -6,7 +6,7 @@
 #include <string>
 #include <memory>
 #include <vector>
-
+#include <set>
 
 // Forward Declarations from Typelib
 struct IDispatch;
@@ -165,7 +165,16 @@ namespace xloil
 
     ExcelObj run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
-    ExcelWorkbook open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
+    ExcelWorkbook open(
+      const std::wstring& filepath, 
+      bool updateLinks=true, 
+      bool readOnly=false,
+      wchar_t delimiter = 0);
+
+    /// <summary>
+    /// The set of full path names of all open workbooks
+    /// </summary>
+    const std::set<std::wstring>& workbookPaths();
 
     /// <summary>
     /// Calls Application.Quit to close the Excel instance and frees the COM resources.
@@ -181,7 +190,10 @@ namespace xloil
     void setVisible(bool x);
 
     bool getEnableEvents();
-    void setEnableEvents(bool value);
+    bool setEnableEvents(bool value);
+
+    bool getDisplayAlerts();
+    bool setDisplayAlerts(bool value);
 
     /// <summary>
     /// Returns an invalid ExcelRange is the selection is not a range
@@ -210,11 +222,11 @@ namespace xloil
 
     using AppObject<Excel::Range>::AppObject;
 
-    Range* range(
+    std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
-    Range* trim() const final override;
+    std::unique_ptr<Range> trim() const final override;
 
     std::tuple<row_t, col_t> shape() const final override;
 
@@ -228,9 +240,14 @@ namespace xloil
 
     void set(const ExcelObj& value) final override;
 
-    std::wstring formula() final override;
+    std::wstring formula() const final override;
 
     void clear() final override;
+
+    virtual Excel::Range* asComPtr() const final override
+    {
+      return &com();
+    }
 
     /// <summary>
     /// Sets the forumula for the range to the specified string. If the 
@@ -307,12 +324,6 @@ namespace xloil
     /// Convenience wrapper for cell(i,j)->value()
     /// </summary>
     ExcelObj value(Range::row_t i, Range::col_t j) const;
-
-    /// <summary>
-    /// Returns a range object representing the range used in this worksheet. It 
-    /// is bounded by the top-left and the bottom right-used cells.
-    /// </summary>
-    ExcelRange usedRange() const;
 
     /// <summary>
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
@@ -462,6 +473,8 @@ namespace xloil
     ExcelWorkbook workbook() const;
   };
 
+  inline std::wstring to_wstring(const ExcelRange& x) { return x.name(); }
+
   XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range& range);
 
   inline ExcelRef refFromRange(const Range& range)
@@ -524,6 +537,7 @@ namespace xloil
 
     Application app() const;
   };
+
 
   // Some function definitions which need to live down here due to
   // the order of declarations

@@ -1,5 +1,4 @@
 #include "PyAddin.h"
-#include "Main.h"
 #include "EventLoop.h"
 #include "PyCore.h"
 #include "PyFunctionRegister.h"
@@ -28,11 +27,11 @@ namespace xloil
       std::map<wstring, std::shared_ptr<PyAddin>> theAddins;
     }
 
-    PyAddin::PyAddin(AddinContext& ctx, bool newThread, const wchar_t* wbPattern)
+    PyAddin::PyAddin(AddinContext& ctx, bool newThread, const std::wstring_view& wbPattern)
       : context(ctx)
       , thread(newThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
     {
-      if (wbPattern)
+      if (!wbPattern.empty())
       {
         _workbookPattern = wbPattern;
         const auto star = _workbookPattern.find(L'*');
@@ -74,6 +73,14 @@ namespace xloil
     pybind11::object PyAddin::self() const
     {
       return py::cast(shared_from_this());
+    }
+
+    std::shared_ptr<FuncSource> PyAddin::findSource(const wchar_t* sourcePath) const
+    {
+      auto found = context.sources().find(sourcePath);
+      if (found != context.sources().end())
+        return found->second;
+      return std::shared_ptr<FuncSource>();
     }
 
     PyAddin& findAddin(const wchar_t* xllPath)
@@ -207,7 +214,7 @@ namespace xloil
       {
         const auto& array = *node.as_array();
         auto list = py::list(array.size());
-        for (auto i = 0; i < array.size(); ++i)
+        for (size_t i = 0; i < array.size(); ++i)
           list[i] = tomlNodeToPyObject(array[i]);
         return list;
       }
@@ -232,6 +239,8 @@ namespace xloil
           .def("__getitem__", tomlTableGetItem);
 
         py::class_<PyAddin, shared_ptr<PyAddin>>(mod, "Addin")
+          .def("__repr__", &PyAddin::pathName)
+          .def("__str__", &PyAddin::pathName)
           .def_property_readonly("pathname", &PyAddin::pathName)
           .def_property_readonly("event_loop",
             [](PyAddin& addin) { return addin.thread->loop(); },
@@ -239,7 +248,7 @@ namespace xloil
               The asyncio event loop used for background tasks by this addin
             )")
           .def_property_readonly("settings_file",
-            [](PyAddin& addin) { return *addin.context.settings()->source().path; },
+            [](PyAddin& addin) { return string(* addin.context.settings()->source().path); },
             R"(
               The full pathname of the settings ini file used by this addin
             )")

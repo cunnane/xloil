@@ -25,8 +25,6 @@ namespace xloil
     if (!input.isType(ExcelType::Str))
       return returnValue(CellError::NA);
 
-    const auto noCase = ignoreCase.get<bool>(false);
-
     auto regexOptions = parseRegexGrammar(grammar.cast<PStringRef>());
     if (ignoreCase.get<bool>(false))
       regexOptions |= std::regex_constants::icase;

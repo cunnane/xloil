@@ -6,7 +6,7 @@
 #include <memory>
 #include <map>
 
-namespace toml { class table; }
+namespace toml { inline namespace v3 { class table; } }
 namespace xloil { 
   class RegisteredWorksheetFunc; 
   class LocalWorksheetFunc;
@@ -180,10 +180,12 @@ namespace xloil
       findSource(const wchar_t* sourcePath);
 
     /// <summary>
-    /// Removes the specified source from all add-in contexts
+    /// Removes the specified source
     /// </summary>
-    /// <param name="context"></param>
-    XLOIL_EXPORT static void deleteSource(const std::shared_ptr<FuncSource>& context);
+    void erase(const std::shared_ptr<FuncSource>& context)
+    {
+      _files.erase(context->name());
+    }
 
     /// <summary>
     /// Gets the root of the addin's ini file
@@ -214,6 +216,8 @@ namespace xloil
       _files.emplace(std::make_pair(source->name(), source));
       source->init();
     }
+
+    std::wstring logFilePath;
 
   private:
     AddinContext(const AddinContext&) = delete;

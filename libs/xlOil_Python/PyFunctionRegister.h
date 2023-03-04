@@ -19,9 +19,10 @@ namespace xloil
 {
   namespace Python
   {
-    class RegisteredModule;
-    class IPyFromExcel;
+    class RegisteredModule; 
+    class IPyFromExcel; 
     class IPyToExcel;
+    class PyAddin;
 
     namespace FunctionRegistry
     {
@@ -32,26 +33,37 @@ namespace xloil
       /// </summary>
       std::shared_ptr<RegisteredModule>
         addModule(
-          AddinContext& context,
+          const std::weak_ptr<PyAddin>& context,
           const std::wstring& modulePath,
           const wchar_t* workbookName);
     };
 
     struct PyFuncArg
     {
+      PyFuncArg(
+        std::wstring&& name, 
+        std::wstring&& help, 
+        const std::shared_ptr<IPyFromExcel>& converter,
+        std::string&& flags);
+
       std::shared_ptr<IPyFromExcel> converter;
       std::wstring name;
       std::wstring help;
       pybind11::object default;
-      std::string type;
+      std::string flags;
 
       bool isKeywords() const {
-        return type.find("keywords") != std::string::npos;
+        return flags.find("keywords") != std::string::npos;
       }
 
       bool isVargs() const {
-        return type.find("vargs") != std::string::npos;
+        return flags.find("vargs") != std::string::npos;
       }
+
+      bool isArray() const {
+        return flags.find("array") != std::string::npos;
+      }
+      std::string str() const;
     };
 
     class PyFuncInfo
@@ -104,7 +116,7 @@ namespace xloil
         TPyArgs& pyArgs,
         pybind11::object& kwargs) const
       {
-        assert(pyArgs.capacity() >= _numPositionalArgs + (isRtdAsync || isAsync ? 1 : 0));
+        assert(pyArgs.capacity() >= _numPositionalArgs + (isRtdAsync || isAsync ? 1u : 0u));
 
         size_t i = 0;
         try
@@ -117,7 +129,8 @@ namespace xloil
 
           if (_hasKeywordArgs)
           {
-            kwargs = PySteal<>(readKeywordArgs(xlArgs(i)));
+            if (!xlArgs(i).isMissing())
+              kwargs = PySteal<>(readKeywordArgs(xlArgs(i)));
             ++i;
           }
 
@@ -125,8 +138,11 @@ namespace xloil
           {
             auto& converter = *_args[i].converter;
             const auto* defaultValue = _args[i].default.ptr();
-            const auto maxArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) 
-              - _args.size();
+#ifdef _WIN64
+            const auto maxArgs = XL_MAX_VBA_FUNCTION_ARGS - _args.size();
+#else
+            const auto maxArgs = 16 - _args.size();
+#endif
             for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
               pyArgs.push_back(converter(xlArgs(i), defaultValue));
           }
@@ -175,6 +191,7 @@ namespace xloil
       /// <param name="workbookName"></param>
       RegisteredModule(
         const std::wstring& modulePath,
+        const std::weak_ptr<PyAddin>& addin,
         const wchar_t* workbookName);
 
       ~RegisteredModule();
@@ -190,6 +207,7 @@ namespace xloil
 
     private:
       bool _linkedWorkbook;
+      std::weak_ptr<PyAddin> _addin;
       pybind11::object _module;
     };
   }

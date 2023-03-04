@@ -41,7 +41,7 @@ __pycache__
 .ipynb_checkpoints
 
 # External libraries
-/external/python
+/external/python/
 /external/sqlite
 /external/pybind11-stubgen
 /external/CTPL

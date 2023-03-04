@@ -3,6 +3,31 @@
 namespace py = pybind11;
 using std::wstring;
 
+
+std::wstring to_wstring(const PyObject* p)
+{
+  Py_ssize_t len;
+  wchar_t* wstr;
+  if (!p)
+    return wstring();
+  else if (PyUnicode_Check(p))
+    wstr = PyUnicode_AsWideCharString((PyObject*)p, &len);
+  else
+  {
+    auto str = PyObject_Str((PyObject*)p);
+    if (!str)
+      throw py::error_already_set();
+    wstr = PyUnicode_AsWideCharString(str, &len);
+    Py_XDECREF(str);
+  }
+
+  if (!wstr)
+    throw py::error_already_set();
+
+  auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
+  return wstring(wstr, len);
+}
+
 namespace xloil {
   namespace Python
   {
@@ -45,30 +70,6 @@ namespace xloil {
       return singleElement;
     }
 
-    std::wstring pyToWStr(const PyObject* p)
-    {
-      Py_ssize_t len;
-      wchar_t* wstr;
-      if (!p)
-        return wstring();
-      else if (PyUnicode_Check(p))
-        wstr = PyUnicode_AsWideCharString((PyObject*)p, &len);
-      else
-      {
-        auto str = PyObject_Str((PyObject*)p);
-        if (!str)
-          throw py::error_already_set();
-        wstr = PyUnicode_AsWideCharString(str, &len);
-        Py_XDECREF(str);
-      }
-
-      if (!wstr) 
-        throw py::error_already_set();
-
-      auto freer = std::unique_ptr<wchar_t, void(*)(void*)>(wstr, PyMem_Free);
-      return wstring(wstr, len);
-    }
-
     PyObject* fastCall(
       PyObject* func, PyObject* const* args, size_t nArgs, PyObject* kwargs) noexcept
     {
@@ -87,8 +88,15 @@ namespace xloil {
 
       Py_XDECREF(argTuple);
 #else
-      auto retVal = _PyObject_FastCallDict(
-        func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs);
+      
+#if PY_VERSION_HEX < 0x03090000
+#  define PyObject_VectorcallDict _PyObject_FastCallDict 
+#  define PyObject_Vectorcall _PyObject_Vectorcall 
+#endif
+
+      auto retVal = kwargs
+        ? PyObject_VectorcallDict(func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, kwargs)
+        : PyObject_Vectorcall(func, args, nArgs | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #endif
       return retVal;
     }

@@ -19,9 +19,8 @@ namespace xloil
   }
   namespace detail
   {
-    void dllLoad();
-    void autoOpen();
-    void autoClose();
+    void autoOpenDefinedInMacro();
+    void autoCloseDefinedInMacro();
     std::wstring addInManagerInfo();
 
     inline static bool theXllIsOpen = false;
@@ -44,11 +43,12 @@ namespace xloil
       }
       catch (...)
       {}
-      OutputDebugStringW(L"xloil_Loader: Could not determine XLL location");
+
+      OutputDebugStringW(L"xlOil_Loader: Could not determine XLL location");
     }
 
     template<class T>
-    struct RegisterAddinBase
+    struct RegisterAddin
     {
       inline static std::unique_ptr<T> theAddin;
       inline static std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> theFunctions;
@@ -70,7 +70,7 @@ namespace xloil
           // Do this safely in single-thread mode
           initMessageQueue(Environment::excelProcess().hInstance);
 
-          theAddin.reset(new T());
+          lauch();
 
           Environment::registerIntellisense(XllInfo::xllPath.c_str());
 
@@ -86,6 +86,12 @@ namespace xloil
           loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(e.what()));
         }
       }
+
+      static void lauch()
+      {
+        theAddin.reset(new T());
+      }
+
       static void autoClose()
       {
         if (theXllIsOpen)
@@ -121,7 +127,7 @@ namespace xloil
   {
     try
     {
-      detail::autoOpen();
+      detail::autoOpenDefinedInMacro();
     }
     catch (...) 
     {}
@@ -132,7 +138,7 @@ namespace xloil
   {
     try
     {
-      detail::autoClose();
+      detail::autoCloseDefinedInMacro();
     }
     catch (...)
     {}
@@ -225,7 +231,7 @@ namespace xloil
     template<class T>
     auto callAutoOpen(T*, void*) 
     {
-      RegisterAddinBase<T>::autoOpen();
+      RegisterAddin<T>::autoOpen();
     }
     template<class T, std::enable_if_t<std::is_void<decltype(T::autoOpen())>::value, bool> = true>
     auto callAutoOpen(T*, T*)
@@ -236,7 +242,7 @@ namespace xloil
     template<class T>
     auto callAutoClose(T*, void*)
     {
-      RegisterAddinBase<T>::autoClose();
+      RegisterAddin<T>::autoClose();
     }
     template<class T, std::enable_if_t<std::is_void<decltype(T::autoClose())>::value, bool> = true>
     auto callAutoClose(T*, T*)
@@ -257,7 +263,7 @@ namespace xloil
   }
 
 #define XLO_DECLARE_ADDIN(T) \
-  void detail::autoOpen()  { detail::callAutoOpen((T*)nullptr, (T*)nullptr); } \
-  void detail::autoClose() { detail::callAutoClose((T*)nullptr, (T*)nullptr); } \
+  void detail::autoOpenDefinedInMacro()  { detail::callAutoOpen((T*)nullptr, (T*)nullptr); } \
+  void detail::autoCloseDefinedInMacro() { detail::callAutoClose((T*)nullptr, (T*)nullptr); } \
   std::wstring detail::addInManagerInfo() { return detail::callAddInManagerInfo((T*)nullptr); }
 }

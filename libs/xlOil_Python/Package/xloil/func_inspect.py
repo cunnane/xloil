@@ -52,6 +52,16 @@ class Arg:
         self.default = default
         self.kind = kind
 
+    def __str__(self):
+        if self.kind == self.KEYWORD_ARGS:
+            return f"**{self.name}"
+        elif self.kind == self.VARIABLE_ARGS:
+            return f"*{self.name}"
+        else:
+            default = "=" + str(self.default) if self.has_default else ""
+            type_ = getattr(self.typeof, "__name__", self.typeof) if self.typeof else ""
+            return f'{self.name}:{type_}{default}'
+
     @property
     def has_default(self):
         """ 

@@ -6,7 +6,7 @@
 
 namespace xloil
 {
-  class AddinContext;
+  class AddinContext; class FuncSource;
   namespace Python { class EventLoop; }
 }
 
@@ -19,9 +19,10 @@ namespace xloil
     /// separate context to keep track of the functions it registers. It also
     /// has separate thread and event loop on which all importing is done
     /// </summary>
-    struct PyAddin : std::enable_shared_from_this<PyAddin>
+    class PyAddin : public std::enable_shared_from_this<PyAddin>
     {
-      PyAddin(AddinContext&, bool, const wchar_t*);
+    public:
+      PyAddin(AddinContext&, bool, const std::wstring_view&);
 
       AddinContext&              context;
       std::shared_ptr<EventLoop> thread;
@@ -53,6 +54,10 @@ namespace xloil
       /// </summary>
       void importFile(const wchar_t* filePath, const wchar_t* linkedWorkbook);
 
+      std::shared_ptr<FuncSource> findSource(const wchar_t* sourcePath) const;
+      
+      bool loadLocalModules() const { return !_workbookPattern.empty(); }
+
     private:
       std::wstring _workbookPattern;
 
@@ -75,5 +80,13 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     std::shared_ptr<EventLoop> getEventLoop();
+
+    /// <summary>
+    /// The core context corresponds to xlOil.dll - it always exists and is
+    /// used for loading any modules specified in the core settings and addin 
+    /// non-specific stuff such as workbook modules and jupyter functions. 
+    /// </summary>
+    /// <returns></returns>
+    const std::shared_ptr<PyAddin>& theCoreAddin();
   }
 }

@@ -1,6 +1,6 @@
-===========
+=====
 xlOil
-===========
+=====
 
 xlOil is a framework for linking programming languages with Excel language. 
 That is, a way to write functions in a language of your choice and have them

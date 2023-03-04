@@ -19,16 +19,14 @@ namespace Tests
 
       auto len = unsignedToString<Radix>(value, buffer, sizeof(buffer));
       auto parsed = (size_t)parseUnsigned<Radix>(buffer + 0, buffer + len);
-
       _ui64toa_s(value, buf_itoa, _countof(buf_itoa), Radix);
       buffer[len] = '\0';
-      Assert::AreEqual<string>(buf_itoa, buffer);
+      Assert::AreEqual(buf_itoa, buffer, true);
       Assert::AreEqual(value, parsed);
     }
 
     TEST_METHOD(TestIntStringParse)
     {
-      const int N = 63;
       for (size_t i = 1; i < 32; ++i)
       {
         size_t value = 1ull << i;

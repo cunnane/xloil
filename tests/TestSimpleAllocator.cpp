@@ -24,7 +24,7 @@ namespace Tests
       SYSTEM_INFO si;
       GetSystemInfo(&si);
         
-      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
+      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress);
 
       vector<void*> ptrs;
       for (auto sz = 16; sz < 1024; sz += 32)
@@ -40,7 +40,7 @@ namespace Tests
       SYSTEM_INFO si;
       GetSystemInfo(&si);
 
-      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress, si.lpMaximumApplicationAddress);
+      auto allocator = ExternalRegionAllocator(si.lpMinimumApplicationAddress);
 
       const char* sample = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor";
       auto sampleLen = strlen(sample);

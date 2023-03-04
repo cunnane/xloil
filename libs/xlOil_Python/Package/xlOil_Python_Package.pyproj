@@ -92,15 +92,9 @@
     <Folder Include="xloil\stubs\" />
     <Folder Include="xloil\stubs\xloil_core\" />
     <Folder Include="xloil\stubs\xloil_core\event\" />
-    <Folder Include="xloil\stubs\xloil_core\event\__pycache__\" />
-    <Folder Include="xloil\stubs\xloil_core\__pycache__\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda39-64" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="xloil\stubs\xloil_core\event\__pycache__\__init__.cpython-39.pyc" />
-    <Content Include="xloil\stubs\xloil_core\__pycache__\__init__.cpython-39.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
 </Project>

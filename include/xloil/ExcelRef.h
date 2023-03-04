@@ -163,7 +163,7 @@ namespace xloil
     }
 
     operator const ExcelObj& () const noexcept { return _obj; }
-
+    operator ExcelObj&& ()            noexcept { return std::move(_obj); }
 
   protected:
     msxll::IDSHEET  sheetId() const noexcept { return _obj.val.mref.idSheet; }
@@ -310,18 +310,18 @@ namespace xloil
     explicit XllRange(ExcelRef&& ref)      noexcept : _ref(ref) {}
     explicit XllRange(const ExcelObj& ref) noexcept : _ref(ExcelRef(ref)) {}
 
-    Range* range(
+    std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override
     {
-      return new XllRange(_ref.range(fromRow, fromCol, toRow, toCol));
+      return std::make_unique<XllRange>(_ref.range(fromRow, fromCol, toRow, toCol));
     }
 
-    Range* trim() const final override
+    std::unique_ptr<Range> trim() const final override
     {
       auto val = _ref.value();
       if (!val.isType(ExcelType::Multi))
-        return new XllRange(*this);
+        return std::make_unique<XllRange>(*this);
       ExcelArray array(val);
       return range(0, 0, 
         array.nRows() > 0 ? array.nRows() - 1 : 0, 
@@ -376,7 +376,7 @@ namespace xloil
     /// </summary>
     void setFormula(const std::wstring_view& formula);
 
-    std::wstring formula() final override
+    std::wstring formula() const final override
     {
       // xlfGetFormula always returns RC references, but GetCell uses the
       // workspace settings to return RC or A1 style.
@@ -392,6 +392,7 @@ namespace xloil
     }
 
     const ExcelRef& asRef() const { return _ref; }
+    Excel::Range* asComPtr() const final override { return nullptr; }
 
   private:
     ExcelRef _ref;

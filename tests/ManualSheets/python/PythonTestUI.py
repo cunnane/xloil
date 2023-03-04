@@ -5,7 +5,6 @@ except ImportError:
     pass
     
 import xloil as xlo
-from xloil.pandas import PDFrame
 import datetime as dt
 import asyncio
 import inspect
@@ -290,37 +289,37 @@ async def press_open_console_button_qt(ctrl):
 # the ribbon and a map from callbacks referred to in the XML to actual python functions
 #
 _excelgui = xlo.ExcelGUI(ribbon=r'''
-    <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
-        <ribbon>
-            <tabs>
-                <tab id="customTab" label="xloPyTest" insertAfterMso="TabHome">
-                    <group idMso="GroupClipboard" />
-                    <group idMso="GroupFont" />
-                    <group id="customGroup" label="MyButtons">
-                        <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
-                        <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
-                        <button id="buttonWx" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
-                        <button id="tkConsole" label="Tk Console" size="large" onAction="pressOpenConsoleTk" />
-                        <button id="qtConsole" label="Qt Console" size="large" onAction="pressOpenConsoleQt" />
-                        <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
-                         <item id="item1" label="33" />
-                         <item id="item2" label="66" />
-                         <item id="item3" label="99" />
-                       </comboBox>
-                    </group>
-                </tab>
-            </tabs>
-        </ribbon>
-    </customUI>
-    ''', 
-    funcmap={
-        'pressOpenPane': press_open_pane_button,
-        'pressOpenConsoleTk': press_open_console_button_tk,
-        'pressOpenConsoleQt': press_open_console_button_qt,
-        'comboChange': combo_change,
-        'getButtonLabel': get_button_label,
-        'buttonImg': button_image
-    })
+   <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+       <ribbon>
+           <tabs>
+               <tab id="customTab" label="xloPyTest" insertAfterMso="TabHome">
+                   <group idMso="GroupClipboard" />
+                   <group idMso="GroupFont" />
+                   <group id="customGroup" label="MyButtons">
+                       <button id="buttonTk" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                       <button id="buttonQt" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                       <button id="buttonWx" getLabel="getButtonLabel" getImage="buttonImg" size="large" onAction="pressOpenPane" />
+                       <button id="tkConsole" label="Tk Console" size="large" onAction="pressOpenConsoleTk" />
+                       <button id="qtConsole" label="Qt Console" size="large" onAction="pressOpenConsoleQt" />
+                       <comboBox id="comboBox" label="Combo Box" onChange="comboChange">
+                        <item id="item1" label="33" />
+                        <item id="item2" label="66" />
+                        <item id="item3" label="99" />
+                      </comboBox>
+                   </group>
+               </tab>
+           </tabs>
+       </ribbon>
+   </customUI>
+   ''', 
+   funcmap={
+       'pressOpenPane': press_open_pane_button,
+       'pressOpenConsoleTk': press_open_console_button_tk,
+       'pressOpenConsoleQt': press_open_console_button_qt,
+       'comboChange': combo_change,
+       'getButtonLabel': get_button_label,
+       'buttonImg': button_image
+   })
     
 #-----------------------------------------
 # Images: returning images from functions
@@ -379,7 +378,7 @@ try:
     import xloil.matplotlib
     from matplotlib import pyplot
     
-    @xlo.func(macro=True)
+    @xlo.func(macro=True, local=False)
     def pyTestPlot(x, y, width:float=4, height:float=4, **kwargs):
         fig = pyplot.figure()
         fig.set_size_inches(width, height)

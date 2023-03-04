@@ -1,6 +1,7 @@
 #include <xloil/AppObjects.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
+#include <xlOil-COM/ComEventSink.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/Range.h>
 #include <xloil/Log.h>
@@ -235,16 +236,38 @@ namespace xloil
   {
     try
     {
-      return com().EnableEvents;
+      return com().EnableEvents == VARIANT_TRUE;
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  void Application::setEnableEvents(bool value)
+  bool Application::setEnableEvents(bool value)
   {
     try
     {
+      auto previousValue = com().EnableEvents == VARIANT_TRUE;
       com().EnableEvents = _variant_t(value);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::getDisplayAlerts()
+  {
+    try
+    {
+      return com().GetDisplayAlerts() == VARIANT_TRUE;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::setDisplayAlerts(bool value)
+  {
+    try
+    {
+      auto previousValue = com().GetDisplayAlerts() == VARIANT_TRUE;
+      com().PutDisplayAlerts(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      return previousValue;
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -308,14 +331,22 @@ namespace xloil
   }
 
   ExcelWorkbook Application::open(
-    const std::wstring& filepath,
-    bool updateLinks,
+    const std::wstring& filepath, 
+    bool updateLinks, 
     bool readOnly)
   {
     try
     {
       return fromComPtr<ExcelWorkbook>(com().Workbooks->Open(
-        _bstr_t(filepath.c_str()), updateLinks ? 3 : 0, _variant_t(readOnly)
+        _bstr_t(filepath.c_str()),
+        updateLinks ? 3 : 0,
+        _variant_t(readOnly),
+        delimiter == 0 ? 5 : 6,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        delimiter != 0 ? _variant_t(wstring(delimiter, 1).c_str()) : vtMissing
       ));
     }
     XLO_RETHROW_COM_ERROR;
@@ -495,7 +526,17 @@ namespace xloil
 
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
   {
-    return COM::variantToExcelObj(com().Cells->Item[i][j]);
+    Excel::RangePtr pRange(com().Cells->Item[i][j].pdispVal);
+    return COM::variantToExcelObj(pRange->Value2);
+  }
+
+  ExcelRange ExcelWorksheet::usedRange() const
+  {
+    try
+    {
+      return ExcelRange(com().GetUsedRange(0));
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelRange ExcelWorksheet::usedRange() const
@@ -649,5 +690,10 @@ namespace xloil
   size_t Windows::count() const
   {
     return com().GetCount();
+  }
+
+  const std::set<std::wstring>& Application::workbookPaths()
+  {
+    return COM::workbookPaths();
   }
 }

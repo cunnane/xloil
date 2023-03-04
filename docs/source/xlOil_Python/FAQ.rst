@@ -59,6 +59,15 @@ function dependency tracing would not work on them (except the top left entry).
 
 This application failed to start because it could not find or load the Qt platform plugin "windows"
 ---------------------------------------------------------------------------------------------------
-Sometimes Qt crashes with this error. It occurs when `QT_QPA_PLATFORM_PLUGIN_PATH` is not set correctly.
-xlOil sets this when it lauches Qt but I think due to a race condition the message doesn't always get 
-through.  Just restart Excel.
+
+Under Anaconda (and possibly other distributions), Qt is installed outside the usual site-packages 
+location.  A *qt.conf* file in the root dir directs Qt to the correct place. However under Windows, 
+Qt will only look for this file in the directory returned by GetModuleFileName or in :/qt/etc/ which 
+is unlikely to exist or be easily creatable on Windows.  (See https://doc.qt.io/qt-6/qt-conf.html)
+In our case GetModuleFileName always returns Excel.exe.
+
+xlOil attempts to work around this by passing the correct location to Qt on start up, however for 
+non-standard locations like virtual environments it may be necessary to set the 
+`QT_QPA_PLATFORM_PLUGIN_PATH` environment variable explicitly in xlOil.ini.  If `QT_QPA_PLATFORM_PLUGIN_PATH`
+is set, xlOil will not try to workaround this issue, so verify the value of this variable in the
+lauching environment.

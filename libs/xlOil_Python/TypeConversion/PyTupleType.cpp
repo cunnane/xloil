@@ -134,6 +134,36 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
 
+    template <class TValConv>
+    class PyListFromArray : public detail::PyFromExcelImpl
+    {
+      TValConv _valConv;
+    public:
+      using detail::PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "list";
+
+      PyObject* operator()(const ArrayVal& obj)
+      {
+        ExcelArray arr(obj);
+        auto nRows = arr.nRows();
+        auto nCols = arr.nCols();
+
+        auto outer = py::list(nRows);
+        for (decltype(nRows) i = 0; i < nRows; ++i)
+        {
+          auto inner = py::list(nCols);
+          PyList_SET_ITEM(outer.ptr(), i, inner.ptr());
+          for (decltype(nCols) j = 0; j < nCols; ++j)
+          {
+            auto val = _valConv(arr.at(i, j));
+            PyList_SET_ITEM(inner.ptr(), j, val);
+          }
+        }
+        return outer.release().ptr();
+      }
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
+    };
+
     PyObject* excelArrayToNestedTuple(const ExcelObj & obj)
     {
       return PyTupleFromArray<PyFromAny>()(static_cast<const ArrayVal&>(obj));
@@ -151,8 +181,11 @@ namespace xloil
       };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        bindPyConverter<PyFromExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple_from_Excel").def(py::init<>());
-        bindXlConverter<PyFuncToExcel<Adapter>>(mod, "tuple_to_Excel").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyListFromArray<PyFromAny>>>(mod, "list").def(py::init<>());
+        auto tupleToExcel = bindXlConverter<PyFuncToExcel<Adapter>>(mod, "tuple").def(py::init<>());
+        mod.add_object((std::string(theReturnConverterPrefix) + "list").c_str(), tupleToExcel);
+        mod.add_object((std::string(theReturnConverterPrefix) + "iterable").c_str(), tupleToExcel);
       });
     }
   }

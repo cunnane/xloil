@@ -5,6 +5,7 @@ import xloil
 from pathlib import Path
 from itertools import islice
 import sys
+import os
 
 class Settings:
     """
@@ -40,14 +41,18 @@ class Settings:
     @staticmethod
     def _find_table(array_of_tables, key):
         """
-            We can have multiple (ordered) tables with the same name, e.g.
+            We may have multiple (ordered) tables with the same name, e.g.
             the enviroment blocks. This function returns the table containing
             the specified key.
         """
+        # May be just a single table
+        if key in array_of_tables:
+            return array_of_tables
+
         for table in array_of_tables:
             if key in table:
                 return table
-        raise Exception(f"No table contains {key}")
+        raise KeyError(f"No table contains {key}")
 
 _settings = Settings(xloil.source_addin().settings_file)
 
@@ -93,30 +98,33 @@ def get_date_formats(ctrl):
 #
 
 async def set_user_search_path(ctrl, value):
-    _settings.set_env_var("XLOIL_PYTHON_PATH", value)
-    _settings.save()
     paths = value.split(";")
     for path in paths: 
         if not path in sys.path:
             sys.path.append(path)
+
+    # Save the settings afterwards in case the above fails
+    _settings.set_env_var("XLOIL_PYTHON_PATH",";" if len(value) == 0 else value)
+    _settings.save()
     
 def get_user_search_path(ctrl):
-    xloil.log(f"Search Path: {_settings.get_env_var('XLOIL_PYTHON_PATH')}")
-    return _settings.get_env_var("XLOIL_PYTHON_PATH")
+    value = _settings.get_env_var("XLOIL_PYTHON_PATH")
+    xloil.log(f"Search Path: {value}")
+    return "" if value == ";" else value
 
 #
-# PYTHONHOME path callbacks
+# PYTHONEXECUTABLE path callbacks
 # -------------------------
 #
 
 async def set_python_home(ctrl, value):
-    _settings.set_env_var("PYTHONHOME", value)
+    _settings.set_env_var("PYTHONEXECUTABLE", value)
     _settings.save()
 
     restart_notify()
     
 def get_python_home(ctrl):
-    return _settings.get_env_var("PYTHONHOME")
+    return _settings.get_env_var("PYTHONEXECUTABLE")
 
  
 #
@@ -155,11 +163,11 @@ def _find_python_enviroments_from_key(pythons_key):
                         j += 1
                         with reg.OpenKey(vendor_key, version) as kVersion:
                             name = reg.QueryValueEx(kVersion, 'DisplayName')[0]
+                            install_path = reg.OpenKey(kVersion, 'InstallPath')
                             environments[name] = {
                                 'DisplayName': name,
-                                'SysVersion':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
-                                'PythonPath':  reg.QueryValue(kVersion,   'PythonPath'),
-                                'InstallPath': reg.QueryValue(kVersion,   'InstallPath')
+                                'Version':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
+                                'ExecutablePath': reg.QueryValueEx(install_path, 'ExecutablePath')[0]
                             }
                 except OSError:
                     ...
@@ -187,28 +195,30 @@ _python_enviroments = list(_find_python_enviroments().values())
 async def set_python_environment(ctrl, id, index):
     environment = _python_enviroments[index]
 
-    _settings.set_env_var("PYTHONPATH", "%PYTHONPATH%;" + environment['PythonPath'])
-    _settings.set_env_var("PYTHONHOME", environment['InstallPath'])
-    _settings.set_env_var("XLOIL_PYTHON_VERSION", environment['SysVersion'])
+    _settings.set_env_var("PYTHONEXECUTABLE", environment['ExecutablePath'])
+
+    # Clear the version override if set (it shouldn't generally be required)
+    _settings.set_env_var("XLOIL_PYTHON_VERSION", "")
+
     _settings.save()
 
     # Invalidate controls
-    _ribbon_ui.invalidate("PYTHONPATH")
-    _ribbon_ui.invalidate("PYTHONHOME")
+    _ribbon_ui.invalidate("PYTHONEXECUTABLE")
 
     restart_notify()
 
 def get_python_environment_count(ctrl):
-    py_home = _settings.get_env_var("PYTHONHOME").upper()
+    py_home = _settings.get_env_var("PYTHONEXECUTABLE").upper()
+
+    # Check if current environment is already described in registry
     for env in _python_enviroments:
-        if env['InstallPath'].upper() == py_home:
+        if env['ExecutablePath'].upper() == py_home:
             return len(_python_enviroments)
 
     _python_enviroments.append({
         'DisplayName': 'Current',
-        'SysVersion':  f'{sys.version_info.major}.{sys.version_info.minor}',
-        'PythonPath':  _settings.get_env_var("PYTHONPATH"),
-        'InstallPath': _settings.get_env_var("PYTHONHOME")
+        'Version':  f'{sys.version_info.major}.{sys.version_info.minor}',
+        'ExecutablePath': _settings.get_env_var("PYTHONEXECUTABLE")
     })
 
     return len(_python_enviroments)
@@ -217,9 +227,9 @@ def get_python_environment(ctrl, i):
     return _python_enviroments[i]['DisplayName']
 
 def get_python_environment_selected(ctrl):
-    py_home = _settings.get_env_var("PYTHONHOME").upper()
+    py_home = _settings.get_env_var("PYTHONEXECUTABLE").upper()
     for i in range(len(_python_enviroments)):
-        if _python_enviroments[i]['InstallPath'].upper() == py_home:
+        if _python_enviroments[i]['ExecutablePath'].upper() == py_home:
             return i
 
     return 0
@@ -278,8 +288,31 @@ async def set_debugger(ctrl, id, index):
         choice, 
         port=int(_settings.python['DebugPyPort']))
 
+def _find_free_port():
+    #https://stackoverflow.com/questions/1365265
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
+
+def _is_port_in_use(port: int) -> bool:
+    # https://stackoverflow.com/questions/2470971/
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('localhost', port))
+            return False
+    except OSError:
+        return True
+
 def get_debugpy_port(ctrl):
-    return _settings.python['DebugPyPort']
+    port = int(_settings.python['DebugPyPort'])
+    if _is_port_in_use(port):
+        port = _find_free_port()
+        _settings.python['DebugPyPort'] = port
+        # We don't save the setting as the port may be free next time
+    return port
 
 async def set_debugpy_port(ctrl, value):
     _settings.python['DebugPyPort'] = value
@@ -296,8 +329,8 @@ async def press_open_log(ctrl):
     os.startfile(xloil.log.path)
 
 #
-# Open Console callback
-# ---------------------
+# Open Console callbacks
+# ----------------------
 #
 async def press_open_console(ctrl):
 
@@ -328,6 +361,23 @@ def get_image_open_jupyter(ctrl):
     from PIL import Image
     icon_path = Path(sys.prefix) / "Menu/jupyter.ico"
     return Image.open(str(icon_path))
+
+
+theConsoleQt=None
+
+async def press_open_qtconsole(ctrl):
+
+    def open_console():
+        global theConsoleQt
+        from xloil.gui.qt_console import create_qtconsole_inprocess
+        from qtpy.QtCore import Qt
+        console = create_qtconsole_inprocess()
+        console.show()
+        theConsoleQt = console
+        #console.setAttribute(Qt.WA_DeleteOnClose)
+
+    from xloil.gui.qtpy import Qt_thread
+    await Qt_thread().submit_async(open_console)
 
 
 #
@@ -368,15 +418,15 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 getItemCount="get_python_environment_count"
                 getItemLabel="get_python_environment"
                 getSelectedItemIndex="get_python_environment_selected" />
-              <editBox id="PYTHONHOME" label="PYTHONHOME" 
-                screentip="The python distribution root directory"
+              <editBox id="PYTHONEXECUTABLE" label="PYTHONEXECUTABLE" 
+                screentip="The location of python.exe in the distribution"
                 supertip="Environment changes only take effect after restarting Excel"
                 sizeString="c:/a/path/is/this/size"
                 getText="get_python_home" 
                 onChange="set_python_home" />
               <editBox id="PYTHONPATH" label="PYTHONPATH" sizeString="c:/a/path/is/this/size"
                 screentip="A semi-colon separated list of module search directories"
-                supertip="Prefer to add user directories to the user search path and leave PYTHONPATH for system directories"
+                supertip="Prefer to use this for system paths and add user directories to the Search Paths"
                 getText="get_python_path" 
                 onChange="set_python_path" />
             </group>
@@ -388,7 +438,7 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                 onChange="set_load_modules"/>
               <editBox id="ebx4" label="Search Paths" sizeString="a module; another module; another"
                 screentip="Paths added to python's sys.path"
-                supertip="Prefer to add user directories here and and leave PYTHONPATH for system directories. Use a semi-colon separator"
+                supertip="Prefer to add user directories here rather than editing PYTHONPATH directly. Use the usual semi-colon (;) separator and the path separator (\)"
                 getText="get_user_search_path"
                 onChange="set_user_search_path"/>
               <labelControl id="RestartLabel" label="!Restart Required!" 
@@ -397,6 +447,10 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
             <group id="grp2" autoScale="false" centerVertically="false" label="Debugging" >
               <button id="btn5" size="large" label="Console" imageMso="ContainerGallery" 
                 onAction="press_open_console"/>
+              <button id="qtconsole" size="large" label="QtConsole" imageMso="ContainerGallery" 
+                onAction="press_open_qtconsole"
+                screentip="Opens a Jupyter console to an inprocess kernel"
+                supertip="The console is connected to the Excel application, so can register functions and manipulate workbooks"/>
               <button id="btn6" size="large" label="Open Log" imageMso="ZoomCurrent75" 
                 onAction="press_open_log"
                 screentip="Opens the log file"

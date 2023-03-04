@@ -8,9 +8,15 @@
 #include <mutex>
 #include <future>
 #include <string>
+#include <sstream>
 
+namespace xloil { class ExcelRange; }
 
-namespace xloil { class Range; }
+// You'd think char* to string conversion would be covered - welcome to 
+// the patchwork world of c++ strings.
+namespace std {
+  inline std::wstring to_wstring(const wchar_t* s) { return s; }
+}
 
 namespace xloil
 {
@@ -47,6 +53,15 @@ namespace xloil
         }
       }
     };
+
+    template <typename... T>
+    inline std::wstring concatParameters(T&&... args) 
+    {
+      using std::to_wstring;
+      std::wstring s;
+      ((((s += L' ') += to_wstring(std::forward<T>(args))) += L','), ...);
+      return s;
+    }
   }
   namespace Event
   {
@@ -156,7 +171,8 @@ namespace xloil
         _lock.lock();
         std::vector<handler> copy(_handlers.begin(), _handlers.end());
         _lock.unlock();
-        XLO_DEBUG(L"Firing event {0}", _name);
+        if (spdlog::default_logger()->level() <= spdlog::level::debug)
+          XLO_DEBUG(L"Firing event {0}{1}", _name, detail::concatParameters(std::forward<Args>(args)...));
         return _collector(copy, std::forward<Args>(args)...);
       }
 
@@ -215,13 +231,13 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       NewWorkbook();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
       SheetSelectionChange();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
       SheetBeforeDoubleClick();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target, bool& cancel)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target, bool& cancel)>&
       SheetBeforeRightClick();
 
     XLOIL_EXPORT EventNameParam&
@@ -233,7 +249,7 @@ namespace xloil
     XLOIL_EXPORT EventNameParam&
       SheetCalculate();
 
-    XLOIL_EXPORT Event<void(const wchar_t* wsName, const Range& target)>&
+    XLOIL_EXPORT Event<void(const wchar_t* wsName, const ExcelRange& target)>&
       SheetChange();
 
     /// <summary>
@@ -323,6 +339,8 @@ namespace xloil
       /// Sent when a file is modified
       Modified = 4
     };
+
+    XLOIL_EXPORT std::wstring to_wstring(const FileAction x);
 
     XLOIL_EXPORT std::shared_ptr<Event<
       void(const wchar_t* directory, const wchar_t* filename, FileAction)>>

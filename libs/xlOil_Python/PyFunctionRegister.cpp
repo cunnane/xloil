@@ -1,11 +1,11 @@
 #include "PyFunctionRegister.h"
 #include "PyCore.h"
-#include "Main.h"
 #include "TypeConversion/BasicTypes.h"
 #include "TypeConversion/PyDictType.h"
 #include "PySource.h"
 #include "AsyncFunctions.h"
 #include "PyEvents.h"
+#include "PyAddin.h"
 #include <xloil/StaticRegister.h>
 #include <xloil/DynamicRegister.h>
 #include <xloil/ExcelCall.h>
@@ -27,9 +27,11 @@ using std::map;
 using std::wstring;
 using std::wstring_view;
 using std::string;
+using std::move;
 using std::make_shared;
 using std::make_pair;
 using std::unique_ptr;
+using std::weak_ptr;
 namespace py = pybind11;
 using namespace pybind11::literals;
 
@@ -37,7 +39,7 @@ namespace xloil
 {
   namespace Python
   {
-    constexpr wchar_t* XLOPY_ANON_SOURCE = L"PythonFuncs";
+    constexpr wchar_t* XLOPY_ANON_SOURCE = L"[PyFuncs]";
     constexpr char* XLOPY_CLEANUP_FUNCTION = "_xloil_unload";
 
     unsigned readFuncFeatures(
@@ -234,6 +236,9 @@ namespace xloil
     {
       TReturn returner(info->getReturnConverter().get());
 
+      unique_ptr<InXllContext> xllContext(
+        info->isLocalFunc ? nullptr : new InXllContext());
+
       try
       {
         py::gil_scoped_acquire gilAcquired;
@@ -280,8 +285,8 @@ namespace xloil
 
     void PyFuncInfo::writeExcelArgumentDescription()
     {
-      const auto numArgs = _args.size();
-      _numPositionalArgs = (uint16_t)numArgs;
+      const auto numArgs = (uint16_t)_args.size();
+      _numPositionalArgs = numArgs;
 
       if (numArgs == 0)
         return;
@@ -318,20 +323,18 @@ namespace xloil
       {
         int flags = FuncArg::Obj;
 
-        if (arg.type.find("array") != string::npos)
+        if (arg.isArray())
           flags = FuncArg::Array;
-        else if (arg.type.find("range") != string::npos)
+        else if (arg.flags.find("range") != string::npos)
           flags |= FuncArg::Range;
 
         if (arg.default)
           flags |= FuncArg::Optional;
 
-        if ((flags & FuncArg::Array) != 0)
-          arg.converter.reset(createFPArrayConverter());
-
+        auto help = arg.help;
         // If no help string has been provided, give a type hint based on 
         // the arg converter
-        if (arg.help.empty() && arg.converter)
+        if (help.empty() && arg.converter)
         {
           wstring argType = utf8ToUtf16(arg.converter->name());
           if (arg.default)
@@ -344,12 +347,9 @@ namespace xloil
             arg.help = formatStr(L"<%s>", argType.c_str());
         }
 
-        if (!arg.converter && !arg.isKeywords())
-          XLO_THROW(L"Converter not set in func '{}' for arg '{}'", info()->name, arg.name);
-
         registerArgs.emplace_back(
           arg.name,
-          arg.help,
+          std::move(help),
           flags);
       }
 
@@ -357,13 +357,19 @@ namespace xloil
       {
         // Note that having 255 args means the concatenated argument names will certainly
         // exceed 255 chars, which will generate a notification in the log file
-        auto numVariableArgs = (isLocalFunc ? XL_MAX_VBA_FUNCTION_ARGS : XL_MAX_UDF_ARGS) - numArgs;
+#ifdef _WIN64
+        int numVariableArgs = XL_MAX_VBA_FUNCTION_ARGS - numArgs;
+#else
+        int numVariableArgs = 16u - numArgs; // Due to thunker limitations!
+#endif
+        if (numVariableArgs < 0)
+          XLO_THROW("Cannot construct variable arg list as max number of UDF args has been exceeded");
         auto varArgType = registerArgs.back().type | FuncArg::Optional;
-        for (size_t i = 1; i < numVariableArgs; ++i)
+        for (auto i = 1; i < numVariableArgs + 1; ++i)
         {
           registerArgs.emplace_back(
-            isLocalFunc ? formatStr(L"a%d", i) : L"",
-            formatStr(L"[%s-%d]", _args.back().name, i),
+            isLocalFunc ? formatStr(L"a%d", i) : L".",
+            formatStr(L"[%s-%d]", _args.back().name.c_str(), i),
             varArgType);
         }
       }
@@ -380,20 +386,21 @@ namespace xloil
     /// <param name="workbookName"></param>
     RegisteredModule::RegisteredModule(
       const wstring& modulePath,
+      const std::weak_ptr<PyAddin>& addin,
       const wchar_t* workbookName)
       : LinkedSource(
-        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str(),
-        true,
+        modulePath.c_str(),
+        modulePath != XLOPY_ANON_SOURCE,
         workbookName)
-    {
-      _linkedWorkbook = workbookName;
-    }
+      , _linkedWorkbook(workbookName)
+      , _addin(addin)
+    {}
 
     RegisteredModule::~RegisteredModule()
     {
       try
       {
-        if (!_module)
+        if (!_module || name() == XLOPY_ANON_SOURCE)
           return;
 
         // TODO: cancel running async tasks?
@@ -444,7 +451,7 @@ namespace xloil
 
       // Prime the RTD pump now as a background task to avoid it blocking 
       // in calculation later.
-      if (usesRtdAsync)
+      if (usesRtdAsync) // TODO: don't run it now?
         runExcelThread([]() { rtdAsync(shared_ptr<IRtdAsyncTask>()); });
 
       registerFuncs(nonLocal, append);
@@ -454,10 +461,7 @@ namespace xloil
 
     void RegisteredModule::reload()
     {
-      auto [source, addin] = Python::findSource(name().c_str());
-      if (source.get() != this)
-        XLO_THROW(L"Error reloading '{0}': source ptr mismatch", name());
-
+      auto addin = _addin.lock();
       // Rescan the module, passing in the module handle if it exists
       py::gil_scoped_acquire get_gil;
       if (_module && !_module.is_none())
@@ -471,10 +475,9 @@ namespace xloil
       if (!_linkedWorkbook) // Should never be called without a linked wb
         return;
 
+      auto addin = _addin.lock();
       // This is all great but...background thread?
-      auto [source, addin] = Python::findSource(name().c_str());
-
-      AddinContext::deleteSource(shared_from_this());
+      addin->context.erase(shared_from_this());
 
       const auto newSourcePath = addin->getLocalModulePath(newPathName);
       const auto& currentSourcePath = name();
@@ -483,7 +486,7 @@ namespace xloil
       if (fs::copy_file(currentSourcePath, newSourcePath, ec))
       {
         const auto wbName = wcsrchr(newPathName, '\\') + 1;
-        auto newSource = make_shared<RegisteredModule>(newSourcePath, wbName);
+        auto newSource = make_shared<RegisteredModule>(newSourcePath, addin, wbName);
         addin->context.addSource(newSource);
         py::gil_scoped_acquire get_gil;
         addin->importFile(newSourcePath.c_str(), newPathName);
@@ -495,26 +498,57 @@ namespace xloil
 
     std::shared_ptr<RegisteredModule>
       FunctionRegistry::addModule(
-        AddinContext& context,
+        const weak_ptr<PyAddin>& addin,
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto [source, addin] = AddinContext::findSource(modulePath.c_str());
+      auto source = addin.lock()->findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
-      auto fileSrc = make_shared<RegisteredModule>(modulePath, workbookName);
-      context.addSource(fileSrc);
+      auto fileSrc = make_shared<RegisteredModule>(modulePath, addin, workbookName);
+      auto addin_ptr = addin.lock();
+      addin_ptr->context.addSource(fileSrc);
+
+      XLO_DEBUG(L"Registered Python module '{}' with linked workbook '{}' for addin '{}'",
+        modulePath, workbookName ? workbookName : L"none", addin_ptr->pathName());
+
       return fileSrc;
+    }
+
+    PyFuncArg::PyFuncArg(
+      std::wstring&& name, 
+      std::wstring&& help, 
+      const std::shared_ptr<IPyFromExcel>& converter,
+      std::string&& flags)
+      : name(move(name))
+      , help(move(help))
+      , converter(converter)
+      , flags(move(flags))
+    {
+      if (isArray())
+        this->converter.reset(createFPArrayConverter());
+
+      else if (!converter && !isKeywords())
+        XLO_THROW(L"No converter for arg '{}'", this->name);
+    
+      // TODO: create FuncArg in the FuncInfo at this stage?
+    }
+
+    std::string PyFuncArg::str() const
+    {
+      return formatStr("%s:%s (%s)", utf16ToUtf8(name).c_str(), converter->name(), flags.c_str());
     }
 
     namespace
     {
+      // Check if the provided module has a file attribute and return if present,
+      // otherwise use the generic "anon" source
       auto getModulePath(const py::object& module)
       {
         return !module.is_none() && py::hasattr(module, "__file__")
           ? module.attr("__file__").cast<wstring>()
-          : L"";
+          : XLOPY_ANON_SOURCE;
       }
     }
 
@@ -529,39 +563,44 @@ namespace xloil
       const auto modulePath = getModulePath(module);
 
       auto& context = addinContext.is_none()
-        ? theCoreAddin()->context
-        : py::cast<PyAddin&>(addinContext).context;
+        ? theCoreAddin()
+        : py::cast<shared_ptr<PyAddin>>(addinContext);
 
       py::gil_scoped_release releaseGil;
       auto registeredMod = FunctionRegistry::addModule(
-        context,
+        weak_ptr<PyAddin>(context),
         modulePath,
         nullptr);
       registeredMod->registerPyFuncs(module.release(), functions, append);
     }
 
     void deregisterFunctions(
-      const py::object& moduleHandle,
-      const py::object& functionNames)
+      const py::object& functionNames,
+      const py::object& moduleHandle)
     {
       // Called from python so we have the GIL
 
       const auto modulePath = getModulePath(moduleHandle);
 
-      auto [foundSource, foundAddin] = AddinContext::findSource(
-        modulePath.empty() ? XLOPY_ANON_SOURCE : modulePath.c_str());
+      auto [foundSource, foundAddin] = AddinContext::findSource(modulePath.c_str());
 
       if (!foundSource)
       {
         XLO_WARN(L"Call to deregisterFunctions with unknown source '{0}'", modulePath);
         return;
       }
+
       vector<wstring> funcNames;
-      auto iter = py::iter(functionNames);
-      while (iter != py::iterator::sentinel())
+      if (PyUnicode_Check(functionNames.ptr()))
+        funcNames.push_back(to_wstring(functionNames));
+      else
       {
-        funcNames.push_back(iter->cast<wstring>());
-        ++iter;
+        auto iter = py::iter(functionNames);
+        while (iter != py::iterator::sentinel())
+        {
+          funcNames.push_back(iter->cast<wstring>());
+          ++iter;
+        }
       }
 
       py::gil_scoped_release releaseGil;
@@ -588,13 +627,14 @@ namespace xloil
 
       static int theBinder = addBinder([](py::module& mod)
       {
-        py::class_<PyFuncArg>(mod, "_FuncArg")
-          .def(py::init<>())
-          .def_readwrite("name", &PyFuncArg::name)
-          .def_readwrite("help", &PyFuncArg::help)
-          .def_readwrite("converter", &PyFuncArg::converter)
-          .def_readwrite("default", &PyFuncArg::default)
-          .def_readwrite("special_type", &PyFuncArg::type);
+          py::class_<PyFuncArg>(mod, "_FuncArg")
+            .def(py::init<wstring&&, wstring&&, const std::shared_ptr<IPyFromExcel>&, string&&>())
+            .def_readonly("name", &PyFuncArg::name)
+            .def_readonly("help", &PyFuncArg::help)
+            .def_readwrite("converter", &PyFuncArg::converter)
+            .def_readwrite("default", &PyFuncArg::default)
+            .def_readonly("flags", &PyFuncArg::flags)
+            .def("__str__", &PyFuncArg::str);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
           .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool>(),
@@ -611,8 +651,9 @@ namespace xloil
             &PyFuncInfo::setReturnConverter)
           .def_property_readonly("args",
             [](const PyFuncInfo& self) { return self.args(); })
-          .def_property_readonly("name",
-            [](const PyFuncInfo& self) { return self.info()->name; })
+          .def_property("name", // TOOD: writing to name property doesn't make sense when registered
+            [](const PyFuncInfo& self) { return self.info()->name; },
+            [](const PyFuncInfo& self, wstring&& value) { self.info()->name = std::move(value); })
           .def_property_readonly("help",
             [](const PyFuncInfo& self) { return self.info()->help; })
           .def_property("func",
@@ -649,7 +690,9 @@ namespace xloil
           R"(
             Deregisters worksheet functions linked to specified module. Generally, there
             is no need to call this directly.
-          )");
+          )",
+          py::arg("funcs"),
+          py::arg("module") = py::none());
       }, 20); // Need to declare before PyAddin
     }
   }

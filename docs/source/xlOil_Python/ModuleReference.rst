@@ -23,11 +23,13 @@ Declaring Worksheet Functions
 	func
 	converter
 	returner
+	import_functions
 	register_functions
 	deregister_functions
+	scan_module
 
 .. automodule:: xloil
-	:members: Arg,Array,Cache,CannotConvert,CellError,ExcelArray,FastArray,SingleValue,func,converter,returner,register_functions,deregister_functions
+	:members: Arg,Array,Cache,CannotConvert,CellError,ExcelArray,FastArray,SingleValue,func,converter,returner,import_functions,register_functions,deregister_functions,scan_module
 	:imported-members:
 	:undoc-members:
 
@@ -40,6 +42,7 @@ Excel Object Model
 
 .. autosummary::
 	workbooks
+	worksheets
 	app
 	active_worksheet
 	active_workbook
@@ -54,6 +57,8 @@ Excel Object Model
 	Worksheets
 
 .. autodata:: workbooks
+	
+.. autodata:: worksheets
 	
 .. autofunction:: app
 
@@ -109,6 +114,9 @@ Excel Object Model
 	:members: 
 	:inherited-members:
 	:undoc-members:
+
+.. autoclass:: PauseExcel
+	:members: 
 
 RTD Functions
 -------------

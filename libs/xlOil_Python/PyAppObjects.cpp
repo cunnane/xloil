@@ -17,11 +17,17 @@ namespace xloil
 {
   namespace Python
   {
-    PyTypeObject* rangeType;
+    PyTypeObject *theRangeType, *theXllRangeType, *theExcelRangeType;
+
+    bool isRangeType(const PyObject* obj)
+    {
+      const auto* type = Py_TYPE(obj);
+      return (type == theRangeType || type == theXllRangeType || type == theExcelRangeType);
+    }
 
     namespace
     {
-      Range* range_Construct(const wchar_t* address) 
+      auto range_Construct(const wchar_t* address)
       {
         py::gil_scoped_release noGil; 
         return new ExcelRange(address);
@@ -30,15 +36,15 @@ namespace xloil
       /// <summary>
       /// Creates a Range object in python given a helper functor. The 
       /// helper functor should not need the GIL. The reason for this function
-      /// is that we need create a new Range ptr and allow python to take 
-      /// ownership of it
+      /// is that we do not want to hold the GIL and access Excel's COM API
+      /// simutaneously 
       /// </summary>
       template<class F>
       py::object createPyRange(F&& f)
       {
         return py::cast([&] {
           py::gil_scoped_release noGil;
-          return (Range*)new ExcelRange(f());
+          return new ExcelRange(f());
         }(), py::return_value_policy::take_ownership);
       }
 
@@ -75,14 +81,24 @@ namespace xloil
         return convertExcelObj(std::move(val));
       }
 
-      void range_SetValue(Range& r, const py::object& pyval)
+      void range_SetValue(Range& r, py::object pyVal)
       {
-        // TODO: converting Python->ExcelObj->Variant is not very efficient!
-        const auto val = FromPyObj()(pyval.ptr());
-        // Must release gil when setting values in as this may trigger calcs 
-        // which call back into other python functions.
-        py::gil_scoped_release noGil;
-        r = val;
+        // Optimise r1.value = r2
+        if (isRangeType(pyVal.ptr()))
+        {
+          const auto& range = py::cast<const Range&>(pyVal);
+          py::gil_scoped_release noGil;
+          r.set(range.value());
+        }
+        else
+        {
+          // TODO: converting Python->ExcelObj->Variant is not very efficient!
+          const auto val(FromPyObj()(pyVal.ptr()));
+          // Must release gil when setting values in as this may trigger calcs 
+          // which call back into other python functions.
+          py::gil_scoped_release noGil;
+          r.set(val);
+        }
       };
 
       void range_Clear(Range& r)
@@ -99,23 +115,43 @@ namespace xloil
         return ExcelRange(r).formula();
       }
 
-      void range_SetFormula(Range& r, const wstring& val) 
+      void range_SetFormula(Range& r, const wstring& val)
       { 
         py::gil_scoped_release noGil;
         ExcelRange(r).setFormula(val);
       }
 
-      template<class T> 
-      py::object Range_getItem(const T& range, py::object loc)
+      py::object range_getItem(const Range& range, const py::object& loc)
       {
         size_t fromRow, fromCol, toRow, toCol, nRows, nCols;
         std::tie(nRows, nCols) = range.shape();
-        bool singleValue = getItemIndexReader2d(loc, nRows, nCols,
+        const bool singleValue = getItemIndexReader2d(loc, nRows, nCols,
           fromRow, fromCol, toRow, toCol);
         return singleValue
           ? convertExcelObj(range.value((int)fromRow, (int)fromCol))
           : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
       }
+
+      // This is clearly not a very optimised implementation as the values
+      // must be converted to / from ExcelObj and possibly Variant several times. 
+      // However, it's not clear the that effort of writing ExcelObj and Variant  
+      // operators for all relevant types would give worthwhile performance gains.
+      auto range_InplaceArithmetic(
+        const char* operation,
+        py::object& self,
+        const py::object& value)
+      {
+        auto oper = py::module::import("operator").attr(operation);
+        auto& range = py::cast<Range&>(self);
+        auto lhs = range_GetValue(range);
+        lhs = oper(lhs, value);
+        range_SetValue(range, lhs);
+        return self;
+      }
+
+      // TODO: do this with templates in C++20
+#define XLOIL_RANGE_OPERATOR(op) \
+  [](py::object& self, const py::object& v) { return range_InplaceArithmetic(op, self, v); }
 
       inline Range* worksheet_subRange(const ExcelWorksheet& ws,
         int fromR, int fromC,
@@ -126,20 +162,60 @@ namespace xloil
           ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
-      py::object worksheet_GetItem(const ExcelWorksheet& ws, py::object loc)
+      // We have some curious logic to avoid using the COM API whilst
+      // holding the GIL.
+      template<class TFinaliser>
+      auto Worksheet_sliceHelper(
+        const ExcelWorksheet& ws, const py::object& loc, TFinaliser finaliser)
       {
-        // Somewhat unfortunately, since ExcelRange is a virtual child of the 
-        // Range class declared in pybind, we need to pass a ptr to py::cast
-        // which python can own, so we need to copy it (but with an rval ref)
         if (PyUnicode_Check(loc.ptr()))
         {
-          const auto address = pyToWStr(loc);
-          return createPyRange([&]() { return ws.range(address); });
+          const auto address = to_wstring(loc);
+          py::gil_scoped_release noGil;
+          return finaliser(ws.range(address));
         }
         else
-          return Range_getItem(ws, loc);
+        {
+          size_t fromRow, fromCol, toRow, toCol, nRows, nCols;
+          std::tie(nRows, nCols) = ws.shape();
+          getItemIndexReader2d(loc, nRows, nCols,
+            fromRow, fromCol, toRow, toCol);
+
+          py::gil_scoped_release noGil;
+          return finaliser(ws.range(
+            (int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
+        }
       }
-      
+
+      py::object worksheet_GetItem(
+        const ExcelWorksheet& ws, const py::object& loc)
+      {
+        return Worksheet_sliceHelper(ws, loc,
+          [](ExcelRange&& r) { return py::cast(r); });
+      }
+
+      void worksheet_SetItem(
+        const ExcelWorksheet& ws, const py::object& loc, py::object pyValue)
+      {
+        ExcelObj value;
+
+        if (isRangeType(pyValue.ptr()))
+        {
+          const auto& range = py::cast<const Range&>(pyValue);
+          py::gil_scoped_release noGil;
+          value = range.value();
+        }
+        else
+          value = FromPyObj()(pyValue.ptr());
+
+        Worksheet_sliceHelper(ws, loc,
+          [value = move(value)](ExcelRange&& r) 
+          { 
+            r.set(value); 
+            return 0; 
+          });
+      }
+
       void worksheet_UsedRangeSet(const ExcelWorksheet& ws, const py::object& value)
       {
         const auto val = FromPyObj()(value.ptr());
@@ -159,7 +235,7 @@ namespace xloil
         return application_range(wb.app(), address);
       }
 
-      py::object workbook_GetItem(const ExcelWorkbook& wb, py::object loc)
+      py::object workbook_GetItem(const ExcelWorkbook& wb, const py::object& loc)
       {
         // Somewhat unfortunately, since ExcelRange is a virtual child of the 
         // Range class declared in pybind, we need to pass a ptr to py::cast
@@ -178,7 +254,7 @@ namespace xloil
           // If loc string contains '!' it must an address. Otherwise it
           // might be a worksheet name. If it isn't that it may be a named
           // range we just pass it to Application.Range
-          auto address = pyToWStr(loc);
+          auto address = to_wstring(loc);
           if (address.empty())
             throw py::value_error();
           else if (address.find(L'!') != wstring::npos)
@@ -201,6 +277,16 @@ namespace xloil
               return workbook_range(wb, address);
           }
         }
+      }
+
+      py::object Workbook_SetItem(
+        const ExcelWorkbook& wb, const py::object& loc, py::object& value)
+      {
+        auto item = workbook_GetItem(wb, loc);
+        auto hasSet = PyObject_GetAttrString(item.ptr(), "set");
+        if (!hasSet)
+          throw py::index_error("When using `workbook[X] = Y`, the index X must resolve to a Range");
+        PySteal(hasSet)(value);
       }
 
       py::object Context_Enter(const py::object& x)
@@ -234,7 +320,7 @@ namespace xloil
         Range::row_t _i;
         Range::col_t _j;
 
-        RangeIter(Range& r) : _range(r), _i(0), _j(0) 
+        RangeIter(Range& r) : _range(r), _i(0), _j(0)
         {}
 
         auto next()
@@ -245,134 +331,140 @@ namespace xloil
           return PyFromAny()(_range.value(_i, _j));
         }
       };
-    }
 
-
-    template<class T>
-    struct BindCollection
-    {
-      T _collection;
-
-      template<class V> BindCollection(const V& x)
-        : _collection(x)
-      {}
-
-      using value_t = decltype(_collection.active());
-      struct Iter
+      template<class T>
+      struct BindCollection
       {
-        vector<value_t> _objects;
-        size_t i = 0;
-        Iter(const T& collection) : _objects(collection.list()) {}
-        Iter(const Iter&) = delete;
-        value_t next()
+        T _collection;
+
+        template<class V> BindCollection(const V& x)
+          : _collection(x)
+        {}
+
+        using value_t = decltype(_collection.active());
+        struct Iter
         {
-          if (i >= _objects.size())
-            throw py::stop_iteration();
-          return std::move(_objects[i++]);
-        }
-      };
-      
-      auto getitem(const wstring& name)
-      {
-        try
+          vector<value_t> _objects;
+          size_t i = 0;
+          Iter(const T& collection) : _objects(collection.list()) {}
+          Iter(const Iter&) = delete;
+          value_t next()
+          {
+            if (i >= _objects.size())
+              throw py::stop_iteration();
+            return std::move(_objects[i++]);
+          }
+        };
+
+        auto getitem(const wstring& name)
         {
-          py::gil_scoped_release noGil;
-          return _collection.get(name.c_str());
+          try
+          {
+            py::gil_scoped_release noGil;
+            return _collection.get(name.c_str());
+          }
+          catch (...)
+          {
+            throw py::key_error();
+          }
         }
-        catch (...)
+
+        py::object getdefaulted(const wchar_t* name, const py::object& defaultVal)
         {
-          throw py::key_error();
+          value_t result(nullptr);
+          if (_collection.tryGet(name, result))
+            return py::cast(result);
+          return defaultVal;
         }
-      }
-      
-      py::object getdefaulted(const wstring& name, const py::object& defaultVal)
-      {
-        value_t result(nullptr);
-        if (_collection.tryGet(name.c_str(), result))
-          return py::cast(result);
-        return defaultVal;
-      }
 
-      auto iter()
-      {
-        return new Iter(_collection);
-      }
-
-      size_t count() const { return _collection.count(); }
-
-      py::object active()
-      {
-        value_t obj(nullptr);
+        auto iter()
         {
-          py::gil_scoped_release noGil;
-          obj = _collection.active();
+          return new Iter(_collection);
         }
-        if (!obj.valid())
-          return py::none();
-        return py::cast(std::move(obj));
-      }
 
-      static auto startBinding(const py::module& mod, const char* name, const char* doc = nullptr)
-      {
-        using this_t = BindCollection<T>;
+        size_t count() const { return _collection.count(); }
 
-        py::class_<Iter>(mod, (string(name) + "Iter").c_str())
-          .def("__iter__", [](const py::object& self) { return self; })
-          .def("__next__", &Iter::next);
+        bool contains(const wchar_t* name) const
+        {
+          value_t result(nullptr);
+          return _collection.tryGet(name, result);
+        }
 
-        return py::class_<this_t>(mod, name, doc)
-          .def("__getitem__", &getitem)
-          .def("__iter__", &iter)
-          .def("__len__", &count)
-          .def("get", 
-            &getdefaulted, 
-            R"(
+        py::object active()
+        {
+          value_t obj(nullptr);
+          {
+            py::gil_scoped_release noGil;
+            obj = _collection.active();
+          }
+          if (!obj.valid())
+            return py::none();
+          return py::cast(std::move(obj));
+        }
+
+        static auto startBinding(const py::module& mod, const char* name, const char* doc = nullptr)
+        {
+          using this_t = BindCollection<T>;
+
+          py::class_<Iter>(mod, (string(name) + "Iter").c_str())
+            .def("__iter__", [](const py::object& self) { return self; })
+            .def("__next__", &Iter::next);
+
+          return py::class_<this_t>(mod, name, doc)
+            .def("__getitem__", &getitem)
+            .def("__iter__", &iter)
+            .def("__len__", &count)
+            .def("__contains__", &contains)
+            .def("get",
+              &getdefaulted,
+              R"(
               Tries to get the named object, returning the default if not found
             )",
-            py::arg("name"), 
-            py::arg("default") = py::none())
-          .def_property_readonly("active", 
-            &active,
-            R"(
+              py::arg("name"),
+              py::arg("default") = py::none())
+            .def_property_readonly("active",
+              &active,
+              R"(
               Gives the active (as displayed in the GUI) object in the collection
               or None if no object has been activated.
             )");
+        }
+      };
+
+      ExcelWorksheet addWorksheetToWorkbook(
+        ExcelWorkbook& wb,
+        const py::object& name,
+        const py::object& before,
+        const py::object& after)
+      {
+        auto cname = name.is_none() ? wstring() : to_wstring(name);
+        auto cbefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
+        auto cafter = after.is_none() ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
+
+        py::gil_scoped_release noGil;
+        return wb.add(cname, cbefore, cafter);
       }
-    };
 
-    ExcelWorksheet addWorksheetToWorkbook(
-      ExcelWorkbook& wb,
-      const py::object& name, 
-      const py::object& before, 
-      const py::object& after)
-    {
-      auto cname = name.is_none() ? wstring() : pyToWStr(name);
-      auto cbefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
-      auto cafter = after.is_none() ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
+      auto addWorksheetToCollection(
+        BindCollection<Worksheets>& worksheets,
+        const py::object& name,
+        const py::object& before,
+        const py::object& after)
+      {
+        return addWorksheetToWorkbook(worksheets._collection.parent, name, before, after);
+      }
 
-      py::gil_scoped_release noGil;
-      return wb.add(cname, cbefore, cafter);
-    }
-
-    auto addWorksheetToCollection(
-      BindCollection<Worksheets>& worksheets,
-      const py::object& name,
-      const py::object& before,
-      const py::object& after)
-    {
-      return addWorksheetToWorkbook(worksheets._collection.parent, name, before, after);
-    }
-
-    template<class T>
-    auto toCom(T& p, const char* binder) 
-    { 
-      return comToPy(p.com(), binder); 
-    }
-    template<>
-    auto toCom(Range& range, const char* binder)
-    {
-      return comToPy(ExcelRange(range).com(), binder);
-    }
+      template<class T>
+      auto toCom(T& p, const char* binder)
+      {
+        return comToPy(p.com(), binder);
+      }
+      template<>
+      auto toCom(Range& range, const char* binder)
+      {
+        // Constructing an ExcelRange from another ExcelRange is cheap
+        return comToPy(ExcelRange(range).com(), binder);
+      }
 
     template<class T>
     py::object getComAttr(T& p, const char* attrName)
@@ -383,38 +475,61 @@ namespace xloil
       return py::getattr(toCom(p, ""), attrName);
     }
 
-    Application Application_Construct(
-      const py::object& com,
-      const py::object& hwnd,
-      const py::object& wbName)
-    {
-      size_t hWnd = 0;
-      wstring workbook;
-
-      if (!com.is_none())
+      template<class T>
+      void setComAttr(py::object& self, const py::object& attrName, const py::object& value)
       {
-        // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
-        hWnd = py::cast<size_t>(com.attr("hWnd")());
+        if (PyBaseObject_Type.tp_setattro(self.ptr(), attrName.ptr(), value.ptr()) == 0)
+          return;
+        PyErr_Clear();
+        py::setattr(toCom(py::cast<T&>(self), ""), attrName, value);
       }
-      else if (!hwnd.is_none())
-        hWnd = py::cast<size_t>(hwnd);
-      else if (!wbName.is_none())
-        workbook = pyToWStr(wbName);
 
-      py::gil_scoped_release noGil;
-      if (hWnd != 0)
-        return Application(hWnd);
-      else if (!workbook.empty())
-        return Application(workbook.c_str());
-      else
-        return Application();
-    }
+      Application application_Construct(
+        const py::object& com,
+        const py::object& hwnd,
+        const py::object& wbName)
+      {
+        size_t hWnd = 0;
+        wstring workbook;
 
-    auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
-    {
-      py::gil_scoped_release noGil;
-      return self.writeAddress(a1style ? AddressStyle::A1 : AddressStyle::RC);
-    }
+        if (!com.is_none())
+        {
+          // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
+          hWnd = py::cast<size_t>(com.attr("hWnd")());
+        }
+        else if (!hwnd.is_none())
+          hWnd = py::cast<size_t>(hwnd);
+        else if (!wbName.is_none())
+          workbook = to_wstring(wbName);
+
+        py::gil_scoped_release noGil;
+        if (hWnd != 0)
+          return Application(hWnd);
+        else if (!workbook.empty())
+          return Application(workbook.c_str());
+        else
+          return Application();
+      }
+
+      auto application_Open(
+        Application& app,
+        const wstring& filepath,
+        bool updateLinks,
+        bool readOnly,
+        const py::object& delimiter)
+      {
+        auto delim = delimiter.is_none() ? wchar_t(0) : to_wstring(delimiter).front();
+        py::gil_scoped_release noGil;
+        return app.open(filepath, updateLinks, readOnly, delim);
+      }
+
+      auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
+      {
+        py::gil_scoped_release noGil;
+        return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
+      }
+
+    } // namespace anon
 
     static int theBinder = addBinder([](py::module& mod)
     {
@@ -485,7 +600,7 @@ namespace xloil
 
           ::
 
-              x[1, 1] # The value at (1, 1) as a python type: int, str, float, etc.
+              x[1, 1] # The *value* at (1, 1) as a python type: int, str, float, etc.
 
               x[1, :] # The second row as another Range object
 
@@ -615,7 +730,7 @@ namespace xloil
           [](Range& self) { return new RangeIter(self); },
           call_release_gil())
         .def("__getitem__", 
-          Range_getItem<Range>,
+          range_getItem,
           R"(
             Given a 2-tuple, slices the range to return a sub Range or a single element.Uses
             normal python slicing conventions i.e[left included, right excluded), negative
@@ -628,6 +743,10 @@ namespace xloil
         .def("__str__", 
           [](const Range& r) { return r.address(false); },
           call_release_gil())
+        .def("__iadd__", XLOIL_RANGE_OPERATOR("iadd"))
+        .def("__isub__", XLOIL_RANGE_OPERATOR("isub"))
+        .def("__imul__", XLOIL_RANGE_OPERATOR("imul"))
+        .def("__itruediv__", XLOIL_RANGE_OPERATOR("itruediv"))
         .def_property("value",
           range_GetValue, range_SetValue,
           R"(
@@ -676,7 +795,7 @@ namespace xloil
           call_release_gil(),
           "Returns a tuple (num columns, num rows)")
         .def_property_readonly("bounds", 
-          &Range::bounds, 
+          &Range::bounds,
           call_release_gil(),
           R"(
             Returns a zero-based tuple (top-left-row, top-left-col, bottom-right-row, bottom-right-col)
@@ -691,17 +810,25 @@ namespace xloil
             formula.
           )")
         .def("to_com", 
-          toCom<Range>, 
+          toCom<Range>,
           toComDocString, 
           py::arg("lib") = "")
         .def("__getattr__",
           getComAttr<Range>)
+        .def("__setattr__",
+          setComAttr<Range>)
         .def_property_readonly("parent", 
           [](const Range& r) { return ExcelRange(r).parent(); },
           call_release_gil(),
           "Returns the parent Worksheet for this Range");
 
-      rangeType = (PyTypeObject*)declare_Range.ptr();
+      theRangeType = (PyTypeObject*)declare_Range.ptr();
+
+      theExcelRangeType = (PyTypeObject*)
+        py::class_<ExcelRange, Range>(mod, "_ExcelRange").ptr();
+
+      theXllRangeType = (PyTypeObject*)
+        py::class_<XllRange, Range>(mod, "_XllRange").ptr();
 
       declare_Worksheet
         .def("__str__", 
@@ -722,12 +849,13 @@ namespace xloil
           worksheet_GetItem,
           R"(
             If the argument is a string, returns the range specified by the local address, 
-            equivalent to ``at_address``.  
+            equivalent to ``at``.  
             
-            If the argument is a 2-tuple, slices the sheet to return a Range or a single element. 
+            If the argument is a 2-tuple, slices the sheet to return an xloil.Range.
             Uses normal python slicing conventions, i.e [left included, right excluded), negative
             numbers are offset from the end.
           )")
+        .def("__setitem__", worksheet_SetItem)
         .def("range", 
           worksheet_subRange,
           R"(
@@ -767,7 +895,7 @@ namespace xloil
         .def("cell", 
           [](const ExcelWorksheet& self, int row, int col)
           {
-            return (Range*)new ExcelRange(self.cell(row, col));
+            return new ExcelRange(self.cell(row, col));
           },
           call_release_gil(),
           R"(
@@ -779,7 +907,7 @@ namespace xloil
         .def("at",
           [](const ExcelWorksheet& self, const wstring& address)
           {
-            return (Range*)new ExcelRange(self.range(address));
+            return self.range(address);
           },
           call_release_gil(),
           "Returns the range specified by the local address, e.g. ``.at('B3:D6')``",
@@ -795,12 +923,18 @@ namespace xloil
           &ExcelWorksheet::activate,
           call_release_gil(),
           "Makes this worksheet the active sheet")
+        .def_property_readonly("used_range",
+          &ExcelWorksheet::usedRange,
+          call_release_gil(),
+          "Returns a Range object that represents the used range on the worksheet")
         .def("to_com", 
           toCom<ExcelWorksheet>, 
           toComDocString, 
           py::arg("lib") = "")
         .def("__getattr__",
-            getComAttr<ExcelWorksheet>);
+          getComAttr<ExcelWorksheet>)
+        .def("__setattr__",
+          setComAttr<ExcelWorksheet>);
         
       declare_Workbook
         .def("__str__", 
@@ -856,6 +990,8 @@ namespace xloil
           py::arg("lib") = "")
         .def("__getattr__",
           getComAttr<ExcelWorkbook>)
+        .def("__setattr__",
+          setComAttr<ExcelWorkbook>)
         .def("add", 
           addWorksheetToWorkbook,
           workbookAddDocString,
@@ -908,7 +1044,9 @@ namespace xloil
           toComDocString, 
           py::arg("lib") = "")
         .def("__getattr__",
-            getComAttr<ExcelWindow>);
+          getComAttr<ExcelWindow>)
+        .def("__setattr__",
+          setComAttr<ExcelWindow>);
 
       declare_Application
         .def(py::init(std::function(Application_Construct)),
@@ -941,12 +1079,19 @@ namespace xloil
           [](Application& app) { return PyWindows(app); },
           call_release_gil(),
           "A collection of all Windows open in this Application")
+        .def_property_readonly("workbook_paths",
+          [](Application& app) { app.workbookPaths(); },
+          call_release_gil(),
+          "A set of the full path names of all workbooks open in this Application. "
+          "Does not use COM interface.")
         .def("to_com",
           toCom<Application>,
           toComDocString,
           py::arg("lib") = "")
         .def("__getattr__", 
           getComAttr<Application>)
+        .def("__setattr__",
+          setComAttr<Application>)
         .def_property("visible",
           &Application::getVisible,
           [](Application& app, bool x) { app.setVisible(x); },
@@ -967,8 +1112,7 @@ namespace xloil
           "Create a range object from an external address such as \"[Book]Sheet!A1\"",
           py::arg("address"))
         .def("open",
-          &Application::open,
-          call_release_gil(),
+          application_Open,
           R"(
             Opens a workbook given its full `filepath`.
 
@@ -984,7 +1128,8 @@ namespace xloil
           )",
           py::arg("filepath"),
           py::arg("update_links") = true,
-          py::arg("read_only") = false)
+          py::arg("read_only") = false,
+          py::arg("delimiter") = py::none())
         .def("calculate",
           &Application::calculate,
           call_release_gil(),
@@ -1052,7 +1197,7 @@ namespace xloil
         .def_property_readonly("range",
           [](const CallerInfo& self)
           {
-            return createPyRange([&]() { return self.writeAddress(); });
+            return createPyRange([&]() { return self.address(); });
           },
           "Range object corresponding to caller address");
 

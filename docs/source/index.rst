@@ -1,3 +1,6 @@
+.. raw:: html
+
+	<iframe src="https://github.com/sponsors/cunnane/card" title="Sponsor xlOil" height="200" width="500" style="border: 0;"></iframe>
 
 xlOil documentation
 ===================
@@ -10,6 +13,7 @@ xlOil documentation
 	Introduction
 	Core
 	Concepts
+	Events
 	xlOil_Core_Functions
 	xlOil_Cpp/index
 	xlOil_Python/index

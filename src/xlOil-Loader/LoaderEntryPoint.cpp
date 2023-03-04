@@ -161,7 +161,7 @@ struct xlOilAddin
 
       Environment::initAppContext();
 
-      detail::RegisterAddinBase<xlOilAddin>::theAddin.reset(new xlOilAddin());
+      detail::RegisterAddin<xlOilAddin>::lauch();
 
       detail::theXllIsOpen = true;
     }
@@ -172,7 +172,8 @@ struct xlOilAddin
   }
   xlOilAddin() 
   {
-    auto ret = xloil::autoOpenHandler(XllInfo::xllPath.c_str());
+    XLO_DEBUG("xlOil Core: Opening");
+    auto ret = xloil::coreAutoOpenHandler(XllInfo::xllPath.c_str());
 
     if (ret == 1)
     {
@@ -182,7 +183,8 @@ struct xlOilAddin
   }
   ~xlOilAddin()
   {
-    xloil::autoCloseHandler(XllInfo::xllPath.c_str());
+    XLO_DEBUG("xlOil Core: Closing");
+    xloil::coreAutoCloseHandler(XllInfo::xllPath.c_str());
   }
 };
 

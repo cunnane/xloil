@@ -27,9 +27,9 @@ namespace xloil
   {
     namespace
     {
-      auto findStr(const toml::view_node& root, const char* tag, const char* default)
+      auto findStr(const toml::view_node& root, const char* tag, const string& default)
       {
-        return root[tag].value_or<string>(default);
+        return root[tag].value_or(default);
       }
       auto findVecStr(const toml::view_node& root, const char* tag)
       {
@@ -69,30 +69,45 @@ namespace xloil
       // (size_t) cast needed for 32-bit as TOML lib is hard-coded to 
       // return int64 for all integer types
       return std::make_pair(
-        (size_t)root["LogMaxSize"].value_or<unsigned>(1024),
-        (size_t)root["LogNumberOfFiles"].value_or<unsigned>(2));
+        (size_t)root["LogMaxSize"].value_or(1024u),
+        (size_t)root["LogNumberOfFiles"].value_or(2u));
     }
     std::vector<std::wstring> dateFormats(const toml::view_node& root)
     {
       return findVecStr(root, "DateFormats");
     }
+
+    namespace
+    {
+      // Settings in the enviroment block looks like key=val
+      // We interpret this as an environment variable to set
+      template<class TTable, class TResult>
+      void writeTableAsPairs(const TTable& table, TResult& container)
+      {
+        for (auto [key, val] : table)
+        {
+          container.emplace_back(make_pair(
+            utf8ToUtf16(key),
+            utf8ToUtf16(val.value_or(""))));
+        }
+      }
+    }
+
     std::vector<std::pair<std::wstring, std::wstring>> 
       environmentVariables(const toml::view_node& root)
     {
       vector<pair<wstring, wstring>> result;
-      auto environment = root["Environment"].as_array();
-      if (environment)
-        for (auto& innerTable : *environment)
-        {
-          // Settings in the enviroment block looks like key=val
-          // We interpret this as an environment variable to set
-          for (auto[key, val] : *innerTable.as_table())
-          {
-            result.emplace_back(make_pair(
-              utf8ToUtf16(key),
-              utf8ToUtf16(val.value_or(""))));
-          }
-        }
+      auto environment = root["Environment"];
+      if (environment.is_array())
+      {
+        for (auto& table : *environment.as_array())
+          if (table.is_table())
+            writeTableAsPairs(*table.as_table(), result);
+      }
+      else if (environment.is_table())
+      {
+        writeTableAsPairs(*environment.as_table(), result);
+      }
       return result;
     }
 
@@ -111,11 +126,11 @@ namespace xloil
       if (table)
         for (auto i = table->cbegin(); i != table->cend(); ++i)
         {
-          if (_stricmp((*i).first.c_str(), name) == 0)
-            return &(*i).second;
+          if (_stricmp((*i).first.data(), name) == 0)
+            return toml::view_node((*i).second);
         }
    
-      return toml::node_view<const toml::node>();
+      return toml::view_node();
     }
   }
   std::shared_ptr<const toml::table> findSettingsFile(const wchar_t* dllPath)

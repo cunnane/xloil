@@ -21,7 +21,7 @@ namespace xloil
 
         PyObject* operator()(const RefVal& obj) const 
         {
-          return pybind11::cast((Range*)new XllRange(obj)).release().ptr();
+          return pybind11::cast(new XllRange(obj)).release().ptr();
         }
         constexpr wchar_t* failMessage() const { return L"Expected range"; }
       };

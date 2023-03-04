@@ -61,6 +61,8 @@ __all__ = [
 
 
 class Addin():
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
     def functions(self) -> typing.List[_FuncSpec]: 
         """
         Returns a list of all functions declared by this addin.
@@ -144,6 +146,7 @@ class Application():
           Tries to gets a handle to the Excel.Application which has the specified workbook
           open.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def calculate(self, full: bool = False, rebuild: bool = False) -> None: 
         """
         Calculates all open workbooks
@@ -156,7 +159,7 @@ class Application():
           For all open workbooks, forces a full calculation of the data 
           and rebuilds the dependencies. (Implies `full`)
         """
-    def open(self, filepath: str, update_links: bool = True, read_only: bool = False) -> Workbook: 
+    def open(self, filepath: str, update_links: bool = True, read_only: bool = False, delimiter: object = None) -> Workbook: 
         """
         Opens a workbook given its full `filepath`.
 
@@ -221,6 +224,13 @@ class Application():
         A collection of all Windows open in this Application
 
         :type: ExcelWindows
+        """
+    @property
+    def workbook_paths(self) -> None:
+        """
+        A set of the full path names of all workbooks open in this Application. Does not use COM interface.
+
+        :type: None
         """
     @property
     def workbooks(self) -> Workbooks:
@@ -319,15 +329,15 @@ class CellError():
         """
         :type: int
         """
-    DIV: xloil_core.CellError = None # value = <CellError.DIV: 7>
-    GETTING_DATA: xloil_core.CellError = None # value = <CellError.GETTING_DATA: 43>
-    NA: xloil_core.CellError = None # value = <CellError.NA: 42>
-    NAME: xloil_core.CellError = None # value = <CellError.NAME: 29>
-    NULL: xloil_core.CellError = None # value = <CellError.NULL: 0>
-    NUM: xloil_core.CellError = None # value = <CellError.NUM: 36>
-    REF: xloil_core.CellError = None # value = <CellError.REF: 23>
-    VALUE: xloil_core.CellError = None # value = <CellError.VALUE: 15>
-    __members__: dict = None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
+    DIV: xloil_core.CellError=None # value = <CellError.DIV: 7>
+    GETTING_DATA: xloil_core.CellError=None # value = <CellError.GETTING_DATA: 43>
+    NA: xloil_core.CellError=None # value = <CellError.NA: 42>
+    NAME: xloil_core.CellError=None # value = <CellError.NAME: 29>
+    NULL: xloil_core.CellError=None # value = <CellError.NULL: 0>
+    NUM: xloil_core.CellError=None # value = <CellError.NUM: 36>
+    REF: xloil_core.CellError=None # value = <CellError.REF: 23>
+    VALUE: xloil_core.CellError=None # value = <CellError.VALUE: 15>
+    __members__: dict=None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
     pass
 class ComBusyError(Exception, BaseException):
     pass
@@ -566,6 +576,7 @@ class ExcelWindow():
     See `Excel.Window <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowWindow>`_ 
     """
     def __getattr__(self, arg0: str) -> object: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def to_com(self, lib: str = '') -> object: 
         """
@@ -610,6 +621,7 @@ class ExcelWindows():
 
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> ExcelWindow: ...
     def __iter__(self) -> ExcelWindowsIter: ...
     def __len__(self) -> int: ...
@@ -633,8 +645,10 @@ class ExcelWindowsIter():
     pass
 class IPyFromExcel():
     def __call__(self, arg0: object) -> None: ...
+    def __str__(self) -> str: ...
     pass
 class IPyToExcel():
+    def __str__(self) -> str: ...
     pass
 class ObjectCache():
     """
@@ -711,7 +725,7 @@ class Range():
 
     ::
 
-        x[1, 1] # The value at (1, 1) as a python type: int, str, float, etc.
+        x[1, 1] # The *value* at (1, 1) as a python type: int, str, float, etc.
 
         x[1, :] # The second row as another Range object
 
@@ -727,9 +741,14 @@ class Range():
         numbers are offset from the end.If the tuple specifies a single cell, returns
         the value in that cell, otherwise returns a Range object.
         """
+    def __iadd__(self, arg0: object) -> object: ...
+    def __imul__(self, arg0: object) -> object: ...
     def __init__(self, address: str) -> None: ...
+    def __isub__(self, arg0: object) -> object: ...
     def __iter__(self) -> RangeIter: ...
+    def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def address(self, local: bool = False) -> str: 
         """
@@ -1162,6 +1181,7 @@ class Workbook():
         If the index is a worksheet name, returns the `Worksheet` object,
         otherwise treats the string as a workbook address and returns a `Range`.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def add(self, name: object = None, before: object = None, after: object = None) -> Worksheet: 
         """
@@ -1251,6 +1271,7 @@ class Workbooks():
 
     See `Excel.Workbooks <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbooksWorkbooks>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Workbook: ...
     def __iter__(self) -> WorkbooksIter: ...
     def __len__(self) -> int: ...
@@ -1288,18 +1309,20 @@ class Worksheet():
     def __getitem__(self, arg0: object) -> object: 
         """
         If the argument is a string, returns the range specified by the local address, 
-        equivalent to ``at_address``.  
+        equivalent to ``at``.  
 
-        If the argument is a 2-tuple, slices the sheet to return a Range or a single element. 
+        If the argument is a 2-tuple, slices the sheet to return an xloil.Range.
         Uses normal python slicing conventions, i.e [left included, right excluded), negative
         numbers are offset from the end.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
+    def __setitem__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def activate(self) -> None: 
         """
         Makes this worksheet the active sheet
         """
-    def at(self, address: str) -> Range: 
+    def at(self, address: str) -> _ExcelRange: 
         """
         Returns the range specified by the local address, e.g. ``.at('B3:D6')``
         """
@@ -1307,7 +1330,7 @@ class Worksheet():
         """
         Calculates this worksheet
         """
-    def cell(self, row: int, col: int) -> Range: 
+    def cell(self, row: int, col: int) -> _ExcelRange: 
         """
         Returns a Range object which consists of a single cell. The indices are zero-based 
         from the top left of the parent range.
@@ -1369,6 +1392,13 @@ class Worksheet():
 
         :type: Workbook
         """
+    @property
+    def used_range(self) -> _ExcelRange:
+        """
+        Returns a Range object that represents the used range on the worksheet
+
+        :type: _ExcelRange
+        """
     pass
 class Worksheets():
     """
@@ -1376,6 +1406,7 @@ class Worksheets():
 
     See `Excel.Worksheets <https://docs.microsoft.com/en-us/office/vba/api/excel.WorksheetsWorksheets>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
     def __iter__(self) -> WorksheetsIter: ...
     def __len__(self) -> int: ...
@@ -1472,11 +1503,11 @@ class _CustomConverter(IPyFromExcel):
     This is the interface class for custom type converters to allow them
     to be called from the Core.
     """
-    def __init__(self, callable: object, check_cache: bool = True) -> None: ...
+    def __init__(self, callable: object, check_cache: bool = True, name: str = 'custom') -> None: ...
     pass
 class _CustomReturn(IPyToExcel):
-    def __init__(self, callable: object) -> None: ...
-    def get_handler(self) -> object: ...
+    def __init__(self, callable: object, name: str = 'custom') -> None: ...
+    def invoke(self, arg0: object) -> object: ...
     pass
 class _CustomReturnConverter():
     @property
@@ -1605,8 +1636,11 @@ class _ExcelObjFutureIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> None: ...
     pass
+class _ExcelRange(Range):
+    pass
 class _FuncArg():
-    def __init__(self) -> None: ...
+    def __init__(self, arg0: str, arg1: str, arg2: IPyFromExcel, arg3: str) -> None: ...
+    def __str__(self) -> str: ...
     @property
     def converter(self) -> IPyFromExcel:
         """
@@ -1624,32 +1658,23 @@ class _FuncArg():
     def default(self, arg0: object) -> None:
         pass
     @property
+    def flags(self) -> str:
+        """
+        :type: str
+        """
+    @property
     def help(self) -> str:
         """
         :type: str
         """
-    @help.setter
-    def help(self, arg0: str) -> None:
-        pass
     @property
     def name(self) -> str:
         """
         :type: str
         """
-    @name.setter
-    def name(self, arg0: str) -> None:
-        pass
-    @property
-    def special_type(self) -> str:
-        """
-        :type: str
-        """
-    @special_type.setter
-    def special_type(self, arg0: str) -> None:
-        pass
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, has_kwargs: bool = False) -> None: ...
+    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
     def __str__(self) -> str: ...
     @property
     def args(self) -> typing.List[_FuncArg]:
@@ -1705,6 +1730,9 @@ class _FuncSpec():
         """
         :type: str
         """
+    @name.setter
+    def name(self, arg1: str) -> None:
+        pass
     @property
     def return_converter(self) -> IPyToExcel:
         """
@@ -1732,20 +1760,22 @@ class _LogWriter():
     to the value in the xlOil settings will be output to the log file. Trace output
     can only be seen with a debug build of xlOil.
     """
-    def __call__(self, msg: str, level: object = 20) -> None: 
+    def __call__(self, msg: object, *args, **kwargs) -> None: 
         """
-        Writes a message to the log at the optionally specifed level. The default 
-        level is 'info'.
+        Writes a message to the log at the specifed keyword paramter `level`. The default 
+        level is 'info'.  The message can contain format specifiers which are expanded
+        using any additional positional arguments. This allows for lazy contruction of the 
+        log string like python's own 'logging' module.
         """
     def __init__(self) -> None: 
         """
         Do not construct this class - a singleton instance is created by xlOil.
         """
-    def debug(self, msg: str) -> None: 
+    def debug(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'debug' level
         """
-    def error(self, msg: str) -> None: 
+    def error(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'error' level
         """
@@ -1754,15 +1784,15 @@ class _LogWriter():
         Forces a log file 'flush', i.e write pending log messages to the log file.
         For performance reasons the file is not by default flushed for every message.
         """
-    def info(self, msg: str) -> None: 
+    def info(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'info' level
         """
-    def trace(self, msg: str) -> None: 
+    def trace(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'trace' level
         """
-    def warn(self, msg: str) -> None: 
+    def warn(self, msg: object, *args) -> None: 
         """
         Writes a log message at the 'warn' level
         """
@@ -1930,13 +1960,16 @@ class _Read_float(IPyFromExcel):
 class _Read_int(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
+class _Read_list(IPyFromExcel):
+    def __init__(self) -> None: ...
+    pass
 class _Read_object(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Read_str(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
-class _Read_tuple_from_Excel(IPyFromExcel):
+class _Read_tuple(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_Array_bool_1d(IPyToExcel):
@@ -1982,7 +2015,7 @@ class _Return_Array_str_2d(IPyToExcel):
 class _Return_Cache(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_SingleValue(IPyToExcel):
+class _Return_Single(IPyToExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_bool(IPyToExcel):
@@ -2003,14 +2036,22 @@ class _Return_float(IPyToExcel):
 class _Return_int(IPyToExcel):
     def __init__(self) -> None: ...
     pass
+class _Return_tuple(IPyToExcel):
+    def __init__(self) -> None: ...
+    pass
+class _Return_tuple():
+    pass
 class _Return_str(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_tuple_to_Excel(IPyToExcel):
-    def __init__(self) -> None: ...
+class _Return_tuple():
     pass
 class _TomlTable():
     def __getitem__(self, arg0: str) -> object: ...
+    pass
+class _XllRange(Range):
+    pass
+def _get_onedrive_source(arg0: str) -> str:
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
@@ -2056,7 +2097,7 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
     """
 def core_addin() -> Addin:
     pass
-def deregister_functions(arg0: object, arg1: object) -> None:
+def deregister_functions(funcs: object, module: object = None) -> None:
     """
     Deregisters worksheet functions linked to specified module. Generally, there
     is no need to call this directly.
@@ -2154,7 +2195,7 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-_return_converter_hook: xloil_core._CustomReturnConverter = None
-cache: xloil_core.ObjectCache = None
-date_formats: xloil_core._DateFormatList = None
-xloil_addins: xloil_core._AddinsDict = None
+_return_converter_hook: xloil_core._CustomReturnConverter=None
+cache: xloil_core.ObjectCache=None
+date_formats: xloil_core._DateFormatList=None
+xloil_addins: xloil_core._AddinsDict=None

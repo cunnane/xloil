@@ -38,7 +38,6 @@ namespace xloil
     const ExcelObj& grammar
   ))
   {
-    const auto noCase = ignoreCase.get<bool>(false);
     const auto isMatch = wholeString.get<bool>(false);
 
     auto regexOptions = parseRegexGrammar(grammar.cast<PStringRef>());

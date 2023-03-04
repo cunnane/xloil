@@ -3,6 +3,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyAddin.h"
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelThread.h>
 #include <pybind11/pybind11.h>
@@ -91,16 +92,25 @@ namespace xloil
       if (!_running)
         return;
       
-      // Convert result to ExcelObj
-      ExcelObj result = _returnConverter
-        ? (*_returnConverter)(*value.ptr())
-        : FromPyObj<false>()(value.ptr());
+      XLO_TRACE(L"Received result for RTD task started in '{0}'", _caller.address());
 
-      // If nil, conversion wasn't possible, so use the cache
-      if (result.isType(ExcelType::Nil))
-        result = pyCacheAdd(value, _caller.writeAddress().c_str());
+      try
+      {
+        // Convert result to ExcelObj
+        ExcelObj result = _returnConverter
+          ? (*_returnConverter)(*value.ptr())
+          : FromPyObj<false>()(value.ptr());
 
-      _notify.publish(std::move(result));
+        // If nil, conversion wasn't possible, so use the cache
+        if (result.isType(ExcelType::Nil))
+          result = pyCacheAdd(value, _caller.address().c_str());
+
+        _notify.publish(std::move(result));
+      }
+      catch (const std::exception& e)
+      {
+        _notify.publish(ExcelObj(e.what()));
+      }
     }
     void RtdReturn::set_done()
     {
@@ -116,6 +126,8 @@ namespace xloil
         return;
       
       _running = false;
+
+      XLO_TRACE(L"Sending cancellation to RTD task started in '{0}'", _caller.address());
       if (_task)
         asyncEventLoop().callback(_task.attr("cancel"));
     }

@@ -23,7 +23,7 @@ namespace xloil
     /// </summary>
     RC = 1,
     /// <summary>
-    /// Does note quote sheet name, e.g. [Book1]Sheet1!A1:B2
+    /// Does not quote sheet name, e.g. [Book1]Sheet1!A1:B2
     /// </summary>
     NOQUOTE = 2,
   };
@@ -80,7 +80,10 @@ namespace xloil
     /// </summary>
     /// <param name="style"></param>
     /// <returns></returns>
-    std::wstring writeAddress(AddressStyle style = AddressStyle::A1) const;
+    std::wstring address(AddressStyle style = AddressStyle::A1) const;
+
+
+    std::wstring localAddress(AddressStyle style = AddressStyle::A1) const;
 
     /// <summary>
     /// Returns the calling worksheet name as a PString or a null PString

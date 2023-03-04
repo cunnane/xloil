@@ -1,5 +1,5 @@
 import importlib.util
-from ._paths import XLOIL_BIN_DIR, add_dll_path
+from ._paths import XLOIL_BIN_DIR, add_dll_path, _get_environment_strings
 import os
 import sys
 
@@ -7,52 +7,6 @@ import sys
 # already injected the xloil_core module
 XLOIL_EMBEDDED = importlib.util.find_spec("xloil_core") is not None
 XLOIL_READTHEDOCS = 'READTHEDOCS' in os.environ
-
-
-def _get_environment_strings():
-    """
-        Does the same as:
-            import win32profile
-            win32profile.GetEnvironmentStrings()
-        But avoids the depedency on pywin32
-    """
-   
-    import ctypes
-    import locale
-
-    kernel_func = ctypes.windll.kernel32.GetEnvironmentStringsA
-    char_ptr = ctypes.POINTER(ctypes.c_char)
-    kernel_func.restype = char_ptr
-
-    # P will point to an block of char formatted as:
-    #     name1=val1/0
-    #     ...
-    #     nameN=valN/0/0
-    # (line-breaks added for clarity, they aren't present in the string)
-    p = kernel_func()
-    try:
-    
-        result = {}
-        start = end = 0
-        null = b'\x00' # Null-terminator for C-strings
-
-        while True:
-            while p[end] != null:
-                end += 1
-            if end == start:
-                break
-                
-            keyval = p[start:end].decode(locale.getpreferredencoding()).split('=')
-            # GetEnvironmentStrings returns some strange entries starting with '='
-            if any(keyval[0]):
-                result[keyval[0]] = keyval[1]
-                
-            end += 1    # Step over null terminator
-            start = end # Move string start pointer
-    finally:
-        ctypes.windll.kernel32.FreeEnvironmentStringsA(p)
-    
-    return result
 
 if XLOIL_EMBEDDED:
     """
@@ -66,18 +20,6 @@ if XLOIL_EMBEDDED:
     for name, val in env_vars.items():
         if not name.startswith("="):
             os.environ[name] = val
-
-def _fix_module_for_docs(namespace, target, replace):
-    """
-        When sphinx autodoc reads python objects, it uses their __module__
-        attribute to determine their fully-qualified name.  When importing
-        from a hidden private implementation, we'd like to rename this 
-        __module__ so the import appeared to come from the top level package
-    """
-    for name in list(namespace):
-        val = namespace[name]
-        if getattr(val, '__module__', None) == target:
-            val.__module__ = replace
 
 if XLOIL_READTHEDOCS:
 
@@ -129,8 +71,35 @@ from xloil_core import *
 from xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
 
 if XLOIL_READTHEDOCS:
+    
+    def _fix_module_for_docs(namespace, target, replace):
+        """
+            When sphinx autodoc reads python objects, it uses their __module__
+            attribute to determine their fully-qualified name.  When importing
+            from a hidden private implementation, we'd like to rename this 
+            __module__ so the import appeared to come from the top level package
+        """
+        for name in list(namespace):
+            val = namespace[name]
+            if getattr(val, '__module__', None) == target:
+                val.__module__ = replace
+
     _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
 
+class _ActiveWorksheets:
+    def __getitem__(self, name):
+        return active_workbook().worksheets[name]
+
+worksheets = _ActiveWorksheets()
+"""
+    Collection of Worksheets of the active Workbook
+    
+    Examples
+    --------
+
+        worksheets['Sheet1']['A1'].value = 'Hello'
+
+"""
 
 def xloil_bin_path():
     import win32api
@@ -140,7 +109,7 @@ def xloil_bin_path():
             win32api.GetModuleHandle("xloil.dll")))
 
 def create_gui(*args, **kwargs) -> ExcelGUI:
-    # DEPRECATED. Create the ExcelGUI object directly.
+    # DEPRECATED. Rather create the xloil.ExcelGUI object directly.
 
     import warnings
     warnings.warn("create_gui is deprecated, create the ExcelGUI object directly", 

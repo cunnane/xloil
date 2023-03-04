@@ -62,7 +62,7 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
             """
             Allows return type converters to be "called" in the expected way.
             """
-            return cls._xloil_return_writer.get_handler()(value)
+            return cls._xloil_return_writer.invoke(value)
 
     if source:
         functools.update_wrapper(_TypeConverter, source, updated=[])

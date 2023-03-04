@@ -26,6 +26,10 @@ namespace
   {
     return std::static_pointer_cast<T>(std::shared_ptr<U>(r.lock()));
   }
+
+  // {9B8C6F9F-B0FF-46B7-8376-2A6DDECD1B5E}
+  static const GUID theXloilNamespace =
+    { 0x9b8c6f9f, 0xb0ff, 0x46b7, { 0x83, 0x76, 0x2a, 0x6d, 0xde, 0xcd, 0x1b, 0x5e } };
 }
 
 namespace xloil
@@ -154,23 +158,14 @@ namespace xloil
     return make_pair(shared_ptr<FuncSource>(), shared_ptr<AddinContext>());
   }
 
-  void
-    AddinContext::deleteSource(const std::shared_ptr<FuncSource>& context)
-  {
-    for (auto& [name, addinCtx] : currentAddinContexts())
-    {
-      auto found = addinCtx->sources().find(context->name());
-      if (found != addinCtx->sources().end())
-        addinCtx->_files.erase(found);
-    }
-  }
-
   FileSource::FileSource(
     const wchar_t* sourcePath, bool watchFile)
     : _sourcePath(sourcePath)
     , _watchFile(watchFile)
   {
-    auto lastSlash = wcsrchr(_sourcePath.c_str(), L'\\');
+    const auto isUrl = wcsncmp(sourcePath, L"http", 4) == 0;
+    const auto separator = isUrl ? L'/' : L'\\';
+    auto lastSlash = wcsrchr(_sourcePath.c_str(), separator);
     _sourceName = lastSlash ? lastSlash + 1 : _sourcePath.c_str();
     // TODO: implement std::string _functionPrefix;
     //_functionPrefix = toml::find_or<std::string>(*_settings, "FunctionPrefix", "");
@@ -223,8 +218,7 @@ namespace xloil
       if (_vbaModuleName.size() > 31 || invalidChars)
       {
         GUID guid;
-        if (!createGuid(guid))
-          XLO_THROW("Failed to create GUID");
+        stableGuidFromString(guid, theXloilNamespace, filename());
         _vbaModuleName = wstring(L"xlOil_") + guidToWString(guid, GuidToString::BASE62);
       }
       else
@@ -232,7 +226,11 @@ namespace xloil
     }
 
     registerLocalFuncs(
-      _localFunctions, _workbookName.c_str(), funcSpecs, _vbaModuleName.c_str(), append);
+      _localFunctions, 
+      _workbookName.c_str(), 
+      funcSpecs, 
+      _vbaModuleName.c_str(), 
+      append);
   }
 
   void LinkedSource::init()
@@ -245,15 +243,26 @@ namespace xloil
       _workbookRenameHandler = Event::WorkbookRename().weakBind(
         static_pointer_cast<LinkedSource>(weak_from_this()),
         &LinkedSource::handleRename);
-
     }
     FileSource::init();
   }
-
+  namespace
+  {
+    // TODO: is this really necessary or is further refactoring needed?
+    void deleteSource(const std::shared_ptr<FuncSource>& context)
+    {
+      for (auto& [name, addinCtx] : currentAddinContexts())
+      {
+        auto found = addinCtx->sources().find(context->name());
+        if (found != addinCtx->sources().end())
+          addinCtx->erase(found->second);
+      }
+    }
+  }
   void LinkedSource::handleClose(const wchar_t* wbName)
   {
     if (_wcsicmp(wbName, linkedWorkbook().c_str()) == 0)
-      AddinContext::deleteSource(shared_from_this());
+      deleteSource(shared_from_this());
   }
 
   void LinkedSource::handleRename(const wchar_t* wbName, const wchar_t* prevName)
@@ -291,7 +300,7 @@ namespace xloil
           case Event::FileAction::Delete:
           {
             XLO_INFO(L"Module '{0}' deleted/renamed, removing functions.", self->name().c_str());
-            AddinContext::deleteSource(self);
+            deleteSource(self);
             break;
           }
         }

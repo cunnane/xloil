@@ -12,12 +12,15 @@ xlOil Python
     TypeConversion
     ExcelApplication
     CustomGUI
+    Dynamic
     ExternalPackages
+    BuiltInUDFs
     Jupyter
     Rtd
     Debugging
     DistributingAddins
     Example
     ExampleGUI
+    ExampleRTD
     FAQ
     ModuleReference

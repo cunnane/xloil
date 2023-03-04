@@ -251,11 +251,13 @@ namespace xloil
       {
         Excel::RangePtr pRange(variant.pdispVal);
         
+        // TODO: converting to a ref via the address is a bit expensive
+        // if end users (e.g. python) can use an ExcelRange
         auto xlRef = ExcelRef(pRange->GetAddress(
           VARIANT_TRUE, VARIANT_TRUE, Excel::xlA1, VARIANT_TRUE));
 
         if (allowRange)
-          return xlRef;
+          return ExcelObj(std::move(xlRef));
         else
           // Probably faster than variantToExcelObj(pRange->Value2).
           return xlRef.value(); 
@@ -264,7 +266,8 @@ namespace xloil
         return variant.scode == DISP_E_PARAMNOTFOUND
           ? ExcelObj(ExcelType::Missing)
           : ExcelObj(variantErrorToCellError(variant.scode));
-      case VT_EMPTY: return ExcelObj();
+      case VT_EMPTY: 
+        return ExcelObj();
       }
 
       if ((variant.vt & VT_ARRAY) == 0)

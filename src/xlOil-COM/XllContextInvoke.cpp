@@ -1,5 +1,6 @@
 #include "XllContextInvoke.h"
 #include <xlOil/ExcelTypeLib.h>
+#include <xlOil/ExcelThread.h>
 #include "Connect.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/AppObjects.h>
@@ -19,7 +20,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  static const std::function<void()>* theVoidFunc = nullptr;
+  static const std::function<bool()>* theBoolFunc = nullptr;
   static int theExcelCallFunc = 0;
   static XLOIL_XLOPER* theExcelCallResult = nullptr;
   static XLOIL_XLOPER** theExcelCallArgs = nullptr;
@@ -31,10 +32,11 @@ namespace xloil
     try
     {
       InXllContext context;
-      if (theVoidFunc)
-        (*theVoidFunc)();
+      if (theBoolFunc)
+        result.val.w = (*theBoolFunc)() ? 1 : 0;
       else
-        result.val.w = Excel12v(theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
+        result.val.w = Excel12v(
+          theExcelCallFunc, theExcelCallResult, theExcelCallNumArgs, theExcelCallArgs);
     }
     catch (...)
     {
@@ -44,41 +46,25 @@ namespace xloil
   auto dummy = XLO_REGISTER_LATER(xloRunInXLLContext)
     .macro().hidden();
 
-  InXllContext::InXllContext()
-  {
-    ++_count;
-  }
-  InXllContext::~InXllContext()
-  {
-    --_count;
-  }
-  bool InXllContext::check()
-  {
-    return _count > 0;
-  }
-
-  int InXllContext::_count = 0;
-
-  bool runInXllContext(const std::function<void()>& f)
+  bool runInXllContext(const std::function<bool()>& f)
   {
     // May go wrong in a multi-thread evironment.
     if (InXllContext::check())
     {
-      f();
-      return true;
+      return f();
     }
 
     // Crashes when called from window proc at startup - investigate?
     //auto[result, xlret] = tryCallExcel(msxll::xlfGetDocument, 1);
     //if (xlret == 0)
 
-    theVoidFunc = &f;
+    theBoolFunc = &f;
 
     return tryComCall([]()
     {
       auto result = COM::attachedApplication().com().Run("xloRunInXLLContext");
       if (result.vt == VT_ERROR)
-        XLO_THROW(L"COM Error {0:#x}", result.scode);
+        XLO_THROW(L"COM Error {0:#x}", (unsigned)result.scode);
       return result;
     });
   }
@@ -89,7 +75,8 @@ namespace xloil
     {
       return Excel12v(func, result, nArgs, (XLOIL_XLOPER**)args);
     }
-    theVoidFunc = nullptr;
+
+    theBoolFunc = nullptr;
     theExcelCallFunc = func;
     theExcelCallResult = result;
     theExcelCallArgs = (XLOIL_XLOPER**)args;

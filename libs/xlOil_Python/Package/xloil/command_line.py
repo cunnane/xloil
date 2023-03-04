@@ -83,18 +83,27 @@ def _toml_lit_string(s:str):
     # TOML literal strings have a lot of quotes and escapes, this function does the encoding
     return "'''" + s.replace('\\','\\\\') + "'''"
 
+def _get_python_paths():
+    """
+        Returns the paths to be set in the xlOil.ini file (the appropriate stubs
+        must already exist). Several paths are required to handle the virtual
+        enviroment case
+    """
+    return { 
+        'PYTHONEXECUTABLE': sys.executable
+    }
+
 def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
-    python_path = f'%PYTHONPATH%;{os.path.join(sys.prefix, "Lib")};{os.path.join(sys.prefix, "DLLs")}' 
-    python_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
-    
+    env_vars = _get_python_paths()
+
     fails = 0
 
     def do_replace(pat, repl):
-        nonlocal ini_txt
-        ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
-        return True
-
+            nonlocal ini_txt
+            ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
+            return True
+            
     def check_replace(pat, repl):
         nonlocal fails, ini_txt
         if re.search(pat, ini_txt, flags=re.M) is None:
@@ -103,16 +112,16 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
         else:
             do_replace(pat, repl)
     
-    # Set PYTHONPATH - note we append to the path as that seems the least surprising
-    check_replace(r'^(\s*PYTHONPATH\s*=).*',       r'\g<1>' + _toml_lit_string(python_path))
-    # Set xlOil_PythonRoot
-    check_replace(r'^(\s*PYTHONHOME\s*=).*', r'\g<1>' + _toml_lit_string(sys.prefix))
+    for var, value in env_vars.items():
+        check_replace(r'^(\s*' + var + r'\s*=).*', r'\g<1>' + _toml_lit_string(value))
+        
     # Set XLOIL_PATH
-    check_replace(r'^(\s*XLOIL_PATH\s*=).*',       r'\g<1>' + _toml_lit_string(str(bin_dir)))
+    check_replace(r'^(\s*XLOIL_PATH\s*=).*', r'\g<1>' + _toml_lit_string(str(bin_dir)))
     
     # Comment out the now usused code to get the python paths from the registry
     # Don't error if this fails as it's not critical
     if comment_reg_keys:
+        
         for key in ["xlOil_PythonRegKey"]:
             do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
 
@@ -167,9 +176,25 @@ def _remove_xloil():
     
     # Ensure no xlOil addins are in the registry
     _remove_addin(excel_version)
-    
-    os.remove(_XLL_INSTALL_PATH)
+    try:
+        os.remove(_XLL_INSTALL_PATH)
+    except FileNotFoundError:
+        ...
 
+def _clean_xloil():
+
+    _remove_xloil()
+
+    ini_path = Path(APP_DATA_DIR) / INIFILE_NAME
+    try:
+        os.remove(os.path.join(APP_DATA_DIR, INIFILE_NAME))
+        os.remove(os.path.join(APP_DATA_DIR, "xlOil.log"))
+    except FileNotFoundError:
+        ...
+    import subprocess
+    import sys
+
+    subprocess.Popen(f"{sys.executable} -m pip uninstall --yes xloil", shell=True)
 
 def _create_addin(args):
     if len(args) != 1:
@@ -182,11 +207,12 @@ def _create_addin(args):
     ini_path = basename.with_suffix(".ini")
 
     bin_dir = _get_xloil_bin_dir()
+    print("xlOil binaries found at:", str(bin_dir))
 
     sh.copy(bin_dir / ADDIN_NAME,    xll_path)
     sh.copy(bin_dir / INIFILE_NAME,  ini_path)
     
-    print("New addin created at: ", xll_path)
+    print("New addin created at:", xll_path)
 
     # Edit ini file
     ini_txt = ini_path.read_text(encoding='utf-8')
@@ -213,6 +239,8 @@ def main():
         _remove_xloil()
     elif command == 'create':
         _create_addin(sys.argv[2:])
+    elif command == 'clean':
+        _clean_xloil()
     else:
         raise Exception("Syntax: xloil {install, remove, uninstall, create}")
 
