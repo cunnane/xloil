@@ -333,7 +333,8 @@ namespace xloil
   ExcelWorkbook Application::open(
     const std::wstring& filepath, 
     bool updateLinks, 
-    bool readOnly)
+    bool readOnly,
+    wchar_t delimiter)
   {
     try
     {
@@ -535,15 +536,6 @@ namespace xloil
     try
     {
       return ExcelRange(com().GetUsedRange(0));
-    }
-    XLO_RETHROW_COM_ERROR;
-  }
-
-  ExcelRange ExcelWorksheet::usedRange() const
-  {
-    try
-    {
-      return com().UsedRange;
     }
     XLO_RETHROW_COM_ERROR;
   }

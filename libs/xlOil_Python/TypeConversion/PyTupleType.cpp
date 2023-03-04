@@ -18,8 +18,6 @@ namespace xloil
     {
       auto p = const_cast<PyObject*>(obj);
 
-      assert(PyIter_Check(p));
-
       auto* iter = PyObject_GetIter(p);
       if (!iter)
         XLO_THROW("nestedIterableToExcel: could not create iterator");

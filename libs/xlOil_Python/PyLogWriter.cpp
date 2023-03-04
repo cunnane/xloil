@@ -27,53 +27,55 @@ namespace xloil
   {
     namespace
     {
+      auto sourceFromFrame()
+      {
+        spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
+        auto frame = PyEval_GetFrame();
+        if (frame)
+        {
+          PyCodeObject* code = PyFrame_GetCode(frame); // Guaranteed never null
+          source.line = PyCode_Addr2Line(code, PyFrame_GetLasti(frame));
+          source.filename = PyUnicode_AsUTF8(code->co_filename);
+          source.funcname = PyUnicode_AsUTF8(code->co_name);
+        }
+        return source;
+      }
+
+      /// <summary>
+      /// Allows intial match like 'warn' for 'warning'
+      /// </summary>
+      /// <param name="target"></param>
+      /// <returns></returns>
+      spdlog::level::level_enum levelFromStr(const std::string& target)
+      {
+        using namespace spdlog::level;
+        int iLevel = 0;
+        for (const auto& level_str : SPDLOG_LEVEL_NAMES)
+        {
+          if (strncmp(target.c_str(), level_str, target.length()) == 0)
+            return static_cast<level_enum>(iLevel);
+          iLevel++;
+        }
+        return off;
+      }
+
+      spdlog::level::level_enum toSpdLogLevel(const py::object& level)
+      {
+        if (PyLong_Check(level.ptr()))
+        {
+          return spdlog::level::level_enum(
+            std::min(PyLong_AsUnsignedLong(level.ptr()) / 10, 6ul));
+        }
+        return levelFromStr(toLower((string)py::str(level)));
+      }
+
       // The numerical values of the python log levels align nicely with spdlog
-        // so we can translate with a factor of 10.
-        // https://docs.python.org/3/library/logging.html#levels
+      // so we can translate with a factor of 10.
+      // https://docs.python.org/3/library/logging.html#levels
 
       class LogWriter
       {
       public:
-
-        /// <summary>
-        /// Allows intial match like 'warn' for 'warning'
-        /// </summary>
-        /// <param name="target"></param>
-        /// <returns></returns>
-        spdlog::level::level_enum levelFromStr(const std::string& target)
-        {
-          using namespace spdlog::level;
-          int iLevel = 0;
-          for (const auto& level_str : SPDLOG_LEVEL_NAMES)
-          {
-            if (strncmp(target.c_str(), level_str, target.length()) == 0)
-              return static_cast<level_enum>(iLevel);
-            iLevel++;
-          }
-          return off;
-        }
-
-        spdlog::level::level_enum toSpdLogLevel(const py::object& level)
-        {
-          if (PyLong_Check(level.ptr()))
-          {
-            return spdlog::level::level_enum(
-              std::min(PyLong_AsUnsignedLong(level.ptr()) / 10, 6ul));
-          }
-          return levelFromStr(toLower((string)py::str(level)));
-        }
-        auto sourceFromFrame()
-        {
-          spdlog::source_loc source{ __FILE__, __LINE__, SPDLOG_FUNCTION };
-          if (frame)
-          {
-            PyCodeObject* code = PyFrame_GetCode(frame); // Guaranteed never null
-            source.line = PyCode_Addr2Line(code, PyFrame_GetLasti(frame));
-            source.filename = PyUnicode_AsUTF8(code->co_filename);
-            source.funcname = PyUnicode_AsUTF8(code->co_name);
-          }
-          return source;
-        }
         void writeToLog(const py::object& msg, const py::args& args, const py::kwargs& kwargs)
         {
           spdlog::level::level_enum level = spdlog::level::info;
@@ -83,23 +85,38 @@ namespace xloil
           if (!spdlog::default_logger_raw()->should_log(level))
             return;
 
-          spdlog::source_loc source;
           if (kwargs.contains("file"))
-            source = spdlog::source_loc(kwargs["file"], kwargs["line"], kwargs["func"]);
+          {
+            auto file = to_string(kwargs["file"].ptr());
+            auto func = to_string(kwargs["func"].ptr());
+            auto line = py::cast<int>(kwargs["line"]);
+
+            auto source = spdlog::source_loc(file.c_str(), line, func.c_str());
+            writeToLogImpl(msg, args, level, source);
+          }
           else
-            source = sourceFromFrame();
-          writeToLogImpl(msg, args, level);
+          {
+            auto source = sourceFromFrame();
+            writeToLogImpl(msg, args, level, source);
+          }
         }
-        void writeToLogHelper(const char* message, spdlog::level::level_enum level)
+
+        void writeToLogHelper(
+          const py::object& message, 
+          const py::args& args, 
+          spdlog::level::level_enum level)
         {
           if (!spdlog::default_logger_raw()->should_log(level))
             return;
-          writeToLogImpl(message, level, sourceFromFrame());
+          writeToLogImpl(message, args, level, sourceFromFrame());
         }
-        void writeToLogImpl(const char* message, spdlog::level::level_enum level, spdlog::source_loc source)
+
+        void writeToLogImpl(
+          const py::object& msg,
+          const py::args& args, 
+          spdlog::level::level_enum level,
+          spdlog::source_loc source)
         {
-
-
           const string message = to_string(args.size() > 0
             ? PySteal<>(PyUnicode_Format(msg.ptr(), args.ptr()))
             : msg);
@@ -123,14 +140,14 @@ namespace xloil
         void warn(const py::object& msg,  const py::args& args) { writeToLogHelper(msg, args, spdlog::level::warn); }
         void error(const py::object& msg, const py::args& args) { writeToLogHelper(msg, args, spdlog::level::err); }
 
-        auto getLogLevel()
+        auto getLogLevel() const
         {
           const char* levelNames[] SPDLOG_LEVEL_NAMES;
           auto level = spdlog::default_logger()->level();
           return levelNames[level];
         }
 
-        unsigned getLogLevelInt()
+        unsigned getLogLevelInt() const
         {
           auto level = spdlog::default_logger()->level();
           return level * 10;
@@ -141,7 +158,7 @@ namespace xloil
           spdlog::default_logger()->set_level(toSpdLogLevel(level));
         }
 
-        auto getFlushLevel()
+        auto getFlushLevel() const
         {
           const char* levelNames[] SPDLOG_LEVEL_NAMES;
           auto level = spdlog::default_logger()->flush_level();
@@ -153,13 +170,13 @@ namespace xloil
           spdlog::default_logger()->flush_on(toSpdLogLevel(level));
         }
 
-        auto levels()
+        auto levels() const
         {
           // TODO: could be a static pyobject
           return vector<string> SPDLOG_LEVEL_NAMES;
         }
 
-        auto logFilePath()
+        auto logFilePath() const
         {
           return theCoreAddin()->context.logFilePath;
         }
@@ -176,10 +193,10 @@ namespace xloil
             to the value in the xlOil settings will be output to the log file. Trace output
             can only be seen with a debug build of xlOil.
           )")
-          .def(py::init<>(), R"(
+         .def(py::init<>(), R"(
             Do not construct this class - a singleton instance is created by xlOil.
           )")
-          .def("__call__",
+         .def("__call__",
             &LogWriter::writeToLog,
             R"(
               Writes a message to the log at the specifed keyword paramter `level`. The default 
@@ -187,8 +204,7 @@ namespace xloil
               using any additional positional arguments. This allows for lazy contruction of the 
               log string like python's own 'logging' module.
             )",
-            py::arg("msg"),
-            py::arg("level") = 20)
+            py::arg("msg"))
           .def("flush", &LogWriter::flush,
             R"(
               Forces a log file 'flush', i.e write pending log messages to the log file.

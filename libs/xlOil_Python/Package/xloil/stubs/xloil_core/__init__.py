@@ -56,6 +56,7 @@ __all__ = [
     "insert_cell_image",
     "run",
     "run_async",
+    "selection",
     "xloil_addins"
 ]
 
@@ -204,6 +205,14 @@ class Application():
         """
         Pauses or resumes Excel's event handling. It can be useful when writing to a sheet
         to pause events both for performance and to prevent side effects.
+        """
+    @property
+    def selection(self) -> _ExcelRange:
+        """
+                    Returns a Range if a range is selected otherwise throws
+                  
+
+        :type: _ExcelRange
         """
     @property
     def visible(self) -> bool:
@@ -2068,7 +2077,7 @@ def active_worksheet() -> Worksheet:
 def app() -> Application:
     """
     Returns the parent Excel Application object when xlOil is loaded as an
-    addin. Will throw if xlOil has been imported to run automation.
+    addin. Will throw if xlOil has been imported to run via automation.
     """
 def call(func: object, *args) -> object:
     """
@@ -2194,6 +2203,11 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
     to return a result.
 
     Returns an **awaitable**, i.e. a future which holds the result.
+    """
+def selection() -> _ExcelRange:
+    """
+    Returns the range Application.Selection when xlOil is loaded as an
+    addin. Will throw if xlOil has been imported to run via automation.
     """
 _return_converter_hook: xloil_core._CustomReturnConverter=None
 cache: xloil_core.ObjectCache=None

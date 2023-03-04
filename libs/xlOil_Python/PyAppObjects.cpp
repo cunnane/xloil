@@ -484,7 +484,7 @@ namespace xloil
         py::setattr(toCom(py::cast<T&>(self), ""), attrName, value);
       }
 
-      Application application_Construct(
+      Application Application_Construct(
         const py::object& com,
         const py::object& hwnd,
         const py::object& wbName)

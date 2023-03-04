@@ -326,6 +326,11 @@ namespace xloil
     ExcelObj value(Range::row_t i, Range::col_t j) const;
 
     /// <summary>
+    /// Returns a range object representing the range used in this worksheet. It 
+    /// is bounded by the top-left and the bottom right-used cells.
+    /// </summary>
+    ExcelRange usedRange() const;
+    /// <summary>
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
     /// This function exists mainly to provide some polymorphism with Range.
     /// </summary>
