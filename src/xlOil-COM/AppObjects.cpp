@@ -232,7 +232,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  bool Application::getEnableEvents()
+  bool Application::getEnableEvents() const
   {
     try
     {
@@ -252,7 +252,7 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  bool Application::getDisplayAlerts()
+  bool Application::getDisplayAlerts() const
   {
     try
     {
@@ -272,6 +272,45 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
+  bool Application::getScreenUpdating() const
+  {
+    try
+    {
+      return com().GetScreenUpdating() == VARIANT_TRUE;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::setScreenUpdating(bool value)
+  {
+    try
+    {
+      auto previousValue = com().GetScreenUpdating() == VARIANT_TRUE;
+      com().PutScreenUpdating(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  Application::CalculationMode Application::getCalculationMode() const
+  {
+    try
+    {
+      return (CalculationMode)com().GetCalculation();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  Application::CalculationMode Application::setCalculationMode(CalculationMode value)
+  {
+    try
+    {
+      auto previousValue = com().GetCalculation();
+      com().PutCalculation(0, (Excel::XlCalculation)value);
+      return (CalculationMode)previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
   ExcelRange Application::selection()
   {
     try

@@ -189,11 +189,24 @@ namespace xloil
     bool getVisible() const;
     void setVisible(bool x);
 
-    bool getEnableEvents();
+    bool getEnableEvents() const;
     bool setEnableEvents(bool value);
 
-    bool getDisplayAlerts();
+    bool getDisplayAlerts() const;
     bool setDisplayAlerts(bool value);
+
+    bool getScreenUpdating() const;
+    bool setScreenUpdating(bool value);
+
+    enum CalculationMode
+    {
+      Automatic = -4105,
+      Manual = -4135,
+      Semiautomatic = 2
+    };
+
+    CalculationMode Application::getCalculationMode() const;
+    CalculationMode Application::setCalculationMode(CalculationMode value);
 
     /// <summary>
     /// Returns an invalid ExcelRange is the selection is not a range
@@ -543,6 +556,31 @@ namespace xloil
     Application app() const;
   };
 
+  class PauseExcel
+  {
+  private:
+    Application _app;
+    Application::CalculationMode _previousCalculation;
+    bool _previousEvents;
+    bool _previousAlerts;
+    bool _previousUpdating;
+
+  public:
+    PauseExcel(Application& app)
+      : _app(app)
+      , _previousCalculation(app.setCalculationMode(Application::Manual))
+      , _previousAlerts(app.setDisplayAlerts(false))
+      , _previousEvents(app.setEnableEvents(false))
+      , _previousUpdating(app.setScreenUpdating(false))
+    {}
+    ~PauseExcel()
+    {
+      _app.setCalculationMode(_previousCalculation);
+      _app.setDisplayAlerts(_previousAlerts);
+      _app.setEnableEvents(_previousEvents);
+      _app.setScreenUpdating(_previousUpdating);
+    }
+  };
 
   // Some function definitions which need to live down here due to
   // the order of declarations

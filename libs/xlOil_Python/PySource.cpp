@@ -72,31 +72,38 @@ namespace
   {
     XLO_DEBUG(L"Loading module from OneDrive URL '{}'", url);
     auto app = xloil::Application();
-    xloil::ExcelWorkbook wb;
-    // Turning off alerts means that a failed open happens quickly,
-    // otherwise there can be 30s timeout
-    auto previousAlertSetting = app.setDisplayAlerts(false);
-    try
     {
-      wb = app.open(url, false, true);
+      // Turning off alerts means that a failed open happens quickly,
+      // otherwise there can be 30s timeout
+      const xloil::PauseExcel paused(app);
+      xloil::ExcelWorkbook wb;
+      try
+      {
+        wb = app.open(url, false, true);
+      }
+      catch (std::exception) {}
+
+      if (!wb.valid())
+        return wstring();
+
+      if (wb.path() != url)
+      {
+        XLO_WARN(L"Unexpected error when loading module from sharepoint: "
+          "requested file '{}' but loaded ;{}'", url, wb.path());
+        return wstring();
+      }
+
+      const auto firstSheet = wb.worksheets().list()[0];
+      auto textRange = firstSheet.usedRange();
+      wstring text;
+      for (auto i = 0u; i < textRange.nRows(); ++i)
+      {
+        auto value = textRange.value(i, 0);
+        (text += value.toString()) += L"\n";
+      }
+      wb.close();
+      return std::move(text);
     }
-    catch (std::exception) {}
-
-    app.setDisplayAlerts(previousAlertSetting);
-    if (!wb.valid())
-      return wstring();
-
-    auto firstSheet = wb.worksheets().list()[0];
-    auto textRange = firstSheet.usedRange();
-    wstring text;
-    for (auto i = 0u; i < textRange.nRows(); ++i)
-    {
-      auto value = textRange.value(i, 0);
-      (text += value.toString()) += L"\n";
-    }
-    wb.close();
-
-    return std::move(text);
   }
 }
 
@@ -189,11 +196,17 @@ namespace xloil
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
-          FunctionRegistry::addModule(_loadContext, modulePath, wbName);
-          auto wbPathName = wstring(wbPath) + separator + wbName;
 
-          py::gil_scoped_acquire getGil;
-          addin->importFile(modulePath.c_str(), wbPathName.c_str());
+          auto wbPathName = (fs::path(wbPath) / wbName).wstring();
+
+          auto source = addin->findSource(modulePath.c_str());
+          if (!source)
+            source = addin->addSource(modulePath, wbPathName);
+          else
+          {
+            auto linkedSource = std::dynamic_pointer_cast<RegisteredModule>(source);
+            linkedSource->reload();
+          }
         }
       };
 
@@ -207,7 +220,7 @@ namespace xloil
     std::shared_ptr<const void>
       createWorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext, Application& app)
     {
-      if (!loadContext.lock()->loadLocalModules())
+      if (!loadContext.lock()->localModulesEnabled())
         return std::shared_ptr<const void>();
 
       WorkbookOpenHandler handler(loadContext);
