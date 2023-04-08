@@ -82,7 +82,7 @@ namespace xloil
         // Check we have trusted access to VBA object model
         static bool registryChecked = checkRegistryKeys();
 
-        auto workbook = excelApp().workbooks().get(workbookName);
+        auto workbook = thisApp().workbooks().get(workbookName);
 
         VBIDE::_VBProjectPtr vbProj;
         try

@@ -125,7 +125,7 @@ namespace xloil
           const ExcelObj* argsP[30];
           for (size_t i = 0; i < args.size(); ++i)
             argsP[i] = &args[i];
-          return excelApp().run(funcName, args.size(), argsP);
+          return thisApp().run(funcName, args.size(), argsP);
         }));
     }
 

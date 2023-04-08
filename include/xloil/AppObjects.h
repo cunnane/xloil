@@ -217,7 +217,7 @@ namespace xloil
   /// <summary>
   /// Gets the Excel.Application object which is the root of the COM API 
   /// </summary>
-  XLOIL_EXPORT Application& excelApp();
+  XLOIL_EXPORT Application& thisApp();
 
   class XLOIL_EXPORT ExcelRange : public Range, public AppObject<Excel::Range>
   {
@@ -228,7 +228,7 @@ namespace xloil
     /// </summary>
     explicit ExcelRange(
       const std::wstring_view& address,
-      const Application& app = excelApp());
+      const Application& app = thisApp());
 
     ExcelRange(const Range& range);
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
@@ -382,7 +382,7 @@ namespace xloil
     /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
     explicit ExcelWorkbook(
       const std::wstring_view& name = std::wstring_view(), 
-      Application app = excelApp());
+      Application app = thisApp());
     
     using AppObject<Excel::_Workbook>::AppObject;
 
@@ -466,7 +466,7 @@ namespace xloil
     /// <param name="caption">The name of the window to find, or the active window if null</param>
     explicit ExcelWindow(
       const std::wstring_view& caption = std::wstring_view(),
-      Application app = excelApp());
+      Application app = thisApp());
 
     /// <summary>
     /// Retuns the Win32 window handle
@@ -507,7 +507,7 @@ namespace xloil
   class XLOIL_EXPORT Worksheets
   {
   public:
-    Worksheets(const Application& app = excelApp());
+    Worksheets(const Application& app = thisApp());
     Worksheets(const ExcelWorkbook& workbook);
     ExcelWorksheet active() const { return app().activeWorksheet(); }
     ExcelWorksheet get(const std::wstring_view& name) const;
@@ -529,7 +529,7 @@ namespace xloil
   class XLOIL_EXPORT Workbooks : public AppObject<Excel::Workbooks>
   {
   public:
-    Workbooks(const Application& app = excelApp());
+    Workbooks(const Application& app = thisApp());
     ExcelWorkbook active() const;
     auto get(const std::wstring_view& name) const { return ExcelWorkbook(name, app()); }
     auto operator[](const std::wstring_view& name) const { return get(name); };
@@ -544,7 +544,7 @@ namespace xloil
   class XLOIL_EXPORT Windows : public AppObject<Excel::Windows>
   {
   public:
-    Windows(const Application& app = excelApp());
+    Windows(const Application& app = thisApp());
     Windows(const ExcelWorkbook& workbook);
     ExcelWindow active() const;
     auto get(const std::wstring_view& name) const { return ExcelWindow(name, app()); }
