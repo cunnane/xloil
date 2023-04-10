@@ -216,7 +216,7 @@ namespace xloil
       void setAllowEvents(bool value)
       {
         py::gil_scoped_release releaseGil;
-        runExcelThread([=]() { excelApp().setEnableEvents(value); });
+        runExcelThread([=]() { thisApp().setEnableEvents(value); });
       }
 
       static int theBinder = addBinder([](pybind11::module& mod)

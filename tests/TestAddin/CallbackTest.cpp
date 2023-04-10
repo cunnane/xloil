@@ -24,7 +24,7 @@ namespace xloil
         {
           // Could check range here as well to avoid
           if (wsName == caller.sheetName())
-            excelApp().com().Range[caller.address().c_str()]->NumberFormat = L"dd-mm-yyyy";
+            thisApp().com().Range[caller.address().c_str()]->NumberFormat = L"dd-mm-yyyy";
         }
       );
       auto milliSecsDelay = 1000;

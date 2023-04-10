@@ -71,7 +71,7 @@ namespace
   wstring loadOneDriveUrl(const wstring& url)
   {
     XLO_DEBUG(L"Loading module from OneDrive URL '{}'", url);
-    auto app = xloil::Application();
+    auto& app = xloil::thisApp();
     {
       // Turning off alerts means that a failed open happens quickly,
       // otherwise there can be 30s timeout

@@ -96,7 +96,7 @@ namespace xloil
           CoUninitialize();
         }
 
-        Application& excelApp() { return _xlApp; }
+        Application& thisApp() { return _xlApp; }
        
       private:
         HWND _excelWindowHandle;
@@ -124,7 +124,7 @@ namespace xloil
       
       // Do some random COM thing - is this the fastest thing?
       VARIANT_BOOL temp;
-      auto result = theComConnector->excelApp().com().get_EnableEvents(&temp);
+      auto result = theComConnector->thisApp().com().get_EnableEvents(&temp);
       return (SUCCEEDED(result));
     }
 
@@ -132,7 +132,7 @@ namespace xloil
     {
       if (!theComConnector)
         throw ComConnectException("COM Connection not ready");
-      return theComConnector->excelApp();
+      return theComConnector->thisApp();
     }
   }
 }

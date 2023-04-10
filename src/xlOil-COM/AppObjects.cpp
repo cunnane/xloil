@@ -105,7 +105,7 @@ namespace xloil
     }
   }
 
-  Application& excelApp()
+  Application& thisApp()
   {
     return COM::attachedApplication();
   }
@@ -311,6 +311,7 @@ namespace xloil
     }
     XLO_RETHROW_COM_ERROR;
   }
+
   ExcelRange Application::selection()
   {
     try
@@ -324,7 +325,7 @@ namespace xloil
   {
     template <typename F, typename T, std::size_t N, std::size_t... Idx>
     decltype(auto) appRun_impl(F func, T(&args)[N], std::index_sequence<Idx...>) {
-      return excelApp().com().Run(func, args[Idx]...);
+      return thisApp().com().Run(func, args[Idx]...);
     }
 
     template <typename T, std::size_t N>

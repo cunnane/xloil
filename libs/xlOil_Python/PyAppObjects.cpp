@@ -1202,7 +1202,7 @@ namespace xloil
           "Range object corresponding to caller address");
 
       mod.def("active_worksheet", 
-        []() { return excelApp().activeWorksheet(); },
+        []() { return thisApp().activeWorksheet(); },
         call_release_gil(),
         R"(
           Returns the currently active worksheet. Will raise an exception if xlOil
@@ -1210,14 +1210,14 @@ namespace xloil
         )");
 
       mod.def("active_workbook", 
-        []() { return excelApp().workbooks().active(); },
+        []() { return thisApp().workbooks().active(); },
         call_release_gil(),
         R"(
           Returns the currently active workbook. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 
-      mod.def("app", excelApp, py::return_value_policy::reference,
+      mod.def("app", thisApp, py::return_value_policy::reference,
         R"(
           Returns the parent Excel Application object when xlOil is loaded as an
           addin. Will throw if xlOil has been imported to run via automation.
@@ -1231,13 +1231,13 @@ namespace xloil
         )");
 
       // We can only define these objects when running embedded in existing Excel
-      // application. excelApp() will throw a ComConnectException if this is not
+      // application. thisApp() will throw a ComConnectException if this is not
       // the case
       try
       {
         // Use 'new' with this return value policy or we get a segfault later. 
         mod.add_object("workbooks", 
-          py::cast(new PyWorkbooks(excelApp()), py::return_value_policy::take_ownership));
+          py::cast(new PyWorkbooks(thisApp()), py::return_value_policy::take_ownership));
       }
       catch (ComConnectException)
       {}
