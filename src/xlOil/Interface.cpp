@@ -6,10 +6,14 @@
 #include <xlOil/Log.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/Loaders/AddinLoader.h>
+#include <xlOil/Loaders/PluginLoader.h>
 #include <xloil/State.h>
 #include <xlOilHelpers/GuidUtils.h>
 #include <xlOil-COM/Connect.h>
 #include <filesystem>
+#include <set>
+#include <toml++/toml.h>
+
 using std::make_pair;
 using std::wstring;
 using std::make_shared;
@@ -42,7 +46,57 @@ namespace xloil
   }
 
   AddinContext::~AddinContext()
+  {}
+
+  void AddinContext::loadPlugins()
   {
+    if (!settings())
+      return;
+
+    auto addinSettings = (*settings())["Addin"];
+
+    auto pluginNames = Settings::plugins(addinSettings);
+
+    auto plugins = std::set<wstring>(pluginNames.cbegin(), pluginNames.cend());
+
+
+    const auto xllDir = fs::path(pathName()).remove_filename();
+    const auto coreDir = fs::path(Environment::coreDllPath()).remove_filename();
+
+    // If the settings specify a search pattern for plugins, 
+    // find the DLLs and add them to our plugins collection
+    
+    auto searchPattern = Settings::pluginSearchPattern(addinSettings);
+    if (!searchPattern.empty())
+    {
+      WIN32_FIND_DATA fileData;
+
+      auto searchPath = xllDir / searchPattern;
+      auto fileHandle = FindFirstFile(searchPath.c_str(), &fileData);
+      if (fileHandle != INVALID_HANDLE_VALUE &&
+        fileHandle != (void*)ERROR_FILE_NOT_FOUND)
+      {
+        do
+        {
+          if (_wcsicmp(fileData.cFileName, Environment::coreDllName()) == 0)
+            continue;
+
+          plugins.emplace(fs::path(fileData.cFileName).stem());
+        } while (FindNextFile(fileHandle, &fileData));
+      }
+    }
+
+    for (auto& plugin : plugins)
+    {
+      if (loadPluginForAddin(*this, plugin))
+        _plugins.emplace_back(plugin);
+    }
+  }
+
+  void AddinContext::detachPlugins()
+  {
+    for (auto& plugin : _plugins)
+      detachPluginForAddin(*this, plugin);
   }
 
   void FuncSource::init()

@@ -14,6 +14,7 @@
 #include <delayimp.h>
 #include <fstream>
 #include <sstream>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -91,9 +92,11 @@ namespace
   }
 }
 
-struct xlOilAddin
+struct xlOilCoreAddin
 {
-  static void autoOpen()
+  std::vector<std::shared_ptr<const RegisteredWorksheetFunc>> theFunctions;
+
+  void autoOpen()
   {
     try
     {
@@ -161,31 +164,36 @@ struct xlOilAddin
 
       Environment::initAppContext();
 
-      detail::RegisterAddin<xlOilAddin>::lauch();
+      XLO_DEBUG("xlOil Core: Opening");
+      auto ret = xloil::coreAutoOpenHandler(XllInfo::xllPath.c_str());
 
-      detail::theXllIsOpen = true;
+      if (ret == 1)
+      {
+        tryCallExcel(msxll::xlEventRegister,
+          "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
+      }
+
+      theXllIsOpen = true;
     }
     catch (const std::exception& e)
     {
       writeLog(e.what());
     }
   }
-  xlOilAddin() 
-  {
-    XLO_DEBUG("xlOil Core: Opening");
-    auto ret = xloil::coreAutoOpenHandler(XllInfo::xllPath.c_str());
 
-    if (ret == 1)
-    {
-      tryCallExcel(msxll::xlEventRegister,
-        "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
-    }
-  }
-  ~xlOilAddin()
+  void autoClose()
   {
     XLO_DEBUG("xlOil Core: Closing");
     xloil::coreAutoCloseHandler(XllInfo::xllPath.c_str());
+
+    theFunctions.clear();
+    theXllIsOpen = false;
+  }
+
+  auto addInManagerInfo()
+  {
+    return std::wstring(L"xlOil Core");
   }
 };
 
-XLO_DECLARE_ADDIN(xlOilAddin);
+_XLO_DECLARE_ADDIN_IMPL(xlOilCoreAddin);

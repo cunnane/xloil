@@ -477,7 +477,7 @@ namespace xloil
 
       auto addin = _addin.lock();
       // This is all great but...background thread?
-      addin->context.erase(shared_from_this());
+      addin->context().erase(shared_from_this());
 
       const auto newSourcePath = addin->getLocalModulePath(newPathName);
       const auto& currentSourcePath = name();
@@ -487,7 +487,7 @@ namespace xloil
       {
         const auto wbName = wcsrchr(newPathName, '\\') + 1;
         auto newSource = make_shared<RegisteredModule>(newSourcePath, addin, wbName);
-        addin->context.addSource(newSource);
+        addin->context().addSource(newSource);
         py::gil_scoped_acquire get_gil;
         addin->importFile(newSourcePath.c_str(), newPathName);
       }
@@ -508,7 +508,7 @@ namespace xloil
 
       auto fileSrc = make_shared<RegisteredModule>(modulePath, addin, workbookName);
       auto addin_ptr = addin.lock();
-      addin_ptr->context.addSource(fileSrc);
+      addin_ptr->context().addSource(fileSrc);
 
       XLO_DEBUG(L"Registered Python module '{}' with linked workbook '{}' for addin '{}'",
         modulePath, workbookName ? workbookName : L"none", addin_ptr->pathName());

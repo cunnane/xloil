@@ -219,6 +219,9 @@ namespace xloil
 
     std::wstring logFilePath;
 
+    void loadPlugins();
+    void detachPlugins();
+
   private:
     AddinContext(const AddinContext&) = delete;
     AddinContext& operator=(const AddinContext&) = delete;
@@ -226,6 +229,7 @@ namespace xloil
     std::wstring _pathName;
     std::shared_ptr<const toml::table> _settings;
     ContextMap _files;
+    std::vector<std::wstring> _plugins;
   };
 
 /// <summary>

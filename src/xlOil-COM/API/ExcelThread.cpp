@@ -251,6 +251,10 @@ namespace xloil
   {
     Messenger::_theInstance.reset(new Messenger((HINSTANCE)excelInstance));
   }
+  void teardownMessageQueue()
+  {
+    Messenger::_theInstance.reset();
+  }
 
   bool isMainThread()
   {

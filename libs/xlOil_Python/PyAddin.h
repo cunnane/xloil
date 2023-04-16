@@ -22,12 +22,20 @@ namespace xloil
     class PyAddin : public std::enable_shared_from_this<PyAddin>
     {
     public:
-      PyAddin(AddinContext&, bool, const std::wstring_view&);
+      PyAddin(
+        AddinContext&, 
+        bool separateThread,
+        const std::string_view& comLib, 
+        const std::wstring_view& wbPattern = std::wstring_view());
 
-      AddinContext&              context;
+      /// <summary>
+      /// "Guts" the addin object in the case that a detach message is received
+      /// from xlOil core. This ensures any remaining references fail gracefully
+      /// </summary>
+      void unload();
+
       std::shared_ptr<EventLoop> thread;
-      std::string                comBinder;
-
+     
       /// <summary>
       /// Gets the addin pathname
       /// </summary>
@@ -58,9 +66,19 @@ namespace xloil
       
       bool loadLocalModules() const { return !_workbookPattern.empty(); }
 
+      /// <summary>
+      /// Returns the python com support library specified in the addin's 
+      /// settings, e.g. 'win32com'
+      /// </summary>
+      const std::string& comBinder() const { return _comBinder; }
+
+      AddinContext& context();
+      const AddinContext& context() const;
+
     private:
       std::wstring _workbookPattern;
-
+      AddinContext* _context;
+      std::string _comBinder;
       pybind11::object self() const;
     };
 
