@@ -89,13 +89,13 @@ namespace xloil
         std::wstring errorMessages;
         theFunctions = xloil::detail::registerStaticFuncs(XllInfo::xllName.c_str(), errorMessages);
         if (!errorMessages.empty())
-          loadFailureLogWindow(XllInfo::dllHandle, errorMessages.c_str());
+          loadFailureLogWindow(XllInfo::dllHandle, errorMessages.c_str(), true);
 
         theXllIsOpen = true;
       }
       catch (const std::exception& e)
       {
-        loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(e.what()));
+        loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(e.what()), true);
       }
     }
 
