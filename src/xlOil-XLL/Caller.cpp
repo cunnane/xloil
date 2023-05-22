@@ -4,7 +4,6 @@
 #include <xloil/ExcelArray.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/XlCallSlim.h>
-#include <xloil/AppObjects.h>
 #include <xlOilHelpers/Environment.h>
 #include <array>
 

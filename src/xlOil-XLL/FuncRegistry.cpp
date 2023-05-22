@@ -67,11 +67,7 @@ namespace xloil
 
     ~FunctionRegistry()
     {
-      // If we reach static destruction and still have registered functions is means
-      // something was not properly cleaned up during XLL autoClose. We are not in 
-      // an XLL context so trying to deregister will fail or even crash Excel.
-      for (auto& entry : theRegistry)
-        entry.second->forget();
+      teardown();
     }
 
   public:
@@ -79,6 +75,16 @@ namespace xloil
     {
       static FunctionRegistry instance;
       return instance;
+    }
+
+    void teardown()
+    {
+      // If we reach static destruction and still have registered functions is means
+      // something was not properly cleaned up during XLL autoClose. We are not in 
+      // an XLL context so trying to deregister will fail or even crash Excel.
+      for (auto& entry : theRegistry)
+        entry.second->forget();
+      theRegistry.clear();
     }
 
     static int registerWithExcel(
@@ -377,5 +383,10 @@ namespace xloil
   const map<wstring, RegisteredFuncPtr>& registeredFuncsByName()
   {
     return FunctionRegistry::get().all();
+  }
+
+  void teardownFunctionRegistry()
+  {
+    FunctionRegistry::get().teardown();
   }
 }

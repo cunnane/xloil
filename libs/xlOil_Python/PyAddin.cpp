@@ -27,9 +27,13 @@ namespace xloil
       std::map<wstring, std::shared_ptr<PyAddin>> theAddins;
     }
 
-    PyAddin::PyAddin(AddinContext& ctx, bool newThread, const std::wstring_view& wbPattern)
-      : context(ctx)
-      , thread(newThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
+    PyAddin::PyAddin(AddinContext& ctx,
+                     bool separateThread,
+                     const std::string_view& comLib,
+                     const std::wstring_view& wbPattern)
+      : _context(&ctx)
+      , thread(separateThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
+      , _comBinder(comLib)
     {
       if (!wbPattern.empty())
       {
@@ -45,9 +49,30 @@ namespace xloil
       }
     }
 
+    void PyAddin::unload()
+    {
+      // TODO: how to synchronise this?
+      _context = 0;
+      thread.reset();
+    }
+
+    AddinContext& PyAddin::context()
+    {
+      if (!_context)
+        XLO_THROW("Attempt to access stale Addin object");
+      return *_context;
+    }
+
+    const AddinContext& PyAddin::context() const
+    {
+      if (!_context)
+        XLO_THROW("Attempt to access stale Addin object");
+      return *_context;
+    }
+
     const std::wstring& PyAddin::pathName() const
     {
-      return context.pathName();
+      return context().pathName();
     }
 
     std::wstring PyAddin::getLocalModulePath(const wchar_t* workbookPath) const
@@ -77,8 +102,8 @@ namespace xloil
 
     std::shared_ptr<FuncSource> PyAddin::findSource(const wchar_t* sourcePath) const
     {
-      auto found = context.sources().find(sourcePath);
-      if (found != context.sources().end())
+      auto found = context().sources().find(sourcePath);
+      if (found != context().sources().end())
         return found->second;
       return std::shared_ptr<FuncSource>();
     }
@@ -108,7 +133,7 @@ namespace xloil
     auto findAllAddinFuncs(PyAddin& addin)
     {
       vector<shared_ptr<PyFuncInfo>> funcInfo;
-      for (auto&[name, source] : addin.context.sources())
+      for (auto&[name, source] : addin.context().sources())
       {
         auto pySource = std::dynamic_pointer_cast<RegisteredModule>(source);
         if (!pySource)
@@ -248,12 +273,12 @@ namespace xloil
               The asyncio event loop used for background tasks by this addin
             )")
           .def_property_readonly("settings_file",
-            [](PyAddin& addin) { return string(* addin.context.settings()->source().path); },
+            [](PyAddin& addin) { return string(*addin.context().settings()->source().path); },
             R"(
               The full pathname of the settings ini file used by this addin
             )")
           .def_property_readonly("settings",
-            [](PyAddin& addin) { return py::cast(py::ReferenceHolder(addin.context.settings())); },
+            [](PyAddin& addin) { return py::cast(py::ReferenceHolder(addin.context().settings())); },
             R"(
               Gives access to the settings in the addin's ini file as nested dictionaries.
               These are the settings on load and do not allow for modifications made in the 
@@ -267,7 +292,7 @@ namespace xloil
             [](PyAddin& addin)
             {
               vector<wstring> sources;
-              for (auto& item : addin.context.sources())
+              for (auto& item : addin.context().sources())
                 sources.push_back(item.first);
               return sources;
             });

@@ -14,6 +14,10 @@
 #include <future>
 #include <comdef.h>
 
+// Little hack needed because our WindowsSlim doesn't include this symbol
+#define WM_QUIT 0x0012
+#include <atlbase.h>
+
 using std::scoped_lock;
 using std::shared_ptr;
 using std::make_shared;
@@ -28,7 +32,10 @@ namespace xloil
     public:
       Messenger(HINSTANCE excelInstance)
       {
-        _threadHandle = OpenThread(THREAD_SET_CONTEXT, true, GetCurrentThreadId());
+        auto handle = OpenThread(THREAD_SET_CONTEXT, true, GetCurrentThreadId());
+        _threadHandle.Attach(handle);
+        if (!_threadHandle)
+          XLO_THROW(L"Failed create message queue thread: {0}", writeWindowsError());
 
         WNDCLASS wc;
         memset(&wc, 0, sizeof(WNDCLASS));
@@ -36,7 +43,7 @@ namespace xloil
         wc.hInstance = excelInstance;
         wc.lpszClassName = L"xlOilHidden";
         if (RegisterClass(&wc) == 0)
-          XLO_ERROR(L"Failed to register window class: {0}", writeWindowsError());
+          XLO_THROW(L"Failed to register window class: {0}", writeWindowsError());
 
         _hiddenWindow = CreateWindow(
           wc.lpszClassName,
@@ -49,14 +56,29 @@ namespace xloil
           NULL);
 
         if (!_hiddenWindow)
-          XLO_ERROR(L"Failed to create window: {0}", writeWindowsError());
+          XLO_THROW(L"Failed to create window: {0}", writeWindowsError());
       }
 
-      static std::unique_ptr<Messenger> _theInstance;
+      ~Messenger()
+      {
+        KillTimer(_hiddenWindow, IDT_TIMER1);
+        DestroyWindow(_hiddenWindow);
+      }
+
+      static void createInstance(void* excelInstance)
+      {
+        _theInstance.reset(new Messenger((HINSTANCE)excelInstance));
+      }
+
+      static void destroyInstance()
+      {
+        _theInstance.reset();
+      }
 
       static Messenger& instance()
       {
-        assert(_theInstance);
+        if (!_theInstance)
+          XLO_THROW("Internal error: message queue destroyed");
         return *_theInstance;
       }
 
@@ -159,12 +181,19 @@ namespace xloil
       }
 
     private:
+      static std::unique_ptr<Messenger> _theInstance;
+
       static void CALLBACK TimerCallback(
         HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
       {
         try
         {
-          auto& self = instance();
+          // The message queue has been deleted, leaving us stranded. Don't dump core 
+          // and just return.
+          if (!_theInstance)
+            return;
+
+          auto& self = *_theInstance;
           auto now = GetTickCount64();
           vector<shared_ptr<QueueItem>> items;
           {
@@ -241,7 +270,7 @@ namespace xloil
       std::mutex _lock;
 
       HWND _hiddenWindow;
-      HANDLE _threadHandle;
+      CHandle _threadHandle;
     };
 
     std::unique_ptr<Messenger> Messenger::_theInstance;
@@ -249,7 +278,12 @@ namespace xloil
 
   void initMessageQueue(void* excelInstance)
   {
-    Messenger::_theInstance.reset(new Messenger((HINSTANCE)excelInstance));
+    Messenger::createInstance(excelInstance);
+  }
+
+  void teardownMessageQueue()
+  {
+    Messenger::destroyInstance();
   }
 
   bool isMainThread()
