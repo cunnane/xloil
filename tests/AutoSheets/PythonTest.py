@@ -168,10 +168,14 @@ def pyTestKwargs(lookup: dict, **kwargs) -> dict:
     lookup.update(kwargs)
     return lookup
 
+@xlo.converter()
+def arg_triple(x):
+    return 3 * x
+    
 @xlo.func(
     args={'args': 'A variable argument list of numbers to sum'}
     )
-def pyTestVargs(*args) -> float:
+def pyTestVargs(*args: arg_triple) -> float:
     return sum(args)
 
 @xlo.func

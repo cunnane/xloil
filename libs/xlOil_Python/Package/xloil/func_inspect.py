@@ -81,18 +81,21 @@ class Arg:
         if kind == param.POSITIONAL_ONLY or kind == param.POSITIONAL_OR_KEYWORD:
             arg = cls(name, 
                       default= cls._EMPTY if param.default is inspect._empty else param.default)
-            if param.annotation is not param.empty:
-                arg.typeof = param.annotation
-            return arg
-
+     
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            return cls(name, kind=cls.KEYWORD_ARGS)
+            arg = cls(name, kind=cls.KEYWORD_ARGS)
 
         elif param.kind == param.VAR_POSITIONAL:
-            return cls(name, kind=cls.VARIABLE_ARGS)
+            arg = cls(name, kind=cls.VARIABLE_ARGS)
 
         else: 
-            raise Exception(f"Unhandled argument '{name}' with type '{kind}'")
+            raise ValueError(f"Unrecognised argument '{name}' with type '{kind}'")
+
+        if param.annotation is not param.empty:
+            arg.typeof = param.annotation
+
+        return arg
+
 
     @classmethod
     def full_argspec(cls, func):
