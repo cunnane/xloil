@@ -69,6 +69,40 @@ class Addin():
         """
     def source_files(self) -> typing.List[str]: ...
     @property
+    def async_slice(self) -> int:
+        """
+                      Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+                      to run before being interrupted. The event loop holds the GIL while it is running, so
+                      making this interval too long could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_slice.setter
+    def async_slice(self, arg1: int) -> None:
+        """
+        Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+        to run before being interrupted. The event loop holds the GIL while it is running, so
+        making this interval too long could impact the performance of other python functions.
+        """
+    @property
+    def async_throttle(self) -> int:
+        """
+                      Sets/gets the interval in milliseconds between switches to the asyncio event loop
+                      embedded in this addin. The event loop holds the GIL while it is running, so making
+                      this interval too short could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_throttle.setter
+    def async_throttle(self, arg1: int) -> None:
+        """
+        Sets/gets the interval in milliseconds between switches to the asyncio event loop
+        embedded in this addin. The event loop holds the GIL while it is running, so making
+        this interval too short could impact the performance of other python functions.
+        """
+    @property
     def event_loop(self) -> object:
         """
                       The asyncio event loop used for background tasks by this addin

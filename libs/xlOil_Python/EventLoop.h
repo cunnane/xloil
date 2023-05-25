@@ -13,16 +13,17 @@ namespace xloil
       pybind11::object _eventLoop;
       pybind11::object _callSoonFunction;
       pybind11::object _pumpFunction;
-      unsigned _asyncioTimeout;
-      unsigned _sleepTime;
       std::atomic<bool> _stopped;
 
     public:
-      EventLoop(unsigned asyncioTimeout = 200, unsigned sleepTime = 200)
+      unsigned asyncioTimeout;
+      unsigned sleepTime;
+
+      EventLoop(unsigned asyncioTimeout_ = 200, unsigned sleepTime_ = 200)
         : _thread(1) 
         , _stopped(false)
-        , _asyncioTimeout(asyncioTimeout)
-        , _sleepTime(sleepTime)
+        , asyncioTimeout(asyncioTimeout_)
+        , sleepTime(sleepTime_)
       {
 #ifdef _DEBUG
         if (PyGILState_Check() == 1)
@@ -68,9 +69,9 @@ namespace xloil
             {
               {
                 pybind11::gil_scoped_acquire getGil;
-                nTasks = _pumpFunction(_eventLoop, _asyncioTimeout / 1000).cast<size_t>();
+                nTasks = _pumpFunction(_eventLoop, asyncioTimeout / 1000 * (nTasks > 0 ? 1 : 0.25)).cast<size_t>();
               }
-              Sleep(nTasks > 0 ? _sleepTime : _sleepTime * 4);
+              Sleep(nTasks > 0 ? sleepTime : sleepTime * 4);
             }
 
             // Aquire GIL to decref our python objects and close the event loop
@@ -130,8 +131,7 @@ namespace xloil
       void shutdown()
       {
         stop();
-        // Don't empty queue on thread stop to allow our event loop to shutdown
-        // cleanly
+        // Don't empty queue on thread stop to allow our event loop to shutdown cleanly
         _thread.stop(true);
       }
 

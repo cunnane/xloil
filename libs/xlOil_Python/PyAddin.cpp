@@ -51,6 +51,7 @@ namespace xloil
 
     void PyAddin::unload()
     {
+      thread->shutdown();
       // TODO: how to synchronise this?
       _context = 0;
       thread.reset();
@@ -283,6 +284,22 @@ namespace xloil
               Gives access to the settings in the addin's ini file as nested dictionaries.
               These are the settings on load and do not allow for modifications made in the 
               ribbon toolbar.
+            )")
+          .def_property("async_slice",
+            [](PyAddin& self) { return self.thread->sleepTime; },
+            [](PyAddin& self, unsigned value) { self.thread->sleepTime = value; },
+            R"(
+              Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+              to run before being interrupted. The event loop holds the GIL while it is running, so
+              making this interval too long could impact the performance of other python functions.
+            )")
+          .def_property("async_throttle",
+            [](PyAddin& self) { return self.thread->sleepTime; },
+            [](PyAddin& self, unsigned value) { self.thread->sleepTime = value; },
+            R"(
+              Sets/gets the interval in milliseconds between switches to the asyncio event loop
+              embedded in this addin. The event loop holds the GIL while it is running, so making
+              this interval too short could impact the performance of other python functions.
             )")
           .def("functions", findAllAddinFuncs,
             R"(
