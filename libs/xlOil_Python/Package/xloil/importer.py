@@ -209,7 +209,7 @@ def _import_and_scan_mutiple(module_names, addin):
             try:
                 result.append(_import_and_scan(m, addin))
             except Exception as e:
-                log_except("Failed to load '{m}'")
+                log_except(f"Failed to load '{m}'")
                 status.msg(f"Failed to load '{m}'. See log")
                 success = False
         if success:

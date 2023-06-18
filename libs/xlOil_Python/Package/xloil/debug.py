@@ -9,8 +9,8 @@ class _Handler_pdb_window:
 
         # Don't pop the debugger up whilst the user is trying to enter function
         # args in the wizard: that's just rude!
-        if not xloil.in_wizard():
-            _exception_handler.call(type, value, trace)
+        if xloil.in_wizard():
+            return
 
         from xloil.gui.tkinter import Tk_thread
 
@@ -129,6 +129,9 @@ def _debugpy_activate_thread_decorator(fn):
 
 DEBUGGERS = ['', 'pdb', 'debugpy', 'vscode']
 
+# Keeps a reference to the debug handler used as events only hold weak references
+_PDB_HANDLER = _Handler_pdb_window().call
+
 def use_debugger(debugger, **kwargs):
     """
         Selects a debugger for exceptions in user code. Only effects exceptions
@@ -157,7 +160,7 @@ def use_debugger(debugger, **kwargs):
 
         # No more than one exception handler: clear event first
         xloil.event.UserException.clear()
-        xloil.event.UserException += _Handler_pdb_window
+        xloil.event.UserException += _PDB_HANDLER
 
     elif debugger == "vscode" or debugger == "debugpy":
         debugpy_listen(**kwargs)
