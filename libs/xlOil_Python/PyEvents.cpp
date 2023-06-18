@@ -342,6 +342,9 @@ namespace xloil
 
     void raiseUserException(const pybind11::error_already_set& e)
     {
+      // Acquire gil here as if debug logging is enabled, the event base class
+      // will try to write out the event parameters as strings.
+      py::gil_scoped_acquire gilAcquired;
       Event_PyUserException().fire(e.type(), e.value(), e.trace());
     }
   }
