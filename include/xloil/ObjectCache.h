@@ -94,15 +94,6 @@ namespace xloil
         , _obj(std::move(obj))
       {}
 
-      void getStaleObjects(size_t calcId, std::vector<TObj>& stale)
-      {
-        if (_calcId != calcId)
-        {
-          _objects.swap(stale);
-          stale.emplace_back(std::move(_obj));
-        }
-      }
-
       size_t count() const { return _objects.size() + 1; }
 
       size_t add(TObj&& obj, size_t calcId)
@@ -220,41 +211,25 @@ namespace xloil
       const std::wstring_view& name = std::wstring_view())
     {
       auto fullKey = detail::writeCacheId<PADDING>(caller, name);
-      fullKey[0] = _uniquifier.value;
-
-      auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
-
-      decltype(_cache)::iterator found;
-
-      uint8_t iPos = 0;
-      {
-        std::scoped_lock lock(_cacheLock);
-
-        found = _cache.search(cacheKey);
-        if (found == _cache.end())
-        {
-          found = _cache.emplace(
-            std::pair(
-              std::wstring(cacheKey),
-              CellCache(std::forward<TObj>(obj), _calcId))).first;
-        }
-        else
-        {
-          iPos = (uint8_t)found->second.add(
-            std::forward<TObj>(obj), _calcId);
-        }
-      }
-
-      writeCount(fullKey.end() - PADDING, iPos);
-
-      return ExcelObj(std::move(fullKey));
+      return _add(std::move(obj), std::move(fullKey));
     }
 
+    ExcelObj add(
+      TObj&& obj,
+      const std::wstring_view& key)
+    {
+      PString fullKey((uint16_t)key.size() + PADDING + 2u);
+      std::copy(key.cbegin(), key.cend(), fullKey.begin() + 2u);
+      return _add(std::move(obj), std::move(fullKey));
+    }
+
+    
+
     /// <summary>
-    /// Remove the given cache reference and any associated objects
-    /// This should only be called with manually specifed cache reference
-    /// strings. Note the counter (,NNN) after the cache reference is ignored
-    /// if specifed and all matching objects are removed.
+    /// Remove the given cache reference and any associated objects. This
+    /// should only be called with manually specifed cache reference strings.
+    /// Note the counter (,NNN) after the cache reference is ignored if 
+    /// specifed and all matching objects are removed.
     /// </summary>
     /// <param name="key">cache reference to remove</param>
     /// <returns>true if removal succeeded, otherwise false</returns>
@@ -315,6 +290,42 @@ namespace xloil
     }
 
   private:
+    ExcelObj _add(
+      TObj&& obj,
+      PString&& fullKey)
+    {
+      fullKey[0] = _uniquifier.value;
+      // In most cases the second char is already '[' unless the caller is 
+      // not a worksheet function or a custom cache string is used
+      fullKey[1] = L'[';
+
+      auto cacheKey = fullKey.view(0, fullKey.length() - PADDING);
+
+      decltype(_cache)::iterator found;
+
+      uint8_t iPos = 0;
+      {
+        std::scoped_lock lock(_cacheLock);
+
+        found = _cache.search(cacheKey);
+        if (found == _cache.end())
+        {
+          found = _cache.emplace(
+            std::pair(
+              std::wstring(cacheKey),
+              CellCache(std::forward<TObj>(obj), _calcId))).first;
+        }
+        else
+        {
+          iPos = (uint8_t)found->second.add(
+            std::forward<TObj>(obj), _calcId);
+        }
+      }
+
+      writeCount(fullKey.end() - PADDING, iPos);
+
+      return ExcelObj(std::move(fullKey));
+    }
 
     size_t readCount(wchar_t count) const
     {
