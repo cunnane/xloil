@@ -709,12 +709,37 @@ class ObjectCache():
     def __getitem__(self, arg0: str) -> object: ...
     def add(self, obj: object, tag: str = '', key: str = '') -> object: 
         """
-        Adds an object to the cache and returns a reference string
-        based on the currently calculating cell.
+        Adds an object to the cache and returns a reference string.
 
-        xlOil automatically adds unconvertible returned objects to the cache,
-        so this function is useful to force a recognised object, such as an 
-        iterable into the cache, or to return a list of cached objects.
+        xlOil automatically adds objects returned from worksheet 
+        functions to the cache if they cannot be converted by any 
+        registered converter.  So this function is useful to:
+
+           1) force a convertible object, such as an iterable, into the
+              cache
+           2) return a list of cached objects
+           3) create cached objects from outside of worksheet fnctions
+              e.g. in commands / subroutines
+
+        xlOil uses the caller infomation provided by Excel to construct
+        the cache string and manage the cache object lifecycle. When
+        invoked from a worksheet function, this caller info contains 
+        the cell reference. xlOil deletes cache objects linked to the 
+        cell reference from previous calculation cycles.
+
+        When invoked from a source other than a worksheet function (there
+        are several possibilies, see the help for `xlfCaller`), xlOil
+        again generates a reference string based on the caller info. 
+        However, this may not be unique.  In addition, objects with the 
+        same caller string will replace those created during a previous 
+        calculation cycle. For example, creating cache objects from a button
+        clicked repeatedly will behave differently if Excel recalculates 
+        in between the clicks. To override this behaviour, the exact cache
+        `key` can be specified.  For example, use Python's `id` function or
+        the cell address being written to if a command is writing a cache
+        string to the sheet.  When `key` is specified the user is responsible
+        for managing the lifecycle of their cache objects.
+
 
         Parameters
         ----------
@@ -745,7 +770,13 @@ class ObjectCache():
         """
         Returns all cache keys as a list of strings
         """
-    def remove(self, ref: str) -> bool: ...
+    def remove(self, ref: str) -> bool: 
+        """
+        xlOil manages the lifecycle for most cache objects, so this  
+        function should only be called when `add` was invoked with a
+        specified key - in this case the user owns the lifecycle 
+        management. 
+        """
     pass
 class Range():
     """
