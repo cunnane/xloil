@@ -2260,7 +2260,7 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-_return_converter_hook: xloil_core._CustomReturnConverter=None
-cache: xloil_core.ObjectCache=None
-date_formats: xloil_core._DateFormatList=None
-xloil_addins: xloil_core._AddinsDict=None
+_return_converter_hook: _CustomReturnConverter=None # value = <xloil_core._CustomReturnConverter object>
+cache: ObjectCache=None # value = <xloil_core.ObjectCache object>
+date_formats: _DateFormatList=None # value = <xloil_core._DateFormatList object>
+xloil_addins: _AddinsDict=None # value = <xloil_core._AddinsDict object>

@@ -246,6 +246,7 @@ Everything else
 	call
 	call_async
 	excel_callback
+	cache
 	Addin
 	source_addin
 	xloil_addins
@@ -256,10 +257,21 @@ Everything else
 	xloil.logging.log
 	xloil.debug.use_debugger
 
+.. autoclass:: ObjectCache
+	:members: 
+
+.. autodata:: cache
+	:annotation: = ObjectCache
+	:no-value:
+
 .. automodule:: xloil
-	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,date_formats,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin
 	:imported-members:
 	:undoc-members:
+
+.. autodata:: date_formats
+	:annotation: = _DateFormatList
+	:no-value:
 
 .. autoclass:: ExcelState
 	:members: 
@@ -269,6 +281,10 @@ Everything else
 .. autoclass:: Addin
 	:members:
 
+.. autodata:: xloil_addins
+	:annotation: = _AddinsDict
+	:no-value:
+
 .. automodule:: xloil._core
 	:members: _AddinsDict, _DateFormatList, _LogWriter
 
@@ -277,6 +293,8 @@ Everything else
 
 .. automodule:: xloil.debug
 	:members:
+
+
 
 External libraries
 ------------------

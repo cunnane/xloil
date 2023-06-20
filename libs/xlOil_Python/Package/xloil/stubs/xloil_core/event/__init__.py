@@ -143,29 +143,29 @@ def pause() -> None:
     Pauses Excel's event handling. Equivalent to VBA's 
     `Application.EnableEvents = False` or `xlo.app().enable_events = False` 
     """
-AfterCalculate: xloil_core.event.Event=None
-ComAddinsUpdate: xloil_core.event.Event=None
-NewWorkbook: xloil_core.event.Event=None
-PyBye: xloil_core.event.Event=None
-SheetActivate: xloil_core.event.Event=None
-SheetBeforeDoubleClick: xloil_core.event.Event=None
-SheetBeforeRightClick: xloil_core.event.Event=None
-SheetCalculate: xloil_core.event.Event=None
-SheetChange: xloil_core.event.Event=None
-SheetDeactivate: xloil_core.event.Event=None
-SheetSelectionChange: xloil_core.event.Event=None
-UserException: xloil_core.event.Event=None
-WorkbookActivate: xloil_core.event.Event=None
-WorkbookAddinInstall: xloil_core.event.Event=None
-WorkbookAddinUninstall: xloil_core.event.Event=None
-WorkbookAfterClose: xloil_core.event.Event=None
-WorkbookAfterSave: xloil_core.event.Event=None
-WorkbookBeforeClose: xloil_core.event.Event=None
-WorkbookBeforePrint: xloil_core.event.Event=None
-WorkbookBeforeSave: xloil_core.event.Event=None
-WorkbookDeactivate: xloil_core.event.Event=None
-WorkbookNewSheet: xloil_core.event.Event=None
-WorkbookOpen: xloil_core.event.Event=None
-WorkbookRename: xloil_core.event.Event=None
-XllAdd: xloil_core.event.Event=None
-XllRemove: xloil_core.event.Event=None
+AfterCalculate: Event=None # value = <xloil_core.event.Event object>
+ComAddinsUpdate: Event=None # value = <xloil_core.event.Event object>
+NewWorkbook: Event=None # value = <xloil_core.event.Event object>
+PyBye: Event=None # value = <xloil_core.event.Event object>
+SheetActivate: Event=None # value = <xloil_core.event.Event object>
+SheetBeforeDoubleClick: Event=None # value = <xloil_core.event.Event object>
+SheetBeforeRightClick: Event=None # value = <xloil_core.event.Event object>
+SheetCalculate: Event=None # value = <xloil_core.event.Event object>
+SheetChange: Event=None # value = <xloil_core.event.Event object>
+SheetDeactivate: Event=None # value = <xloil_core.event.Event object>
+SheetSelectionChange: Event=None # value = <xloil_core.event.Event object>
+UserException: Event=None # value = <xloil_core.event.Event object>
+WorkbookActivate: Event=None # value = <xloil_core.event.Event object>
+WorkbookAddinInstall: Event=None # value = <xloil_core.event.Event object>
+WorkbookAddinUninstall: Event=None # value = <xloil_core.event.Event object>
+WorkbookAfterClose: Event=None # value = <xloil_core.event.Event object>
+WorkbookAfterSave: Event=None # value = <xloil_core.event.Event object>
+WorkbookBeforeClose: Event=None # value = <xloil_core.event.Event object>
+WorkbookBeforePrint: Event=None # value = <xloil_core.event.Event object>
+WorkbookBeforeSave: Event=None # value = <xloil_core.event.Event object>
+WorkbookDeactivate: Event=None # value = <xloil_core.event.Event object>
+WorkbookNewSheet: Event=None # value = <xloil_core.event.Event object>
+WorkbookOpen: Event=None # value = <xloil_core.event.Event object>
+WorkbookRename: Event=None # value = <xloil_core.event.Event object>
+XllAdd: Event=None # value = <xloil_core.event.Event object>
+XllRemove: Event=None # value = <xloil_core.event.Event object>
