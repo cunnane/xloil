@@ -24,12 +24,13 @@ class TkExecutor(_GuiExecutor):
         self._root.after(200, self._do_work)
 
     def _main(self):
-
         import tkinter as tk
 
         self._root = tk.Tk(baseName="xlOil")
         self._root.withdraw()
             
+        self._make_ready()
+
         # Run any pending queue items now
         self._do_work()
  

@@ -98,6 +98,8 @@ class QtExecutor(_GuiExecutor):
         semaphore.timeout.connect(self._do_work)
         self._work_signal = semaphore
 
+        self._make_ready()
+
         # Run any pending queue items now
         self._do_work()
 

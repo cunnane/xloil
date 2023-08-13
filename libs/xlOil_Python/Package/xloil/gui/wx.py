@@ -33,6 +33,8 @@ class WxExecutor(_GuiExecutor):
         # Mainloop will immediately exit without at least 1 window
         hidden = wx.Frame(None, title="Hello World")
 
+        self._make_ready()
+
         # Run any pending queue items now
         self._do_work()
  
