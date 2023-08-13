@@ -56,6 +56,7 @@ __all__ = [
     "insert_cell_image",
     "run",
     "run_async",
+    "to_datetime",
     "xloil_addins"
 ]
 
@@ -682,6 +683,7 @@ class IPyFromExcel():
     def __str__(self) -> str: ...
     pass
 class IPyToExcel():
+    def __call__(self, arg0: _object) -> _RawExcelValue: ...
     def __str__(self) -> str: ...
     pass
 class ObjectCache():
@@ -1131,6 +1133,11 @@ class RtdServer():
 
         Calling this function outside of a worksheet function called by Excel may
         produce undesired results and possibly crash Excel.
+        """
+    @property
+    def progid(self) -> str:
+        """
+        :type: str
         """
     pass
 class StatusBar():
@@ -2120,6 +2127,23 @@ def _get_onedrive_source(arg0: str) -> str:
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
+def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None) -> _RawExcelValue:
+    """
+    For internal use. Converts a table like object (such as a pandas DataFrame) to 
+    RawExcelValue suitable for returning to xlOil.
+
+    n, m:
+      the number of data fields and the length of the fields
+    columns / rows: 
+      a iterable of numpy array containing data, specified as columns 
+      or rows (not both)
+    headings:
+      optional array of data field headings
+    index:
+      optional data field labels - one per data point
+    index_name:
+      optional heading for the index 
+    """
 def active_workbook() -> Workbook:
     """
     Returns the currently active workbook. Will raise an exception if xlOil
@@ -2198,10 +2222,7 @@ def excel_state() -> ExcelState:
     """
 def from_excel_date(arg0: object) -> object:
     """
-    Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
-    Excel date serial number.  Strings are parsed using the current date conversion 
-    settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
-    if conversion is not possible.
+    Identical to `xloil.to_datetime`.
     """
 def get_async_loop() -> object:
     """
@@ -2211,9 +2232,9 @@ def get_async_loop() -> object:
     """
 def in_wizard() -> bool:
     """
-    Returns true if the function is being invoked from the function wizard : costly functions should"
-    exit in this case to maintain UI responsiveness.Checking for the wizard is itself not cheap, so"
-    use this sparingly.
+    Returns true if the function is being invoked from the function wizard : costly functions 
+    should exit in this case to maintain UI responsiveness.  Checking for the wizard is itself 
+    not cheap, so use this sparingly.
     """
 def insert_cell_image(writer: object, size: object = None, pos: object = None, origin: object = None, compress: bool = True) -> str:
     """
@@ -2259,6 +2280,18 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
     to return a result.
 
     Returns an **awaitable**, i.e. a future which holds the result.
+    """
+def to_datetime(arg0: object) -> object:
+    """
+    Tries to the convert the given object to a `dt.date` or `dt.datetime`:
+
+      * Numbers are assumed to be Excel date serial numbers. 
+      * Strings are parsed using the current date conversion settings.
+      * A numpy array of floats is treated as Excel date serial numbers and converted
+        to n array of datetime64[ns].
+      * `dt.datetime` is provided is simply returned.
+
+    Raises `ValueError` if conversion is not possible.
     """
 _return_converter_hook: _CustomReturnConverter=None # value = <xloil_core._CustomReturnConverter object>
 cache: ObjectCache=None # value = <xloil_core.ObjectCache object>
