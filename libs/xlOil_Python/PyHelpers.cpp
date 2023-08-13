@@ -49,7 +49,9 @@ namespace xloil {
       }
       else
       {
-        from = index.cast<size_t>();
+        from = PyLong_AsLong(index.ptr());
+        if (from == -1 && PyErr_Occurred())
+          XLO_THROW("Could not read index as a slice or int");
         to = from + 1;
         return true;
       }
