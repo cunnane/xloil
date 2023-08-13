@@ -166,6 +166,8 @@ namespace xloil
           return PySteal(PyFromDate()(PyLong_AsLong(p)));
         else if (PyFloat_Check(p))
           return PySteal(PyFromDateTime()(PyFloat_AS_DOUBLE(p)));
+        else if (isNumpyArray(p))
+          return PySteal(toNumpyDatetimeFromExcelDateArray(p));
         else if (PyUnicode_Check(p))
           return PySteal(PyFromDateTime()(FromPyString()(p).cast<PStringRef>()));
         else if (PyDateTime_Check(p))
@@ -181,13 +183,25 @@ namespace xloil
         bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
         bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
 
+        
+        mod.def("to_datetime",
+          fromExcelDate,
+          R"(
+            Tries to the convert the given object to a `dt.date` or `dt.datetime`:
+
+              * Numbers are assumed to be Excel date serial numbers. 
+              * Strings are parsed using the current date conversion settings.
+              * A numpy array of floats is treated as Excel date serial numbers and converted
+                to n array of datetime64[ns].
+              * `dt.datetime` is provided is simply returned.
+
+            Raises `ValueError` if conversion is not possible.
+          )");
+
         mod.def("from_excel_date",
           fromExcelDate,
           R"(
-            Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
-            Excel date serial number.  Strings are parsed using the current date conversion 
-            settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
-            if conversion is not possible.
+            Identical to `xloil.to_datetime`.
           )");
 
         py::bind_vector<vector<wstring>, py::ReferenceHolder<vector<wstring>>>(mod, "_DateFormatList",

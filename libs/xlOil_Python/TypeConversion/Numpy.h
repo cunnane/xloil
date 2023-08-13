@@ -23,8 +23,13 @@ namespace xloil
     bool isNumpyArray(PyObject* p);
 
     IPyFromExcel* createFPArrayConverter();
+
     std::shared_ptr<FPArray> numpyToFPArray(const PyObject& obj);
+
     PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims = 2, int dtype = -1);
+
     ExcelObj numpyArrayToExcel(const PyObject* p);
+
+    PyObject* toNumpyDatetimeFromExcelDateArray(const PyObject* p);
   }
 }

@@ -1,5 +1,6 @@
 try:
     import pandas as pd
+    from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype
 except ImportError:
     from ._core import XLOIL_READTHEDOCS
     if XLOIL_READTHEDOCS:
@@ -12,6 +13,8 @@ except ImportError:
                 # Placeholder for pandas.Timestamp
                 ...
 
+from dataclasses import dataclass
+from re import I
 import numpy as np
 from xloil import *
 import typing
@@ -19,7 +22,7 @@ import typing
 @converter(pd.DataFrame, register=True)
 class PDFrame:
     """
-    Converter which takes tables with horizontal records to pandas dataframes.
+    Converts beteeen data tables with horizontal records and *pandas* DataFrames.
 
     **PDFrame(element, headings, index)**
 
@@ -43,25 +46,38 @@ class PDFrame:
     Parameters
     ----------
         
-    element : type
-        Pandas performance can be improved by explicitly specifying  
-        a type. In particular, creation of a homogenously typed
-        Dataframe does not require copying the data. Not currently
-        implemented!
 
-    headings : bool
-        Specifies that the first row should be interpreted as column
-        headings
+    headings: bool / int
+        When reading: if True, interprets the first row as column headings, if
+        an int inprets the first *N* rows as a *MultiIndex* heading,
+        When writing: if True, outputs column headings
 
-    index : various
-        Is used in a call to pandas.DataFrame.set_index()
+    index: bool / index-spec
+        When reading: specifies column(s) which should be treated as the index: 
+        xloil calls `DataFrame.set_index(<index>)`, so a column name or list-like
+        of columns names can be given
+        When writing: if explicitly set to False, the index is not output. Any
+        other value causes the index to be output
+
+    dates: list
+        When reading: attempt to convert the named columns from Excel serial 
+        date numbers to numpy datetime.
+
+    allow_object: bool (default False)
+        When writing, if False, any non-numeric objects are converted to string.
+        This prevents a large number of object refs being created.
+
+    dtype: type
+        Not currently implemented!
 
     """
-    def __init__(self, element=None, headings=True, index=None):
+    def __init__(self, headings=True, index=None, allow_object=False, dates=None, dtype=None):
         # TODO: use element_type in the dataframe construction
-        self._element_type = element
+        self._element_type = dtype
         self._headings = headings
         self._index = index
+        self._allow_object = allow_object
+        self._parse_dates = dates
 
     def read(self, x):
         # A converter should check if provided value is already of the correct type.
@@ -70,47 +86,73 @@ class PDFrame:
             return x
 
         elif isinstance(x, ExcelArray):
-            df = None
-            idx = self._index
-            if self._headings:
+
+            data = {i: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
+            # This will do a copy.  The copy can be avoided by monkey
+            # patching pandas - see stackoverflow
+            df = pd.DataFrame(data, copy=False)
+
+            if self._headings is True or self._headings == 1:
                 if x.nrows < 2:
                     raise Exception("Expected at least 2 rows")
                 headings = x[0,:].to_numpy(dims=1)
-                data = {headings[i]: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
-                if idx is not None and idx in data:
-                    index = data.pop(idx)
-                    df = pd.DataFrame(data, index=index).rename_axis(idx)
-                    idx = None
-                else:
-                    # This will do a copy.  The copy can be avoided by monkey
-                    # patching pandas - see stackoverflow
-                    df = pd.DataFrame(data)
-            else:
-                df = pd.DataFrame(x.to_numpy())
-            if idx is not None:
-                df.set_index(idx, inplace=True)
+                df.set_axis(headings, axis=1, inplace=True)
+
+            elif self._headings > 1:
+                if x.nrows < 1 + self._headings:
+                    raise Exception(f"Expected at least {1 + self._headings} rows")
+                headings = x[:self._headings,:].to_numpy(dims=2)
+                df.set_axis(pd.MultiIndex.from_arrays(headings), axis=1, inplace=True)
+
+            if self._parse_dates is not None:
+                for col in self._parse_dates:
+                    if col in df:
+                        df[col] = to_datetime(df[col].values)
+
+            if self._index is not None:
+                df.set_index(self._index, inplace=True)
+
             return df
         
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
-    def write(self, val):
-        # Construct this array
-        #   [filler]      [col_labels]
-        #   [row_labels]  [values]
+    def _to_array(data):
+        return data.values if (
+            self._allow_object 
+            or is_datetime64_any_dtype(data) 
+            or is_datetime64_any_dtype(data)
+        ) else data.astype(str).values
 
-        row_labels = val.index.values[:, np.newaxis]
+    def write(self, frame: pd.DataFrame):
+
+        import xloil_core
+
+        columns = [self._to_array(frame[col]) for col in frame]
+
+        if self._index is not False:
+            index = [
+                self._to_array(frame.index.get_level_values(i)) 
+                for i in range(frame.index.nlevels)
+                ]
+        else:
+            index = None
 
         if self._headings:
-            col_labels = val.columns.values
-            filler_size = (np.atleast_2d(col_labels).shape[0], row_labels.shape[1])
-            filler = np.full(filler_size, ' ', dtype=object)
-        
-            # Write the name of the index in the top left
-            filler[0, 0] = val.index.name
-       
-            return np.block([[filler, col_labels], [row_labels, val.values]])
+            headings = [
+                self._to_array(frame.columns.get_level_values(i))
+                for i in range(frame.columns.nlevels)
+                ]
         else:
-            return np.block([[row_labels, val.values]])
+            headings = None
+
+        return xloil_core._table_converter(
+            frame.shape[1], 
+            frame.shape[0],
+            columns=columns,
+            index=index,
+            index_name=frame.index.names,
+            headings=headings)
+
 
 @converter(target=pd.Timestamp, register=True)
 class PandasTimestamp:

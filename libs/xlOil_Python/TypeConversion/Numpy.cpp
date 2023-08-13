@@ -18,6 +18,53 @@
 #include <locale>
 #include <tuple>
 
+using std::vector;
+
+typedef npy_int64 npy_datetime;
+
+// Prior to the as-yet-unrealased Numpy 2, there are no working API functions
+// to convert to and from numpy's datetime representation. There are
+// promising looking API functions, but they give a ten-year-old deprecation
+// error. The only approach is to copy/paste the relevant conversion code
+// which is what we have done here
+namespace
+{
+#include "numpy_datetime.c"
+}
+
+namespace
+{
+  template<NPY_DATETIMEUNIT TGranularity>
+  auto convertDateTime(const npy_datetimestruct& dt) noexcept
+  {
+    PyArray_DatetimeMetaData meta{ TGranularity , 1 };
+    npy_datetime result;
+    NpyDatetime_ConvertDatetimeStructToDatetime64(&meta, &dt, &result);
+    return result;
+  }
+
+  /// C++ safe version of NPY_BEGIN_THREADS_DESCR
+  class NumpyBeginThreadsDescr {
+  public:
+    explicit NumpyBeginThreadsDescr(int dtype) 
+      : tstate(nullptr)
+    {
+      if (dtype != NPY_OBJECT)
+        tstate = PyEval_SaveThread();
+    }
+
+
+    ~NumpyBeginThreadsDescr() 
+    {
+      if (tstate)
+        PyEval_RestoreThread(tstate);
+    }
+
+  private:
+    PyThreadState* tstate;
+  };
+}
+
 namespace py = pybind11;
 using std::shared_ptr;
 using std::unique_ptr;
@@ -87,33 +134,48 @@ namespace xloil
     public:
       using ExcelValVisitor::operator();
 
-      npy_datetime operator()(int x) const
+      npy_datetime operator()(int x) const noexcept
       {
         int day, month, year;
         excelSerialDateToYMD(x, year, month, day);
-        npy_datetimestruct dt = { year, month, day };
-        return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
+        npy_datetimestruct dt{ year, month, day, 0, 0, 0, 0, 0 };
+        return convertDateTime<NPY_FR_us>(dt);
       }
-      npy_datetime operator()(double x) const
+      npy_datetime operator()(double x) const noexcept
       {
         int day, month, year, hours, mins, secs, usecs;
         excelSerialDatetoYMDHMS(x, year, month, day, hours, mins, secs, usecs);
-        npy_datetimestruct dt = { year, month, day, hours, mins, secs, usecs };
-        return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
+        npy_datetimestruct dt{ year, month, day, hours, mins, secs, usecs };
+        return convertDateTime<NPY_FR_us>(dt);
       }
       npy_datetime operator()(const PStringRef& str) const
       {
         std::tm tm;
         if (stringToDateTime(str.view(), tm))
         {
-          npy_datetimestruct dt = { tm.tm_year + 1900, tm.tm_mon + 1,
+          npy_datetimestruct dt{ tm.tm_year + 1900, tm.tm_mon + 1,
             tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0 };
-          return PyArray_DatetimeStructToDatetime(NPY_FR_us, &dt);
+          return convertDateTime<NPY_FR_us>(dt);
         }
         XLO_THROW("Cannot read '{0}' as a date");
       }
     };
    
+    double excelDateFromNumpyDate(const npy_datetime x, const PyArray_DatetimeMetaData& meta)
+    {
+      npy_datetimestruct dt;
+      NpyDatetime_ConvertDatetime64ToDatetimeStruct(
+        const_cast<PyArray_DatetimeMetaData*>(&meta), x, &dt);
+
+      if (dt.year == NPY_DATETIME_NAT)
+        return NPY_NAN;
+
+      if (meta.base <= NPY_FR_D)
+        return excelSerialDateFromYMD(dt.year, dt.month, dt.day);
+      else
+        return excelSerialDateFromYMDHMS(
+          dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec, dt.us);
+    }
 
     struct TruncateUTF16ToChar
     {
@@ -260,19 +322,36 @@ namespace xloil
     /// <summary>
     /// Helper to call PyArray_New.  Allocate data using PyDataMem_NEW
     /// </summary>
-    template<int N>
-    PyObject* newNumpyArray(int numpyType, Py_intptr_t (&dims)[N], void* data, size_t itemsize)
+    template<int NDim>
+    PyObject* newNumpyArray(int numpyType, Py_intptr_t (&dims)[NDim], void* data, size_t itemsize)
     {
-      return PyArray_New(
-        &PyArray_Type,
-        N,
-        dims,
-        numpyType,
-        nullptr, // strides
-        data,
-        (int)itemsize,
-        NPY_ARRAY_OWNDATA,
-        nullptr); // array finaliser
+      if (numpyType == NPY_DATETIME)
+      {
+        PyArray_DatetimeMetaData meta{ NPY_FR_us, 1 };
+        auto descr = create_datetime_dtype(NPY_DATETIME, &meta);
+        return PyArray_NewFromDescr(
+          &PyArray_Type,
+          descr,
+          NDim,
+          dims,
+          nullptr, // strides
+          data,
+          NPY_ARRAY_OWNDATA,
+          nullptr); // array finaliser
+      }
+      else
+      {
+        return PyArray_New(
+          &PyArray_Type,
+          NDim,
+          dims,
+          numpyType,
+          nullptr, // strides
+          data,
+          (int)itemsize,
+          NPY_ARRAY_OWNDATA,
+          nullptr); // array finaliser
+      }
     }
 
     template <int TNpType>
@@ -306,14 +385,22 @@ namespace xloil
           XLO_THROW("Expecting a 1-dim array");
 
         const auto itemsize = getItemSize<TNpType>(arr);
-        const auto dataSize = arr.size() * itemsize;
-        auto* data = (char*) PyDataMem_NEW(dataSize);
+        const auto arraySize = arr.size();
 
-        auto d = data;
-        for (auto p = arr.begin(); p != arr.end(); ++p, d += itemsize)
-          _conv((data_type*)d, itemsize, *p);
-        
-        return newNumpyArray(TNpType, dims, data, itemsize);
+        // If array memory size is over 65k and the string length is
+        // 64 chars, just switch to using an array of object strings
+        if (itemsize > 256 && arraySize * itemsize > 1 << 16)
+        {
+          return PyFromArray1d<NPY_OBJECT>(_trim)(arr);
+        }
+        else
+        {
+          auto data = (char*)PyDataMem_NEW(arraySize * itemsize);
+          auto d = data;
+          for (auto p = arr.begin(); p != arr.end(); ++p, d += itemsize)
+            _conv((data_type*)d, itemsize, *p);
+          return newNumpyArray(TNpType, dims, data, itemsize);
+        }
       }
 
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
@@ -352,19 +439,30 @@ namespace xloil
         Py_intptr_t dims[] = { (intptr_t)arr.nRows(), (intptr_t)arr.nCols() };
         
         const auto itemsize = getItemSize<TNpType>(arr);
-        const auto dataSize = arr.size() * itemsize;
-        auto data = (char*) PyDataMem_NEW(dataSize);
+        const auto arraySize = arr.size();
 
-        auto d = data;
-        for (auto i = 0; i < dims[0]; ++i)
+        // If array memory size is over 65k and the string length is
+        // 64 chars, just switch to using an array of object strings
+        if (itemsize > 256 && arraySize * itemsize > 1 << 16)
         {
-          auto* pObj = arr.row_begin(i);
-          const auto* rowEnd = pObj + dims[1];
-          for (; pObj != rowEnd; d += itemsize, ++pObj)
-            _conv((TDataType*)d, itemsize, *pObj);
+          return PyFromArray1d<NPY_OBJECT>(_trim)(arr);
         }
+        else
+        {
+          const auto dataSize = arraySize * itemsize;
+          auto data = (char*)PyDataMem_NEW(dataSize);
 
-        return newNumpyArray(TNpType, dims, data, itemsize);
+          auto d = data;
+          for (auto i = 0; i < dims[0]; ++i)
+          {
+            auto* pObj = arr.row_begin(i);
+            const auto* rowEnd = pObj + dims[1];
+            for (; pObj != rowEnd; d += itemsize, ++pObj)
+              _conv((TDataType*)d, itemsize, *pObj);
+          }
+
+          return newNumpyArray(TNpType, dims, data, itemsize);
+        }
       }
 
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
@@ -413,7 +511,6 @@ namespace xloil
 
       FromArrayImpl(PyArrayObject* pArr)
       { 
-        PyArray_ITEMSIZE(pArr) == sizeof(TDataType) && PyArray_TYPE(pArr) == TNpType;
       }
       static constexpr size_t stringLength = 0;
       auto toExcelObj(
@@ -504,6 +601,28 @@ namespace xloil
       }
     };
 
+    template<>
+    struct FromArrayImpl<NPY_DATETIME, false>
+    {
+      static constexpr size_t stringLength = 0;
+
+      const PyArray_DatetimeMetaData* _meta;
+
+      FromArrayImpl(PyArrayObject* pArr)
+        : _meta(get_datetime_metadata_from_dtype(PyArray_DESCR(pArr)))
+      {}
+
+      auto toExcelObj(
+        ExcelArrayBuilder& /*builder*/,
+        void* arrayPtr) const
+      {
+        auto x = (npy_datetime*)arrayPtr;
+        const auto serial = excelDateFromNumpyDate(*x, *_meta);
+        return ExcelObj(serial);
+      }
+    };
+
+
     namespace
     {
       std::tuple<PyArrayObject*, npy_intp*, int, bool> 
@@ -533,7 +652,9 @@ namespace xloil
       using TImpl = FromArrayImpl<TNpType>;
 
     public:
-      XlFromArray1d(bool cache = false) : _cache(cache) {}
+      XlFromArray1d(bool cache = false) 
+        : _cache(cache) 
+      {}
 
       ExcelObj operator()(const PyObject& obj) const override
       {
@@ -546,7 +667,7 @@ namespace xloil
           XLO_THROW("Expected 1-d array");
         
         TImpl converter(pyArr);
-
+        
         ExcelArrayBuilder builder((uint32_t)dims[0], 1, converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
           builder(j, 0).emplace(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
@@ -649,6 +770,9 @@ namespace xloil
     {
       if (dtype < 0)
         dtype = excelTypeToNumpyDtype(arr.dataType());
+
+      NumpyBeginThreadsDescr releaseGil(dtype);
+
       switch (dims)
       {
       case 1:
@@ -668,6 +792,9 @@ namespace xloil
       auto pArr = (PyArrayObject*)p;
       auto nDims = PyArray_NDIM(pArr);
       auto dType = PyArray_TYPE(pArr);
+
+      NumpyBeginThreadsDescr releaseGil(dType);
+
       switch (nDims)
       {
       case 1:
@@ -679,9 +806,314 @@ namespace xloil
       }
     }
 
+    
+    PyObject* toNumpyDatetimeFromExcelDateArray(const PyObject* obj)
+    {
+      if (!PyArray_Check(obj))
+        XLO_THROW("Expected array");
+
+      const auto array = (PyArrayObject*)obj;
+
+      npy_uint32 op_flags[2];
+      /*
+       * No inner iteration - inner loop is handled by CopyArray code
+       */
+      auto flags = NPY_ITER_EXTERNAL_LOOP; // use NPY_ITER_C_INDEX rather?
+      /*
+       * Tell the constructor to automatically allocate the output.
+       * The data type of the output will match that of the input.
+       */
+      PyArrayObject* op[] = { array, nullptr };
+      op_flags[0] = NPY_ITER_READONLY;
+      op_flags[1] = NPY_ITER_WRITEONLY | NPY_ITER_ALLOCATE;
+
+      PyArray_DatetimeMetaData meta{ NPY_FR_us, 1 };
+      auto outputDescr = PySteal((PyObject*)create_datetime_dtype(NPY_DATETIME, &meta));
+      PyArray_Descr* op_descr[] = { PyArray_DescrFromType(NPY_DOUBLE), (PyArray_Descr*)outputDescr.ptr()};
+
+      /* Construct the iterator */
+      auto iter = NpyIter_MultiNew(2, op, flags, NPY_KEEPORDER, NPY_SAFE_CASTING,
+        op_flags, op_descr);
+      if (!iter)
+        XLO_THROW("Failed to create iterator: expected numeric array");
+
+      {
+        NumpyBeginThreadsDescr dropGil(NPY_DOUBLE);
+
+        /*
+         * Make a copy of the iternext function pointer and
+         * a few other variables the inner loop needs.
+         */
+        auto iternext = NpyIter_GetIterNext(iter, NULL);
+        auto innerstride = NpyIter_GetInnerStrideArray(iter)[0];
+        auto itemsize = NpyIter_GetDescrArray(iter)[0]->elsize;
+        /*
+         * The inner loop size and data pointers may change during the
+         * loop, so just cache the addresses.
+         */
+        auto innersizeptr = NpyIter_GetInnerLoopSizePtr(iter);
+        auto dataptrarray = NpyIter_GetDataPtrArray(iter);
+
+        /*
+         * Note that because the iterator allocated the output,
+         * it matches the iteration order and is packed tightly,
+         * so we don't need to check it like the input.
+         */
+
+         /* For efficiency, should specialize this based on item size... */
+        do {
+          npy_intp N = *innersizeptr;
+          const char* in = dataptrarray[0];
+          char* out = dataptrarray[1];
+
+          for (npy_intp i = 0; i < N; i++)
+          {
+            *((npy_datetime*)out) = NumpyDateFromDate()(*(double*)in);
+            in += innerstride;
+            out += itemsize;
+          }
+
+        } while (iternext(iter));
+      }
+
+      /* Get the result from the iterator object array */
+      auto ret = NpyIter_GetOperandArray(iter)[1];
+      Py_INCREF(ret);
+
+      if (NpyIter_Deallocate(iter) != NPY_SUCCEED) 
+      {
+        Py_DECREF(ret);
+        XLO_THROW("Failed to deallocate iterator");
+      }
+
+      return (PyObject*)ret;
+    }
+
+    namespace TableHelpers
+    {
+      template<int NPDtype>
+      struct CreateConverter
+      {
+        void operator()(PyArrayObject* array, void* buffer, size_t& stringLength)
+        {
+          auto converter = new (buffer) FromArrayImpl<NPDtype>(array);
+          stringLength += converter->stringLength;
+        }
+      };
+
+      template<int NPDtype>
+      struct RunConverter
+      {
+        void operator()(ExcelArrayBuilder& builder,
+          char* buffer,
+          char* arrayPtr,
+          size_t step,
+          xloil::detail::ArrayBuilderIterator& start,
+          xloil::detail::ArrayBuilderIterator& end)
+        {
+          auto converter = (FromArrayImpl<NPDtype>*)(buffer);
+          for (; start != end; arrayPtr += step, ++start)
+          {
+            start->emplace(converter->toExcelObj(builder, arrayPtr));
+          }
+        }
+      };
+
+      size_t arrayShape(const py::object& p)
+      {
+        if (p.is_none())
+          return 0;
+
+        if (!PyArray_Check(p.ptr()))
+          XLO_THROW("Expected an array");
+
+        auto pyArr = (PyArrayObject*)p.ptr();
+        const auto nDims = PyArray_NDIM(pyArr);
+        const auto dtype = PyArray_TYPE(pyArr);
+        const auto dims = PyArray_DIMS(pyArr);
+
+        if (nDims != 1)
+          XLO_THROW("Expected 1 dim array");
+
+        return dims[0];
+      }
+
+      struct Converters
+      {
+        static constexpr size_t _converterSize = sizeof(void*);
+        vector<char> _converters;
+        size_t stringLength = 0;
+        vector<py::object> _arrays;
+        bool _hasObjectDtype;
+
+        Converters(size_t n)
+        {
+          _converters.reserve(_converterSize * n);
+          _arrays.reserve(n);
+          _hasObjectDtype = false;
+        }
+
+        auto collect(const py::object& p, size_t expectedLength)
+        {
+          auto shape = arrayShape(p);
+          
+          if (shape != expectedLength)
+            XLO_THROW("Expected a 1-dim array of size {}", expectedLength);
+
+          auto pyArr = (PyArrayObject*)p.ptr();
+          const auto dtype = PyArray_TYPE(pyArr);
+          if (dtype == NPY_OBJECT)
+            _hasObjectDtype = true;
+
+          _converters.resize(_converters.size() + _converterSize);
+          auto buffer = _converters.data() + _arrays.size() * _converterSize;
+          switchDataType<CreateConverter>(dtype, pyArr, buffer, std::ref(stringLength));
+          _arrays.push_back(p);
+          assert(_converters.size() == _arrays.size() * _converterSize);
+        }
+
+        auto write(size_t iArray, ExcelArrayBuilder& builder, int startX, int startY, bool byRow)
+        {
+          auto array = (PyArrayObject*)_arrays[iArray].ptr();
+          const auto dtype = PyArray_TYPE(array);
+          const auto step = PyArray_STRIDES(array)[0];
+          const auto shape = arrayShape(_arrays[iArray]);
+          auto data = PyArray_BYTES(array);
+
+          auto start = byRow
+            ? builder.row_begin(startX) + startY
+            : builder.col_begin(startX) + startY;
+
+          auto end = byRow
+            ? builder.row_end(startX)
+            : builder.col_end(startX);
+
+          switchDataType<RunConverter>(dtype,
+            builder,
+            _converters.data() + (iArray * _converterSize),
+            data, step, start, end);
+        }
+
+        auto hasObjectDtype() const { return _hasObjectDtype; }
+      };
+    }
+
+    ExcelObj numpyTableHelper(
+      uint32_t nOuter,
+      uint32_t nInner,
+      const py::object& columns,
+      const py::object& rows,
+      const py::object& headings,
+      const py::object& index,
+      const py::object& indexName)
+    {
+      const auto byRow = columns.is_none();
+
+      const auto hasHeadings = !headings.is_none();
+      const auto hasIndex = !index.is_none();
+
+      auto pData = const_cast<PyObject*>(byRow ? rows.ptr() : columns.ptr());
+
+      auto nHeadings = 0;
+      auto nIndex = 0;
+      auto nTotalRows = nOuter + nHeadings;
+
+      py::object iter;
+      PyObject* item;
+      TableHelpers::Converters converters(
+        nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0));
+
+      if (hasIndex > 0)
+      {
+        iter = PySteal(PyObject_GetIter(index.ptr()));
+        while ((item = PyIter_Next(iter.ptr())) != 0)
+        {
+          converters.collect(PySteal(item), nInner);
+          ++nIndex;
+        }
+      }
+
+      iter = PySteal(PyObject_GetIter(pData));
+      // First loop to establish array size and length of strings
+      while ((item = PyIter_Next(iter.ptr())) != 0)
+      {
+        converters.collect(PySteal(item), nInner);
+      }
+
+      if (hasHeadings > 0)
+      {
+        iter = PySteal(PyObject_GetIter(headings.ptr()));
+        while ((item = PyIter_Next(iter.ptr())) != 0)
+        {
+          converters.collect(PySteal(item), nOuter);
+          ++nHeadings;
+        }
+      }
+
+      vector<ExcelObj> indexNames(nIndex, CellError::NA);
+      auto moreStringLength = 0;
+      if (nIndex > 0 && !indexName.is_none())
+      {
+        iter = PySteal(PyObject_GetIter(indexName.ptr()));
+        auto i = 0;
+        while (i < nIndex && (item = PyIter_Next(iter.ptr())) != 0)
+        {
+          indexNames[i] = FromPyObj()(PySteal(item).ptr());
+          moreStringLength += indexNames[i].stringLength();
+          ++i;
+        }
+      }
+
+      iter = py::object(); // Ensure iterator is closed
+
+      NumpyBeginThreadsDescr releaseGil(
+        converters.hasObjectDtype() ? NPY_OBJECT : NPY_FLOAT);
+
+      auto nRows = nOuter + nIndex;
+      auto nCols = nInner + nHeadings;
+      if (!byRow)
+        std::swap(nRows, nCols);
+
+
+      ExcelArrayBuilder builder(
+        nRows,
+        nCols,
+        converters.stringLength + moreStringLength);
+
+      if (!byRow)
+      {
+        for (auto j = 0u; j < nIndex; ++j)
+          builder(0, j) = indexNames[j];
+
+        for (auto i = 1u; i < nHeadings; ++i)
+          for (auto j = 0u; j < nIndex; ++j)
+            builder(i, j) = CellError::NA;
+      }
+      else
+      {
+        for (auto j = 0u; j < nIndex; ++j)
+          builder(j, 0) = indexNames[j];
+
+        for (auto i = 1u; i < nHeadings; ++i)
+          for (auto j = 0u; j < nIndex; ++j)
+            builder(j, i) = CellError::NA;
+      }
+
+      
+      auto iConv = 0;
+
+      for (auto i = 0u; i < nOuter + nIndex; ++i, ++iConv)
+        converters.write(iConv, builder, i, nHeadings, byRow);
+
+      for (auto i = 0u; i < nHeadings; ++i, ++iConv)
+        converters.write(iConv, builder, i, nIndex, !byRow);
+
+      return builder.toExcelObj();
+    }
+
     namespace
     {
-      constexpr const char* name(int numpyDataType)
+      constexpr const char* nameToStr(int numpyDataType)
       {
         switch (numpyDataType)
         {
@@ -695,13 +1127,13 @@ namespace xloil
         }
       }
 
-      constexpr const char* dims(int n)
+      constexpr const char* dimsToStr(int n)
       {
         switch (n)
         {
         case 1: return "_1d";
         case 2: return "_2d";
-        default: return "?";
+        default: return "_bad_dims_";
         }
       }
 
@@ -717,7 +1149,7 @@ namespace xloil
         auto operator()(pybind11::module& mod) const
         {
           return py::class_<T<TNpType>, IPyFromExcel, shared_ptr<T<TNpType>>>
-            (mod, (prefix + name(TNpType) + dims(TNDims)).c_str())
+            (mod, (prefix + nameToStr(TNpType) + dimsToStr(TNDims)).c_str())
             .def(py::init<bool>(), py::arg("trim")=true);
         }
         static inline auto prefix = string(theReadConverterPrefix);
@@ -729,7 +1161,7 @@ namespace xloil
         auto operator()(pybind11::module& mod) const
         {
           return py::class_<T<TNpType>, IPyToExcel, shared_ptr<T<TNpType>>>
-            (mod, (prefix + name(TNpType) + dims(TNDims)).c_str())
+            (mod, (prefix + nameToStr(TNpType) + dimsToStr(TNDims)).c_str())
             .def(py::init<bool>(), py::arg("cache") = false);
         }
         static inline auto prefix = string(theReturnConverterPrefix);
@@ -751,7 +1183,7 @@ namespace xloil
         // Alias so that either date or datetime arrays can be requested.
         // TODO: strictly should drop time information if it exists
         mod.add_object(
-          (Declarer<Converter, 1, 1>::prefix + string("Array_date_") + dims(TNDims)).c_str(), 
+          (Declarer<Converter, 1, 1>::prefix + string("Array_date_") + dimsToStr(TNDims)).c_str(),
           datetime);
       }
 
@@ -761,6 +1193,32 @@ namespace xloil
         declare<Reader, Array2dFromXL, 2>(mod);
         declare<Writer, XlFromArray1d, 1>(mod);
         declare<Writer, XlFromArray2d, 2>(mod);
+
+        mod.def("_table_converter",
+          &numpyTableHelper,
+          R"(
+            For internal use. Converts a table like object (such as a pandas DataFrame) to 
+            RawExcelValue suitable for returning to xlOil.
+            
+            n, m:
+              the number of data fields and the length of the fields
+            columns / rows: 
+              a iterable of numpy array containing data, specified as columns 
+              or rows (not both)
+            headings:
+              optional array of data field headings
+            index:
+              optional data field labels - one per data point
+            index_name:
+              optional heading for the index 
+          )",
+          py::arg("n"),
+          py::arg("m"),
+          py::arg("columns") = py::none(),
+          py::arg("rows") = py::none(),
+          py::arg("headings") = py::none(),
+          py::arg("index") = py::none(),
+          py::arg("index_name") = py::none());
       });
     }
   }
