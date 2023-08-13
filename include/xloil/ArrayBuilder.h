@@ -65,12 +65,12 @@ namespace xloil
 
       ExcelObj& object(size_t i) { return _buffer[i]; }
 
+      auto data() { return _buffer; }
+
       void fillNA()
       {
         new (_buffer) ExcelObj(CellError::NA);
-        const auto* source = _buffer;
-        for (auto i = 1u; i < _nObjects; ++i)
-          memcpy_s(_buffer + i, sizeof(ExcelObj), source, sizeof(ExcelObj));
+        memmove(_buffer + 1, _buffer, _nObjects - 1);
       }
 
       const auto& charAllocator() const { return _stringAllocator; }
@@ -95,6 +95,11 @@ namespace xloil
     public:
       ArrayBuilderElement(size_t index, ArrayBuilderAlloc& allocator)
         : _target(&allocator.object(index))
+        , _alloc(&allocator)
+      {}
+
+      ArrayBuilderElement(ExcelObj* target, ArrayBuilderAlloc& allocator)
+        : _target(target)
         , _alloc(&allocator)
       {}
 
@@ -125,8 +130,9 @@ namespace xloil
       /// </summary>
       auto& operator=(const ExcelObj& x)
       {
-        assert(x.isType(ExcelType::ArrayValue));
-        if (x.isType(ExcelType::Str))
+        if (!x.isType(ExcelType::ArrayValue))
+          ExcelObj::overwrite(*_target, CellError::Value);
+        else if (x.isType(ExcelType::Str))
         {
           auto pstr = x.cast<PStringRef>();
           copy_string(pstr.begin(), pstr.length());
@@ -189,6 +195,7 @@ namespace xloil
       ExcelObj* _target;
       ArrayBuilderAlloc* _alloc;
 
+      auto increment(int n) { _target += n; return *this; }
       friend class ArrayBuilderIterator;
     };
 
@@ -202,18 +209,19 @@ namespace xloil
       using value_type = ArrayBuilderElement;
       using iterator_category = std::bidirectional_iterator_tag;
 
-      ArrayBuilderIterator(ArrayBuilderElement&& element)
+      ArrayBuilderIterator(ArrayBuilderElement&& element, int step = 1)
         : _current(element)
+        , _step(step)
       {}
 
       auto& operator++()
       {
-        ++_current._target;
+        _current.increment(_step);
         return *this;
       }
       auto& operator--()
       {
-        --_current._target;
+        _current.increment(-_step);
         return *this;
       }
       auto operator++(int)
@@ -229,6 +237,16 @@ namespace xloil
         return copy;
       }
 
+      auto operator+(const size_t n)
+      {
+        return iterator(ArrayBuilderElement(_current).increment(_step * (int)n), _step);
+      }
+
+      auto operator-(const size_t n)
+      {
+        return iterator(ArrayBuilderElement(_current).increment(-_step * (int)n), _step);
+      }
+
       bool operator==(iterator other) const { return _current._target == other._current._target; }
       bool operator!=(iterator other) const { return !(*this == other); }
 
@@ -238,6 +256,7 @@ namespace xloil
 
     private:
       ArrayBuilderElement _current;
+      int _step;
     };
   }
 
@@ -373,6 +392,26 @@ namespace xloil
     auto end()
     {
       return detail::ArrayBuilderIterator((*this)(_nRows, _nColumns));
+    }
+
+    auto row_begin(row_t i)
+    {
+      return detail::ArrayBuilderIterator((*this)(i, 0));
+    }
+
+    auto row_end(row_t i)
+    {
+      return row_begin(i) + _nColumns;
+    }
+
+    auto col_begin(col_t i)
+    {
+      return detail::ArrayBuilderIterator((*this)(0, i), _nColumns);
+    }
+
+    auto col_end(col_t i)
+    {
+      return col_begin(i) + _nRows;
     }
 
     /// <summary>
