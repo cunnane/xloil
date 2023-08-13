@@ -32,13 +32,13 @@ namespace xloil
       // First loop to establish array size and length of strings
       while ((item = PyIter_Next(iter)) != 0) 
       {
-        if (++nRows > XL_MAX_ROWS)
-          XLO_THROW("Max rows exceeded when returning iterator");
+        ++nRows;
+
         if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           decltype(nCols) j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while ((innerItem = PyIter_Next(innerIter)) != 0)
+          while ((innerItem = PyIter_Next(innerIter)) != nullptr)
           {
             ++j;
             accumulateObjectStringLength(innerItem, stringLength);
@@ -55,6 +55,12 @@ namespace xloil
           accumulateObjectStringLength(item, stringLength);
         Py_DECREF(item);
       }
+
+      if (nRows > XL_MAX_ROWS)
+        XLO_THROW("Max rows exceeded when returning iterator");
+      if (nCols > XL_MAX_COLS)
+        XLO_THROW("Max columns exceeded when returning iterator");
+
 
       if (PyErr_Occurred())
         throw py::error_already_set();
@@ -122,12 +128,12 @@ namespace xloil
         for (decltype(nRows) i = 0; i < nRows; ++i)
         {
           auto inner = py::tuple(nCols);
-          PyTuple_SET_ITEM(outer.ptr(), i, inner.ptr());
           for (decltype(nCols) j = 0; j < nCols; ++j)
           {
             auto val = _valConv(arr.at(i, j));
             PyTuple_SET_ITEM(inner.ptr(), j, val);
           }
+          PyTuple_SET_ITEM(outer.ptr(), i, inner.release().ptr());
         }
         return outer.release().ptr();
       }
@@ -152,12 +158,12 @@ namespace xloil
         for (decltype(nRows) i = 0; i < nRows; ++i)
         {
           auto inner = py::list(nCols);
-          PyList_SET_ITEM(outer.ptr(), i, inner.ptr());
           for (decltype(nCols) j = 0; j < nCols; ++j)
           {
             auto val = _valConv(arr.at(i, j));
             PyList_SET_ITEM(inner.ptr(), j, val);
           }
+          PyList_SET_ITEM(outer.ptr(), i, inner.release().ptr());
         }
         return outer.release().ptr();
       }
