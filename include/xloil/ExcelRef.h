@@ -359,7 +359,7 @@ namespace xloil
 
     ExcelObj value(row_t i, col_t j) const final override
     {
-      return _ref.range(i, j, i + 1, j + 1).value();
+      return _ref.range(i, j, i, j).value();
     }
 
     void set(const ExcelObj& value) final override
