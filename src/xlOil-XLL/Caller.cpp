@@ -313,8 +313,10 @@ namespace xloil
         // Buttons can only be clicked on the active sheet I presume!
         const auto sheetNameLen = sheetName.length();
         const auto objectName = address.cast<PStringRef>();
-        const auto maxLen = (a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN)
-          + (quoteSheet ? 2 : 0) - sheetNameLen;
+        const uint16_t maxLen = 
+          (a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN)
+          + (quoteSheet ? 2 : 0) 
+          - sheetNameLen;
         // Never return a string longer than the advertised max length
         const auto nameLen = std::min<uint16_t>(objectName.length(), maxLen);
         

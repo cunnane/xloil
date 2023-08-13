@@ -335,6 +335,7 @@ namespace xloil
     /// Add cell object count in form ",X"
     void writeCount(wchar_t* key, size_t iPos) const
     {
+      static_assert(PADDING == 2);
       key[0] = L',';
       // An offset of 65 means we start with 'A'
       key[1] = (wchar_t)(iPos + 65);
