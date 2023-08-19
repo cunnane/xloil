@@ -266,7 +266,8 @@ def get_python_environment_selected(ctrl):
 #
 
 async def set_load_modules(ctrl, value):
-    modules = value.split(",")
+    # Allow a semi-colon separator
+    modules = value.replace(";", ",").split(",")
     _settings.python['LoadModules'] = modules
     _settings.save()
 
