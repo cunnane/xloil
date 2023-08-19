@@ -912,7 +912,7 @@ namespace xloil
     {
       struct ApplyConverter
       {
-        virtual ~ApplyConverter() = 0;
+        virtual ~ApplyConverter() {}
         virtual void operator()(ExcelArrayBuilder& builder,
           xloil::detail::ArrayBuilderIterator& start,
           xloil::detail::ArrayBuilderIterator& end) const = 0;
@@ -928,6 +928,8 @@ namespace xloil
           : _impl(array)
           , _array(array)
         {}
+
+        virtual ~ConverterHolder() {}
 
         size_t stringLength() const { return _impl.stringLength; }
 
