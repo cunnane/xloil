@@ -486,12 +486,15 @@ try:
     #
     # Specifying multiple index columns creates a DataFrame with a MultiIndex.
     # Giving an int for *headings* means the first *N* rows are read as a *MultiIndex* 
-    # heading.
+    # heading. Also, note we can call the PDFrame converter in the function if 
+    # we want to control the arguments passed to it - this isn't possible if it is
+    # used as a decorator.
     #
     @xlo.func
-    def pyTestDFrameMultiIndex(df: PDFrame(headings=2, index=[('Clock','Date'), ('Category','Type')], dates=[('Clock','Date')])):
-        return df
-
+    def pyTestDFrameMultiIndex(
+            df: PDFrame(headings=2, index=[('Clock','Date'), ('Category','Type')], dates=[('Clock','Date')]),
+            headings=False):
+        return PDFrame(headings=headings)(df)
 
     #
     # We can specify an explicit return type of pd.DataFrame, which is slightly 
