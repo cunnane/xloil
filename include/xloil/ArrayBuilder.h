@@ -70,7 +70,8 @@ namespace xloil
       void fillNA()
       {
         new (_buffer) ExcelObj(CellError::NA);
-        memmove(_buffer + 1, _buffer, _nObjects - 1);
+        for (size_t *p = (size_t*)(_buffer + 1), *q = (size_t*)_buffer; p != (size_t*)(_buffer + _nObjects); ++p, ++q)
+          *p = *q;
       }
 
       const auto& charAllocator() const { return _stringAllocator; }
