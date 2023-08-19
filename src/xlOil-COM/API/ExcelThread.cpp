@@ -288,7 +288,8 @@ namespace xloil
 
   bool isMainThread()
   {
-    return Environment::excelProcess().mainThreadId == GetCurrentThreadId();
+    auto& process = Environment::excelProcess();
+    return !process.isEmbedded() || process.mainThreadId == GetCurrentThreadId();
   }
 
   namespace
