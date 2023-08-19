@@ -504,18 +504,18 @@ namespace xloil
 
     template<
       int TNpType, 
-      bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>
+      bool IsString = (TNpType == NPY_UNICODE) || (TNpType == NPY_STRING),
+      bool IsFloat = (TNpType == NPY_FLOAT) || (TNpType == NPY_DOUBLE) || (TNpType == NPY_LONGDOUBLE)>
     struct FromArrayImpl
     {
       using TDataType = typename TypeTraits<TNpType>::storage;
 
-      FromArrayImpl(PyArrayObject* pArr)
-      { 
-      }
+      FromArrayImpl(PyArrayObject* /*pArr*/)
+      {}
       static constexpr size_t stringLength = 0;
       auto toExcelObj(
         ExcelArrayBuilder&, 
-        void* arrayPtr)
+        void* arrayPtr) const
       {
         auto x = (TDataType*)arrayPtr;
         return ExcelObj(*x);
@@ -523,7 +523,26 @@ namespace xloil
     };
 
     template <int TNpType>
-    struct FromArrayImpl<TNpType, true>
+    struct FromArrayImpl<TNpType, false, true>
+    {
+      using TDataType = typename TypeTraits<TNpType>::storage;
+
+      FromArrayImpl(PyArrayObject* /*pArr*/)
+      {}
+      static constexpr size_t stringLength = 0;
+      auto toExcelObj(
+        ExcelArrayBuilder&,
+        void* arrayPtr) const
+      {
+        auto x = *(TDataType*)arrayPtr;
+        if (npy_isnan(x)) return ExcelObj(CellError::NA);
+        if (npy_isinf(x)) return ExcelObj(CellError::Num);
+        return ExcelObj(x);
+      }
+    };
+
+    template <int TNpType>
+    struct FromArrayImpl<TNpType, true, false>
     {
       using data_type = typename TypeTraits<TNpType>::storage;
 
@@ -546,7 +565,7 @@ namespace xloil
 
       auto toExcelObj(
         ExcelArrayBuilder& builder, 
-        void* arrayPtr)
+        void* arrayPtr) const
       {
         const auto x = (const char32_t*)arrayPtr;
         const auto len = strlen32(x, stringLength / charMultiple);
@@ -592,9 +611,9 @@ namespace xloil
         }
       }
       
-      static auto toExcelObj(
+      auto toExcelObj(
         ExcelArrayBuilder& builder, 
-        void* arrayPtr)
+        void* arrayPtr) const
       {
         const auto* pyObj = *(PyObject**)arrayPtr;
         return FromPyObj()(pyObj, builder.charAllocator());
@@ -891,31 +910,51 @@ namespace xloil
 
     namespace TableHelpers
     {
-      template<int NPDtype>
-      struct CreateConverter
+      struct ApplyConverter
       {
-        void operator()(PyArrayObject* array, void* buffer, size_t& stringLength)
-        {
-          auto converter = new (buffer) FromArrayImpl<NPDtype>(array);
-          stringLength += converter->stringLength;
-        }
+        virtual ~ApplyConverter() = 0;
+        virtual void operator()(ExcelArrayBuilder& builder,
+          xloil::detail::ArrayBuilderIterator& start,
+          xloil::detail::ArrayBuilderIterator& end) const = 0;
       };
 
       template<int NPDtype>
-      struct RunConverter
+      struct ConverterHolder : public ApplyConverter
       {
-        void operator()(ExcelArrayBuilder& builder,
-          char* buffer,
-          char* arrayPtr,
-          size_t step,
+        FromArrayImpl<NPDtype> _impl;
+        PyArrayObject* _array;
+
+        ConverterHolder(PyArrayObject* array)
+          : _impl(array)
+          , _array(array)
+        {}
+
+        size_t stringLength() const { return _impl.stringLength; }
+
+        virtual void operator()(ExcelArrayBuilder& builder,
           xloil::detail::ArrayBuilderIterator& start,
-          xloil::detail::ArrayBuilderIterator& end)
+          xloil::detail::ArrayBuilderIterator& end) const
         {
-          auto converter = (FromArrayImpl<NPDtype>*)(buffer);
+          char* arrayPtr = PyArray_BYTES(_array);
+          const auto step = PyArray_STRIDES(_array)[0];
           for (; start != end; arrayPtr += step, ++start)
           {
-            start->emplace(converter->toExcelObj(builder, arrayPtr));
+            start->emplace(_impl.toExcelObj(builder, arrayPtr));
           }
+        }
+      };
+
+      /// <summary>
+      /// Helper class used with `switchDataType`
+      /// </summary>
+      template<int NPDtype>
+      struct CreateConverter
+      {
+        ApplyConverter* operator()(PyArrayObject* array, size_t& stringLength)
+        {
+          auto converter = new ConverterHolder<NPDtype>(array);
+          stringLength += converter->stringLength();
+          return converter;
         }
       };
 
@@ -929,7 +968,6 @@ namespace xloil
 
         auto pyArr = (PyArrayObject*)p.ptr();
         const auto nDims = PyArray_NDIM(pyArr);
-        const auto dtype = PyArray_TYPE(pyArr);
         const auto dims = PyArray_DIMS(pyArr);
 
         if (nDims != 1)
@@ -938,18 +976,22 @@ namespace xloil
         return dims[0];
       }
 
+      /// <summary>
+      /// This class holds an array of virtual FromArrayImpl holders.  Each column in a 
+      /// dataframe can have a different data type and so require a different converter.
+      /// The indices can also have their own data types. The class uses `collect` to 
+      /// examine 1-d numpy arrays and creates an appropriate converters. Then `write` is
+      /// called when and ExcelArrayBuilder object is ready to receive the converted data
+      /// </summary>
       struct Converters
       {
-        static constexpr size_t _converterSize = sizeof(void*);
-        vector<char> _converters;
+        vector<unique_ptr<const ApplyConverter>> _converters;
         size_t stringLength = 0;
-        vector<py::object> _arrays;
         bool _hasObjectDtype;
 
         Converters(size_t n)
         {
-          _converters.reserve(_converterSize * n);
-          _arrays.reserve(n);
+          _converters.reserve(n);
           _hasObjectDtype = false;
         }
 
@@ -965,21 +1007,12 @@ namespace xloil
           if (dtype == NPY_OBJECT)
             _hasObjectDtype = true;
 
-          _converters.resize(_converters.size() + _converterSize);
-          auto buffer = _converters.data() + _arrays.size() * _converterSize;
-          switchDataType<CreateConverter>(dtype, pyArr, buffer, std::ref(stringLength));
-          _arrays.push_back(p);
-          assert(_converters.size() == _arrays.size() * _converterSize);
+          _converters.emplace_back(unique_ptr<ApplyConverter>(
+            switchDataType<CreateConverter>(dtype, pyArr, std::ref(stringLength))));
         }
 
         auto write(size_t iArray, ExcelArrayBuilder& builder, int startX, int startY, bool byRow)
         {
-          auto array = (PyArrayObject*)_arrays[iArray].ptr();
-          const auto dtype = PyArray_TYPE(array);
-          const auto step = PyArray_STRIDES(array)[0];
-          const auto shape = arrayShape(_arrays[iArray]);
-          auto data = PyArray_BYTES(array);
-
           auto start = byRow
             ? builder.row_begin(startX) + startY
             : builder.col_begin(startX) + startY;
@@ -988,12 +1021,12 @@ namespace xloil
             ? builder.row_end(startX)
             : builder.col_end(startX);
 
-          switchDataType<RunConverter>(dtype,
-            builder,
-            _converters.data() + (iArray * _converterSize),
-            data, step, start, end);
+          (*_converters[iArray])(builder, start, end);
         }
 
+        /// <summary>
+        /// Used to determine if we can release the GIL for the duration of the conversion
+        /// </summary>
         auto hasObjectDtype() const { return _hasObjectDtype; }
       };
     }
@@ -1007,22 +1040,28 @@ namespace xloil
       const py::object& index,
       const py::object& indexName)
     {
+      // This method can handle writing data vertically or horizontally.  When used to 
+      // write a pandas DataFrame, the data is vertical/by-column.
       const auto byRow = columns.is_none();
 
       const auto hasHeadings = !headings.is_none();
       const auto hasIndex = !index.is_none();
 
-      auto pData = const_cast<PyObject*>(byRow ? rows.ptr() : columns.ptr());
+      auto tableData = const_cast<PyObject*>(byRow ? rows.ptr() : columns.ptr());
 
+      // The row or column headings can be multi-level indices. We determine the number
+      // of levels from iterators later.
       auto nHeadings = 0;
       auto nIndex = 0;
-      auto nTotalRows = nOuter + nHeadings;
 
       py::object iter;
       PyObject* item;
+
+      // Converters may end up larger if we have multi-level indices
       TableHelpers::Converters converters(
         nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0));
-
+      
+      // Examine data frame index
       if (hasIndex > 0)
       {
         iter = PySteal(PyObject_GetIter(index.ptr()));
@@ -1033,7 +1072,7 @@ namespace xloil
         }
       }
 
-      iter = PySteal(PyObject_GetIter(pData));
+      iter = PySteal(PyObject_GetIter(tableData));
       // First loop to establish array size and length of strings
       while ((item = PyIter_Next(iter.ptr())) != 0)
       {
@@ -1050,22 +1089,23 @@ namespace xloil
         }
       }
 
-      vector<ExcelObj> indexNames(nIndex, CellError::NA);
-      auto moreStringLength = 0;
+      vector<ExcelObj> indexNames(nIndex * nHeadings, CellError::NA);
+      auto indexNameStringLength = 0;
       if (nIndex > 0 && !indexName.is_none())
       {
         iter = PySteal(PyObject_GetIter(indexName.ptr()));
         auto i = 0;
-        while (i < nIndex && (item = PyIter_Next(iter.ptr())) != 0)
+        while (i < nIndex * nHeadings && (item = PyIter_Next(iter.ptr())) != 0)
         {
           indexNames[i] = FromPyObj()(PySteal(item).ptr());
-          moreStringLength += indexNames[i].stringLength();
+          indexNameStringLength += indexNames[i].stringLength();
           ++i;
         }
       }
 
       iter = py::object(); // Ensure iterator is closed
 
+      // If possible, release the GIL before beginning the conversion
       NumpyBeginThreadsDescr releaseGil(
         converters.hasObjectDtype() ? NPY_OBJECT : NPY_FLOAT);
 
@@ -1078,25 +1118,20 @@ namespace xloil
       ExcelArrayBuilder builder(
         nRows,
         nCols,
-        converters.stringLength + moreStringLength);
+        converters.stringLength + indexNameStringLength);
 
+      // Write the index names in the top left
       if (!byRow)
       {
         for (auto j = 0u; j < nIndex; ++j)
-          builder(0, j) = indexNames[j];
-
-        for (auto i = 1u; i < nHeadings; ++i)
-          for (auto j = 0u; j < nIndex; ++j)
-            builder(i, j) = CellError::NA;
+          for (auto i = 0u; i < nHeadings; ++i)
+            builder(i, j) = indexNames[i * nHeadings + j];
       }
       else
       {
         for (auto j = 0u; j < nIndex; ++j)
-          builder(j, 0) = indexNames[j];
-
-        for (auto i = 1u; i < nHeadings; ++i)
-          for (auto j = 0u; j < nIndex; ++j)
-            builder(j, i) = CellError::NA;
+          for (auto i = 0u; i < nHeadings; ++i)
+            builder(j, i) = indexNames[i * nHeadings + j];
       }
 
       
@@ -1210,7 +1245,8 @@ namespace xloil
             index:
               optional data field labels - one per data point
             index_name:
-              optional heading for the index 
+              optional headings for the index, should be a 1 dim iteratable of size
+              num_index_levels * num_column_levels
           )",
           py::arg("n"),
           py::arg("m"),

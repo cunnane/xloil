@@ -1,6 +1,6 @@
 try:
     import pandas as pd
-    from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype
+    from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype, is_string_dtype
 except ImportError:
     from ._core import XLOIL_READTHEDOCS
     if XLOIL_READTHEDOCS:
@@ -13,11 +13,10 @@ except ImportError:
                 # Placeholder for pandas.Timestamp
                 ...
 
-from dataclasses import dataclass
-from re import I
+
+from xloil import converter, to_datetime, ExcelArray, CannotConvert
 import numpy as np
-from xloil import *
-import typing
+from collections.abc import Iterable
 
 @converter(pd.DataFrame, register=True)
 class PDFrame:
@@ -45,8 +44,7 @@ class PDFrame:
     
     Parameters
     ----------
-        
-
+ 
     headings: bool / int
         When reading: if True, interprets the first row as column headings, if
         an int inprets the first *N* rows as a *MultiIndex* heading,
@@ -87,27 +85,27 @@ class PDFrame:
 
         elif isinstance(x, ExcelArray):
 
-            data = {i: x[1:, i].to_numpy(dims=1) for i in range(x.ncols)}
+            n_headings = int(self._headings)
+            if x.nrows < n_headings:
+                raise ArgumentError(f"Expected at least {n_headings} rows")
+
+            data = {i: x[n_headings:, i].to_numpy(dims=1) for i in range(x.ncols)}
             # This will do a copy.  The copy can be avoided by monkey
             # patching pandas - see stackoverflow
             df = pd.DataFrame(data, copy=False)
 
-            if self._headings is True or self._headings == 1:
-                if x.nrows < 2:
-                    raise Exception("Expected at least 2 rows")
+            if n_headings == 1:
                 headings = x[0,:].to_numpy(dims=1)
                 df.set_axis(headings, axis=1, inplace=True)
 
-            elif self._headings > 1:
-                if x.nrows < 1 + self._headings:
-                    raise Exception(f"Expected at least {1 + self._headings} rows")
-                headings = x[:self._headings,:].to_numpy(dims=2)
+            elif n_headings > 1:
+                headings = x[:n_headings,:].to_numpy(dims=2)
                 df.set_axis(pd.MultiIndex.from_arrays(headings), axis=1, inplace=True)
 
             if self._parse_dates is not None:
                 for col in self._parse_dates:
                     if col in df:
-                        df[col] = to_datetime(df[col].values)
+                        df[col] = to_datetime(df[col].values.ravel())
 
             if self._index is not None:
                 df.set_index(self._index, inplace=True)
@@ -116,12 +114,21 @@ class PDFrame:
         
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
-    def _to_array(data):
-        return data.values if (
-            self._allow_object 
-            or is_datetime64_any_dtype(data) 
-            or is_datetime64_any_dtype(data)
-        ) else data.astype(str).values
+    def _to_array(self, data):
+        if self._allow_object \
+                or is_datetime64_any_dtype(data) \
+                or is_datetime64_any_dtype(data):
+            return data.values
+
+        # This branch is unlikely since pandas stores strings in dtype=object arrays
+        if is_string_dtype(data):
+            return data.fillna("").values
+
+        # Turn NaNs to None, which xlOil will turn to #N/A
+        if self._allow_object:
+            return data.replace([np.nan], [None]).values
+        else:
+            return np.array([None if pd.isnull(x) else str(x) for x in data])
 
     def write(self, frame: pd.DataFrame):
 
@@ -145,12 +152,22 @@ class PDFrame:
         else:
             headings = None
 
+        #index_names = pd.DataFrame(frame.index.names).replace([np.nan], [None]).values.T
+
+        index_names = np.empty((frame.columns.nlevels, frame.index.nlevels), dtype=object)
+        for j, name in enumerate(frame.index.names):
+            if isinstance(name, Iterable) and len(name) <= index_names.shape[0]:
+                for i, x in enumerate(name):
+                    index_names[i, j] = x
+            elif name is not None:
+                index_names[0, j] = name
+            
         return xloil_core._table_converter(
             frame.shape[1], 
             frame.shape[0],
             columns=columns,
             index=index,
-            index_name=frame.index.names,
+            index_name=index_names.ravel(),
             headings=headings)
 
 

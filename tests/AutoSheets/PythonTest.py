@@ -489,7 +489,7 @@ try:
     # heading.
     #
     @xlo.func
-    def pyTestDFrameMultiIndex(df: PDFrame(headings=2, index=['Date', 'Type'], dates=['Date'])):
+    def pyTestDFrameMultiIndex(df: PDFrame(headings=2, index=[('Clock','Date'), ('Category','Type')], dates=[('Clock','Date')])):
         return df
 
 
