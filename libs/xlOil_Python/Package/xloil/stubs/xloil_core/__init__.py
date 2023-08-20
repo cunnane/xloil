@@ -2142,7 +2142,8 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
     index:
       optional data field labels - one per data point
     index_name:
-      optional heading for the index 
+      optional headings for the index, should be a 1 dim iteratable of size
+      num_index_levels * num_column_levels
     """
 def active_workbook() -> Workbook:
     """
