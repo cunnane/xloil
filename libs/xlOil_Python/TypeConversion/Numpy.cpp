@@ -171,10 +171,10 @@ namespace xloil
         return NPY_NAN;
 
       if (meta.base <= NPY_FR_D)
-        return excelSerialDateFromYMD(dt.year, dt.month, dt.day);
+        return excelSerialDateFromYMD((int)dt.year, dt.month, dt.day);
       else
         return excelSerialDateFromYMDHMS(
-          dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec, dt.us);
+          (int)dt.year, dt.month, dt.day, dt.hour, dt.min, dt.sec, dt.us);
     }
 
     struct TruncateUTF16ToChar
@@ -1053,8 +1053,8 @@ namespace xloil
 
       // The row or column headings can be multi-level indices. We determine the number
       // of levels from iterators later.
-      auto nHeadings = 0;
-      auto nIndex = 0;
+      auto nHeadings = 0u;
+      auto nIndex = 0u;
 
       py::object iter;
       PyObject* item;
@@ -1064,7 +1064,7 @@ namespace xloil
         nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0));
       
       // Examine data frame index
-      if (hasIndex > 0)
+      if (hasIndex)
       {
         iter = PySteal(PyObject_GetIter(index.ptr()));
         while ((item = PyIter_Next(iter.ptr())) != 0)
@@ -1081,7 +1081,7 @@ namespace xloil
         converters.collect(PySteal(item), nInner);
       }
 
-      if (hasHeadings > 0)
+      if (hasHeadings)
       {
         iter = PySteal(PyObject_GetIter(headings.ptr()));
         while ((item = PyIter_Next(iter.ptr())) != 0)
@@ -1096,7 +1096,7 @@ namespace xloil
       if (nIndex > 0 && !indexName.is_none())
       {
         iter = PySteal(PyObject_GetIter(indexName.ptr()));
-        auto i = 0;
+        auto i = 0u;
         while (i < nIndex * nHeadings && (item = PyIter_Next(iter.ptr())) != 0)
         {
           indexNames[i] = FromPyObj()(PySteal(item).ptr());
