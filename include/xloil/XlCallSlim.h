@@ -216,6 +216,7 @@ namespace msxll
         struct xloper12 *lparray;
         RW rows;
         COL columns;
+        bool xloil_view; // Clearly wasn't in Microsoft's spec!
       } array;					/* xltypeMulti */
       struct
       {

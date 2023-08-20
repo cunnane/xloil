@@ -165,8 +165,11 @@ namespace
 
       case xltypeMulti:
         // Arrays are allocated as an array of char which contains all their strings
-        // So we don't need to loop and free them individually
-        delete[] (char*)(val.array.lparray);
+        // So we don't need to loop and free them individually. If we are at this point
+        // we must have created the ExcelObj ourselves, so it is safe to use the
+        // xloil_view extension.
+        if (!val.array.xloil_view)
+          delete[] (char*)(val.array.lparray);
         break;
 
       case xltypeBigData:
