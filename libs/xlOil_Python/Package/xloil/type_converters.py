@@ -53,14 +53,16 @@ def _make_typeconverter(base_type, reader=None, writer=None, allow_range=False, 
        
         def __new__(cls, *args, **kwargs):
             """
-            Allows return type converters to be "called" in the expected way.
+            Allows return type converters to be "called" in the expected way as
+            if the type converter is an instance
             """
             return cls.read(*args, **kwargs)
 
         @classmethod
         def read(cls, value):
             """
-            Allows return type converters to be "called" in the expected way.
+            Allows return type converters to be "called" in the expected way, this
+            function is not used by xlOil directly
             """
             return cls._xloil_return_writer.invoke(value)
 
@@ -134,8 +136,10 @@ def _make_metaconverter(base_type, impl, is_returner:bool, allow_range=False, ch
         functools.update_wrapper(MetaConverter, impl, updated=[])
 
         return MetaConverter
+
     elif is_returner:
         return _make_typeconverter(base_type, writer=_CustomReturn(impl, type_name), source=impl)
+
     else:
         return _make_typeconverter(
                     base_type,
@@ -255,6 +259,10 @@ def converter(
             return x
             
     """
+
+    if direction not in ['read', 'write']:
+        raise ValueError("diretion must be 'read' or 'write")
+
     def decorate(impl):
         result = _make_metaconverter(target, impl, direction == "write", range, check_cache)
 
@@ -471,10 +479,12 @@ class Array(np.ndarray):
                 raise Exception("The 'fast' parameter can only be used with 2-dim float arrays")
             return FastArray
 
-        name = f"{_READ_CONVERTER_PREFIX}Array_{dtype.__name__}_{dims or 2}d" 
+        typename = dtype.__name__ if  dtype is not np.datetime64 else "datetime"
+
+        name = f"{_READ_CONVERTER_PREFIX}Array_{typename}_{dims or 2}d" 
         arg_conv = getattr(xloil_core, name)(trim)
 
-        name = f"{_RETURN_CONVERTER_PREFIX}Array_{dtype.__name__}_{dims or 2}d" 
+        name = f"{_RETURN_CONVERTER_PREFIX}Array_{typename}_{dims or 2}d" 
         return_conv = getattr(xloil_core, name)(cache_return)
         type_converter = _make_typeconverter(np.ndarray, arg_conv, return_conv, False)
         type_converter.__name__ = "Array"

@@ -30,14 +30,6 @@ namespace
 
 namespace xloil
 {
-  namespace
-  {
-    void asyncLoadPluginsWhenComReady(AddinContext& ctx)
-    {
-      runComSetupOnXllOpen([&]() { loadPluginsForAddin(ctx); });
-    }
-  }
-
   XLOIL_EXPORT int coreAutoOpenHandler(const wchar_t* xllPath) noexcept
   {
     try
@@ -76,8 +68,8 @@ namespace xloil
         coreRegisteredFunctions->init();
       }
 
-      auto* addinContext = &createAddinContext(xllPath);
-      auto* coreContext  = &createCoreAddinContext();
+      auto addinContext = createAddinContext(xllPath);
+      auto coreContext  = createCoreAddinContext();
 
       if (!theCoreIsLoaded)
       {
@@ -95,17 +87,17 @@ namespace xloil
         ? nullptr 
         : coreContext;
 
-      auto* firstLoad = loadBeforeCore ? addinContext : loadCoreContext;
-      auto* secondLoad = !loadBeforeCore ? addinContext : loadCoreContext;
+      auto firstLoad = loadBeforeCore ? addinContext : loadCoreContext;
+      auto secondLoad = !loadBeforeCore ? addinContext : loadCoreContext;
 
       // Although we are on the main thread, Excel's COM interface may not
       // be ready yet. Plugins may use that interface so we delay load them.
       runComSetupOnXllOpen([=]() 
       {
         if (firstLoad)
-          loadPluginsForAddin(*firstLoad);
+          firstLoad->loadPlugins();
         if (secondLoad)
-          loadPluginsForAddin(*secondLoad);
+          secondLoad->loadPlugins();
       });
 
       theCoreIsLoaded = true;
@@ -136,6 +128,8 @@ namespace xloil
   }
 }
 
+XLO_DEFINE_FREE_CALLBACK()
+
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
   _In_ DWORD     fdwReason,
@@ -146,6 +140,10 @@ XLO_ENTRY_POINT(int) DllMain(
   {
     theCoreModuleHandle = hinstDLL;
   }
+  else if (fdwReason == DLL_PROCESS_DETACH)
+  {
+    xloil::teardownAddinContext();
+    theCoreModuleHandle = nullptr;
+  }
   return TRUE;
 }
-

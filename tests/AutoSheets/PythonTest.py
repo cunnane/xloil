@@ -2,7 +2,7 @@ import xloil as xlo
 import sys
 import datetime as dt
 import os 
-
+import numpy as np
  
 #
 # Functions are registered by decorating them with xloil.func.  The function
@@ -96,6 +96,15 @@ def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 def pyTestFastArr(x: xlo.FastArray) -> xlo.FastArray:
 	return x
     
+#
+# `list` (or tuple) annotations are understood by xlOil. This function just
+# tests that we can round-trip a list.
+#   
+@xlo.func
+def pyTestList(x: list):
+    return x
+
+    
 #------------------
 # The Object Cache
 #------------------
@@ -146,8 +155,15 @@ def pyTestToCache(x) -> xlo.SingleValue:
 @xlo.func
 def pyTestDate(x: dt.datetime) -> dt.datetime:
     return x + dt.timedelta(days=1)
- 
 
+@xlo.func
+def pyTestDateArray(y: xlo.Array(np.datetime64)) -> xlo.Array(np.datetime64):
+    return y + np.timedelta64(2,'D')
+ 
+@xlo.func
+def pyTestDateArray2(y: xlo.Array(np.datetime64)) -> xlo.Array(np.datetime64):
+    return np.array(y + np.timedelta64(2,'D'), dtype=np.datetime64)
+    
 #---------------------------
 # Variable and Keyword args
 #---------------------------
@@ -168,10 +184,14 @@ def pyTestKwargs(lookup: dict, **kwargs) -> dict:
     lookup.update(kwargs)
     return lookup
 
+@xlo.converter()
+def arg_triple(x):
+    return 3 * x
+    
 @xlo.func(
     args={'args': 'A variable argument list of numbers to sum'}
     )
-def pyTestVargs(*args) -> float:
+def pyTestVargs(*args: arg_triple) -> float:
     return sum(args)
 
 @xlo.func
@@ -278,7 +298,7 @@ def pyTestAppRun(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:
 # and a iterator of iterator gives a 2d array.
 # 
 # If you want an iterable object to be placed in the cache use 
-# `return xlo.to_cache(obj)`
+# `return xlo.cache(obj)`
 #
 @xlo.func
 def pyTestIter(size:int, dims:int):
@@ -346,7 +366,11 @@ def pyTestRangeFormula(r: xlo.Range):
 def pyTestRangeFormula2(r: xlo.Range):
     return r.formula
     
-
+@xlo.func(macro=True)
+def pyTestRangeTypes(r: xlo.Range, x, y):
+    r2 = xlo.Range(r.address())
+    return [r[x,y], r2[x,y]]
+    
 #
 # Displays python's sys.XXX. Useful for debugging some module loads
 # 
@@ -359,7 +383,7 @@ def pysys(attr):
 # Threads: we can declare threadsafe functions which will be executed on
 # Excel's calculation threads
 # 
-import numpy as np
+
 import ctypes
 
 @xlo.func(local=False, threaded=True)
@@ -424,23 +448,23 @@ try:
     # xlo.PDFrame converts a block to a pandas DataFrame. Because it registers
     # the type pd.DataFrame, we can just use that in typing annotations. The block 
     # passed should be formatted as a table with a single row of column headings.
-    # if the headings parameter is set.  We send the return value to the cache
-    # otherwise it will be expanded to the sheet
+    # We explicitly send the return value to the cache otherwise it will be expanded
+    # to the sheet
     #
     @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
     def pyTestDFrame(df: pd.DataFrame) -> xlo.Cache:
         return df
 
     #
-    # If we want to use non-default arguments with xlo.PDFrame, we need to use it
+    # Generally we want to override the `xlo.PDFrame`, defaults, so we need to use it
     # explicitly in the annotation. Below, we set the dataframe index to a specified  
-    # column name.  If you want the index column name to be dynamic, for example 
-    # based on another function argument, you'd need to call DataFrame.set_index 
-    # in the function body.  Note we can explicity add an object to the cache instead
-    # of using the `-> xlo.Cache` annotation.
+    # column name and convert dates in a column headed 'Date'.  If you want the index
+    # column name to be dynamic, for example based on another function argument, you 
+    # could call `DataFrame.set_index` in the function body instead  Note we can 
+    # directly add an object to the cache instead of using the `-> xlo.Cache` annotation.
     #
     @xlo.func
-    def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time")):
+    def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time", dates=['Date'])):
         return xlo.cache(df) 
 
     #
@@ -459,16 +483,31 @@ try:
         else:
             return df
     
-    
     #
-    # We can specify an explicit return type of pd.DataFrame, which
-    # is slightly more performant than having xlOil try all known
-    # converters
+    # Specifying multiple index columns creates a DataFrame with a MultiIndex.
+    # Giving an int for *headings* means the first *N* rows are read as a *MultiIndex* 
+    # heading. Also, note we can call the PDFrame converter in the function if 
+    # we want to control the arguments passed to it - this isn't possible if it is
+    # used as a decorator.
+    #
+    @xlo.func
+    def pyTestDFrameMultiIndex(
+            df: PDFrame(headings=2, index=[('Clock','Date'), ('Category','Type')], dates=[('Clock','Date')]),
+            headings=False):
+        return PDFrame(headings=headings)(df)
+
+    #
+    # We can specify an explicit return type of pd.DataFrame, which is slightly 
+    # more performant than having xlOil try all known converters
     # 
     @xlo.func
     def pyTestFrameWrite(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
+    @xlo.func
+    def pyTestFrameDtypes(df: pd.DataFrame):
+        return [str(x) for x in df.dtypes]
+        
 except ImportError:
     pass
 

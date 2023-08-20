@@ -246,10 +246,12 @@ namespace xloil
     }
 
     /// <summary>
-    /// Constructs an array from data. Takes ownership of data, which
-    /// must be correctly arranged in memory. Use with caution!
+    /// Constructs an array from data. By default, takes ownership of data, which
+    /// must be correctly arranged in memory. Generally, you should use the 
+    /// ArrayBuilder to create arrays.
     /// </summary>
-    ExcelObj(const ExcelObj* data, int nRows, int nCols)
+    /// <param name="isView">If true, do not take ownership of array data</param>
+    ExcelObj(const ExcelObj* data, int nRows, int nCols, bool isView = false)
     {
       // Excel will crash if passed an empty array
       if (nRows <= 0 || nCols <= 0)
@@ -257,6 +259,7 @@ namespace xloil
       val.array.rows = nRows;
       val.array.columns = nCols;
       val.array.lparray = (Base*)data;
+      val.array.xloil_view = isView;
       xltype = msxll::xltypeMulti;
     }
 

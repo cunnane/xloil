@@ -13,7 +13,7 @@ namespace xloil
   {
     namespace
     {
-      class PyFromRange : public detail::PyFromExcelImpl
+      class PyRangeFromRange : public detail::PyFromExcelImpl
       {
       public:
         using detail::PyFromExcelImpl::operator();
@@ -27,7 +27,7 @@ namespace xloil
       };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        bindPyConverter<PyFromExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyRangeFromRange>>(mod, "Range").def(py::init<>());
       });
     }
   }

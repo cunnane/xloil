@@ -21,8 +21,43 @@ if XLOIL_EMBEDDED:
         if not name.startswith("="):
             os.environ[name] = val
 
-if XLOIL_READTHEDOCS:
 
+elif not XLOIL_READTHEDOCS:
+
+    # We try to load xlOil_PythonXY.pyd where XY is the python version
+    # if we succeed, we fake an entry in sys.modules so that future 
+    # imports of 'xloil_core' will work as expected.
+    import importlib
+
+    sys.path.append(XLOIL_BIN_DIR)
+
+    ver = sys.version_info
+    pyd_name = f"xlOil_Python{ver.major}{ver.minor}"
+    mod = None
+    try:
+        with add_dll_path(XLOIL_BIN_DIR):
+            mod = importlib.import_module(pyd_name)
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(f"Failed to load {pyd_name} with " +
+            f"sys.path={sys.path} and PATH={os.environ['PATH']}")
+
+    sys.path.pop()
+    sys.modules['xloil_core'] = mod
+
+
+try:
+    from xloil_core import *
+    # These classes back singletons, so we want their docstrings but we don't 
+    # want to suggest they are part of the API, hence the leading underscore
+    from xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
+    
+except ImportError:
+
+    # Fallback to stubs
+    from .stubs.xloil_core import *
+    from .stubs.xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
+    
+    # Not completely sure this part is necessary in stubs mode
     from .stubs import xloil_core
     sys.modules['xloil_core'] = xloil_core
 
@@ -41,37 +76,9 @@ if XLOIL_READTHEDOCS:
             workbooks.active.path
 
     """
-
-elif not XLOIL_EMBEDDED:
-    # We try to load xlOil_PythonXY.pyd where XY is the python version
-    # if we succeed, we fake an entry in sys.modules so that future 
-    # imports of 'xloil_core' will work as expected.
-    import importlib
-    
-    sys.path.append(XLOIL_BIN_DIR)
-
-    ver = sys.version_info
-    pyd_name = f"xlOil_Python{ver.major}{ver.minor}"
-    mod = None
-    try:
-        with add_dll_path(XLOIL_BIN_DIR):
-            mod = importlib.import_module(pyd_name)
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(f"Failed to load {pyd_name} with " +
-            f"sys.path={sys.path} and PATH={os.environ['PATH']}")
-    
-    sys.path.pop()
-    sys.modules['xloil_core'] = mod
-
-
-from xloil_core import *
-
-# These classes back singletons, so we want their docstrings but we don't 
-# want to suggest they are part of the API, hence the leading underscore
-from xloil_core import _LogWriter, _AddinsDict, _DateFormatList 
+   
 
 if XLOIL_READTHEDOCS:
-    
     def _fix_module_for_docs(namespace, target, replace):
         """
             When sphinx autodoc reads python objects, it uses their __module__

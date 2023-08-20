@@ -39,13 +39,13 @@ namespace xloil
   {
     if (!msg.empty())
       runExcelThread([msg = wstring(msg)]() { 
-        excelApp().com().PutStatusBar(0, msg.c_str()); 
+        thisApp().com().PutStatusBar(0, msg.c_str()); 
       });
     
     // Send a null str to PutStatusBar in 'timeout' millisecs to clear it
     if (timeout > 0)
       runExcelThread([]() {
-          excelApp().com().PutStatusBar(0, _bstr_t()); 
+          thisApp().com().PutStatusBar(0, _bstr_t()); 
         }, ExcelRunQueue::COM_API, (unsigned)timeout);
   }
 }

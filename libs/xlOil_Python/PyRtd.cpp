@@ -241,6 +241,7 @@ namespace xloil
     public:
       PyRtdServer()
       {
+        // We don't need the COM or XLL APIs so flags = 0
         _initialiser = runExcelThread([]() 
         { 
           auto server = newRtdServer();
@@ -250,7 +251,7 @@ namespace xloil
           // server->start(make_shared<InitDebugPy>(server.get()));
           // server->testConnect(InitDebugPy::topicId, InitDebugPy::topicName);
           return server;
-        });
+        }, 0);
         
         // Destroy the Rtd server if we are still around on python exit. The 
         // Rtd server may maintain links to python objects and Excel may not
@@ -355,6 +356,8 @@ namespace xloil
           make_shared<RtdPublisher>(
             topic, impl(), task));
       }
+      
+      auto progId() { return impl().progId(); }
     };
 
     class PyRtdTopic : public IRtdPublisher
@@ -530,7 +533,8 @@ namespace xloil
             )",
             py::arg("topic"), 
             py::arg("func"), 
-            py::arg("converter") = nullptr);
+            py::arg("converter") = nullptr)
+          .def_property_readonly("progid", &PyRtdServer::progId);
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
           .def("set_result", 

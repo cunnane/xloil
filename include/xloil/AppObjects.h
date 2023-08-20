@@ -31,6 +31,7 @@ namespace xloil
   class Workbooks;
   class Worksheets;
   class ExcelWorkbook;
+  class ExcelRange;
 }
 
 namespace xloil
@@ -188,17 +189,35 @@ namespace xloil
     bool getVisible() const;
     void setVisible(bool x);
 
-    bool getEnableEvents();
+    bool getEnableEvents() const;
     bool setEnableEvents(bool value);
 
-    bool getDisplayAlerts();
+    bool getDisplayAlerts() const;
     bool setDisplayAlerts(bool value);
+
+    bool getScreenUpdating() const;
+    bool setScreenUpdating(bool value);
+
+    enum CalculationMode
+    {
+      Automatic = -4105,
+      Manual = -4135,
+      Semiautomatic = 2
+    };
+
+    CalculationMode Application::getCalculationMode() const;
+    CalculationMode Application::setCalculationMode(CalculationMode value);
+
+    /// <summary>
+    /// Returns an invalid ExcelRange is the selection is not a range
+    /// </summary>
+    ExcelRange selection();
   };
 
   /// <summary>
   /// Gets the Excel.Application object which is the root of the COM API 
   /// </summary>
-  XLOIL_EXPORT Application& excelApp();
+  XLOIL_EXPORT Application& thisApp();
 
   class XLOIL_EXPORT ExcelRange : public Range, public AppObject<Excel::Range>
   {
@@ -209,7 +228,7 @@ namespace xloil
     /// </summary>
     explicit ExcelRange(
       const std::wstring_view& address,
-      const Application& app = excelApp());
+      const Application& app = thisApp());
 
     ExcelRange(const Range& range);
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
@@ -363,7 +382,7 @@ namespace xloil
     /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
     explicit ExcelWorkbook(
       const std::wstring_view& name = std::wstring_view(), 
-      Application app = excelApp());
+      Application app = thisApp());
     
     using AppObject<Excel::_Workbook>::AppObject;
 
@@ -447,7 +466,7 @@ namespace xloil
     /// <param name="caption">The name of the window to find, or the active window if null</param>
     explicit ExcelWindow(
       const std::wstring_view& caption = std::wstring_view(),
-      Application app = excelApp());
+      Application app = thisApp());
 
     /// <summary>
     /// Retuns the Win32 window handle
@@ -488,7 +507,7 @@ namespace xloil
   class XLOIL_EXPORT Worksheets
   {
   public:
-    Worksheets(const Application& app = excelApp());
+    Worksheets(const Application& app = thisApp());
     Worksheets(const ExcelWorkbook& workbook);
     ExcelWorksheet active() const { return app().activeWorksheet(); }
     ExcelWorksheet get(const std::wstring_view& name) const;
@@ -510,7 +529,7 @@ namespace xloil
   class XLOIL_EXPORT Workbooks : public AppObject<Excel::Workbooks>
   {
   public:
-    Workbooks(const Application& app = excelApp());
+    Workbooks(const Application& app = thisApp());
     ExcelWorkbook active() const;
     auto get(const std::wstring_view& name) const { return ExcelWorkbook(name, app()); }
     auto operator[](const std::wstring_view& name) const { return get(name); };
@@ -525,7 +544,7 @@ namespace xloil
   class XLOIL_EXPORT Windows : public AppObject<Excel::Windows>
   {
   public:
-    Windows(const Application& app = excelApp());
+    Windows(const Application& app = thisApp());
     Windows(const ExcelWorkbook& workbook);
     ExcelWindow active() const;
     auto get(const std::wstring_view& name) const { return ExcelWindow(name, app()); }
@@ -537,6 +556,31 @@ namespace xloil
     Application app() const;
   };
 
+  class PauseExcel
+  {
+  private:
+    Application _app;
+    Application::CalculationMode _previousCalculation;
+    bool _previousEvents;
+    bool _previousAlerts;
+    bool _previousUpdating;
+
+  public:
+    PauseExcel(Application& app)
+      : _app(app)
+      , _previousCalculation(app.setCalculationMode(Application::Manual))
+      , _previousAlerts(app.setDisplayAlerts(false))
+      , _previousEvents(app.setEnableEvents(false))
+      , _previousUpdating(app.setScreenUpdating(false))
+    {}
+    ~PauseExcel()
+    {
+      _app.setCalculationMode(_previousCalculation);
+      _app.setDisplayAlerts(_previousAlerts);
+      _app.setEnableEvents(_previousEvents);
+      _app.setScreenUpdating(_previousUpdating);
+    }
+  };
 
   // Some function definitions which need to live down here due to
   // the order of declarations

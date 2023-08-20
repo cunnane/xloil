@@ -59,12 +59,12 @@ namespace xloil
       }
       unsigned getBlockSize(typename decltype(_blocks)::iterator i) const
       {
-        assert(i != _blocks.end());
+        if (i == _blocks.end())
+          return 0;
         auto offset = i->offset;
-        ++i;
-        return (i == _blocks.end()
-          ? _size - offset
-          : i->offset - offset) << MIN_BLOCKSIZE;
+        if (++i == _blocks.end())
+          return 0;
+        return (i->offset - offset) << MIN_BLOCKSIZE;
       }
       auto findBlock(char* chunkStart, void* memPtr) const
       {
@@ -139,14 +139,15 @@ namespace xloil
     auto free(void* memPtr)
     {
       auto iChunk = _chunks.lower_bound((char*)memPtr);
-      if (iChunk == _chunks.end() || iChunk->first > memPtr) --iChunk;
+      if (iChunk == _chunks.end() || iChunk->first > memPtr) 
+        --iChunk;
+
       auto [chunkData, chunk] = *iChunk;
 
       auto iBlock = chunk.findBlock(chunkData, memPtr);
-      
       auto blockSize = chunk.getBlockSize(iBlock);
 
-      if (chunk.free(blockSize)== 0)
+      if (chunk.free(blockSize) == 0)
       {
         // Remove all from free list
         auto chunkEnd = chunkData + chunk.size();

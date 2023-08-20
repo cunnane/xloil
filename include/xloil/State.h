@@ -47,6 +47,8 @@ namespace xloil
       /// Thread Id of Excel's main thread
       /// </summary>
       size_t mainThreadId;
+
+      bool isEmbedded() const { return mainThreadId != 0; }
     };
 
     /// <summary>

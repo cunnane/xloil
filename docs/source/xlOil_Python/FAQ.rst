@@ -71,3 +71,17 @@ non-standard locations like virtual environments it may be necessary to set the
 `QT_QPA_PLATFORM_PLUGIN_PATH` environment variable explicitly in xlOil.ini.  If `QT_QPA_PLATFORM_PLUGIN_PATH`
 is set, xlOil will not try to workaround this issue, so verify the value of this variable in the
 lauching environment.
+
+
+win32com / pythoncom: <some CLSID> has no attribute 'CLSIDToClassMap' 
+----------------------------------------------------------------------
+
+The cache used by *win32com* has somehow gone wrong. Deleting the cache dir will cause a rebuild
+which usually resolves the issue.  The location of this directory can be discovered with
+
+::
+
+    python -c "import win32com; print(win32com.__gen_path__)"
+
+Either delete the entire *gen_py* directory or just the subdirectory corresponding to the CLSID
+which is indicated in the error.

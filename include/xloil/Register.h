@@ -125,3 +125,15 @@ namespace xloil
   template<class TRet = ExcelObj*> using DynamicExcelFunc
     = std::function<TRet(const FuncInfo& info, const ExcelObj**)>;
 }
+
+/// <summary>
+/// If your DLL registers static functions, you must call this macro to setup
+/// the callback to free any returned ExcelObj. The function needs to be defined
+/// per DLL containing functions, rather than once for the registering XLL.
+/// </summary>
+#define XLO_DEFINE_FREE_CALLBACK() \
+  XLO_ENTRY_POINT(void) xlAutoFree12(::xloil::ExcelObj* pxFree) { \
+    try { \
+      delete pxFree; \
+    } catch (...) { } \
+  }

@@ -174,6 +174,11 @@ namespace xloil
     /// Checks if the python object is a CellError (#N/A! etc) type
     /// </summary>
     bool isErrorType(const PyObject* obj);
+    /// <summary>
+    /// Checks if the python object is a wrapper for an *ExcelObj*,
+    /// which can be returned by some type converters
+    /// </summary>
+    bool isExcelObjType(const PyObject* obj);
 
     /// <summary>
     /// Wraps a type conversion implementation, similarly to <see cref="xloil::FromExcel"/>
@@ -309,6 +314,10 @@ namespace xloil
         {
           // Return #N/A here as xltypeNil is turned to zero by Excel
           return ExcelObj(CellError::NA);
+        }
+        else if (isExcelObjType(p))
+        {
+          return py::unsafe_move<ExcelObj>(p);
         }
         else if (PyLong_Check(p))
         {

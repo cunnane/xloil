@@ -132,6 +132,8 @@ namespace xloil
       case FileAction::Add: return L"add";
       case FileAction::Delete: return L"delete";
       case FileAction::Modified: return L"modified";
+      default:
+        return L"unknown";
       }
     }
 

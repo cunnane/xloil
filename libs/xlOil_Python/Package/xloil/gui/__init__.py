@@ -248,13 +248,21 @@ class _GuiExecutor(futures.Executor):
         import queue
 
         self._work_queue = queue.SimpleQueue()
+        self._ready = futures.Future()
         self._thread = threading.Thread(target=self._main_loop, name=name)
-        self._broken = False
         self._thread.start()
 
         # PyBye is called before `threading` module teardown, whereas `atexit` comes later.
         # We definitely want threading available to shut down our threads.
         xloil.event.PyBye += self.shutdown
+
+        #xloil.log.error(f"Did we make it here")
+
+    def _make_ready(self):
+        """
+        Should be called by derive classes to signal that it is safe to add jobs to the queue
+        """
+        self._ready.set_result(True)
 
     def _do_work(self):
         import queue
@@ -274,8 +282,9 @@ class _GuiExecutor(futures.Executor):
         Schedules the callable, fn, to be executed as ``fn(*args, **kwargs)`` and returns 
         a ``Future`` object representing the execution of the callable.
         """
-        if self._broken:
-            raise futures.BrokenExecutor(self._broken)
+
+        if not self._ready.result():
+            raise futures.BrokenExecutor()
 
         future = futures.Future()
         work = concurrent.futures.thread._WorkItem(future, fn, args, kwargs)
@@ -297,7 +306,7 @@ class _GuiExecutor(futures.Executor):
         return await asyncio.wrap_future(self.submit(fn, *args, **kwargs))
 
     def shutdown(self, wait=True, cancel_futures=False):
-        if not self._broken: # TODO: implement cancel_futures?
+        if self._ready.result(): # TODO: implement cancel_futures?
             self.submit(self._shutdown)
         if wait:
             self._thread.join()
@@ -310,11 +319,12 @@ class _GuiExecutor(futures.Executor):
             xloil.log(f"Starting executor '{name}'", level="info")
             self._main()
             xloil.log(f"Finalising executor '{name}'", level="info")
+            
         except Exception as e:
             xloil.log(f"{name} failed: {e}", level='error')
+            self._ready.set_result(False)
+            raise
 
-        self._broken = True
-    
     def _wrap(self, fn, sync=True, discard=False):
         """
             Called by Tk_thread, Qt_thread to implement their decorator 

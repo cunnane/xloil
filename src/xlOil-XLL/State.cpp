@@ -2,7 +2,6 @@
 #include <xlOil/WindowsSlim.h>
 #include <xloil/Throw.h>
 #include <xloil/ExcelCall.h>
-#include <xloil/AppObjects.h>
 #include "Intellisense.h"
 #include <filesystem>
 

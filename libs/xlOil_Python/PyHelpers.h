@@ -54,6 +54,20 @@ namespace pybind11
   {
     return to_wstring(p.ptr());
   }
+
+  /// <summary>
+  /// If you're absolutely sure the the given PyObject is a pybind wrapper 
+  /// for a <typeparam ref ="T"/> (for example because you checked p->ob_type)
+  /// then you can call this to safe a lot of messing around and a copy in
+  /// `py::cast`.  The type *T* must be move-constructible.
+  /// </summary>
+  /// <returns></returns>
+  template<class T>
+  inline auto unsafe_move(const PyObject* p)
+  {
+    auto v_h = ((py::detail::instance*)p)->get_value_and_holder();
+    return T(std::move(*v_h.value_ptr<T>()));
+  }
 }
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, pybind11::ReferenceHolder<T>, true);

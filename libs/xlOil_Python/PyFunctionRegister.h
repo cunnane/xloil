@@ -143,8 +143,8 @@ namespace xloil
 #else
             const auto maxArgs = 16 - _args.size();
 #endif
-            for (; i < maxArgs && !xlArgs(i).isMissing(); ++i)
-              pyArgs.push_back(converter(xlArgs(i), defaultValue));
+            for (auto iVarg = i; iVarg < maxArgs && !xlArgs(iVarg).isMissing(); ++iVarg)
+              pyArgs.push_back(converter(xlArgs(iVarg), defaultValue));
           }
         }
         catch (const std::exception& e)

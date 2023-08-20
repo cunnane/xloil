@@ -390,8 +390,6 @@ namespace xloil
     /// viewed by this ExcelArray. The data is copied. 
     /// you
     /// </summary>
-    /// <param name="alwaysCopy"></param>
-    /// <returns></returns>
     XLOIL_EXPORT ExcelObj toExcelObj() const;
 
     /// <summary>
@@ -399,6 +397,20 @@ namespace xloil
     /// </summary>
     /// <returns>false if object is not an array, else true</returns>
     XLOIL_EXPORT static bool trimmedArraySize(const ExcelObj& obj, row_t& nRows, col_t& nCols);
+
+    /// <summary>
+    /// Returns an ExcelObj of Array type which contains the array data.
+    /// Tries to avoid copying the underlying data where possible. This
+    /// function should only be used when the underlying data is guaranteed
+    /// to outlive the object returned from this function.
+    /// </summary>
+    ExcelObj toExcelObjUnsafe() const
+    {
+      if (_columns == _baseCols || _rows == 1)
+        return ExcelObj(_data, _rows, _columns, true);
+      else
+        return toExcelObj();
+    }
 
   private:
     const ExcelObj* _data;

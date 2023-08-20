@@ -71,32 +71,39 @@ namespace
   wstring loadOneDriveUrl(const wstring& url)
   {
     XLO_DEBUG(L"Loading module from OneDrive URL '{}'", url);
-    auto app = xloil::Application();
-    xloil::ExcelWorkbook wb;
-    // Turning off alerts means that a failed open happens quickly,
-    // otherwise there can be 30s timeout
-    auto previousAlertSetting = app.setDisplayAlerts(false);
-    try
+    auto& app = xloil::thisApp();
     {
-      wb = app.open(url, false, true);
+      // Turning off alerts means that a failed open happens quickly,
+      // otherwise there can be 30s timeout
+      const xloil::PauseExcel paused(app);
+      xloil::ExcelWorkbook wb;
+      try
+      {
+        wb = app.open(url, false, true);
+      }
+      catch (std::exception) {}
+
+      if (!wb.valid())
+        return wstring();
+
+      if (wb.path() != url)
+      {
+        XLO_WARN(L"Unexpected error when loading module from sharepoint: "
+          "requested file '{}' but loaded ;{}'", url, wb.path());
+        return wstring();
+      }
+
+      const auto firstSheet = wb.worksheets().list()[0];
+      auto textRange = firstSheet.usedRange();
+      wstring text;
+      for (auto i = 0u; i < textRange.nRows(); ++i)
+      {
+        auto value = textRange.value(i, 0);
+        (text += value.toString()) += L"\n";
+      }
+      wb.close();
+      return std::move(text);
     }
-    catch (std::exception) {}
-
-    app.setDisplayAlerts(previousAlertSetting);
-    if (!wb.valid())
-      return wstring();
-
-    auto firstSheet = wb.worksheets().list()[0];
-    auto textRange = firstSheet.usedRange();
-    wstring text;
-    for (auto i = 0u; i < textRange.nRows(); ++i)
-    {
-      auto value = textRange.value(i, 0);
-      (text += value.toString()) += L"\n";
-    }
-    wb.close();
-
-    return std::move(text);
   }
 }
 

@@ -33,30 +33,50 @@ namespace xloil
 
     // If only the first three arguments are supplied, behave like the INDEX function
     if (inToRow.isMissing() && inToCol.isMissing())
-      return returnValue(array(fromRow, fromCol));
+    {
+      if (inFromCol.isMissing())
+        return returnValue(array.slice(fromRow, 0, fromRow + 1, array.nCols()).toExcelObjUnsafe());
+      else if (inFromRow.isMissing())
+        return returnValue(array.slice(0, fromCol, array.nRows(), fromCol + 1).toExcelObjUnsafe());
+      else
+        return returnValue(array(fromRow, fromCol));
+    }
 
-    auto toRow = inToRow.get<int>();
-    auto toCol = inToCol.get<int>();
+    int toRow, toCol;
 
-    // Move to 1-based indexing
-    if (toRow > 0) --toRow;
-    if (toCol > 0) --toCol;
+    if (inToRow.isMissing())
+      toRow = fromRow + 1;
+    else
+    {
+      toRow = inToRow.get<int>();
+      if (toRow > 0) --toRow;
+    }
+
+    if (inToCol.isMissing())
+      toCol = fromCol + 1;
+    else
+    {
+      toCol = inToCol.get<int>();
+      if (toCol > 0) --toCol;
+    }
 
     const auto slice = array.slice(
       fromRow, fromCol, 
       toRow == 0 ? array.nRows() : toRow,
       toCol == 0 ? array.nCols() : toCol);
 
-    // TODO: under certain circumstances the input array may
-    // not need to be copied
-    return returnValue(slice.toExcelObj());
+    return returnValue(slice.toExcelObjUnsafe());
   }
   XLO_FUNC_END(xloIndex).threadsafe()
     .help(L"Extends the INDEX function to xlOil refs and sub-arrays. Indices are 1-based. "
-          L"Returns a single value if ToRow and ToCol are omitted otherwise returns an array.")
-    .arg(L"ArrayOrRef", L"A range/array or and xlOil ref")
-    .optArg(L"FromRow", L"Starting row, 1 if omitted. If negative counts back from last row")
-    .optArg(L"FromCol", L"Starting column, 1 if omitted. If negative counts back from last column")
-    .optArg(L"ToRow", L"End row, not inclusive. If omitted uses FromRow+1. If zero or negative counts back from last row")
-    .optArg(L"ToCol", L"End column, not inclusive. If omitted uses FromCol+1. If zero or negative counts back from last column");
+          L"Returns a single value if exactly FromRow and ToRow are given. Returns a"
+          L"column or row array if one is given. Returns a subarray if ToRow or ToCol"
+          L"are also given.")
+    .arg(L"ArrayOrRef", L"A range/array or an xlOil ref")
+    .optArg(L"FromRow", L"Starting row. If negative, counts back from last row. If ommitted, the entire column is returned")
+    .optArg(L"FromCol", L"Starting column. If negative, counts back from last column. If ommitted, the entire row is returned")
+    .optArg(L"ToRow", L"End row, not inclusive. If omitted uses FromRow+1 if FromRow was gven. "
+                      L"Zero is the last row.If negative, counts back from last row")
+    .optArg(L"ToCol", L"End column, not inclusive. If omitted uses FromCol+1 if FromCol was given. "
+                      L"Zero is the last column. If negative, counts back from last column");
 }

@@ -56,6 +56,7 @@ __all__ = [
     "insert_cell_image",
     "run",
     "run_async",
+    "to_datetime",
     "xloil_addins"
 ]
 
@@ -68,6 +69,40 @@ class Addin():
         Returns a list of all functions declared by this addin.
         """
     def source_files(self) -> typing.List[str]: ...
+    @property
+    def async_slice(self) -> int:
+        """
+                      Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+                      to run before being interrupted. The event loop holds the GIL while it is running, so
+                      making this interval too long could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_slice.setter
+    def async_slice(self, arg1: int) -> None:
+        """
+        Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+        to run before being interrupted. The event loop holds the GIL while it is running, so
+        making this interval too long could impact the performance of other python functions.
+        """
+    @property
+    def async_throttle(self) -> int:
+        """
+                      Sets/gets the interval in milliseconds between switches to the asyncio event loop
+                      embedded in this addin. The event loop holds the GIL while it is running, so making
+                      this interval too short could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_throttle.setter
+    def async_throttle(self, arg1: int) -> None:
+        """
+        Sets/gets the interval in milliseconds between switches to the asyncio event loop
+        embedded in this addin. The event loop holds the GIL while it is running, so making
+        this interval too short could impact the performance of other python functions.
+        """
     @property
     def event_loop(self) -> object:
         """
@@ -648,6 +683,7 @@ class IPyFromExcel():
     def __str__(self) -> str: ...
     pass
 class IPyToExcel():
+    def __call__(self, arg0: _object) -> _RawExcelValue: ...
     def __str__(self) -> str: ...
     pass
 class ObjectCache():
@@ -675,12 +711,37 @@ class ObjectCache():
     def __getitem__(self, arg0: str) -> object: ...
     def add(self, obj: object, tag: str = '', key: str = '') -> object: 
         """
-        Adds an object to the cache and returns a reference string
-        based on the currently calculating cell.
+        Adds an object to the cache and returns a reference string.
 
-        xlOil automatically adds unconvertible returned objects to the cache,
-        so this function is useful to force a recognised object, such as an 
-        iterable into the cache, or to return a list of cached objects.
+        xlOil automatically adds objects returned from worksheet 
+        functions to the cache if they cannot be converted by any 
+        registered converter.  So this function is useful to:
+
+           1) force a convertible object, such as an iterable, into the
+              cache
+           2) return a list of cached objects
+           3) create cached objects from outside of worksheet fnctions
+              e.g. in commands / subroutines
+
+        xlOil uses the caller infomation provided by Excel to construct
+        the cache string and manage the cache object lifecycle. When
+        invoked from a worksheet function, this caller info contains 
+        the cell reference. xlOil deletes cache objects linked to the 
+        cell reference from previous calculation cycles.
+
+        When invoked from a source other than a worksheet function (there
+        are several possibilies, see the help for `xlfCaller`), xlOil
+        again generates a reference string based on the caller info. 
+        However, this may not be unique.  In addition, objects with the 
+        same caller string will replace those created during a previous 
+        calculation cycle. For example, creating cache objects from a button
+        clicked repeatedly will behave differently if Excel recalculates 
+        in between the clicks. To override this behaviour, the exact cache
+        `key` can be specified.  For example, use Python's `id` function or
+        the cell address being written to if a command is writing a cache
+        string to the sheet.  When `key` is specified the user is responsible
+        for managing the lifecycle of their cache objects.
+
 
         Parameters
         ----------
@@ -711,7 +772,13 @@ class ObjectCache():
         """
         Returns all cache keys as a list of strings
         """
-    def remove(self, ref: str) -> bool: ...
+    def remove(self, ref: str) -> bool: 
+        """
+        xlOil manages the lifecycle for most cache objects, so this  
+        function should only be called when `add` was invoked with a
+        specified key - in this case the user owns the lifecycle 
+        management. 
+        """
     pass
 class Range():
     """
@@ -1066,6 +1133,11 @@ class RtdServer():
 
         Calling this function outside of a worksheet function called by Excel may
         produce undesired results and possibly crash Excel.
+        """
+    @property
+    def progid(self) -> str:
+        """
+        :type: str
         """
     pass
 class StatusBar():
@@ -2055,6 +2127,24 @@ def _get_onedrive_source(arg0: str) -> str:
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
+def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None) -> _RawExcelValue:
+    """
+    For internal use. Converts a table like object (such as a pandas DataFrame) to 
+    RawExcelValue suitable for returning to xlOil.
+
+    n, m:
+      the number of data fields and the length of the fields
+    columns / rows: 
+      a iterable of numpy array containing data, specified as columns 
+      or rows (not both)
+    headings:
+      optional array of data field headings
+    index:
+      optional data field labels - one per data point
+    index_name:
+      optional headings for the index, should be a 1 dim iteratable of size
+      num_index_levels * num_column_levels
+    """
 def active_workbook() -> Workbook:
     """
     Returns the currently active workbook. Will raise an exception if xlOil
@@ -2133,10 +2223,7 @@ def excel_state() -> ExcelState:
     """
 def from_excel_date(arg0: object) -> object:
     """
-    Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
-    Excel date serial number.  Strings are parsed using the current date conversion 
-    settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
-    if conversion is not possible.
+    Identical to `xloil.to_datetime`.
     """
 def get_async_loop() -> object:
     """
@@ -2146,9 +2233,9 @@ def get_async_loop() -> object:
     """
 def in_wizard() -> bool:
     """
-    Returns true if the function is being invoked from the function wizard : costly functions should"
-    exit in this case to maintain UI responsiveness.Checking for the wizard is itself not cheap, so"
-    use this sparingly.
+    Returns true if the function is being invoked from the function wizard : costly functions 
+    should exit in this case to maintain UI responsiveness.  Checking for the wizard is itself 
+    not cheap, so use this sparingly.
     """
 def insert_cell_image(writer: object, size: object = None, pos: object = None, origin: object = None, compress: bool = True) -> str:
     """
@@ -2195,7 +2282,19 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-_return_converter_hook: xloil_core._CustomReturnConverter=None
-cache: xloil_core.ObjectCache=None
-date_formats: xloil_core._DateFormatList=None
-xloil_addins: xloil_core._AddinsDict=None
+def to_datetime(arg0: object) -> object:
+    """
+    Tries to the convert the given object to a `dt.date` or `dt.datetime`:
+
+      * Numbers are assumed to be Excel date serial numbers. 
+      * Strings are parsed using the current date conversion settings.
+      * A numpy array of floats is treated as Excel date serial numbers and converted
+        to n array of datetime64[ns].
+      * `dt.datetime` is provided is simply returned.
+
+    Raises `ValueError` if conversion is not possible.
+    """
+_return_converter_hook: _CustomReturnConverter=None # value = <xloil_core._CustomReturnConverter object>
+cache: ObjectCache=None # value = <xloil_core.ObjectCache object>
+date_formats: _DateFormatList=None # value = <xloil_core._DateFormatList object>
+xloil_addins: _AddinsDict=None # value = <xloil_core._AddinsDict object>

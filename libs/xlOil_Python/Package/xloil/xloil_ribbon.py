@@ -19,11 +19,22 @@ class Settings:
         return self._doc.__getitem__(*args)
 
     def set_env_var(self, name, value):
+        """ Sets the value of a token in the Python plugin's Environment block """
         table = self._find_table(self.python['Environment'], name)
         table[name] = value
 
     def get_env_var(self, name):
+        """ Returns the value of a token in the Python plugin's Environment block """
         table = self._find_table(self.python['Environment'], name)
+        return table[name]
+
+    def set_addin_env_var(self, name, value):
+        """ Sets the value of a token in the xlOil addin's Environment block """
+        table = self._find_table(self._doc['Addin']['Environment'], name)
+        table[name] = value
+
+    def get_addin_env_var(self, name):
+        table = self._find_table(self._doc['Addin']['Environment'], name)
         return table[name]
 
     def save(self):
@@ -195,10 +206,25 @@ _python_enviroments = list(_find_python_enviroments().values())
 async def set_python_environment(ctrl, id, index):
     environment = _python_enviroments[index]
 
-    _settings.set_env_var("PYTHONEXECUTABLE", environment['ExecutablePath'])
+    exe_path = environment['ExecutablePath']
+
+    xloil_bin_path = Path(exe_path).parent / "share/xloil"
+
+    if not xloil_bin_path.exists():
+        xloil.log.error("Changed target python environment to '%s', but the xlOil package is missing. " +
+                        "Unless it is installed, xlOil will not load correctly when Excel is restarted.",
+                        exe_path)
+
+    _settings.set_env_var("PYTHONEXECUTABLE", exe_path)
 
     # Clear the version override if set (it shouldn't generally be required)
     _settings.set_env_var("XLOIL_PYTHON_VERSION", "")
+
+    # This is where we look for the binaries
+    try:
+        _settings.set_addin_env_var("XLOIL_PATH", str(xloil_bin_path))
+    except toml.exceptions.NonExistentKey:
+        ...
 
     _settings.save()
 
@@ -240,7 +266,8 @@ def get_python_environment_selected(ctrl):
 #
 
 async def set_load_modules(ctrl, value):
-    modules = value.split(",")
+    # Allow a semi-colon separator
+    modules = value.replace(";", ",").split(",")
     _settings.python['LoadModules'] = modules
     _settings.save()
 

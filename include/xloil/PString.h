@@ -422,11 +422,15 @@ namespace xloil
     void resize(size_type sz)
     {
       if (sz <= length())
-        _data[0] = sz;
+      {
+        if (_data)
+          _data[0] = sz;
+      }
       else
       {
         PString copy(sz);
-        traits::copy(copy._data + 1, _data, sz);
+        if (_data)
+          traits::copy(copy._data + 1, _data, sz);
         *this = std::move(copy);
       }
     }

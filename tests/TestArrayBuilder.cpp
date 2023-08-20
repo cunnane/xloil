@@ -10,6 +10,18 @@ using namespace xloil;
 using std::wstring;
 using std::vector;
 
+namespace Microsoft {
+  namespace VisualStudio {
+    namespace CppUnitTestFramework
+    {
+      template<> inline std::wstring ToString<xloil::ExcelObj>(const xloil::ExcelObj& x)
+      {
+        return x.toString();
+      }
+    }
+  }
+}
+
 namespace Tests
 {
   TEST_CLASS(ArrayBuilder)
@@ -41,6 +53,34 @@ namespace Tests
       Assert::AreEqual(arr(1, 1).get<double>(), row1[1]);
     }
 
+    TEST_METHOD(ArrayBuilderIterator)
+    {
+      auto nRows = 6;
+      auto nCols = 3;
+
+      ExcelArrayBuilder builderRow(nRows, nCols, 10);
+
+      for (auto i = 0; i < nRows; ++i)
+      {
+        auto j = 0;
+        for (auto iter = builderRow.row_begin(i); iter != builderRow.row_end(i); ++iter, ++j)
+          *iter = i + j;
+      }
+
+      ExcelArrayBuilder builderCol(nRows, nCols, 10);
+
+      for (auto j = 0; j < nCols; ++j)
+      {
+        auto i = 0;
+        for (auto iter = builderCol.col_begin(j); iter != builderCol.col_end(j); ++iter, ++i)
+          *iter = i + j;
+      }
+
+      auto byRow = builderRow.toExcelObj();
+      auto byCol = builderCol.toExcelObj();
+
+      Assert::AreEqual(byRow, byCol);
+    }
     TEST_METHOD(ArrayIteratorSyntax)
     {
       vector<double> data = { 1, 2, 3, 4, 5, 6 };

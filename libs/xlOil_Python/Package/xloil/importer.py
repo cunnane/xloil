@@ -186,15 +186,18 @@ def _import_and_scan(what, addin):
 
     Internal use only: called from xlOil Core
     """
-    
-    if isinstance(what, str):
-        # Remember which addin loaded this module
-        _module_addin_map[what] = addin.pathname
-        module = importlib.import_module(what)
-    elif inspect.ismodule(what):
-        module = importlib.reload(what)
-    else:
-        return _import_and_scan_mutiple(what, addin)
+    try:
+        if isinstance(what, str):
+            # Remember which addin loaded this module
+            _module_addin_map[what] = addin.pathname
+            module = importlib.import_module(what)
+        elif inspect.ismodule(what):
+            module = importlib.reload(what)
+        else:
+            return _import_and_scan_mutiple(what, addin)
+    except (ImportError, ModuleNotFoundError) as e:
+        import sys
+        raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
     
     scan_module(module, addin)
     return module
@@ -209,7 +212,7 @@ def _import_and_scan_mutiple(module_names, addin):
             try:
                 result.append(_import_and_scan(m, addin))
             except Exception as e:
-                log_except("Failed to load '{m}'")
+                log_except(f"Failed to load '{m}'")
                 status.msg(f"Failed to load '{m}'. See log")
                 success = False
         if success:

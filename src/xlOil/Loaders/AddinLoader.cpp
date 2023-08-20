@@ -10,6 +10,7 @@
 #include <xloil/RtdServer.h>
 #include <xloil-XLL/LogWindowSink.h>
 #include <xloil/StaticRegister.h>
+#include <xloil/ExcelThread.h>
 #include <xlOil-COM/Connect.h>
 #include <toml++/toml.h>
 #include <filesystem>
@@ -25,14 +26,14 @@ namespace xloil
   namespace
   {
     std::map<std::wstring, std::shared_ptr<AddinContext>> theAddinContexts;
-    xloil::AddinContext* theCoreContextPtr;
+    std::shared_ptr<AddinContext> theCoreContextPtr;
 
     /// <summary>
     /// Finds the settings file <XllName>.ini either in %APPDATA%\xlOil
     /// or in the same directory as the XLL.  Adds any log sink specified
     /// and any date formats.
     /// </summary>
-    auto& createContext(const wchar_t* xllPath)
+    auto createContext(const wchar_t* xllPath)
     {
       auto settings = findSettingsFile(xllPath);
       wstring logFile;
@@ -74,7 +75,7 @@ namespace xloil
         wstring(xllPath), make_shared<AddinContext>(xllPath, settings));
 
       ctx->second->logFilePath = std::move(logFile);
-      return *ctx->second;
+      return ctx->second;
     }
   }
 
@@ -89,14 +90,14 @@ namespace xloil
     return theAddinContexts;
   }
 
-  AddinContext& createCoreAddinContext()
+  std::shared_ptr<AddinContext> createCoreAddinContext()
   {
     if (!theCoreContextPtr)
-      theCoreContextPtr = &createContext(Environment::coreDllPath());
-    return *theCoreContextPtr;
+      theCoreContextPtr = createContext(Environment::coreDllPath());
+    return theCoreContextPtr;
   }
 
-  AddinContext& createAddinContext(const wchar_t* pathName)
+  std::shared_ptr<AddinContext>createAddinContext(const wchar_t* pathName)
   {
     // Compare the filename stem to our core dll name (which should end in 'dll')
     const auto lastSlash = wcsrchr(pathName, L'\\');
@@ -105,31 +106,61 @@ namespace xloil
       coreDll,
       lastSlash ? lastSlash + 1 : pathName,
       wcslen(coreDll) - 3);
-    return (isCore)
-      ? createCoreAddinContext()
-      : createContext(pathName);
+    if (isCore)
+    {
+      auto context = createCoreAddinContext();
+      // Point xloil.xll at the context (as well as xloil.dll). In the case
+      // of multiple xlOil xlls, they can be unloaded in any order, the 
+      // check in addinCloseXll that only 1 remains assumes there is 
+      // one context entry per XLL.
+      theAddinContexts[pathName] = theCoreContextPtr;
+      return context;
+    }
+    else
+      return createContext(pathName);
   }
 
   void addinCloseXll(const wchar_t* xllPath)
   {
     theAddinContexts.erase(xllPath);
-    // Check if only the core left
+    // Check if only the core is left
     if (theAddinContexts.size() == 1)
     {
-      theAddinContexts.clear();
-      
       // Somewhat cheap trick to ensure any async tasks which may reference plugin
       // code are destroyed in a timely manner prior to teardown.  Better would be
       // to keep track of which tasks were registered by which addin
       rtdAsyncServerClear();
 
+      if (theAddinContexts.begin()->second.get() != theCoreContextPtr.get())
+        XLO_ERROR("addinCloseXll: unexpected addins present");
+
+      theAddinContexts.clear();
+      theCoreContextPtr->detachPlugins();
+      theCoreContextPtr.reset();
+
       Event::AutoClose().fire();
 
       unloadAllPlugins();
-      assert(theAddinContexts.empty());
+
+      // We don't want any messages hanging around after autoClose finishes
+      teardownMessageQueue();
 
       COM::disconnectCom();
     }
+
+    spdlog::default_logger()->flush();
+  }
+
+  void teardownAddinContext()
+  {
+    teardownFunctionRegistry();
+
+    theAddinContexts.clear();
+    theCoreContextPtr.reset();
+
+    teardownMessageQueue();
+
+    COM::disconnectCom();
 
     spdlog::default_logger()->flush();
   }

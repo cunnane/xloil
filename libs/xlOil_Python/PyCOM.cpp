@@ -240,7 +240,7 @@ namespace xloil
       {
         if (!binderLib || binderLib[0] == 0)
           return marshalCom(
-            theCoreAddin() ? theCoreAddin()->comBinder.c_str() : "win32com",
+            theCoreAddin() ? theCoreAddin()->comBinder().c_str() : "win32com",
             p, interfaceName, clsid);
         
         // Convert our CLSID to a string, 128 chars should be plenty

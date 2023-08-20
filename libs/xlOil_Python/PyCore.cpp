@@ -24,10 +24,16 @@ namespace xloil
   {
     PyTypeObject* theCellErrorType;
     PyObject*     cannotConvertException;
+    PyTypeObject* theExcelObjType;
 
     bool isErrorType(const PyObject* obj)
     {
       return Py_TYPE(obj) == theCellErrorType;
+    }
+
+    bool isExcelObjType(const PyObject* obj)
+    {
+      return Py_TYPE(obj) == theExcelObjType;
     }
 
     namespace
@@ -137,6 +143,14 @@ namespace xloil
         if (!importNumpy())
           throw py::error_already_set();
 
+        theExcelObjType = (PyTypeObject*)py::class_<ExcelObj>(
+          mod, 
+          "_RawExcelValue"
+          R"(
+            Wrapper for an already-converted Excel value ready to be returned directly
+            to Excel. For internal use in type converters.
+          )").ptr();
+
         // Bind the two base classes for python converters
         py::class_<IPyFromExcel, shared_ptr<IPyFromExcel>>(mod, "IPyFromExcel")
           .def("__call__",
@@ -147,13 +161,14 @@ namespace xloil
           .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
 
         py::class_<IPyToExcel, shared_ptr<IPyToExcel>>(mod, "IPyToExcel")
-          .def("__str__", [](const IPyFromExcel& self) { return self.name(); });
+          .def("__str__", [](const IPyToExcel& self) { return self.name(); })
+          .def("__call__", &IPyToExcel::operator());
 
         mod.def("in_wizard", &inFunctionWizard,
           R"(
-          Returns true if the function is being invoked from the function wizard : costly functions should"
-          exit in this case to maintain UI responsiveness.Checking for the wizard is itself not cheap, so"
-          use this sparingly.
+            Returns true if the function is being invoked from the function wizard : costly functions 
+            should exit in this case to maintain UI responsiveness.  Checking for the wizard is itself 
+            not cheap, so use this sparingly.
           )");
 
         PyFuture<PyObject*>::bind(mod, "_PyObjectFuture");
