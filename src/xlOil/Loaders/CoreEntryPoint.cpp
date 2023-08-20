@@ -128,6 +128,8 @@ namespace xloil
   }
 }
 
+XLO_DEFINE_FREE_CALLBACK()
+
 XLO_ENTRY_POINT(int) DllMain(
   _In_ HINSTANCE hinstDLL,
   _In_ DWORD     fdwReason,
@@ -145,4 +147,3 @@ XLO_ENTRY_POINT(int) DllMain(
   }
   return TRUE;
 }
-

@@ -1,4 +1,5 @@
 #include <xlOil/Plugin.h>
+#include <xloil/ExcelObj.h>
 
 namespace xloil
 {
@@ -21,3 +22,4 @@ namespace xloil
   }
 }
 
+XLO_DEFINE_FREE_CALLBACK()

@@ -10,4 +10,4 @@
 #endif
 #endif
 
-#define XLO_ENTRY_POINT(ret) extern "C" __declspec(dllexport) ret __stdcall 
+#define XLO_ENTRY_POINT(return_value) extern "C" __declspec(dllexport) return_value __stdcall 

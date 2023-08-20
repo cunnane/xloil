@@ -92,6 +92,20 @@ namespace xloil
       const char* entryPoint,
       const wchar_t* moduleName)
     {
+      // Look for xlAutoFree12 in the registering module. If it does not exist
+      // we will silently leak memory as Excel cannot free the values we return
+      // to it. We assume we got things right in the Core DLL, so we don't perform
+      // this check for every dynamic registration.
+      if (wcscmp(moduleName, get().theCoreDllName) != 0)
+      {
+        const auto moduleHandle = GetModuleHandle(moduleName);
+        if (!moduleHandle)
+          XLO_THROW(L"Could not retrive module handle for '{}' during function regisration");
+        const auto autoFreeFunc = GetProcAddress(moduleHandle, "xlAutoFree12");
+        if (!autoFreeFunc)
+          XLO_THROW(L"Module '{}' must define xlAutoFree12 to register Excel functions", moduleName);
+      }
+
       auto numArgs = info->args.size();
       int opts = info->options;
 
@@ -301,7 +315,10 @@ namespace xloil
     // clusters, which we aren't supporting at this current time.
     auto arbitraryFunction = decorateCFunction("SetExcel12EntryPt", 1);
     auto [tempRegId, retVal] = tryCallExcel(
-      xlfRegister, FunctionRegistry::get().theCoreDllName, arbitraryFunction.c_str(), "I", name, nullptr, 2);
+      xlfRegister, 
+      FunctionRegistry::get().theCoreDllName, 
+      arbitraryFunction.c_str(), 
+      "I", name, nullptr, 2);
     tryCallExcel(xlfSetName, name); // SetName with no arg un-sets the name
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;

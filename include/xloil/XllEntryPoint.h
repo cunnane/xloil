@@ -157,15 +157,7 @@ XLO_ENTRY_POINT(int) xlAutoClose(void)
   return 1;
 }
 
-XLO_ENTRY_POINT(void) xlAutoFree12(xloil::ExcelObj* pxFree)
-{
-  try
-  {
-    delete pxFree;
-  }
-  catch (...)
-  { }
-}
+XLO_DEFINE_FREE_CALLBACK()
 
 XLO_ENTRY_POINT(int) xlHandleCalculationCancelled()
 {
