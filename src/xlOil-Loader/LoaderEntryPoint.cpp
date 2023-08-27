@@ -110,6 +110,8 @@ struct xlOilCoreAddin
     {
       using XllInfo::xllPath;
       
+      std::unique_ptr<PushDllDirectory> setDllDir;
+
       // First we try to load a settings file to see if it tells us
       // to run a startup trace
       const auto settings = findSettingsFile(xllPath.c_str());
@@ -134,7 +136,7 @@ struct xlOilCoreAddin
       {
         log("Found xlOil.dll in xll directory. Calling SetDllDirectory('%s')",
             ourXllDir.string().c_str());
-        SetDllDirectory(ourXllDir.c_str());
+        setDllDir.reset(new PushDllDirectory(ourXllDir.c_str()));
       }
       else
       {
@@ -159,12 +161,7 @@ struct xlOilCoreAddin
       log("Environment PATH=%s", getEnvironmentVar("PATH").c_str());
     
       if (!findAllCoreDllImports())
-      {
-        SetDllDirectory(NULL);
         throw std::runtime_error("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
-      }
-
-      SetDllDirectory(NULL);
 
       Environment::initAppContext();
 

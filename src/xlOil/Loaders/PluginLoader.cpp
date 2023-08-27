@@ -67,7 +67,7 @@ namespace xloil
       ? coreDir
       : xllDir;
 
-    SetDllDirectory(pluginDir.c_str());
+    PushDllDirectory setDllDir(pluginDir.c_str());
 
     const auto pluginPath = pluginDir / (pluginName + XLOIL_PLUGIN_EXT);
 
@@ -159,9 +159,6 @@ namespace xloil
         pluginPath.wstring(), utf8ToUtf16(e.what()), getEnvironmentVar(L"PATH"));
       return false;
     }
-
-    // Undo addition to DLL search path 
-    SetDllDirectory(NULL);
 
     return true;
   }

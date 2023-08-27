@@ -79,7 +79,22 @@ namespace xloil
       _name.clear();
       _previous.clear();
     }
-
+    PushDllDirectory::PushDllDirectory(const wchar_t* path)
+    {
+      static_assert(_countof(_previous) == MAX_PATH);
+      GetDllDirectory(_countof(_previous), _previous);
+      SetDllDirectory(path);
+    }
+    PushDllDirectory::PushDllDirectory(const char* path)
+    {
+      static_assert(_countof(_previous) == MAX_PATH);
+      GetDllDirectory(_countof(_previous), _previous);
+      SetDllDirectoryA(path);
+    }
+    PushDllDirectory::~PushDllDirectory()
+    {
+      SetDllDirectory(_previous);
+    }
     namespace
     {
       inline bool getWindowsRegistryValue(

@@ -116,10 +116,16 @@ namespace xloil
           }
           else
           {
-            // Load the plugin
-            const auto py3dll = LoadLibrary(L"python3.dll");
-            if (!py3dll)
-              XLO_THROW(writeWindowsError());
+            // Load the plugin, but first set the DLL directory to our PYTHONHOME in case
+            // there are other pythons on the path
+            HMODULE py3dll;
+            {
+              PushDllDirectory setDllDir(pythonHome.c_str());
+              // Load the plugin
+              py3dll = LoadLibrary(L"python3.dll");
+              if (!py3dll)
+                XLO_THROW(writeWindowsError());
+            }
 
             typedef const char*(*Py_GetVersion_t)();
             const auto pyGetVersion = (Py_GetVersion_t)
