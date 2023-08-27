@@ -264,7 +264,7 @@ namespace xloil
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
-        EXCEPINFO* /*pexcepinfo*/, UINT* /*puArgErr*/)
+        EXCEPINFO* pexcepinfo, UINT* /*puArgErr*/)
       {
         try
         {
@@ -275,67 +275,95 @@ namespace xloil
           switch (dispidMember)
           {
           case 0x0000061d:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             NewWorkbook((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000616:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             SheetSelectionChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
           case 0x00000617:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             SheetBeforeDoubleClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
             break;
           case 0x00000618:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             SheetBeforeRightClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
             break;
           case 0x00000619:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetActivate(rgvarg[0].pdispVal);
             break;
           case 0x0000061a:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetDeactivate(rgvarg[0].pdispVal);
             break;
           case 0x0000061b:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetCalculate(rgvarg[0].pdispVal);
             break;
           case 0x0000061c:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
           case 0x0000061f:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookOpen((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000620:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookActivate((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000621:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookDeactivate((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000622:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforeClose((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
             break;
           case 0x00000623:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforeSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal, rgvarg[2].pboolVal);
             break;
           case 0x00000624:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforePrint((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
             break;
           case 0x00000625:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookNewSheet((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pdispVal);
             break;
           case 0x00000626:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookAddinInstall((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000627:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000a34:
             AfterCalculate();
             break;
           case 2911:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookAfterSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal);
             break;
           }
         }
         catch (_com_error& error)
         { 
-          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+          if (error.Error() == VBA_E_IGNORE)
+          {
+            pexcepinfo->scode = 0;
+            pexcepinfo->wCode = error.WCode();
+            pexcepinfo->bstrDescription = nullptr;
+            pexcepinfo->bstrHelpFile = nullptr;
+            pexcepinfo->bstrSource = nullptr;
+            pexcepinfo->pfnDeferredFillIn = nullptr;
+            return DISP_E_EXCEPTION;
+          }
+          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
         catch (const std::exception& e)
         {
