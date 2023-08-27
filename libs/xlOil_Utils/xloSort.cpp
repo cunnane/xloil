@@ -208,13 +208,13 @@ namespace xloil
     else
     {
       // If not "inplace" we're sorting a cache object. We know the strings in this
-      // object will outlive the return value, so it's safe to call 'overwrite'
+      // object will outlive the return value, so it's safe to call 'assign'
       ExcelArrayBuilder builder(nRows, nCols);
       for (row_t i = 0; i < nRows; ++i)
       {
         auto iRow = indices[i];
         for (col_t j = 0; j < nCols; ++j)
-          builder(i, j).overwrite(arr(iRow, j));
+          builder(i, j).assign(arr(iRow, j), false);
       }
       return returnValue(builder.toExcelObj());
     }

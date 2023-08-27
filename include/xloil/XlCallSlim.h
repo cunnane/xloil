@@ -197,7 +197,11 @@ namespace msxll
     union
     {
       double num;				       	/* xltypeNum */
-      XCHAR *str;				       	/* xltypeStr */
+      struct
+      {
+        XCHAR* data;
+        bool xloil_view; // Our modification
+      } str; 	/* xltypeStr */
       BOOL xbool;				       	/* xltypeBool */
       int err;				       	/* xltypeErr */
       int w;

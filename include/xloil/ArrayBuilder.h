@@ -18,7 +18,7 @@ namespace xloil
         , _endStringData(data + size)
 #endif
       {}
-      constexpr wchar_t* allocate(size_t n)
+      wchar_t* allocate(size_t n)
       {
 #ifdef _DEBUG
         if (_stringData + n > _endStringData)
@@ -28,7 +28,7 @@ namespace xloil
         _stringData += n;
         return ptr;
       }
-      constexpr void deallocate(wchar_t*, size_t) { }
+      void deallocate(wchar_t*, size_t) { }
     private:
       wchar_t* _stringData;
 #ifdef _DEBUG
@@ -104,13 +104,13 @@ namespace xloil
         , _alloc(&allocator)
       {}
 
-      template <class T, 
+      template <class T,
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
-        auto& operator=(T x)
-      { 
+      auto& operator=(T x)
+      {
         // Note that _target is uninitialised memory, so we cannot
         // call *_target = ExcelObj(x)
-        new (_target) ExcelObj(x); 
+        new (_target) ExcelObj(x);
         return *this;
       }
 
@@ -131,16 +131,30 @@ namespace xloil
       /// </summary>
       auto& operator=(const ExcelObj& x)
       {
+        assign(x);
+        return *this;
+      }
+
+      /// <summary>
+      /// Copies from an ExcelObj. Optionally does not copy string data.
+      /// This is safe when the parent ExcelObj will outlive this array.
+      /// </summary>
+      void assign(const ExcelObj& x, bool copyString = true)
+      {
         if (!x.isType(ExcelType::ArrayValue))
           ExcelObj::overwrite(*_target, CellError::Value);
         else if (x.isType(ExcelType::Str))
         {
-          auto pstr = x.cast<PStringRef>();
-          copy_string(pstr.begin(), pstr.length());
+          if (copyString)
+          {
+            auto pstr = x.cast<PStringRef>();
+            copy_string(pstr.begin(), pstr.length());
+          }
+          else
+            ExcelObj::overwriteView(*_target, x);
         }
         else
           ExcelObj::overwrite(*_target, x);
-        return *this;
       }
 
       operator const ExcelObj& () const { return *_target; }
@@ -164,31 +178,24 @@ namespace xloil
         new (_target) ExcelObj(PString::steal(pstr));
       }
 
-      /// <summary>
-      /// Optimisation of operator=. Safe when the type of ExcelObj is not
-      /// a string or the parent ExcelObj will outlive the array.
-      /// </summary>
-      void overwrite(const ExcelObj& x)
-      {
-        ExcelObj::overwrite(*_target, x);
-      }
-
       void copy_string(const wchar_t* str, size_t len)
       {
         auto xlObj = new (_target) ExcelObj();
         xlObj->xltype = msxll::xltypeStr;
+        // This strings here will never be freed directly: the ExcelObj's dtor will never be 
+        // called as it is an array element: the array block and its string data are freed in 
+        // one call. However, we set the view flag for good practice!
+        xlObj->val.str.xloil_view = true;
 
         if (len == 0)
         {
-          xlObj->val.str = Const::EmptyStr().val.str;
+          xlObj->val.str.data = Const::EmptyStr().val.str.data;
         }
         else
         {
           auto pstr = _alloc->newString(len);
           wmemcpy_s(pstr + 1, len, str, len);
-          // This object's dtor will never be called, as it is an array element
-          // so the allocated pstr will be freed when the entire array block is
-          xlObj->val.str = pstr;
+          xlObj->val.str.data = pstr;
         }
       }
 

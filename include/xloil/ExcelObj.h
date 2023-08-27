@@ -134,15 +134,21 @@ namespace xloil
       std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
     explicit ExcelObj(T d)
     {
-      if (std::isnan(d))
-      {
-        val.err = msxll::xlerrNum;
-        xltype = msxll::xltypeErr;
-      }
-      else
+      const auto type = fpclassify(d);
+      if (type <= 0)
       {
         xltype = msxll::xltypeNum;
         val.num = (double)d;
+      }
+      else if (type == FP_NAN)
+      {
+        val.err = msxll::xlerrNA;
+        xltype = msxll::xltypeErr;
+      }
+      else // if (type == FP_INFINITE)
+      {
+        val.err = msxll::xlerrNum;
+        xltype = msxll::xltypeErr;
       }
     }
 
@@ -220,9 +226,10 @@ namespace xloil
     /// <param name="pstr"></param>
     explicit ExcelObj(PString&& pstr)
     {
-      val.str = pstr.release();
-      if (!val.str)
-        val.str = Const::EmptyStr().val.str;
+      val.str.data = pstr.release();
+      if (!val.str.data)
+        val.str.data = Const::EmptyStr().val.str.data;
+      val.str.xloil_view = false;
       xltype = msxll::xltypeStr;
     }
 
@@ -251,10 +258,10 @@ namespace xloil
     /// ArrayBuilder to create arrays.
     /// </summary>
     /// <param name="isView">If true, do not take ownership of array data</param>
-    ExcelObj(const ExcelObj* data, int nRows, int nCols, bool isView = false)
+    ExcelObj(const ExcelObj* data, uint32_t nRows, uint32_t nCols, bool isView = false)
     {
       // Excel will crash if passed an empty array
-      if (nRows <= 0 || nCols <= 0)
+      if (nRows == 0 || nCols == 0)
         throw std::range_error("ExcelObj: Cannot create empty array");
       val.array.rows = nRows;
       val.array.columns = nCols;
@@ -480,7 +487,7 @@ namespace xloil
       case xltypeNil:
         return false;
       case xltypeStr:
-        return val.str[0] != L'\0';
+        return val.str.data[0] != L'\0';
       default:
         return true;
       }
@@ -549,7 +556,7 @@ namespace xloil
     /// </summary>
     uint16_t stringLength() const
     {
-      return xltype == msxll::xltypeStr ? val.str[0] : 0;
+      return xltype == msxll::xltypeStr ? val.str.data[0] : 0;
     }
 
     /// <summary>
@@ -618,6 +625,20 @@ namespace xloil
     {
       if (from.isType(ExcelType::Simple))
         (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+      else
+        overwriteComplex(to, from);
+    }
+#
+    static void overwriteView(ExcelObj& to, const ExcelObj& from)
+    {
+      (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+
+      if (from.isType(ExcelType::Simple))
+        return;
+      else if (from.type() == ExcelType::Str)
+        to.val.str.xloil_view = true;
+      else if (from.type() == ExcelType::Multi)
+        to.val.array.xloil_view = true;
       else
         overwriteComplex(to, from);
     }
@@ -805,7 +826,7 @@ namespace xloil
 
   template<> inline PStringRef ExcelObj::cast() const
   {
-    return PStringRef((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
+    return PStringRef((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str.data);
   }
 
   template<> inline const XLOIL_XLOPER* ExcelObj::cast() const
