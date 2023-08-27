@@ -107,7 +107,7 @@ namespace xloil
     {
       ExcelObj* operator()(const std::vector<double>& val)
       {
-        ExcelArrayBuilder builder(val.size(), 1);
+        ExcelArrayBuilder builder((uint32_t)val.size(), 1);
         std::copy(val.begin(), val.end(), builder.begin());
         return new ExcelObj(builder.toExcelObj());
       }
