@@ -43,25 +43,25 @@ namespace xloil
     ExcelArrayIterator(
       const ExcelObj* position,
       const col_t nCols,
-      const col_t baseNumCols);
-    iterator& operator++();
-    iterator& operator--();
-    iterator operator++(int)
+      const col_t baseNumCols) noexcept;
+    iterator& operator++() noexcept;
+    iterator& operator--() noexcept;
+    iterator operator++(int) noexcept
     {
       iterator retval = *this;
       ++(*this);
       return retval;
     }
-    iterator operator--(int)
+    iterator operator--(int) noexcept
     {
       iterator retval = *this;
       --(*this);
       return retval;
     }
-    bool operator==(iterator other) const { return _p == other._p; }
-    bool operator!=(iterator other) const { return !(*this == other); }
-    const ExcelObj& operator*() const { return *_p; }
-    auto* operator->() { return &*_p; }
+    bool operator==(iterator other) const noexcept { return _p == other._p; }
+    bool operator!=(iterator other) const noexcept { return !(*this == other); }
+    const ExcelObj& operator*() const noexcept { return *_p; }
+    auto* operator->() noexcept { return &*_p; }
 
   private:
     const ExcelObj* _p;
@@ -406,10 +406,18 @@ namespace xloil
     /// </summary>
     ExcelObj toExcelObjUnsafe() const
     {
+      if (dims() == 0)
+        return ExcelObj();
+
       if (_columns == _baseCols || _rows == 1)
         return ExcelObj(_data, _rows, _columns, true);
       else
-        return toExcelObj();
+      {
+        auto data = new ExcelObj::Base[size()];
+        // The iterator is noexcept so the raw ptr above is safe
+        std::copy(begin(), end(), data);
+        return ExcelObj((ExcelObj*)data, _rows, _columns);
+      }
     }
 
   private:
@@ -436,7 +444,7 @@ namespace xloil
   inline ExcelArrayIterator::ExcelArrayIterator(
     const ExcelObj* position,
     const ExcelObj::col_t nCols,
-    const ExcelObj::col_t baseNumCols)
+    const ExcelObj::col_t baseNumCols) noexcept
     : _p(position)
     , _pRowEnd(nCols == baseNumCols ? nullptr : position + nCols)
     , _nCols(nCols)
@@ -447,7 +455,7 @@ namespace xloil
     // at the end of a row
   }
 
-  inline ExcelArrayIterator& ExcelArrayIterator::operator++()
+  inline ExcelArrayIterator& ExcelArrayIterator::operator++() noexcept
   {
     if (++_p == _pRowEnd)
     {
@@ -456,7 +464,7 @@ namespace xloil
     }
     return *this;
   }
-  inline ExcelArrayIterator& ExcelArrayIterator::operator--()
+  inline ExcelArrayIterator& ExcelArrayIterator::operator--() noexcept
   {
     if (_pRowEnd - _p == (ptrdiff_t)_nCols)
     {
