@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerCommand>C:\Program Files\Microsoft Office\root\Office16\Excel.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>$(OutDir)\xloil.xll</LocalDebuggerCommandArguments>
+    <LocalDebuggerEnvironment>PYTHONPATH=$(SolutionDir)libs\xlOil_Python\Package
+XLOIL_SETTINGS_DIR=$(OutDir)
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommand>C:\Program Files\Microsoft Office\root\Office16\Excel.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>$(OutDir)\xloil.xll</LocalDebuggerCommandArguments>
+    <LocalDebuggerEnvironment>PYTHONPATH=$(SolutionDir)libs\xlOil_Python\Package
+XLOIL_SETTINGS_DIR=$(OutDir)
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+  </PropertyGroup>
+</Project>

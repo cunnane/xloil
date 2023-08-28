@@ -181,7 +181,7 @@ XLO_ENTRY_POINT(msxll::XLOPER12*) xlAddInManagerInfo12(msxll::XLOPER12* xAction)
   Excel12(msxll::xlCoerce, &xIntAction, 2, xAction, xType);
 
   if (xInfo.xltype == xltypeStr)
-    delete[] xInfo.val.str;
+    delete[] xInfo.val.str.data;
 
   try
   {
@@ -189,7 +189,7 @@ XLO_ENTRY_POINT(msxll::XLOPER12*) xlAddInManagerInfo12(msxll::XLOPER12* xAction)
     if (xIntAction.val.w == 1 && !info.empty())
     {
       xInfo.xltype = xltypeStr;
-      xInfo.val.str = xloil::PString(info).release();
+      xInfo.val.str.data = xloil::PString(info).release();
     }
     return &xInfo;
   }

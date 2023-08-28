@@ -85,7 +85,7 @@ namespace xloil
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while ((innerItem = PyIter_Next(innerIter)) != 0)
           {
-            builder(i, j++).emplace(FromPyObj()(innerItem, builder.charAllocator()));
+            builder(i, j++).take(FromPyObj()(innerItem, builder.charAllocator()));
             Py_DECREF(innerItem);
           }
           if (PyErr_Occurred())
@@ -93,7 +93,7 @@ namespace xloil
           Py_DECREF(innerIter);
         }
         else
-          builder(i, j++).emplace(FromPyObj()(item, builder.charAllocator()));
+          builder(i, j++).take(FromPyObj()(item, builder.charAllocator()));
 
         // Fill with N/A
         for (; j < nCols; ++j)

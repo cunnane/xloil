@@ -128,7 +128,7 @@ def find_return_converter(ret_type: type):
             ret_con = get_converter(ret_type.__name__, read=False)
 
         if ret_con is None:
-            ret_con = Return_object()
+            ret_con = get_converter("object", read=False)
 
     return ret_con
 

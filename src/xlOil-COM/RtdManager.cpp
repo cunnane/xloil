@@ -59,7 +59,7 @@ namespace xloil
           auto callback = _updateCallback.load();
           if (callback)
             callback->raw_UpdateNotify(); // Does this really need the COM API?
-        }, ExcelRunQueue::COM_API | ExcelRunQueue::ENQUEUE, 0, 1000);
+        }, ExcelRunQueue::ENQUEUE, 0, 1000);
       }
 
     public:

@@ -2127,7 +2127,7 @@ def _get_onedrive_source(arg0: str) -> str:
     pass
 def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
-def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None) -> _RawExcelValue:
+def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None, cache_objects: bool = False) -> _RawExcelValue:
     """
     For internal use. Converts a table like object (such as a pandas DataFrame) to 
     RawExcelValue suitable for returning to xlOil.
@@ -2144,6 +2144,9 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
     index_name:
       optional headings for the index, should be a 1 dim iteratable of size
       num_index_levels * num_column_levels
+    cache_objects:
+      if True, place unconvertible objects in the cache and return a ref string
+      if False, call str(x) on unconvertible objects
     """
 def active_workbook() -> Workbook:
     """

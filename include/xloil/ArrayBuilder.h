@@ -2,6 +2,7 @@
 
 #include <xloil/ExcelObj.h>
 #include <cassert>
+#include <vector>
 
 namespace xloil
 {
@@ -9,16 +10,14 @@ namespace xloil
   {
     struct ArrayBuilderCharAllocator
     {
-      ArrayBuilderCharAllocator()
-      {}
-
-      ArrayBuilderCharAllocator(wchar_t* data, size_t size)
+      ArrayBuilderCharAllocator(wchar_t*& data, const wchar_t* endData)
         : _stringData(data)
 #ifdef _DEBUG
-        , _endStringData(data + size)
+        , _endStringData(endData)
 #endif
       {}
-      constexpr wchar_t* allocate(size_t n)
+
+      wchar_t* allocate(size_t n)
       {
 #ifdef _DEBUG
         if (_stringData + n > _endStringData)
@@ -28,9 +27,11 @@ namespace xloil
         _stringData += n;
         return ptr;
       }
-      constexpr void deallocate(wchar_t*, size_t) { }
+
+      void deallocate(wchar_t*, size_t) { }
+
     private:
-      wchar_t* _stringData;
+      wchar_t*& _stringData;
 #ifdef _DEBUG
       const wchar_t* _endStringData;
 #endif
@@ -45,7 +46,8 @@ namespace xloil
         : _buffer((ExcelObj*)
             new char[sizeof(ExcelObj) * nObjects + sizeof(wchar_t) * stringLen])
         , _nObjects(nObjects)
-        , _stringAllocator((wchar_t*)(_buffer + nObjects), stringLen)
+        , _stringData((wchar_t*)(_buffer + nObjects))
+        , _endBuffer((char*)(_buffer + nObjects) + sizeof(wchar_t) * stringLen)
       {
         assert(nObjects > 0);
       }
@@ -56,11 +58,18 @@ namespace xloil
           delete[] (char*)_buffer;
       }
 
+      auto charAllocator() { return ArrayBuilderCharAllocator(_stringData, (const wchar_t*)_endBuffer); }
+
       auto newString(size_t len)
       {
-        auto ptr = _stringAllocator.allocate(len + 1);
+        auto ptr = charAllocator().allocate(len + 1);
         ptr[0] = wchar_t(len);
         return ptr;
+      }
+
+      bool ownsString(const wchar_t* str) const
+      {
+        return str >= (wchar_t*)_buffer && str <= (wchar_t*)_endBuffer;
       }
 
       ExcelObj& object(size_t i) { return _buffer[i]; }
@@ -74,8 +83,6 @@ namespace xloil
           *p = *q;
       }
 
-      const auto& charAllocator() const { return _stringAllocator; }
-
       ExcelObj* release() 
       {
         auto buffer = _buffer;
@@ -86,11 +93,13 @@ namespace xloil
     private:
       ExcelObj* _buffer;
       size_t _nObjects;
-      ArrayBuilderCharAllocator _stringAllocator;
+      const char* _endBuffer;
+      wchar_t* _stringData;
     };
 
     class ArrayBuilderIterator;
 
+    // TODO: share with SequentialArrayBuilder
     class ArrayBuilderElement
     {
     public:
@@ -104,17 +113,17 @@ namespace xloil
         , _alloc(&allocator)
       {}
 
-      template <class T, 
+      template <class T,
         std::enable_if_t<std::is_integral<T>::value, int> = 0>
-        auto& operator=(T x)
-      { 
-        // Note that _target is uninitialised memory, so we cannot
-        // call *_target = ExcelObj(x)
-        new (_target) ExcelObj(x); 
+      auto& operator=(T x)
+      {
+        // Note that _target is uninitialised memory, so we cannot call 
+        // *_target = ExcelObj(x)
+        new (_target) ExcelObj(x);
         return *this;
       }
 
-      auto& operator=(double x) { new (_target) ExcelObj(x); return *this; }
+      auto& operator=(double x)    { new (_target) ExcelObj(x); return *this; }
       auto& operator=(CellError x) { new (_target) ExcelObj(x); return *this; }
 
       /// <summary>
@@ -131,16 +140,25 @@ namespace xloil
       /// </summary>
       auto& operator=(const ExcelObj& x)
       {
+        assign(x);
+        return *this;
+      }
+
+      /// <summary>
+      /// Copies from an ExcelObj. Optionally does not copy string data.
+      /// This is safe when the parent ExcelObj will outlive this array.
+      /// </summary>
+      void assign(const ExcelObj& x)
+      {
         if (!x.isType(ExcelType::ArrayValue))
           ExcelObj::overwrite(*_target, CellError::Value);
-        else if (x.isType(ExcelType::Str))
+        else if (x.isType(ExcelType::Str) && !_alloc->ownsString(x.val.str.data))
         {
           auto pstr = x.cast<PStringRef>();
           copy_string(pstr.begin(), pstr.length());
         }
         else
           ExcelObj::overwrite(*_target, x);
-        return *this;
       }
 
       operator const ExcelObj& () const { return *_target; }
@@ -149,8 +167,9 @@ namespace xloil
       /// Move emplacement for an ExcelObj. Only safe if it is not a string or
       /// is a string allocated using the ArrayBuilder's charAllocator.
       /// </summary>
-      void emplace(ExcelObj&& x)
+      void take(ExcelObj&& x)
       {
+        assert(x.isType(ExcelType::ArrayValue));
         new (_target) ExcelObj(std::forward<ExcelObj>(x));
       }
 
@@ -164,31 +183,24 @@ namespace xloil
         new (_target) ExcelObj(PString::steal(pstr));
       }
 
-      /// <summary>
-      /// Optimisation of operator=. Safe when the type of ExcelObj is not
-      /// a string or the parent ExcelObj will outlive the array.
-      /// </summary>
-      void overwrite(const ExcelObj& x)
-      {
-        ExcelObj::overwrite(*_target, x);
-      }
-
       void copy_string(const wchar_t* str, size_t len)
       {
         auto xlObj = new (_target) ExcelObj();
         xlObj->xltype = msxll::xltypeStr;
+        // This strings here will never be freed directly: the ExcelObj's dtor will never be 
+        // called as it is an array element: the array block and its string data are freed in 
+        // one call. However, we set the view flag for good practice!
+        xlObj->val.str.xloil_view = true;
 
         if (len == 0)
         {
-          xlObj->val.str = Const::EmptyStr().val.str;
+          xlObj->val.str.data = Const::EmptyStr().val.str.data;
         }
         else
         {
           auto pstr = _alloc->newString(len);
           wmemcpy_s(pstr + 1, len, str, len);
-          // This object's dtor will never be called, as it is an array element
-          // so the allocated pstr will be freed when the entire array block is
-          xlObj->val.str = pstr;
+          xlObj->val.str.data = pstr;
         }
       }
 
@@ -204,7 +216,7 @@ namespace xloil
     {
     public:
       using iterator = ArrayBuilderIterator;
-      using reference = ArrayBuilderElement&;
+      using reference = ArrayBuilderElement;
       using pointer = ArrayBuilderElement*;
       using difference_type = size_t;
       using value_type = ArrayBuilderElement;
@@ -278,28 +290,7 @@ namespace xloil
   public:
     using row_t = ExcelObj::row_t;
     using col_t = ExcelObj::col_t;
-
-  private:
-    static auto initialiseAllocator(
-      row_t& nRows, col_t& nCols, size_t strLength, bool padTo2DimArray)
-    {
-      // Add the terminators and string counts to total length. Maybe 
-      // not every cell will be a string so this is an over-estimate
-      if (strLength > 0)
-        strLength += nCols * nRows * 2;
-
-      if (padTo2DimArray)
-      {
-        if (nRows == 1) nRows = 2;
-        if (nCols == 1) nCols = 2;
-      }
-
-      auto arrSize = nRows * nCols;
-
-      return detail::ArrayBuilderAlloc(arrSize, strLength);
-    }
-
-  public:
+    
     /// <summary>
     /// Creates an ArrayBuilder of specified size (it cannot be resized later).
     /// It does not default-initialise any ExcelObj in the array, so this must
@@ -310,26 +301,10 @@ namespace xloil
     /// <param name="nCols"></param>
     /// <param name="totalStrLength">Total length of all strings to be added to the array</param>
     /// <param name="padTo2DimArray">Adds # N/A to ensure the array is at least 2x2</param>
-    ExcelArrayBuilder(row_t nRows, col_t nCols,
-      size_t totalStrLength = 0, bool padTo2DimArray = false)
-      : _nRows(nRows)
-      , _nColumns(nCols)
-      , _allocator(initialiseAllocator(_nRows, _nColumns, totalStrLength, padTo2DimArray))
-    {
-      if (padTo2DimArray)
-      {
-        // Add padding
-        if (nCols < _nColumns)
-          for (row_t i = 0; i < nRows; ++i)
-            (*this)(i, nCols) = CellError::NA;
+    XLOIL_EXPORT ExcelArrayBuilder(row_t nRows, col_t nCols,
+      size_t totalStrLength = 0, bool padTo2DimArray = false);
 
-        if (nRows < _nRows)
-          for (col_t j = 0; j < _nColumns; ++j)
-            (*this)(nRows, j) = CellError::NA;
-      }
-    }
-
-    const auto& charAllocator() const { return _allocator.charAllocator(); }
+    auto charAllocator() { return _allocator.charAllocator(); }
 
     /// <summary>
     /// Allocate a PString in the array's string store. This can be used for
@@ -424,5 +399,170 @@ namespace xloil
     row_t _nRows;
     col_t _nColumns;
     detail::ArrayBuilderAlloc _allocator;
+
+    static detail::ArrayBuilderAlloc initialiseAllocator(
+      row_t& nRows, col_t& nCols, size_t strLength, bool padTo2DimArray);
+  };
+
+  namespace detail
+  {
+    /// <summary>
+    /// Iterates through the strings in a contigous array of pstrings. The
+    /// returned pointer is to the start of the pstring (i.e including size)
+    /// </summary>
+    template<class TChar>
+    class PStringStackIterator
+    {
+    public:
+      PStringStackIterator(TChar* location)
+        : _current(location)
+      {}
+      const auto& operator*() const { return _current; }
+      auto& operator++()
+      {
+        // Skip the length of the pstring plus 1, since we 
+        // start pointed 1 before the string begins.
+        _current += *_current + 1;
+        return *this;
+      }
+    private:
+      TChar* _current;
+    };
+
+    /// <summary>
+    /// Allocates pstrings in a contiguous array backed by a vector.
+    /// Care must be taken with this allocator as vector resizes can
+    /// move the string data in memory.
+    /// </summary>
+    template<class TChar>
+    class PStringStackAllocator : public PStringAllocator<TChar>
+    {
+    public:
+      PStringStackAllocator(std::vector<TChar>& data)
+        : _data(data)
+      {}
+
+      wchar_t* allocate(uint16_t n)
+      {
+        auto oldSize = _data.size();
+        _data.resize(oldSize + n);
+        return _data.data() + oldSize;
+      }
+
+      void deallocate(TChar*, size_t /*n*/)
+      {}
+
+    private:
+      std::vector<TChar>& _data;
+    };
+  }
+
+  /// <summary>
+  /// An alternative array building strategy which does not require pre-calculation
+  /// of the expected string length, however, values can only be added sequentially
+  /// row-wise. Useful if calculation of the string length is expensive or awkward.
+  /// </summary>
+  class SequentialArrayBuilder
+  {
+  public:
+    using row_t = ExcelObj::row_t;
+    using col_t = ExcelObj::col_t;
+
+    SequentialArrayBuilder(row_t nRows, col_t nCols, size_t expectedStrLength = 0)
+      : _nRows(nRows)
+      , _nColumns(nCols)
+    {
+      _objects.resize(nRows * nCols * sizeof(ExcelObj));
+      _target = (ExcelObj*)_objects.data();
+      _strings.reserve(expectedStrLength);
+      // TODO: pad 2d? not so useful since the invention of spill
+    }
+
+    auto charAllocator() { return detail::PStringStackAllocator(_strings); }
+
+    template <class T,
+      std::enable_if_t<std::is_integral<T>::value, int> = 0>
+    void emplace(T x)
+    {
+      emplace(ExcelObj(x));
+    }
+
+    void emplace(double x) { emplace(ExcelObj(x)); }
+    void emplace(CellError x) { emplace(ExcelObj(x)); }
+
+    /// <summary>
+    /// Assign by copying data from a string_view.
+    /// </summary>
+    void emplace(const std::wstring_view& str)
+    {
+      auto N = (uint16_t)std::min<size_t>(str.length(), USHRT_MAX - 1);
+      auto buffer = charAllocator().allocate(N + 1);
+      buffer[0] = N;
+      wmemcpy_s(buffer + 1, N, str.data(), N);
+      emplaceNilString();
+    }
+
+    void emplace(ExcelObj&& obj)
+    {
+      if (obj.type() == ExcelType::Str &&
+        !(obj.val.str.data >= _strings.data() && obj.val.str.data < _strings.data() + _strings.size()))
+      {
+        emplace(obj.cast<PStringRef>());
+      }
+      else
+      {
+        new (next()) ExcelObj(std::move(obj));
+      }
+    }
+
+    auto stringLength() const { return _strings.size(); }
+    auto nRows() const { return _nRows; }
+    auto nColumns() const { return _nColumns; }
+
+    /// <summary>
+    /// Create an ExcelObj of type array from this builder.
+    /// </summary>
+    XLOIL_EXPORT ExcelObj toExcelObj();
+
+    /// <summary>
+    /// Copies the data in this array builder to an ArrayBuilder (original flavour)
+    /// defined by iterators, should you need to do this.
+    /// </summary>
+    XLOIL_EXPORT void copyToBuilder(
+      detail::ArrayBuilderIterator targetBegin, detail::ArrayBuilderIterator targetEnd);
+
+  private:
+    row_t _nRows;
+    col_t _nColumns;
+    std::vector<char> _objects;
+    std::vector<wchar_t> _strings;
+    ExcelObj* _target;
+
+    void emplaceNilString()
+    {
+      // Write an empty ExcelObj and mark it with string type so we can find it later
+      _target->xltype = msxll::xltypeStr;
+      next();
+    }
+
+    void emplace(const PStringRef& pstr)
+    {
+      uint16_t N = pstr.length() + 1u;
+      auto buffer = charAllocator().allocate(N);
+      wmemcpy_s(buffer, N, pstr.data(), N);
+      emplaceNilString();
+    }
+
+    ExcelObj* last()
+    {
+      return (ExcelObj*)(_objects.data() + _objects.size());
+    }
+
+    ExcelObj* next()
+    {
+      auto p = _target++;
+      assert(p <= last());
+      return p;
+    }
   };
 }

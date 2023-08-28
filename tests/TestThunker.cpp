@@ -29,8 +29,8 @@ namespace Tests
 
     TEST_METHOD(PatchThunk)
     {
-      auto callback = (void*)0xABBAABBA;
-      auto context = (void*)0xABFAB;
+      auto callback = (void*)(intptr_t)0xABBAABBA;
+      auto context = (void*)(intptr_t)0xABFAB;
       char code[1024];
 
       ThunkWriter writer(callback, context, 3, true);

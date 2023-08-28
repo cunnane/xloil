@@ -131,7 +131,7 @@ namespace xloil
                       vRet->vt = VT_DISPATCH;
                     }
                     else
-                      excelObjToVariant(vRet, FromPyObj<false>()(pyRet.ptr()));
+                      excelObjToVariant(vRet, FromPyObjOrError()(pyRet.ptr()));
                   }
                 }
                 catch (const py::error_already_set& e)

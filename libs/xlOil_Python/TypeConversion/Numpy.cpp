@@ -70,6 +70,8 @@ using std::shared_ptr;
 using std::unique_ptr;
 using std::string;
 using std::to_string;
+using row_t = xloil::ExcelArray::row_t;
+using col_t = xloil::ExcelArray::col_t;
 
 // Useful references:
 //
@@ -239,15 +241,17 @@ namespace xloil
     template <class T> struct TypeTraitsBase { };
 
     template <int> struct TypeTraits {};
-    template<> struct TypeTraits<NPY_BOOL>   { using storage = bool;           using from_excel = NPToT<conv::ToType<bool>, storage>; };
-    template<> struct TypeTraits<NPY_SHORT>  { using storage = short;          using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_USHORT> { using storage = unsigned short; using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_INT>    { using storage = int;            using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_UINT>   { using storage = unsigned;       using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_LONG>   { using storage = long;           using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_ULONG>  { using storage = unsigned long;  using from_excel = NPToT<conv::ToType<int>, storage>; };
-    template<> struct TypeTraits<NPY_FLOAT>  { using storage = float;          using from_excel = NPToT<ToFloatNPYNan, storage>; };
-    template<> struct TypeTraits<NPY_DOUBLE> { using storage = double;         using from_excel = NPToT<ToDoubleNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_BOOL>      { using storage = bool;           using from_excel = NPToT<conv::ToType<bool>, storage>; };
+    template<> struct TypeTraits<NPY_SHORT>     { using storage = short;          using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_USHORT>    { using storage = unsigned short; using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_INT>       { using storage = int;            using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_UINT>      { using storage = unsigned;       using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_LONG>      { using storage = long;           using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_ULONG>     { using storage = unsigned long;  using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_LONGLONG>  { using storage = long long;           using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_ULONGLONG> { using storage = unsigned long long;  using from_excel = NPToT<conv::ToType<int>, storage>; };
+    template<> struct TypeTraits<NPY_FLOAT>     { using storage = float;          using from_excel = NPToT<ToFloatNPYNan, storage>; };
+    template<> struct TypeTraits<NPY_DOUBLE>    { using storage = double;         using from_excel = NPToT<ToDoubleNPYNan, storage>; };
     template<> struct TypeTraits<NPY_DATETIME> 
     { 
       using storage = npy_datetime;
@@ -282,7 +286,9 @@ namespace xloil
     template<>
     size_t getItemSize<NPY_STRING>(const ExcelArray& arr)
     {
-      size_t strLength = 0;
+      // Start with a length of 1 since this is the minimum itemsize,
+      // even for an array of empty strings
+      size_t strLength = 1;
       for (ExcelArray::size_type i = 0; i < arr.size(); ++i)
         strLength = std::max<size_t>(strLength, arr.at(i).maxStringLength());
       return strLength * sizeof(TypeTraits<NPY_STRING>::storage);
@@ -306,7 +312,9 @@ namespace xloil
       case NPY_UINT:      return TThing<NPY_UINT>()(std::forward<Args>(args)...);
       case NPY_INT:       return TThing<NPY_INT>()(std::forward<Args>(args)...);
       case NPY_LONG:      return TThing<NPY_LONG>()(std::forward<Args>(args)...);
+      case NPY_LONGLONG:  return TThing<NPY_LONGLONG>()(std::forward<Args>(args)...);
       case NPY_ULONG:     return TThing<NPY_ULONG>()(std::forward<Args>(args)...);
+      case NPY_ULONGLONG: return TThing<NPY_ULONGLONG>()(std::forward<Args>(args)...);
       case NPY_FLOAT:     return TThing<NPY_FLOAT>()(std::forward<Args>(args)...);
       case NPY_DOUBLE:    return TThing<NPY_DOUBLE>()(std::forward<Args>(args)...);
       case NPY_DATETIME:  return TThing<NPY_DATETIME>()(std::forward<Args>(args)...);
@@ -552,11 +560,13 @@ namespace xloil
       
       // Contains the number of characters per numpy array element multiplied 
       // by the number of char16 we will need
-      const uint16_t stringLength;
+      const size_t stringLength;
+      const uint16_t itemLength;
 
       FromArrayImpl(PyArrayObject* pArr)
-        : stringLength(std::min<uint16_t>(USHRT_MAX,
-            (uint16_t)PyArray_ITEMSIZE(pArr) / sizeof(data_type) * charMultiple))
+        : itemLength(std::min<uint16_t>(USHRT_MAX,
+            (uint16_t)PyArray_ITEMSIZE(pArr) / sizeof(data_type)))
+        , stringLength(charMultiple* itemLength* PyArray_SIZE(pArr))
       {
         const auto type = PyArray_TYPE(pArr);
         if (type != NPY_UNICODE && type != NPY_STRING)
@@ -568,7 +578,7 @@ namespace xloil
         void* arrayPtr) const
       {
         const auto x = (const char32_t*)arrayPtr;
-        const auto len = strlen32(x, stringLength / charMultiple);
+        const auto len = strlen32(x, itemLength);
         auto pstr = builder.string((uint16_t)len);
         auto nChars = ConvertUTF32ToUTF16()(
           (char16_t*)pstr.pstr(), pstr.length(), x, x + len );
@@ -577,46 +587,6 @@ namespace xloil
         // every string takes up the full fixed with, we resize here
         pstr.resize((char16_t)nChars);
         return ExcelObj(std::move(pstr));
-      }
-    };
-
-    template<>
-    struct FromArrayImpl<NPY_OBJECT, false>
-    {
-      size_t stringLength;
-
-      FromArrayImpl(PyArrayObject* pArr)
-      {
-        auto type = PyArray_TYPE(pArr);
-        if (PyArray_ITEMSIZE(pArr) != sizeof(PyObject*) || type != NPY_OBJECT)
-          XLO_THROW("Incorrect array type: expected object");
-
-        stringLength = 0;
-        auto dims = PyArray_DIMS(pArr);
-        auto nDims = PyArray_NDIM(pArr);
-
-        switch (nDims)
-        {
-        case 1:
-          for (auto i = 0; i < dims[0]; ++i)
-            accumulateObjectStringLength(*(PyObject**)PyArray_GETPTR1(pArr, i), stringLength);
-          break;
-        case 2:
-          for (auto i = 0; i < dims[0]; ++i)
-            for (auto j = 0; j < dims[1]; ++j)
-              accumulateObjectStringLength(*(PyObject**)PyArray_GETPTR2(pArr, i, j), stringLength);
-          break;
-        default:
-          XLO_THROW("FromArray: dimension must be 1 or 2");
-        }
-      }
-      
-      auto toExcelObj(
-        ExcelArrayBuilder& builder, 
-        void* arrayPtr) const
-      {
-        const auto* pyObj = *(PyObject**)arrayPtr;
-        return FromPyObj()(pyObj, builder.charAllocator());
       }
     };
 
@@ -640,7 +610,6 @@ namespace xloil
         return ExcelObj(serial);
       }
     };
-
 
     namespace
     {
@@ -687,9 +656,9 @@ namespace xloil
         
         TImpl converter(pyArr);
         
-        ExcelArrayBuilder builder((uint32_t)dims[0], 1, converter.stringLength);
+        ExcelArrayBuilder builder((row_t)dims[0], 1, converter.stringLength);
         for (auto j = 0; j < dims[0]; ++j)
-          builder(j, 0).emplace(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
+          builder(j, 0).take(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
         
         return _cache
           ? makeCached<ExcelObj>(builder.toExcelObj())
@@ -726,9 +695,92 @@ namespace xloil
           converter.stringLength);
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
-            builder(i, j).emplace(converter.toExcelObj(builder, PyArray_GETPTR2(pyArr, i, j)));
+            builder(i, j).take(converter.toExcelObj(builder, PyArray_GETPTR2(pyArr, i, j)));
 
         return _cache
+          ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
+          : builder.toExcelObj();
+      }
+      const char* name() const override
+      {
+        return "array(2d)";
+      }
+    };
+
+    // TODO: support converting unknown objects to string. It's easy but
+    // how best to pass the parameter?
+    template <>
+    class XlFromArray1d<NPY_OBJECT> : public IPyToExcel
+    {
+      bool _cacheResult;
+
+    public:
+      XlFromArray1d(bool cache = false) : _cacheResult(cache) {}
+
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        // Empty arrays are not allowed in Excel, the closest is #N/A.
+        if (isEmpty)
+          return CellError::NA;
+
+        if (nDims != 1)
+          XLO_THROW("Expected 1-d array");
+
+        size_t stringLength = dims[0] * 4; // err why?
+
+        SequentialArrayBuilder builder((row_t)dims[0], 1, stringLength);
+        for (auto i = 0; i < dims[0]; ++i)
+        {
+          auto p = *(PyObject**)PyArray_GETPTR1(pyArr, i);
+          builder.emplace(FromPyObj<detail::ReturnToCache, true>()(p, builder.charAllocator()));
+        }
+
+        py::gil_scoped_release noGil;
+
+        return _cacheResult
+          ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
+          : builder.toExcelObj();
+      }
+      const char* name() const override
+      {
+        return "array(1d)";
+      }
+    };
+
+    template <>
+    class XlFromArray2d<NPY_OBJECT> : public IPyToExcel
+    {
+      bool _cacheResult;
+
+    public:
+      XlFromArray2d(bool cache = false) : _cacheResult(cache) {}
+
+      ExcelObj operator()(const PyObject& obj) const override
+      {
+        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        // Empty arrays are not allowed in Excel, the closest is #N/A.
+        if (isEmpty)
+          return CellError::NA;
+
+        if (nDims != 2)
+          XLO_THROW("Expected 2-d array");
+
+        size_t stringLength = dims[0] * dims[1] * 4; // err why?
+
+        SequentialArrayBuilder builder((row_t)dims[0], (col_t)dims[1], stringLength);
+        auto charAllocator = builder.charAllocator();
+
+        for (auto i = 0; i < dims[0]; ++i)
+          for (auto j = 0; j < dims[1]; ++j)
+          {
+            auto p = (PyObject*)PyArray_GETPTR2(pyArr, i, j);
+            builder.emplace(FromPyObj<detail::ReturnToCache, true>()(p, charAllocator));
+          }
+
+        py::gil_scoped_release noGil;
+
+        return _cacheResult
           ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
           : builder.toExcelObj();
       }
@@ -915,7 +967,7 @@ namespace xloil
         virtual ~ApplyConverter() {}
         virtual void operator()(ExcelArrayBuilder& builder,
           xloil::detail::ArrayBuilderIterator& start,
-          xloil::detail::ArrayBuilderIterator& end) const = 0;
+          xloil::detail::ArrayBuilderIterator& end) = 0;
       };
 
       template<int NPDtype>
@@ -924,7 +976,7 @@ namespace xloil
         FromArrayImpl<NPDtype> _impl;
         PyArrayObject* _array;
 
-        ConverterHolder(PyArrayObject* array)
+        ConverterHolder(PyArrayObject* array, bool)
           : _impl(array)
           , _array(array)
         {}
@@ -935,14 +987,54 @@ namespace xloil
 
         virtual void operator()(ExcelArrayBuilder& builder,
           xloil::detail::ArrayBuilderIterator& start,
-          xloil::detail::ArrayBuilderIterator& end) const
+          xloil::detail::ArrayBuilderIterator& end)
         {
           char* arrayPtr = PyArray_BYTES(_array);
           const auto step = PyArray_STRIDES(_array)[0];
           for (; start != end; arrayPtr += step, ++start)
           {
-            start->emplace(_impl.toExcelObj(builder, arrayPtr));
+            start->take(_impl.toExcelObj(builder, arrayPtr));
           }
+        }
+      };
+
+      template<>
+      struct ConverterHolder<NPY_OBJECT> : public ApplyConverter
+      {
+        SequentialArrayBuilder _builder;
+
+        ConverterHolder(PyArrayObject* array, bool objectToString)
+          : _builder((row_t)PyArray_DIMS(array)[0], 1)
+        {
+          auto arrayPtr = (PyObject**)PyArray_BYTES(array);
+          const auto N = _builder.nRows();
+
+          auto charAllocator = _builder.charAllocator();
+          if (objectToString)
+          {
+            for (auto i = 0u; i < N; ++i, ++arrayPtr)
+              _builder.emplace(
+                FromPyObj<detail::ReturnToString, true>()(
+                  *arrayPtr, charAllocator));
+          }
+          else
+          {
+            for (auto i = 0u; i < N; ++i, ++arrayPtr)
+              _builder.emplace(
+                FromPyObj<detail::ReturnToCache, true>()(
+                  *arrayPtr, charAllocator));
+          }
+        }
+
+        virtual ~ConverterHolder() {}
+
+        size_t stringLength() const { return _builder.stringLength(); }
+
+        virtual void operator()(ExcelArrayBuilder& /*builder*/,
+          xloil::detail::ArrayBuilderIterator& start,
+          xloil::detail::ArrayBuilderIterator& end)
+        {
+          _builder.copyToBuilder(start, end);
         }
       };
 
@@ -952,9 +1044,9 @@ namespace xloil
       template<int NPDtype>
       struct CreateConverter
       {
-        ApplyConverter* operator()(PyArrayObject* array, size_t& stringLength)
+        ApplyConverter* operator()(PyArrayObject* array, size_t& stringLength, bool objectToString)
         {
-          auto converter = new ConverterHolder<NPDtype>(array);
+          auto converter = new ConverterHolder<NPDtype>(array, objectToString);
           stringLength += converter->stringLength();
           return converter;
         }
@@ -987,14 +1079,16 @@ namespace xloil
       /// </summary>
       struct Converters
       {
-        vector<unique_ptr<const ApplyConverter>> _converters;
+        vector<unique_ptr<ApplyConverter>> _converters;
         size_t stringLength = 0;
         bool _hasObjectDtype;
+        bool _objectToString;
 
-        Converters(size_t n)
+        Converters(size_t n, bool objectToString)
+          : _objectToString(objectToString)
+          , _hasObjectDtype(false)
         {
           _converters.reserve(n);
-          _hasObjectDtype = false;
         }
 
         auto collect(const py::object& p, size_t expectedLength)
@@ -1010,7 +1104,7 @@ namespace xloil
             _hasObjectDtype = true;
 
           _converters.emplace_back(unique_ptr<ApplyConverter>(
-            switchDataType<CreateConverter>(dtype, pyArr, std::ref(stringLength))));
+            switchDataType<CreateConverter>(dtype, pyArr, std::ref(stringLength), _objectToString)));
         }
 
         auto write(size_t iArray, ExcelArrayBuilder& builder, int startX, int startY, bool byRow)
@@ -1040,7 +1134,8 @@ namespace xloil
       const py::object& rows,
       const py::object& headings,
       const py::object& index,
-      const py::object& indexName)
+      const py::object& indexName,
+      bool useObjectCache)
     {
       // This method can handle writing data vertically or horizontally.  When used to 
       // write a pandas DataFrame, the data is vertical/by-column.
@@ -1061,7 +1156,7 @@ namespace xloil
 
       // Converters may end up larger if we have multi-level indices
       TableHelpers::Converters converters(
-        nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0));
+        nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0), !useObjectCache);
       
       // Examine data frame index
       if (hasIndex)
@@ -1135,7 +1230,6 @@ namespace xloil
           for (auto i = 0u; i < nHeadings; ++i)
             builder(j, i) = indexNames[i * nHeadings + j];
       }
-
       
       auto iConv = 0;
 
@@ -1249,6 +1343,9 @@ namespace xloil
             index_name:
               optional headings for the index, should be a 1 dim iteratable of size
               num_index_levels * num_column_levels
+            cache_objects:
+              if True, place unconvertible objects in the cache and return a ref string
+              if False, call str(x) on unconvertible objects
           )",
           py::arg("n"),
           py::arg("m"),
@@ -1256,7 +1353,8 @@ namespace xloil
           py::arg("rows") = py::none(),
           py::arg("headings") = py::none(),
           py::arg("index") = py::none(),
-          py::arg("index_name") = py::none());
+          py::arg("index_name") = py::none(),
+          py::arg("cache_objects") = false);
       });
     }
   }

@@ -130,9 +130,11 @@ namespace xloil
 /// If your DLL registers static functions, you must call this macro to setup
 /// the callback to free any returned ExcelObj. The function needs to be defined
 /// per DLL containing functions, rather than once for the registering XLL.
+/// A pragma ensures the function is exported undecorated in x86 and x64
 /// </summary>
 #define XLO_DEFINE_FREE_CALLBACK() \
   XLO_ENTRY_POINT(void) xlAutoFree12(::xloil::ExcelObj* pxFree) { \
+    __pragma(comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)) \
     try { \
       delete pxFree; \
     } catch (...) { } \

@@ -107,6 +107,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ArrayBuilder.cpp" />
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />

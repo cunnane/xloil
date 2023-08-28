@@ -13,7 +13,8 @@ using std::shared_ptr;
 
 namespace
 {
-  void ribbonHandler(const RibbonControl& ctrl, VARIANT* ret, int nArgs, tagVARIANT** args)
+  void ribbonHandler(const RibbonControl& ctrl, VARIANT* /*ret*/, 
+                     int /*nArgs*/, tagVARIANT** /*args*/)
   {
     XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
   };

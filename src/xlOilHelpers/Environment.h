@@ -47,6 +47,21 @@ namespace xloil
   };
 
   /// <summary>
+  /// Calls SetDllDirectory on the provided path and restores the previous
+  /// value in it's dtor.  Safer than calling SetDllDirectory(NULL) which
+  /// resets the search path.
+  /// </summary>
+  class PushDllDirectory
+  {
+  private:
+    wchar_t _previous[260]; // MAX_PATH = 260
+  public:
+    PushDllDirectory(const wchar_t* path);
+    PushDllDirectory(const char* path);
+    ~PushDllDirectory();
+  };
+
+  /// <summary>
   /// Gets a string value from the registry give a hive and key.
   /// Hive can be HKCU, HKCR, HKLM. A trailing slash can be used 
   /// to fetch the default value for that key.

@@ -162,7 +162,7 @@ namespace xloil
 
           for (row_t i = 0; i < nRows; ++i)
             for (col_t j = 0; j < nCols; ++j)
-              builder(row + i, col + j) = arr(i, j);
+              builder(row + i, col + j).take(const_cast<ExcelObj&&>(arr(i, j)));
 
           col += nCols;
           break;

@@ -201,7 +201,8 @@ namespace xloil
         if (pObj->xltype == msxll::xltypeStr)
         {
           assert((char*)pStr < stringData + stringsNBytes);
-          pObj->val.str = pStr;
+          pObj->val.str.data = pStr;
+          pObj->val.str.xloil_view = true;
           // Skip to the next string by adding the string length
           pStr += pStr[0] + 1;
         }
