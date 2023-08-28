@@ -224,7 +224,20 @@ namespace xloil
     /// of the string buffer in the provided PString.
     /// </summary>
     /// <param name="pstr"></param>
-    explicit ExcelObj(PString&& pstr)
+    template<class TAlloc>
+    explicit ExcelObj(BasicPString<wchar_t, TAlloc>&& pstr)
+    {
+      val.str.data = pstr.release();
+      if (!val.str.data)
+        val.str.data = Const::EmptyStr().val.str.data;
+      // If the allocator wasn't the standard PStringAllocator, it's not safe
+      // to deallocate the string, so we mark it as a view 
+      val.str.xloil_view = true;
+      xltype = msxll::xltypeStr;
+    }
+
+    template<>
+    explicit ExcelObj(BasicPString<wchar_t, PStringAllocator<wchar_t>>&& pstr)
     {
       val.str.data = pstr.release();
       if (!val.str.data)

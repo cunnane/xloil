@@ -160,9 +160,9 @@ namespace
       switch (xtype())
       {
       case xltypeStr:
-        if (val.str.data != nullptr && val.str.data != Const::EmptyStr().val.str.data 
-            && !val.str.xloil_view)
-          delete[] val.str.data;
+        if (val.str.data != nullptr && val.str.data != Const::EmptyStr().val.str.data
+          && !val.str.xloil_view)
+          PStringAllocator<wchar_t>().deallocate(val.str.data, 0);
         break;
 
       case xltypeMulti:
