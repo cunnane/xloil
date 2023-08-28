@@ -1,6 +1,6 @@
 try:
     import pandas as pd
-    from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype, is_string_dtype
+
 except ImportError:
     from ._core import XLOIL_READTHEDOCS
     if XLOIL_READTHEDOCS:
@@ -61,20 +61,21 @@ class PDFrame:
         When reading: attempt to convert the named columns from Excel serial 
         date numbers to numpy datetime.
 
-    allow_object: bool (default False)
-        When writing, if False, any non-numeric objects are converted to string.
-        This prevents a large number of object refs being created.
+    cache_objects: bool (default False)
+        When writing, if False, any objects which cannot be convertered by a
+        known converter are converted to string via `str(x)`. This prevents a 
+        large number of (possibly unhelpful) object refs being created.
 
     dtype: type
         Not currently implemented!
 
     """
-    def __init__(self, headings=True, index=None, allow_object=False, dates=None, dtype=None):
+    def __init__(self, headings=True, index=None, cache_objects=False, dates=None, dtype=None):
         # TODO: use element_type in the dataframe construction
         self._element_type = dtype
         self._headings = headings
         self._index = index
-        self._allow_object = allow_object
+        self._cache_objects = cache_objects
         self._parse_dates = dates
 
     def read(self, x):
@@ -114,46 +115,33 @@ class PDFrame:
         
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
-    def _to_array(self, data):
-        if self._allow_object \
-                or is_datetime64_any_dtype(data) \
-                or is_datetime64_any_dtype(data):
-            return data.values
-
-        # This branch is unlikely since pandas stores strings in dtype=object arrays
-        if is_string_dtype(data):
-            return data.fillna("").values
-
-        # Turn NaNs to None, which xlOil will turn to #N/A
-        if self._allow_object:
-            return data.replace([np.nan], [None]).values
-        else:
-            return np.array([None if pd.isnull(x) else str(x) for x in data])
-
     def write(self, frame: pd.DataFrame):
 
         import xloil_core
 
-        columns = [self._to_array(frame[col]) for col in frame]
+        columns = [frame[col].values for col in frame]
 
+        # If outputting the index, we prepare an array for each index level
         if self._index is not False:
             index = [
-                self._to_array(frame.index.get_level_values(i)) 
+                frame.index.get_level_values(i).values
                 for i in range(frame.index.nlevels)
                 ]
         else:
             index = None
 
+        # If outputting the columns, we prepare an array for each column level
         if self._headings:
             headings = [
-                self._to_array(frame.columns.get_level_values(i))
+                frame.columns.get_level_values(i).values
                 for i in range(frame.columns.nlevels)
                 ]
         else:
             headings = None
 
-        #index_names = pd.DataFrame(frame.index.names).replace([np.nan], [None]).values.T
-
+        # The index names may be a list of tuple (if index was created from a multi column 
+        # index dataframe) or strings or None if no name was given.  We form this into an 
+        # array of size column_levels x index_levels
         index_names = np.empty((frame.columns.nlevels, frame.index.nlevels), dtype=object)
         for j, name in enumerate(frame.index.names):
             if isinstance(name, Iterable) and len(name) <= index_names.shape[0]:
@@ -168,7 +156,8 @@ class PDFrame:
             columns=columns,
             index=index,
             index_name=index_names.ravel(),
-            headings=headings)
+            headings=headings,
+            cache_objects=self._cache_objects)
 
 
 @converter(target=pd.Timestamp, register=True)

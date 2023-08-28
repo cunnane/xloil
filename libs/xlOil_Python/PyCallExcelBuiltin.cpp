@@ -38,7 +38,7 @@ namespace xloil
           return ExcelObj(refFromRange(*range));
         }
         else
-          return FromPyObj<false>()(p);
+          return FromPyObjOrError()(p);
       }
     };
 

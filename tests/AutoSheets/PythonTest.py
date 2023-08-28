@@ -3,7 +3,7 @@ import sys
 import datetime as dt
 import os 
 import numpy as np
- 
+
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -65,7 +65,7 @@ def pyTestArr2d(x: xlo.Array(float)) -> xlo.Array(float):
 # Note you cannot use keyword args in [], see PEP472
 #
 @xlo.func
-def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
+def pyTestArrNoTrim(x: xlo.Array(object, trim=False)) -> xlo.Array:
 	return x
 
 #
@@ -507,6 +507,18 @@ try:
     @xlo.func
     def pyTestFrameDtypes(df: pd.DataFrame):
         return [str(x) for x in df.dtypes]
+        
+    @xlo.func  
+    def pyTestDFrameNaNs() -> PDFrame():
+        """
+        This functions checks NaNs and various mixed objects in dataframes 
+        are rendered correctly
+        """
+        return pd.DataFrame({
+            "numbers": [1, 2, np.nan, 3, 4, 5],
+            "dates": [pd.Timestamp("2023/08/01"), np.nan, pd.Timestamp("2023/08/02"), np.nan, pd.NaT, pd.Timestamp("2023/08/02")],
+            "objects": [None, 42, pd.Timestamp("1969/01/01"), "Foo", np.nan, type(42)]
+        })
         
 except ImportError:
     pass

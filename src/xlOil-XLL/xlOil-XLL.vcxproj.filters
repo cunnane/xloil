@@ -19,6 +19,7 @@
     <ClCompile Include="FPArray.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="LogWindowSink.cpp" />
+    <ClCompile Include="ArrayBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
