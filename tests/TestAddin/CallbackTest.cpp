@@ -20,7 +20,7 @@ namespace xloil
     if (!caller.fullSheetName().empty())
     {
       auto handle = xloil::Event::SheetChange().bind(
-        [=](const wchar_t* wsName, const Range& target)
+        [=](const wchar_t* wsName, const Range& /*target*/)
         {
           // Could check range here as well to avoid
           if (wsName == caller.sheetName())

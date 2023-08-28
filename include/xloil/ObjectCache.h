@@ -223,8 +223,6 @@ namespace xloil
       return _add(std::move(obj), std::move(fullKey));
     }
 
-    
-
     /// <summary>
     /// Remove the given cache reference and any associated objects. This
     /// should only be called with manually specifed cache reference strings.
