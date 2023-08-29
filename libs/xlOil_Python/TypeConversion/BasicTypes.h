@@ -369,6 +369,10 @@ namespace xloil
         {
           return py::unsafe_move<ExcelObj>(p);
         }
+        else if (PyBool_Check(p)) // Must check this before `long`
+        {
+          return ExcelObj(PyObject_IsTrue(p) > 0);
+        }
         else if (PyLong_Check(p))
         {
           return ExcelObj(PyLong_AsLong(p));
@@ -376,10 +380,6 @@ namespace xloil
         else if (PyFloat_Check(p))
         {
           return ExcelObj(PyFloat_AS_DOUBLE(p));
-        }
-        else if (PyBool_Check(p))
-        {
-          return ExcelObj(PyObject_IsTrue(p) > 0);
         }
         else if (!TIsScalar && isNumpyArray(p))
         {
