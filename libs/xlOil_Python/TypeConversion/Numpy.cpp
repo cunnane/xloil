@@ -269,7 +269,7 @@ namespace xloil
     };
     template<> struct TypeTraits<NPY_OBJECT> 
     { 
-      using storage = PyObject * ;
+      using storage = PyObject* ;
       using from_excel = NPToT<PyFromAny, PyObject*>;
     };
 
@@ -638,6 +638,7 @@ namespace xloil
     {
       bool _cache;
       using TImpl = FromArrayImpl<TNpType>;
+      using TDataType = typename TypeTraits<NPY_OBJECT>::storage;
 
     public:
       XlFromArray1d(bool cache = false) 
@@ -657,8 +658,9 @@ namespace xloil
         TImpl converter(pyArr);
         
         ExcelArrayBuilder builder((row_t)dims[0], 1, converter.stringLength);
-        for (auto j = 0; j < dims[0]; ++j)
-          builder(j, 0).take(converter.toExcelObj(builder, PyArray_GETPTR1(pyArr, j)));
+        auto elementPtr = (TDataType*)PyArray_BYTES(pyArr);
+        for (auto j = 0; j < dims[0]; ++j, ++elementPtr)
+          builder(j, 0).take(converter.toExcelObj(builder, elementPtr));
         
         return _cache
           ? makeCached<ExcelObj>(builder.toExcelObj())
@@ -713,6 +715,7 @@ namespace xloil
     class XlFromArray1d<NPY_OBJECT> : public IPyToExcel
     {
       bool _cacheResult;
+      using TDataType = typename TypeTraits<NPY_OBJECT>::storage;
 
     public:
       XlFromArray1d(bool cache = false) : _cacheResult(cache) {}
@@ -730,11 +733,11 @@ namespace xloil
         size_t stringLength = dims[0] * 4; // err why?
 
         SequentialArrayBuilder builder((row_t)dims[0], 1, stringLength);
-        for (auto i = 0; i < dims[0]; ++i)
-        {
-          auto p = *(PyObject**)PyArray_GETPTR1(pyArr, i);
-          builder.emplace(FromPyObj<detail::ReturnToCache, true>()(p, builder.charAllocator()));
-        }
+        auto elementPtr = (TDataType*)PyArray_BYTES(pyArr);
+        for (auto i = 0; i < dims[0]; ++i, ++elementPtr)
+          builder.emplace(
+            FromPyObj<detail::ReturnToCache, true>()(
+              *elementPtr, builder.charAllocator()));
 
         py::gil_scoped_release noGil;
 
@@ -752,6 +755,7 @@ namespace xloil
     class XlFromArray2d<NPY_OBJECT> : public IPyToExcel
     {
       bool _cacheResult;
+      using TDataType = typename TypeTraits<NPY_OBJECT>::storage;
 
     public:
       XlFromArray2d(bool cache = false) : _cacheResult(cache) {}
@@ -771,10 +775,11 @@ namespace xloil
         SequentialArrayBuilder builder((row_t)dims[0], (col_t)dims[1], stringLength);
         auto charAllocator = builder.charAllocator();
 
+
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
           {
-            auto p = (PyObject*)PyArray_GETPTR2(pyArr, i, j);
+            auto p = *(TDataType*)PyArray_GETPTR2(pyArr, i, j);
             builder.emplace(FromPyObj<detail::ReturnToCache, true>()(p, charAllocator));
           }
 
