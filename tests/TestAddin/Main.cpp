@@ -1,6 +1,6 @@
 #include <xloil/xloil.h>
 #include <xloilHelpers/Environment.h>
-
+#include <xloil/XllEntryPoint.h>
 #include <map>
 using namespace xloil;
 using std::wstring;
