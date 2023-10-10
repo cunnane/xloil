@@ -2,6 +2,7 @@
 
 #include "Register.h"
 #include "ExportMacro.h"
+#include <memory>
 
 namespace xloil
 {

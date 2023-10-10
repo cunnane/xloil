@@ -1225,15 +1225,17 @@ namespace xloil
       // Write the index names in the top left
       if (!byRow)
       {
+        auto k = 0u;
         for (auto j = 0u; j < nIndex; ++j)
           for (auto i = 0u; i < nHeadings; ++i)
-            builder(i, j) = indexNames[i * nHeadings + j];
+            builder(i, j) = indexNames[k++];
       }
       else
       {
+        auto k = 0u;
         for (auto j = 0u; j < nIndex; ++j)
           for (auto i = 0u; i < nHeadings; ++i)
-            builder(j, i) = indexNames[i * nHeadings + j];
+            builder(j, i) = indexNames[k++];
       }
       
       auto iConv = 0;

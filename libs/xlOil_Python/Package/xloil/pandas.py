@@ -119,7 +119,7 @@ class PDFrame:
 
         import xloil_core
 
-        columns = [frame[col].values for col in frame]
+        columns = [col.values for _, col in frame.items()]
 
         # If outputting the index, we prepare an array for each index level
         if self._index is not False:
