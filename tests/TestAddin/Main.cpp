@@ -1,9 +1,4 @@
-#include <xloil/ExcelUI.h>
-#include <xloil/Log.h>
-#include <xlOil/ExcelThread.h>
-#include <xloil/DynamicRegister.h>
-#include <xloil/Async.h>
-#include <xloil/XllEntryPoint.h>
+#include <xloil/xloil.h>
 #include <xloilHelpers/Environment.h>
 
 #include <map>

@@ -133,7 +133,7 @@ namespace xloil
 /// A pragma ensures the function is exported undecorated in x86 and x64
 /// </summary>
 #define XLO_DEFINE_FREE_CALLBACK() \
-  XLO_ENTRY_POINT(void) xlAutoFree12(::xloil::ExcelObj* pxFree) { \
+  extern "C" void __stdcall xlAutoFree12(::xloil::ExcelObj* pxFree) { \
     __pragma(comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)) \
     try { \
       delete pxFree; \

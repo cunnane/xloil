@@ -238,7 +238,7 @@ class _WorksheetFunc:
         self.__doc__     = spec.help
         self.__name__    = spec.name
     def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
+        return self.__wrapped__(*args, **kwargs)
 
 
 def func(fn=None, 
