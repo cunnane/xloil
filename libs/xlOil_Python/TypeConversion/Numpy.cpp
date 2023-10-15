@@ -1153,8 +1153,8 @@ namespace xloil
 
       // The row or column headings can be multi-level indices. We determine the number
       // of levels from iterators later.
-      auto nHeadings = 0u;
-      auto nIndex = 0u;
+      auto nHeadingLevels = 0u;
+      auto nIndexLevels = 0u;
 
       py::object iter;
       PyObject* item;
@@ -1170,7 +1170,7 @@ namespace xloil
         while ((item = PyIter_Next(iter.ptr())) != 0)
         {
           converters.collect(PySteal(item), nInner);
-          ++nIndex;
+          ++nIndexLevels;
         }
       }
 
@@ -1187,17 +1187,17 @@ namespace xloil
         while ((item = PyIter_Next(iter.ptr())) != 0)
         {
           converters.collect(PySteal(item), nOuter);
-          ++nHeadings;
+          ++nHeadingLevels;
         }
       }
 
-      vector<ExcelObj> indexNames(nIndex * nHeadings, CellError::NA);
+      vector<ExcelObj> indexNames(nIndexLevels * nHeadingLevels, CellError::NA);
       auto indexNameStringLength = 0;
-      if (nIndex > 0 && !indexName.is_none())
+      if (nIndexLevels > 0 && !indexName.is_none())
       {
         iter = PySteal(PyObject_GetIter(indexName.ptr()));
         auto i = 0u;
-        while (i < nIndex * nHeadings && (item = PyIter_Next(iter.ptr())) != 0)
+        while (i < nIndexLevels * nHeadingLevels && (item = PyIter_Next(iter.ptr())) != 0)
         {
           indexNames[i] = FromPyObj()(PySteal(item).ptr());
           indexNameStringLength += indexNames[i].stringLength();
@@ -1211,8 +1211,8 @@ namespace xloil
       NumpyBeginThreadsDescr releaseGil(
         converters.hasObjectDtype() ? NPY_OBJECT : NPY_FLOAT);
 
-      auto nRows = nOuter + nIndex;
-      auto nCols = nInner + nHeadings;
+      auto nRows = nOuter + nIndexLevels;
+      auto nCols = nInner + nHeadingLevels;
       if (!byRow)
         std::swap(nRows, nCols);
 
@@ -1226,25 +1226,25 @@ namespace xloil
       if (!byRow)
       {
         auto k = 0u;
-        for (auto j = 0u; j < nIndex; ++j)
-          for (auto i = 0u; i < nHeadings; ++i)
+        for (auto i = 0u; i < nHeadingLevels; ++i)
+          for (auto j = 0u; j < nIndexLevels; ++j)
             builder(i, j) = indexNames[k++];
       }
       else
       {
         auto k = 0u;
-        for (auto j = 0u; j < nIndex; ++j)
-          for (auto i = 0u; i < nHeadings; ++i)
-            builder(j, i) = indexNames[k++];
+        for (auto j = 0u; j < nIndexLevels; ++j)
+          for (auto i = 0u; i < nHeadingLevels; ++i)
+            builder(i, j) = indexNames[k++];
       }
       
       auto iConv = 0;
 
-      for (auto i = 0u; i < nOuter + nIndex; ++i, ++iConv)
-        converters.write(iConv, builder, i, nHeadings, byRow);
+      for (auto i = 0u; i < nOuter + nIndexLevels; ++i, ++iConv)
+        converters.write(iConv, builder, i, nHeadingLevels, byRow);
 
-      for (auto i = 0u; i < nHeadings; ++i, ++iConv)
-        converters.write(iConv, builder, i, nIndex, !byRow);
+      for (auto i = 0u; i < nHeadingLevels; ++i, ++iConv)
+        converters.write(iConv, builder, i, nIndexLevels, !byRow);
 
       return builder.toExcelObj();
     }
