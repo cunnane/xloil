@@ -212,18 +212,6 @@ namespace xloil
     {
       auto fullKey = detail::writeCacheId<PADDING>(caller, name);
       return _add(std::move(obj), std::move(fullKey));
-<<<<<<< HEAD
-=======
-    }
-
-    ExcelObj add(
-      TObj&& obj,
-      const std::wstring_view& key)
-    {
-      PString fullKey((uint16_t)key.size() + PADDING + 2u);
-      std::copy(key.cbegin(), key.cend(), fullKey.begin() + 2u);
-      return _add(std::move(obj), std::move(fullKey));
->>>>>>> v0.17
     }
 
     ExcelObj add(
@@ -234,8 +222,6 @@ namespace xloil
       std::copy(key.cbegin(), key.cend(), fullKey.begin() + 2u);
       return _add(std::move(obj), std::move(fullKey));
     }
-
-    
 
     /// <summary>
     /// Remove the given cache reference and any associated objects. This

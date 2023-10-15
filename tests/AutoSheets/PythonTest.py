@@ -3,11 +3,7 @@ import sys
 import datetime as dt
 import os 
 import numpy as np
-<<<<<<< HEAD
- 
-=======
 
->>>>>>> v0.17
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -512,8 +508,7 @@ try:
     def pyTestFrameDtypes(df: pd.DataFrame):
         return [str(x) for x in df.dtypes]
         
-<<<<<<< HEAD
-=======
+
     @xlo.func  
     def pyTestDFrameNaNs() -> PDFrame():
         """
@@ -526,7 +521,6 @@ try:
             "objects": [None, 42, pd.Timestamp("1969/01/01"), "Foo", np.nan, type(42)]
         })
         
->>>>>>> v0.17
 except ImportError:
     pass
 
