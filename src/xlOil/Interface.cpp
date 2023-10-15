@@ -10,6 +10,7 @@
 #include <xloil/State.h>
 #include <xlOilHelpers/GuidUtils.h>
 #include <xlOil-COM/Connect.h>
+#include <xlOil-COM/WorkbookScopeFunctions.h>
 #include <filesystem>
 #include <set>
 #include <toml++/toml.h>
@@ -261,22 +262,37 @@ namespace xloil
     if (_workbookName.empty())
       XLO_THROW("Need a linked workbook to declare local functions");
 
+    // Local functions can be registered from any source (e.g. jupyter) but 
+    // the linked source (the py file with the same name as the workbook) is
+    // special. If this is detected, the VBA module name is set to a special
+    // string and all other xlOil local function stubs are removed - we assume
+    // that the linked source is loaded before any other.
+    auto action = append ? LocalFuncs::APPEND_MODULE : LocalFuncs::REPLACE_MODULE;
+
     if (_vbaModuleName.empty())
     {
-      // Limits: alphanumeric and underscore, 31 chars
-      _vbaModuleName = wstring(L"xlOil_") + filename();
-
-      auto invalidChars = std::any_of(_vbaModuleName.begin(), _vbaModuleName.end(),
-        [](auto c) { return isalnum((int)c) == 0 && c != '.' && c != '_'; });
-
-      if (_vbaModuleName.size() > 31 || invalidChars)
+      if (fs::path(filename()).stem() == fs::path(_workbookName).stem())
       {
-        GUID guid;
-        stableGuidFromString(guid, theXloilNamespace, filename());
-        _vbaModuleName = wstring(L"xlOil_") + guidToWString(guid, GuidToString::BASE62);
+        _vbaModuleName = wstring(theAutoGenModulePrefix) + L"_linked__";
+        action = LocalFuncs::CLEAR_MODULES;
       }
       else
-        std::replace(_vbaModuleName.begin(), _vbaModuleName.end(), L'.', L'_');
+      {
+        // Limits: alphanumeric and underscore, 31 chars
+        _vbaModuleName = wstring(theAutoGenModulePrefix) + filename();
+
+        auto invalidChars = std::any_of(_vbaModuleName.begin(), _vbaModuleName.end(),
+          [](auto c) { return isalnum((int)c) == 0 && c != '.' && c != '_'; });
+
+        if (_vbaModuleName.size() > 31 || invalidChars)
+        {
+          GUID guid;
+          stableGuidFromString(guid, theXloilNamespace, filename());
+          _vbaModuleName = wstring(theAutoGenModulePrefix) + guidToWString(guid, GuidToString::BASE62);
+        }
+        else
+          std::replace(_vbaModuleName.begin(), _vbaModuleName.end(), L'.', L'_');
+      }
     }
 
     registerLocalFuncs(
@@ -284,7 +300,7 @@ namespace xloil
       _workbookName.c_str(), 
       funcSpecs, 
       _vbaModuleName.c_str(), 
-      append);
+      action);
   }
 
   void LinkedSource::init()

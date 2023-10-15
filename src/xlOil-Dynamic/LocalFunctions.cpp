@@ -63,15 +63,18 @@ namespace xloil
     const wchar_t* workbookName,
     const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcs,
     const wchar_t* vbaModuleName,
-    const bool append)
+    const LocalFuncs action)
   {
     LocalFunctionMap toRemove;
 
-    if (!append)
+    // WerRewrite the module if asked to or if the name of any new
+    // function matches any existing one (because the parameters may
+    // have changed)
+    auto rewriteVBAModule = action != LocalFuncs::APPEND_MODULE;
+
+    if (rewriteVBAModule)
       existing.swap(toRemove);
-
-    auto rewriteVBAModule = !append;
-
+    
     vector<shared_ptr<const LocalWorksheetFunc>> toRegister;
 
     for (auto& func : funcs)
@@ -102,9 +105,13 @@ namespace xloil
         vbaModuleName = wstring(vbaModuleName),
         funcsToWrite= move(toRegister),
         toRemove = move(toRemove), 
-        rewriteVBAModule
+        rewriteVBAModule,
+        action
     ]() mutable
     {
+      if (action == LocalFuncs::CLEAR_MODULES)
+        COM::removeExistingXlOilVBA(workbookName.c_str());
+
       unregisterLocalFuncs(toRemove);
       COM::writeLocalFunctionsToVBA(
         workbookName.c_str(), 
