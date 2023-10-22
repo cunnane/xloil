@@ -99,6 +99,13 @@ namespace xloil
     set<wstring> WorkbookMonitor::_workbooks;
     fs::path WorkbookMonitor::_wbPathBeforeSave;
 
+    constexpr auto DISPID_SheetSelectionChange = 0x616;
+    constexpr auto DISPID_SheetActivate = 0x619;
+    constexpr auto DISPID_SheetDeactivate = 0x61a;
+    constexpr auto DISPID_SheetCalculate = 0x61b;
+    constexpr auto DISPID_SheetChange = 0x61c;
+    constexpr auto DISPID_AfterCalculate = 0xa34;
+
     class EventHandler :
       public ComEventHandler<NoIDispatchImpl<ComObject<Excel::AppEvents>>, Excel::AppEvents>
     {
@@ -121,6 +128,8 @@ namespace xloil
         IDispatch* Sh,
         Range* Target)
       {
+        if (inStack(DISPID_SheetSelectionChange))
+          return;
         if (Event::SheetSelectionChange().handlers().empty())
           return;
         Event::SheetSelectionChange().fire(
@@ -154,14 +163,20 @@ namespace xloil
       }
       void SheetActivate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetActivate))
+          return;
         Event::SheetActivate().fire(((Worksheet*)Sh)->Name);
       }
       void SheetDeactivate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetDeactivate))
+          return;
         Event::SheetDeactivate().fire(((Worksheet*)Sh)->Name);
       }
       void SheetCalculate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetCalculate))
+          return;
         if (Event::SheetCalculate().handlers().empty())
           return;
         Event::SheetCalculate().fire(((Worksheet*)Sh)->Name);
@@ -170,6 +185,8 @@ namespace xloil
         IDispatch* Sh,
         Range* Target)
       {
+        if (inStack(DISPID_SheetChange))
+          return;
         if (Event::SheetChange().handlers().empty())
           return;
         Event::SheetChange().fire(
@@ -250,16 +267,24 @@ namespace xloil
         // after calculation, so we can easily trigger a recursion by 
         // doing something in AfterCalculate which triggers a calculation.
         // We use this bool to protect against this.
-        if (!_enableAfterCalculate)
+        if (inStack(DISPID_AfterCalculate))
           return;
 
-        thisApp().com().put_EnableEvents(VARIANT_FALSE);
-        _enableAfterCalculate = false;
-
         Event::AfterCalculate().fire();
+      }
 
-        thisApp().com().put_EnableEvents(VARIANT_TRUE);
-        _enableAfterCalculate = true;
+      /// <summary>
+      /// Checks if a given event dispid is already being processed. This isn't
+      /// necessary for all events, just ones where their handlers could 
+      /// re-trigger the event, e.g. if the SheetChange handler writes to the 
+      /// sheet.
+      /// </summary>>
+      bool inStack(short dispid)
+      {
+        for (char i = 0; i < _stackCount - 1; ++i)
+          if (_eventStack[i] == dispid)
+            return true;
+        return false;
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
@@ -270,15 +295,18 @@ namespace xloil
         {
           auto* rgvarg = pdispparams->rgvarg;
 
-          // These dispids are copied from oleview and are in the same order as listed there
+          // Note the event being processed. The event handling is single-threaded
+          // but can be re-entrant. See comment for inStack
+          _eventStack[_stackCount++] = (unsigned short) dispidMember;
 
+          // These dispids are copied from oleview and are in the same order as listed there
           switch (dispidMember)
           {
           case 0x0000061d:
             if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             NewWorkbook((Workbook*)rgvarg[0].pdispVal);
             break;
-          case 0x00000616:
+          case DISPID_SheetSelectionChange:
             if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             SheetSelectionChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
@@ -290,20 +318,20 @@ namespace xloil
             if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             SheetBeforeRightClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
             break;
-          case 0x00000619:
+          case DISPID_SheetActivate:
             if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetActivate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061a:
+          case DISPID_SheetDeactivate:
             if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetDeactivate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061b:
+          case DISPID_SheetCalculate:
             if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetCalculate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061c:
-            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
+          case DISPID_SheetChange:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             SheetChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
           case 0x0000061f:
@@ -342,7 +370,7 @@ namespace xloil
             if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
             break;
-          case 0x00000a34:
+          case DISPID_AfterCalculate:
             AfterCalculate();
             break;
           case 2911:
@@ -369,12 +397,16 @@ namespace xloil
         {
           XLO_ERROR("Error during COM event handler callback: {0}", e.what());
         }
+       
+        // Pop the stack
+        --_stackCount;
 
         return S_OK;
       }
 
     private:
-      bool _enableAfterCalculate = true;
+      unsigned short _eventStack[16];
+      char _stackCount = 0;
     };
 
     std::shared_ptr<Excel::AppEvents> createEventSink(Excel::_Application* source)
