@@ -8,6 +8,8 @@ import jupyter_client
 import os
 import re
 import json
+import pydoc
+
 from . import func_inspect
 
 from .jupyter_kernel import _xlOilJupyterImpl
@@ -20,17 +22,32 @@ def _remove_ansi_escapes(s):
     ansi_escape = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
     return ansi_escape.sub('', s)
 
+
 class _FuncDescriptionDecoder(json.JSONDecoder):
-    
+    """
+    Deserialises _FuncDescription objects.  Handles 3 cases:
+        * Dict describing a _FuncDescription
+        * Dict describing a func_inspect.Arg
+        * Fully qualified type name as string
+    """
+
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, dct):
 
-        if "typeof" in dct and "is_keywords" in dct:
-            return func_inspect.Arg(**dct)
-        elif "func_name" in dct:
+        if 'typeof' in dct:
+            if isinstance(dct['typeof'], str):
+                dct['typeof'] = pydoc.locate(dct['typeof'])
+            try:
+                return func_inspect.Arg(**dct)
+            except TypeError:
+                ...
+
+        try:
             return _FuncDescription(**dct)
+        except TypeError:
+            ...
 
         return dct
 
@@ -389,33 +406,30 @@ class _JupyterConnection:
 
             self._process_xloil_message(meta_type, xloil_data)
         
-    def _process_xloil_message(self, meta_type, xloil_data, pending=None):
+    def _process_xloil_message(self, message_type, payload, pending=None):
 
-        # Just used for logging
-        payload = None
-
-        if meta_type == "VariableChange":
-            payload = _unpickle(xloil_data)
+        if message_type == "VariableChange":
+            payload = _unpickle(payload)
             self.publish_variables(payload)
 
-        elif meta_type == "FuncRegister":
+        elif message_type == "FuncRegister":
             # Registrations are sent using JSON serialisation rather than pickle
             # because the _FuncDescription is not declard in the same python
             # module on both sides 
-            payload = xloil_data
-            func_descr = json.loads(xloil_data, cls=_FuncDescriptionDecoder)
+            func_descr = json.loads(payload, cls=_FuncDescriptionDecoder)
             _register_func_description(func_descr, connection=self)
                 
             # Keep track of our funtions for a clean shutdown
             self._registered_funcs.add(func_descr.name)
 
-        elif meta_type == "FuncResult":
+        elif message_type == "FuncResult":
+            payload = _unpickle(payload)
             if pending:
-                return _unpickle(xloil_data)
+                return payload
             else:
-                xlo.log(f"Unexpected function result: {msg}")
+                xlo.log(f"Unexpected function result: {payload}")
         else:
-            raise Exception(f"Unknown xlOil message: {meta_type}, {payload}")
+            raise Exception(f"Unknown xlOil message: {message_type}")
             
         xlo.log(f"Jupyter xlOil Msg: {payload}", level='trace')
 

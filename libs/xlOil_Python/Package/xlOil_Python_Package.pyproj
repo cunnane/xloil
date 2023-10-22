@@ -32,6 +32,7 @@
     <Compile Include="TestConfig.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="test_JupyterConnection.py" />
     <Compile Include="test_PythonAutomation.py">
       <SubType>Code</SubType>
     </Compile>
