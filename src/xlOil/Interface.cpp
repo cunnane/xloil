@@ -102,6 +102,8 @@ namespace xloil
 
   void FuncSource::init()
   {
+    if (!Environment::excelProcess().isEmbedded())
+      XLO_THROW("Function registration is only possible when xlOil is running inside Excel");
   }
 
   FuncSource::~FuncSource()

@@ -502,12 +502,17 @@ namespace xloil
         const std::wstring& modulePath,
         const wchar_t* workbookName)
     {
-      auto source = addin.lock()->findSource(modulePath.c_str());
+      auto addin_ptr = addin.lock();
+
+      if (!addin_ptr)
+        XLO_THROW("FunctionRegistry internal error: empty addin provided");
+
+      auto source = addin_ptr->findSource(modulePath.c_str());
       if (source)
         return std::static_pointer_cast<RegisteredModule>(source);
 
       auto fileSrc = make_shared<RegisteredModule>(modulePath, addin, workbookName);
-      auto addin_ptr = addin.lock();
+     
       addin_ptr->context().addSource(fileSrc);
 
       XLO_DEBUG(L"Registered Python module '{}' with linked workbook '{}' for addin '{}'",

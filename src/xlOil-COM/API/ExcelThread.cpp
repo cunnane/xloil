@@ -289,7 +289,7 @@ namespace xloil
   bool isMainThread()
   {
     auto& process = Environment::excelProcess();
-    return !process.isEmbedded() || process.mainThreadId == GetCurrentThreadId();
+    return process.mainThreadId == GetCurrentThreadId();
   }
 
   namespace
@@ -323,10 +323,20 @@ namespace xloil
         flags,
         waitBetweenRetries);
 
-      // Try to run immediately if possible
-      const bool canRunNow = waitBeforeCall == 0
+      // If we aren't embedded just run, although this function probably shouldn't 
+      // be called in this case.
+      if (!Environment::excelProcess().isEmbedded())
+      {
+        XLO_DEBUG("Unexpected call to runExcelThread when not embedded in an Excel process");
+        (*queueItem)(false, false);
+        return;
+      }
+
+      // Try to run immediately if possible. 
+      const bool canRunNow = (waitBeforeCall == 0
         && (flags & ExcelRunQueue::ENQUEUE) == 0
-        && isMainThread();
+        && isMainThread());
+
       if (canRunNow)
       {
         // Usually functions scheduled for the main thread need the COM interface

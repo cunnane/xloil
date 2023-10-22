@@ -28,8 +28,8 @@ namespace xloil
     namespace
     {
       // The numerical values of the python log levels align nicely with spdlog
-        // so we can translate with a factor of 10.
-        // https://docs.python.org/3/library/logging.html#levels
+      // so we can translate with a factor of 10.
+      // https://docs.python.org/3/library/logging.html#levels
 
       class LogWriter
       {
@@ -147,7 +147,9 @@ namespace xloil
 
         auto logFilePath()
         {
-          return theCoreAddin()->context().logFilePath;
+          if (theCoreAddin())
+            return theCoreAddin()->context().logFilePath;
+          return wstring();
         }
       };
 
