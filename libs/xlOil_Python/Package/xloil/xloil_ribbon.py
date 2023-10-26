@@ -1,4 +1,5 @@
 # We use tomlkit as it preserves comments.
+from collections import namedtuple
 import tomlkit as toml
 import winreg as reg
 import xloil
@@ -125,7 +126,7 @@ def get_user_search_path(ctrl):
 
 #
 # PYTHONEXECUTABLE path callbacks
-# -------------------------
+# -------------------------------
 #
 
 async def set_python_home(ctrl, value):
@@ -157,9 +158,11 @@ def get_python_path(ctrl):
 # ----------------------------
 #
 
+_PythonEnv = namedtuple("_PythonEnv", "name, version, executable")
+
 def _find_python_enviroments_from_key(pythons_key):
 
-    environments = {}
+    environments = []
     try:
         i = 0
         while True:
@@ -175,11 +178,10 @@ def _find_python_enviroments_from_key(pythons_key):
                         with reg.OpenKey(vendor_key, version) as kVersion:
                             name = reg.QueryValueEx(kVersion, 'DisplayName')[0]
                             install_path = reg.OpenKey(kVersion, 'InstallPath')
-                            environments[name] = {
-                                'DisplayName': name,
-                                'Version':  reg.QueryValueEx(kVersion, 'SysVersion')[0],
-                                'ExecutablePath': reg.QueryValueEx(install_path, 'ExecutablePath')[0]
-                            }
+                            environments.append(_PythonEnv(
+                                name=name, 
+                                version=reg.QueryValueEx(kVersion, 'SysVersion')[0],
+                                executable=reg.QueryValueEx(install_path, 'ExecutablePath')[0]))
                 except OSError:
                     ...
     except OSError:
@@ -187,26 +189,79 @@ def _find_python_enviroments_from_key(pythons_key):
 
     return environments
 
+
+def _find_conda_environments():
+
+    from pathlib import Path
+    env_file = Path.home() / '.conda' / 'environments.txt'
+    if not env_file.exists():
+        return []
+
+    env_paths = set(x for x in env_file.read_text().split('\n') if len(x) > 0)
+
+    environments = []
+
+    # TODO: currently not sure of the easiest/best way to get version info
+    for path in env_paths:
+        root, _, env = path.rpartition(os.path.sep + "envs" + os.path.sep)
+        exe_path = os.path.join(path, "python.exe")
+        if root in env_paths:
+            environments.append(_PythonEnv(
+                name=f'{env} ({os.path.basename(root)})',
+                version="?",
+                executable=exe_path))
+        else:
+            environments.append(_PythonEnv(
+                name=os.path.basename(path),
+                version="?",
+                executable=exe_path))
+
+    return environments
+
+def _find_env_by_exe(environments, filename):
+    filename = filename.upper()
+    for i in range(len(environments)):
+        if environments[i].executable.upper() == filename.upper():
+            return i
+
+    return None
+
+
 def _find_python_enviroments():
 
     roots = [reg.HKEY_LOCAL_MACHINE, reg.HKEY_CURRENT_USER]
-    environments = {}
+    environments = []
 
     for root in roots:
         try:
             with reg.OpenKey(root, "Software\\Python") as pythons_key:
-                environments.update(_find_python_enviroments_from_key(pythons_key))
+                environments += _find_python_enviroments_from_key(pythons_key)
         except FileNotFoundError:
             ... # Reg key doesn't exist, try the next one
 
+    for env in _find_conda_environments():
+        if env.executable not in environments:
+            environments.append(env)
+
+    py_exe = _settings.get_env_var("PYTHONEXECUTABLE")
+
+    # Check if current environment is already described 
+    if _find_env_by_exe(environments, py_exe) is None:
+        environments.append(_PythonEnv(
+            name='Current',
+            version=f'{sys.version_info.major}.{sys.version_info.minor}',
+            executable=py_exe))
+
     return environments
 
-_python_enviroments = list(_find_python_enviroments().values())
+
+_PYTHON_ENVIRONMENTS = _find_python_enviroments()
+
 
 async def set_python_environment(ctrl, id, index):
-    environment = _python_enviroments[index]
 
-    exe_path = environment['ExecutablePath']
+    environment = _PYTHON_ENVIRONMENTS[index]
+    exe_path = environment.executable
 
     xloil_bin_path = Path(exe_path).parent / "share/xloil"
 
@@ -233,32 +288,18 @@ async def set_python_environment(ctrl, id, index):
 
     restart_notify()
 
+
 def get_python_environment_count(ctrl):
-    py_home = _settings.get_env_var("PYTHONEXECUTABLE").upper()
+    return len(_PYTHON_ENVIRONMENTS)
 
-    # Check if current environment is already described in registry
-    for env in _python_enviroments:
-        if env['ExecutablePath'].upper() == py_home:
-            return len(_python_enviroments)
-
-    _python_enviroments.append({
-        'DisplayName': 'Current',
-        'Version':  f'{sys.version_info.major}.{sys.version_info.minor}',
-        'ExecutablePath': _settings.get_env_var("PYTHONEXECUTABLE")
-    })
-
-    return len(_python_enviroments)
 
 def get_python_environment(ctrl, i):
-    return _python_enviroments[i]['DisplayName']
+    return _PYTHON_ENVIRONMENTS[i].name
+
 
 def get_python_environment_selected(ctrl):
-    py_home = _settings.get_env_var("PYTHONEXECUTABLE").upper()
-    for i in range(len(_python_enviroments)):
-        if _python_enviroments[i]['ExecutablePath'].upper() == py_home:
-            return i
-
-    return 0
+    py_home = _settings.get_env_var("PYTHONEXECUTABLE")
+    return _find_env_by_exe(_PYTHON_ENVIRONMENTS, py_home) or (len(_PYTHON_ENVIRONMENTS) - 1)
 
 #
 # Python Load Modules callbacks

@@ -21,6 +21,15 @@ if XLOIL_EMBEDDED:
         if not name.startswith("="):
             os.environ[name] = val
 
+    try: 
+        from xloil_core import _LogWriter
+        from conda.activate import CmdExeActivator
+        if os.path.exists(os.path.join(sys.prefix, 'conda-meta', 'history')):
+            activation = CmdExeActivator().build_activate(sys.prefix)
+            for name, val in activation['export_vars'].items():
+                os.environ[name] = str(val)
+    except ImportError:
+        pass
 
 elif not XLOIL_READTHEDOCS:
 
