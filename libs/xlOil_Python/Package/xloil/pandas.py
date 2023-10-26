@@ -1,5 +1,6 @@
 try:
     import pandas as pd
+    from dateutil import tz
 
 except ImportError:
     from ._core import XLOIL_READTHEDOCS
@@ -66,17 +67,24 @@ class PDFrame:
         known converter are converted to string via `str(x)`. This prevents a 
         large number of (possibly unhelpful) object refs being created.
 
+    timezone: str (default None)
+        Excel is timezone-naive, so timezone-aware dates must be converted to a
+        localised time.  This is done with tz_convert and this specified timezone.
+        If None, the local timezone is used.
+
     dtype: type
         Not currently implemented!
 
     """
-    def __init__(self, headings=True, index=None, cache_objects=False, dates=None, dtype=None):
+    def __init__(self, headings=True, index=None, cache_objects=False, 
+                 dates=None, dtype=None, timezone=None):
         # TODO: use element_type in the dataframe construction
         self._element_type = dtype
         self._headings = headings
         self._index = index
         self._cache_objects = cache_objects
         self._parse_dates = dates
+        self._timezone = timezone if timezone is not None else tz.tzlocal()
 
     def read(self, x):
         # A converter should check if provided value is already of the correct type.
@@ -115,11 +123,25 @@ class PDFrame:
         
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
+    def _convert_timezone(self, x: pd.Series):
+       return x.dt.tz_convert(tz=self._timezone).dt.tz_localize(None).values 
+
     def write(self, frame: pd.DataFrame):
 
-        import xloil_core
+        if not isinstance(frame, pd.DataFrame):
+            #TODO: converting to frame is not the most efficient option
+            if isinstance(frame, pd.Series):
+                frame = frame.to_frame()
+            else:
+                return frame
 
-        columns = [col.values for _, col in frame.items()]
+        import xloil_core
+        from pandas.api.types import is_datetime64tz_dtype
+
+        columns = [
+            col.values if not is_datetime64tz_dtype(col) else self._convert_timezone(col) 
+            for _, col in frame.items()
+            ]
 
         # If outputting the index, we prepare an array for each index level
         if self._index is not False:
@@ -163,12 +185,12 @@ class PDFrame:
 @converter(target=pd.Timestamp, register=True)
 class PandasTimestamp:
     """
-        There is not need to use this class directly in annotations, rather 
+        There is no need to use this class directly in annotations, rather 
         use ``pandas.Timestamp``
     """
 
     def read(self, val):
-        return pd.Timestamp(val)
+        return pd.Timestamp(to_datetime(val))
 
     def write(self, val):
         return val.to_pydatetime()

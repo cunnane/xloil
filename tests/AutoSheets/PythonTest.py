@@ -4,6 +4,7 @@ import datetime as dt
 import os 
 import numpy as np
 
+    
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -520,7 +521,12 @@ try:
             "dates": [pd.Timestamp("2023/08/01"), np.nan, pd.Timestamp("2023/08/02"), np.nan, pd.NaT, pd.Timestamp("2023/08/02")],
             "objects": [None, 42, pd.Timestamp("1969/01/01"), "Foo", np.nan, type(42)]
         })
-        
+
+    @xlo.func
+    def pyTestTimestamp(date_: pd.Timestamp, timezone:str) -> pd.DataFrame:
+        ts = date_.tz_localize(tz=timezone)
+        return pd.Series({'date': ts}) 
+
 except ImportError:
     pass
 
@@ -642,4 +648,11 @@ def click_handler(sheet_name, target, cancel):
     ws['A1'] = ws['A5']
     ws['A1'] += target.address()
 
+def what_changed(worksheet='not sheet', changed='not change'):
+    wb = xlo.active_workbook()
+    ws = wb[worksheet]
+    ws["Z1"] = str(worksheet)
+    ws["Z2"] = str(changed)
+    
 xlo.event.SheetBeforeDoubleClick += click_handler
+xlo.event.SheetChange += what_changed

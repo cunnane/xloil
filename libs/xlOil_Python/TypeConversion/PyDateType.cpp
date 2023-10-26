@@ -11,7 +11,12 @@ namespace py = pybind11;
 using std::vector;
 using std::wstring;
 
-
+// Defined in Py 3.10+, seems to work in earlier verions
+#ifndef PyDateTime_TIME_GET_TZINFO
+#define _PyDateTime_HAS_TZINFO(o) (((_PyDateTime_BaseTZInfo *)(o))->hastzinfo)
+#define PyDateTime_TIME_GET_TZINFO(o) (_PyDateTime_HAS_TZINFO(o) ? \
+    ((PyDateTime_Time *)(o))->tzinfo : Py_None)
+#endif
 
 namespace xloil
 {
@@ -27,7 +32,7 @@ namespace xloil
       return (PyDate_CheckExact(p) || PyDateTime_CheckExact(p));
     }
 
-    ExcelObj pyDateTimeToSerial(PyObject* p)
+    ExcelObj pyLocalDateTimeToSerial(PyObject* p)
     {
       auto serial = excelSerialDateFromYMDHMS(
         PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
@@ -35,6 +40,17 @@ namespace xloil
         PyDateTime_DATE_GET_MICROSECOND(p)
       );
       return ExcelObj(serial);
+    }
+
+    ExcelObj pyDateTimeToSerial(PyObject* p)
+    {
+      if (PyDateTime_TIME_GET_TZINFO(p) == Py_None)
+        return pyLocalDateTimeToSerial(p);
+      else
+      {
+        auto localised = PyBorrow(p).attr("astimezone")();
+        return pyLocalDateTimeToSerial(localised.ptr());
+      }
     }
 
     ExcelObj pyDateToSerial(PyObject* p)
