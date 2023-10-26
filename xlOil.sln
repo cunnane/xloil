@@ -119,6 +119,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{B853DF1D
 		tools\WriteInclude.ps1 = tools\WriteInclude.ps1
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python312", "libs\xlOil_Python\xlOil_Python312.vcxproj", "{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -527,7 +529,6 @@ Global
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Any CPU.Build.0 = Debug|x64
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|Win32.Build.0 = Debug|Win32
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.Debug|x64.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Any CPU.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.DebugStatic|Any CPU.Build.0 = Debug|x64
@@ -543,6 +544,24 @@ Global
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Any CPU.Build.0 = Release|x64
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F}.ReleaseStatic|x64.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Debug|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Debug|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.DebugStatic|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.DebugStatic|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.DebugStatic|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.DebugStatic|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|Win32.Build.0 = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|x64.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.Release|x64.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.ReleaseStatic|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.ReleaseStatic|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F}.ReleaseStatic|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -563,6 +582,7 @@ Global
 		{0D856EA8-A97D-45AC-94AF-68AECF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 		{4070F602-F283-47B1-802F-773D01991AE5} = {67EB80BB-D718-428C-80BD-E409C27FAD25}
 		{B853DF1D-B9D1-43BC-A655-41224C5EAFCF} = {67EB80BB-D718-428C-80BD-E409C27FAD25}
+		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4C948047-E838-4EA3-AD64-392D149AD565}
