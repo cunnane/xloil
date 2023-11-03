@@ -658,8 +658,9 @@ namespace xloil
         TImpl converter(pyArr);
         
         ExcelArrayBuilder builder((row_t)dims[0], 1, converter.stringLength);
-        auto elementPtr = (TDataType*)PyArray_BYTES(pyArr);
-        for (auto j = 0; j < dims[0]; ++j, ++elementPtr)
+        auto elementPtr = PyArray_BYTES(pyArr);
+        const auto stride = PyArray_STRIDE(pyArr, 0);
+        for (auto j = 0; j < dims[0]; ++j, elementPtr += stride)
           builder(j, 0).take(converter.toExcelObj(builder, elementPtr));
         
         return _cache
@@ -695,10 +696,15 @@ namespace xloil
 
         ExcelArrayBuilder builder((uint32_t)dims[0], (uint32_t)dims[1],
           converter.stringLength);
+        
+        const auto stride1 = PyArray_STRIDE(pyArr, 0);
+        const auto stride2 = PyArray_STRIDE(pyArr, 1);
         for (auto i = 0; i < dims[0]; ++i)
-          for (auto j = 0; j < dims[1]; ++j)
-            builder(i, j).take(converter.toExcelObj(builder, PyArray_GETPTR2(pyArr, i, j)));
-
+        {
+          auto elementPtr = PyArray_BYTES(pyArr) + i * stride1;
+          for (auto j = 0; j < dims[1]; ++j, elementPtr += stride2)
+            builder(i, j).take(converter.toExcelObj(builder, elementPtr));
+        }
         return _cache
           ? xloil::makeCached<ExcelObj>(builder.toExcelObj())
           : builder.toExcelObj();
