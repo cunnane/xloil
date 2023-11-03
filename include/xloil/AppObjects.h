@@ -253,7 +253,7 @@ namespace xloil
 
     void set(const ExcelObj& value) final override;
 
-    std::wstring formula() const final override;
+    ExcelObj formula() const final override;
 
     void clear() final override;
 
@@ -262,13 +262,36 @@ namespace xloil
       return &com();
     }
 
+    enum SetFormulaMode
+    {
+      ARRAY_FORMULA,
+      DYNAMIC_ARRAY,
+      OLD_ARRAY
+    };
+
     /// <summary>
-    /// Sets the forumula for the range to the specified string. If the 
-    /// range is larger than one cell, the formula is applied as an 
-    /// ArrayFormula.
+    /// Sets the forumula for the range to the specified string. The `mode` 
+    /// parameter determines how this function differs from the *Formula2* 
+    /// property of COM/VBA Range:
+    ///
+    ///   * *DYNAMIC_ARRAY*: (default) identical the `Formula2` property, formulae
+    ///    which return arrays will spill.  If the range is larger than one cell and 
+    ///    a single value is passed that value is filled into each cell.
+    ///   * *ARRAY_FORMULA*: if the target range is larger than one cell and a single 
+    ///    string is passed, the string is set as an array formula for the range
+    ///   * *OLD_ARRAY*: formulae which return arrays will not spill see "Formula vs Formula2" 
+    ///    on MSDN
+    /// 
     /// </summary>
     /// <param name="formula"></param>
-    void setFormula(const std::wstring_view& formula);
+    /// 
+    void setFormula(const std::wstring_view& formula, const SetFormulaMode mode = DYNAMIC_ARRAY);
+    
+    /// <summary>
+    /// Instead of taking only a string formula, takes an *ExcelObj* which can contain a string
+    /// or an array of equal dimensions to the *Range* being set.
+    /// </summary>
+    void setFormula(const ExcelObj& formula, const SetFormulaMode mode = DYNAMIC_ARRAY);
 
     /// <summary>
     /// The range address

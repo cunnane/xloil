@@ -156,23 +156,43 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  void ExcelRange::setFormula(const std::wstring_view& formula)
+  void ExcelRange::setFormula(const std::wstring_view& formula, const SetFormulaMode mode)
   {
     try
     {
-      if (size() > 1)
-        com().FormulaArray = stringToVariant(formula);
+      auto value = stringToVariant(formula);
+      if (mode == ARRAY_FORMULA && size() > 1)
+        com().FormulaArray = value;
+      else if (mode == OLD_ARRAY)
+        com().PutFormula(value);
       else
-        com().Formula = stringToVariant(formula);
+        com().PutFormula2(value);
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  std::wstring ExcelRange::formula() const
+  void ExcelRange::setFormula(const ExcelObj& formula, const SetFormulaMode mode)
+  {
+    try
+    { 
+      VARIANT v;
+      COM::excelObjToVariant(&v, formula);
+      auto value = _variant_t(v, false);  // Move variant
+      if (mode == ARRAY_FORMULA && v.vt == VT_BSTR && size() > 1)
+        com().FormulaArray = value;
+      else if (mode == OLD_ARRAY)
+        com().PutFormula(value);
+      else
+        com().PutFormula2(value);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelObj ExcelRange::formula() const
   {
     try
     {
-      return ((_bstr_t)com().Formula).GetBSTR();
+      return COM::variantToExcelObj(com().Formula2);
     }
     XLO_RETHROW_COM_ERROR;
   }

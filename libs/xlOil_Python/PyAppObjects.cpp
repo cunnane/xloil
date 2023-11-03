@@ -111,10 +111,28 @@ namespace xloil
         return ExcelRange(r).formula();
       }
 
-      void range_SetFormula(Range& r, const wstring& val)
+      void range_SetFormula(Range& r, const py::object& pyVal)
       { 
+        const auto val(FromPyObj()(pyVal.ptr()));
         py::gil_scoped_release noGil;
         ExcelRange(r).setFormula(val);
+      }
+
+      void range_SetFormulaExtra(Range& r, const py::object& pyVal, std::string& how)
+      {
+        const auto val(FromPyObj()(pyVal.ptr()));
+        py::gil_scoped_release noGil;
+        toLower(how);
+        ExcelRange::SetFormulaMode mode;
+        if (how == "" || how == "dynamic")
+          mode = ExcelRange::DYNAMIC_ARRAY;
+        else if (how == "array")
+          mode = ExcelRange::ARRAY_FORMULA;
+        else if (how == "implicit")
+          mode = ExcelRange::OLD_ARRAY;
+        else
+          throw py::value_error(how);
+        ExcelRange(r).setFormula(val, mode);
       }
 
       py::object range_getItem(const Range& range, const py::object& loc)
@@ -788,11 +806,29 @@ namespace xloil
         .def_property("formula", 
           range_GetFormula, range_SetFormula,
           R"(
-            Get / sets the forumula for the range as a string string. If the range
-            is larger than one cell, the formula is applied as an ArrayFormula.
-            Returns an empty string if the range does not contain a formula or array 
-            formula.
+            Get / sets the formula for the range. If the cell contains a constant, this property returns 
+            the value. If the cell is empty, this property returns an empty string. If the cell contains
+            a formula, the property returns the formula that would be displayed in the formula bar as a
+            string.  If the range is larger than one cell, the property returns an array of the values  
+            which would be obtained calling `formula` on each cell.
+            
+            When setting, if the range is larger than one cell and a single value is passed that value
+            is filled into each cell. Alternatively, you can set the formula to an array of the same 
+            dimensions.
           )")
+        .def("set_formula", range_SetFormulaExtra, 
+          R"(
+            The `how` parameter determines how this function differs from setting the `formula` 
+            property:
+
+              * *dynamic* (or omitted): identical to setting the `formula` property
+              * *array*: if the target range is larger than one cell and a single string is passed,
+                set this as an array formula for the range
+              * *implicit*: uses old-style implicit intersection - see "Formula vs Formula2" on MSDN
+
+          )", 
+          py::arg("formula"), 
+          py::arg("how") = "")
         .def("to_com", 
           toCom<Range>,
           toComDocString, 

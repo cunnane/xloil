@@ -169,7 +169,8 @@ namespace xloil
       /// </summary>
       void take(ExcelObj&& x)
       {
-        assert(x.isType(ExcelType::ArrayValue));
+        if (!x.isType(ExcelType::ArrayValue))
+          XLO_THROW(L"Invalid array element '{}'", x.toString());
         new (_target) ExcelObj(std::forward<ExcelObj>(x));
       }
 

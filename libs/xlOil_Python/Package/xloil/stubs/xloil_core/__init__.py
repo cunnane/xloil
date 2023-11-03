@@ -873,6 +873,16 @@ class Range():
         If a 1d array is provided it will be pasted at the top left and repeated down or
         right depending on orientation.
         """
+    def set_formula(self, formula: object, how: str = '') -> None: 
+        """
+        The `how` parameter determines how this function differs from setting the `formula` 
+        property:
+
+          * *dynamic* (or omitted): identical to setting the `formula` property
+          * *array*: if the target range is larger than one cell and a single string is passed,
+            set this as an array formula for the range
+          * *implicit*: uses old-style implicit intersection - see "Formula vs Formula2" on MSDN
+        """
     def to_com(self, lib: str = '') -> object: 
         """
         Returns a managed COM object which can be used to invoke Excel's full 
@@ -897,23 +907,33 @@ class Range():
         :type: typing.Tuple[int, int, int, int]
         """
     @property
-    def formula(self) -> str:
+    def formula(self) -> _RawExcelValue:
         """
-                    Get / sets the forumula for the range as a string string. If the range
-                    is larger than one cell, the formula is applied as an ArrayFormula.
-                    Returns an empty string if the range does not contain a formula or array 
-                    formula.
+                    Get / sets the formula for the range. If the cell contains a constant, this property returns 
+                    the value. If the cell is empty, this property returns an empty string. If the cell contains
+                    a formula, the property returns the formula that would be displayed in the formula bar as a
+                    string.  If the range is larger than one cell, the property returns an array of the values  
+                    which would be obtained calling `formula` on each cell.
+                    
+                    When setting, if the range is larger than one cell and a single value is passed that value
+                    is filled into each cell. Alternatively, you can set the formula to an array of the same 
+                    dimensions.
                   
 
-        :type: str
+        :type: _RawExcelValue
         """
     @formula.setter
-    def formula(self, arg1: str) -> None:
+    def formula(self, arg1: object) -> None:
         """
-        Get / sets the forumula for the range as a string string. If the range
-        is larger than one cell, the formula is applied as an ArrayFormula.
-        Returns an empty string if the range does not contain a formula or array 
-        formula.
+        Get / sets the formula for the range. If the cell contains a constant, this property returns 
+        the value. If the cell is empty, this property returns an empty string. If the cell contains
+        a formula, the property returns the formula that would be displayed in the formula bar as a
+        string.  If the range is larger than one cell, the property returns an array of the values  
+        which would be obtained calling `formula` on each cell.
+
+        When setting, if the range is larger than one cell and a single value is passed that value
+        is filled into each cell. Alternatively, you can set the formula to an array of the same 
+        dimensions.
         """
     @property
     def ncols(self) -> int:

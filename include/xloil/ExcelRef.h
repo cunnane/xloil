@@ -371,16 +371,19 @@ namespace xloil
     /// Sets the formula if the range is a cell or an array formula for a 
     /// larger range. Formulae must use RC-style references; this is not
     /// the case for ExcelRange, so there is no setFormula on the base Range
-    /// class 
+    /// class. If the target range is larger than a single cell, the formula
+    /// will be filled to each cell in the range, unless the *array* paramter
+    /// is true, in which case the ArrayFormula property of the range will be
+    /// set to the given formula.
     /// <see cref="xloil::Range"\> class.
     /// </summary>
-    void setFormula(const std::wstring_view& formula);
+    void setFormula(const std::wstring_view& formula, bool array=false);
 
-    std::wstring formula() const final override
+    ExcelObj formula() const final override
     {
       // xlfGetFormula always returns RC references, but GetCell uses the
       // workspace settings to return RC or A1 style.
-      return callExcel(msxll::xlfGetCell, 6, _ref).get<std::wstring>();
+      return callExcel(msxll::xlfGetCell, 6, _ref);
     }
 
     /// <summary>
