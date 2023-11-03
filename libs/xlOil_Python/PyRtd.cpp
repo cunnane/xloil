@@ -260,7 +260,6 @@ namespace xloil
         // interpreter, so capturing 'this' is safe.
         _cleanup = Event_PyBye().bind([this]
         { 
-          py::gil_scoped_release releaseGil;
           _impl.reset(); 
         });
       }
