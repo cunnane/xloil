@@ -907,7 +907,7 @@ class Range():
         :type: typing.Tuple[int, int, int, int]
         """
     @property
-    def formula(self) -> _RawExcelValue:
+    def formula(self) -> object:
         """
                     Get / sets the formula for the range. If the cell contains a constant, this property returns 
                     the value. If the cell is empty, this property returns an empty string. If the cell contains
@@ -920,7 +920,7 @@ class Range():
                     dimensions.
                   
 
-        :type: _RawExcelValue
+        :type: object
         """
     @formula.setter
     def formula(self, arg1: object) -> None:

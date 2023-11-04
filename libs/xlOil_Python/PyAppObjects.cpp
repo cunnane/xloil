@@ -107,8 +107,12 @@ namespace xloil
       {
         // XllRange::formula only works from non-local functions so to 
         // minimise surpise, we convert to a COM range and call 'formula'
-        py::gil_scoped_release noGil;
-        return ExcelRange(r).formula();
+        ExcelObj val;
+        {
+          py::gil_scoped_release noGil; 
+          val = ExcelRange(r).formula();
+        }
+        return convertExcelObj(std::move(val));
       }
 
       void range_SetFormula(Range& r, const py::object& pyVal)
