@@ -127,7 +127,7 @@ namespace xloil
         for (auto i = table->cbegin(); i != table->cend(); ++i)
         {
           if (_stricmp((*i).first.data(), name) == 0)
-            return toml::view_node((*i).second);
+            return toml::view_node(&(*i).second);
         }
    
       return toml::view_node();
