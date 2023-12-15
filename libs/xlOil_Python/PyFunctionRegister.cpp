@@ -91,6 +91,9 @@ namespace xloil
       , isLocalFunc(isLocal)
       , isRtdAsync(false)
       , isAsync(false)
+      , _hasKeywordArgs(false)
+      , _hasVariableArgs(false)
+      , _numPositionalArgs(0)
     {
       _info->name = name.empty()
         ? py::wstr(func.attr("__name__"))
@@ -463,9 +466,11 @@ namespace xloil
     {
       auto addin = _addin.lock();
       // Rescan the module, passing in the module handle if it exists
-      py::gil_scoped_acquire get_gil;
       if (_module && !_module.is_none())
+      {
+        py::gil_scoped_acquire get_gil;
         addin->importModule(_module);
+      }
       else
         addin->importFile(name().c_str(), linkedWorkbook().c_str());
     }
@@ -488,7 +493,6 @@ namespace xloil
         const auto wbName = wcsrchr(newPathName, '\\') + 1;
         auto newSource = make_shared<RegisteredModule>(newSourcePath, addin, wbName);
         addin->context().addSource(newSource);
-        py::gil_scoped_acquire get_gil;
         addin->importFile(newSourcePath.c_str(), newPathName);
       }
       else
