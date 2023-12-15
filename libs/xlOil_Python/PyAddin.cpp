@@ -7,6 +7,7 @@
 #include <xlOil/DynamicRegister.h>
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
+#include <xlOil/State.h>
 #include <toml++/toml.h>
 #include <pybind11/stl.h>
 #include <datetime.h> // From CPython
@@ -30,10 +31,12 @@ namespace xloil
     PyAddin::PyAddin(AddinContext& ctx,
                      bool separateThread,
                      const std::string_view& comLib,
-                     const std::wstring_view& wbPattern)
+                     const std::wstring_view& wbPattern,
+                     const bool useLoaderThread)
       : _context(&ctx)
       , thread(separateThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
       , _comBinder(comLib)
+      , _loadOnThread(useLoaderThread)
     {
       if (!wbPattern.empty())
       {
@@ -84,16 +87,29 @@ namespace xloil
         fileExtn ? wstring(workbookPath, fileExtn).c_str() : workbookPath);
     }
 
-    void PyAddin::importModule(const pybind11::object& module)
+    void PyAddin::importModule(
+      const pybind11::object& module, 
+      bool backgroundThread)
     {
-      return thread->callback("xloil.importer", "_import_and_scan",
-        module, self());
+      if (backgroundThread)
+        thread->callback("xloil.importer", "_import_and_scan", module, self());
+      else
+        pybind11::module::import("xloil.importer").attr("_import_and_scan")(module, self());
     }
 
-    void PyAddin::importFile(const wchar_t* filePath, const wchar_t* linkedWorkbook)
+    void PyAddin::importFile(
+      const wchar_t* filePath, 
+      const wchar_t* linkedWorkbook, 
+      bool backgroundThread)
     {
-      return thread->callback("xloil.importer", "_import_file_and_scan",
-        filePath, self(), linkedWorkbook);
+      // TODO: would be ideal if we didn't have to get the gil here
+      py::gil_scoped_acquire get_gil;
+      if (backgroundThread)
+        thread->callback("xloil.importer", "_import_file_and_scan",
+          filePath, self(), linkedWorkbook);
+      else
+        pybind11::module::import("xloil.importer").attr("_import_file_and_scan")(
+          filePath, self(), linkedWorkbook);
     }
 
     pybind11::object PyAddin::self() const
@@ -128,6 +144,8 @@ namespace xloil
       for (auto& [key, addin] : theAddins)
         if (addin->thread->thread().get_id() == id)
           return addin->thread;
+      if (isMainThread())
+        return theCoreAddin()->thread;
       XLO_THROW("Internal: could not find addin associated with current thread");
     }
 
