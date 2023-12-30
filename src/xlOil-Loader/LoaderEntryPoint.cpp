@@ -8,6 +8,7 @@
 #include <xlOil/Events.h>
 #include <xlOil/LogWindow.h>
 #include <xloil/XllEntryPoint.h>
+#define TOML_ABI_NAMESPACES 0
 #include <toml++/toml.h>
 #include <filesystem>
 #define DELAYIMP_INSECURE_WRITABLE_HOOKS

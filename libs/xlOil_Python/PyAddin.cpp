@@ -8,6 +8,7 @@
 #include <xlOil/Log.h>
 #include <xlOil/StringUtils.h>
 #include <xlOil/State.h>
+#define TOML_ABI_NAMESPACES 0
 #include <toml++/toml.h>
 #include <pybind11/stl.h>
 #include <datetime.h> // From CPython
@@ -304,8 +305,8 @@ namespace xloil
               ribbon toolbar.
             )")
           .def_property("async_slice",
-            [](PyAddin& self) { return self.thread->sleepTime; },
-            [](PyAddin& self, unsigned value) { self.thread->sleepTime = value; },
+            [](PyAddin& self) { return self.thread->asyncioTimeout; },
+            [](PyAddin& self, unsigned value) { self.thread->asyncioTimeout = value; },
             R"(
               Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
               to run before being interrupted. The event loop holds the GIL while it is running, so

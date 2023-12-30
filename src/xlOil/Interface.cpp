@@ -13,6 +13,7 @@
 #include <xlOil-COM/WorkbookScopeFunctions.h>
 #include <filesystem>
 #include <set>
+#define TOML_ABI_NAMESPACES 0
 #include <toml++/toml.h>
 
 using std::make_pair;
