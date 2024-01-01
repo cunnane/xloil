@@ -105,11 +105,11 @@ class PDFrame:
 
             if n_headings == 1:
                 headings = x[0,:].to_numpy(dims=1)
-                df.set_axis(headings, axis=1, inplace=True)
+                df.columns = headings
 
             elif n_headings > 1:
                 headings = x[:n_headings,:].to_numpy(dims=2)
-                df.set_axis(pd.MultiIndex.from_arrays(headings), axis=1, inplace=True)
+                df.columns = pd.MultiIndex.from_arrays(headings)
 
             if self._parse_dates is not None:
                 for col in self._parse_dates:
