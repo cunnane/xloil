@@ -23,7 +23,7 @@
 #pragma warning(disable:26812)
 
 // MSO.dll
-#import "libid:2DF8D04C-5BFA-101B-BDE5-00AA0044DE52" \
+#import "libid:2DF8D04C-5BFA-101B-BDE5-00AA0044DE52" version("2.8") \
   rename("DocumentProperties", "MSODocumentProperties") \
   rename("RGB", "MSORGB") \
   rename("IAccessible", "MSOIAccessible") \
