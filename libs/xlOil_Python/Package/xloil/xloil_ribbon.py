@@ -31,11 +31,11 @@ class Settings:
 
     def set_addin_env_var(self, name, value):
         """ Sets the value of a token in the xlOil addin's Environment block """
-        table = self._find_table(self._doc['Addin']['Environment'], name)
+        table = self._find_table(self.addin['Environment'], name)
         table[name] = value
 
     def get_addin_env_var(self, name):
-        table = self._find_table(self._doc['Addin']['Environment'], name)
+        table = self._find_table(self.addin['Environment'], name)
         return table[name]
 
     def save(self):
@@ -45,7 +45,11 @@ class Settings:
     @property
     def python(self):
         return self._doc['xlOil_Python']
-
+    
+    @property
+    def addin(self):
+        return self._doc['Addin']
+    
     @property
     def path(self):
         return self._path
@@ -386,6 +390,7 @@ async def set_debugpy_port(ctrl, value):
     _settings.python['DebugPyPort'] = value
     _settings.save()
 
+
 #
 # Open Log callback
 # -----------------
@@ -450,6 +455,19 @@ def restart_notify():
 def get_restart_label_visible(ctrl):
     global _restart_label_visible
     return _restart_label_visible
+
+
+
+def set_error_propagation(ctrl, value):
+    _settings.addin['ErrorPropagation'] = value
+    _settings.save()
+    # TODO: enable this when the settings update is live otherwise the behaviour is a little unexpected
+    #for func in xloil.core_addin().functions():
+    #   func.error_propagation = value
+
+
+def get_error_propagation(ctrl):
+    return bool(_settings.addin.get('ErrorPropagation', False))
 
 #
 # Ribbon creation
@@ -529,14 +547,20 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
               <editBox id="ebxDebugPy" label="DebugPy Port"
                 screentip="Connection port used if the debugpy/vscode debugger is selected"
                 getText="get_debugpy_port"
-                onChange="set_debugpy_port" />
+                onChange="set_debugpy_port"/>
             </group>
             <group id="grp3" autoScale="false" centerVertically="false" label="Other" >
-             <editBox id="ebxDateFormats" label="Date Formats" 
+              <editBox id="ebxDateFormats" label="Date Formats" 
                 screentip="Date formats tried when parsing strings as dates"
                 supertip="Uses 'std::get_time' formats: %Y year, %m month number, %b month name, etc." 
                 getText="get_date_formats" 
-                onChange="set_date_formats"  />
+                onChange="set_date_formats"/>
+              <checkBox id="cbxPropagation" label="Propagate Errors"
+                screentip="If enabled, any error code (eg. \#NUM!) arguments are passed through as the function's return 
+                            value, otherwise all argument values are handled by the function"
+                supertip="(requires restart)"
+                getPressed="get_error_propagation"              
+                onAction="set_error_propagation"/>          
             </group>
           </tab>
         </tabs>

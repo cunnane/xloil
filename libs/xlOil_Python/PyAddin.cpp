@@ -38,6 +38,7 @@ namespace xloil
       , thread(separateThread ? make_shared<EventLoop>() : theCoreAddin()->thread)
       , _comBinder(comLib)
       , _loadOnThread(useLoaderThread)
+      , _propagateErrors(false)
     {
       if (!wbPattern.empty())
       {
@@ -51,6 +52,8 @@ namespace xloil
         else // Replace the star so we can use formatStr later
           _workbookPattern.replace(star, 1, wstring(L"%s"));
       }
+      if (ctx.settings())
+        _propagateErrors = (*ctx.settings())["Addin"]["ErrorPropagation"].value_or(false);
     }
 
     void PyAddin::unload()

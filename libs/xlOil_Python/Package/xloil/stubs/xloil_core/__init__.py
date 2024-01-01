@@ -1766,13 +1766,21 @@ class _FuncArg():
         """
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
+    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, errors: int = 0) -> None: ...
     def __str__(self) -> str: ...
     @property
     def args(self) -> typing.List[_FuncArg]:
         """
         :type: typing.List[_FuncArg]
         """
+    @property
+    def error_propagation(self) -> bool:
+        """
+        :type: bool
+        """
+    @error_propagation.setter
+    def error_propagation(self, arg1: bool) -> None:
+        pass
     @property
     def func(self) -> function:
         """

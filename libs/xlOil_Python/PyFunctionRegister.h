@@ -77,7 +77,8 @@ namespace xloil
         const std::wstring& help,
         const std::wstring& category,
         bool isLocal,
-        bool isVolatile);
+        bool isVolatile,
+        unsigned errorPropagation);
 
       ~PyFuncInfo();
 
@@ -88,6 +89,8 @@ namespace xloil
 
       auto getReturnConverter() const { return returnConverter; }
       void setReturnConverter(const std::shared_ptr<const IPyToExcel>& conv);
+      auto getErrorPropagation() const { return (_propagateErrors & ADDIN) > 0; }
+      void setErrorPropagation(bool x) { _propagateErrors |= x ? ADDIN : ~ADDIN; }
 
       bool isLocalFunc;
       bool isAsync;
@@ -95,13 +98,21 @@ namespace xloil
       bool isThreadSafe() const { return (_info->options & FuncInfo::THREAD_SAFE) != 0; }
       bool isCommand()    const { return (_info->options & FuncInfo::COMMAND) != 0; }
       bool isFPArray()    const { return (_info->options & FuncInfo::ARRAY) != 0; }
+      bool propagateErrors() const 
+      { 
+        auto x = (_propagateErrors & (ALWAYS | NEVER | ADDIN));
+        return x > 0 && x < NEVER;
+      }
 
       const std::shared_ptr<FuncInfo>& info() const { return _info; }
+
       const pybind11::function& func() const { return _func; }
       void setFunc(const pybind11::function& f) { _func = f; }
 
-      static std::shared_ptr<const DynamicSpec> createSpec(
-        const std::shared_ptr<PyFuncInfo>& funcInfo);
+      static std::shared_ptr<const DynamicSpec> 
+        createSpec(
+          const std::shared_ptr<PyFuncInfo>& funcInfo,
+          const PyAddin& addin);
 
       /// <summary>
       /// Convert the array of ExcelObj arguments to PyObject values, with 
@@ -177,8 +188,16 @@ namespace xloil
       bool _hasKeywordArgs;
       bool _hasVariableArgs;
       uint16_t _numPositionalArgs;
+      unsigned _propagateErrors;
 
       void writeExcelArgumentDescription();
+
+      enum Propagation
+      {
+        ALWAYS = 1 << 2,
+        NEVER  = 1 << 3,
+        ADDIN  = 1  // Set if error propagation is enabled by the addin
+      };
     };
 
     class RegisteredModule : public LinkedSource

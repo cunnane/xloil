@@ -78,11 +78,14 @@ namespace xloil
       AddinContext& context();
       const AddinContext& context() const;
 
+      bool propagateErrors() const { return _propagateErrors; }
+
     private:
       std::wstring _workbookPattern;
       AddinContext* _context;
       std::string _comBinder;
       bool _loadOnThread;
+      bool _propagateErrors;
 
       pybind11::object self() const;
     };
