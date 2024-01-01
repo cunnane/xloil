@@ -27,7 +27,9 @@ namespace xloil
     namespace detail
     {
       struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
-      {};
+      {
+        constexpr bool emptyStringGivesDefault() { return true; }
+      };
 
       /// <summary>
       /// Wraps a type conversion functor, interpreting the string conversion to
@@ -50,10 +52,13 @@ namespace xloil
             return cached.release().ptr();
           return TBase::operator()(str);
         }
+
         PyObject* operator()(const PStringRef& str)
         {
           return const_cast<const PyFromCache<TBase>&>(*this)(str);
         }
+
+        constexpr bool emptyStringGivesDefault() { return true; }
       };
 
       struct PyFromDouble : public PyFromExcelImpl
@@ -64,6 +69,7 @@ namespace xloil
         PyObject* operator()(double x) const   { return PyFloat_FromDouble(x); }
         PyObject* operator()(int x)    const   { return operator()(double(x)); }
         PyObject* operator()(bool x)   const   { return operator()(double(x)); }
+
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
@@ -78,6 +84,7 @@ namespace xloil
         }
         PyObject* operator()(int x)      const { return operator()(bool(x)); }
         PyObject* operator()(double x)   const { return operator()(x != 0); }
+
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
@@ -97,6 +104,8 @@ namespace xloil
         PyObject* operator()(double x)  const { return PyUnicode_FromString(std::to_string(x).c_str()); }
 
         constexpr wchar_t* failMessage() const { return L"Expected string"; }
+
+        constexpr bool emptyStringGivesDefault() { return false; }
       };
 
       struct PyFromInt : public PyFromExcelImpl
@@ -150,6 +159,8 @@ namespace xloil
         }
 
         constexpr wchar_t* failMessage() const { return L"Unknown type"; }
+
+        constexpr bool emptyStringGivesDefault() { return false; }
       };
 
       /// <summary>
@@ -213,7 +224,7 @@ namespace xloil
         const ExcelObj& xl,
         PyObject* defaultVal = nullptr)
       {
-        if (xl.isMissing() && defaultVal)
+        if (defaultVal && (xl.isMissing() || (_impl.emptyStringGivesDefault() && xl.isEmptyStr())))
         {
           // If we return the default value, we need to increment its refcount
           Py_INCREF(defaultVal);
@@ -381,6 +392,7 @@ namespace xloil
         {
           return ExcelObj(PyFloat_AS_DOUBLE(p));
         }
+#pragma warning(suppress: 4127)
         else if (!TIsScalar && isNumpyArray(p))
         {
           return ExcelObj(numpyArrayToExcel(p));
