@@ -94,9 +94,9 @@ namespace xloil
         , _obj(std::move(obj))
       {}
 
-      size_t count() const { return _objects.size() + 1; }
+      auto count() const { return (uint16_t)(_objects.size() + 1); }
 
-      size_t add(TObj&& obj, size_t calcId)
+      auto add(TObj&& obj, size_t calcId)
       {
         if (_calcId != calcId)
         {
@@ -270,7 +270,7 @@ namespace xloil
 
     std::wstring writeKey(
       const std::wstring_view& cacheKey,
-      size_t count) const
+      uint16_t count) const
     {
       std::wstring key;
       key.resize(cacheKey.length() + PADDING);
@@ -301,7 +301,7 @@ namespace xloil
 
       decltype(_cache)::iterator found;
 
-      uint8_t iPos = 0;
+      uint16_t iPos = 0;
       {
         std::scoped_lock lock(_cacheLock);
 
@@ -315,7 +315,7 @@ namespace xloil
         }
         else
         {
-          iPos = (uint8_t)found->second.add(
+          iPos = (uint16_t)found->second.add(
             std::forward<TObj>(obj), _calcId);
         }
       }
@@ -331,7 +331,7 @@ namespace xloil
     }
 
     /// Add cell object count in form ",X"
-    void writeCount(wchar_t* key, size_t iPos) const
+    void writeCount(wchar_t* key, uint16_t iPos) const
     {
       static_assert(PADDING == 2);
       key[0] = L',';
