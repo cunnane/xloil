@@ -1776,11 +1776,16 @@ class _FuncSpec():
     @property
     def error_propagation(self) -> bool:
         """
+                      Used internally to control the error propagation setting
+                    
+
         :type: bool
         """
     @error_propagation.setter
     def error_propagation(self, arg1: bool) -> None:
-        pass
+        """
+        Used internally to control the error propagation setting
+        """
     @property
     def func(self) -> function:
         """
@@ -1828,11 +1833,16 @@ class _FuncSpec():
     @property
     def name(self) -> str:
         """
+                      Writing to name property doesn't make sense when registered
+                    
+
         :type: str
         """
     @name.setter
     def name(self, arg1: str) -> None:
-        pass
+        """
+        Writing to name property doesn't make sense when registered
+        """
     @property
     def return_converter(self) -> IPyToExcel:
         """
