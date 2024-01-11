@@ -73,9 +73,15 @@
     <CopyFileToFolders Include="..\..\config\xloil_local.ini">
       <FileType>Document</FileType>
       <DestinationFileName>xloil.ini</DestinationFileName>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <CopyFileToFolders Include="..\..\config\xloil_local_32.ini">
+      <FileType>Document</FileType>
+      <DestinationFileName>xloil.ini</DestinationFileName>
+      <ExcludedFromBuild Condition="'$(Platform)'!='Win32'">true</ExcludedFromBuild>
+    </CopyFileToFolders>
     <None Include="xlOilAddin.def" />
   </ItemGroup>
   <ItemGroup>
