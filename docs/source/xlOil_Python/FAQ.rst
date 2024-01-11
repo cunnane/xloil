@@ -85,3 +85,14 @@ which usually resolves the issue.  The location of this directory can be discove
 
 Either delete the entire *gen_py* directory or just the subdirectory corresponding to the CLSID
 which is indicated in the error.
+
+
+Could not connect COM: trying again in 1 second
+-----------------------------------------------
+
+If this appears frequently in your log file, it may be because Excel is not opening a blank 
+workbook on load.  It is a long-standing Excel bug that the COM server is not properly 
+started until a workbook is opened: xlOil needs this COM server to register ribbon components,
+so waits in a loop until is is available.  To make Excel open a blank workbook on load (the
+pre-Office 2016 behaviour), go to the *File* menu, then *Options*, under *General*, find
+*Start up options*, uncheck the "Show the Start screen when this application starts" box.
