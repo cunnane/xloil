@@ -32,16 +32,17 @@ class PDFrame:
     ::
 
         @xlo.func
-        def array1(x: xlo.PDFrame(int)):
+        def array1(x: xlo.PDFrame):
             pass
 
         @xlo.func
-        def array2(y: xlo.PDFrame(float, headings=True)):
+        def array2(y: xlo.PDFrame(headings=True)):
             pass
 
         @xlo.func
-        def array3(z: xlo.PDFrame(str, index='Index')):
+        def array3(z: xlo.PDFrame(index='Index')):
             pass
+            
     
     Parameters
     ----------
