@@ -111,20 +111,20 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public detail::PyFromExcelImpl
+    class PyTupleFromArray : public detail::PyFromExcelImpl<PyTupleFromArray<TValConv>>
     {
       TValConv _valConv;
     public:
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyTupleFromArray<TValConv>>::operator();
       static constexpr char* const ourName = "tuple";
 
-      PyObject* operator()(const ArrayVal& obj)
+      PyObject* operator()(const ExcelObj& obj) const
       {
-        ExcelArray arr(obj);
+        ExcelArray arr(cacheCheck(obj));
         if (arr.dims() < 2)
         {
           auto result = py::tuple(arr.size());
-          for (auto i = 0; i < arr.size(); ++i)
+          for (auto i = 0u; i < arr.size(); ++i)
           {
             auto val = _valConv(arr.at(i));
             PyTuple_SET_ITEM(result.ptr(), i, val);
@@ -154,21 +154,21 @@ namespace xloil
     };
 
     template <class TValConv>
-    class PyListFromArray : public detail::PyFromExcelImpl
+    class PyListFromArray : public detail::PyFromExcelImpl<PyListFromArray<TValConv>>
     {
       TValConv _valConv;
     public:
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyListFromArray<TValConv>>::operator();
       static constexpr char* const ourName = "list";
 
-      PyObject* operator()(const ArrayVal& obj)
+      PyObject* operator()(const ExcelObj& obj) const
       {
-        ExcelArray arr(obj);
+        ExcelArray arr(cacheCheck(obj));
 
         if (arr.dims() < 2)
         {
           auto result = py::list(arr.size());
-          for (auto i = 0; i < arr.size(); ++i)
+          for (auto i = 0u; i < arr.size(); ++i)
           {
             auto val = _valConv(arr.at(i));
             PyList_SET_ITEM(result.ptr(), i, val);
@@ -199,7 +199,7 @@ namespace xloil
 
     PyObject* excelArrayToNestedTuple(const ExcelObj & obj)
     {
-      return PyTupleFromArray<PyFromAny>()(static_cast<const ArrayVal&>(obj));
+      return PyTupleFromArray<PyFromAny>()(obj);
     }
 
     namespace

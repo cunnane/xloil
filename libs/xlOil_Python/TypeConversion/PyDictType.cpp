@@ -14,7 +14,7 @@ namespace xloil
     namespace detail
     {
       template <class TKeyConv, class TValConv>
-      class PyDictFromArray : public PyFromExcelImpl
+      class PyDictFromArray : public PyFromExcelImpl<PyDictFromArray<TKeyConv, TValConv>>
       {
         TKeyConv _keyConv;
         TValConv _valConv;
@@ -33,7 +33,7 @@ namespace xloil
           return PyDict_New();
         }
 
-        PyObject* operator()(const ArrayVal& obj)
+        PyObject* operator()(const ArrayVal& obj) const
         {
           ExcelArray arr(obj);
 

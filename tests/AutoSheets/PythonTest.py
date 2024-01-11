@@ -4,7 +4,19 @@ import datetime as dt
 import os 
 import numpy as np
 
-    
+class dummy:
+    def __init__(self,val):
+        self.val = val
+
+@xlo.func()
+def list_of_stuff():
+    count= 200
+    return [dummy(1)]*count + [dummy(2)]*count
+
+@xlo.func()
+def check_a_thing(thing:dummy):
+    return thing.val
+
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard

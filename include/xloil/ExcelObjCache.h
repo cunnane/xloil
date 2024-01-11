@@ -27,7 +27,7 @@ namespace xloil
   {
     if (obj.isType(ExcelType::Str))
     {
-      auto cacheVal = getCached<ExcelObj>(obj.cast<PStringRef>().view());
+      auto cacheVal = getCached<ExcelObj>(obj.cast<PStringRef>());
       if (cacheVal)
         return *cacheVal;
     }

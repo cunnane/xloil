@@ -363,7 +363,7 @@ namespace xloil
     }
 
     template <int TNpType>
-    class PyFromArray1d : public detail::PyFromExcelImpl
+    class PyFromArray1d : public detail::PyFromExcelImpl<PyFromArray1d<TNpType>>
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
@@ -373,12 +373,12 @@ namespace xloil
       PyFromArray1d(bool trim = true) : _trim(trim), _conv()
       {}
 
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyFromArray1d<TNpType>>::operator();
       static constexpr char* const ourName = "array(1d)";
 
-      PyObject* operator()(const ArrayVal& obj) const
+      PyObject* operator()(const ExcelObj& obj) const
       {
-        ExcelArray arr(obj, _trim);
+        ExcelArray arr(cacheCheck(obj), _trim);
         return (*this)(arr);
       }
 
@@ -415,7 +415,7 @@ namespace xloil
     };
 
     template <int TNpType>
-    class PyFromArray2d : public detail::PyFromExcelImpl
+    class PyFromArray2d : public detail::PyFromExcelImpl<PyFromArray2d<TNpType>>
     {
       bool _trim;
       typename TypeTraits<TNpType>::from_excel _conv;
@@ -425,12 +425,12 @@ namespace xloil
       PyFromArray2d(bool trim = true) : _trim(trim), _conv()
       {}
 
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyFromArray2d<TNpType>>::operator();
       static constexpr char* const ourName = "array(2d)";
 
-      PyObject* operator()(const ArrayVal& obj) const
+      PyObject* operator()(const ExcelObj& obj) const
       {
-        ExcelArray arr(obj, _trim);
+        ExcelArray arr(cacheCheck(obj), _trim);
         return (*this)(arr);
       }
 
