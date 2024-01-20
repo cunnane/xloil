@@ -145,11 +145,12 @@ namespace xloil
         size_t stringLength = dims[0] * 4; // err why?
 
         SequentialArrayBuilder builder((row_t)dims[0], 1, stringLength);
-        auto elementPtr = (TDataType*)PyArray_BYTES(pyArr);
-        for (auto i = 0; i < dims[0]; ++i, ++elementPtr)
+        auto elementPtr = PyArray_BYTES(pyArr);
+        const auto stride = PyArray_STRIDE(pyArr, 0);
+        for (auto i = 0; i < dims[0]; ++i, elementPtr += stride)
           builder.emplace(
             FromPyObj<detail::ReturnToCache, true>()(
-              *elementPtr, builder.charAllocator()));
+              *(TDataType*)elementPtr, builder.charAllocator()));
 
         py::gil_scoped_release noGil;
 
@@ -186,7 +187,6 @@ namespace xloil
 
         SequentialArrayBuilder builder((row_t)dims[0], (col_t)dims[1], stringLength);
         auto charAllocator = builder.charAllocator();
-
 
         for (auto i = 0; i < dims[0]; ++i)
           for (auto j = 0; j < dims[1]; ++j)
