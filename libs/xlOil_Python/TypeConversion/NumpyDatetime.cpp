@@ -1,3 +1,5 @@
+#include "NumpyDatetime.h"
+#include <stdexcept>
 /*
  * This file implements core functionality for NumPy datetime.
  *
@@ -31,9 +33,7 @@ create_datetime_dtype(int type_num, PyArray_DatetimeMetaData *meta)
         dtype = PyArray_DescrNewFromType(type_num);
     }
     else {
-        throw std::runtime_error(
-                "Asked to create a datetime type with a non-datetime "
-                "type number");
+        throw std::runtime_error("Asked to create a datetime type with a non-datetime type number");
     }
 
     if (dtype == NULL) {
@@ -280,8 +280,7 @@ NpyDatetime_ConvertDatetimeStructToDatetime64(PyArray_DatetimeMetaData *meta,
     /* Cannot instantiate a datetime with generic units */
     if (meta->base == NPY_FR_GENERIC) {
         throw std::runtime_error(
-                    "Cannot create a NumPy datetime other than NaT "
-                    "with generic units");
+                    "Cannot create a NumPy datetime other than NaT with generic units");
     }
 
     if (base == NPY_FR_Y) {
@@ -376,8 +375,7 @@ NpyDatetime_ConvertDatetimeStructToDatetime64(PyArray_DatetimeMetaData *meta,
                 break;
             default:
                 /* Something got corrupted */
-                throw std::runtime_error(
-                        "NumPy datetime metadata with corrupt unit value");
+                throw std::runtime_error("NumPy datetime metadata with corrupt unit value");
         }
     }
 
@@ -547,8 +545,7 @@ NpyDatetime_ConvertDatetime64ToDatetimeStruct(
 
         default:
             throw std::runtime_error(
-                        "NumPy datetime metadata is corrupted with invalid "
-                        "base unit");
+                        "NumPy datetime metadata is corrupted with invalid base unit");
     }
 
     return 0;

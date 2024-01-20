@@ -5,8 +5,9 @@
  * an array of function points in every cpp file. 
  */
 
-#include "PyHelpers.h"
+#include "CPython.h"
 #include <xlOil/ExcelObj.h>
+#include <memory>
 
 namespace xloil { 
   class FPArray;
