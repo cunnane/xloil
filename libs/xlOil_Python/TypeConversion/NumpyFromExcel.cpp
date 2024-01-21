@@ -216,40 +216,43 @@ namespace xloil
         * sizeof(TypeTraits<NPY_UNICODE>::storage);
     }
 
-   
 
     /// <summary>
     /// Helper to call PyArray_New.  Allocate data using PyDataMem_NEW
     /// </summary>
     template<int NDim>
-    PyObject* newNumpyArray(int numpyType, Py_intptr_t (&dims)[NDim], void* data, size_t itemsize)
+    py::object newNumpyArray(int numpyType, Py_intptr_t (&dims)[NDim], size_t itemsize, char*& data)
     {
+      PyArray_Descr* descr;
+
       if (numpyType == NPY_DATETIME)
+        descr = createDatetimeDtype();
+      else if (numpyType == NPY_STRING || numpyType == NPY_UNICODE)
       {
-        auto descr = createDatetimeDtype();
-        return PyArray_NewFromDescr(
-          &PyArray_Type,
-          descr,
-          NDim,
-          dims,
-          nullptr, // strides
-          data,
-          NPY_ARRAY_OWNDATA | NPY_ARRAY_CARRAY,
-          nullptr); // array finaliser
+        descr = PyArray_DescrNewFromType(numpyType);
+        descr->elsize = (int)itemsize;
       }
       else
-      {
-        return PyArray_New(
-          &PyArray_Type,
-          NDim,
-          dims,
-          numpyType,
-          nullptr, // strides
-          data,
-          (int)itemsize,
-          NPY_ARRAY_OWNDATA | NPY_ARRAY_CARRAY,
-          nullptr); // array finaliser
-      }
+        descr = PyArray_DescrFromType(numpyType);
+
+      assert(descr->elsize > 0);
+
+      // The flags argument is confusing: if data is null, flags=1 means a 
+      // fortran-style array, but if data is not null, flags=1 (i.e. set to
+      // NPY_ARRAY_C_CONTIGUOUS) means a C-style array!
+      auto array = PyArray_NewFromDescr(
+        &PyArray_Type,
+        descr,
+        NDim,
+        dims,
+        nullptr,  // strides
+        nullptr,  // data
+        0,        // flags
+        nullptr); // array finaliser
+
+      assert(PyArray_CHKFLAGS((PyArrayObject*)array, NPY_ARRAY_C_CONTIGUOUS));
+      data = PyArray_BYTES((PyArrayObject*)array);
+      return PySteal(array);
     }
 
     template <int TNpType>
@@ -293,11 +296,13 @@ namespace xloil
         }
         else
         {
-          auto data = (char*)PyDataMem_NEW(arraySize * itemsize);
-          auto d = data;
-          for (auto p = arr.begin(); p != arr.end(); ++p, d += itemsize)
-            _conv((data_type*)d, itemsize, *p);
-          return newNumpyArray(TNpType, dims, data, itemsize);
+          char* data;
+          auto pyArray = newNumpyArray(TNpType, dims, itemsize, data);
+
+          NumpyBeginThreadsDescr releaseGil(TNpType);
+          for (auto p = arr.begin(); p != arr.end(); ++p, data += itemsize)
+            _conv((data_type*)data, itemsize, *p);
+          return pyArray.release().ptr();
         }
       }
 
@@ -347,9 +352,10 @@ namespace xloil
         }
         else
         {
-          const auto dataSize = arraySize * itemsize;
-          auto data = (char*)PyDataMem_NEW(dataSize);
+          char* data;
+          auto pyArray = newNumpyArray(TNpType, dims, itemsize, data);
 
+          NumpyBeginThreadsDescr releaseGil(TNpType);
           auto d = data;
           for (auto i = 0; i < dims[0]; ++i)
           {
@@ -359,7 +365,7 @@ namespace xloil
               _conv((TDataType*)d, itemsize, *pObj);
           }
 
-          return newNumpyArray(TNpType, dims, data, itemsize);
+          return pyArray.release().ptr();
         }
       }
 
@@ -372,12 +378,10 @@ namespace xloil
 
       constexpr auto itemsize = sizeof(double);
       const auto dataSize = rows * columns * itemsize;
-
-      auto data = (char*)PyDataMem_NEW(dataSize);
-
+      char* data;
+      auto pyArray = newNumpyArray(NPY_DOUBLE, dims, itemsize, data);
       memcpy(data, array, dataSize);
-
-      return newNumpyArray(NPY_DOUBLE, dims, data, itemsize);
+      return pyArray.release().ptr();
     }
 
     class FPArrayConverter : public IPyFromExcel
@@ -416,8 +420,6 @@ namespace xloil
     {
       if (dtype < 0)
         dtype = excelTypeToNumpyDtype(arr.dataType());
-
-      NumpyBeginThreadsDescr releaseGil(dtype);
 
       switch (dims)
       {
