@@ -244,7 +244,7 @@ namespace xloil
       }
       bool publish(const wchar_t* topic, ExcelObj&& value) override
       {
-        server().update(topic, make_shared<ExcelObj>(value));
+        server().update(topic, make_shared<ExcelObj>(std::move(value)));
         return true;
       }
       shared_ptr<const ExcelObj> 
