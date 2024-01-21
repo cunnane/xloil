@@ -137,7 +137,7 @@ namespace xloil
     public:
       ExcelObj operator()(const PyObject* obj) const override
       {
-        return PyDate_CheckExact(&obj)
+        return PyDate_CheckExact(obj)
           ? ExcelObj(pyDateToSerial(obj))
           : ExcelObj();
       }
@@ -151,7 +151,7 @@ namespace xloil
     public:
       ExcelObj operator()(const PyObject* obj) const override
       {
-        return PyDateTime_CheckExact(&obj)
+        return PyDateTime_CheckExact(obj)
           ? ExcelObj(pyDateTimeToSerial(const_cast<PyObject*>(obj)))
           : ExcelObj();
       }
