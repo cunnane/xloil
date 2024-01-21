@@ -18,12 +18,12 @@ namespace xloil
     namespace
     {
       std::tuple<PyArrayObject*, npy_intp*, int, bool>
-        getArrayInfo(const PyObject& obj)
+        getArrayInfo(const PyObject* obj)
       {
-        if (!PyArray_Check(&obj))
+        if (!PyArray_Check(obj))
           XLO_THROW("Expected array");
 
-        auto pyArr = (PyArrayObject*)&obj;
+        auto pyArr = (PyArrayObject*)obj;
         auto dims = PyArray_DIMS(pyArr);
         auto nDims = PyArray_NDIM(pyArr);
 
@@ -51,7 +51,7 @@ namespace xloil
         : _cache(cache)
       {}
 
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -88,7 +88,7 @@ namespace xloil
     public:
       XlFromArray2d(bool cache = false) : _cache(cache) {}
 
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -132,7 +132,7 @@ namespace xloil
     public:
       XlFromArray1d(bool cache = false) : _cacheResult(cache) {}
 
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -173,7 +173,7 @@ namespace xloil
     public:
       XlFromArray2d(bool cache = false) : _cacheResult(cache) {}
 
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
         auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
@@ -221,15 +221,15 @@ namespace xloil
       switch (nDims)
       {
       case 1:
-        return switchDataType<XlFromArray1d>(dType, *p);
+        return switchDataType<XlFromArray1d>(dType, p);
       case 2:
-        return switchDataType<XlFromArray2d>(dType, *p);
+        return switchDataType<XlFromArray2d>(dType, p);
       default:
         XLO_THROW("Expected 1 or 2 dim array");
       }
     }
   
-    std::shared_ptr<FPArray> numpyToFPArray(const PyObject& obj)
+    std::shared_ptr<FPArray> numpyToFPArray(const PyObject* obj)
     {
       auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
 

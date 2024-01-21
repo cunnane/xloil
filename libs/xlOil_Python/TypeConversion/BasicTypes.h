@@ -412,11 +412,11 @@ namespace xloil
 #pragma warning(suppress: 4127)
         else if (!TIsScalar && isNumpyArray(p))
         {
-          return ExcelObj(numpyArrayToExcel(p));
+          return numpyArrayToExcel(p);
         }
         else if (isPyDate(p))
         {
-          return ExcelObj(pyDateToExcel(p));
+          return pyDateToExcel(p);
         }
         else if (isErrorType(p))
         {
@@ -429,7 +429,7 @@ namespace xloil
         }
         else if (detail::getCustomReturnConverter())
         {
-          auto val = (*detail::getCustomReturnConverter())(*p);
+          auto val = (*detail::getCustomReturnConverter())(obj);
           if (!val.isType(ExcelType::Nil))
             return ExcelObj(std::move(val));
         }
@@ -452,9 +452,9 @@ namespace xloil
     class PyFuncToExcel : public IPyToExcel
     {
     public:
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
-        return TFunc()(&obj);
+        return TFunc()(obj);
       }
       const char* name() const override
       {

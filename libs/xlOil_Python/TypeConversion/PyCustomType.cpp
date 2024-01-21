@@ -125,7 +125,7 @@ namespace xloil
         py::gil_scoped_acquire getGil;
         _callable = py::object();
       }
-      virtual ExcelObj operator()(const PyObject& target) const override
+      virtual ExcelObj operator()(const PyObject* target) const override
       {
         auto* result = invokeImpl(target);
         if (!result)
@@ -136,17 +136,17 @@ namespace xloil
           PyErr_Clear();
           return ExcelObj();
         }
-        auto converted = PySteal<>(result);
+        auto converted = PySteal(result);
         // TODO: the custom converter should be able to specify the return type rather than generic FromPyObj
         // TODO: the user could create an infinite loop which cycles between two type converters - best way to avoid?
         return FromPyObj()(converted.ptr());
       }
       auto invoke(const py::object& target) const
       {
-        return PySteal<>(invokeImpl(*target.ptr()));
+        return PySteal(invokeImpl(target.ptr()));
       }
 
-      PyObject* invokeImpl(const PyObject& target) const
+      PyObject* invokeImpl(const PyObject* target) const
       {
       // Use raw C API for extra speed as this code is on a critical path
 #if PY_VERSION_HEX < 0x03080000
@@ -155,7 +155,7 @@ namespace xloil
         PyObject* args[] = { nullptr, const_cast<PyObject*>(&target) };
         auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #else
-        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&target));
+        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(target));
 #endif
         return result;
       }

@@ -38,6 +38,14 @@ namespace xloil
     virtual ExcelObj operator()(const TSource& obj) const = 0;
   };
 
+  template <class TSource>
+  class IConvertToExcel<TSource*>
+  {
+  public:
+    virtual ~IConvertToExcel() {}
+    virtual ExcelObj operator()(const TSource* obj) const = 0;
+  };
+
   /// <summary>
   /// Provides the default implementation (which is generally an error)
   /// for conversion functors to be used in <see cref="FromExcel"/> or 

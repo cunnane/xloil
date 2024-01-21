@@ -98,7 +98,7 @@ namespace xloil
       {
         // Convert result to ExcelObj
         ExcelObj result = _returnConverter
-          ? (*_returnConverter)(*value.ptr())
+          ? (*_returnConverter)(value.ptr())
           : FromPyObjOrError()(value.ptr());
 
         // If nil, conversion wasn't possible, so use the cache
@@ -299,7 +299,7 @@ namespace xloil
         else
         {
           xlValue = converter
-            ? (*converter)(*ptr)
+            ? (*converter)(ptr)
             : FromPyObj()(ptr);
         }
 

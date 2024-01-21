@@ -161,7 +161,7 @@ namespace xloil
 
       FPArray* operator()(PyObject* retVal) const
       {
-        return numpyToFPArray(*retVal).get();
+        return numpyToFPArray(retVal).get();
       }
 
       FPArray* operator()(const char* err, const PyFuncInfo* info) const
@@ -195,7 +195,7 @@ namespace xloil
         static ExcelObj result;
 
         result = _returnConverter
-          ? (*_returnConverter)(*retVal)
+          ? (*_returnConverter)(retVal)
           : FromPyObj()(retVal);
 
         return (*this)(result);
@@ -222,7 +222,7 @@ namespace xloil
       ExcelObj* operator()(PyObject* retVal) const
       {
         return returnValue(_returnConverter
-          ? (*_returnConverter)(*retVal)
+          ? (*_returnConverter)(retVal)
           : FromPyObj()(retVal));
       }
 

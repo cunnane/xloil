@@ -72,9 +72,9 @@ namespace xloil
     class XlFromDict: public IPyToExcel
     {
     public:
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
-        auto p = (PyObject*)&obj;
+        auto p = const_cast<PyObject*>(obj);
         if (!PyDict_Check(p))
           return ExcelObj();
         const auto size = PyDict_Size(p);

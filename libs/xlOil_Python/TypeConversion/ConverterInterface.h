@@ -16,7 +16,7 @@ namespace xloil
       /// </summary>
       virtual const char* name() const = 0;
     };
-    class IPyToExcel : public IConvertToExcel<PyObject>
+    class IPyToExcel : public IConvertToExcel<PyObject*>
     {
     public:
       /// <summary>
