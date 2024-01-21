@@ -42,7 +42,7 @@ namespace xloil
           xloil::detail::ArrayBuilderIterator& end)
         {
           char* arrayPtr = PyArray_BYTES(_array);
-          const auto step = PyArray_STRIDES(_array)[0];
+          const auto step = PyArray_STRIDE(_array, 0);
           for (; start != end; arrayPtr += step, ++start)
           {
             start->take(_impl.toExcelObj(builder, arrayPtr));
@@ -58,23 +58,23 @@ namespace xloil
         ConverterHolder(PyArrayObject* array, bool objectToString)
           : _builder((row_t)PyArray_DIMS(array)[0], 1)
         {
-          auto arrayPtr = (PyObject**)PyArray_BYTES(array);
+          auto arrayPtr = PyArray_BYTES(array);
           const auto N = _builder.nRows();
-
+          const auto step = PyArray_STRIDE(array, 0);
           auto charAllocator = _builder.charAllocator();
           if (objectToString)
           {
-            for (auto i = 0u; i < N; ++i, ++arrayPtr)
+            for (auto i = 0u; i < N; ++i, arrayPtr += step)
               _builder.emplace(
                 FromPyObj<detail::ReturnToString, true>()(
-                  *arrayPtr, charAllocator));
+                  *(PyObject**)arrayPtr, charAllocator));
           }
           else
           {
-            for (auto i = 0u; i < N; ++i, ++arrayPtr)
+            for (auto i = 0u; i < N; ++i, arrayPtr += step)
               _builder.emplace(
                 FromPyObj<detail::ReturnToCache, true>()(
-                  *arrayPtr, charAllocator));
+                  *(PyObject**)arrayPtr, charAllocator));
           }
         }
 
@@ -104,7 +104,7 @@ namespace xloil
         }
       };
 
-      size_t arrayShape(const py::object& p)
+      size_t arrayShape(const py::handle& p)
       {
         if (p.is_none())
           return 0;
@@ -143,7 +143,7 @@ namespace xloil
           _converters.reserve(n);
         }
 
-        auto collect(const py::object& p, size_t expectedLength)
+        auto collect(const py::handle& p, size_t expectedLength)
         {
           auto shape = arrayShape(p);
 
@@ -203,8 +203,6 @@ namespace xloil
       auto nHeadingLevels = 0u;
       auto nIndexLevels = 0u;
 
-      py::object iter;
-      PyObject* item;
 
       // Converters may end up larger if we have multi-level indices
       TableHelpers::Converters converters(
@@ -213,27 +211,25 @@ namespace xloil
       // Examine data frame index
       if (hasIndex)
       {
-        iter = PySteal(PyObject_GetIter(index.ptr()));
-        while ((item = PyIter_Next(iter.ptr())) != 0)
+        for (auto iter = py::iter(index); iter != py::iterator::sentinel(); ++iter)
         {
-          converters.collect(PySteal(item), nInner);
+          converters.collect(*iter, nInner);
           ++nIndexLevels;
         }
       }
 
-      iter = PySteal(PyObject_GetIter(tableData));
+      
       // First loop to establish array size and length of strings
-      while ((item = PyIter_Next(iter.ptr())) != 0)
+      for (auto iter = py::iter(tableData); iter != py::iterator::sentinel(); ++iter)
       {
-        converters.collect(PySteal(item), nInner);
+        converters.collect(*iter, nInner);
       }
 
       if (hasHeadings)
       {
-        iter = PySteal(PyObject_GetIter(headings.ptr()));
-        while ((item = PyIter_Next(iter.ptr())) != 0)
+        for (auto iter = py::iter(headings); iter != py::iterator::sentinel(); ++iter)
         {
-          converters.collect(PySteal(item), nOuter);
+          converters.collect(*iter, nOuter);
           ++nHeadingLevels;
         }
       }
@@ -242,17 +238,13 @@ namespace xloil
       auto indexNameStringLength = 0;
       if (nIndexLevels > 0 && !indexName.is_none())
       {
-        iter = PySteal(PyObject_GetIter(indexName.ptr()));
         auto i = 0u;
-        while (i < nIndexLevels * nHeadingLevels && (item = PyIter_Next(iter.ptr())) != 0)
+        for (auto iter = py::iter(indexName); i < nIndexLevels * nHeadingLevels && iter != py::iterator::sentinel(); ++i, ++iter)
         {
-          indexNames[i] = FromPyObj()(PySteal(item).ptr());
+          indexNames[i] = FromPyObj()(iter->ptr());
           indexNameStringLength += indexNames[i].stringLength();
-          ++i;
         }
       }
-
-      iter = py::object(); // Ensure iterator is closed
 
       // If possible, release the GIL before beginning the conversion
       NumpyBeginThreadsDescr releaseGil(
