@@ -93,7 +93,7 @@ namespace xloil
       {
         try
         {
-          if (active())
+          if (_thread.size() > 0)
             shutdown();
         }
         catch (const std::exception& e)
@@ -122,7 +122,7 @@ namespace xloil
       }
       bool active()
       {
-        return _thread.size() > 0;
+        return !_stopped;
       }
       void stop()
       {
