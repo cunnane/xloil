@@ -28,7 +28,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -58,80 +58,12 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\src\Release.props" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup>
-    <TargetExt>.pyd</TargetExt>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>python310.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="AsyncFunctions.cpp" />
-    <ClCompile Include="PyAddin.cpp" />
-    <ClCompile Include="PyAppObjects.cpp" />
-    <ClCompile Include="PyCallExcelBuiltin.cpp" />
-    <ClCompile Include="PyLogWriter.cpp" />
-    <ClCompile Include="PyStatusBar.cpp" />
-    <ClCompile Include="TypeConversion\BasicTypes.cpp" />
-    <ClCompile Include="PyCache.cpp" />
-    <ClCompile Include="TypeConversion\PyCustomType.cpp" />
-    <ClCompile Include="TypeConversion\PyDateType.cpp" />
-    <ClCompile Include="TypeConversion\PyDictType.cpp" />
-    <ClCompile Include="PyCOM.cpp">
-      <MultiProcessorCompilation>false</MultiProcessorCompilation>
-    </ClCompile>
-    <ClCompile Include="TypeConversion\PyRangeType.cpp" />
-    <ClCompile Include="PyImage.cpp" />
-    <ClCompile Include="PyRibbon.cpp" />
-    <ClCompile Include="PySource.cpp" />
-    <ClCompile Include="PyFunctionRegister.cpp" />
-    <ClCompile Include="Main.cpp" />
-    <ClCompile Include="PyCore.cpp" />
-    <ClCompile Include="TypeConversion\Numpy.cpp" />
-    <ClCompile Include="PyEvents.cpp" />
-    <ClCompile Include="TypeConversion\PyExcelArrayType.cpp" />
-    <ClCompile Include="PyHelpers.cpp" />
-    <ClCompile Include="PyRtd.cpp" />
-    <ClCompile Include="TypeConversion\PyTupleType.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="ArrayHelpers.h" />
-    <ClInclude Include="EventLoop.h" />
-    <ClInclude Include="PyCOM.h" />
-    <ClInclude Include="PyFuture.h" />
-    <ClInclude Include="AsyncFunctions.h" />
-    <ClInclude Include="CPython.h" />
-    <ClInclude Include="PyCache.h" />
-    <ClInclude Include="PyImage.h" />
-    <ClInclude Include="PySource.h" />
-    <ClInclude Include="Main.h" />
-    <ClInclude Include="TypeConversion\PyDateType.h" />
-    <ClInclude Include="TypeConversion\PyDictType.h" />
-    <ClInclude Include="PyFunctionRegister.h" />
-    <ClInclude Include="TypeConversion\BasicTypes.h" />
-    <ClInclude Include="PyCore.h" />
-    <ClInclude Include="TypeConversion\Numpy.h" />
-    <ClInclude Include="PyEvents.h" />
-    <ClInclude Include="TypeConversion\PyExcelArrayType.h" />
-    <ClInclude Include="PyHelpers.h" />
-    <ClInclude Include="TypeConversion\PyTupleType.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\external\spdlog\spdlog.vcxproj">
-      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\xlOil\xlOil.vcxproj">
-      <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
-    </ProjectReference>
-  </ItemGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>

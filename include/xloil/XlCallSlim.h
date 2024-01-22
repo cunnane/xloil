@@ -197,7 +197,11 @@ namespace msxll
     union
     {
       double num;				       	/* xltypeNum */
-      XCHAR *str;				       	/* xltypeStr */
+      struct
+      {
+        XCHAR* data;
+        bool xloil_view; // Our modification
+      } str; 	/* xltypeStr */
       BOOL xbool;				       	/* xltypeBool */
       int err;				       	/* xltypeErr */
       int w;
@@ -216,6 +220,7 @@ namespace msxll
         struct xloper12 *lparray;
         RW rows;
         COL columns;
+        bool xloil_view; // Clearly wasn't in Microsoft's spec!
       } array;					/* xltypeMulti */
       struct
       {

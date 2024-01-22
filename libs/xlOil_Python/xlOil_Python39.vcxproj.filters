@@ -34,12 +34,15 @@
     <ClCompile Include="TypeConversion\PyTupleType.cpp">
       <Filter>TypeConversion</Filter>
     </ClCompile>
-    <ClCompile Include="TypeConversion\Numpy.cpp" />
     <ClCompile Include="PyCallExcelBuiltin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
     <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyStatusBar.cpp" />
     <ClCompile Include="PyLogWriter.cpp" />
+    <ClCompile Include="PyRunLater.cpp" />
+    <ClCompile Include="TypeConversion\Numpy.cpp">
+      <Filter>TypeConversion</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AsyncFunctions.h" />
@@ -47,7 +50,6 @@
     <ClInclude Include="PyCache.h" />
     <ClInclude Include="PyImage.h" />
     <ClInclude Include="PySource.h" />
-    <ClInclude Include="Main.h" />
     <ClInclude Include="PyFunctionRegister.h" />
     <ClInclude Include="PyCore.h" />
     <ClInclude Include="PyEvents.h" />
@@ -67,13 +69,18 @@
     <ClInclude Include="TypeConversion\PyTupleType.h">
       <Filter>TypeConversion</Filter>
     </ClInclude>
-    <ClInclude Include="TypeConversion\Numpy.h" />
     <ClInclude Include="EventLoop.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="PyRtd.h" />
     <ClInclude Include="PyAddin.h" />
+    <ClInclude Include="TypeConversion\ConverterInterface.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeConversion\Numpy.h">
+      <Filter>TypeConversion</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TypeConversion">

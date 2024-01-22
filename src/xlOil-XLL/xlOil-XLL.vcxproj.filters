@@ -16,11 +16,16 @@
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="LogWindow.cpp" />
     <ClCompile Include="Intellisense.cpp" />
+    <ClCompile Include="FPArray.cpp" />
+    <ClCompile Include="Log.cpp" />
+    <ClCompile Include="LogWindowSink.cpp" />
+    <ClCompile Include="ArrayBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="ExcelCallMapping.h" />
     <ClInclude Include="Intellisense.h" />
     <ClInclude Include="ObjectCacheSingleThread.h" />
+    <ClInclude Include="LogWindowSink.h" />
   </ItemGroup>
 </Project>

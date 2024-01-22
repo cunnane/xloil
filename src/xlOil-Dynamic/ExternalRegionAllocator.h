@@ -11,8 +11,9 @@ namespace xloil
   /// This is done by repeated calls to VirtualAlloc until one sticks and 
   /// the since allocator is also unoptimised so is not likely to have high
   /// performance. It's purpose is to provide space for dynamically written 
-  /// thunks, which must have addresses in the range to be 
-  /// [imageBase, imageBase + DWORD_MAX] described in the DLL export table.
+  /// thunks, which must have addresses in the range  
+  /// [imageBase,  min(imageBase + MAXDWORD, address_max)] to be described 
+  /// in the DLL export table.
   /// 
   /// The allocator keeps its data structures external to the allocated 
   /// memory. This allows for locking the page write permissions of the
@@ -23,7 +24,6 @@ namespace xloil
   {
   private:
     static constexpr unsigned MIN_BLOCKSIZE = 4;
-    static constexpr unsigned GRANULARITY = 16;
 
     struct Block
     {
@@ -41,7 +41,7 @@ namespace xloil
       std::set<Block> _blocks;
       short _size;
       short _bytesUsed;
-      //std::vector<bool> _bitblock
+
     public:
       Chunk(unsigned size) 
         : _size(short(size >> MIN_BLOCKSIZE)), _bytesUsed(0) 
@@ -59,12 +59,12 @@ namespace xloil
       }
       unsigned getBlockSize(typename decltype(_blocks)::iterator i) const
       {
-        assert(i != _blocks.end());
+        if (i == _blocks.end())
+          return 0;
         auto offset = i->offset;
-        ++i;
-        return (i == _blocks.end()
-          ? _size - offset
-          : i->offset - offset) << MIN_BLOCKSIZE;
+        if (++i == _blocks.end())
+          return 0;
+        return (i->offset - offset) << MIN_BLOCKSIZE;
       }
       auto findBlock(char* chunkStart, void* memPtr) const
       {
@@ -87,18 +87,27 @@ namespace xloil
 
 
   public:
-    ExternalRegionAllocator(void* minAddress, void* maxAddress)
+
+    ExternalRegionAllocator(void* minAddress, void* maxAddress = (void*)UINTPTR_MAX)
       : _minAddress(minAddress)
-      , _maxAddress(maxAddress)
-    {}
+    {
+      SYSTEM_INFO si;
+      GetSystemInfo(&si);
+      _maxAddress = std::min(maxAddress, si.lpMaximumApplicationAddress);
+      _pageSize = si.dwPageSize;
+      assert(_maxAddress > _minAddress);
+      // assert pagesize is a power of 2?
+    }
+
     ~ExternalRegionAllocator()
     {
       for (auto i : _chunks)
         VirtualFree(i.first, 0, MEM_RELEASE);
     }
+
     auto alloc(unsigned bytesRequested)
     {
-      bytesRequested = align<MIN_BLOCKSIZE>(bytesRequested);
+      bytesRequested = align(bytesRequested, 1 << MIN_BLOCKSIZE);
       auto iCurrent = _chunks.begin();
       if (iCurrent != _chunks.end() && iCurrent->second.available() >= bytesRequested)
       {
@@ -119,7 +128,7 @@ namespace xloil
         return foundAddress;
       }
 
-      auto bytesToAlloc = align<GRANULARITY>(bytesRequested);
+      auto bytesToAlloc = align(bytesRequested, _pageSize);
       auto* allocated = _allocateChunk(bytesRequested);
       if (!allocated)
         throw _badAllocError;
@@ -130,14 +139,15 @@ namespace xloil
     auto free(void* memPtr)
     {
       auto iChunk = _chunks.lower_bound((char*)memPtr);
-      if (iChunk == _chunks.end() || iChunk->first > memPtr) --iChunk;
+      if (iChunk == _chunks.end() || iChunk->first > memPtr) 
+        --iChunk;
+
       auto [chunkData, chunk] = *iChunk;
 
       auto iBlock = chunk.findBlock(chunkData, memPtr);
-      
       auto blockSize = chunk.getBlockSize(iBlock);
 
-      if (chunk.free(blockSize)== 0)
+      if (chunk.free(blockSize) == 0)
       {
         // Remove all from free list
         auto chunkEnd = chunkData + chunk.size();
@@ -157,12 +167,13 @@ namespace xloil
     }
 
   private:
-    template<int Tpower>
-    inline unsigned align(unsigned val)
+
+    inline unsigned align(unsigned val, unsigned powerOf2)
     {
-      constexpr auto mask = (1 << Tpower) - 1;
+      const auto mask = powerOf2 - 1;
       return val + mask & ~(mask);
     }
+
     /// <summary>
     /// Searches for a page top down from maxAddress or the lowest chunk
     /// already allocated. Returns null if a page cannot be allocated
@@ -173,10 +184,11 @@ namespace xloil
       void* p = nullptr;
       for (auto address = (char*)(!_chunks.empty() ? _chunks.begin()->first : _maxAddress);
         address > _minAddress && p == nullptr;
-        address -= 1 << GRANULARITY)
+        address -= _pageSize)
           p = VirtualAlloc(address, numBytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
       return p;
     }
+
   private:
     // Map from allocated data to chunk descriptor
     std::map<char*, Chunk> _chunks; 
@@ -184,6 +196,7 @@ namespace xloil
     std::multimap<unsigned, FreeBlock> _freeList; 
     void* _maxAddress;
     void* _minAddress;
+    DWORD _pageSize;
     std::bad_alloc _badAllocError;
   };
 }

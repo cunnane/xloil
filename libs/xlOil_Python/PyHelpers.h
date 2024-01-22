@@ -1,4 +1,7 @@
 #pragma once
+// Include corecrt fixes this issue in pybind11 
+// https://github.com/microsoft/onnxruntime/issues/9735
+#include <corecrt.h>
 #include "CPython.h"
 #include <xloil/StringUtils.h>
 #include <xloil/ExcelThread.h>
@@ -7,80 +10,67 @@
 #include <pybind11/stl.h>
 #include <string>
 
-// Seems useful, wonder why it's not in the API?
-#define PyIterable_Check(obj) \
-    ((obj)->ob_type->tp_iter != NULL && \
-     (obj)->ob_type->tp_iter != &_PyObject_NextNotImplemented)
+/// Returns true if the object implements __iter__, compare with PyIter_Check which
+/// tests if an object is an iterator. It seems useful, wonder why it's not in the API?
+#define PyIterable_Check(obj) (obj)->ob_type->tp_iter != NULL
+
+
+/// <summary>
+/// Converts a PyObject to a str, then to a C++ string
+/// </summary>
+inline auto to_string(const PyObject* p)
+{
+  return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
+}
+/// <summary>
+/// Converts a PyObject to a str, then to a C++ wstring
+/// </summary>
+std::wstring to_wstring(const PyObject* p);
 
 namespace pybind11
 {
-  // Adds a logically missing wstr class to pybind11
-  class wstr : public object {
-  public:
-    PYBIND11_OBJECT_CVT(wstr, object, PYBIND11_STR_CHECK_FUN, raw_str)
-
-    wstr(const wchar_t* c, size_t n)
-      : object(PyUnicode_FromWideChar(c, (ssize_t)n), stolen_t{})
-    {
-      if (!m_ptr)
-        pybind11_fail("Could not allocate string object!");
-    }
-
-    // 'explicit' is omitted from the following constructors to allow implicit 
-    // conversion to py::str from C++ string-like objects
-    wstr(const wchar_t* c = L"")
-      : object(PyUnicode_FromWideChar(c, -1), stolen_t{})
-    {
-      if (!m_ptr)
-        pybind11_fail("Could not allocate string object!");
-    }
-
-    wstr(const std::wstring_view& s) : wstr(s.data(), s.size()) { }
-
-    // Not sure how to implement
-    //explicit str(const bytes &b);
-
-    explicit wstr(handle h) : object(raw_str(h.ptr()), stolen_t{}) { }
-
-    operator std::wstring() const {
-      if (!PyUnicode_Check(m_ptr))
-        pybind11_fail("Unable to extract string contents!");
-      ssize_t length;
-      wchar_t* buffer = PyUnicode_AsWideCharString(ptr(), &length);
-      return std::wstring(buffer, (size_t)length);
-    }
-
-    template <typename... Args>
-    wstr format(Args &&...args) const {
-      return attr("format")(std::forward<Args>(args)...);
-    }
-
-  private:
-    /// Return string representation -- always returns a new reference, even if already a str
-    static PyObject* raw_str(PyObject* op) {
-      PyObject* str_value = PyObject_Str(op);
-      return str_value;
-    }
-  };
-
-
   /// <summary>
-  /// Provides a replacement for pybind's detail::error_string which handles
-  /// the auxillary context and cause expceptions.
+  /// A non-owning holder class used to bind references to static C++ objects
   /// </summary>
-  /// <returns></returns>
-  std::string error_full_traceback();
-
-  class error_traceback_set : public error_already_set
+  template< typename T >
+  class ReferenceHolder
   {
   public:
-    // Note: When pybind is upgraded, we need to add a ctor to 
-    // error_already_set which takes a string msg
-    error_traceback_set()
-      : error_already_set(error_full_traceback())
-    {}
+    explicit ReferenceHolder(T* ptr = nullptr) : ptr_(ptr) {}
+
+    T* get() const { return ptr_; }
+    T* operator-> () const { return ptr_; }
+
+  private:
+    T* ptr_;
   };
+
+  inline auto to_string(const pybind11::object& p)
+  {
+    return to_string(p.ptr());
+  }
+
+  inline std::wstring to_wstring(const pybind11::object& p)
+  {
+    return to_wstring(p.ptr());
+  }
+
+  /// <summary>
+  /// If you're absolutely sure the the given PyObject is a pybind wrapper 
+  /// for a <typeparam ref ="T"/> (for example because you checked p->ob_type)
+  /// then you can call this to safe a lot of messing around and a copy in
+  /// `py::cast`.  The type *T* must be move-constructible.
+  /// </summary>
+  /// <returns></returns>
+  template<class T>
+  inline auto unsafe_move(const PyObject* p)
+  {
+    auto v_h = ((py::detail::instance*)p)->get_value_and_holder();
+    return T(std::move(*v_h.value_ptr<T>()));
+  }
 }
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, pybind11::ReferenceHolder<T>, true);
 
 namespace xloil
 {
@@ -89,20 +79,29 @@ namespace xloil
     inline PyObject* PyCheck(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return obj;
     }
     template<class TType = pybind11::object> inline TType PySteal(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return pybind11::reinterpret_steal<TType>(obj);
     }
     template<class TType = pybind11::object> inline TType PyBorrow(PyObject* obj)
     {
       if (!obj)
-        throw pybind11::error_traceback_set();
+        throw pybind11::error_already_set();
       return pybind11::reinterpret_borrow<TType>(obj);
+    }
+
+    /// <summary>
+    /// Gets a proper reference to a weakref. Strangely, this functionality is missing
+    /// in pybind11
+    /// </summary>
+    inline pybind11::object PyBorrow(const pybind11::weakref& wr)
+    {
+      return PyBorrow(PyWeakref_GetObject(wr.ptr()));
     }
 
     /// <summary>
@@ -111,29 +110,12 @@ namespace xloil
     inline std::wstring pyErrIfOccurred(bool clear = true)
     {
       const auto result = PyErr_Occurred()
-        ? utf8ToUtf16(pybind11::error_full_traceback())
+        ? utf8ToUtf16(pybind11::detail::error_fetch_and_normalize("").format_value_and_trace())
         : std::wstring();
       if (clear)
         PyErr_Clear();
       return result;
     }
-
-    /// <summary>
-    /// Converts a PyObject to a str, then to a C++ string
-    /// </summary>
-    inline auto pyToStr(const PyObject* p)
-    {
-      // Is morally const: py::handle doesn't change refcount
-      return (std::string)pybind11::str(pybind11::handle((PyObject*)p));
-    }
-
-    /// <summary>
-    /// Converts a PyObject to a str, then to a C++ wstring
-    /// </summary>
-    std::wstring pyToWStr(const PyObject* p);
-
-    inline std::wstring
-      pyToWStr(const pybind11::object& p) { return pyToWStr(p.ptr()); }
 
     /// <summary>
     /// Reads an argument to __getitem__ i.e. [] using the following rules
@@ -196,36 +178,6 @@ namespace xloil
       PyObject*& ptr() { return _obj.ptr(); }
     };
 
-    /// <summary>
-    /// Wraps a class member function to ensure the GIL is released before it
-    /// is called.  Used for pybind: e.g. mod.def("bar", wrapNoGil(&Foo::bar))
-    /// </summary>
-    template<class Return, class Class, class... Args>
-    constexpr auto wrapNoGil(Return(Class::* f)(Args...) const)
-    {
-      return [f](Class* self, Args... args)
-      {
-        py::gil_scoped_release release;
-        return (self->*f)(args...);
-      };
-    }
-
-    template<class Return, class Class, class... Args>
-    constexpr auto wrapNoGil(Return(Class::* f)(Args...))
-    {
-      return [f](Class* self, Args... args)
-      {
-        py::gil_scoped_release release;
-        return (self->*f)(args...);
-      };
-    }
-
-    template<class F>
-    constexpr auto wrapNoGil(F&& f)
-    {
-      py::gil_scoped_release release;
-      return f();
-    }
 
     /// <summary>
     /// Wraps a class member function to ensure it is executed on Excel's main
@@ -282,7 +234,7 @@ namespace xloil
     }
 
     /// <summary>
-
+    /// Returns a dangling reference
     /// </summary>
     PyObject* fastCall(
       PyObject* func, PyObject* const* args, size_t nArgs, PyObject* kwargs) noexcept;
@@ -304,7 +256,7 @@ namespace xloil
       size_t TOffset = 0u
 #endif
     >
-    class PyCallArgs
+      class PyCallArgs
     {
       // Use array<PyObject*> as an array<py::object> would result in TSize dtor calls
       std::array<PyObject*, TSize + TOffset>  _store;
@@ -323,6 +275,13 @@ namespace xloil
       {
         assert(_size <= TSize);
         _store[_size++] = p;
+      }
+
+      void push_back(const pybind11::object& obj)
+      {
+        auto p = obj.ptr();
+        Py_XINCREF(p);
+        push_back(p);
       }
 
       constexpr auto begin() const
@@ -344,12 +303,12 @@ namespace xloil
         const auto last = end();
         for (auto p = _store.begin() + TOffset; p != last; ++p)
           Py_DECREF(*p);
-        _size = 0;
+        _size = TOffset;
       }
 
-      PyObject* call(PyObject* func, PyObject* kwargs) noexcept
+      pybind11::object call(const pybind11::object& func, const pybind11::object& kwargs)
       {
-        return fastCall(func, _store.data() + TOffset, nArgs(), kwargs);
+        return PySteal(fastCall(func.ptr(), _store.data() + TOffset, nArgs(), kwargs.ptr()));
       }
     };
   }

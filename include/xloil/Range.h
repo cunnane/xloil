@@ -33,7 +33,7 @@ namespace xloil
     /// <param name="toRow"></param>
     /// <param name="toCol"></param>
     /// <returns></returns>
-    virtual Range* range(
+    virtual std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const = 0;
 
@@ -41,7 +41,7 @@ namespace xloil
     /// Returns a 1x1 subrange containing the specified cell. Uses zero-based
     /// indexing unlike Excel's VBA Range.Cells function.
     /// </summary>
-    Range* cell(int i, int j) const
+    std::unique_ptr<Range> cell(int i, int j) const
     {
       return range(i, j, i, j);
     }
@@ -51,7 +51,7 @@ namespace xloil
     /// row and column. The top-left remains the same so the function always returns
     /// at least a single cell, even if it's empty.  
     /// </summary>
-    virtual Range* trim() const = 0;
+    virtual std::unique_ptr<Range> trim() const = 0;
 
     /// <summary>
     /// Returns a tuple (num columns, num rows)
@@ -126,12 +126,15 @@ namespace xloil
     virtual void set(const ExcelObj& value) = 0;
 
     /// <summary>
-    /// Returns the cell formula if the range is a single cell or the 
-    /// array formula if the entire range contains one. Returns an empty
-    /// string if there is no formula or array formula.
+    /// If the cell contains a constant, this property returns the value.  If the
+    /// cell is empty, this property returns an empty string. If the cell contains
+    /// a formula, the property returns the formula that would be displayed in the 
+    /// formula bar as a string. If the range is larger than one cell, the property
+    /// returns an array of the values which would be obtained calling `formula` 
+    /// on each cell.
     /// </summary>
     /// <returns></returns>
-    virtual std::wstring formula() = 0;
+    virtual ExcelObj formula() const = 0;
 
     Range& operator=(const ExcelObj& value)
     {
@@ -143,5 +146,11 @@ namespace xloil
     /// Clears / empties all cells referred to by this ExcelRange.
     /// </summary>
     virtual void clear() = 0;
+
+    /// <summary>
+    /// Returns a pointer to the the underlying Excel API Range object
+    /// if this Range is based on one, otherwise returns null.
+    /// </summary>
+    virtual Excel::Range* asComPtr() const = 0;
   };
 }

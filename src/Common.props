@@ -8,7 +8,7 @@
     <LibraryPath>$(xlOilRoot)\external\Excel2013SDK\LIB\$(Platform);$(SolutionDir)build\$(Platform)\$(Configuration);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(xlOilRoot)external\boost-1.67;$(xlOilRoot)\external\Excel2013SDK\INCLUDE;$(xlOilRoot)\external\spdlog\include;$(xlOilRoot)\external;$(xlOilRoot)\include;$(xlOilRoot)\src;$(IncludePath)</IncludePath>
+    <IncludePath>$(xlOilRoot)external\boost-1.67;$(xlOilRoot)external\Excel2013SDK\INCLUDE;$(xlOilRoot)external\tomlplusplus\include;$(xlOilRoot)external\spdlog\include;$(xlOilRoot)external;$(xlOilRoot)include;$(xlOilRoot)src;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>

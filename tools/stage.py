@@ -26,7 +26,7 @@ include_dir = soln_dir / "include"
 
 architectures = ["x64", "Win32"]
 
-python_versions = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+python_versions = ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
 python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
@@ -51,8 +51,8 @@ lib_files = [
     },
     { 
         'from': 'config',
-        'files': ['xloil.ini'],
-        'to': architectures
+        'files': ['xlOil.ini'],
+        'to': '.'
     },
     {
         'from': 'libs/xlOil_Python',
@@ -187,8 +187,8 @@ print(
      '\nTo test the python package:'
     f'\n  > pip install {str(python_package_dir)}\\dist\\<wheel file>'
      '\n  > xloil install'
- '\n' r'  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
- '\n' r'  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
+     '\n' r'  > python ..\libs\xlOil_Python\Package\test_PythonAutomation.py'
+     '\n' r'  > python ..\libs\xlOil_Python\Package\test_SpreadsheetRunner.py'
     '\n'
     '\nTo upload the python package to PyPI:'
     f'\n  > cd {str(python_package_dir)}'

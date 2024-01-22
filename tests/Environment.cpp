@@ -25,7 +25,7 @@ namespace Tests
       wstring test(L"xls file: <HKCR\\.xls\\>, "
         "username: <HKCU\\Software\\Microsoft\\Office\\Common\\UserInfo\\UserName>. Done.");
       {
-        auto result = getEnvVar("TEMP");
+        auto result = getEnvironmentVar("TEMP");
         string expected;
         size_t len = result.length() + 1;
         expected.resize(len);
@@ -35,7 +35,7 @@ namespace Tests
         Assert::AreEqual(expected, result);
       }
       {
-        auto expected = getEnvVar(L"TEMP");
+        auto expected = getEnvironmentVar(L"TEMP");
         auto result = expandEnvironmentStrings(L"%TEMP%");
         Assert::AreEqual(expected, result);
       }

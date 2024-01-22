@@ -43,7 +43,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
@@ -124,6 +124,7 @@
     <ClInclude Include="RtdAsyncManager.h" />
     <ClInclude Include="RtdManager.h" />
     <ClInclude Include="RtdServerWorker.h" />
+    <ClInclude Include="TaskPaneHostControl.h" />
     <ClInclude Include="WorkbookScopeFunctions.h" />
     <ClInclude Include="XllContextInvoke.h" />
   </ItemGroup>
@@ -134,6 +135,7 @@
     <ClCompile Include="API\ExcelRange.cpp" />
     <ClCompile Include="API\RtdServer.cpp" />
     <ClCompile Include="AppObjects.cpp" />
+    <ClCompile Include="ClassFactory.cpp" />
     <ClCompile Include="ComAddin.cpp" />
     <ClCompile Include="ComEventSink.cpp" />
     <ClCompile Include="ComVariant.cpp" />
@@ -142,6 +144,7 @@
     <ClCompile Include="RibbonExtensibility.cpp" />
     <ClCompile Include="RtdAsyncManager.cpp" />
     <ClCompile Include="RtdManager.cpp" />
+    <ClCompile Include="TaskPaneHostControl.cpp" />
     <ClCompile Include="WorkbookScopeFunctions.cpp" />
     <ClCompile Include="XllContextInvoke.cpp" />
   </ItemGroup>

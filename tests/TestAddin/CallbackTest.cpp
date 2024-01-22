@@ -20,11 +20,11 @@ namespace xloil
     if (!caller.fullSheetName().empty())
     {
       auto handle = xloil::Event::SheetChange().bind(
-        [=](const wchar_t* wsName, const Range& target)
+        [=](const wchar_t* wsName, const Range& /*target*/)
         {
           // Could check range here as well to avoid
           if (wsName == caller.sheetName())
-            excelApp().Range[caller.writeAddress().c_str()]->NumberFormat = L"dd-mm-yyyy";
+            thisApp().com().Range[caller.address().c_str()]->NumberFormat = L"dd-mm-yyyy";
         }
       );
       auto milliSecsDelay = 1000;

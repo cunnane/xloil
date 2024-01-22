@@ -31,7 +31,7 @@ namespace xloil
   {
   }
 
-  XLOIL_EXPORT bool FuncInfo::operator==(const FuncInfo & that) const
+  XLOIL_EXPORT bool FuncInfo::operator==(const FuncInfo& that) const
   {
     return name == that.name && help == that.help && category == that.category
       && options == that.options && std::equal(args.begin(), args.end(), that.args.begin(), that.args.end());
@@ -42,6 +42,7 @@ namespace xloil
     for (auto& arg : args)
       if (arg.type & FuncArg::AsyncHandle)
         async = true;
+    // Confirm we don't set more than one of these
     return (((options & FuncInfo::MACRO_TYPE) > 0)
       + ((options & FuncInfo::THREAD_SAFE) > 0)
       + ((options & FuncInfo::COMMAND) > 0)
@@ -54,18 +55,57 @@ namespace xloil
   class FunctionRegistry
   {
   public:
-    static FunctionRegistry& get() {
+    const wchar_t* theCoreDllName;
+
+  private:
+    map<wstring, RegisteredFuncPtr> theRegistry;
+
+    FunctionRegistry()
+    {
+      theCoreDllName = Environment::coreDllName();
+    }
+
+    ~FunctionRegistry()
+    {
+      teardown();
+    }
+
+  public:
+    static FunctionRegistry& get()
+    {
       static FunctionRegistry instance;
       return instance;
     }
 
-    const wchar_t* theCoreDllName;
+    void teardown()
+    {
+      // If we reach static destruction and still have registered functions is means
+      // something was not properly cleaned up during XLL autoClose. We are not in 
+      // an XLL context so trying to deregister will fail or even crash Excel.
+      for (auto& entry : theRegistry)
+        entry.second->forget();
+      theRegistry.clear();
+    }
 
     static int registerWithExcel(
-      const shared_ptr<const FuncInfo>& info, 
-      const char* entryPoint, 
+      const shared_ptr<const FuncInfo>& info,
+      const char* entryPoint,
       const wchar_t* moduleName)
     {
+      // Look for xlAutoFree12 in the registering module. If it does not exist
+      // we will silently leak memory as Excel cannot free the values we return
+      // to it. We assume we got things right in the Core DLL, so we don't perform
+      // this check for every dynamic registration.
+      if (wcscmp(moduleName, get().theCoreDllName) != 0)
+      {
+        const auto moduleHandle = GetModuleHandle(moduleName);
+        if (!moduleHandle)
+          XLO_THROW(L"Could not retrive module handle for '{}' during function regisration");
+        const auto autoFreeFunc = GetProcAddress(moduleHandle, "xlAutoFree12");
+        if (!autoFreeFunc)
+          XLO_THROW(L"Module '{}' must define xlAutoFree12 to register Excel functions", moduleName);
+      }
+
       auto numArgs = info->args.size();
       int opts = info->options;
 
@@ -80,6 +120,8 @@ namespace xloil
       string argTypes;
       if (opts & FuncInfo::COMMAND)
         argTypes += 'A';  // Commands always return int
+      else if (opts & FuncInfo::ARRAY)
+        argTypes += "K%";  // FP12 struct
       else
         argTypes += 'U';  // Otherwise return an XLOPER12 unless overridden below
 
@@ -157,7 +199,7 @@ namespace xloil
 
       // Truncate argument help strings to 255 chars
       for (auto& h : argHelp)
-        if (h.size() > 255)
+        if (h.size() > XL_ARG_HELP_STRING_MAX_LENGTH)
         {
           XLO_INFO(L"Excel does not support argument help strings longer than 255 chars. "
             "Truncating for function '{0}'", info->name);
@@ -173,27 +215,28 @@ namespace xloil
 
       // Function help string. Yup, more 255 char limits, those MS folks are terse
       auto truncatedHelp = info->help;
-      if (info->help.length() > 255)
+      if (info->help.length() > XL_ARG_HELP_STRING_MAX_LENGTH)
       {
-        XLO_INFO(L"Excel does not support help strings longer than 255 chars. "
-          "Truncating for function '{0}'", info->name);
-        truncatedHelp.assign(info->help.c_str(), 255);
-        truncatedHelp[252] = '.'; truncatedHelp[253] = '.'; truncatedHelp[254] = '.';
+        constexpr auto maxLen = XL_ARG_HELP_STRING_MAX_LENGTH;
+        XLO_INFO(L"Excel does not support help strings longer than {1} chars. "
+          "Truncating for function '{0}'", info->name, maxLen);
+        truncatedHelp.assign(info->help.c_str(), maxLen);
+        truncatedHelp[maxLen - 3] = '.'; truncatedHelp[maxLen - 2] = '.'; truncatedHelp[maxLen - 1] = '.';
       }
 
       // TODO: entrypoint will always be ascii
-      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args", 
+      XLO_DEBUG(L"Registering \"{0}\" at entry point {1} with {2} args",
         info->name, utf8ToUtf16(entryPoint), numArgs);
 
       auto registerId = callExcel(xlfRegister,
-        moduleName, 
-        entryPoint, 
-        argTypes, 
-        info->name, 
+        moduleName,
+        entryPoint,
+        argTypes,
+        info->name,
         argNames,
-        macroType, 
-        info->category, 
-        nullptr, nullptr, 
+        macroType,
+        info->category,
+        nullptr, nullptr,
         truncatedHelp.empty() ? info->help : truncatedHelp,
         unpack(argHelp));
       if (registerId.type() != ExcelType::Num)
@@ -236,14 +279,6 @@ namespace xloil
     {
       return theRegistry;
     }
-
-  private:
-    FunctionRegistry()
-    {
-      theCoreDllName = Environment::coreDllName();
-    }
-
-    map<wstring, RegisteredFuncPtr> theRegistry;
   };
 
   RegisteredWorksheetFunc::RegisteredWorksheetFunc(const shared_ptr<const WorksheetFuncSpec>& spec)
@@ -263,7 +298,7 @@ namespace xloil
     auto& name = info()->name;
     XLO_DEBUG(L"Deregistering {0}", name);
 
-    auto[result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
+    auto [result, ret] = tryCallExcel(xlfUnregister, double(_registerId));
     if (ret != msxll::xlretSuccess || result.type() != ExcelType::Bool || !result.get<bool>())
     {
       XLO_WARN(L"Unregister failed for {0}", name);
@@ -279,12 +314,15 @@ namespace xloil
     // SetExcel12EntryPt is automatically created by xlcall.cpp, but is only used for
     // clusters, which we aren't supporting at this current time.
     auto arbitraryFunction = decorateCFunction("SetExcel12EntryPt", 1);
-    auto[tempRegId, retVal] = tryCallExcel(
-      xlfRegister, FunctionRegistry::get().theCoreDllName, arbitraryFunction.c_str(), "I", name, nullptr, 2);
+    auto [tempRegId, retVal] = tryCallExcel(
+      xlfRegister, 
+      FunctionRegistry::get().theCoreDllName, 
+      arbitraryFunction.c_str(), 
+      "I", name, nullptr, 2);
     tryCallExcel(xlfSetName, name); // SetName with no arg un-sets the name
     tryCallExcel(xlfUnregister, tempRegId);
     _registerId = 0;
-    
+
     FunctionRegistry::get().remove(name.c_str());
 
     return true;
@@ -316,8 +354,8 @@ namespace xloil
     {
       auto& registry = FunctionRegistry::get();
       _registerId = registry.registerWithExcel(
-        spec->info(), 
-        decorateCFunction(spec->_entryPoint.c_str(), spec->info()->numArgs()).c_str(), 
+        spec->info(),
+        decorateCFunction(spec->_entryPoint.c_str(), spec->info()->numArgs()).c_str(),
         spec->_dllName.c_str());
     }
   };
@@ -334,7 +372,7 @@ namespace xloil
       XLO_THROW("{0}. Error registering '{1}'", e.what(), utf16ToUtf8(this->name()));
     }
   }
- 
+
   RegisteredFuncPtr registerFunc(const std::shared_ptr<const WorksheetFuncSpec>& spec) noexcept
   {
     try
@@ -362,5 +400,10 @@ namespace xloil
   const map<wstring, RegisteredFuncPtr>& registeredFuncsByName()
   {
     return FunctionRegistry::get().all();
+  }
+
+  void teardownFunctionRegistry()
+  {
+    FunctionRegistry::get().teardown();
   }
 }

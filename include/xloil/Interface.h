@@ -60,6 +60,11 @@ namespace xloil
     /// <returns></returns>
     bool deregister(const std::wstring& name);
 
+    /// <summary>
+    /// A list of all functions declared by this Source.
+    /// </summary>
+    std::vector<std::shared_ptr<const WorksheetFuncSpec>> functions() const;
+
   private:
     std::map<std::wstring, std::shared_ptr<RegisteredWorksheetFunc>> _functions;
   };
@@ -77,6 +82,7 @@ namespace xloil
     /// <summary>
     /// </summary>
     /// <param name="sourcePath">Should be a full pathname</param>
+    /// <param name="watchFile">If true enables a file watch</param>
     FileSource(const wchar_t* sourcePath, bool watchFile = false);
     virtual ~FileSource();
 
@@ -124,9 +130,9 @@ namespace xloil
 
     /// <summary>
     /// Registers the given functions as local functions in the specified
-    /// workbook
+    /// workbook.  Either appends to or overwrites the existing functions
+    /// depending on the 'append' parameter.
     /// </summary>
-    /// <param name="funcSpecs"></param>
     void registerLocal(
       const std::vector<std::shared_ptr<const WorksheetFuncSpec>>& funcSpecs, 
       const bool append);
@@ -140,6 +146,7 @@ namespace xloil
   private:
     std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>> _localFunctions;
     std::wstring _workbookName;
+    std::wstring _vbaModuleName;
     std::shared_ptr<const void> _workbookCloseHandler;
     std::shared_ptr<const void> _workbookRenameHandler;
 
@@ -173,15 +180,17 @@ namespace xloil
       findSource(const wchar_t* sourcePath);
 
     /// <summary>
-    /// Removes the specified source from all add-in contexts
+    /// Removes the specified source
     /// </summary>
-    /// <param name="context"></param>
-    XLOIL_EXPORT static void deleteSource(const std::shared_ptr<FuncSource>& context);
+    void erase(const std::shared_ptr<FuncSource>& context)
+    {
+      _files.erase(context->name());
+    }
 
     /// <summary>
     /// Gets the root of the addin's ini file
     /// </summary>
-    const toml::table* settings() const { return _settings.get(); }
+    auto settings() const { return _settings.get(); }
 
     /// <summary>
     /// Returns a map of all Sources associated with this XLL addin
@@ -208,6 +217,11 @@ namespace xloil
       source->init();
     }
 
+    std::wstring logFilePath;
+
+    void loadPlugins();
+    void detachPlugins();
+
   private:
     AddinContext(const AddinContext&) = delete;
     AddinContext& operator=(const AddinContext&) = delete;
@@ -215,6 +229,7 @@ namespace xloil
     std::wstring _pathName;
     std::shared_ptr<const toml::table> _settings;
     ContextMap _files;
+    std::vector<std::wstring> _plugins;
   };
 
 /// <summary>

@@ -13,21 +13,21 @@ namespace xloil
   {
     namespace
     {
-      class PyFromRange : public PyFromExcelImpl
+      class PyRangeFromRange : public detail::PyFromExcelImpl
       {
       public:
-        using PyFromExcelImpl::operator();
+        using detail::PyFromExcelImpl::operator();
         static constexpr char* const ourName = "Range";
 
         PyObject* operator()(const RefVal& obj) const 
         {
-          return pybind11::cast((Range*)new XllRange(obj)).release().ptr();
+          return pybind11::cast(new XllRange(obj)).release().ptr();
         }
         constexpr wchar_t* failMessage() const { return L"Expected range"; }
       };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        bindPyConverter<PyFromExcelConverter<PyFromRange>>(mod, "Range").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyRangeFromRange>>(mod, "Range").def(py::init<>());
       });
     }
   }

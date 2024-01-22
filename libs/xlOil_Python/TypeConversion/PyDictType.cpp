@@ -95,12 +95,16 @@ namespace xloil
         ExcelObj::row_t row = 0; // Cannot use pos - it is an internal pointer only
         while (PyDict_Next(p, &pos, &key, &value))
         {
-          builder(row, 0).emplace(FromPyObj()(key, builder.charAllocator()));
-          builder(row, 1).emplace(FromPyObj()(value, builder.charAllocator()));
+          builder(row, 0).take(FromPyObj()(key, builder.charAllocator()));
+          builder(row, 1).take(FromPyObj()(value, builder.charAllocator()));
           ++row;
         }
 
         return builder.toExcelObj();
+      }
+      const char* name() const override
+      {
+        return "dict";
       }
     };
 

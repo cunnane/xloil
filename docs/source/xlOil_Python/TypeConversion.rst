@@ -142,7 +142,7 @@ Cached Objects
 If xlOil cannot convert a returned python object to Excel, it will place it in 
 an object dictionary and return a reference string of the form
 
-``<UniqueChar>SheetID!CellNumber,#``
+``<UniqueChar>[SheetID]!CellNumber,#``
 
 xlOil automatically resolves cache string passed function arguments to their
 objects.  With this mechanism you can pass python objects opaquely between 
@@ -172,6 +172,33 @@ caches.
 The leading *<UniqueChar>* means xlOil can very quickly determine that a string
 isn't a cache reference, so the overhead of checking if every string argument
 is a cache object is very low in practice. 
+
+Using :any:`xloil.cache` it is possible to place objects into the cache. This 
+can be used an alternative to the :py:class:`xloil.Cache` decorator to allow
+the function to choose whether or not to return a cache object.  It could 
+also be used to return cached objects from commands or subroutines, but 
+understand the object lifecycle before doing this
+
+Cache Object Lifecycle
+~~~~~~~~~~~~~~~~~~~~~~
+
+xlOil uses the caller infomation provided by Excel to construct the cache 
+string. When invoked from a worksheet function, the caller info contains 
+the sheet and cell reference and so on each calculation cycle the same
+cache reference appears and the new cache object automatically overwrites 
+the previous one.
+
+When invoked from a source other than a worksheet function (there are several
+possibilies for this, see the help for `xlfCaller`), xlOil again generates a 
+reference string based on the caller info. However, this may not be unique. 
+In addition, objects with the same caller info will replace those created 
+during a previous calculation cycle. For example, creating cache objects 
+from a button clicked repeatedly will behave differently if Excel recalculates 
+in between the clicks. To override this behaviour, the exact cache `key` can 
+be specified.  For example, use Python's `id` function or the cell address 
+being written to.  When `key` is specified the user is responsible for managing
+the lifecycle of their cache objects using `remove` in :any:`xloil.cache`.
+
 
 Dates
 -----
@@ -206,24 +233,36 @@ Excel does not understand timezones and neither does ``std::get_time``, so these
 are currently unsupported.
 
 
-Dicts and Keyword Arguments
----------------------------
+Dicts
+-----
 
-If an Excel function has a ``**kwargs`` argument, it will expect a two column array of 
-keystring-value pairs, which xlOil will convert to a dictionary.
+When the ``dict`` *argument type* annotation is specified, xlOil expects a two-column 
+array of(*string*, *value*) to be passed.
 
-The  ``dict`` return type annotation returns a ``dict`` as a two column array.
-Without the annotation, the default iterable converter would be invoked, resulting
-in only the keys being output 
+Using a ``dict`` *return type* annotation allows a ``dict`` to be returned as as a 
+two column array. Without the annotation, the default iterable converter would be invoked, 
+resulting in only the keys being output.
 
-The following example uses both of these by round-tripping the provided keyword arguments:
+Variable and Keyword Arguments
+-------------------------------
+
+If keyword args (`**kwargs`) are specified, xlOil expects a two-column array of 
+(*string*, *value*) to be passed, the same as using a ``dict`` annotation. For variable
+args (`*args`) xlOil adds a large number of trailing optional arguments. The variable
+argument list is ended by the first missing argument.  If both *kwargs* and *args* are 
+specified, their order is reversed in the Excel function declaration.
+
+The following example shows dictionary and keyword aruments:
 
 ::
 
-    @xlo.func
-    def pyTestKwargs(**kwargs) -> dict:
-        return kwargs
+  @xlo.func
+  def pyTestKwargs(lookup: dict, **kwargs) -> dict:
+      lookup.update(kwargs)
+      return lookup
 
+The number of trailing optional arguments is limited by the maxiumum number of arguments 
+allowed by Excel, which is 255 for a worksheet function and 60 for a local function.
 
 Range Arguments
 ---------------

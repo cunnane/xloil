@@ -57,7 +57,7 @@ namespace
     auto endData = arr + (nRows * nCols);
     for (; arr != endData; ++arr)
       if (arr->xltype == xltypeStr)
-        total += arr->val.str[0];
+        total += arr->val.str.data[0];
     return total;
   }
 }
@@ -121,9 +121,10 @@ namespace
 
   void ExcelObj::createFromChars(const char* chars, size_t len)
   {
-    val.str = len == 0
-      ? Const::EmptyStr().val.str
+    val.str.data = len == 0
+      ? Const::EmptyStr().val.str.data
       : pascalWStringFromC(chars, len);
+    val.str.xloil_view = false;
     xltype = xltypeStr;
   }
 
@@ -159,14 +160,18 @@ namespace
       switch (xtype())
       {
       case xltypeStr:
-        if (val.str != nullptr && val.str != Const::EmptyStr().val.str)
-          delete[] val.str;
+        if (val.str.data != nullptr && val.str.data != Const::EmptyStr().val.str.data
+          && !val.str.xloil_view)
+          PStringAllocator<wchar_t>().deallocate(val.str.data, 0);
         break;
 
       case xltypeMulti:
         // Arrays are allocated as an array of char which contains all their strings
-        // So we don't need to loop and free them individually
-        delete[] (char*)(val.array.lparray);
+        // So we don't need to loop and free them individually. If we are at this point
+        // we must have created the ExcelObj ourselves, so it is safe to use the
+        // xloil_view extension.
+        if (!val.array.xloil_view)
+          delete[] (char*)(val.array.lparray);
         break;
 
       case xltypeBigData:
@@ -233,12 +238,12 @@ namespace
 
       case xltypeStr:
       {
-        auto lLen = left.val.str[0];
-        auto rLen = right.val.str[0];
+        auto lLen = left.val.str.data[0];
+        auto rLen = right.val.str.data[0];
         auto len = std::min(lLen, rLen);
         auto c = caseSensitive
-          ? _wcsncoll(left.val.str + 1, right.val.str + 1, len)
-          : _wcsnicoll(left.val.str + 1, right.val.str + 1, len);
+          ? _wcsncoll(left.val.str.data + 1, right.val.str.data + 1, len)
+          : _wcsnicoll(left.val.str.data + 1, right.val.str.data + 1, len);
         return c != 0 ? c : TCmp()(lLen, rLen);
       }
       case xltypeMulti:
@@ -312,8 +317,8 @@ namespace
 
     case xltypeStr:
     {
-      const size_t len = val.str ? val.str[0] : 0;
-      return len == 0 ? wstring() : wstring(val.str + 1, len);
+      const size_t len = val.str.data ? val.str.data[0] : 0;
+      return len == 0 ? wstring() : wstring(val.str.data + 1, len);
     }
 
     case xltypeMissing:
@@ -387,7 +392,7 @@ namespace
       return 5;
 
     case xltypeStr:
-      return val.str[0];
+      return val.str.data[0];
 
     case xltypeMissing:
     case xltypeNil:
@@ -431,14 +436,15 @@ namespace
 
     case xltypeStr:
     {
-      const auto len = from.val.str[0];
+      const auto len = from.val.str.data[0];
+      // preserve view?
 #if _DEBUG
-      to.val.str = new wchar_t[len + 2];
-      to.val.str[len + 1] = L'\0';  // Allows debugger to read string
+      to.val.str.data = new wchar_t[len + 2];
+      to.val.str.data[len + 1] = L'\0';  // Allows debugger to read string
 #else
-      to.val.str = new wchar_t[len + 1];
+      to.val.str.data = new wchar_t[len + 1];
 #endif
-      wmemcpy_s(to.val.str, len + 1, from.val.str, len + 1);
+      wmemcpy_s(to.val.str.data, len + 1, from.val.str.data, len + 1);
       to.xltype = xltypeStr;
       break;
     }
@@ -459,7 +465,6 @@ namespace
           {
           case xltypeStr:
           {
-            const auto len = pSrc->val.str[0];
             arr(i, j) = pSrc->cast<PStringRef>();
             break;
           }

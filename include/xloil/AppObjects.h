@@ -6,7 +6,7 @@
 #include <string>
 #include <memory>
 #include <vector>
-
+#include <set>
 
 // Forward Declarations from Typelib
 struct IDispatch;
@@ -31,6 +31,7 @@ namespace xloil
   class Workbooks;
   class Worksheets;
   class ExcelWorkbook;
+  class ExcelRange;
 }
 
 namespace xloil
@@ -164,7 +165,16 @@ namespace xloil
 
     ExcelObj run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
-    ExcelWorkbook open(const std::wstring& filepath, bool updateLinks=true, bool readOnly=false);
+    ExcelWorkbook open(
+      const std::wstring& filepath, 
+      bool updateLinks=true, 
+      bool readOnly=false,
+      wchar_t delimiter = 0);
+
+    /// <summary>
+    /// The set of full path names of all open workbooks
+    /// </summary>
+    const std::set<std::wstring>& workbookPaths();
 
     /// <summary>
     /// Calls Application.Quit to close the Excel instance and frees the COM resources.
@@ -179,14 +189,35 @@ namespace xloil
     bool getVisible() const;
     void setVisible(bool x);
 
-    bool getEnableEvents();
-    void setEnableEvents(bool value);
+    bool getEnableEvents() const;
+    bool setEnableEvents(bool value);
+
+    bool getDisplayAlerts() const;
+    bool setDisplayAlerts(bool value);
+
+    bool getScreenUpdating() const;
+    bool setScreenUpdating(bool value);
+
+    enum CalculationMode
+    {
+      Automatic = -4105,
+      Manual = -4135,
+      Semiautomatic = 2
+    };
+
+    CalculationMode Application::getCalculationMode() const;
+    CalculationMode Application::setCalculationMode(CalculationMode value);
+
+    /// <summary>
+    /// Returns an invalid ExcelRange is the selection is not a range
+    /// </summary>
+    ExcelRange selection();
   };
 
   /// <summary>
   /// Gets the Excel.Application object which is the root of the COM API 
   /// </summary>
-  XLOIL_EXPORT Application& excelApp();
+  XLOIL_EXPORT Application& thisApp();
 
   class XLOIL_EXPORT ExcelRange : public Range, public AppObject<Excel::Range>
   {
@@ -197,18 +228,18 @@ namespace xloil
     /// </summary>
     explicit ExcelRange(
       const std::wstring_view& address,
-      const Application& app = excelApp());
+      const Application& app = thisApp());
 
     ExcelRange(const Range& range);
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
 
     using AppObject<Excel::Range>::AppObject;
 
-    Range* range(
+    std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override;
 
-    Range* trim() const final override;
+    std::unique_ptr<Range> trim() const final override;
 
     std::tuple<row_t, col_t> shape() const final override;
 
@@ -222,17 +253,45 @@ namespace xloil
 
     void set(const ExcelObj& value) final override;
 
-    std::wstring formula() final override;
+    ExcelObj formula() const final override;
 
     void clear() final override;
 
+    virtual Excel::Range* asComPtr() const final override
+    {
+      return &com();
+    }
+
+    enum SetFormulaMode
+    {
+      ARRAY_FORMULA,
+      DYNAMIC_ARRAY,
+      OLD_ARRAY
+    };
+
     /// <summary>
-    /// Sets the forumula for the range to the specified string. If the 
-    /// range is larger than one cell, the formula is applied as an 
-    /// ArrayFormula.
+    /// Sets the forumula for the range to the specified string. The `mode` 
+    /// parameter determines how this function differs from the *Formula2* 
+    /// property of COM/VBA Range:
+    ///
+    ///   * *DYNAMIC_ARRAY*: (default) identical the `Formula2` property, formulae
+    ///    which return arrays will spill.  If the range is larger than one cell and 
+    ///    a single value is passed that value is filled into each cell.
+    ///   * *ARRAY_FORMULA*: if the target range is larger than one cell and a single 
+    ///    string is passed, the string is set as an array formula for the range
+    ///   * *OLD_ARRAY*: formulae which return arrays will not spill see "Formula vs Formula2" 
+    ///    on MSDN
+    /// 
     /// </summary>
     /// <param name="formula"></param>
-    void setFormula(const std::wstring_view& formula);
+    /// 
+    void setFormula(const std::wstring_view& formula, const SetFormulaMode mode = DYNAMIC_ARRAY);
+    
+    /// <summary>
+    /// Instead of taking only a string formula, takes an *ExcelObj* which can contain a string
+    /// or an array of equal dimensions to the *Range* being set.
+    /// </summary>
+    void setFormula(const ExcelObj& formula, const SetFormulaMode mode = DYNAMIC_ARRAY);
 
     /// <summary>
     /// The range address
@@ -303,6 +362,11 @@ namespace xloil
     ExcelObj value(Range::row_t i, Range::col_t j) const;
 
     /// <summary>
+    /// Returns a ExcelRange object that represents the used range on the worksheet.
+    /// </summary>
+    ExcelRange usedRange() const;
+
+    /// <summary>
     /// Returns the size of the worksheet, which is always (MaxRows, MaxCols).
     /// This function exists mainly to provide some polymorphism with Range.
     /// </summary>
@@ -341,7 +405,7 @@ namespace xloil
     /// <param name="name">The name of the workbook to find, or the active workbook if null</param>
     explicit ExcelWorkbook(
       const std::wstring_view& name = std::wstring_view(), 
-      Application app = excelApp());
+      Application app = thisApp());
     
     using AppObject<Excel::_Workbook>::AppObject;
 
@@ -425,7 +489,7 @@ namespace xloil
     /// <param name="caption">The name of the window to find, or the active window if null</param>
     explicit ExcelWindow(
       const std::wstring_view& caption = std::wstring_view(),
-      Application app = excelApp());
+      Application app = thisApp());
 
     /// <summary>
     /// Retuns the Win32 window handle
@@ -450,6 +514,8 @@ namespace xloil
     ExcelWorkbook workbook() const;
   };
 
+  inline std::wstring to_wstring(const ExcelRange& x) { return x.name(); }
+
   XLOIL_EXPORT ExcelRef refFromComRange(Excel::Range& range);
 
   inline ExcelRef refFromRange(const Range& range)
@@ -464,7 +530,7 @@ namespace xloil
   class XLOIL_EXPORT Worksheets
   {
   public:
-    Worksheets(const Application& app = excelApp());
+    Worksheets(const Application& app = thisApp());
     Worksheets(const ExcelWorkbook& workbook);
     ExcelWorksheet active() const { return app().activeWorksheet(); }
     ExcelWorksheet get(const std::wstring_view& name) const;
@@ -486,7 +552,7 @@ namespace xloil
   class XLOIL_EXPORT Workbooks : public AppObject<Excel::Workbooks>
   {
   public:
-    Workbooks(const Application& app = excelApp());
+    Workbooks(const Application& app = thisApp());
     ExcelWorkbook active() const;
     auto get(const std::wstring_view& name) const { return ExcelWorkbook(name, app()); }
     auto operator[](const std::wstring_view& name) const { return get(name); };
@@ -501,7 +567,7 @@ namespace xloil
   class XLOIL_EXPORT Windows : public AppObject<Excel::Windows>
   {
   public:
-    Windows(const Application& app = excelApp());
+    Windows(const Application& app = thisApp());
     Windows(const ExcelWorkbook& workbook);
     ExcelWindow active() const;
     auto get(const std::wstring_view& name) const { return ExcelWindow(name, app()); }
@@ -511,6 +577,32 @@ namespace xloil
     size_t count() const;
 
     Application app() const;
+  };
+
+  class PauseExcel
+  {
+  private:
+    Application _app;
+    Application::CalculationMode _previousCalculation;
+    bool _previousEvents;
+    bool _previousAlerts;
+    bool _previousUpdating;
+
+  public:
+    PauseExcel(Application& app)
+      : _app(app)
+      , _previousCalculation(app.setCalculationMode(Application::Manual))
+      , _previousAlerts(app.setDisplayAlerts(false))
+      , _previousEvents(app.setEnableEvents(false))
+      , _previousUpdating(app.setScreenUpdating(false))
+    {}
+    ~PauseExcel()
+    {
+      _app.setCalculationMode(_previousCalculation);
+      _app.setDisplayAlerts(_previousAlerts);
+      _app.setEnableEvents(_previousEvents);
+      _app.setScreenUpdating(_previousUpdating);
+    }
   };
 
   // Some function definitions which need to live down here due to

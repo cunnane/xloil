@@ -9,6 +9,7 @@ from __future__ import annotations
 import typing
 
 __all__ = [
+    "Addin",
     "Application",
     "Caller",
     "CannotConvert",
@@ -43,7 +44,8 @@ __all__ = [
     "cache",
     "call",
     "call_async",
-    "create_gui",
+    "core_addin",
+    "date_formats",
     "deregister_functions",
     "event",
     "excel_callback",
@@ -52,12 +54,87 @@ __all__ = [
     "get_async_loop",
     "in_wizard",
     "insert_cell_image",
-    "register_functions",
     "run",
-    "run_async"
+    "run_async",
+    "to_datetime",
+    "xloil_addins"
 ]
 
 
+class Addin():
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+    def functions(self) -> typing.List[_FuncSpec]: 
+        """
+        Returns a list of all functions declared by this addin.
+        """
+    def source_files(self) -> typing.List[str]: ...
+    @property
+    def async_slice(self) -> int:
+        """
+                      Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+                      to run before being interrupted. The event loop holds the GIL while it is running, so
+                      making this interval too long could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_slice.setter
+    def async_slice(self, arg1: int) -> None:
+        """
+        Sets/gets the time slice in milliseconds for which the asyncio event loop is allowed 
+        to run before being interrupted. The event loop holds the GIL while it is running, so
+        making this interval too long could impact the performance of other python functions.
+        """
+    @property
+    def async_throttle(self) -> int:
+        """
+                      Sets/gets the interval in milliseconds between switches to the asyncio event loop
+                      embedded in this addin. The event loop holds the GIL while it is running, so making
+                      this interval too short could impact the performance of other python functions.
+                    
+
+        :type: int
+        """
+    @async_throttle.setter
+    def async_throttle(self, arg1: int) -> None:
+        """
+        Sets/gets the interval in milliseconds between switches to the asyncio event loop
+        embedded in this addin. The event loop holds the GIL while it is running, so making
+        this interval too short could impact the performance of other python functions.
+        """
+    @property
+    def event_loop(self) -> object:
+        """
+                      The asyncio event loop used for background tasks by this addin
+                    
+
+        :type: object
+        """
+    @property
+    def pathname(self) -> str:
+        """
+        :type: str
+        """
+    @property
+    def settings(self) -> object:
+        """
+                      Gives access to the settings in the addin's ini file as nested dictionaries.
+                      These are the settings on load and do not allow for modifications made in the 
+                      ribbon toolbar.
+                    
+
+        :type: object
+        """
+    @property
+    def settings_file(self) -> str:
+        """
+                      The full pathname of the settings ini file used by this addin
+                    
+
+        :type: str
+        """
+    pass
 class Application():
     """
     Manages a handle to the *Excel.Application* object. This object is the root 
@@ -75,6 +152,8 @@ class Application():
     --------
 
     To get the name of the active worksheet:
+
+    ::
 
         return xlo.app().ActiveWorksheet.Name
 
@@ -102,6 +181,7 @@ class Application():
           Tries to gets a handle to the Excel.Application which has the specified workbook
           open.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def calculate(self, full: bool = False, rebuild: bool = False) -> None: 
         """
         Calculates all open workbooks
@@ -114,7 +194,7 @@ class Application():
           For all open workbooks, forces a full calculation of the data 
           and rebuilds the dependencies. (Implies `full`)
         """
-    def open(self, filepath: str, update_links: bool = True, read_only: bool = False) -> Workbook: 
+    def open(self, filepath: str, update_links: bool = True, read_only: bool = False, delimiter: object = None) -> Workbook: 
         """
         Opens a workbook given its full `filepath`.
 
@@ -179,6 +259,13 @@ class Application():
         A collection of all Windows open in this Application
 
         :type: ExcelWindows
+        """
+    @property
+    def workbook_paths(self) -> None:
+        """
+        A set of the full path names of all workbooks open in this Application. Does not use COM interface.
+
+        :type: None
         """
     @property
     def workbooks(self) -> Workbooks:
@@ -277,15 +364,15 @@ class CellError():
         """
         :type: int
         """
-    DIV: xloil_core.CellError = None # value = <CellError.DIV: 7>
-    GETTING_DATA: xloil_core.CellError = None # value = <CellError.GETTING_DATA: 43>
-    NA: xloil_core.CellError = None # value = <CellError.NA: 42>
-    NAME: xloil_core.CellError = None # value = <CellError.NAME: 29>
-    NULL: xloil_core.CellError = None # value = <CellError.NULL: 0>
-    NUM: xloil_core.CellError = None # value = <CellError.NUM: 36>
-    REF: xloil_core.CellError = None # value = <CellError.REF: 23>
-    VALUE: xloil_core.CellError = None # value = <CellError.VALUE: 15>
-    __members__: dict = None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
+    DIV: xloil_core.CellError=None # value = <CellError.DIV: 7>
+    GETTING_DATA: xloil_core.CellError=None # value = <CellError.GETTING_DATA: 43>
+    NA: xloil_core.CellError=None # value = <CellError.NA: 42>
+    NAME: xloil_core.CellError=None # value = <CellError.NAME: 29>
+    NULL: xloil_core.CellError=None # value = <CellError.NULL: 0>
+    NUM: xloil_core.CellError=None # value = <CellError.NUM: 36>
+    REF: xloil_core.CellError=None # value = <CellError.REF: 23>
+    VALUE: xloil_core.CellError=None # value = <CellError.VALUE: 15>
+    __members__: dict=None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
     pass
 class ComBusyError(Exception, BaseException):
     pass
@@ -351,43 +438,116 @@ class ExcelArray():
     pass
 class ExcelGUI():
     """
-    Controls an Ribbon and its associated COM addin. The methods of this object are safe
-    to call from any thread.  However, COM must be used on Excel's main thread, so the methods  
-    schedule calls to run on the main thead. This could lead to deadlocks if the call 
-    triggers event handlers on the main thread, which in turn block whilst waiting for the 
-    thread originally calling ExcelGUI.
+    An `ExcelGUI` wraps a COM addin which allows Ribbon customisation and creation
+    of custom task panes. The methods of this object are safe to call from any thread;  
+    however, since COM calls must be made on Excel's main thread, the methods schedule 
+    those calls and return an *awaitable* future to the result. This could lead to deadlocks
+    if the future's result is requested synchronously and, for example, one of Excel's event
+    handlers is triggered. The object's properties do not return futures and are thread-safe.
     """
-    def activate(self, id: str) -> bool: 
+    def __init__(self, name: object = None, ribbon: object = None, funcmap: object = None, connect: bool = True) -> None: 
         """
-        Activatives the ribbon tab with the specified id.  Returns False if
-        there is no Ribbon or the Ribbon is collapsed.
-        """
-    def connect(self, xml: str = '', func_names: object = None) -> _Future: 
-        """
-        Connects this COM add-in underlying this Ribbon to Excel. Any specified 
-        ribbon XML will be passed to Excel.
-        """
-    def create_task_pane(self, *args, **kwargs) -> object: 
-        """
-        Returns a task pane with title <name> attached to the active window,
-        creating it if it does not already exist.  See `xloil.create_task_pane`.
+        Creates an `ExcelGUI` using the specified ribbon customisation XML
+        and optionally connects it to Excel, ready for use.
+
+        When the *ExcelGUI* object is deleted, it unloads the associated COM 
+        add-in and so all Ribbon customisation and attached task panes.
 
         Parameters
         ----------
 
-        creator: 
-            * a subclass of `QWidget` or
-            * a function which takes a `TaskPaneFrame` and returns a `CustomTaskPane`
+        ribbon: str
+            A Ribbon XML string, most easily created with a specialised editor.
+            The XML format is documented on Microsoft's website
+
+        funcmap: Func[str -> callable] or Dict[str, callabe]
+            The ``funcmap`` mapper links callbacks named in the Ribbon XML to
+            python functions. It can be either a dictionary containing named 
+            functions or any callable which returns a function given a string.
+            Each return handler should take a single ``RibbonControl``
+            argument which describes the control which raised the callback.
+
+            Callbacks declared async will be executed in the addin's event loop. 
+            Other callbacks are executed in Excel's main thread. Async callbacks 
+            cannot return values.
+
+        name: str
+            The addin name which will appear in Excel's COM addin list.
+            If None, uses the filename at the call site as the addin name.
+
+        connect: bool
+            Defaults to True, meaning the object creation is blocking. If False
+            is passed, the object will not been fully constructed until the async
+            `connect` method is called.  In this case, no *ExcelGUI* methods can 
+            be called until the `connect` method has returned a result.
+        """
+    def _create_task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
+        """
+        Used internally to create a custom task pane window which can be populated
+        with a python GUI.  Most users should use `attach_pane(...)` instead.
+
+        A COM `progid` can be specified, but this will prevent displaying a python GUI
+        in the task pane using the xlOil methods. This is a specialised use case.
+        """
+    def activate(self, id: str) -> _Future: 
+        """
+        Activatives the ribbon tab with the specified id.  Returns False if
+        there is no Ribbon or the Ribbon is collapsed.
+        """
+    def attach_pane(self, arg0: object, arg1: object, arg2: object, arg3: object, arg4: object) -> object: 
+        """
+        Given task pane contents (which can be specified in several forms) this function
+        creates a new task pane displaying those contents.
+
+        Returns the instance of `CustomTaskPane`.  If one was passed as the 'pane' argument, 
+        that is returned, if a *QWidget* was passed, a `QtThreadTaskPane` is created.
+
+        Parameters
+        ----------
+
+        pane: CustomTaskPane (or QWidget type)
+            Can be an instance of `CustomTaskPane`, a type deriving from `QWidget` or
+            an instance of a `QWidget`. If a QWidget instance is passed, it must have 
+            been created on the Qt thread.
+
+        name: 
+            The task pane name. Will be displayed above the task pane. If not provided,
+            the 'name' attribute of the task pane is used.
 
         window: 
-            a window title or `ExcelWindow` object to which the task pane should be
+            A window title or `xloil.ExcelWindow` object to which the task pane should be
             attached.  If None, the active window is used.
+
+        size:
+            If provided, a tuple (width, height) used to set the initial pane size
+
+        visible:
+            Determines the initial pane visibility. Defaults to True.
         """
-    def disconnect(self) -> None: 
+    def attach_pane_async(self, pane: object, name: object = None, window: object = None, size: object = None, visible: object = True) -> object: 
         """
-        Unloads the underlying COM add-in and any ribbon customisation.
+        Behaves as per `attach_pane`, but returns an *asyncio* coroutine. The
+        `pane` argument may be an awaitable to a `CustomTaskPane`.
         """
-    def invalidate(self, id: str = '') -> None: 
+    def connect(self) -> _Future: 
+        """
+        Connects the underlying COM addin to Excel, No other methods may be called 
+        on a `ExcelGUI` object until it has been connected.
+
+        This method is safe to call on an already-connected addin.
+        """
+    def create_task_pane(self, name: object, creator: object, window: object = None, size: object = None, visible: object = True) -> object: 
+        """
+        Deprecated: use `attach_pane`. Note that `create_task_pane` tries to `find_task_pane`
+        before creation whereas `attach_pane` does not.
+        """
+    def disconnect(self) -> _Future: 
+        """
+        Unloads the underlying COM add-in and any ribbon customisation.  Avoid using
+        connect/disconnect to modify the Ribbon as it is not perfomant. Rather hide/show
+        controls with `invalidate` and the vibility callback.
+        """
+    def invalidate(self, id: str = '') -> _Future: 
         """
         Invalidates the specified control: this clears the cache of responses
         to callbacks associated with the control. For example, this can be
@@ -396,17 +556,18 @@ class ExcelGUI():
 
         If no control ID is specified, all controls are invalidated.
         """
-    def task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
+    @property
+    def connected(self) -> bool:
         """
-        Used internally to create a custom task pane window which can be populated
-        with a python GUI.  Most users should use `create_task_pane(...)` instead.
+        True if the a connection to Excel has been made
 
-        A COM `progid` can be specified, but this will prevent using a python GUI
-        in the task pane. This is a specialised use case.
+        :type: bool
         """
     @property
     def name(self) -> str:
         """
+        The name displayed in Excel's COM Addins window
+
         :type: str
         """
     pass
@@ -416,16 +577,16 @@ class ExcelState():
     ``xloil.excel_state`` to get an instance.
     """
     @property
-    def hinstance(self) -> capsule:
+    def hinstance(self) -> int:
         """
-        Excel Win32 HINSTANCE
+        Excel Win32 HINSTANCE pointer as an int
 
-        :type: capsule
+        :type: int
         """
     @property
     def hwnd(self) -> int:
         """
-        Excel Win32 main window handle(as an int)
+        Excel Win32 main window handle as an int
 
         :type: int
         """
@@ -446,10 +607,11 @@ class ExcelState():
     pass
 class ExcelWindow():
     """
-    Represents a window.  A window is a view of a workbook.
+    A document window which displays a view of a workbook.
     See `Excel.Window <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowWindow>`_ 
     """
     def __getattr__(self, arg0: str) -> object: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def to_com(self, lib: str = '') -> object: 
         """
@@ -489,11 +651,12 @@ class ExcelWindow():
     pass
 class ExcelWindows():
     """
-    A collection of all the Window objects in Excel.  A Window is a view of
-    a Workbook
+    A collection of all the document window objects in Excel. A document window 
+    shows a view of a Workbook.
 
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> ExcelWindow: ...
     def __iter__(self) -> ExcelWindowsIter: ...
     def __len__(self) -> int: ...
@@ -517,8 +680,11 @@ class ExcelWindowsIter():
     pass
 class IPyFromExcel():
     def __call__(self, arg0: object) -> None: ...
+    def __str__(self) -> str: ...
     pass
 class IPyToExcel():
+    def __call__(self, arg0: _object) -> _RawExcelValue: ...
+    def __str__(self) -> str: ...
     pass
 class ObjectCache():
     """
@@ -545,12 +711,37 @@ class ObjectCache():
     def __getitem__(self, arg0: str) -> object: ...
     def add(self, obj: object, tag: str = '', key: str = '') -> object: 
         """
-        Adds an object to the cache and returns a reference string
-        based on the currently calculating cell.
+        Adds an object to the cache and returns a reference string.
 
-        xlOil automatically adds unconvertible returned objects to the cache,
-        so this function is useful to force a recognised object, such as an 
-        iterable into the cache, or to return a list of cached objects.
+        xlOil automatically adds objects returned from worksheet 
+        functions to the cache if they cannot be converted by any 
+        registered converter.  So this function is useful to:
+
+           1) force a convertible object, such as an iterable, into the
+              cache
+           2) return a list of cached objects
+           3) create cached objects from outside of worksheet fnctions
+              e.g. in commands / subroutines
+
+        xlOil uses the caller infomation provided by Excel to construct
+        the cache string and manage the cache object lifecycle. When
+        invoked from a worksheet function, this caller info contains 
+        the cell reference. xlOil deletes cache objects linked to the 
+        cell reference from previous calculation cycles.
+
+        When invoked from a source other than a worksheet function (there
+        are several possibilies, see the help for `xlfCaller`), xlOil
+        again generates a reference string based on the caller info. 
+        However, this may not be unique.  In addition, objects with the 
+        same caller string will replace those created during a previous 
+        calculation cycle. For example, creating cache objects from a button
+        clicked repeatedly will behave differently if Excel recalculates 
+        in between the clicks. To override this behaviour, the exact cache
+        `key` can be specified.  For example, use Python's `id` function or
+        the cell address being written to if a command is writing a cache
+        string to the sheet.  When `key` is specified the user is responsible
+        for managing the lifecycle of their cache objects.
+
 
         Parameters
         ----------
@@ -581,7 +772,13 @@ class ObjectCache():
         """
         Returns all cache keys as a list of strings
         """
-    def remove(self, ref: str) -> bool: ...
+    def remove(self, ref: str) -> bool: 
+        """
+        xlOil manages the lifecycle for most cache objects, so this  
+        function should only be called when `add` was invoked with a
+        specified key - in this case the user owns the lifecycle 
+        management. 
+        """
     pass
 class Range():
     """
@@ -595,7 +792,7 @@ class Range():
 
     ::
 
-        x[1, 1] # The value at (1, 1) as a python type: int, str, float, etc.
+        x[1, 1] # The *value* at (1, 1) as a python type: int, str, float, etc.
 
         x[1, :] # The second row as another Range object
 
@@ -611,9 +808,14 @@ class Range():
         numbers are offset from the end.If the tuple specifies a single cell, returns
         the value in that cell, otherwise returns a Range object.
         """
+    def __iadd__(self, arg0: object) -> object: ...
+    def __imul__(self, arg0: object) -> object: ...
     def __init__(self, address: str) -> None: ...
+    def __isub__(self, arg0: object) -> object: ...
     def __iter__(self) -> RangeIter: ...
+    def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def address(self, local: bool = False) -> str: 
         """
@@ -671,6 +873,16 @@ class Range():
         If a 1d array is provided it will be pasted at the top left and repeated down or
         right depending on orientation.
         """
+    def set_formula(self, formula: object, how: str = '') -> None: 
+        """
+        The `how` parameter determines how this function differs from setting the `formula` 
+        property:
+
+          * *dynamic* (or omitted): identical to setting the `formula` property
+          * *array*: if the target range is larger than one cell and a single string is passed,
+            set this as an array formula for the range
+          * *implicit*: uses old-style implicit intersection - see "Formula vs Formula2" on MSDN
+        """
     def to_com(self, lib: str = '') -> object: 
         """
         Returns a managed COM object which can be used to invoke Excel's full 
@@ -695,23 +907,33 @@ class Range():
         :type: typing.Tuple[int, int, int, int]
         """
     @property
-    def formula(self) -> str:
+    def formula(self) -> object:
         """
-                    Get / sets the forumula for the range as a string string. If the range
-                    is larger than one cell, the formula is applied as an ArrayFormula.
-                    Returns an empty string if the range does not contain a formula or array 
-                    formula.
+                    Get / sets the formula for the range. If the cell contains a constant, this property returns 
+                    the value. If the cell is empty, this property returns an empty string. If the cell contains
+                    a formula, the property returns the formula that would be displayed in the formula bar as a
+                    string.  If the range is larger than one cell, the property returns an array of the values  
+                    which would be obtained calling `formula` on each cell.
+                    
+                    When setting, if the range is larger than one cell and a single value is passed that value
+                    is filled into each cell. Alternatively, you can set the formula to an array of the same 
+                    dimensions.
                   
 
-        :type: str
+        :type: object
         """
     @formula.setter
-    def formula(self, arg1: str) -> None:
+    def formula(self, arg1: object) -> None:
         """
-        Get / sets the forumula for the range as a string string. If the range
-        is larger than one cell, the formula is applied as an ArrayFormula.
-        Returns an empty string if the range does not contain a formula or array 
-        formula.
+        Get / sets the formula for the range. If the cell contains a constant, this property returns 
+        the value. If the cell is empty, this property returns an empty string. If the cell contains
+        a formula, the property returns the formula that would be displayed in the formula bar as a
+        string.  If the range is larger than one cell, the property returns an array of the values  
+        which would be obtained calling `formula` on each cell.
+
+        When setting, if the range is larger than one cell and a single value is passed that value
+        is filled into each cell. Alternatively, you can set the formula to an array of the same 
+        dimensions.
         """
     @property
     def ncols(self) -> int:
@@ -845,9 +1067,17 @@ class RtdPublisher():
         """
     pass
 class RtdReturn():
-    def set_done(self) -> None: ...
+    def set_done(self) -> None: 
+        """
+        Indicates that the task has completed and the RtdReturn can drop its reference
+        to the task. Further calls to `set_result()` will be ignored.
+        """
     def set_result(self, arg0: object) -> None: ...
-    def set_task(self, arg0: object) -> None: ...
+    def set_task(self, task: object) -> None: 
+        """
+        Set the task object to keep it alive until the task indicates it is done. The
+        task object should respond to the `cancel()` method.
+        """
     @property
     def caller(self) -> Caller:
         """
@@ -903,12 +1133,13 @@ class RtdServer():
         """
     def start(self, topic: RtdPublisher) -> None: 
         """
-        Registers an RtdPublisher publisher with this manager. The RtdPublisher receives
+        Registers an RtdPublisher with this manager. The RtdPublisher receives
         notification when the number of subscribers changes
         """
     def start_task(self, topic: str, func: object, converter: IPyToExcel = None) -> None: 
         """
-        Launch a publishing task for a `topic` given a func and a return converter
+        Launch a publishing task for a `topic` given a func and a return converter.
+        The function should take a single `xloil.RtdReturn` argument.
         """
     def subscribe(self, topic: str, converter: IPyFromExcel = None) -> object: 
         """
@@ -923,6 +1154,11 @@ class RtdServer():
         Calling this function outside of a worksheet function called by Excel may
         produce undesired results and possibly crash Excel.
         """
+    @property
+    def progid(self) -> str:
+        """
+        :type: str
+        """
     pass
 class StatusBar():
     """
@@ -933,10 +1169,12 @@ class StatusBar():
     Examples
     --------
 
-    with StatusBar(1000) as status:
-      status.msg('Doing slow thing')
-      ...
-      status.msg('Done slow thing')
+    ::
+
+      with StatusBar(1000) as status:
+        status.msg('Doing slow thing')
+        ...
+        status.msg('Done slow thing')
     """
     def __enter__(self) -> object: ...
     def __exit__(self, *args) -> None: ...
@@ -953,24 +1191,37 @@ class StatusBar():
     pass
 class TaskPaneFrame():
     """
-    References Excel's base task pane object into which the python GUI can be drawn.
-    The methods of this object are safe to call from any thread.  COM must be used on Excel's
-    main thread, so the methods all wrap their calls to ensure to this happens. This could lead 
-    to deadlocks if the call triggers event  handlers on the main thread, which in turn block 
-    waiting for the thread originally calling `TaskPaneFrame`.
+    Manages Excel's underlying custom task pane object into which a python GUI can be
+    drawn. It is unlikely that this object will need to be manipulated directly. Rather 
+    use `xloil.gui.CustomTaskPane` which holds the python-side frame contents.
+
+    The methods of this object are safe to call from any thread. COM must be used on 
+    Excel's main thread, so the methods all wrap their calls to ensure to this happens.
     """
-    def add_event_handler(self, handler: object) -> None: ...
+    def attach(self, handler: object, hwnd: int) -> _Future: 
+        """
+        Associates a `xloil.gui.CustomTaskPane` with this frame. Returns a future
+        with no result.
+        """
     def com_control(self, lib: str = '') -> object: 
         """
         Gets the base COM control of the task pane. The ``lib`` used to provide
-        COM support can be 'comtypes' or 'win32com' (default is win32com).
+        COM support can be 'comtypes' or 'win32com' (default is win32com). This 
+        method is only useful if a custom `progid` was specified during the task
+        pane creation.
         """
     @property
-    def parent_hwnd(self) -> int:
+    def position(self) -> str:
         """
-        Win32 window handle used to attach a python GUI to a task pane frame
+                      Gets/sets the dock position, one of: bottom, floating, left, right, top
+                    
 
-        :type: int
+        :type: str
+        """
+    @position.setter
+    def position(self, arg1: str) -> None:
+        """
+        Gets/sets the dock position, one of: bottom, floating, left, right, top
         """
     @property
     def size(self) -> typing.Tuple[int, int]:
@@ -1011,7 +1262,7 @@ class TaskPaneFrame():
     pass
 class Workbook():
     """
-    Represents an open Excel workbook.
+    A handle to an open Excel workbook.
     See `Excel.Workbook <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbookWorkbook>`_ 
     """
     def __enter__(self) -> object: ...
@@ -1022,6 +1273,7 @@ class Workbook():
         If the index is a worksheet name, returns the `Worksheet` object,
         otherwise treats the string as a workbook address and returns a `Range`.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def add(self, name: object = None, before: object = None, after: object = None) -> Worksheet: 
         """
@@ -1111,6 +1363,7 @@ class Workbooks():
 
     See `Excel.Workbooks <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbooksWorkbooks>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Workbook: ...
     def __iter__(self) -> WorkbooksIter: ...
     def __len__(self) -> int: ...
@@ -1148,18 +1401,20 @@ class Worksheet():
     def __getitem__(self, arg0: object) -> object: 
         """
         If the argument is a string, returns the range specified by the local address, 
-        equivalent to ``at_address``.  
+        equivalent to ``at``.  
 
-        If the argument is a 2-tuple, slices the sheet to return a Range or a single element. 
+        If the argument is a 2-tuple, slices the sheet to return an xloil.Range.
         Uses normal python slicing conventions, i.e [left included, right excluded), negative
         numbers are offset from the end.
         """
+    def __setattr__(self, arg0: object, arg1: object) -> None: ...
+    def __setitem__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
     def activate(self) -> None: 
         """
         Makes this worksheet the active sheet
         """
-    def at(self, address: str) -> Range: 
+    def at(self, address: str) -> _ExcelRange: 
         """
         Returns the range specified by the local address, e.g. ``.at('B3:D6')``
         """
@@ -1167,7 +1422,7 @@ class Worksheet():
         """
         Calculates this worksheet
         """
-    def cell(self, row: int, col: int) -> Range: 
+    def cell(self, row: int, col: int) -> _ExcelRange: 
         """
         Returns a Range object which consists of a single cell. The indices are zero-based 
         from the top left of the parent range.
@@ -1229,14 +1484,21 @@ class Worksheet():
 
         :type: Workbook
         """
+    @property
+    def used_range(self) -> _ExcelRange:
+        """
+        Returns a Range object that represents the used range on the worksheet
+
+        :type: _ExcelRange
+        """
     pass
 class Worksheets():
     """
     A collection of all the Worksheet objects in the specified or active workbook. 
-    Each Worksheet object represents a worksheet.
 
     See `Excel.Worksheets <https://docs.microsoft.com/en-us/office/vba/api/excel.WorksheetsWorksheets>`_ 
     """
+    def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
     def __iter__(self) -> WorksheetsIter: ...
     def __len__(self) -> int: ...
@@ -1272,33 +1534,18 @@ class WorksheetsIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> Worksheet: ...
     pass
-class _AddinFuture():
+class _AddinsDict():
     """
-    A Future represents an eventual result of an asynchronous operation.
-    Future is an awaitable object. Coroutines can await on Future objects 
-    until they either have a result or an exception set. This Future cannot
-    be cancelled.
-
-    This class actually wraps a C++ future so does executes in a separate 
-    thread unrelated to an `asyncio` event loop. 
+    A dictionary of all addins using the xlOil_Python plugin keyed
+    by the addin pathname.
     """
-    def __await__(self) -> _AddinFutureIter: ...
-    def done(self) -> bool: 
-        """
-        Return True if the Future is done.  A Future is done if it has a result or an exception.
-        """
-    def result(self) -> object: 
-        """
-        Return the result of the Future, blocking if the Future is not yet done.
-
-        If the Future has a result, its value is returned.
-
-        If the Future has an exception, raises the exception.
-        """
-    pass
-class _AddinFutureIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> None: ...
+    def __contains__(self, arg0: str) -> bool: ...
+    def __getitem__(self, arg0: str) -> Addin: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def __len__(self) -> int: ...
+    def items(self) -> typing.Iterator: ...
+    def keys(self) -> typing.Iterator: ...
+    def values(self) -> typing.Iterator: ...
     pass
 class _AsyncReturn():
     def set_done(self) -> None: ...
@@ -1348,11 +1595,11 @@ class _CustomConverter(IPyFromExcel):
     This is the interface class for custom type converters to allow them
     to be called from the Core.
     """
-    def __init__(self, callable: object, check_cache: bool = True) -> None: ...
+    def __init__(self, callable: object, check_cache: bool = True, name: str = 'custom') -> None: ...
     pass
 class _CustomReturn(IPyToExcel):
-    def __init__(self, callable: object) -> None: ...
-    def get_handler(self) -> object: ...
+    def __init__(self, callable: object, name: str = 'custom') -> None: ...
+    def invoke(self, arg0: object) -> object: ...
     pass
 class _CustomReturnConverter():
     @property
@@ -1363,6 +1610,95 @@ class _CustomReturnConverter():
     @value.setter
     def value(self, arg0: IPyToExcel) -> None:
         pass
+    pass
+class _DateFormatList():
+    """
+    Registers date time formats to try when parsing strings to dates.
+    See `std::get_time` for format syntax.
+    """
+    def __bool__(self) -> bool: 
+        """
+        Check whether the list is nonempty
+        """
+    def __contains__(self, x: str) -> bool: 
+        """
+        Return true the container contains ``x``
+        """
+    @typing.overload
+    def __delitem__(self, arg0: int) -> None: 
+        """
+        Delete the list elements at index ``i``
+
+        Delete list elements using a slice object
+        """
+    @typing.overload
+    def __delitem__(self, arg0: slice) -> None: ...
+    def __eq__(self, arg0: _DateFormatList) -> bool: ...
+    @typing.overload
+    def __getitem__(self, arg0: int) -> str: 
+        """
+        Retrieve list elements using a slice object
+        """
+    @typing.overload
+    def __getitem__(self, s: slice) -> _DateFormatList: ...
+    @typing.overload
+    def __init__(self) -> None: 
+        """
+        Copy constructor
+        """
+    @typing.overload
+    def __init__(self, arg0: _DateFormatList) -> None: ...
+    @typing.overload
+    def __init__(self, arg0: typing.Iterable) -> None: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def __len__(self) -> int: ...
+    def __ne__(self, arg0: _DateFormatList) -> bool: ...
+    @typing.overload
+    def __setitem__(self, arg0: int, arg1: str) -> None: 
+        """
+        Assign list elements using a slice object
+        """
+    @typing.overload
+    def __setitem__(self, arg0: slice, arg1: _DateFormatList) -> None: ...
+    def append(self, x: str) -> None: 
+        """
+        Add an item to the end of the list
+        """
+    def clear(self) -> None: 
+        """
+        Clear the contents
+        """
+    def count(self, x: str) -> int: 
+        """
+        Return the number of times ``x`` appears in the list
+        """
+    @typing.overload
+    def extend(self, L: _DateFormatList) -> None: 
+        """
+        Extend the list by appending all the items in the given list
+
+        Extend the list by appending all the items in the given list
+        """
+    @typing.overload
+    def extend(self, L: typing.Iterable) -> None: ...
+    def insert(self, i: int, x: str) -> None: 
+        """
+        Insert an item at a given position.
+        """
+    @typing.overload
+    def pop(self) -> str: 
+        """
+        Remove and return the last item
+
+        Remove and return the item at index ``i``
+        """
+    @typing.overload
+    def pop(self, i: int) -> str: ...
+    def remove(self, x: str) -> None: 
+        """
+        Remove the first item from the list whose value is x. It is an error if there is no such item.
+        """
+    __hash__ = None
     pass
 class _ExcelObjFuture():
     """
@@ -1392,16 +1728,11 @@ class _ExcelObjFutureIter():
     def __iter__(self) -> object: ...
     def __next__(self) -> None: ...
     pass
+class _ExcelRange(Range):
+    pass
 class _FuncArg():
-    def __init__(self) -> None: ...
-    @property
-    def allow_range(self) -> bool:
-        """
-        :type: bool
-        """
-    @allow_range.setter
-    def allow_range(self, arg0: bool) -> None:
-        pass
+    def __init__(self, arg0: str, arg1: str, arg2: IPyFromExcel, arg3: str) -> None: ...
+    def __str__(self) -> str: ...
     @property
     def converter(self) -> IPyFromExcel:
         """
@@ -1419,24 +1750,23 @@ class _FuncArg():
     def default(self, arg0: object) -> None:
         pass
     @property
+    def flags(self) -> str:
+        """
+        :type: str
+        """
+    @property
     def help(self) -> str:
         """
         :type: str
         """
-    @help.setter
-    def help(self, arg0: str) -> None:
-        pass
     @property
     def name(self) -> str:
         """
         :type: str
         """
-    @name.setter
-    def name(self, arg0: str) -> None:
-        pass
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, has_kwargs: bool = False) -> None: ...
+    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
     def __str__(self) -> str: ...
     @property
     def args(self) -> typing.List[_FuncArg]:
@@ -1444,15 +1774,57 @@ class _FuncSpec():
         :type: typing.List[_FuncArg]
         """
     @property
+    def func(self) -> function:
+        """
+                      Yes you can change the function which is called by Excel! Use
+                      with caution.
+                    
+
+        :type: function
+        """
+    @func.setter
+    def func(self, arg1: function) -> None:
+        """
+        Yes you can change the function which is called by Excel! Use
+        with caution.
+        """
+    @property
     def help(self) -> str:
         """
         :type: str
+        """
+    @property
+    def is_async(self) -> bool:
+        """
+                      True if the function used Excel's native async
+                    
+
+        :type: bool
+        """
+    @property
+    def is_rtd(self) -> bool:
+        """
+                      True if the function uses RTD to provide async returns
+                    
+
+        :type: bool
+        """
+    @property
+    def is_threaded(self) -> bool:
+        """
+                      True if the function can be multi-threaded during Excel calcs
+                    
+
+        :type: bool
         """
     @property
     def name(self) -> str:
         """
         :type: str
         """
+    @name.setter
+    def name(self, arg1: str) -> None:
+        pass
     @property
     def return_converter(self) -> IPyToExcel:
         """
@@ -1480,24 +1852,66 @@ class _LogWriter():
     to the value in the xlOil settings will be output to the log file. Trace output
     can only be seen with a debug build of xlOil.
     """
-    def __call__(self, msg: str, level: object = 20) -> None: 
+    def __call__(self, msg: object, *args, **kwargs) -> None: 
         """
-        Writes a message to the log at the optionally specifed level. The default 
-        level is 'info'.
+        Writes a message to the log at the specifed keyword paramter `level`. The default 
+        level is 'info'.  The message can contain format specifiers which are expanded
+        using any additional positional arguments. This allows for lazy contruction of the 
+        log string like python's own 'logging' module.
         """
     def __init__(self) -> None: 
         """
         Do not construct this class - a singleton instance is created by xlOil.
         """
+    def debug(self, msg: object, *args) -> None: 
+        """
+        Writes a log message at the 'debug' level
+        """
+    def error(self, msg: object, *args) -> None: 
+        """
+        Writes a log message at the 'error' level
+        """
+    def flush(self) -> None: 
+        """
+        Forces a log file 'flush', i.e write pending log messages to the log file.
+        For performance reasons the file is not by default flushed for every message.
+        """
+    def info(self, msg: object, *args) -> None: 
+        """
+        Writes a log message at the 'info' level
+        """
+    def trace(self, msg: object, *args) -> None: 
+        """
+        Writes a log message at the 'trace' level
+        """
+    def warn(self, msg: object, *args) -> None: 
+        """
+        Writes a log message at the 'warn' level
+        """
     @property
-    def level(self) -> int:
+    def flush_on(self) -> str:
+        """
+                      Returns or sets the log level which will trigger a 'flush', i.e a writing pending
+                      log messages to the log file.
+                    
+
+        :type: str
+        """
+    @flush_on.setter
+    def flush_on(self, arg1: object) -> None:
+        """
+        Returns or sets the log level which will trigger a 'flush', i.e a writing pending
+        log messages to the log file.
+        """
+    @property
+    def level(self) -> str:
         """
                       Returns or sets the current log level. The returned value will always be an 
                       integer corresponding to levels in the `logging` module.  The level can be
                       set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
                     
 
-        :type: int
+        :type: str
         """
     @level.setter
     def level(self, arg1: object) -> None:
@@ -1505,6 +1919,30 @@ class _LogWriter():
         Returns or sets the current log level. The returned value will always be an 
         integer corresponding to levels in the `logging` module.  The level can be
         set to an integer or one of the strings *error*, *warn*, *info*, *debug* or *trace*.
+        """
+    @property
+    def level_int(self) -> int:
+        """
+                      Returns the log level as an integer corresponding to levels in the `logging` module.
+                      Useful if you want to condition some output based on being above a certain log
+                      level.
+                    
+
+        :type: int
+        """
+    @property
+    def levels(self) -> typing.List[str]:
+        """
+        A list of the available log levels
+
+        :type: typing.List[str]
+        """
+    @property
+    def path(self) -> str:
+        """
+        The full pathname of the log file
+
+        :type: str
         """
     pass
 class _PyObjectFuture():
@@ -1614,13 +2052,16 @@ class _Read_float(IPyFromExcel):
 class _Read_int(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
+class _Read_list(IPyFromExcel):
+    def __init__(self) -> None: ...
+    pass
 class _Read_object(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Read_str(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
-class _Read_tuple_from_Excel(IPyFromExcel):
+class _Read_tuple(IPyFromExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_Array_bool_1d(IPyToExcel):
@@ -1666,7 +2107,7 @@ class _Return_Array_str_2d(IPyToExcel):
 class _Return_Cache(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_SingleValue(IPyToExcel):
+class _Return_Single(IPyToExcel):
     def __init__(self) -> None: ...
     pass
 class _Return_bool(IPyToExcel):
@@ -1687,14 +2128,46 @@ class _Return_float(IPyToExcel):
 class _Return_int(IPyToExcel):
     def __init__(self) -> None: ...
     pass
+class _Return_tuple(IPyToExcel):
+    def __init__(self) -> None: ...
+    pass
+class _Return_tuple():
+    pass
 class _Return_str(IPyToExcel):
     def __init__(self) -> None: ...
     pass
-class _Return_tuple_to_Excel(IPyToExcel):
-    def __init__(self) -> None: ...
+class _Return_tuple():
     pass
-def _get_event_loop(arg0: str) -> None:
+class _TomlTable():
+    def __getitem__(self, arg0: str) -> object: ...
     pass
+class _XllRange(Range):
+    pass
+def _get_onedrive_source(arg0: str) -> str:
+    pass
+def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
+    pass
+def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None, cache_objects: bool = False) -> _RawExcelValue:
+    """
+    For internal use. Converts a table like object (such as a pandas DataFrame) to 
+    RawExcelValue suitable for returning to xlOil.
+
+    n, m:
+      the number of data fields and the length of the fields
+    columns / rows: 
+      a iterable of numpy array containing data, specified as columns 
+      or rows (not both)
+    headings:
+      optional array of data field headings
+    index:
+      optional data field labels - one per data point
+    index_name:
+      optional headings for the index, should be a 1 dim iteratable of size
+      num_index_levels * num_column_levels
+    cache_objects:
+      if True, place unconvertible objects in the cache and return a ref string
+      if False, call str(x) on unconvertible objects
+    """
 def active_workbook() -> Workbook:
     """
     Returns the currently active workbook. Will raise an exception if xlOil
@@ -1735,37 +2208,9 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-def create_gui(ribbon: object = None, func_names: object = None, name: object = None) -> _AddinFuture:
-    """
-    Returns an **awaitable** to a ExcelGUI object which passes the specified ribbon
-    customisation XML to Excel.  When the returned object is deleted, it 
-    unloads the Ribbon customisation and the associated COM add-in.  If ribbon
-    XML is specfied the ExcelGUI object will be connected, otherwise the 
-    user must call the `connect()` method to active the object.
-
-    Parameters
-    ----------
-
-    ribbon: str
-        A Ribbon XML string, most easily created with a specialised editor.
-        The XML format is documented on Microsoft's website
-
-    func_names: Func[str -> callable] or Dict[str, callabe]
-        The ``func_names`` mapper links callbacks named in the Ribbon XML to
-        python functions. It can be either a dictionary containing named 
-        functions or any callable which returns a function given a string.
-        Each return handler should take a single ``RibbonControl``
-        argument which describes the control which raised the callback.
-
-        Callbacks declared async will be executed in the addin's event loop. 
-        Other callbacks are executed in Excel's main thread. Async callbacks 
-        cannot return values.
-
-    name: str
-        The addin name which will appear in Excel's COM addin list.
-        If None, uses the filename at the call site as the addin name.
-    """
-def deregister_functions(arg0: object, arg1: object) -> None:
+def core_addin() -> Addin:
+    pass
+def deregister_functions(funcs: object, module: object = None) -> None:
     """
     Deregisters worksheet functions linked to specified module. Generally, there
     is no need to call this directly.
@@ -1801,10 +2246,7 @@ def excel_state() -> ExcelState:
     """
 def from_excel_date(arg0: object) -> object:
     """
-    Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
-    Excel date serial number.  Strings are parsed using the current date conversion 
-    settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
-    if conversion is not possible.
+    Identical to `xloil.to_datetime`.
     """
 def get_async_loop() -> object:
     """
@@ -1814,9 +2256,9 @@ def get_async_loop() -> object:
     """
 def in_wizard() -> bool:
     """
-    Returns true if the function is being invoked from the function wizard : costly functions should"
-    exit in this case to maintain UI responsiveness.Checking for the wizard is itself not cheap, so"
-    use this sparingly.
+    Returns true if the function is being invoked from the function wizard : costly functions 
+    should exit in this case to maintain UI responsiveness.  Checking for the wizard is itself 
+    not cheap, so use this sparingly.
     """
 def insert_cell_image(writer: object, size: object = None, pos: object = None, origin: object = None, compress: bool = True) -> str:
     """
@@ -1842,8 +2284,6 @@ def insert_cell_image(writer: object, size: object = None, pos: object = None, o
     compress:
         if True, compresses the resulting image before storing in the sheet
     """
-def register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
-    pass
 def run(func: object, *args) -> object:
     """
     Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
@@ -1865,5 +2305,19 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
 
     Returns an **awaitable**, i.e. a future which holds the result.
     """
-_return_converter_hook: xloil_core._CustomReturnConverter = None
-cache: xloil_core.ObjectCache = None
+def to_datetime(arg0: object) -> object:
+    """
+    Tries to the convert the given object to a `dt.date` or `dt.datetime`:
+
+      * Numbers are assumed to be Excel date serial numbers. 
+      * Strings are parsed using the current date conversion settings.
+      * A numpy array of floats is treated as Excel date serial numbers and converted
+        to n array of datetime64[ns].
+      * `dt.datetime` is provided is simply returned.
+
+    Raises `ValueError` if conversion is not possible.
+    """
+_return_converter_hook: _CustomReturnConverter=None # value = <xloil_core._CustomReturnConverter object>
+cache: ObjectCache=None # value = <xloil_core.ObjectCache object>
+date_formats: _DateFormatList=None # value = <xloil_core._DateFormatList object>
+xloil_addins: _AddinsDict=None # value = <xloil_core._AddinsDict object>

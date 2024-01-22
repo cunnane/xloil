@@ -32,6 +32,7 @@
     <Compile Include="TestConfig.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="test_JupyterConnection.py" />
     <Compile Include="test_PythonAutomation.py">
       <SubType>Code</SubType>
     </Compile>
@@ -42,8 +43,22 @@
     <Compile Include="xloil\command_line.py" />
     <Compile Include="xloil\debug.py" />
     <Compile Include="xloil\excelfuncs.py" />
-    <Compile Include="xloil\excelgui.py" />
     <Compile Include="xloil\func_inspect.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\gui\qt_console.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\gui\tk_console.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\gui\wx.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\gui\qtpy.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="xloil\gui\__init__.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="xloil\importer.py" />
@@ -53,19 +68,25 @@
     </Compile>
     <Compile Include="xloil\matplotlib.py" />
     <Compile Include="xloil\pandas.py" />
+    <Compile Include="xloil\stubs\xloil_core\event\__init__.py" />
+    <Compile Include="xloil\stubs\xloil_core\__init__.py" />
+    <Compile Include="xloil\xloil_ribbon.py" />
     <Compile Include="xloil\_core.py" />
     <Compile Include="xloil\_paths.py" />
     <Compile Include="xloil\pillow.py" />
-    <Compile Include="xloil\qtgui.py" />
     <Compile Include="xloil\register.py" />
     <Compile Include="xloil\rtd.py" />
-    <Compile Include="xloil\tkinter.py" />
+    <Compile Include="xloil\gui\tkinter.py" />
     <Compile Include="xloil\type_converters.py" />
     <Compile Include="xloil\logging.py" />
     <Compile Include="xloil\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="xloil" />
+    <Folder Include="xloil\gui\" />
+    <Folder Include="xloil\stubs\" />
+    <Folder Include="xloil\stubs\xloil_core\" />
+    <Folder Include="xloil\stubs\xloil_core\event\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda39-64" />

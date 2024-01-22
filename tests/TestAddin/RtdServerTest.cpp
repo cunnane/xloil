@@ -44,7 +44,7 @@ namespace xloil
       xloRtdCounter(const ExcelObj& step)
     )
     {
-      auto iStep = step.toInt(1);
+      auto iStep = step.get<int>(1);
       auto value = rtdAsync(
         std::make_shared<Counter>(iStep));
       return returnValue(value ? *value : CellError::NA);

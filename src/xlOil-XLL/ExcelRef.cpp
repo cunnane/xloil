@@ -71,10 +71,10 @@ namespace xloil
     _obj = ExcelObj(sheetId, ref);
   }
 
-  void XllRange::setFormula(const std::wstring_view& formula)
+  void XllRange::setFormula(const std::wstring_view& formula, bool array)
   {
     // Formulae must use RC style references
-    if (size() > 1)
+    if (size() > 1 && array)
       callExcel(msxll::xlcFormulaArray, formula, _ref);
     else
       callExcel(msxll::xlcFormula, formula, _ref);

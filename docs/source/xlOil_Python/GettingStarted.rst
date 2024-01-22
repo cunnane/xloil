@@ -50,7 +50,7 @@ To install the addin which allows you to create python-based Excel functions, ty
 This call registers the xlOil addin with Excel and places a settings file at
 `%APPDATA%/xlOil/xlOil.ini`.  The settings file describes the python modules 
 which will be loaded and sets the paths to the python distribution. xlOil should 
-set the python paths automatically, but can be overriden if required.
+set the python paths automatically, but they can be overriden if required.
 
 To test the setup, you can try the python example sheet: :ref:`core-example-sheets`.
 
@@ -74,11 +74,12 @@ Create a `MyTest.py` file with the following lines:
     def Greeting(who):
         return "Hello  " + who
 
-Open `%APPDATA%/xlOil/xlOil.ini`. Find `PYTHONPATH` and ensure it includes the
-directory containing `MyTest.py`. Find `LoadModules`, uncomment it if required
-and add `MyTest` to the list.
+Open Excel and use the *xlOil* ribbon toolbar to ensure the search paths include
+the directory containing `MyTest.py`.  Then add 'MyTest' to the *Load Modules* 
+field, separating entries with a comma. The order of these steps matters because 
+editing the *Load Modules* field triggers a load of all newly added modules.
 
-Open Excel and call the `=Greeting("world")` function.
+Call the `=Greeting("world")` function in a cell.
 
 
 My first workbook module
@@ -98,22 +99,45 @@ file `MyBook.py` containing the following:
 You need to open and close `MyBook` in Excel for xlOil to find the python file.
 Now try invoking the `=Adder()` function - it can also add arrays!
 
-If this isn't working, ensure that "Trust accesst to the VBA object model" 
-is checked in Excel Options -> Trust Centre -> Macro Settings - this 
-setting is off by default.
+If this isn't working, ensure that "Trust access to the VBA object model" is
+checked in *Excel Options -> Trust Centre -> Macro Settings* - this setting
+is off by default.
 
+Using the Ribbon
+----------------
+
+xlOil's Ribbon toolbar can:
+
+    * Change the python environment (reqires restart)
+    * Select modules to load at startup and *sys.path* to set
+    * Open the log file
+    * Open a console to interact with the embedded python environment
+    * Choose a debugger, see :ref:'xlOil_Python/Debugging'
+    * Select date formats to use when parsing strings
+
+The toolbar edits the settings file so that changes persist.  The ribbon is enabled by
+but can be disabled by removing it from the specified *Load Modules*.
+
+.. note::
+
+    If you have an old ini file (prior to v0.15), you will need to upgrade it to use the  
+    ribbon toolbar. Remove the old ini file and remove/install xlOil.
 
 Troubleshooting
-~~~~~~~~~~~~~~~
+---------------
 
 If xlOil detects a serious load error, it pops up a log window to alert you (this can
 be turned off). If it succesfully loaded the core DLL a log file will also be created
 in `%APPDATA%/xlOil` next to `xlOil.ini`.  The worksheet function `=xloLog()` will tell 
 you where this file is.
 
-You may need to set the python paths, i.e. the `PATH` and `PYTHONPATH` values, in 
-the `xlOil.ini` file for xlOil to find your python distribution.
+Normally a python distribution or environment can be loaded with only the location of 
+*python.exe* passed via the `PYTHONEXECUTABLE` environment varaible.  For more complex
+setups, you may need to set the python paths, i.e. `PATH` and `PYTHONPATH` and maybe even 
+`PYTHONHOME`, in the `xlOil.ini` file for xlOil to load your python distribution.
 
+If the xlOil ribbon does not appear, check that `xloil.xloil_ribbon` appears in the
+*LoadModules* key in the ini file.
 
 Intellisense / Function Context Help
 ------------------------------------

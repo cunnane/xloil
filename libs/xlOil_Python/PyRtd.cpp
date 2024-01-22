@@ -3,6 +3,7 @@
 #include "TypeConversion/BasicTypes.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyAddin.h"
 #include <xloil/RtdServer.h>
 #include <xloil/ExcelThread.h>
 #include <pybind11/pybind11.h>
@@ -91,16 +92,25 @@ namespace xloil
       if (!_running)
         return;
       
-      // Convert result to ExcelObj
-      ExcelObj result = _returnConverter
-        ? (*_returnConverter)(*value.ptr())
-        : FromPyObj<false>()(value.ptr());
+      XLO_TRACE(L"Received result for RTD task started in '{0}'", _caller.address());
 
-      // If nil, conversion wasn't possible, so use the cache
-      if (result.isType(ExcelType::Nil))
-        result = pyCacheAdd(value, CallerInfo(_caller));
+      try
+      {
+        // Convert result to ExcelObj
+        ExcelObj result = _returnConverter
+          ? (*_returnConverter)(*value.ptr())
+          : FromPyObjOrError()(value.ptr());
 
-      _notify.publish(std::move(result));
+        // If nil, conversion wasn't possible, so use the cache
+        if (result.isType(ExcelType::Nil))
+          result = pyCacheAdd(value, _caller.address().c_str());
+
+        _notify.publish(std::move(result));
+      }
+      catch (const std::exception& e)
+      {
+        _notify.publish(ExcelObj(e.what()));
+      }
     }
     void RtdReturn::set_done()
     {
@@ -116,6 +126,8 @@ namespace xloil
         return;
       
       _running = false;
+
+      XLO_TRACE(L"Sending cancellation to RTD task started in '{0}'", _caller.address());
       if (_task)
         asyncEventLoop().callback(_task.attr("cancel"));
     }
@@ -199,10 +211,48 @@ namespace xloil
         return *_impl;
       }
 
+      /// <summary>
+      /// This curious bit of code is designed to execute _debugpy_activate_thread
+      /// in the RTD worker thread.  That thread is inaccesible unless you are an
+      /// IRtdPublisher
+      /// </summary>
+      struct InitDebugPy : public IRtdPublisher
+      {
+        InitDebugPy(IRtdServer* server) : _server(server) {}
+        IRtdServer* _server;
+
+        virtual void connect(size_t /*numSubscribers*/)
+        {
+          if (!_server)
+            return;
+          py::gil_scoped_acquire getGil;
+          pybind11::module::import("xloil.debug").attr("_debugpy_activate_thread")();
+          _server->testDisconnect(topicId);
+          _server = nullptr;
+        }
+        virtual bool disconnect(size_t) { return true; }
+        virtual void stop() {}
+        virtual bool done() const { return true; }
+        virtual const wchar_t* topic() const noexcept { return topicName; }
+
+        static constexpr wchar_t* topicName = L"_xlOil_Rtd_Init_";
+        static constexpr long topicId = -6666666;
+      };
     public:
       PyRtdServer()
       {
-        _initialiser = runExcelThread([]() { return newRtdServer(); });
+        // We don't need the COM or XLL APIs so flags = 0
+        _initialiser = runExcelThread([]() 
+        { 
+          auto server = newRtdServer();
+          // InitDebugPy is disabled because as of Aug 2022, VS Code refuses to hit
+          // breakpoints in async / rtd functions. VS Pro manages fine, so it's not
+          // clear the problem is with xlOil.
+          // server->start(make_shared<InitDebugPy>(server.get()));
+          // server->testConnect(InitDebugPy::topicId, InitDebugPy::topicName);
+          return server;
+        }, 0);
+        
         // Destroy the Rtd server if we are still around on python exit. The 
         // Rtd server may maintain links to python objects and Excel may not
         // call the server terminate function until after python has unloaded.
@@ -210,7 +260,6 @@ namespace xloil
         // interpreter, so capturing 'this' is safe.
         _cleanup = Event_PyBye().bind([this]
         { 
-          py::gil_scoped_release releaseGil;
           _impl.reset(); 
         });
       }
@@ -270,6 +319,7 @@ namespace xloil
           ? (*converter)(*value)
           : PyFromAny()(*value));
       }
+
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
       {
         shared_ptr<const ExcelObj> value;
@@ -283,6 +333,7 @@ namespace xloil
           ? (*converter)(*value)
           : PyFromAny()(*value));
       }
+
       void drop(const wchar_t* topic)
       {
         // Don't throw if _impl has been destroyed, just ignore
@@ -299,12 +350,13 @@ namespace xloil
         const shared_ptr<IPyToExcel>& converter = nullptr)
       {
         auto task = make_shared<PyRtdTaskLauncher>(func, converter);
-
         py::gil_scoped_release releaseGil;
         impl().start(
           make_shared<RtdPublisher>(
             topic, impl(), task));
       }
+      
+      auto progId() { return impl().progId(); }
     };
 
     class PyRtdTopic : public IRtdPublisher
@@ -419,7 +471,7 @@ namespace xloil
           .def("start", 
             &PyRtdServer::start,
             R"(
-              Registers an RtdPublisher publisher with this manager. The RtdPublisher receives
+              Registers an RtdPublisher with this manager. The RtdPublisher receives
               notification when the number of subscribers changes
             )",
             py::arg("topic"))
@@ -475,16 +527,30 @@ namespace xloil
           .def("start_task", 
             &PyRtdServer::startTask,
             R"(
-              Launch a publishing task for a `topic` given a func and a return converter
+              Launch a publishing task for a `topic` given a func and a return converter.
+              The function should take a single `xloil.RtdReturn` argument.
             )",
             py::arg("topic"), 
             py::arg("func"), 
-            py::arg("converter") = nullptr);
+            py::arg("converter") = nullptr)
+          .def_property_readonly("progid", &PyRtdServer::progId);
 
         py::class_<RtdReturn, shared_ptr<RtdReturn>>(mod, "RtdReturn")
-          .def("set_result", &RtdReturn::set_result)
-          .def("set_done", &RtdReturn::set_done)
-          .def("set_task", &RtdReturn::set_task)
+          .def("set_result", 
+            &RtdReturn::set_result)
+          .def("set_done", 
+            &RtdReturn::set_done,
+            R"(
+              Indicates that the task has completed and the RtdReturn can drop its reference
+              to the task. Further calls to `set_result()` will be ignored.
+            )")
+          .def("set_task", 
+            &RtdReturn::set_task,
+            R"(
+              Set the task object to keep it alive until the task indicates it is done. The
+              task object should respond to the `cancel()` method.
+            )",
+            py::arg("task"))
           .def_property_readonly("caller", &RtdReturn::caller)
           .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
       });

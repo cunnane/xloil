@@ -5,73 +5,31 @@ xlOil Python Module Reference
 .. contents::
     :local:
 
-.. currentmodule:: xloil
-
-.. autosummary::
-	Arg
-	CannotConvert
-	CellError
-	ExcelArray
-	AllowRange
-	RtdPublisher
-	RtdServer
-	Cache
-	SingleValue
-	RibbonControl
-	func
-	converter
-	returner
-	in_wizard
-	log
-	get_async_loop
-	get_event_loop
-	from_excel_date
-	register_functions
-	deregister_functions
-	linked_workbook
-	source_addin
-	excel_callback
-	excel_state
-	ExcelState
-	run
-	run_async
-	call
-	call_async	
-	Caller
-	Application
-	Range
-	Worksheet
-	Workbook
-	ExcelWindow
-	Workbooks
-	Worksheets
-	app
-	workbooks
-	active_worksheet
-	active_workbook
-	ExcelGUI
-	CustomTaskPane
-	TaskPaneFrame
-	find_task_pane
-    create_task_pane
-	insert_cell_image
-	xloil.rtd.subscribe
-	xloil.rtd.RtdSimplePublisher
-	xloil.debug.exception_debug
-	xloil.qtgui.Qt_thread
-	xloil.pandas.PDFrame
-	xloil.pillow.ReturnImage
-	xloil.matplotlib.ReturnFigure
-..
-	[comment]: need to patch is_filtered_inherited_member in autodoc/__init__.py to get 
-	[comment]: inherited-members to work, then can remove this horrible explict list
-
-
 Declaring Worksheet Functions
 -----------------------------
 
+.. currentmodule:: xloil
+
+.. autosummary::
+	AllowRange
+	Arg
+	Array
+	Cache
+	CannotConvert
+	CellError
+	ExcelArray
+	FastArray	
+	SingleValue
+	func
+	converter
+	returner
+	import_functions
+	register_functions
+	deregister_functions
+	scan_module
+
 .. automodule:: xloil
-	:members: Arg,CannotConvert,CellError,ExcelArray,Cache,SingleValue,func,converter,returner,register_functions,deregister_functions
+	:members: Arg,Array,Cache,CannotConvert,CellError,ExcelArray,FastArray,SingleValue,func,converter,returner,import_functions,register_functions,deregister_functions,scan_module
 	:imported-members:
 	:undoc-members:
 
@@ -82,7 +40,25 @@ Excel Object Model
 
 .. currentmodule:: xloil
 
+.. autosummary::
+	workbooks
+	worksheets
+	app
+	active_worksheet
+	active_workbook
+	Application
+	Caller
+	Range
+	Workbook
+	Worksheet
+	ExcelWindow
+	ExcelWindows
+	Workbooks
+	Worksheets
+
 .. autodata:: workbooks
+	
+.. autodata:: worksheets
 	
 .. autofunction:: app
 
@@ -139,10 +115,19 @@ Excel Object Model
 	:inherited-members:
 	:undoc-members:
 
+.. autoclass:: PauseExcel
+	:members: 
+
 RTD Functions
 -------------
 
 .. currentmodule:: xloil
+
+.. autosummary::
+	RtdPublisher
+	RtdServer
+	xloil.rtd.subscribe
+	xloil.rtd.RtdSimplePublisher
 
 .. autoclass:: RtdPublisher
 	:members:
@@ -159,20 +144,46 @@ GUI Interaction
 
 .. currentmodule:: xloil
 
+.. autosummary::
+	StatusBar
+	ExcelGUI
+	TaskPaneFrame
+	RibbonControl
+	xloil.gui.CustomTaskPane
+	xloil.gui.find_task_pane
+	xloil.gui.qtpy.Qt_thread
+	xloil.gui.qtpy.QtThreadTaskPane
+	xloil.gui.tkinter.Tk_thread
+	xloil.gui.tkinter.TkThreadTaskPane
+	xloil.gui.wx.wx_thread
+	xloil.gui.wx.WxThreadTaskPane
+
+.. autoclass:: StatusBar
+	:members:
+
 .. autoclass:: ExcelGUI
 	:members:
-.. autoclass:: CustomTaskPane 
-	:members:	
 .. autoclass:: TaskPaneFrame
 	:members:
 .. autoclass:: RibbonControl
 	:members:
-	
-.. autofunction:: find_task_pane
-.. autofunction:: create_task_pane
 
-.. automodule:: xloil.qtgui
-	:members: Qt_thread, QtThreadTaskPane	
+.. automodule:: xloil.gui
+	:members: CustomTaskPane 
+
+.. autofunction:: find_task_pane
+
+.. automodule:: xloil.gui.qtpy
+	:members: Qt_thread, QtThreadTaskPane
+	:inherited-members:
+
+.. automodule:: xloil.gui.tkinter
+	:members: Tk_thread, TkThreadTaskPane	
+	:inherited-members:
+
+.. automodule:: xloil.gui.wx
+	:members: wx_thread, WxThreadTaskPane	
+	:inherited-members:
 
 Events
 ------
@@ -221,31 +232,80 @@ Everything else
 
 .. currentmodule:: xloil
 
+.. autosummary::
+	in_wizard
+	get_async_loop
+	get_event_loop
+	from_excel_date
+	date_formats
+	linked_workbook
+	source_addin
+	excel_state
+	run
+	run_async
+	call
+	call_async
+	excel_callback
+	cache
+	Addin
+	source_addin
+	xloil_addins
+	core_addin
+	xloil._core._AddinsDict
+	xloil._core._DateFormatList
+	xloil._core._LogWriter
+	xloil.logging.log
+	xloil.debug.use_debugger
+
+.. autoclass:: ObjectCache
+	:members: 
+
+.. autodata:: cache
+	:annotation: = ObjectCache
+	:no-value:
+
 .. automodule:: xloil
-	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin
 	:imported-members:
 	:undoc-members:
 
-.. autoclass::ExcelState
-	:members:
-	:imported-members:
-	:undoc-members:
+.. autodata:: date_formats
+	:annotation: = _DateFormatList
+	:no-value:
+
+.. autoclass:: ExcelState
+	:members: 
 	:inherited-members:
-	:private-members:
-	:special-members:
-	
-.. autodata:: log
+	:undoc-members:
+
+.. autoclass:: Addin
+	:members:
+
+.. autodata:: xloil_addins
+	:annotation: = _AddinsDict
+	:no-value:
+
+.. automodule:: xloil._core
+	:members: _AddinsDict, _DateFormatList, _LogWriter
 
 .. automodule:: xloil.logging
-	:members: _LogWriter
+	:members: 
 
 .. automodule:: xloil.debug
 	:members:
+
+
 
 External libraries
 ------------------
 
 .. currentmodule:: xloil
+
+.. autosummary::
+	insert_cell_image
+	xloil.pandas.PDFrame
+	xloil.pillow.ReturnImage
+	xloil.matplotlib.ReturnFigure
 
 .. autofunction:: insert_cell_image
 

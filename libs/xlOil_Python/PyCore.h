@@ -1,21 +1,18 @@
 #pragma once
-
+#include "TypeConversion/ConverterInterface.h"
 #include <pybind11/pybind11.h>
 #include <functional>
 
-struct _typeobject;
-namespace xloil {
-  template<class T> class IConvertToExcel;
-}
+//struct _typeobject;
+
 namespace xloil
 {
   namespace Python
   {
-    using IPyToExcel = IConvertToExcel<PyObject>;
-
     constexpr char* const theInjectedModuleName = "xloil_core";
     constexpr char* const theReadConverterPrefix = "_Read_";
     constexpr char* const theReturnConverterPrefix = "_Return_";
+
     // TODO: constexpr string concat instead of relying on macros?
 #define XLOPY_UNCACHED_PREFIX "_Uncached_"
 
@@ -53,9 +50,6 @@ namespace xloil
         (theReturnConverterPrefix + std::string(type)).c_str());
     }
 
-    extern _typeobject* cellErrorType;
-    extern _typeobject* rangeType; // in PyAppObjects.cpp
-    extern PyObject*    comBusyException;
-    extern PyObject*    cannotConvertException;
+    extern PyObject* cannotConvertException;
   }
 }

@@ -26,6 +26,22 @@ namespace Tests
   TEST_CLASS(ThunkerTests)
   {
   public:
+
+    TEST_METHOD(PatchThunk)
+    {
+      auto callback = (void*)(intptr_t)0xABBAABBA;
+      auto context = (void*)(intptr_t)0xABFAB;
+      char code[1024];
+
+      ThunkWriter writer(callback, context, 3, true);
+      
+      auto codeSize = writer.writeCode(code, _countof(code));
+
+      auto newContext = (void*)0xBABABA;
+      auto success = patchThunkData(code, codeSize, context, newContext);
+      Assert::IsTrue(success);
+    }
+
 #ifdef _WIN64
     TEST_METHOD(TestHandRoll)
     {

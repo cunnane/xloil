@@ -1,11 +1,22 @@
 #include "BasicTypes.h"
 #include "PyDateType.h"
 #include "PyCore.h"
+#include "PyHelpers.h"
 #include <xloil/Date.h>
 #include <Python.h>
 #include <datetime.h>
+#include <pybind11/stl_bind.h>
 
 namespace py = pybind11;
+using std::vector;
+using std::wstring;
+
+// Defined in Py 3.10+, seems to work in earlier verions
+#ifndef PyDateTime_TIME_GET_TZINFO
+#define _PyDateTime_HAS_TZINFO(o) (((_PyDateTime_BaseTZInfo *)(o))->hastzinfo)
+#define PyDateTime_TIME_GET_TZINFO(o) (_PyDateTime_HAS_TZINFO(o) ? \
+    ((PyDateTime_Time *)(o))->tzinfo : Py_None)
+#endif
 
 namespace xloil
 {
@@ -21,7 +32,7 @@ namespace xloil
       return (PyDate_CheckExact(p) || PyDateTime_CheckExact(p));
     }
 
-    ExcelObj pyDateTimeToSerial(PyObject* p)
+    ExcelObj pyLocalDateTimeToSerial(PyObject* p)
     {
       auto serial = excelSerialDateFromYMDHMS(
         PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
@@ -29,6 +40,17 @@ namespace xloil
         PyDateTime_DATE_GET_MICROSECOND(p)
       );
       return ExcelObj(serial);
+    }
+
+    ExcelObj pyDateTimeToSerial(PyObject* p)
+    {
+      if (PyDateTime_TIME_GET_TZINFO(p) == Py_None)
+        return pyLocalDateTimeToSerial(p);
+      else
+      {
+        auto localised = PyBorrow(p).attr("astimezone")();
+        return pyLocalDateTimeToSerial(localised.ptr());
+      }
     }
 
     ExcelObj pyDateToSerial(PyObject* p)
@@ -51,13 +73,13 @@ namespace xloil
       }
     }
 
-    class PyFromDate : public PyFromExcelImpl
+    class PyFromDate : public detail::PyFromExcelImpl
     {
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "date";
 
-      PyObject* operator()(int x) const 
+      PyObject* operator()(int x) const
       {
         int day, month, year;
         if (!excelSerialDateToYMD(x, year, month, day))
@@ -78,10 +100,10 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
 
-    class PyFromDateTime : public PyFromExcelImpl
+    class PyFromDateTime : public detail::PyFromExcelImpl
     {
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "datetime";
 
       PyObject* operator()(int x) const
@@ -119,6 +141,10 @@ namespace xloil
           ? ExcelObj(pyDateToSerial((PyObject*)&obj))
           : ExcelObj();
       }
+      const char* name() const override
+      {
+        return "date";
+      }
     };
     class PyDateTimeToExcel : public IPyToExcel
     {
@@ -129,7 +155,22 @@ namespace xloil
           ? ExcelObj(pyDateTimeToSerial((PyObject*)&obj))
           : ExcelObj();
       }
+      const char* name() const override
+      {
+        return "datetime";
+      }
     };
+  }
+}
+
+// Make vector<wstring> opaque so we can bind a reference to a vector using
+// py::bind_vector. Note the opacity only affects this compliation unit.
+PYBIND11_MAKE_OPAQUE(std::vector<std::wstring>);
+
+namespace xloil
+{
+  namespace Python
+  {
     namespace
     {
       py::object fromExcelDate(const py::object& obj)
@@ -141,6 +182,8 @@ namespace xloil
           return PySteal(PyFromDate()(PyLong_AsLong(p)));
         else if (PyFloat_Check(p))
           return PySteal(PyFromDateTime()(PyFloat_AS_DOUBLE(p)));
+        else if (isNumpyArray(p))
+          return PySteal(toNumpyDatetimeFromExcelDateArray(p));
         else if (PyUnicode_Check(p))
           return PySteal(PyFromDateTime()(FromPyString()(p).cast<PStringRef>()));
         else if (PyDateTime_Check(p))
@@ -156,14 +199,35 @@ namespace xloil
         bindXlConverter<PyDateTimeToExcel>(mod, "datetime").def(py::init<>());
         bindXlConverter<PyDateToExcel>(mod, "date").def(py::init<>());
 
-        mod.def("from_excel_date", 
+        
+        mod.def("to_datetime",
           fromExcelDate,
           R"(
-            Tries to the convert a given number to a `dt.date` or `dt.datetime` assuming it is an 
-            Excel date serial number.  Strings are parsed using the current date conversion 
-            settings. If `dt.datetime` is provided, it is simply returned as is.  Raises `ValueError`
-            if conversion is not possible.
+            Tries to the convert the given object to a `dt.date` or `dt.datetime`:
+
+              * Numbers are assumed to be Excel date serial numbers. 
+              * Strings are parsed using the current date conversion settings.
+              * A numpy array of floats is treated as Excel date serial numbers and converted
+                to n array of datetime64[ns].
+              * `dt.datetime` is provided is simply returned.
+
+            Raises `ValueError` if conversion is not possible.
           )");
+
+        mod.def("from_excel_date",
+          fromExcelDate,
+          R"(
+            Identical to `xloil.to_datetime`.
+          )");
+
+        py::bind_vector<vector<wstring>, py::ReferenceHolder<vector<wstring>>>(mod, "_DateFormatList",
+          R"(
+            Registers date time formats to try when parsing strings to dates.
+            See `std::get_time` for format syntax.
+          )");
+
+        mod.add_object("date_formats", 
+          py::cast(py::ReferenceHolder(&theDateTimeFormats())));
       });
     }
   }

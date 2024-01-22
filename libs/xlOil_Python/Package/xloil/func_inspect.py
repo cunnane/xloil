@@ -1,8 +1,4 @@
 class Arg:
-
-    class _EMPTY:
-        ...
-
     """
     Holds the description of a function argument. Can be used with the `xloil.func`
     decorator to specify the argument description.
@@ -20,7 +16,16 @@ class Arg:
             ...
 
     """
-    def __init__(self, name, help="", typeof=None, default=_EMPTY, is_keywords=False):
+
+    class _EMPTY:
+        """ Indicates the absence of a default argument """
+        ...
+
+    POSITIONAL    = 0
+    KEYWORD_ARGS  = 1
+    VARIABLE_ARGS = 2
+
+    def __init__(self, name, help="", typeof=None, default=_EMPTY, kind=POSITIONAL):
         """
         Parameters
         ----------
@@ -33,18 +38,29 @@ class Arg:
             Selects the type converter used to pass the argument value
         default: object, optional
             A default value to pass if the argument is not specified in Excel
-        is_keywords: bool, optional
-            Denotes the special kwargs argument. xlOil will expect a two-column array
-            in Excel which it will interpret as (key, value) pairs and convert to a
-            dictionary. A `**kwargs` argument is auto-detected by xlOil so it is 
-            unusual to set this parameter explicitly.
+        kind: int, optional
+            Denotes the special *args or **kwargs arguments. For kwargs, xlOil will 
+            expect a two-column array in Excel which it will interpret as (key, value) 
+            pairs and convert to a dictionary. For *args, xlOil adds a large number of 
+            extra trailing optional arguments. Both of these are auto-detected by xlOil 
+            so it is unusual to set this parameter explicitly.
         """
 
         self.typeof = typeof
         self.name = str(name)
         self.help = help
         self.default = default
-        self.is_keywords = is_keywords
+        self.kind = kind
+
+    def __str__(self):
+        if self.kind == self.KEYWORD_ARGS:
+            return f"**{self.name}"
+        elif self.kind == self.VARIABLE_ARGS:
+            return f"*{self.name}"
+        else:
+            default = "=" + str(self.default) if self.has_default else ""
+            type_ = getattr(self.typeof, "__name__", self.typeof) if self.typeof else ""
+            return f'{self.name}:{type_}{default}'
 
     @property
     def has_default(self):
@@ -56,30 +72,35 @@ class Arg:
 
     @classmethod
     def from_signature(cls, name, param):
+        """
+        Constructs an `Arg` from a name and an `inspect.param`
+        """
         import inspect
 
         kind = param.kind
         if kind == param.POSITIONAL_ONLY or kind == param.POSITIONAL_OR_KEYWORD:
-            arg = cls(name, default=
-                       cls._EMPTY if param.default is inspect._empty else param.default)
-            anno = param.annotation
-            if anno is not param.empty:
-                arg.typeof = anno
-                # Add a little help string based on the type annotation
-                if isinstance(anno, type):
-                    arg.help = f"({anno.__name__})"
-                else:
-                    arg.help = f"({str(anno)})"
-            return arg
+            arg = cls(name, 
+                      default= cls._EMPTY if param.default is inspect._empty else param.default)
+     
         elif param.kind == param.VAR_KEYWORD: # can type annotions make any sense here?
-            return cls(name, is_keywords=True)
+            arg = cls(name, kind=cls.KEYWORD_ARGS)
+
+        elif param.kind == param.VAR_POSITIONAL:
+            arg = cls(name, kind=cls.VARIABLE_ARGS)
+
         else: 
-            raise Exception(f"Unhandled argument '{name}' with type '{kind}'")
+            raise ValueError(f"Unrecognised argument '{name}' with type '{kind}'")
+
+        if param.annotation is not param.empty:
+            arg.typeof = param.annotation
+
+        return arg
+
 
     @classmethod
     def full_argspec(cls, func):
         """
-        Returns a list of Arg for a given function which describe the function's arguments
+        Returns a list of `Arg` for a given function which describe the function's arguments
         """
         import inspect
         sig = inspect.signature(func)

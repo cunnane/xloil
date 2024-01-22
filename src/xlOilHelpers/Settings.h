@@ -4,10 +4,10 @@
 #include <memory>
 
 namespace toml {
-  class node; class table;
-  template <typename T> class node_view;
-
-  using view_node = toml::node_view<const toml::node>;
+    class table;
+    class node;
+    template <typename> class node_view;
+    using view_node = node_view<const node>;
 }
 
 namespace xloil

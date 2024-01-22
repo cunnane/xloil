@@ -6,6 +6,7 @@
 #include "PyHelpers.h"
 #include "PyEvents.h"
 #include "EventLoop.h"
+#include "PyAddin.h"
 #include <xloil/ExcelObj.h>
 #include <xloil/Async.h>
 #include <xloil/RtdServer.h>
@@ -105,7 +106,7 @@ namespace xloil
         // I think it's better to process the arguments to python here rather than 
         // copying the ExcelObj's and converting on the async thread (since CPython
         // is single threaded anyway)
-        PyCallArgs<> pyArgs;
+        PyCallArgs<> pyCallArgs;
 
         // Raw ptr, but we take ownership in the next line
         auto* asyncReturn = new AsyncReturn(
@@ -113,15 +114,15 @@ namespace xloil
           info->getReturnConverter(),
           CallerInfo());
 
-        pyArgs.push_back(py::cast(asyncReturn,
+        pyCallArgs.push_back(py::cast(asyncReturn,
           py::return_value_policy::take_ownership).release().ptr());
 
         py::object kwargs;
         info->convertArgs([&](auto i) { return *xlArgs[1 + i]; },
-          pyArgs,
+          pyCallArgs,
           kwargs);
 
-        pyArgs.call(info->func().ptr(), kwargs.ptr());
+        pyCallArgs.call(info->func(), kwargs);
       }
       catch (const py::error_already_set& e)
       {
@@ -182,7 +183,7 @@ namespace xloil
             pyArgs,
             kwargs);
 
-          pyArgs.call(_info.func().ptr(), kwargs.ptr());
+          pyArgs.call(_info.func(), kwargs);
         }
         catch (const py::error_already_set& e)
         {

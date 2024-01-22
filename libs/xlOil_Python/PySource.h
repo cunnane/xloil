@@ -5,7 +5,7 @@ namespace xloil {
   class Application;
   namespace Python
   {
-    struct PyAddin;
+    class PyAddin;
   }
 }
 
@@ -21,6 +21,6 @@ namespace xloil
     bool unloadModule(const pybind11::handle& module);
 
     std::shared_ptr<const void>
-      createWorkbookOpenHandler(PyAddin& loadContext, Application& app);
+      createWorkbookOpenHandler(const std::weak_ptr<PyAddin>& loadContext, Application& app);
   }
 }

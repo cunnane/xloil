@@ -1,6 +1,7 @@
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyFuture.h"
+#include "PyCore.h"
 #include <xloil/ExcelCall.h>
 #include <xlOil/ExcelThread.h>
 #include <xlOil/AppObjects.h>
@@ -31,13 +32,13 @@ namespace xloil
         {
           return ExcelObj(ExcelType::Missing);
         }
-        else if (Py_TYPE(p) == rangeType)
+        else if (isRangeType(p))
         {
           auto* range = obj.cast<Range*>();
           return ExcelObj(refFromRange(*range));
         }
         else
-          return FromPyObj<false>()(p);
+          return FromPyObjOrError()(p);
       }
     };
 
@@ -83,7 +84,12 @@ namespace xloil
         ExcelObj result;
         auto ret = xloil::callExcelRaw(funcNum, &result, args.size(), args.begin());
         if (ret != 0)
-          result = wstring(L"#") + xlRetCodeToString(ret);
+        {
+          if (ret == msxll::xlretInvXloper && funcNum == msxll::xlUDF)
+            result = formatStr(L"#Unrecognised function '%s'", args[0].toString().c_str());
+          else
+            result = wstring(L"#") + xlRetCodeToString(ret);
+        }
         return std::move(result);
       }, ExcelRunQueue::XLL_API));
     }
@@ -107,17 +113,19 @@ namespace xloil
       for (auto i = 0u; i < nArgs; ++i)
         xlArgs.emplace_back(ArgFromPyObj()(args[i]));
 
+      auto funcName = to_wstring(func);
+
       py::gil_scoped_release releaseGil;
 
       return ExcelObjFuture(runExcelThread([
-          func = pyToWStr(func), 
+          funcName = std::move(funcName),
           args = std::move(xlArgs)
         ]()
         {
           const ExcelObj* argsP[30];
           for (size_t i = 0; i < args.size(); ++i)
             argsP[i] = &args[i];
-          return excelApp().run(func, args.size(), argsP);
+          return thisApp().run(funcName, args.size(), argsP);
         }));
     }
 

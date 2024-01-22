@@ -4,7 +4,7 @@
 #include <xlOil/ExcelRef.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/AppObjects.h>
-#include <xlOil-COM/XllContextInvoke.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOil-COM/ComVariant.h>
 
 namespace xloil
@@ -18,12 +18,12 @@ namespace xloil
     }
   }
 
-  Range* newRange(const wchar_t* address)
+  std::unique_ptr<Range> newRange(const wchar_t* address)
   {
     if (InXllContext::check())
-      return new XllRange(ExcelRef(address));
+      return std::make_unique<XllRange>(ExcelRef(address));
     else
-      return new ExcelRange(address);
+      return std::make_unique<ExcelRange>(address);
   }
   ExcelRef refFromComRange(Excel::Range& range)
   {
@@ -62,14 +62,14 @@ namespace xloil
   ExcelRange::ExcelRange(const Range& range)
     : AppObject(nullptr)
   {
-    auto excelRange = dynamic_cast<const ExcelRange*>(&range);
-    if (excelRange)
-      *this = ExcelRange(&excelRange->com());
+    auto* comPtr = range.asComPtr();
+    if (comPtr)
+      *this = ExcelRange(comPtr);
     else
       *this = ExcelRange(range.address());
   }
 
-  Range* ExcelRange::range(
+  std::unique_ptr<Range> ExcelRange::range(
     int fromRow, int fromCol,
     int toRow, int toCol) const
   {
@@ -87,17 +87,17 @@ namespace xloil
       auto r = ws->GetRange(
         cells->Item[fromRow + 1][fromCol + 1],
         cells->Item[toRow + 1][toCol + 1]);
-      return new ExcelRange(r);
+      return std::make_unique<ExcelRange>(r);
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  Range* ExcelRange::trim() const
+  std::unique_ptr<Range> ExcelRange::trim() const
   {
     // Better than SpecialCells?
     size_t nRows = 0, nCols = 0;
     if (size() == 1 || !COM::trimmedVariantArrayBounds(com().Value2, nRows, nCols))
-      return new ExcelRange(*this);
+      return std::make_unique<ExcelRange>(*this);
     // 'range' takes the last row/col inclusive so subtract one
     if (nRows > 0) --nRows;
     if (nCols > 0) --nCols;
@@ -128,9 +128,7 @@ namespace xloil
   {
     try
     {
-      auto result = local
-        ? com().GetAddress(true, true, Excel::xlA1)
-        : com().GetAddressLocal(true, true, Excel::xlA1);
+      auto result = com().GetAddress(true, true, Excel::xlA1, !local);
       return std::wstring(result);
     }
     XLO_RETHROW_COM_ERROR;
@@ -143,7 +141,8 @@ namespace xloil
 
   ExcelObj ExcelRange::value(row_t i, col_t j) const
   {
-    return COM::variantToExcelObj(com().Cells->Item[i + 1][j + 1]);
+    Excel::RangePtr range(com().Cells->Item[i + 1][j + 1]);
+    return COM::variantToExcelObj(range->Value2);
   }
 
   void ExcelRange::set(const ExcelObj& value)
@@ -157,23 +156,43 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  void ExcelRange::setFormula(const std::wstring_view& formula)
+  void ExcelRange::setFormula(const std::wstring_view& formula, const SetFormulaMode mode)
   {
     try
     {
-      if (size() > 1)
-        com().FormulaArray = stringToVariant(formula);
+      auto value = stringToVariant(formula);
+      if (mode == ARRAY_FORMULA && size() > 1)
+        com().FormulaArray = value;
+      else if (mode == OLD_ARRAY)
+        com().PutFormula(value);
       else
-        com().Formula = stringToVariant(formula);
+        com().PutFormula2(value);
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  std::wstring ExcelRange::formula()
+  void ExcelRange::setFormula(const ExcelObj& formula, const SetFormulaMode mode)
+  {
+    try
+    { 
+      VARIANT v;
+      COM::excelObjToVariant(&v, formula);
+      auto value = _variant_t(v, false);  // Move variant
+      if (mode == ARRAY_FORMULA && v.vt == VT_BSTR && size() > 1)
+        com().FormulaArray = value;
+      else if (mode == OLD_ARRAY)
+        com().PutFormula(value);
+      else
+        com().PutFormula2(value);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelObj ExcelRange::formula() const
   {
     try
     {
-      return ((_bstr_t)com().Formula).GetBSTR();
+      return COM::variantToExcelObj(com().Formula2);
     }
     XLO_RETHROW_COM_ERROR;
   }

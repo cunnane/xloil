@@ -28,24 +28,15 @@
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <PropertyGroup Label="Configuration">
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -71,25 +62,32 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>xlOil-External.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>powershell $(SolutionDir)tools\WriteInclude.ps1 $(SolutionDir)include\xloil $(SolutionDir)include\xloil</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AutoBind.cpp" />
     <ClCompile Include="CacheTest.cpp" />
     <ClCompile Include="CacheTest2.cpp" />
     <ClCompile Include="CallbackTest.cpp">
-      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</MultiProcessorCompilation>
-      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</MultiProcessorCompilation>
-      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</MultiProcessorCompilation>
-      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</MultiProcessorCompilation>
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
     </ClCompile>
     <ClCompile Include="ExoticArgTest.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="RtdServerTest.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\external\asmjit\asmjit.vcxproj">
+    <ProjectReference Include="..\..\src\external\asmjit.vcxproj">
       <Project>{164af267-092e-441d-8bf0-2acf18e9adfd}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\external\rdcfswatcher.vcxproj">
+      <Project>{94cb9502-b5a4-473d-8a2e-4a67950049b6}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\external\spdlog.vcxproj">
+      <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\src\xlOil-COM\xlOil-COM.vcxproj">
       <Project>{2c85c326-07ea-4d9c-91c2-f79baec64f70}</Project>

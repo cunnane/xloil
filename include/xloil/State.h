@@ -47,6 +47,8 @@ namespace xloil
       /// Thread Id of Excel's main thread
       /// </summary>
       size_t mainThreadId;
+
+      bool isEmbedded() const { return mainThreadId != 0; }
     };
 
     /// <summary>
@@ -58,10 +60,14 @@ namespace xloil
     /// <summary>
     /// Internal usage
     /// </summary>
-    void initCoreContext(void* coreHInstance);
+    void setCoreHandle(void* coreHInstance);
     /// <summary>
     /// Internal usage
     /// </summary>
     XLOIL_EXPORT void initAppContext();
+    /// <summary>
+    /// Internal usage
+    /// </summary>
+    void registerIntellisense(const wchar_t* xllPath);
   }
 }

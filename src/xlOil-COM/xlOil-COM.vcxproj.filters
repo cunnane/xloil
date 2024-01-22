@@ -13,6 +13,7 @@
     <ClInclude Include="CustomTaskPane.h" />
     <ClInclude Include="RtdAsyncManager.h" />
     <ClInclude Include="RtdServerWorker.h" />
+    <ClInclude Include="TaskPaneHostControl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ComAddin.cpp" />
@@ -43,6 +44,8 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="RtdAsyncManager.cpp" />
+    <ClCompile Include="ClassFactory.cpp" />
+    <ClCompile Include="TaskPaneHostControl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="API">

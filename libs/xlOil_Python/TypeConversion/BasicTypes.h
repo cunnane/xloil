@@ -1,16 +1,15 @@
 #pragma once
 
+#include "ConverterInterface.h"
 #include "Numpy.h"
 #include "PyCache.h"
 #include "PyDateType.h"
-#include "Main.h"
 #include "PyTupleType.h"
 #include "PyHelpers.h"
-#include "PyCore.h"
 #include <xlOil/ExcelObj.h>
 #include <xlOil/ExcelArray.h>
 #include <xlOil/ExcelRef.h>
-#include <xlOil/TypeConverters.h>
+
 #include <xlOil/ExcelObjCache.h>
 #include <xlOil/Log.h>
 #include <xloil/StringUtils.h>
@@ -23,24 +22,13 @@ namespace xloil
 {
   namespace Python
   {
-    class IPyFromExcel : public IConvertFromExcel<PyObject*>
-    {
-    public:
-      /// <summary>
-      /// A useful name for the converter, typically the type supported.
-      /// Currently used only for log diagnostics.
-      /// </summary>
-      /// <returns></returns>
-      virtual const char* name() const;
-    };
-    using IPyToExcel = IConvertToExcel<PyObject>;
-
-    struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
-    {
-    };
+    template<class TImpl, bool TUseCache = true> struct PyFromExcel;
 
     namespace detail
     {
+      struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
+      {};
+
       /// <summary>
       /// Wraps a type conversion functor, interpreting the string conversion to
       /// look for a python cache reference.  If found, returns the cache object,
@@ -133,7 +121,7 @@ namespace xloil
       struct PyFromAny : public PyFromExcelImpl
       {
         using PyFromExcelImpl::operator();
-        static constexpr char* const ourName = "Any";
+        static constexpr char* const ourName = "object";
 
         PyObject* operator()(int x)    const { return PyFromInt()(x); }
         PyObject* operator()(bool x)   const { return PyFromBool()(x); }
@@ -158,52 +146,53 @@ namespace xloil
         }
         PyObject* operator()(const RefVal& ref) const
         {
-          return pybind11::cast((Range*)new XllRange(ref)).release().ptr();
+          return pybind11::cast(new XllRange(ref)).release().ptr();
         }
 
         constexpr wchar_t* failMessage() const { return L"Unknown type"; }
       };
 
       /// <summary>
-      /// Type converter which expects a cache reference string and rejects
-      /// all other types.
+      /// Used by PyExcelConverter
       /// </summary>
-      class PyCacheObject : public ExcelValVisitor<PyObject*>
+      template <class T>
+      struct MakePyFromExcel { using type = PyFromExcel<T>; };
+
+      template <class T, bool TUseCache>
+      struct MakePyFromExcel<PyFromExcel<T, TUseCache>>
       {
-      public:
-        using ExcelValVisitor::operator();
-        static constexpr char* const ourName = "CacheObject";
-
-        PyObject* operator()(const PStringRef& pstr) const
-        {
-          PyObject* _typeCheck = nullptr;
-
-          pybind11::object cached;
-          if (pyCacheGet(pstr.view(), cached))
-          {
-            // Type checking seems nice, but it's unpythonic to raise an error here
-            if (_typeCheck && PyObject_IsInstance(cached.ptr(), _typeCheck) == 0)
-              XLO_WARN(L"Found `{0}` in cache but type was expected", pstr.string());
-            return cached.release().ptr();
-          }
-          return nullptr;
-        }
-
-        constexpr wchar_t* failMessage() const { return L"Expected cache string"; }
+        using type = PyFromExcel<T, TUseCache>;
       };
     }
     
+    /// <summary>
+    /// Checks if the python object is instance of Range type
+    /// (i.e. is XllRange or ExcelRange)
+    /// </summary>
+    bool isRangeType(const PyObject* obj);
+    /// <summary>
+    /// Checks if the python object is a CellError (#N/A! etc) type
+    /// </summary>
+    bool isErrorType(const PyObject* obj);
+    /// <summary>
+    /// Checks if the python object is a wrapper for an *ExcelObj*,
+    /// which can be returned by some type converters
+    /// </summary>
+    bool isExcelObjType(const PyObject* obj);
+
     /// <summary>
     /// Wraps a type conversion implementation, similarly to <see cref="xloil::FromExcel"/>
     /// Checks all ExcelObj strings for both python and ExcelObj cache references.
     /// Throws an error if conversion fails. 
     /// </summary>
-    template<class TImpl, bool TUseCache=true>
+    template<class TImpl, bool TUseCache>
     struct PyFromExcel
     {
       typename std::conditional_t<TUseCache,
         detail::PyFromCache<CacheConverter<TImpl>>,
         TImpl> _impl;
+
+      static constexpr auto ourName = TImpl::ourName;
 
       template <class...Args>
       PyFromExcel(Args&&...args)
@@ -236,7 +225,7 @@ namespace xloil
 
         if (!retVal)
         {
-          XLO_THROW(L"Cannot convert {0}: {1}", xl.toString(),
+          XLO_THROW(L"Cannot convert '{0}': {1}", xl.toString(),
             PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
         }
         return retVal;
@@ -253,28 +242,12 @@ namespace xloil
     using PyFromString         = PyFromExcel<detail::PyFromString>;
     using PyFromAny            = PyFromExcel<detail::PyFromAny<true>>;
     using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<false>>;
-    using PyCacheObject        = PyFromExcel<detail::PyCacheObject>;
 
     using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
     using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
     using PyFromDoubleUncached = PyFromExcel<detail::PyFromDouble, false>;
     using PyFromStringUncached = PyFromExcel<detail::PyFromString, false>;
     using PyFromAnyUncached    = PyFromExcel<detail::PyFromAny<>, false>;
-
-    namespace detail
-    {
-      /// <summary>
-      /// Used by PyExcelConverter
-      /// </summary>
-      template <class T>
-      struct MakePyFromExcel { using type = PyFromExcel<T>; };
-
-      template <class T, bool TUseCache>
-      struct MakePyFromExcel<PyFromExcel<T, TUseCache>> 
-      { 
-        using type = PyFromExcel<T, TUseCache>; 
-      };
-    }
 
     /// <summary>
     /// Wraps a <see cref="PyFromExcel"/> to inherit from <see cref="IPyFromExcel"/>
@@ -304,34 +277,6 @@ namespace xloil
       }
     };
 
-    struct FromPyLong
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyLong_Check(obj))
-          XLO_THROW("Expected python int, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyLong_AsLong((PyObject*)obj));
-      }
-    };
-    struct FromPyFloat
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyFloat_Check(obj))
-          XLO_THROW("Expected python float, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyFloat_AS_DOUBLE(obj));
-      }
-    };
-    struct FromPyBool
-    {
-      auto operator()(const PyObject* obj) const
-      {
-        if (!PyBool_Check(obj))
-          XLO_THROW("Expected python bool, got '{0}'", pyToStr(obj));
-        return ExcelObj(PyObject_IsTrue((PyObject*)obj) > 0);
-      }
-    };
-
     struct FromPyString
     {
       template <class TAlloc = PStringAllocator<wchar_t>>
@@ -340,34 +285,93 @@ namespace xloil
         const TAlloc& allocator = PStringAllocator<wchar_t>()) const
       {
         if (!PyUnicode_Check(obj))
-          XLO_THROW("Expected python str, got '{0}'", pyToStr(obj));
+          XLO_THROW("Expected python str, got '{0}'", to_string(obj));
 
+        PyUnicode_READY(obj);
         const auto len = (char16_t)std::min<size_t>(
           USHRT_MAX, PyUnicode_GET_LENGTH((PyObject*)obj));
         BasicPString<wchar_t, TAlloc> pstr(len, allocator);
         PyUnicode_AsWideChar((PyObject*)obj, pstr.pstr(), pstr.length());
         return ExcelObj(std::move(pstr));
       }
+      static constexpr char* ourName = "str";
     };
 
     namespace detail
     {
       const IPyToExcel* getCustomReturnConverter();
+
+      /// <summary>
+      /// Used with FromPyObj to return unknown objects as #VALUE
+      /// </summary>
+      struct ReturnValueError
+      {
+        template <class TAlloc>
+        auto operator()(PyObject*, const TAlloc&)
+        {
+          return ExcelObj(CellError::Value);
+        }
+      };
+
+      /// <summary>
+      /// Used with FromPyObj to return unknown objects as a cache ref
+      /// </summary>
+      struct ReturnToCache 
+      {
+        template <class TAlloc>
+        auto operator()(PyObject* obj, const TAlloc& stringAllocator)
+        {
+          // TODO: pass allocator through to cache 
+          return ExcelObj(BasicPString<wchar_t, TAlloc>(pyCacheAdd(PyBorrow(obj)).asStringView(), stringAllocator));
+        }
+      };
+
+      /// <summary>
+      /// Used with FromPyObj to return unknown objects as `str(obj)`
+      /// </summary>
+      struct ReturnToString
+      {
+        template <class TAlloc>
+        ExcelObj operator()(PyObject* obj, const TAlloc& stringAllocator)
+        {
+          return FromPyString()(PySteal(PyObject_Str(obj)).ptr(), stringAllocator);
+        }
+      };
     }
    
-    template<bool TUseCache = true>
+    /// <summary>
+    /// Tries to convert a python object to Excel using all known converters
+    /// </summary>
+    /// <typeparam name="TDefault">
+    /// Functor which determines the fate of an otherwise unconvertable object
+    /// </typeparam>
+    /// <typeparam name="TIsScalar">
+    /// If true, does not check for array / iterable conversions. Useful when
+    /// populating an array
+    /// </typeparam>
+    template<class TDefault=detail::ReturnToCache, bool TIsScalar=false>
     struct FromPyObj
     {
+      TDefault _defaultHandler;
+
       template <class TAlloc = PStringAllocator<wchar_t>>
       auto operator()(
         const PyObject* obj, 
-        const TAlloc& stringAllocator = PStringAllocator<wchar_t>()) const
+        const TAlloc& stringAllocator = PStringAllocator<wchar_t>())
       {
         auto p = (PyObject*)obj; // Python API isn't const-aware
         if (p == Py_None)
         {
           // Return #N/A here as xltypeNil is turned to zero by Excel
           return ExcelObj(CellError::NA);
+        }
+        else if (isExcelObjType(p))
+        {
+          return py::unsafe_move<ExcelObj>(p);
+        }
+        else if (PyBool_Check(p)) // Must check this before `long`
+        {
+          return ExcelObj(PyObject_IsTrue(p) > 0);
         }
         else if (PyLong_Check(p))
         {
@@ -377,11 +381,7 @@ namespace xloil
         {
           return ExcelObj(PyFloat_AS_DOUBLE(p));
         }
-        else if (PyBool_Check(p))
-        {
-          return ExcelObj(PyObject_IsTrue(p) > 0);
-        }
-        else if (isNumpyArray(p))
+        else if (!TIsScalar && isNumpyArray(p))
         {
           return ExcelObj(numpyArrayToExcel(p));
         }
@@ -389,7 +389,7 @@ namespace xloil
         {
           return ExcelObj(pyDateToExcel(p));
         }
-        else if (Py_TYPE(p) == cellErrorType)
+        else if (isErrorType(p))
         {
           auto err = pybind11::reinterpret_borrow<pybind11::object>(p).cast<CellError>();
           return ExcelObj(err);
@@ -405,18 +405,19 @@ namespace xloil
             return ExcelObj(std::move(val));
         }
         
-        if (PyIterable_Check(p))
+        if constexpr (!TIsScalar)
         {
-          return nestedIterableToExcel(p);
+          if (PyIterable_Check(p))
+          {
+            return nestedIterableToExcel(p);
+          }
         }
-        else if (TUseCache)
-        {
-          return pyCacheAdd(PyBorrow<>(p));
-        }
-        else
-          return ExcelObj(CellError::Value);
+        return _defaultHandler(p, stringAllocator);
       }
     };
+
+    using FromPyObjOrError = FromPyObj<detail::ReturnValueError>;
+    using FromPyObjOrCache = FromPyObj<detail::ReturnToCache>;
 
     template<class TFunc>
     class PyFuncToExcel : public IPyToExcel
@@ -425,6 +426,10 @@ namespace xloil
       ExcelObj operator()(const PyObject& obj) const override
       {
         return TFunc()(&obj);
+      }
+      const char* name() const override
+      {
+        return TFunc::ourName;
       }
     };
   }

@@ -61,14 +61,24 @@ namespace xloil
   };
 
   /// <summary>
-  /// Event handler to respond to custom task pane events
+  /// Event handler to respond to custom task pane events. Callbacks will made on 
+  /// Excel's main thread.
   /// </summary>
-  class ICustomTaskPaneHandler
+  class ICustomTaskPaneEvents
   {
   public:
-    virtual void onSize(int width, int height) = 0;
-    virtual void onVisible(bool c) = 0;
+    /// <summary>
+    /// Called when the user closes/shows the pane with the new visibility in 'state'
+    /// </summary>
+    virtual void onVisible(bool state) = 0;
+    /// <summary>
+    /// Called when the user docks or undocks the pane
+    /// </summary>
     virtual void onDocked() = 0;
+    /// <summary>
+    /// Called just before the pane is destroyed when the parent window is closed.
+    /// Only triggered when the xlOil host control is used, see `createTaskPane`.
+    /// </summary>
     virtual void onDestroy() = 0;
   };
 
@@ -81,9 +91,9 @@ namespace xloil
   public:
     enum DockPosition
     {
-      Bottom =	3,
-      Floating =	4,
-      Left =	0,
+      Bottom = 3,
+      Floating = 4,
+      Left = 0,
       Right = 2,
       Top = 1
     };
@@ -100,13 +110,6 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     virtual ExcelWindow window() const = 0;
-
-    /// <summary>
-    /// Gets the window handle for parent of the task pane control, that is
-    /// the child window which houses the task pane. Thread safe.
-    /// </summary>
-    /// <returns></returns>
-    virtual size_t parentWindowHandle() const = 0;
 
     /// <summary>
     /// Sets the visblity of the task pane to true/false
@@ -151,15 +154,26 @@ namespace xloil
     virtual std::wstring getTitle() const = 0;
 
     /// <summary>
-    /// Registers a callback handler for task pane events such as size change.
-    /// The callback will occur in Excel's main thread.
+    /// Registers a callback handler for task pane events. The callback will occur 
+    /// in Excel's main thread.
     /// </summary>
     /// <param name="events"></param>
-    virtual void addEventHandler(const std::shared_ptr<ICustomTaskPaneHandler>& events) = 0;
+    virtual void listen(const std::shared_ptr<ICustomTaskPaneEvents>& events) = 0;
 
-    virtual void destroy() const = 0;
+    /// <summary>
+    /// If the pane contains an xlOil hosting control, attaches the specified 
+    /// Win32 window to the control and automatically resizes it to fill the pane.
+    /// </summary>
+    /// <param name="hwnd"></param>
+    virtual void attach(size_t hwnd) = 0;
+
+    virtual void destroy() = 0;
   };
 
+  /// <summary>
+  /// The methods of classes of this type must be called on Excel's main thread, 
+  /// unless otherwise noted.
+  /// </summary>
   class IComAddin
   {
   public:
@@ -173,25 +187,24 @@ namespace xloil
     /// </summary>
     virtual const wchar_t* progid() const = 0;
     /// <summary>
-    /// Connects the add-in to Excel and processes the Ribbon XML
+    /// Connects the add-in to Excel and optionally sets the Ribbon XML. The
+    /// Office Ribbon invokes callbacks on its controls by calling methods
+    /// named in the XML.  The `mapper` maps these names to actual C++ functions.
+    /// The Ribbon XML can *only* be set before the addin is connected, hence it
+    /// is specified here rather than in a setRibbon function.
     /// </summary>
-    virtual void connect() = 0;
+    /// <param name="xml"></param>
+    /// <param name="mapper">
+    ///    A map from names to functions which returns a <see cref="RibbonCallback"/> .
+    /// </param>
+    virtual void connect(
+      const wchar_t* xml = nullptr,
+      const RibbonMap& mapper = RibbonMap()) = 0;
     /// <summary> 
     /// Disconnects the add-in from Excel and closes any associated Ribbons
     /// </summary>
     virtual void disconnect() = 0;
-    /// <summary>
-    /// Sets the Ribbon XML which is passed to Excel when the <see cref="connect"/>
-    /// method is called. The Office Ribbon invokes callbacks on its controls by
-    /// calling the method name in the XML.  The `mapper` maps these names to 
-    /// actual C++ functions.
-    /// </summary>
-    /// <param name="xml"></param>
-    /// <param name="mapper">A map from names to functions which returns a <see cref="RibbonCallback"/> .
-    /// </param>
-    virtual void setRibbon(
-      const wchar_t* xml,
-      const RibbonMap& mapper) = 0;
+
     /// <summary>
     /// Invalidates the specified control: this clears the caches of the
     /// responses to all callbacks associated with the control. For example,
@@ -209,10 +222,25 @@ namespace xloil
     /// <returns>true if successful</returns>
     virtual bool ribbonActivate(const wchar_t* controlId) const = 0;
 
+    /// <summary>
+    /// Creates a custom task pane
+    /// </summary>
+    /// <param name="name">
+    ///   The name of the pane which will be displayed above it.
+    /// </param>
+    /// <param name="window">
+    ///   The Excel window in which the pane should be created. If ommited, the 
+    ///   active window is used.
+    /// </param>
+    /// <param name="progId">
+    ///   The COM ProgID of the control to create in the task pane. If omitted
+    ///   an xlOil host control is created which can attach to a window.
+    /// </param>
+    /// <returns></returns>
     virtual std::shared_ptr<ICustomTaskPane> createTaskPane(
       const wchar_t* name,
-      const IDispatch* window=nullptr,
-      const wchar_t* progId=nullptr) = 0;
+      const ExcelWindow* window = nullptr,
+      const wchar_t* progId = nullptr) = 0;
 
     using TaskPaneMap = std::multimap<std::wstring, std::shared_ptr<ICustomTaskPane>>;
     virtual const TaskPaneMap& panes() const = 0;
@@ -234,8 +262,7 @@ namespace xloil
     const IComAddin::RibbonMap& mapper)
   {
     auto addin = makeComAddin(name, nullptr);
-    addin->setRibbon(xml, mapper);
-    addin->connect();
+    addin->connect(xml, mapper);
     return addin;
   }
 

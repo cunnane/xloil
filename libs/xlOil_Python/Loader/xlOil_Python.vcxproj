@@ -28,7 +28,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
@@ -54,18 +54,39 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\..\src\BuildPaths.props" />
     <Import Project="..\..\..\libs\xlOilPlugin.props" />
-    <Import Project="..\PySettings310.props" />
-    <Import Project="..\PySettings.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
     <Import Project="..\..\..\src\Release.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
+    <Import Project="..\..\..\src\Debug.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <IncludePath>$(xlOilRoot)external\python\3.10\include;$(xlOilRoot)src;$(IncludePath);$(ProjectDir)</IncludePath>
+    <LibraryPath>$(xlOilRoot)external\python\3\$(Platform);$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>PYTHON_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>xloilHelpers.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="StubLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\external\spdlog\spdlog.vcxproj">
+    <ProjectReference Include="..\..\..\src\external\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\src\xlOilHelpers\xlOilHelpers.vcxproj">
+      <Project>{f7aa4c6f-c223-4ed1-bbb3-836e7ec044f2}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\src\xlOil\xlOil.vcxproj">
+      <Project>{df88a189-295a-4ac8-befc-d199155ec8cb}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

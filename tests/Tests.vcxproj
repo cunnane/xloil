@@ -30,7 +30,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
@@ -69,7 +69,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ArrayBuilder.cpp" />
+    <ClCompile Include="TestArrayBuilder.cpp" />
     <ClCompile Include="Date.cpp" />
     <ClCompile Include="Environment.cpp" />
     <ClCompile Include="CodePageConversion.cpp" />
@@ -88,7 +88,7 @@
     <ClCompile Include="TestThunker.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\external\spdlog\spdlog.vcxproj">
+    <ProjectReference Include="..\src\external\spdlog.vcxproj">
       <Project>{c4da7637-9d07-4d52-8db2-82b73d95e1b8}</Project>
     </ProjectReference>
     <ProjectReference Include="..\src\xlOil-Dynamic\xlOil-Dynamic.vcxproj">

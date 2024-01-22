@@ -20,8 +20,8 @@ namespace Tests
       ret = stringToDateTime(L"2017-01-01", result, L"%Y-%m-%d");
       Assert::IsTrue(ret);
 
-      dateTimeAddFormat(L"%Y%b%d");
-      dateTimeAddFormat(L"%Y-%m-%d");
+      theDateTimeFormats().push_back(L"%Y-%m-%d");
+      theDateTimeFormats().push_back(L"%Y%b%d");
 
       ret = stringToDateTime(L"2010-02-03", result);
       Assert::IsTrue(ret);

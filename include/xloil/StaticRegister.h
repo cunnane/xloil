@@ -18,7 +18,8 @@ namespace xloil {
 
 
 /// <summary>
-/// Marks the start of an function registered in Excel
+/// Marks the start of an function registered in Excel. This declares an extern 'C'
+/// DLL-exported function, so the function name must be unique as namespaces are ignored.
 /// </summary>
 #define XLO_FUNC_START(func) \
   XLO_ENTRY_POINT(XLOIL_XLOPER*) func; \
@@ -29,34 +30,35 @@ namespace xloil {
 #ifdef XLO_RETURN_COM_ERROR
 #define XLO_FUNC_END(func) \
     XLO_RETURN_COM_ERROR \
-    catch (const std::exception& err) \
+    catch (const ::std::exception& err) \
     { \
-      return xloil::returnValue(err); \
+      return ::xloil::returnValue(err); \
     } \
     catch (...) \
     { \
-      return xloil::returnValue(xloil::CellError::Value); \
+      return ::xloil::returnValue(::xloil::CellError::Value); \
     } \
   } \
-  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
+  extern auto _xloil_register_##func = XLO_REGISTER_LATER(func)
 #else
 #define XLO_FUNC_END(func) \
-    catch (const std::exception& err) \
+    catch (const ::std::exception& err) \
     { \
-      return xloil::returnValue(err); \
+      return ::xloil::returnValue(err); \
     } \
     catch (...) \
     { \
-      return xloil::returnValue(xloil::CellError::Value); \
+      return ::xloil::returnValue(::xloil::CellError::Value); \
     } \
   } \
-  extern auto _xlo_register_##func = XLO_REGISTER_LATER(func)
+  XLO_STATIC_REGISTER(func)
 #endif // XLO_RETURN_COM_ERROR
 
 
-#define XLO_REGISTER_LATER(func) xloil::detail::registrationMemo(#func, func)
+#define XLO_REGISTER_LATER(func) ::xloil::detail::registrationMemo(#func, func)
 
-#define XLO_START_REGISTER(func) xloil::StaticRegistrationBuilder(#func, func)
+#define XLO_STATIC_REGISTER(func) \
+  extern auto _xloil_register_##func = ::xloil::detail::registrationMemo(#func, func)
 
 namespace xloil
 {
@@ -310,8 +312,10 @@ namespace xloil
 #define XLOIL_STDCALL
 #endif
 
-    template<class T> struct ReturnType { static constexpr auto value = 0; };
-    template<> struct ReturnType<int> { static constexpr auto value = FuncInfo::COMMAND; };
+    template<class T> struct ReturnType    { static constexpr auto value = 0; };
+    template<> struct ReturnType<int>      { static constexpr auto value = FuncInfo::COMMAND; };
+    template<> struct ReturnType<FPArray*> { static constexpr auto value = FuncInfo::ARRAY; };
+
     /// <summary>
     /// Ultimately inherits from Defs<ReturnType, Args...> but due to the myriad
     /// ways which a callable can be expressed in C++, has a lot of specialisations

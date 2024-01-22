@@ -360,6 +360,18 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     virtual const wchar_t* progId() const noexcept = 0;
+
+    /// <summary>
+    /// Initiates a connect as if Excel has requested the topic.  Will 
+    /// conflict if Excel uses the topicID.  Used only for testing and 
+    /// nefarious purposes in xlOil_Python
+    /// </summary>
+    virtual void testConnect(long topicId, const std::wstring_view& topicName) = 0;
+
+    /// <summary>
+    /// Initiates a disconnect, see testConnect
+    /// </summary>
+    virtual void testDisconnect(long topicId) = 0;
   };
 
   /// <summary>

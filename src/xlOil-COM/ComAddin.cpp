@@ -81,7 +81,7 @@ namespace xloil
 
     // This class does not need a disp-interface
     class ComAddinImpl :
-        public NoIDispatchImpl<ComObject<AddInDesignerObjects::IDTExtensibility2>>
+        public NoIDispatchImpl<ComObject<AddInDesignerObjects::_IDTExtensibility2>>
     {
     public:
       ComAddinImpl()
@@ -93,9 +93,9 @@ namespace xloil
       {
         *ppv = NULL;
         if (riid == IID_IUnknown 
-          || riid == __uuidof(AddInDesignerObjects::IDTExtensibility2))
+          || riid == __uuidof(AddInDesignerObjects::_IDTExtensibility2))
         {
-          auto p = (AddInDesignerObjects::IDTExtensibility2*)this;
+          auto p = (AddInDesignerObjects::_IDTExtensibility2*)this;
           *ppv = p;
           p->AddRef();
           return S_OK;
@@ -156,14 +156,14 @@ namespace xloil
     {
       SetAutomationSecurity(Office::MsoAutomationSecurity value)
       {
-        _previous = excelApp().com().AutomationSecurity;
-        excelApp().com().AutomationSecurity = value;
+        _previous = thisApp().com().AutomationSecurity;
+        thisApp().com().AutomationSecurity = value;
       }
       ~SetAutomationSecurity()
       {
         try
         {
-          excelApp().com().AutomationSecurity = _previous;
+          thisApp().com().AutomationSecurity = _previous;
         }
         catch (...)
         {
@@ -175,12 +175,13 @@ namespace xloil
     class ComAddinCreator : public IComAddin
     {
     private:
-      auto& comAddinImpl() const
+      auto& impl() const
       {
-        return _registrar.server();
+        return *_impl;
       }
 
-      RegisterCom<ComAddinImpl> _registrar;
+      CComPtr<ComAddinImpl>     _impl;
+      RegisterCom               _registrar;
       bool                      _connected = false;
       shared_ptr<IRibbon>       _ribbon;
       COMAddIn*                 _comAddin = nullptr;
@@ -188,26 +189,27 @@ namespace xloil
       shared_ptr<const void>    _closeHandler;
     
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
-        : _registrar(
-          [](const wchar_t*, const GUID&) { return new ComAddinImpl(); },
+        : _impl(new ComAddinImpl())
+        , _registrar(
+          [p = _impl.p]() { return p; },
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
       {
         // TODO: hook OnDisconnect to stop user from disabling COM stub.
-        comAddinImpl()->events.reset(new ComAddinEvents());
+        impl().events.reset(new ComAddinEvents());
 
         if (!name)
           XLO_THROW("Com add-in name must be provided");
 
         // It's possible the addin has already been registered and loaded and 
         // is just being reinitialised, so we do findAddin twice
-        auto& app = excelApp().com();
+        auto& app = thisApp().com();
 
         SetAutomationSecurity setSecurity(
           Office::MsoAutomationSecurity::msoAutomationSecurityLow);
 
         findAddin(app);
 
-        if (isConnected())
+        if (isComAddinConnected())
         {
           disconnect();
         }
@@ -229,12 +231,19 @@ namespace xloil
             XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
       }
+
     public:
       static auto create(const wchar_t* name, const wchar_t* description)
       {
-        auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
-        p->_closeHandler = Event::WorkbookAfterClose().weakBind(std::weak_ptr<ComAddinCreator>(p), &ComAddinCreator::handleWorkbookClose);
-        return p;
+        try
+        {
+          auto p = std::shared_ptr<ComAddinCreator>(new ComAddinCreator(name, description));
+          p->_closeHandler = Event::WorkbookAfterClose().weakBind(
+            std::weak_ptr<ComAddinCreator>(p),
+            &ComAddinCreator::handleWorkbookClose);
+          return p;
+        }
+        XLO_RETHROW_COM_ERROR;
       }
 
       ~ComAddinCreator()
@@ -242,6 +251,9 @@ namespace xloil
         try
         {
           _closeHandler.reset();
+          for (auto& pane : _panes)
+            pane.second->destroy();
+
           _panes.clear();
           disconnect();
         }
@@ -249,15 +261,20 @@ namespace xloil
         {
           XLO_ERROR("ComAddin failed to close: {0}", e.what());
         }
+        catch (_com_error& e)
+        {
+          XLO_ERROR(L"ComAddin failed to close with COM Error {0:#x}: {1}", 
+            (unsigned)e.Error(), e.ErrorMessage());
+        }
       }
 
       void findAddin(Excel::_Application& app)
       {
         auto ourProgid = _variant_t(progid());
-        app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin);
+        app.GetCOMAddIns()->raw_Item(&ourProgid, &_comAddin); // TODO: Does this need decref/incref?
       }
 
-      bool isConnected() const
+      bool isComAddinConnected() const
       {
         try
         {
@@ -267,12 +284,20 @@ namespace xloil
         }
         XLO_RETHROW_COM_ERROR;
       }
-      void connect() override
+
+      void connect(
+        const wchar_t* xml,
+        const RibbonMap& mapper) override
       {
         if (_connected)
           return;
         try
         {
+          if (xml)
+          {
+            _ribbon = createRibbon(xml, mapper);
+            impl().ribbon = _ribbon->getRibbon();
+          }
           _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
         }
@@ -280,15 +305,19 @@ namespace xloil
         {
           if (error.Error() == 0x80004004) // Operation aborted
           {
-            XLO_THROW("During add-in connect, received Operation Aborted ({}) this probably indicates  "
+            XLO_THROW("During add-in connect, received Operation Aborted ({}) this probably indicates "
               "blocking by add-in security.  Check add-ins are enabled and this add-in is not a disabled "
               "COM add-in.", (unsigned)error.Error());
           }
+          else if (error.Error() == VBA_E_IGNORE)
+            throw xloil::ComBusyException();
           else
-            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+            XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
       }
 
+      // TODO: use of disconnect is fatal to any attached custom task panes, they do not
+      // reappear on connect
       void disconnect() override
       {
         if (!_connected)
@@ -299,16 +328,6 @@ namespace xloil
           _connected = false;
         }
         XLO_RETHROW_COM_ERROR;
-      }
-
-      virtual void setRibbon(
-        const wchar_t* xml,
-        const RibbonMap& mapper)
-      {
-        if (_connected)
-          XLO_THROW("Can only set Ribbon when add-in is disconnected");
-        _ribbon = createRibbon(xml, mapper);
-        comAddinImpl()->ribbon = _ribbon->getRibbon();
       }
 
       const wchar_t* progid() const override
@@ -329,15 +348,22 @@ namespace xloil
 
       shared_ptr<ICustomTaskPane> createTaskPane(
         const wchar_t* name,
-        const IDispatch* window,
+        const ExcelWindow* window,
         const wchar_t* progId) override
       {
-        auto factory = comAddinImpl()->ctpFactory();
+        auto factory = impl().ctpFactory();
         if (!factory)
           XLO_THROW("Internal error: failed to receive CTP factory");
 
-        shared_ptr<ICustomTaskPane> pane(createCustomTaskPane(*factory, name, window, progId));
+        shared_ptr<ICustomTaskPane> pane(
+          createCustomTaskPane(
+            *factory, 
+            name, 
+            window ? window->dispatchPtr() : nullptr, 
+            progId));
+
         _panes.insert(make_pair(pane->window().workbook().name(), pane));
+
         return pane;
       }
 
@@ -345,6 +371,7 @@ namespace xloil
 
       void handleWorkbookClose(const wchar_t* wbName)
       {
+        // destroy
         _panes.erase(wbName);
       }
     };

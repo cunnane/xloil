@@ -77,7 +77,7 @@ xlOil's RTD Interface
 If even finer-grained control of the RTD mechanism is required (such as in the `xloil_jupyter`
 module, :doc:`Jupyter`), we can specify the publisher as described below.
 
-We will follow the *UrlGetter* example in :doc:`Example`.  In this case we make the topics URLs. 
+We will follow the *UrlGetter* example in :doc:`ExampleRTD`.  In this case we make the topics URLs. 
 The RTD workflow is to first check if a given topic has a publisher using `peek()`. If not, 
 we spin one up with :any:`xloil.RtdServer.start`. Then we :any:`xloil.RtdServer.subscribe` to 
 the topic which tells xlOil to call Excel's RTD function.

@@ -32,6 +32,12 @@ namespace xloil
     /// <returns>false if you need to call registerFunc</returns>
     virtual bool reregister(const std::shared_ptr<const WorksheetFuncSpec>& other);
 
+    /// <summary>
+    /// 'Forgets' the registration - this stops any attempt to deregister the function
+    /// when the object is destroyed.
+    /// </summary>
+    void forget() { _registerId = 0; }
+
   protected:
     int _registerId;
     std::shared_ptr<const WorksheetFuncSpec> _spec;
@@ -56,4 +62,11 @@ namespace xloil
 
   const std::map<std::wstring, RegisteredFuncPtr>& 
     registeredFuncsByName();
+
+  /// <summary>
+  /// Called during teardown to release resources used by registered
+  /// functions. Does not attempt the deregister the functions as 
+  /// the Excel APIs are not available after autoClose.
+  /// </summary>
+  void teardownFunctionRegistry();
 }

@@ -31,7 +31,7 @@ namespace
 	{
     GUID guid;
     xloil::stableGuidFromString(guid, theExcelDnaNamespaceGuid, xllPath);
-    return wstring(L"RegistrationInfo_") + xloil::guidToWString(guid, false);
+    return wstring(L"RegistrationInfo_") + xloil::guidToWString(guid, xloil::GuidToString::HEX);
 	}
 
   // Multiple Intellisense servers can exist in the same Excel session, but only one
@@ -40,7 +40,7 @@ namespace
   // `<xll path>,<serverId>,<version>`.  We are only interested in the *serverId*.
 	wstring findActiveIntelliServer()
 	{
-    auto active = xloil::getEnvVar(L"EXCELDNA_INTELLISENSE_ACTIVE_SERVER");
+    auto active = xloil::getEnvironmentVar(L"EXCELDNA_INTELLISENSE_ACTIVE_SERVER");
     if (active.empty())
       return active;
     auto comma = active.find_first_of(L',');
@@ -116,7 +116,10 @@ namespace xloil
         totalStrLen += info->category.size();
         totalStrLen += info->help.size();
         for (auto x : info->args)
-          totalStrLen += x.help.size() + 1 + 2; // allow for comma and []
+        {
+          totalStrLen += x.name.size() + 1 + 2; // allow for comma and []
+          totalStrLen += x.help.size();
+        }
         maxNumArgs = std::max(maxNumArgs, info->args.size());
         ++nFuncs;
       }

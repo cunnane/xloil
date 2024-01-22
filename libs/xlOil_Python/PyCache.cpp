@@ -80,7 +80,7 @@ namespace xloil
           if (tag.empty())
             tag = utf8ToUtf16(obj.ptr()->ob_type->tp_name);
           const auto cacheKey = _cache->add(std::move(obj), CallerInfo(), tag);
-          return PySteal(detail::PyFromString()(cacheKey));
+          return PySteal(detail::PyFromString()(cacheKey).cast<PStringRef>());
         }
         py::object getitem(const std::wstring_view& str)
         {
@@ -149,10 +149,36 @@ namespace xloil
           .def("add", 
             &PyCache::add, 
             R"(
-              Adds an object to the cache, returning a cache reference string. The 
-              optional `tag` helps identify the object to users and does not form
-              and integral part of the lookup. It defaults to the object type if 
-              unspecified.
+              Adds an object to the cache and returns a reference string
+              based on the currently calculating cell.
+
+              xlOil automatically adds unconvertible returned objects to the cache,
+              so this function is useful to force a recognised object, such as an 
+              iterable into the cache, or to return a list of cached objects.
+
+              Parameters
+              ----------
+
+              obj:
+                The object to cache.  Required.
+
+              tag: str
+                An optional string to append to the cache ref to make it more 
+                'friendly'. When returning python objects from functions, 
+                xlOil uses the object's type name as a tag
+
+              key: str
+                If specified, use the exact cache key (after prepending by
+                cache uniquifier). The user is responsible for ensuring 
+                uniqueness of the cache key.
+            )",
+            py::arg("obj"), py::arg("tag") = "", py::arg("key")="")
+          .def("remove", &PyCache::remove, py::arg("ref"))
+          .def("get", 
+            &PyCache::get, 
+            R"(
+              Fetches an object from the cache given a reference string.
+              Returns `default` if not found
             )",
             py::arg("obj"), py::arg("tag") = "")
           .def("get", &PyCache::get, py::arg("ref"), py::arg("default"))

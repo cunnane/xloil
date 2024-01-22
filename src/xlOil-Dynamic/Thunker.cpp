@@ -18,6 +18,7 @@
 using std::string;
 using xloil::Helpers::Exception;
 using std::unique_ptr;
+using namespace asmjit;
 
 class xloper12;
 
@@ -50,7 +51,7 @@ namespace
 
   static asmjit::CodeInfo theCodeInfo = createCodeInfo();
 
-  using namespace asmjit;
+ 
 
   // This is jitRuntime.add() but with in-place allocation
   Error asmJitWriteCode(uint8_t* dst, CodeHolder* code, size_t& codeSize) noexcept
@@ -91,42 +92,57 @@ namespace
 
 namespace xloil
 {
-  // Saves 80kb in the release build :)
+  // Saves 80kb in the release build vs using full asmjit and removes 16 arg limit
   void handRoll64(CodeHolder* code,
     void* callback,
     const void* data,
     size_t numArgs,
-    bool hasReturnVal)
+    bool /*hasReturnVal*/)
   {
     asmjit::x86::Assembler asmb(code);
 
     XLO_DEBUG("Building thunk with {0} arguments", numArgs);
 
-    // Build the signature of the function we are creating
-    FuncSignatureBuilder signature(CallConv::kIdHostStdCall);
-    constexpr auto ptrType = Type::IdOfT<int*>::kTypeId;
+    CallConv cc;
+    cc.init(CallConv::kIdHostStdCall);
 
-    for (size_t i = 0; i < numArgs; i++)
-      signature.addArg(ptrType);
-
-    // Normal callbacks should return, async ones will not
-    signature.setRet(hasReturnVal ? ptrType : Type::kIdVoid);
-    
-    FuncDetail func;
-    func.init(signature);
-
-    // The frame emits the correct function prolog & epilog
+    // The frame emits the correct function prolog & epilog.  Much of the below
+    // is copied from asmjit's FuncSignature initialisation, but without the 16
+    // arg limit
     FuncFrame frame;
-    frame.init(func);
+
+    frame.reset();
+
+    frame._archId = uint8_t(cc.archId());
+    frame._spRegId = x86::Gp::kIdSp;
+    frame._saRegId = x86::Gp::kIdBad;
+
+    const auto naturalStackAlignment = cc.naturalStackAlignment();
+    auto minDynamicAlignment = Support::max<uint32_t>(naturalStackAlignment, 16);
+
+    if (minDynamicAlignment == naturalStackAlignment)
+      minDynamicAlignment <<= 1;
+
+    frame._naturalStackAlignment = uint8_t(naturalStackAlignment);
+    frame._minDynamicAlignment = uint8_t(minDynamicAlignment);
+    frame._redZoneSize = uint8_t(cc.redZoneSize());
+    frame._spillZoneSize = uint8_t(cc.spillZoneSize());
+    frame._finalStackAlignment = frame._naturalStackAlignment;
+
+    // Masks of dirty and preserved registers. Not actually used as we only 
+    // use volatile reg is the asm below.
+    //   frame._preservedRegs[x86::Reg::kGroupGp] = cc.preservedRegs(x86::Reg::kGroupGp);
+    // Exclude ESP/RSP - this register is never included in saved GP regs.
+    //   frame._preservedRegs[BaseReg::kGroupGp] &= ~Support::bitMask(x86::Gp::kIdSp);
 
     // We will need some local stack to create the array of xloper* which 
     // is sent to the callback
-    constexpr auto ptrSize = (int32_t)sizeof(void*);
-    const auto stackSize = (unsigned)numArgs * ptrSize;
-    frame.setLocalStackSize(stackSize);
+    constexpr auto ptrSize = sizeof(void*);
+    const auto stackSize = numArgs * ptrSize;
+    frame.setLocalStackSize((uint32_t)stackSize);
 
     // Need to allocate some spill zone for the call to the callback
-    frame.updateCallStackSize(func.callConv().spillZoneSize()); 
+    frame.updateCallStackSize(cc.spillZoneSize()); 
 
     frame.finalize();
 
@@ -144,7 +160,7 @@ namespace xloil
     
     // Under x64 Microsoft calling convention the args will be in rcx, rdx, r8, r9
     // with the remainder on the stack. 
-    // We copy each of the 4 register arguments to a array in our stack, then copy
+    // We copy each of the 4 register arguments to an array in our stack, then copy
     // the remaining stack arguments from earlier in the stack via rax. (rax is 
     // considered volatile so we can clobber it)
     for (size_t i = startArg; i < numArgs; ++i)
@@ -174,7 +190,8 @@ namespace xloil
 
     asmb.call(imm((void*)callback));
 
-    // We just pass on the value (an xloper*) returned by the callback
+    // We don't care whether the callback returns an (an xloper*) or not
+    // we just don't touch anthing and return to the caller
     asmb.emitEpilog(frame);
   }
 
@@ -302,6 +319,8 @@ namespace xloil
 #if _WIN64
     handRoll64(_holder, (void*)callback, contextData, numArgs, hasReturnVal);
 #else
+    if (numArgs > 16)
+      throw Exception("In Win32 builds, there is a limit of 16 args for non-local UDFs. Raise a github issue if this is a problem!");
     buildThunk(callback, contextData, numArgs, hasReturnVal, *_holder);
 #endif
   }
@@ -335,6 +354,7 @@ namespace xloil
 
     char bufferBefore[10], bufferAfter[10];
     auto bufsize = sizeof(bufferBefore);
+
     {
       CodeHolder code;
       code.init(theCodeInfo);
@@ -342,10 +362,19 @@ namespace xloil
 #ifdef _WIN64
       as.mov(x86::rcx, imm(fromData));
 #else
-      as.mov(x86::esp, imm(fromData));
+      // the size of the opcode, 4, is required for asmjit
+      as.mov(as.ptr_zsp(0, 4), imm(fromData)); 
 #endif
-      asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize);
+      if (kErrorOk != asmJitWriteCode((uint8_t*)bufferBefore, &code, bufsize))
+        return false;
     }
+
+    auto found = std::search(thunk, thunk + thunkSize, 
+      bufferBefore, bufferBefore + bufsize);
+    if (found == thunk + thunkSize)
+      return false;
+
+    // Do not change bufsize to ensure we  only write the same amount of code
     {
       CodeHolder code;
       code.init(theCodeInfo);
@@ -353,14 +382,11 @@ namespace xloil
 #ifdef _WIN64
       as.mov(x86::rcx, imm(toData));
 #else
-      as.mov(x86::esp, imm(toData));
+      as.mov(as.ptr_zsp(0, 4), imm(toData));
 #endif
-      asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize);
+      if (kErrorOk != asmJitWriteCode((uint8_t*)bufferAfter, &code, bufsize))
+        return false;
     }
-   
-    auto found = std::search(thunk, thunk + thunkSize, bufferBefore, bufferBefore + bufsize);
-    if (found == thunk + thunkSize)
-      return false;
 
     memcpy(found, bufferAfter, bufsize);
 

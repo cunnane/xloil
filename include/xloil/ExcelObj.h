@@ -2,57 +2,16 @@
 #include <xlOil/XlCallSlim.h>
 #include <xlOil/ExportMacro.h>
 #include <xlOil/PString.h>
+#include <xlOil/Throw.h>
+#include <xlOil/Limits.h>
 #include <string>
 #include <cassert>
 #include <optional>
 
-#define XLOIL_XLOPER msxll::xloper12
+#define XLOIL_XLOPER ::msxll::xloper12
 
 namespace xloil
 {
-  /// <summary>
-  /// Max string length for an A1-style cell address. The largest address
-  /// is "AAA1000000:ZZZ1000001<null>"
-  /// </summary>
-  constexpr uint16_t XL_CELL_ADDRESS_A1_MAX_LEN = 3 + 7 + 1 + 3 + 7 + 1;
-  /// <summary>
-  /// Max string length for an RC-style cell address
-  /// </summary>
-  constexpr uint16_t XL_CELL_ADDRESS_RC_MAX_LEN = 29;
-  /// <summary>
-  /// Max string length for a sheet name
-  /// </summary>
-  constexpr uint16_t XL_SHEET_NAME_MAX_LEN = 31;
-  /// <summary>
-  /// Max filename length. Used to be 216, but limit was raised
-  /// in May 2020 Office 365. Length of 260 is imposed by filesystem.
-  /// </summary>
-  constexpr uint16_t XL_FILENAME_MAX_LEN = 260;
-  /// <summary>
-  /// Max string length for an A1-style full address including workbook name
-  /// </summary>
-  constexpr uint16_t XL_FULL_ADDRESS_A1_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_A1_MAX_LEN;
-  /// <summary>
-  /// Max string length for an RC-style full address including workbook name
-  /// </summary>
-  constexpr uint16_t XL_FULL_ADDRESS_RC_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_RC_MAX_LEN;
-  /// <summary>
-  /// Max string length for a (pascal) string in an ExcelObj
-  /// </summary>
-  constexpr uint16_t XL_STRING_MAX_LEN = 32767;
-  /// <summary>
-  /// Max number of rows on a sheet
-  /// </summary>
-  constexpr uint32_t XL_MAX_ROWS = 1048576;
-  /// <summary>
-  /// Max number of columns on a sheet
-  /// </summary>
-  constexpr uint16_t XL_MAX_COLS = 16384;
-  /// <summary>
-  /// Max number of args for a user-defined function
-  /// </summary>
-  constexpr uint16_t XL_MAX_UDF_ARGS = 255;
-
   /// <summary>
   /// Describes the underlying type of the variant <see cref="ExcelObj"/>
   /// </summary>
@@ -175,15 +134,21 @@ namespace xloil
       std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
     explicit ExcelObj(T d)
     {
-      if (std::isnan(d))
-      {
-        val.err = msxll::xlerrNum;
-        xltype = msxll::xltypeErr;
-      }
-      else
+      const auto type = fpclassify(d);
+      if (type <= 0)
       {
         xltype = msxll::xltypeNum;
         val.num = (double)d;
+      }
+      else if (type == FP_NAN)
+      {
+        val.err = msxll::xlerrNA;
+        xltype = msxll::xltypeErr;
+      }
+      else // if (type == FP_INFINITE)
+      {
+        val.err = msxll::xlerrNum;
+        xltype = msxll::xltypeErr;
       }
     }
 
@@ -259,11 +224,25 @@ namespace xloil
     /// of the string buffer in the provided PString.
     /// </summary>
     /// <param name="pstr"></param>
-    explicit ExcelObj(PString&& pstr)
+    template<class TAlloc>
+    explicit ExcelObj(BasicPString<wchar_t, TAlloc>&& pstr)
     {
-      val.str = pstr.release();
-      if (!val.str)
-        val.str = Const::EmptyStr().val.str;
+      val.str.data = pstr.release();
+      if (!val.str.data)
+        val.str.data = Const::EmptyStr().val.str.data;
+      // If the allocator wasn't the standard PStringAllocator, it's not safe
+      // to deallocate the string, so we mark it as a view 
+      val.str.xloil_view = true;
+      xltype = msxll::xltypeStr;
+    }
+
+    template<>
+    explicit ExcelObj(BasicPString<wchar_t, PStringAllocator<wchar_t>>&& pstr)
+    {
+      val.str.data = pstr.release();
+      if (!val.str.data)
+        val.str.data = Const::EmptyStr().val.str.data;
+      val.str.xloil_view = false;
       xltype = msxll::xltypeStr;
     }
 
@@ -287,17 +266,20 @@ namespace xloil
     }
 
     /// <summary>
-    /// Constructs an array from data. Takes ownership of data, which
-    /// must be correctly arranged in memory. Use with caution!
+    /// Constructs an array from data. By default, takes ownership of data, which
+    /// must be correctly arranged in memory. Generally, you should use the 
+    /// ArrayBuilder to create arrays.
     /// </summary>
-    ExcelObj(const ExcelObj* data, int nRows, int nCols)
+    /// <param name="isView">If true, do not take ownership of array data</param>
+    ExcelObj(const ExcelObj* data, uint32_t nRows, uint32_t nCols, bool isView = false)
     {
       // Excel will crash if passed an empty array
-      if (nRows <= 0 || nCols <= 0)
+      if (nRows == 0 || nCols == 0)
         throw std::range_error("ExcelObj: Cannot create empty array");
       val.array.rows = nRows;
       val.array.columns = nCols;
       val.array.lparray = (Base*)data;
+      val.array.xloil_view = isView;
       xltype = msxll::xltypeMulti;
     }
 
@@ -518,7 +500,7 @@ namespace xloil
       case xltypeNil:
         return false;
       case xltypeStr:
-        return val.str[0] != L'\0';
+        return val.str.data[0] != L'\0';
       default:
         return true;
       }
@@ -587,7 +569,7 @@ namespace xloil
     /// </summary>
     uint16_t stringLength() const
     {
-      return xltype == msxll::xltypeStr ? val.str[0] : 0;
+      return xltype == msxll::xltypeStr ? val.str.data[0] : 0;
     }
 
     /// <summary>
@@ -656,6 +638,20 @@ namespace xloil
     {
       if (from.isType(ExcelType::Simple))
         (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+      else
+        overwriteComplex(to, from);
+    }
+#
+    static void overwriteView(ExcelObj& to, const ExcelObj& from)
+    {
+      (msxll::XLOPER12&)to = (const msxll::XLOPER12&)from;
+
+      if (from.isType(ExcelType::Simple))
+        return;
+      else if (from.type() == ExcelType::Str)
+        to.val.str.xloil_view = true;
+      else if (from.type() == ExcelType::Multi)
+        to.val.array.xloil_view = true;
       else
         overwriteComplex(to, from);
     }
@@ -843,7 +839,7 @@ namespace xloil
 
   template<> inline PStringRef ExcelObj::cast() const
   {
-    return PStringRef((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str);
+    return PStringRef((xltype & msxll::xltypeStr) == 0 ? nullptr : val.str.data);
   }
 
   template<> inline const XLOIL_XLOPER* ExcelObj::cast() const

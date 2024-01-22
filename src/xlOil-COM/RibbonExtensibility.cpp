@@ -232,6 +232,7 @@ namespace xloil
 
       CComPtr<RibbonImpl> _ribbon;
     };
+
     shared_ptr<IRibbon> createRibbon(
       const wchar_t* xml,
       const std::function<RibbonCallback(const wchar_t*)>& handler)

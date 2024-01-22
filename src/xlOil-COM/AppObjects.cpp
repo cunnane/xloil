@@ -1,6 +1,7 @@
 #include <xloil/AppObjects.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
+#include <xlOil-COM/ComEventSink.h>
 #include <xlOil/ExcelTypeLib.h>
 #include <xlOil/Range.h>
 #include <xloil/Log.h>
@@ -104,7 +105,7 @@ namespace xloil
     }
   }
 
-  Application& excelApp()
+  Application& thisApp()
   {
     return COM::attachedApplication();
   }
@@ -231,20 +232,91 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  bool Application::getEnableEvents()
+  bool Application::getEnableEvents() const
   {
     try
     {
-      return com().EnableEvents;
+      return com().EnableEvents == VARIANT_TRUE;
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  void Application::setEnableEvents(bool value)
+  bool Application::setEnableEvents(bool value)
   {
     try
     {
+      auto previousValue = com().EnableEvents == VARIANT_TRUE;
       com().EnableEvents = _variant_t(value);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::getDisplayAlerts() const
+  {
+    try
+    {
+      return com().GetDisplayAlerts() == VARIANT_TRUE;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::setDisplayAlerts(bool value)
+  {
+    try
+    {
+      auto previousValue = com().GetDisplayAlerts() == VARIANT_TRUE;
+      com().PutDisplayAlerts(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::getScreenUpdating() const
+  {
+    try
+    {
+      return com().GetScreenUpdating() == VARIANT_TRUE;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  bool Application::setScreenUpdating(bool value)
+  {
+    try
+    {
+      auto previousValue = com().GetScreenUpdating() == VARIANT_TRUE;
+      com().PutScreenUpdating(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      return previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  Application::CalculationMode Application::getCalculationMode() const
+  {
+    try
+    {
+      return (CalculationMode)com().GetCalculation();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  Application::CalculationMode Application::setCalculationMode(CalculationMode value)
+  {
+    try
+    {
+      auto previousValue = com().GetCalculation();
+      com().PutCalculation(0, (Excel::XlCalculation)value);
+      return (CalculationMode)previousValue;
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  ExcelRange Application::selection()
+  {
+    try
+    {
+      return fromComPtr<ExcelRange>(com().Selection);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -253,7 +325,7 @@ namespace xloil
   {
     template <typename F, typename T, std::size_t N, std::size_t... Idx>
     decltype(auto) appRun_impl(F func, T(&args)[N], std::index_sequence<Idx...>) {
-      return excelApp().com().Run(func, args[Idx]...);
+      return thisApp().com().Run(func, args[Idx]...);
     }
 
     template <typename T, std::size_t N>
@@ -301,12 +373,21 @@ namespace xloil
   ExcelWorkbook Application::open(
     const std::wstring& filepath, 
     bool updateLinks, 
-    bool readOnly)
+    bool readOnly,
+    wchar_t delimiter)
   {
     try
     {
       return fromComPtr<ExcelWorkbook>(com().Workbooks->Open(
-        _bstr_t(filepath.c_str()), updateLinks ? 3 : 0, _variant_t(readOnly)
+        _bstr_t(filepath.c_str()),
+        updateLinks ? 3 : 0,
+        _variant_t(readOnly),
+        delimiter == 0 ? 5 : 6,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        vtMissing,
+        delimiter != 0 ? _variant_t(wstring(delimiter, 1).c_str()) : vtMissing
       ));
     }
     XLO_RETHROW_COM_ERROR;
@@ -486,7 +567,17 @@ namespace xloil
 
   ExcelObj ExcelWorksheet::value(Range::row_t i, Range::col_t j) const
   {
-    return COM::variantToExcelObj(com().Cells->Item[i][j]);
+    Excel::RangePtr pRange(com().Cells->Item[i][j].pdispVal);
+    return COM::variantToExcelObj(pRange->Value2);
+  }
+
+  ExcelRange ExcelWorksheet::usedRange() const
+  {
+    try
+    {
+      return ExcelRange(com().GetUsedRange(0));
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   void ExcelWorksheet::activate()
@@ -631,5 +722,10 @@ namespace xloil
   size_t Windows::count() const
   {
     return com().GetCount();
+  }
+
+  const std::set<std::wstring>& Application::workbookPaths()
+  {
+    return COM::workbookPaths();
   }
 }

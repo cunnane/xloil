@@ -18,7 +18,6 @@ namespace xloil
 {
   class LogWindow : public ILogWindow
   {
-    HMENU theMenuBar;
     HWND theMainWindow;
     HWND theTextControl;
     HMENU theTextControlId = (HMENU)101;
@@ -295,7 +294,7 @@ namespace xloil
     }
   }
 
-  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg) noexcept
+  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg, bool openWindow) noexcept
   {
     // This function is always called from the main thread so can use
     // statics and the single-threaded version of LogWindow. 
@@ -310,8 +309,10 @@ namespace xloil
       static auto logWindow = make_shared<LogWindow>(
         (HWND)0, parent, L"xlOil Load Failure", (HMENU)0, (WNDPROC)0, 100);
 
+      OutputDebugString(msgStr.data());
       logWindow->appendMessage(std::move(msgStr));
-      logWindow->openWindow();
+      if (openWindow)
+        logWindow->openWindow();
     }
     catch (...)
     {

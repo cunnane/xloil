@@ -12,7 +12,6 @@
     <ClCompile Include="Loaders\CoreEntryPoint.cpp">
       <Filter>Loaders</Filter>
     </ClCompile>
-    <ClCompile Include="LogWindowSink.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Loaders\AddinLoader.h">
@@ -108,7 +107,6 @@
     <ClInclude Include="..\..\include\xloil\WindowsSlim.h">
       <Filter>Include</Filter>
     </ClInclude>
-    <ClInclude Include="LogWindowSink.h" />
     <ClInclude Include="..\..\include\xloil\State.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -140,6 +138,12 @@
       <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\xloil\EnumHelper.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\AutoBind.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\xloil\Limits.h">
       <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>

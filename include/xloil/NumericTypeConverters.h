@@ -1,7 +1,6 @@
 #pragma once
 #include <xlOil/TypeConverters.h>
-#include <xlOil/StringUtils.h>
-#include <xlOil/Throw.h>
+#include <xlOil/PString.h>
 
 namespace xloil
 {
@@ -78,6 +77,5 @@ namespace xloil
 
     template<class T> using ToType = 
       typename detail::ExcelValToTypeSpecialisation<T>::type;
-
   }
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <xloil/ExportMacro.h>
 #include <functional>
+#include <string_view>
 #include <vector>
 
 namespace xloil { class ExcelObj; }
@@ -25,11 +26,11 @@ namespace xloil
     };
 
     FuncArg(
-      const wchar_t* argName = nullptr, 
-      const wchar_t* argHelp = nullptr,
+      std::wstring_view argName = std::wstring_view(),
+      std::wstring_view argHelp = std::wstring_view(),
       const int argType = Obj)
-      : name(argName ? argName : L"")
-      , help(argHelp ? argHelp : L"")
+      : name(argName)
+      , help(argHelp)
       , type(argType)
     {}
     /// <summary>
@@ -77,7 +78,11 @@ namespace xloil
       /// <summary>
       /// Stops the function appearing in the function wizard or autocomplete
       /// </summary>
-      HIDDEN      = 1 << 4
+      HIDDEN      = 1 << 4,
+      /// <summary>
+      /// Marks the function as returning an `FPArray*` (FP12 struct)
+      /// </summary>
+      ARRAY       = 1 << 5
     };
 
     XLOIL_EXPORT virtual ~FuncInfo();
@@ -121,3 +126,17 @@ namespace xloil
   template<class TRet = ExcelObj*> using DynamicExcelFunc
     = std::function<TRet(const FuncInfo& info, const ExcelObj**)>;
 }
+
+/// <summary>
+/// If your DLL registers static functions, you must call this macro to setup
+/// the callback to free any returned ExcelObj. The function needs to be defined
+/// per DLL containing functions, rather than once for the registering XLL.
+/// A pragma ensures the function is exported undecorated in x86 and x64
+/// </summary>
+#define XLO_DEFINE_FREE_CALLBACK() \
+  extern "C" void __stdcall xlAutoFree12(::xloil::ExcelObj* pxFree) { \
+    __pragma(comment(linker, "/EXPORT:" __FUNCTION__"=" __FUNCDNAME__)) \
+    try { \
+      delete pxFree; \
+    } catch (...) { } \
+  }

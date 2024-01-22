@@ -32,13 +32,13 @@ namespace xloil
       // First loop to establish array size and length of strings
       while ((item = PyIter_Next(iter)) != 0) 
       {
-        if (++nRows > XL_MAX_ROWS)
-          XLO_THROW("Max rows exceeded when returning iterator");
+        ++nRows;
+
         if (PyIterable_Check(item) && !PyUnicode_Check(item))
         {
           decltype(nCols) j = 0;
           auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while ((innerItem = PyIter_Next(innerIter)) != 0)
+          while ((innerItem = PyIter_Next(innerIter)) != nullptr)
           {
             ++j;
             accumulateObjectStringLength(innerItem, stringLength);
@@ -55,6 +55,12 @@ namespace xloil
           accumulateObjectStringLength(item, stringLength);
         Py_DECREF(item);
       }
+
+      if (nRows > XL_MAX_ROWS)
+        XLO_THROW("Max rows exceeded when returning iterator");
+      if (nCols > XL_MAX_COLS)
+        XLO_THROW("Max columns exceeded when returning iterator");
+
 
       if (PyErr_Occurred())
         throw py::error_already_set();
@@ -79,7 +85,7 @@ namespace xloil
           auto* innerIter = PyCheck(PyObject_GetIter(item));
           while ((innerItem = PyIter_Next(innerIter)) != 0)
           {
-            builder(i, j++).emplace(FromPyObj()(innerItem, builder.charAllocator()));
+            builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(innerItem, builder.charAllocator()));
             Py_DECREF(innerItem);
           }
           if (PyErr_Occurred())
@@ -87,7 +93,7 @@ namespace xloil
           Py_DECREF(innerIter);
         }
         else
-          builder(i, j++).emplace(FromPyObj()(item, builder.charAllocator()));
+          builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(item, builder.charAllocator()));
 
         // Fill with N/A
         for (; j < nCols; ++j)
@@ -105,31 +111,88 @@ namespace xloil
     }
 
     template <class TValConv>
-    class PyTupleFromArray : public PyFromExcelImpl
+    class PyTupleFromArray : public detail::PyFromExcelImpl
     {
       TValConv _valConv;
     public:
-      using PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl::operator();
       static constexpr char* const ourName = "tuple";
 
       PyObject* operator()(const ArrayVal& obj)
       {
         ExcelArray arr(obj);
-        auto nRows = arr.nRows();
-        auto nCols = arr.nCols();
-
-        auto outer = py::tuple(nRows);
-        for (decltype(nRows) i = 0; i < nRows; ++i)
+        if (arr.dims() < 2)
         {
-          auto inner = py::tuple(nCols);
-          PyTuple_SET_ITEM(outer.ptr(), i, inner.ptr());
-          for (decltype(nCols) j = 0; j < nCols; ++j)
+          auto result = py::tuple(arr.size());
+          for (auto i = 0; i < arr.size(); ++i)
           {
-            auto val = _valConv(arr.at(i, j));
-            PyTuple_SET_ITEM(inner.ptr(), j, val);
+            auto val = _valConv(arr.at(i));
+            PyTuple_SET_ITEM(result.ptr(), i, val);
           }
+          return result.release().ptr();
         }
-        return outer.release().ptr();
+        else
+        {
+          auto nRows = arr.nRows();
+          auto nCols = arr.nCols();
+
+          auto outer = py::tuple(nRows);
+          for (decltype(nRows) i = 0; i < nRows; ++i)
+          {
+            auto inner = py::tuple(nCols);
+            for (decltype(nCols) j = 0; j < nCols; ++j)
+            {
+              auto val = _valConv(arr.at(i, j));
+              PyTuple_SET_ITEM(inner.ptr(), j, val);
+            }
+            PyTuple_SET_ITEM(outer.ptr(), i, inner.release().ptr());
+          }
+          return outer.release().ptr();
+        }
+      }
+      constexpr wchar_t* failMessage() const { return L"Expected array"; }
+    };
+
+    template <class TValConv>
+    class PyListFromArray : public detail::PyFromExcelImpl
+    {
+      TValConv _valConv;
+    public:
+      using detail::PyFromExcelImpl::operator();
+      static constexpr char* const ourName = "list";
+
+      PyObject* operator()(const ArrayVal& obj)
+      {
+        ExcelArray arr(obj);
+
+        if (arr.dims() < 2)
+        {
+          auto result = py::list(arr.size());
+          for (auto i = 0; i < arr.size(); ++i)
+          {
+            auto val = _valConv(arr.at(i));
+            PyList_SET_ITEM(result.ptr(), i, val);
+          }
+          return result.release().ptr();
+        }
+        else
+        {
+          auto nRows = arr.nRows();
+          auto nCols = arr.nCols();
+
+          auto outer = py::list(nRows);
+          for (decltype(nRows) i = 0; i < nRows; ++i)
+          {
+            auto inner = py::list(nCols);
+            for (decltype(nCols) j = 0; j < nCols; ++j)
+            {
+              auto val = _valConv(arr.at(i, j));
+              PyList_SET_ITEM(inner.ptr(), j, val);
+            }
+            PyList_SET_ITEM(outer.ptr(), i, inner.release().ptr());
+          }
+          return outer.release().ptr();
+        }
       }
       constexpr wchar_t* failMessage() const { return L"Expected array"; }
     };
@@ -147,11 +210,15 @@ namespace xloil
         {
           return nestedIterableToExcel(std::forward<Args>(args)...);
         }
+        static constexpr char* ourName = "iterable";
       };
       static int theBinder = addBinder([](pybind11::module& mod)
       {
-        bindPyConverter<PyFromExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple_from_Excel").def(py::init<>());
-        bindXlConverter<PyFuncToExcel<Adapter>>(mod, "tuple_to_Excel").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyTupleFromArray<PyFromAny>>>(mod, "tuple").def(py::init<>());
+        bindPyConverter<PyFromExcelConverter<PyListFromArray<PyFromAny>>>(mod, "list").def(py::init<>());
+        auto tupleToExcel = bindXlConverter<PyFuncToExcel<Adapter>>(mod, "tuple").def(py::init<>());
+        mod.add_object((std::string(theReturnConverterPrefix) + "list").c_str(), tupleToExcel);
+        mod.add_object((std::string(theReturnConverterPrefix) + "iterable").c_str(), tupleToExcel);
       });
     }
   }

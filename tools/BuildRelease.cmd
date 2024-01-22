@@ -3,7 +3,7 @@ set SOLN_DIR=%TOOLS_DIR%\..
 
 set ARCH=%1
 
-call "c:\program files (x86)\microsoft visual studio\2019\community\Common7\Tools\vsdevcmd.bat" -no_logo
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\vsdevcmd.bat" -no_logo
 
 pushd %SOLN_DIR%
 

@@ -21,13 +21,16 @@ from pathlib import Path
 # to processes run by VS code.
 #
 
-soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", f"{__file__}/../../..")).resolve()
-bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", f"{__file__}/../../../build/x64/Debug")).resolve()
+file_dir = Path(__file__).parent
+xloil_dir = file_dir.parent.parent
+soln_dir = Path(os.environ.get("XLOIL_SOLN_DIR", xloil_dir)).resolve()
+bin_dir = Path(os.environ.get("XLOIL_BIN_DIR", xloil_dir / "build/x64/Debug")).resolve()
 
-sys.path.append(str(bin_dir))
+if bin_dir.exists():
+    sys.path.append(str(bin_dir))
 sys.path.append(str(soln_dir / "libs/xlOil_Python/Package"))
 
-# May as well fail here if this doesn't work
+# May as well fail here if we can't find xloil
 try:
     import xloil
 except Exception as e:
@@ -77,8 +80,14 @@ exclude_patterns = []
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-html_theme = 'bizstyle'
+
+USE_READTHEDOCS_THEME = True
+if USE_READTHEDOCS_THEME:
+    import sphinx_rtd_theme
+    extensions.append('sphinx_rtd_theme')
+    html_theme = "sphinx_rtd_theme"
+else:
+    html_theme = 'bizstyle'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -92,33 +101,42 @@ html_static_path = []# ['_static']
 
 autodoc_default_flags = ['members']
 
+#
+# If autosummary_generate is True, stub .rst files for for items in the autosummary
+# toctree are automatically generated. We prefer to keep a flatter structure.
+#
 autosummary_generate = False
 
 # See https://stackoverflow.com/questions/34216659/
 numpydoc_show_class_members=False
 
 #
-# Required for readthedocs build as the master_doc seems to default to 'contents' there
-# Locally build is fine without this
+# Required for readthedocs build as the master_doc seems to default to 'contents' in
+# their environment. Locally sphinx builds fine without this
 #
 master_doc = 'index'
 
 # -- Generate examples file ---------------------------------------------------
+#
+# Only do this when XLOIL_BIN_DIR is explicitly set so not on ad-hoc run
+#
+if "XLOIL_BIN_DIR" in os.environ:
+    import zipfile
+    from zipfile import ZipFile
 
-# TODO: want to disable this when running previews in VS Code
+    try: os.makedirs('_build')
+    except FileExistsError: pass
 
-import zipfile
-from zipfile import ZipFile
+    zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
+    try:
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+        zipObj.write(soln_dir / "tests" / "ManualSheets" / "python" / "PythonTestAsync.xlsm", "PythonTestAsync.xlsm")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
+    
+    except FileNotFoundError as err: 
+        print("WARNING: Could not create xlOilExamples.zip due to: ", str(err))
 
-try: os.makedirs('_build')
-except FileExistsError: pass
-
-zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
- 
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestSQL.xlsx", "TestSQL.xlsx")
-zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestUtils.xlsx", "TestUtils.xlsx")
- 
-zipObj.close()
+    zipObj.close()

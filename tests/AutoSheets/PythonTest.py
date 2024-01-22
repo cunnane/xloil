@@ -1,10 +1,10 @@
 import xloil as xlo
 import sys
 import datetime as dt
-import asyncio
 import os 
+import numpy as np
 
- 
+    
 #
 # Functions are registered by decorating them with xloil.func.  The function
 # doc-string will be displayed in Excel's function wizard
@@ -66,7 +66,7 @@ def pyTestArr2d(x: xlo.Array(float)) -> xlo.Array(float):
 # Note you cannot use keyword args in [], see PEP472
 #
 @xlo.func
-def pyTestArrNoTrim(x: xlo.Array(object, trim=False)):
+def pyTestArrNoTrim(x: xlo.Array(object, trim=False)) -> xlo.Array:
 	return x
 
 #
@@ -87,7 +87,25 @@ def pyTestArrNoArgs(x: xlo.Array):
 def pyTestArr1d(x: xlo.Array(float, dims=1), multiple):
 	return x * multiple
 
+#
+# Uses FastArray which has much lower function call overheads at the expense
+# of flexibility: cache auto-expansion and array auto-trimming are not supported 
+# and the function cannot be local.
+# The benefits of FastArray only become apparent when the input array is large.
+# 
+@xlo.func(local=False, args={'x': "2-dim array to return"})
+def pyTestFastArr(x: xlo.FastArray) -> xlo.FastArray:
+	return x
+    
+#
+# `list` (or tuple) annotations are understood by xlOil. This function just
+# tests that we can round-trip a list.
+#   
+@xlo.func
+def pyTestList(x: list):
+    return x
 
+    
 #------------------
 # The Object Cache
 #------------------
@@ -138,22 +156,49 @@ def pyTestToCache(x) -> xlo.SingleValue:
 @xlo.func
 def pyTestDate(x: dt.datetime) -> dt.datetime:
     return x + dt.timedelta(days=1)
- 
 
-#------------------
-# Keyword args
-#------------------
+@xlo.func
+def pyTestDateArray(y: xlo.Array(np.datetime64)) -> xlo.Array(np.datetime64):
+    return y + np.timedelta64(2,'D')
+ 
+@xlo.func
+def pyTestDateArray2(y: xlo.Array(np.datetime64)) -> xlo.Array(np.datetime64):
+    return np.array(y + np.timedelta64(2,'D'), dtype=np.datetime64)
+    
+#---------------------------
+# Variable and Keyword args
+#---------------------------
 #
 # Keyword args are supported by passing a two-column array of (string, value)
 # This function also tests the dict return conversion (without specifying the
 # return as dict, the iterable converter would be used resulting in output of
 # only the keys)
 #
+# For variable args (i.e. *args) xlOil adds a large number of trailing optional 
+# arguments.
+#
+# If both args and kwargs are specified, their order is reversed in the Excel  
+# function declaration.
+#
 @xlo.func
-def pyTestKwargs(**kwargs) -> dict:
-    return kwargs
+def pyTestKwargs(lookup: dict, **kwargs) -> dict:
+    lookup.update(kwargs)
+    return lookup
 
+@xlo.converter()
+def arg_triple(x):
+    return 3 * x
+    
+@xlo.func(
+    args={'args': 'A variable argument list of numbers to sum'}
+    )
+def pyTestVargs(*args: arg_triple) -> float:
+    return sum(args)
 
+@xlo.func
+def pyTestVargsKwargs(*args, **kwargs) -> float:
+    return sum(args) + np.sum([float(x) for x in kwargs.values()])
+    
 #------------------------------
 # Macros and Excel.Application
 #------------------------------
@@ -173,23 +218,25 @@ def pyRunTestsNonLocal(address):
 @xlo.func(command=True)
 def pyPressRunTests():
 
-    r_test = xlo.Range("TestArea")
-    r_test.clear()
+    with xlo.PauseExcel() as paused:
     
-    # Write a "result" to the top left of test area
-    r_res = r_test.cell(0, 0) 
-    r_res.value = "OK"
-    
-    # Ranges can be accessed using an address or offset from an existing range
-    r_h1 = xlo.Range("H1")
-    r_h1.value = "Spam"
-    
-    if r_test[0, 1] != 'Spam':
-        r_res.value = "Fail 1"
-    
-    # Like VBA's Application.Run or the COM xlo.app().Run, we can
-    # call user defined functions
-    xlo.run("pyRunTestsNonLocal", "H1")
+        r_test = xlo.Range("TestArea")
+        r_test.clear()
+        
+        # Write a "result" to the top left of test area
+        r_res = r_test.cell(0, 0) 
+        r_res.value = "OK"
+        
+        # Ranges can be accessed using an address or offset from an existing range
+        r_h1 = xlo.Range("H1")
+        r_h1.value = "Spam"
+        
+        if r_test[0, 1] != 'Spam':
+            r_res.value = "Fail 1"
+        
+        # Like VBA's Application.Run or the COM xlo.app().Run, we can
+        # call user defined functions
+        xlo.run("pyRunTestsNonLocal", "H1")
 
     if r_h1.value != 'Ham':
         r_res.value = "Fail 2"
@@ -222,65 +269,11 @@ def pyPressRunTests():
         r_res.value = "Fail 5"
     
     
-    
-
-        
-#------------------
-# Async functions
-#------------------
-#
-# Using asyncio's async keyword declares an async function in Excel.
-# This means control is passed back to Excel before the function 
-# returns.  Python is single-threaded so no other python-based functions
-# can run whilst waiting for the async return. However, the await keyword 
-# can pass control between running async functions.
-#
-# There are two flavours of async function: RTD and native. The XLL interface
-# contains async support but any interaction with Excel will cancel all native async 
-# functions: they are only asynchronous with each other, not with the user interface.
-# This is fairly unexpected and generally undesirable, so xlOil has an implementation of 
-# async which works in the expected way using RTD at the expense of more overhead.
-#
-@xlo.func
-async def pyTestAsyncRtd(x, time:int):
-    await asyncio.sleep(time)
-    return x
-    
-#
-# Native async functions cannot be declared local as VBA does not support this. We do
-# not actually need to specify local=False, as xloil will automatically set this.
-# 
-@xlo.func(rtd=False, local=False)
-async def pyTestAsync(x, time:int):
-    await asyncio.sleep(time)
-    return x
-
-@xlo.func
-async def pyTestAsyncGen(secs):
-    while True:
-        await asyncio.sleep(secs)
-        yield dt.datetime.now()
-
-@xlo.func(local=False, threaded=True)
-async def pyTestAsyncThreaded(secs):
-    while True:
-        await asyncio.sleep(secs)
-        yield dt.datetime.now()
-        
-@xlo.func
-async def pyRtdArray(values):
-    return np.sum(values)
+   
     
 #---------------------------------
 # Calling Excel built-in functions
 #---------------------------------
-#
-# This can be done asynchronously as Excel built-ins can only be called on the 
-# main thread.
-#
-@xlo.func
-async def pyTestExcelCallAsync(x, y, z):
-    return await xlo.call_async("sum", x, y, z)
 
 @xlo.func   
 def pyTestExcelCall(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:xlo.AllowRange=None):
@@ -295,136 +288,7 @@ def pyTestExcelCall(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, ar
 @xlo.func   
 def pyTestAppRun(func, arg1:xlo.AllowRange=None, arg2:xlo.AllowRange=None, arg3:xlo.AllowRange=None):
     return xlo.run(func, arg1, arg2, arg3)
-#---------------------------------
-# RTD functions and the RTD server
-#---------------------------------
-#
-# Registering an `async def` function has a certain overhead:
-# Excel will call your function multiple times to fetch the result
-# So xlOil must store and compare all the function arguments to figure
-# out if Excel wants the result of a previous calculation or to start
-# a new calculation with new arguments.
-# 
-# If the RTD `topic`, i.e. the unique identifier, is easy to determine
-# we can take over responsibility for generating it ourselves.
-#  
-# First create a new RTD COM server so the `topic` strings don't collide
-_rtdServer = xlo.RtdServer()
-  
-@xlo.func
-def pyTestRtdManual(secs):
 
-    # This coroutine will be run if  we don't already have a 
-    # publisher for the specified number of seconds.
-    async def fetch() -> dt.datetime:
-        while True:
-            await asyncio.sleep(secs)
-            yield dt.datetime.now()
-        
-    return xlo.rtd.subscribe(_rtdServer, "Time:" + str(secs), fetch)
-
-#
-# Now try a slightly more practical usage of RTD async: fetching URLs.  
-# (We need the aiohttp package for this).  Here we use the RTD machinery
-# in full-manual mode, defining the publishing object explicitly. This
-# is not necessary, it's just illustrative.
-#
-try:
-    import aiohttp
-    import ssl
-
-    # This is the implementation: it pulls the URL and returns the response as text
-    async def _getUrlImpl(url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, ssl=ssl.SSLContext()) as response:
-               return await response.text() 
-        
-    
-    #
-    # We declare an async gen function which calls the implementation either once,
-    # or at regular intervals
-    #
-    @xlo.func(local=False, rtd=True)
-    async def pyGetUrl(url, seconds=0):
-        yield await _getUrlImpl(url)
-        while seconds > 0:
-            await asyncio.sleep(seconds)
-            yield await _getUrlImpl(url)
-             
-
-    #
-    # Below we show how to write the above function in "long form" with
-    # explicit connections to the RtdManager. In our implementation below
-    # we repeatedly poll the URL every 4 seconds, This is just an example 
-    # to show how to use the full RTD functionality: in general it is 
-    # better to let xlOil handle things and use an async generator.
-    # 
-
-    # 
-    # RTD servers use a publisher/subscriber model with the 'topic' as the
-    # key. The publisher below is linked to a single topic string, which is the 
-    # url to be fetched. 
-    # 
-    # We have designed the publisher to do nothing on construction. When it detects
-    # a subscriber, it creates a publishing task on xlOil's asyncio loop (which runs
-    # in a background thread). When there are no more subscriber, it cancels this task.
-    # If the task was very slow to return, we could have opted to start it in the constructor  
-    # and kept it running permanently, regardless of subscribers.
-    # 
-    class UrlGetter(xlo.RtdPublisher):
-
-        def __init__(self, url):
-            super().__init__()  # You *must* call this explicitly or the python binding library will crash
-            self._url = url
-            self._task = None
-           
-        def connect(self, num_subscribers):
-        
-            if self.done():
-            
-                async def run():
-                    try:
-                        while True:
-                            data = await _getUrlImpl(self._url);
-                            _rtdServer.publish(self._url, data)
-                            await asyncio.sleep(4)                     
-                    except Exception as e:
-                        _rtdServer.publish(self._url, e)
-                        
-                self._task = xlo.get_event_loop().create_task(run())
-                
-        def disconnect(self, num_subscribers):
-            if num_subscribers == 0:
-                self.stop()
-                return True # This publisher is no longer required: schedule it for destruction
-                
-        def stop(self):
-            if self._task is not None: 
-                self._task.cancel()
-        
-        def done(self):
-            return self._task is None or self._task.done()
-            
-        def topic(self):
-            return self._url
-    
-    
-    @xlo.func(local=False)  
-    def pyGetUrlLive(url):
-        # We 'peek' into the RTD manager to see if there is already a publisher for 
-        # our topic. If not we create one, then issue the subscribe request, which 
-        # registers the calling cell with Excel as an RTD cell.
-        if _rtdServer.peek(url) is None:
-            publisher = UrlGetter(url)
-            _rtdServer.start(publisher)
-        return _rtdServer.subscribe(url)       
-       
-        
-    
-except ImportError:
-    @xlo.func(local=False)
-    def pyGetUrl(url):
-        return "You need to install aiohttp" 
 
 #------------------
 # Other handy bits
@@ -435,7 +299,7 @@ except ImportError:
 # and a iterator of iterator gives a 2d array.
 # 
 # If you want an iterable object to be placed in the cache use 
-# `return xlo.to_cache(obj)`
+# `return xlo.cache(obj)`
 #
 @xlo.func
 def pyTestIter(size:int, dims:int):
@@ -477,16 +341,20 @@ def pyTestRange(r: xlo.Range):
     
     # This gives the same value as the statement below
     addy = r.cell(1, 1).address()
-    
-    range_comtypes = r.to_com('comtypes')
-    
-    # This import comes *after* the to_com call above. Calling to_com("comtypes") 
-    # ensures that auto-generated 'comtypes.gen' package and the Excel module
-    # are created. You can do this manually with `comtypes.client.GetModule`
-    from comtypes.gen import Excel
-    
-    return range_comtypes.Cells[2, 2].Address(False, False, Excel.xlA1, True)
 
+    try:
+        range = r.to_com('comtypes')
+        
+        # This import comes *after* the to_com call above. Calling to_com("comtypes") 
+        # ensures that auto-generated 'comtypes.gen' package and the Excel module
+        # are created. You can do this manually with `comtypes.client.GetModule`
+        from comtypes.gen import Excel
+        
+        return range.Cells[2, 2].Address(False, False, Excel.xlA1, True)
+        
+    except ModuleNotFoundError:
+        range = r.to_com()
+        return range.Cells(2, 2).GetAddress(False, False, xlo.constants.xlA1, True)
 #  
 # We check we can retrieve the formula from a cell using both local and 
 # non-local functions 
@@ -498,16 +366,12 @@ def pyTestRangeFormula(r: xlo.Range):
 @xlo.func(macro=True, local=False)
 def pyTestRangeFormula2(r: xlo.Range):
     return r.formula
-  
-#
-# Retrieve the address of calling cell (assuming we are called from a sheet)
-# Note we don't need macro permissions to do this.
-#  
-@xlo.func
-async def pyTestCaller():
-    return xlo.Caller().address()
     
-
+@xlo.func(macro=True)
+def pyTestRangeTypes(r: xlo.Range, x, y):
+    r2 = xlo.Range(r.address())
+    return [r[x,y], r2[x,y]]
+    
 #
 # Displays python's sys.XXX. Useful for debugging some module loads
 # 
@@ -520,7 +384,7 @@ def pysys(attr):
 # Threads: we can declare threadsafe functions which will be executed on
 # Excel's calculation threads
 # 
-import numpy as np
+
 import ctypes
 
 @xlo.func(local=False, threaded=True)
@@ -585,23 +449,23 @@ try:
     # xlo.PDFrame converts a block to a pandas DataFrame. Because it registers
     # the type pd.DataFrame, we can just use that in typing annotations. The block 
     # passed should be formatted as a table with a single row of column headings.
-    # if the headings parameter is set.  We send the return value to the cache
-    # otherwise it will be expanded to the sheet
+    # We explicitly send the return value to the cache otherwise it will be expanded
+    # to the sheet
     #
     @xlo.func(args={'df': "Data to be read as a pandas dataframe"})
     def pyTestDFrame(df: pd.DataFrame) -> xlo.Cache:
         return df
 
     #
-    # If we want to use non-default arguments with xlo.PDFrame, we need to use it
+    # Generally we want to override the `xlo.PDFrame`, defaults, so we need to use it
     # explicitly in the annotation. Below, we set the dataframe index to a specified  
-    # column name.  If you want the index column name to be dynamic, for example 
-    # based on another function argument, you'd need to call DataFrame.set_index 
-    # in the function body.  Note we can explicity add an object to the cache instead
-    # of using the `-> xlo.Cache` annotation.
+    # column name and convert dates in a column headed 'Date'.  If you want the index
+    # column name to be dynamic, for example based on another function argument, you 
+    # could call `DataFrame.set_index` in the function body instead  Note we can 
+    # directly add an object to the cache instead of using the `-> xlo.Cache` annotation.
     #
     @xlo.func
-    def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time")):
+    def pyTestDFrameIndex(df: PDFrame(headings=True, index="Time", dates=['Date'])):
         return xlo.cache(df) 
 
     #
@@ -620,16 +484,49 @@ try:
         else:
             return df
     
-    
     #
-    # We can specify an explicit return type of pd.DataFrame, which
-    # is slightly more performant than having xlOil try all known
-    # converters
+    # Specifying multiple index columns creates a DataFrame with a MultiIndex.
+    # Giving an int for *headings* means the first *N* rows are read as a *MultiIndex* 
+    # heading. Also, note we can call the PDFrame converter in the function if 
+    # we want to control the arguments passed to it - this isn't possible if it is
+    # used as a decorator.
+    #
+    @xlo.func
+    def pyTestDFrameMultiIndex(
+            df: PDFrame(headings=2, index=[('Clock','Date'), ('Category','Type')], dates=[('Clock','Date')]),
+            headings=False):
+        return PDFrame(headings=headings)(df)
+
+    #
+    # We can specify an explicit return type of pd.DataFrame, which is slightly 
+    # more performant than having xlOil try all known converters
     # 
     @xlo.func
     def pyTestFrameWrite(df: pd.DataFrame) -> pd.DataFrame:
         return df
     
+    @xlo.func
+    def pyTestFrameDtypes(df: pd.DataFrame):
+        return [str(x) for x in df.dtypes]
+        
+
+    @xlo.func  
+    def pyTestDFrameNaNs() -> PDFrame():
+        """
+        This functions checks NaNs and various mixed objects in dataframes 
+        are rendered correctly
+        """
+        return pd.DataFrame({
+            "numbers": [1, 2, np.nan, 3, 4, 5],
+            "dates": [pd.Timestamp("2023/08/01"), np.nan, pd.Timestamp("2023/08/02"), np.nan, pd.NaT, pd.Timestamp("2023/08/02")],
+            "objects": [None, 42, pd.Timestamp("1969/01/01"), "Foo", np.nan, type(42)]
+        })
+
+    @xlo.func
+    def pyTestTimestamp(date_: pd.Timestamp, timezone:str) -> pd.DataFrame:
+        ts = date_.tz_localize(tz=timezone)
+        return pd.Series({'date': ts}) 
+
 except ImportError:
     pass
 
@@ -654,7 +551,7 @@ def event_writeTimeToA1():
         return
     
     wb = xlo.active_workbook()
-    rng = wb["RTD"]["A1"]
+    rng = wb["Test 1"]["A1"]
     
     time = str(dt.datetime.now())
 
@@ -745,3 +642,17 @@ for i in range(3):
 
 xlo.register_functions(funcs, sys.modules[__name__])
 
+
+def click_handler(sheet_name, target, cancel):
+    ws = xlo.worksheets[sheet_name]
+    ws['A1'] = ws['A5']
+    ws['A1'] += target.address()
+
+def what_changed(worksheet='not sheet', changed='not change'):
+    wb = xlo.active_workbook()
+    ws = wb[worksheet]
+    ws["Z1"] = str(worksheet)
+    ws["Z2"] = str(changed)
+    
+xlo.event.SheetBeforeDoubleClick += click_handler
+xlo.event.SheetChange += what_changed

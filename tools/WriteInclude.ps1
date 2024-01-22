@@ -2,8 +2,8 @@
 $HeaderDir = $args[0]
 $TargetDir = $args[1]
 
-
 $xloilHeader = Join-Path $TargetDir "xlOil.h"
+New-Item $xloilHeader -ErrorAction SilentlyContinue
 Set-Content -Path $xloilHeader -Value "#pragma once"
 
 Get-ChildItem -Path $HeaderDir -File -Filter *.h -Name | 

@@ -42,7 +42,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
@@ -107,11 +107,15 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ArrayBuilder.cpp" />
     <ClCompile Include="Async.cpp" />
     <ClCompile Include="Caller.cpp" />
     <ClCompile Include="Date.cpp" />
+    <ClCompile Include="FPArray.cpp" />
     <ClCompile Include="Intellisense.cpp" />
+    <ClCompile Include="Log.cpp" />
     <ClCompile Include="LogWindow.cpp" />
+    <ClCompile Include="LogWindowSink.cpp" />
     <ClCompile Include="Throw.cpp" />
     <ClCompile Include="ExcelArray.cpp" />
     <ClCompile Include="ExcelCall.cpp" />
@@ -128,6 +132,7 @@
     <ClInclude Include="FuncRegistry.h" />
     <ClInclude Include="ObjectCacheSingleThread.h" />
     <ClInclude Include="Intellisense.h" />
+    <ClInclude Include="LogWindowSink.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

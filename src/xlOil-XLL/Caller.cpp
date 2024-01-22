@@ -4,7 +4,6 @@
 #include <xloil/ExcelArray.h>
 #include <xlOil/WindowsSlim.h>
 #include <xlOil/XlCallSlim.h>
-#include <xloil/AppObjects.h>
 #include <xlOilHelpers/Environment.h>
 #include <array>
 
@@ -308,16 +307,29 @@ namespace xloil
         return writeSheetAddress(buf, bufLen, address.val.mref.lpmref->reftbl[0],
           sheetName, a1Style, quoteSheet);
       }
-      case ExcelType::Str: // Graphic object or Auto_XXX macro caller
+      case ExcelType::Str: // Graphic object or Auto_Open/Auto_Close/Auto_Activate/... macro caller
       {
-        const auto str = address.cast<PStringRef>();
+        // The sheet name is the active sheet at the time CallerInfo was created
+        // Buttons can only be clicked on the active sheet I presume!
+        const auto sheetNameLen = sheetName.length();
+        const auto objectName = address.cast<PStringRef>();
+        const uint16_t maxLen = 
+          (a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN)
+          + (quoteSheet ? 2 : 0) 
+          - sheetNameLen;
         // Never return a string longer than the advertised max length
-        const auto maxLen = std::min<uint16_t>(str.length(),
-          a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN
-          + quoteSheet ? 2 : 0);
-   
-        wmemcpy_s(buf, bufLen, str.pstr(), maxLen);
-        return std::min<int>((int)bufLen, maxLen);
+        const auto nameLen = std::min<uint16_t>(objectName.length(), maxLen);
+        
+        wmemcpy_s(
+          buf, bufLen, 
+          sheetName.pstr(), sheetNameLen);
+
+        if (bufLen > sheetNameLen)
+          wmemcpy_s(
+            buf + sheetNameLen, bufLen - sheetNameLen, 
+            objectName.pstr(), nameLen);
+
+        return std::min<int>((int)bufLen, sheetNameLen + nameLen);
       }
       case ExcelType::Num: // DLL caller
       {
@@ -328,9 +340,9 @@ namespace xloil
         ExcelArray arr(address, false);
         switch (arr.size())
         {
-        case 2:
+        case 2: // 2 element array describing a toolbar
           return _snwprintf_s(buf, bufLen, bufLen, L"Toolbar(%d)", arr.at(0).cast<int>());
-        case 4:
+        case 4: // 4 element array describing a menu
           return _snwprintf_s(buf, bufLen, bufLen, L"Menu(%d)", arr.at(0).cast<int>());
         default:
           XLO_THROW("Caller: address is badly formed array");
@@ -346,11 +358,17 @@ namespace xloil
     }
   }
 
+  namespace 
+  {
+    // A local reference used to get the active sheet name
+    ExcelObj theA1Ref(msxll::xlref12{ 1, 1, 1, 1 });
+  }
+
   CallerInfo::CallerInfo()
   {
     callExcelRaw(xlfCaller, &_address);
-    if (_address.isType(ExcelType::RangeRef))
-      callExcelRaw(xlSheetNm, &_sheetName, &_address);
+    callExcelRaw(xlSheetNm, &_sheetName, 
+      _address.isType(ExcelType::RangeRef) ? &_address : &theA1Ref);
   }
   
   CallerInfo::CallerInfo(
@@ -392,13 +410,33 @@ namespace xloil
       buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
   }
   
-  std::wstring CallerInfo::writeAddress(AddressStyle style) const
+  std::wstring CallerInfo::address(AddressStyle style) const
   {
     std::wstring result;
     result.resize(addressLength(style));
     const auto nChars = writeAddress(result.data(), result.size(), style);
     result.resize(nChars);
     return result;
+  }
+
+  std::wstring CallerInfo::localAddress(AddressStyle style) const
+  {
+    wchar_t buf[XL_CELL_ADDRESS_RC_MAX_LEN];
+
+    const msxll::XLREF12* sheetRef;
+    switch (_address.type())
+    {
+    case ExcelType::SRef: sheetRef = &_address.val.sref.ref; break;
+    case ExcelType::Ref:  sheetRef = _address.val.mref.lpmref->reftbl;  break;
+    default:
+      return std::wstring();
+    }
+
+    auto nWritten = style == AddressStyle::A1
+      ? writeLocalAddress<WriteA1>(*sheetRef, buf, _countof(buf))
+      : writeLocalAddress<WriteRC>(*sheetRef, buf, _countof(buf));
+
+    return std::wstring(buf, nWritten);
   }
 
   uint8_t writeColumnName(size_t colIndex, char buf[4])

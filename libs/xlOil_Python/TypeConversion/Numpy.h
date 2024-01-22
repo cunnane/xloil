@@ -8,6 +8,12 @@
 #include "PyHelpers.h"
 #include <xlOil/ExcelObj.h>
 
+namespace xloil { 
+  class FPArray;
+  namespace Python {
+    class IPyFromExcel;
+} }
+
 namespace xloil
 {
   namespace Python
@@ -16,7 +22,14 @@ namespace xloil
     bool isArrayDataType(PyTypeObject* p);
     bool isNumpyArray(PyObject* p);
 
+    IPyFromExcel* createFPArrayConverter();
+
+    std::shared_ptr<FPArray> numpyToFPArray(const PyObject& obj);
+
     PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims = 2, int dtype = -1);
+
     ExcelObj numpyArrayToExcel(const PyObject* p);
+
+    PyObject* toNumpyDatetimeFromExcelDateArray(const PyObject* p);
   }
 }

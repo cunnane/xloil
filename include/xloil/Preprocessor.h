@@ -8,12 +8,14 @@
 
 namespace xloil { class ExcelObj; }
 
+/// <summary>  
+/// https://stackoverflow.com/questions/5134523
+/// </summary>
+#define XLO_EXPAND( x ) x
 
-#define XLO_L() L
 /// <summary>  
 /// Stringifies the given argument to a wide string literal
 /// </summary>
-/// 
 #define XLO_WSTR(s) BOOST_PP_CAT(L,BOOST_PP_CAT(BOOST_PP_EMPTY(),BOOST_PP_STRINGIZE(s)))
 
 /// <summary>
@@ -22,13 +24,13 @@ namespace xloil { class ExcelObj; }
 #define XLO_STR(s) BOOST_PP_STRINGIZE(s)
 
 /// <summary>
-/// Use in a function declaration to declare <code>const ExcelObj&</code> arguments 
+/// Use in a function declaration to declare <code>const ExcelObj&amp;</code> arguments 
 /// named prefix1, prefix2, ..., prefixN
 /// </summary>
-#define XLO_DECLARE_ARGS(N, prefix) BOOST_PP_ENUM_SHIFTED_PARAMS(BOOST_PP_ADD(N,1), const ExcelObj& prefix)
+#define XLO_DECLARE_ARGS(N, prefix) BOOST_PP_ENUM_SHIFTED_PARAMS(BOOST_PP_ADD(N,1), const ::xloil::ExcelObj& prefix)
 
 /// <summary>
-/// Returns a comma-separated list of argument addresses: &prefix1, &prefix2, ..., &prefixN.
+/// Returns a comma-separated list of argument addresses: &amp;prefix1, &amp;prefix2, ..., &amp;prefixN.
 /// Useful to create an array of function arguments.
 /// </summary>
 #define XLO_ARG_PTRS(N, prefix) BOOST_PP_ENUM_SHIFTED_PARAMS(BOOST_PP_ADD(N,1), &prefix)
@@ -50,7 +52,7 @@ namespace xloil { class ExcelObj; }
 /// As <see cref="XLO_ARG_PTRS"/>, but runs <see cref="xloil::objectCacheExpand"/> on each argument.
 /// Useful to create an array of function arguments.
 /// </summary>
-#define XLO_CACHE_ARG_PTRS_I(z, N, data) &xloil::objectCacheExpand(BOOST_PP_CAT(data ## N)) BOOST_PP_COMMA_IF(N)
+#define XLO_CACHE_ARG_PTRS_I(z, N, data) &::xloil::objectCacheExpand(BOOST_PP_CAT(data ## N)) BOOST_PP_COMMA_IF(N)
 #define XLO_CACHE_ARG_PTRS(N, prefix) BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_CACHE_ARG_PTRS_I, prefix)
 
 namespace xloil

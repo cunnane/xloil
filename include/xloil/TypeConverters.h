@@ -1,6 +1,11 @@
 #pragma once
-#include <xlOil/ExcelObj.h>
-#include <xlOil/Throw.h>
+
+#ifndef XLOIL_XLOPER
+#error "Don't include this directly, include ExcelObj.h"
+#endif
+
+#include <optional>
+#include <stdexcept>
 
 namespace xloil { class ExcelRef; }
 namespace xloil

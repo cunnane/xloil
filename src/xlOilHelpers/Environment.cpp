@@ -12,7 +12,7 @@ using std::wsregex_iterator;
 
 namespace xloil
 {
-    std::wstring getEnvVar(const wchar_t * name)
+    std::wstring getEnvironmentVar(const wchar_t * name)
     {
       return captureWStringBuffer(
         [name](auto* buf, auto len)
@@ -21,13 +21,27 @@ namespace xloil
       });
     }
 
-    std::string getEnvVar(const char * name)
+    std::string getEnvironmentVar(const char * name)
     {
       return captureStringBuffer(
         [name](auto* buf, auto len)
       {
         return GetEnvironmentVariableA(name, buf, (DWORD)len);
       });
+    }
+
+    bool setEnvironmentVar(const wchar_t* name, const wchar_t* value)
+    {
+      // The CRT (getenv) makes a copy of the environment variable block of the process, 
+      // on startup so we need ensure both the getenv block and Win32 environment are
+      // modified. However based on https://stackoverflow.com/questions/13742429, we 
+      // shouldn't need call the Win32 API function.
+      return _wputenv_s(name, value) != EINVAL;
+    }
+
+    bool setEnvironmentVar(const char* name, const char* value)
+    {
+      return _putenv_s(name, value) != EINVAL;
     }
 
     std::wstring expandEnvironmentStrings(const wchar_t* str)
@@ -45,7 +59,7 @@ namespace xloil
 
     PushEnvVar::PushEnvVar(const wchar_t* name, const wchar_t* value)
       : _name(name)
-      , _previous(getEnvVar(name))
+      , _previous(getEnvironmentVar(name))
     {
       auto s = expandEnvironmentStrings(value);
       SetEnvironmentVariable(name, s.c_str());
@@ -65,7 +79,22 @@ namespace xloil
       _name.clear();
       _previous.clear();
     }
-
+    PushDllDirectory::PushDllDirectory(const wchar_t* path)
+    {
+      static_assert(_countof(_previous) == MAX_PATH);
+      GetDllDirectory(_countof(_previous), _previous);
+      SetDllDirectory(path);
+    }
+    PushDllDirectory::PushDllDirectory(const char* path)
+    {
+      static_assert(_countof(_previous) == MAX_PATH);
+      GetDllDirectory(_countof(_previous), _previous);
+      SetDllDirectoryA(path);
+    }
+    PushDllDirectory::~PushDllDirectory()
+    {
+      SetDllDirectory(_previous);
+    }
     namespace
     {
       inline bool getWindowsRegistryValue(

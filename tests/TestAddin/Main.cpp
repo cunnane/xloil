@@ -1,10 +1,6 @@
-#include <xloil/ExcelUI.h>
-#include <xloil/Log.h>
-#include <xlOil/ExcelThread.h>
-#include <xloil/DynamicRegister.h>
-#include <xloil/Async.h>
+#include <xloil/xloil.h>
+#include <xloilHelpers/Environment.h>
 #include <xloil/XllEntryPoint.h>
-
 #include <map>
 using namespace xloil;
 using std::wstring;
@@ -12,7 +8,8 @@ using std::shared_ptr;
 
 namespace
 {
-  void ribbonHandler(const RibbonControl& ctrl, VARIANT* ret, int nArgs, tagVARIANT** args)
+  void ribbonHandler(const RibbonControl& ctrl, VARIANT* /*ret*/, 
+                     int /*nArgs*/, tagVARIANT** /*args*/)
   {
     XLO_TRACE(L"Ribbon action on {0}, {1}", ctrl.Id, ctrl.Tag);
   };
@@ -25,8 +22,17 @@ struct MyAddin
 
   MyAddin()
   {
+    auto logger = loggerInitialise("warn");
+    // It's not a great idea to put your log file in the same directory as the XLL
+    // because if the XLL has been added to Excel's `XLSTART` folder, Excel will
+    // attempt to open the log file when it is next started.
+    loggerAddRotatingFileSink(logger,
+      getEnvironmentVar(L"APPDATA") + L"\\xlOil\\" + XllInfo::xllName + L".log",
+      "debug",
+      1000);
+
     theFuncs.push_back(RegisterLambda<>(
-      [](const ExcelObj& arg1, const ExcelObj& arg2)
+      [](const ExcelObj& /*arg1*/, const ExcelObj& /*arg2*/)
       {
         return returnValue(7);
       })
@@ -34,7 +40,7 @@ struct MyAddin
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<void>(
-      [](const FuncInfo& info, const ExcelObj& arg1, const AsyncHandle& handle)
+      [](const FuncInfo& /*info*/, const ExcelObj& /*arg1*/, const AsyncHandle& handle)
       {
         handle.returnValue(8);
       })
@@ -42,7 +48,7 @@ struct MyAddin
       .arg(L"Arg1")
       .registerFunc());
     theFuncs.push_back(RegisterLambda<int>(
-      [](const FuncInfo& info, const ExcelObj& arg1)
+      [](const FuncInfo& /*info*/, const ExcelObj& /*arg1*/)
       {
         return 1;
       })
@@ -61,7 +67,7 @@ struct MyAddin
       handlers[L"comboChange"] = ribbonHandler;
       auto mapper = [=](const wchar_t* name) mutable { return handlers[name]; };
 
-      theComAddin->setRibbon(LR"(
+      theComAddin->connect(LR"(
       <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
 	      <ribbon>
 		      <tabs>
@@ -82,8 +88,6 @@ struct MyAddin
 	      </ribbon>
       </customUI>
       )", mapper);
-
-      theComAddin->connect();
 
       theComAddin->ribbonInvalidate();
       theComAddin->ribbonActivate(L"customTab");

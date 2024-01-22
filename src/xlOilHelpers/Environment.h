@@ -9,8 +9,16 @@ namespace xloil
   /// Returns the value of specified environment variable
   /// or an empty string if it does not exist
   /// </summary>
-  std::wstring getEnvVar(const wchar_t* name);
-  std::string getEnvVar(const char * name);
+  std::wstring getEnvironmentVar(const wchar_t* name);
+  std::string getEnvironmentVar(const char * name);
+
+
+  /// <summary>
+  /// Sets the enviroment variable to a given value, returning 
+  /// false if the action fails
+  /// </summary>
+  bool setEnvironmentVar(const wchar_t* name, const wchar_t* value);
+  bool setEnvironmentVar(const char* name, const char* value);
 
   /// <summary>
   /// Expands environment variables in the specified string.
@@ -36,6 +44,21 @@ namespace xloil
     PushEnvVar(const wchar_t* name, const wchar_t* value);
     ~PushEnvVar();
     void pop();
+  };
+
+  /// <summary>
+  /// Calls SetDllDirectory on the provided path and restores the previous
+  /// value in it's dtor.  Safer than calling SetDllDirectory(NULL) which
+  /// resets the search path.
+  /// </summary>
+  class PushDllDirectory
+  {
+  private:
+    wchar_t _previous[260]; // MAX_PATH = 260
+  public:
+    PushDllDirectory(const wchar_t* path);
+    PushDllDirectory(const char* path);
+    ~PushDllDirectory();
   };
 
   /// <summary>

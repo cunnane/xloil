@@ -2,7 +2,6 @@
 #include <xlOil/AppObjects.h>
 #include "ClassFactory.h"
 #include "Connect.h"
-#include "XllContextInvoke.h"
 #include <xlOil/Events.h>
 #include <xlOil/ExcelThread.h>
 #include <set>
@@ -11,6 +10,7 @@
 namespace fs = std::filesystem;
 using std::set;
 using std::wstring;
+using std::pair;
 
 namespace xloil
 {
@@ -27,7 +27,7 @@ namespace xloil
     public:
       static void checkOnOpenWorkbook(struct Excel::_Workbook* Wb)
       {
-        size_t numWorkbooks = excelApp().com().Workbooks->Count;
+        size_t numWorkbooks = thisApp().com().Workbooks->Count;
 
         // If workbook collection has grown by one, nothing was closed
         // and we just add the workbook name
@@ -42,7 +42,7 @@ namespace xloil
       /// </summary>
       static void Workbook_BeforeSave()
       {
-        auto& app = excelApp().com();
+        auto& app = thisApp().com();
         app.EnableEvents = false;
         _wbPathBeforeSave = fs::path((const wchar_t*)app.ActiveWorkbook->Path) 
           / (const wchar_t*)app.ActiveWorkbook->Name;
@@ -58,7 +58,7 @@ namespace xloil
       {
         if (!success)
           return;
-        auto& app = excelApp().com();
+        auto& app = thisApp().com();
         app.EnableEvents = false;
         const auto wbPath = fs::path((const wchar_t*)app.ActiveWorkbook->Path)
           / (const wchar_t*)app.ActiveWorkbook->Name;
@@ -71,29 +71,40 @@ namespace xloil
 
       static void check()
       {
-        set<wstring> openWorkbooks;
-        auto& app = excelApp().com();
+        decltype(_workbooks) openWorkbooks;
+        auto& app = thisApp().com();
         auto numWorkbooks = app.Workbooks->Count;
         for (auto i = 1; i <= numWorkbooks; ++i)
-          openWorkbooks.emplace(app.Workbooks->Item[i]->Name);
+          openWorkbooks.emplace(app.Workbooks->Item[i]->FullName);
 
         std::vector<wstring> closedWorkbooks;
         std::set_difference(_workbooks.begin(), _workbooks.end(),
           openWorkbooks.begin(), openWorkbooks.end(), std::back_inserter(closedWorkbooks));
 
         for (auto& wb : closedWorkbooks)
-          Event::WorkbookAfterClose().fire(wb.c_str());
+        {
+          auto lastSlash = wb.find_last_of(L'\\');
+          Event::WorkbookAfterClose().fire(wb.c_str() + (lastSlash == wstring::npos ? 0 : lastSlash + 1));
+        }
 
         _workbooks = openWorkbooks;
       }
 
-    private:
       static set<wstring> _workbooks;
+
+    private:
       static fs::path _wbPathBeforeSave;
     };
 
     set<wstring> WorkbookMonitor::_workbooks;
     fs::path WorkbookMonitor::_wbPathBeforeSave;
+
+    constexpr auto DISPID_SheetSelectionChange = 0x616;
+    constexpr auto DISPID_SheetActivate = 0x619;
+    constexpr auto DISPID_SheetDeactivate = 0x61a;
+    constexpr auto DISPID_SheetCalculate = 0x61b;
+    constexpr auto DISPID_SheetChange = 0x61c;
+    constexpr auto DISPID_AfterCalculate = 0xa34;
 
     class EventHandler :
       public ComEventHandler<NoIDispatchImpl<ComObject<Excel::AppEvents>>, Excel::AppEvents>
@@ -117,6 +128,8 @@ namespace xloil
         IDispatch* Sh,
         Range* Target)
       {
+        if (inStack(DISPID_SheetSelectionChange))
+          return;
         if (Event::SheetSelectionChange().handlers().empty())
           return;
         Event::SheetSelectionChange().fire(
@@ -150,14 +163,20 @@ namespace xloil
       }
       void SheetActivate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetActivate))
+          return;
         Event::SheetActivate().fire(((Worksheet*)Sh)->Name);
       }
       void SheetDeactivate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetDeactivate))
+          return;
         Event::SheetDeactivate().fire(((Worksheet*)Sh)->Name);
       }
       void SheetCalculate(IDispatch* Sh)
       {
+        if (inStack(DISPID_SheetCalculate))
+          return;
         if (Event::SheetCalculate().handlers().empty())
           return;
         Event::SheetCalculate().fire(((Worksheet*)Sh)->Name);
@@ -166,6 +185,8 @@ namespace xloil
         IDispatch* Sh,
         Range* Target)
       {
+        if (inStack(DISPID_SheetChange))
+          return;
         if (Event::SheetChange().handlers().empty())
           return;
         Event::SheetChange().fire(
@@ -246,103 +267,146 @@ namespace xloil
         // after calculation, so we can easily trigger a recursion by 
         // doing something in AfterCalculate which triggers a calculation.
         // We use this bool to protect against this.
-        if (!_enableAfterCalculate)
+        if (inStack(DISPID_AfterCalculate))
           return;
 
-        excelApp().com().put_EnableEvents(VARIANT_FALSE);
-        _enableAfterCalculate = false;
-
         Event::AfterCalculate().fire();
+      }
 
-        excelApp().com().put_EnableEvents(VARIANT_TRUE);
-        _enableAfterCalculate = true;
+      /// <summary>
+      /// Checks if a given event dispid is already being processed. This isn't
+      /// necessary for all events, just ones where their handlers could 
+      /// re-trigger the event, e.g. if the SheetChange handler writes to the 
+      /// sheet.
+      /// </summary>>
+      bool inStack(short dispid)
+      {
+        for (char i = 0; i < _stackCount - 1; ++i)
+          if (_eventStack[i] == dispid)
+            return true;
+        return false;
       }
 
       STDMETHOD(Invoke)(DISPID dispidMember, REFIID /*riid*/,
         LCID /*lcid*/, WORD /*wFlags*/, DISPPARAMS* pdispparams, VARIANT* /*pvarResult*/,
-        EXCEPINFO* /*pexcepinfo*/, UINT* /*puArgErr*/)
+        EXCEPINFO* pexcepinfo, UINT* /*puArgErr*/)
       {
         try
         {
           auto* rgvarg = pdispparams->rgvarg;
 
-          // These dispids are copied from oleview and are in the same order as listed there
+          // Note the event being processed. The event handling is single-threaded
+          // but can be re-entrant. See comment for inStack
+          _eventStack[_stackCount++] = (unsigned short) dispidMember;
 
+          // These dispids are copied from oleview and are in the same order as listed there
           switch (dispidMember)
           {
           case 0x0000061d:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             NewWorkbook((Workbook*)rgvarg[0].pdispVal);
             break;
-          case 0x00000616:
+          case DISPID_SheetSelectionChange:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             SheetSelectionChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
           case 0x00000617:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             SheetBeforeDoubleClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
             break;
           case 0x00000618:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             SheetBeforeRightClick(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal, rgvarg[2].pboolVal);
             break;
-          case 0x00000619:
+          case DISPID_SheetActivate:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetActivate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061a:
+          case DISPID_SheetDeactivate:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetDeactivate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061b:
+          case DISPID_SheetCalculate:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             SheetCalculate(rgvarg[0].pdispVal);
             break;
-          case 0x0000061c:
+          case DISPID_SheetChange:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             SheetChange(rgvarg[0].pdispVal, (Range*)rgvarg[1].pdispVal);
             break;
           case 0x0000061f:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookOpen((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000620:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookActivate((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000621:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookDeactivate((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000622:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforeClose((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
             break;
           case 0x00000623:
+            if (pdispparams->cArgs != 3) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforeSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal, rgvarg[2].pboolVal);
             break;
           case 0x00000624:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookBeforePrint((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pboolVal);
             break;
           case 0x00000625:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookNewSheet((Workbook*)rgvarg[0].pdispVal, rgvarg[1].pdispVal);
             break;
           case 0x00000626:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookAddinInstall((Workbook*)rgvarg[0].pdispVal);
             break;
           case 0x00000627:
+            if (pdispparams->cArgs != 1) return DISP_E_BADPARAMCOUNT;
             WorkbookAddinUninstall((Workbook*)rgvarg[0].pdispVal);
             break;
-          case 0x00000a34:
+          case DISPID_AfterCalculate:
             AfterCalculate();
             break;
           case 2911:
+            if (pdispparams->cArgs != 2) return DISP_E_BADPARAMCOUNT;
             WorkbookAfterSave((Workbook*)rgvarg[0].pdispVal, rgvarg[1].boolVal);
             break;
           }
         }
         catch (_com_error& error)
         { 
-          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage()); \
+          if (error.Error() == VBA_E_IGNORE)
+          {
+            pexcepinfo->scode = 0;
+            pexcepinfo->wCode = error.WCode();
+            pexcepinfo->bstrDescription = nullptr;
+            pexcepinfo->bstrHelpFile = nullptr;
+            pexcepinfo->bstrSource = nullptr;
+            pexcepinfo->pfnDeferredFillIn = nullptr;
+            return DISP_E_EXCEPTION;
+          }
+          XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
         catch (const std::exception& e)
         {
           XLO_ERROR("Error during COM event handler callback: {0}", e.what());
         }
+       
+        // Pop the stack
+        --_stackCount;
 
         return S_OK;
       }
 
     private:
-      bool _enableAfterCalculate = true;
+      unsigned short _eventStack[16];
+      char _stackCount = 0;
     };
 
     std::shared_ptr<Excel::AppEvents> createEventSink(Excel::_Application* source)
@@ -357,6 +421,10 @@ namespace xloil
         }); 
       p->AddRef();
       return p;
+    }
+    const std::set<std::wstring>& workbookPaths()
+    {
+      return WorkbookMonitor::_workbooks;
     }
   }
 }

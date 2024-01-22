@@ -3,6 +3,12 @@
 
 class _xlOilJupyterImpl:
 
+    def __init__(self, ipy_shell, excel_hwnd):
+        # Takes a reference to the ipython shell (e.g. from get_ipython())
+        self._excel_hwnd = excel_hwnd
+        self._display_data = ipy_shell.display_pub.publish
+        self._vars = self._MonitoredVariables(ipy_shell)
+
     @staticmethod
     def _pickle(obj):
         import pickle
@@ -13,14 +19,17 @@ class _xlOilJupyterImpl:
         import pickle
         return pickle.loads(dump.encode('latin1'))
 
-    @classmethod
-    def _serialise(cls, obj):
-        # Simple json serialiser: serialises the class' dict, skipping 
-        # the special Arg._EMPTY type
+    def _serialise(self, obj):
+        # Simple json serialiser: serialises the class dict whilst skipping the special
+        # Arg._EMPTY type.  Also converts type objects to their fully qualified name
         import json
         def f(x):
-            return { k: v for k, v in x.__dict__.items() if v is not cls.Arg._EMPTY }
+            if isinstance(x, type):
+                return x.__qualname__
+            else:
+                return { k: v for k, v in x.__dict__.items() if v is not self.Arg._EMPTY }
         return json.dumps(obj, default=f)
+
 
     class _MonitoredVariables:
         """
@@ -31,6 +40,7 @@ class _xlOilJupyterImpl:
 
             self._values = dict()
             self._shell = ipy_shell
+            self._display_data = ipy_shell.display_pub.publish
 
             # Hook post_execute
             ipy_shell.events.register('post_execute', self.post_execute)
@@ -47,8 +57,7 @@ class _xlOilJupyterImpl:
                     self._values[name] = that_val
 
             if len(updates) > 0:
-                from IPython.display import publish_display_data
-                publish_display_data(
+                self._display_data(
                     { "xloil/data": _xlOilJupyterImpl._pickle(updates) },
                     { 'type': "VariableChange" }
                 )
@@ -77,23 +86,15 @@ class _xlOilJupyterImpl:
             self.args = args
             self.return_type = return_type
 
-    @classmethod
-    def _function_invoke(cls, func, args_data, kwargs_data):
-        from IPython.display import publish_display_data
-
-        args   = cls._unpickle(args_data)
-        kwargs = cls._unpickle(kwargs_data)
+    def _function_invoke(self, func, args_data, kwargs_data):
+        args   = self._unpickle(args_data)
+        kwargs = self._unpickle(kwargs_data)
         result = func(*args, **kwargs)
-        publish_display_data(
-            { "xloil/data": cls._pickle(result) },
+        self._display_data(
+            { "xloil/data": self._pickle(result) },
             { 'type': "FuncResult" }
         )
         #return result # Not used, just in case tho
-
-    def __init__(self, ipy_shell, excel_hwnd):
-        # Takes a reference to the ipython shell (e.g. from get_ipython())
-        self._excel_hwnd = excel_hwnd
-        self._vars = self._MonitoredVariables(ipy_shell)
 
     def func(self,
             fn=None,
@@ -108,8 +109,6 @@ class _xlOilJupyterImpl:
 
         def decorate(fn):
             
-            from IPython.display import publish_display_data
-
             func_args, return_type = self.Arg.full_argspec(fn)
             func_args = self.Arg.override_arglist(func_args, args)
 
@@ -120,7 +119,7 @@ class _xlOilJupyterImpl:
                 func_args,
                 return_type)
         
-            publish_display_data(
+            self._display_data(
                 { "xloil/data": self._serialise(spec) },
                 { 'type': "FuncRegister" }
             )
