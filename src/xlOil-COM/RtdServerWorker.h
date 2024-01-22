@@ -242,17 +242,34 @@ namespace xloil
               }
             }
 
-            // When RefreshData runs, it will take the SAFEARRAY in _readyUpdates and
-            // atomically replace it with null. So if this ptr is not null, we know Excel
-            // has not yet picked up the new values.
-            if (!readyTopicIds.empty() && !_readyUpdates)
+            // When Excel calls RefreshData, it will take the SAFEARRAY in _readyUpdates and
+            // atomically replace it with null. If this ptr is not null, we know Excel
+            // has not yet picked up the new values, so we swap it out and resize the array
+            // to include the latest ready topics. We issue another _updateNotify to Excel,
+            // even if there are items in readyUpdates as sometimes things go out of sync and
+            // Excel does not call RefreshData (exact reasons unknown).
+            if (!readyTopicIds.empty())
             {
-              const auto nReady = readyTopicIds.size();
+              const auto nReady = (ULONG)readyTopicIds.size();
+              auto topicArray = _readyUpdates.exchange(nullptr);
+              long nExisting = 0;
 
-              SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { (ULONG)nReady, 0 } };
-              auto* topicArray = SafeArrayCreate(VT_VARIANT, 2, bounds);
-              writeReadyTopicsArray(topicArray, readyTopicIds);
-              _readyUpdates = topicArray;
+              if (topicArray)
+              {
+                SafeArrayGetUBound(topicArray, 2, &nExisting); 
+                ++nExisting; // Bound is *inclusive*
+                SAFEARRAYBOUND outer{ nExisting + nReady, 0 };
+                SafeArrayRedim(topicArray, &outer);
+              }
+              else
+              {
+                SAFEARRAYBOUND bounds[] = { { 2u, 0 }, { nReady, 0 } };
+                topicArray = SafeArrayCreate(VT_VARIANT, 2, bounds);
+              }
+
+              writeReadyTopicsArray(topicArray, readyTopicIds, nExisting);
+
+              _readyUpdates.exchange(topicArray);
 
               _updateNotify();
 
@@ -404,7 +421,7 @@ namespace xloil
       // which is too restricive. Passing empty tells Excel to call the function
       // again to get the value
       //
-      void writeReadyTopicsArray(
+      static void writeReadyTopicsArray(
         SAFEARRAY* data,
         const std::unordered_set<long>& topics,
         const long startRow = 0)

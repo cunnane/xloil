@@ -1766,12 +1766,25 @@ class _FuncArg():
         """
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False) -> None: ...
+    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, errors: int = 0) -> None: ...
     def __str__(self) -> str: ...
     @property
     def args(self) -> typing.List[_FuncArg]:
         """
         :type: typing.List[_FuncArg]
+        """
+    @property
+    def error_propagation(self) -> bool:
+        """
+                      Used internally to control the error propagation setting
+                    
+
+        :type: bool
+        """
+    @error_propagation.setter
+    def error_propagation(self, arg1: bool) -> None:
+        """
+        Used internally to control the error propagation setting
         """
     @property
     def func(self) -> function:
@@ -1820,11 +1833,16 @@ class _FuncSpec():
     @property
     def name(self) -> str:
         """
+                      Writing to name property doesn't make sense when registered
+                    
+
         :type: str
         """
     @name.setter
     def name(self, arg1: str) -> None:
-        pass
+        """
+        Writing to name property doesn't make sense when registered
+        """
     @property
     def return_converter(self) -> IPyToExcel:
         """
@@ -2151,7 +2169,7 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
     """
     For internal use. Converts a table like object (such as a pandas DataFrame) to 
     RawExcelValue suitable for returning to xlOil.
-
+      
     n, m:
       the number of data fields and the length of the fields
     columns / rows: 

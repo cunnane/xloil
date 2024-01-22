@@ -62,7 +62,7 @@ namespace xloil
       void set_result(const py::object& value)
       {
         static ExcelObj obj = _returnConverter
-          ? (*_returnConverter)(*value.ptr())
+          ? (*_returnConverter)(value.ptr())
           : FromPyObj()(value.ptr());
         result(obj);
       }

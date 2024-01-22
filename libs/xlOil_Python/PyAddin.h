@@ -26,7 +26,8 @@ namespace xloil
         AddinContext&, 
         bool separateThread,
         const std::string_view& comLib, 
-        const std::wstring_view& wbPattern = std::wstring_view());
+        const std::wstring_view& wbPattern = std::wstring_view(),
+        const bool useLoaderThread = true);
 
       /// <summary>
       /// "Guts" the addin object in the case that a detach message is received
@@ -52,7 +53,7 @@ namespace xloil
       /// to register. The argument is passed to `xloil.importer._import_and_scan`
       /// so a module, string or enumerable of the these can be given. 
       /// </summary>
-      void importModule(const pybind11::object& module);
+      void importModule(const pybind11::object& module, bool backgroundThread=true);
 
       /// <summary>
       /// Imports the specified py file without registering it as module in 
@@ -60,11 +61,13 @@ namespace xloil
       /// specifies a linked workbook which is passed back when functions are
       /// registered
       /// </summary>
-      void importFile(const wchar_t* filePath, const wchar_t* linkedWorkbook);
+      void importFile(
+        const wchar_t* filePath, const wchar_t* linkedWorkbook, bool backgroundThread = true);
 
       std::shared_ptr<FuncSource> findSource(const wchar_t* sourcePath) const;
       
       bool loadLocalModules() const { return !_workbookPattern.empty(); }
+      bool useLoaderThread() const { return _loadOnThread; }
 
       /// <summary>
       /// Returns the python com support library specified in the addin's 
@@ -75,10 +78,15 @@ namespace xloil
       AddinContext& context();
       const AddinContext& context() const;
 
+      bool propagateErrors() const { return _propagateErrors; }
+
     private:
       std::wstring _workbookPattern;
       AddinContext* _context;
       std::string _comBinder;
+      bool _loadOnThread;
+      bool _propagateErrors;
+
       pybind11::object self() const;
     };
 

@@ -5,8 +5,9 @@
  * an array of function points in every cpp file. 
  */
 
-#include "PyHelpers.h"
+#include "CPython.h"
 #include <xlOil/ExcelObj.h>
+#include <memory>
 
 namespace xloil { 
   class FPArray;
@@ -24,7 +25,7 @@ namespace xloil
 
     IPyFromExcel* createFPArrayConverter();
 
-    std::shared_ptr<FPArray> numpyToFPArray(const PyObject& obj);
+    std::shared_ptr<FPArray> numpyToFPArray(const PyObject* obj);
 
     PyObject* excelArrayToNumpyArray(const ExcelArray& arr, int dims = 2, int dtype = -1);
 

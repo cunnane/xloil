@@ -24,7 +24,7 @@ using std::shared_ptr;
 using std::make_shared;
 using std::wstring;
 using std::atomic;
-using std::mutex;
+
 
 namespace
 {
@@ -139,11 +139,16 @@ namespace xloil
         long* topicCount,
         SAFEARRAY** data) override
       {
-        auto updates = _worker.getUpdates();
-        long ubound; // Bound is *inclusive*
-        SafeArrayGetUBound(updates, 2, &ubound);
-        *topicCount = ubound + 1;
-        *data = updates;
+        auto* updates = _worker.getUpdates();
+        if (!updates)
+          *topicCount = 0;
+        else
+        {
+          long ubound; // Bound is *inclusive*
+          SafeArrayGetUBound(updates, 2, &ubound);
+          *topicCount = ubound + 1;
+          *data = updates;
+        }
         return S_OK;
       }
 
@@ -239,7 +244,7 @@ namespace xloil
       }
       bool publish(const wchar_t* topic, ExcelObj&& value) override
       {
-        server().update(topic, make_shared<ExcelObj>(value));
+        server().update(topic, make_shared<ExcelObj>(std::move(value)));
         return true;
       }
       shared_ptr<const ExcelObj> 

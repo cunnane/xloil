@@ -12,10 +12,13 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Link>
-      <AdditionalDependencies>xloilHelpers.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>xloilHelpers.lib;python$(PyMajorVer)$(PyMinorVer).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent Condition="'$(Platform)|$(Configuration)|$(PyMajorVer).$(PyMinorVer)'=='x64|Debug|3.12'">
+      <Command>set XLOIL_BIN_DIR=$(OutDir)
+py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
-  <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
@@ -48,7 +51,11 @@
     <ClCompile Include="PyFunctionRegister.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PyCore.cpp" />
-    <ClCompile Include="TypeConversion\Numpy.cpp" />
+    <ClCompile Include="TypeConversion\NumpyFromExcel.cpp" />
+	<ClCompile Include="TypeConversion\NumpyToExcel.cpp" />
+	<ClCompile Include="TypeConversion\NumpyPandas.cpp" />
+	<ClCompile Include="TypeConversion\NumpyHelpers.cpp" />
+	<ClCompile Include="TypeConversion\NumpyDatetime.cpp" />
     <ClCompile Include="PyEvents.cpp" />
     <ClCompile Include="TypeConversion\PyExcelArrayType.cpp" />
     <ClCompile Include="PyHelpers.cpp" />
@@ -72,6 +79,8 @@
     <ClInclude Include="TypeConversion\PyDictType.h" />
     <ClInclude Include="PyFunctionRegister.h" />
     <ClInclude Include="TypeConversion\BasicTypes.h" />
+	<ClInclude Include="TypeConversion\NumpyHelpers.h" />
+	<ClInclude Include="TypeConversion\NumpyDatetime.h" />
     <ClInclude Include="PyCore.h" />
     <ClInclude Include="TypeConversion\Numpy.h" />
     <ClInclude Include="PyEvents.h" />

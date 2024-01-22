@@ -199,8 +199,7 @@ namespace xloil
           FunctionRegistry::addModule(_loadContext, modulePath, wbName);
           auto wbPathName = wstring(wbPath) + separator + wbName;
 
-          py::gil_scoped_acquire getGil;
-          addin->importFile(modulePath.c_str(), wbPathName.c_str());
+          addin->importFile(modulePath.c_str(), wbPathName.c_str(), addin->useLoaderThread());
         }
       };
 

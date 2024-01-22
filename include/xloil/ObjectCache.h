@@ -317,7 +317,9 @@ namespace xloil
       return std::move(key);
     }
 
-    auto& signalAndLock() const
+    std::wstring writeKey(
+      const std::wstring_view& cacheKey,
+      size_t count) const
     {
       _reaperState = Reaper::PAUSED;
       _cacheLock.lock();
@@ -348,46 +350,42 @@ namespace xloil
 
           keysToRemove.clear();
 
-          for (auto& [key, val] : _cache)
-          {
-            if (_reaperState <= Reaper::PAUSED)
-              break;
+      uint8_t iPos = 0;
+      {
+        std::scoped_lock lock(_cacheLock);
 
-            // TODO: in C++20 use 'contains' and avoid temp string
-            if (_closedWorkbooks.count(std::wstring(val.caller.workbook())))
-            {
-              keysToRemove.insert(key);
-            }
-            else
-            {
-              const auto address = val.caller.writeAddress();
-              auto found = lastCalcId.find(address);
-              if (found != lastCalcId.end())
-              {
-                auto& mostRecentKey = found->second;
-                if (key.calcId < mostRecentKey.calcId)
-                  keysToRemove.insert(key);
-                else if (key.calcId > mostRecentKey.calcId)
-                {
-                  keysToRemove.insert(mostRecentKey);
-                  lastCalcId.insert_or_assign(found, address, key);
-                }
-              }
-              else
-              {
-                lastCalcId[address] = key;
-                // TODO: lastCalcId.emplace(address, i->first.calcId);
-              }
-            }
-          }
+        found = _cache.search(cacheKey);
+        if (found == _cache.end())
+        {
+          found = _cache.emplace(
+            std::pair(
+              std::wstring(cacheKey),
+              CellCache(std::forward<TObj>(obj), _calcId))).first;
+        }
+        else
+        {
+          iPos = (uint8_t)found->second.add(
+            std::forward<TObj>(obj), _calcId);
+        }
+      }
 
           // If we exited the above loop naturally, we've dealt with all the
           // closed workbooks
           if (_reaperState == Reaper::RUNNING)
             _closedWorkbooks.clear();
 
-        } while (!keysToRemove.empty());
-      }
+    size_t readCount(wchar_t count) const
+    {
+      return (size_t)(count - 65);
+    }
+
+    /// Add cell object count in form ",X"
+    void writeCount(wchar_t* key, size_t iPos) const
+    {
+      static_assert(PADDING == 2);
+      key[0] = L',';
+      // An offset of 65 means we start with 'A'
+      key[1] = (wchar_t)(iPos + 65);
     }
   };
 

@@ -10,6 +10,7 @@
 #include <xlOil-XLL/FuncRegistry.h>
 #include <xlOil/Loaders/AddinLoader.h>
 #include <xlOil/Version.h>
+#define TOML_ABI_NAMESPACES 0
 #include <toml++/toml.h>
 #include <vector>
 #include <string>

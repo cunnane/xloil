@@ -12,6 +12,7 @@
 #include <xloil/StaticRegister.h>
 #include <xloil/ExcelThread.h>
 #include <xlOil-COM/Connect.h>
+#define TOML_ABI_NAMESPACES 0
 #include <toml++/toml.h>
 #include <filesystem>
 

@@ -253,7 +253,8 @@ def func(fn=None,
          threaded=False,
          volatile=False,
          is_async=False,
-         register=True):
+         register=True,
+         errors=None):
     """ 
     Decorator which tells xlOil to register the function (or callable) in Excel. 
     If arguments are annotated using 'typing' annotations, xlOil will attempt to 
@@ -345,6 +346,17 @@ def func(fn=None,
         must take a thread context as its first argument and start its own async
         task similar to ``xloil.async_wrapper``.  Generally this parameter should
         not be used and async functions declared using the normal `async def` syntax.
+    errors: str ['propagate', 'accept', '']
+        When *errors* is set to 'propagate', if any function argument is an error 
+        code (#N/A!, #NUM!, etc.), that error code is given as the function's return
+        value, otherwise all argument values are handled by the function. Error
+        propagation is consistent with how Excel built-in functions handle errors, 
+        it improves performance in the presence of error codes and it allow's Excel's 
+        error tracing of function.
+        
+        If *errors* is set to an empty string (the default), the ini file setting 
+        'ErrorPropagation' determines the behaviour.  If *errors* is 'accept', error
+        values are passed to the function regardless of the ini file setting.
     """
 
     def decorate(fn):
@@ -409,6 +421,8 @@ def func(fn=None,
             func_args = Arg.override_arglist(func_args, args)
             core_argspec = [arg_to_funcarg(arg) for arg in func_args]
 
+            propagation = 1 if errors == "propagate" else -1 if errors == "accept" else 0
+
             spec = _FuncSpec(
                 func = target_func,
                 args = core_argspec,
@@ -417,7 +431,8 @@ def func(fn=None,
                 help = help if help else (fn.__doc__ if fn.__doc__ else ""),
                 category = group if group else "",
                 volatile = volatile,
-                local = is_local)
+                local = is_local,
+                errors=propagation)
 
             if return_type is not None and return_type is not FastArray:
                 spec.return_converter = find_return_converter(return_type)

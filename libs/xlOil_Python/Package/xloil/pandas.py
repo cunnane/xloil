@@ -32,16 +32,17 @@ class PDFrame:
     ::
 
         @xlo.func
-        def array1(x: xlo.PDFrame(int)):
+        def array1(x: xlo.PDFrame):
             pass
 
         @xlo.func
-        def array2(y: xlo.PDFrame(float, headings=True)):
+        def array2(y: xlo.PDFrame(headings=True)):
             pass
 
         @xlo.func
-        def array3(z: xlo.PDFrame(str, index='Index')):
+        def array3(z: xlo.PDFrame(index='Index')):
             pass
+            
     
     Parameters
     ----------
@@ -105,11 +106,11 @@ class PDFrame:
 
             if n_headings == 1:
                 headings = x[0,:].to_numpy(dims=1)
-                df.set_axis(headings, axis=1, inplace=True)
+                df.columns = headings
 
             elif n_headings > 1:
                 headings = x[:n_headings,:].to_numpy(dims=2)
-                df.set_axis(pd.MultiIndex.from_arrays(headings), axis=1, inplace=True)
+                df.columns = pd.MultiIndex.from_arrays(headings)
 
             if self._parse_dates is not None:
                 for col in self._parse_dates:

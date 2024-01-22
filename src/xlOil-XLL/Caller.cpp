@@ -38,9 +38,9 @@ namespace
   bool CALLBACK xldlg_enum_proc(HWND hwnd, xldlg_enum_struct *p_enum)
   {
     // Check if the parent window is Excel.
-    // Note: Because of the change from MDI (Excel 2010)
-    // to SDI (Excel 2013) we check the process IDs
-    if (p_enum->hwnd)
+    // Note: Because of the change from MDI (Excel 2010) to SDI (Excel 2013) we 
+    // check the process IDs
+    if (p_enum->pid == 0)
     {
       if (GetParent(hwnd) != p_enum->hwnd)
         return TRUE; // Tells Windows to continue iterating.

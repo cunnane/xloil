@@ -26,8 +26,20 @@ namespace xloil
 
     namespace detail
     {
+      template<class TSuper>
       struct PyFromExcelImpl : public ExcelValVisitor<PyObject*>
-      {};
+      {
+        using ExcelValVisitor::operator();
+
+        // Default behaviour is to run `visit` on ourselves, which calls the 
+        // type-appropriate overload of operator()
+        PyObject* operator()(const ExcelObj& obj) const
+        {
+          return obj.visit(static_cast<const TSuper&>(*this));
+        }
+
+        constexpr bool emptyStringGivesDefault() const { return true; }
+      };
 
       /// <summary>
       /// Wraps a type conversion functor, interpreting the string conversion to
@@ -43,20 +55,26 @@ namespace xloil
         {}
 
         using TBase::operator();
-        PyObject* operator()(const PStringRef& str) const
+        PyObject* operator()(const ExcelObj& obj) const
         {
-          pybind11::object cached;
-          if (pyCacheGet(str.view(), cached))
-            return cached.release().ptr();
-          return TBase::operator()(str);
+          if (obj.isType(ExcelType::Str))
+          {
+            auto pStr = obj.cast<PStringRef>();
+            pybind11::object cached;
+            if (pyCacheGet(pStr, cached))
+              return cached.release().ptr();
+
+            auto* cacheVal = getCached<ExcelObj>(pStr);
+            if (cacheVal)
+              return TBase::operator()(*cacheVal);
+          }
+          return TBase::operator()(obj);
         }
-        PyObject* operator()(const PStringRef& str)
-        {
-          return const_cast<const PyFromCache<TBase>&>(*this)(str);
-        }
+
+        constexpr bool emptyStringGivesDefault() const { return true; }
       };
 
-      struct PyFromDouble : public PyFromExcelImpl
+      struct PyFromDouble : public PyFromExcelImpl<PyFromDouble>
       {
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "float";
@@ -64,10 +82,11 @@ namespace xloil
         PyObject* operator()(double x) const   { return PyFloat_FromDouble(x); }
         PyObject* operator()(int x)    const   { return operator()(double(x)); }
         PyObject* operator()(bool x)   const   { return operator()(double(x)); }
+
         constexpr wchar_t* failMessage() const { return L"Expected float"; }
       };
 
-      struct PyFromBool : public PyFromExcelImpl
+      struct PyFromBool : public PyFromExcelImpl<PyFromBool>
       {
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "bool";
@@ -78,10 +97,11 @@ namespace xloil
         }
         PyObject* operator()(int x)      const { return operator()(bool(x)); }
         PyObject* operator()(double x)   const { return operator()(x != 0); }
+
         constexpr wchar_t* failMessage() const { return L"Expected bool"; }
       };
 
-      struct PyFromString : public PyFromExcelImpl
+      struct PyFromString : public PyFromExcelImpl<PyFromString>
       {
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "str";
@@ -97,9 +117,11 @@ namespace xloil
         PyObject* operator()(double x)  const { return PyUnicode_FromString(std::to_string(x).c_str()); }
 
         constexpr wchar_t* failMessage() const { return L"Expected string"; }
+
+        constexpr bool emptyStringGivesDefault() const { return false; }
       };
 
-      struct PyFromInt : public PyFromExcelImpl
+      struct PyFromInt : public PyFromExcelImpl<PyFromInt>
       {
         using PyFromExcelImpl::operator();
         static constexpr char* const ourName = "int";
@@ -117,10 +139,11 @@ namespace xloil
         constexpr wchar_t* failMessage() const { return L"Expected int"; }
       };
 
-      template<bool TTrimArray = true>
-      struct PyFromAny : public PyFromExcelImpl
+      template<class TSuper = nullptr_t, bool TTrimArray = true>
+      struct PyFromAny : public PyFromExcelImpl<std::conditional_t<std::is_null_pointer_v<TSuper>, PyFromAny<TSuper, TTrimArray>, TSuper>>
       {
-        using PyFromExcelImpl::operator();
+        // One suspects that C++ template syntax, while much improved, remains suboptimal
+        using PyFromExcelImpl<std::conditional_t<std::is_null_pointer_v<TSuper>, PyFromAny<TSuper, TTrimArray>, TSuper>>::operator();
         static constexpr char* const ourName = "object";
 
         PyObject* operator()(int x)    const { return PyFromInt()(x); }
@@ -141,15 +164,20 @@ namespace xloil
 
         PyObject* operator()(CellError err) const
         {
+          if (err == CellError::NA)
+            Py_RETURN_NONE;
           auto pyObj = pybind11::cast(err);
           return pyObj.release().ptr();
         }
+
         PyObject* operator()(const RefVal& ref) const
         {
           return pybind11::cast(new XllRange(ref)).release().ptr();
         }
 
         constexpr wchar_t* failMessage() const { return L"Unknown type"; }
+
+        constexpr bool emptyStringGivesDefault() const { return false; }
       };
 
       /// <summary>
@@ -189,8 +217,8 @@ namespace xloil
     struct PyFromExcel
     {
       typename std::conditional_t<TUseCache,
-        detail::PyFromCache<CacheConverter<TImpl>>,
-        TImpl> _impl;
+                                  detail::PyFromCache<TImpl>,
+                                  TImpl> _impl;
 
       static constexpr auto ourName = TImpl::ourName;
 
@@ -201,7 +229,7 @@ namespace xloil
 
       auto operator()(
         const ExcelObj& xl,
-        const PyObject* defaultVal)
+        const PyObject* defaultVal) const
       {
         return operator()(xl, const_cast<PyObject*>(defaultVal));
       }
@@ -210,10 +238,10 @@ namespace xloil
       /// <returns>New/borrowed reference</returns>
       /// </summary>
       auto operator()(
-        const ExcelObj& xl,
-        PyObject* defaultVal = nullptr)
+        const ExcelObj& obj,
+        PyObject* defaultVal = nullptr) const
       {
-        if (xl.isMissing() && defaultVal)
+        if (defaultVal && (obj.isMissing() || (_impl.emptyStringGivesDefault() && obj.isEmptyStr())))
         {
           // If we return the default value, we need to increment its refcount
           Py_INCREF(defaultVal);
@@ -221,11 +249,11 @@ namespace xloil
         }
 
         // Why return null and not throw here?
-        auto* retVal = xl.visit(_impl);
+        auto* retVal = _impl(obj);
 
         if (!retVal)
         {
-          XLO_THROW(L"Cannot convert '{0}': {1}", xl.toString(),
+          XLO_THROW(L"Cannot convert '{0}': {1}", obj.toString(),
             PyErr_Occurred() ? pyErrIfOccurred() : _impl.failMessage());
         }
         return retVal;
@@ -240,8 +268,8 @@ namespace xloil
     using PyFromBool           = PyFromExcel<detail::PyFromBool>;
     using PyFromDouble         = PyFromExcel<detail::PyFromDouble>;
     using PyFromString         = PyFromExcel<detail::PyFromString>;
-    using PyFromAny            = PyFromExcel<detail::PyFromAny<true>>;
-    using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<false>>;
+    using PyFromAny            = PyFromExcel<detail::PyFromAny<nullptr_t, true>>;
+    using PyFromAnyNoTrim      = PyFromExcel<detail::PyFromAny<nullptr_t, false>>;
 
     using PyFromIntUncached    = PyFromExcel<detail::PyFromInt, false>;
     using PyFromBoolUncached   = PyFromExcel<detail::PyFromBool, false>;
@@ -381,13 +409,14 @@ namespace xloil
         {
           return ExcelObj(PyFloat_AS_DOUBLE(p));
         }
+#pragma warning(suppress: 4127)
         else if (!TIsScalar && isNumpyArray(p))
         {
-          return ExcelObj(numpyArrayToExcel(p));
+          return numpyArrayToExcel(p);
         }
         else if (isPyDate(p))
         {
-          return ExcelObj(pyDateToExcel(p));
+          return pyDateToExcel(p);
         }
         else if (isErrorType(p))
         {
@@ -400,7 +429,7 @@ namespace xloil
         }
         else if (detail::getCustomReturnConverter())
         {
-          auto val = (*detail::getCustomReturnConverter())(*p);
+          auto val = (*detail::getCustomReturnConverter())(obj);
           if (!val.isType(ExcelType::Nil))
             return ExcelObj(std::move(val));
         }
@@ -423,9 +452,9 @@ namespace xloil
     class PyFuncToExcel : public IPyToExcel
     {
     public:
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
-        return TFunc()(&obj);
+        return TFunc()(obj);
       }
       const char* name() const override
       {

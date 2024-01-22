@@ -7,6 +7,7 @@
 #include <fstream>
 
 // We need access to a private ctor - yikes!
+#define TOML_ABI_NAMESPACES 0
 #define private public
 #include <toml++/toml.h>
 #undef private

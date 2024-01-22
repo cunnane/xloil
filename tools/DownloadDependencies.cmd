@@ -4,7 +4,7 @@ pushd %SOLN_DIR%\external
 
 git clone --single-branch --depth=1 --branch=v6.1.0 https://github.com/GiovanniDicanio/WinReg winreg
 git clone --single-branch --depth=1 --branch=v2.10.0-xloil https://github.com/cunnane/pybind11.git pybind11
-git clone --single-branch --depth=1 --branch=v3.2.0 https://github.com/marzer/tomlplusplus.git tomlplusplus
+git clone --single-branch --depth=1 --branch=v3.4.0 https://github.com/marzer/tomlplusplus.git tomlplusplus
 git clone --single-branch --depth=1 --branch=v1.4.2 https://github.com/gabime/spdlog.git spdlog
 git clone --single-branch --depth=1 --branch=v.0.0.2 https://github.com/vit-vit/CTPL.git ctpl
 git clone --single-branch --depth=1 --branch=documentation-stubs https://github.com/cunnane/pybind11-stubgen.git pybind11-stubgen

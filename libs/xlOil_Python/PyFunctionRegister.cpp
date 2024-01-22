@@ -84,13 +84,18 @@ namespace xloil
       const std::wstring& help,
       const std::wstring& category,
       bool isLocal,
-      bool isVolatile)
+      bool isVolatile,
+      unsigned errorPropagation)
       : _info(new FuncInfo())
       , _func(func)
       , _args(args)
       , isLocalFunc(isLocal)
       , isRtdAsync(false)
       , isAsync(false)
+      , _hasKeywordArgs(false)
+      , _hasVariableArgs(false)
+      , _numPositionalArgs(0)
+      , _propagateErrors(errorPropagation > 0 ? ALWAYS : errorPropagation < 0 ? NEVER : 0)
     {
       _info->name = name.empty()
         ? py::wstr(func.attr("__name__"))
@@ -156,7 +161,7 @@ namespace xloil
 
       FPArray* operator()(PyObject* retVal) const
       {
-        return numpyToFPArray(*retVal).get();
+        return numpyToFPArray(retVal).get();
       }
 
       FPArray* operator()(const char* err, const PyFuncInfo* info) const
@@ -190,7 +195,7 @@ namespace xloil
         static ExcelObj result;
 
         result = _returnConverter
-          ? (*_returnConverter)(*retVal)
+          ? (*_returnConverter)(retVal)
           : FromPyObj()(retVal);
 
         return (*this)(result);
@@ -217,7 +222,7 @@ namespace xloil
       ExcelObj* operator()(PyObject* retVal) const
       {
         return returnValue(_returnConverter
-          ? (*_returnConverter)(*retVal)
+          ? (*_returnConverter)(retVal)
           : FromPyObj()(retVal));
       }
 
@@ -241,6 +246,13 @@ namespace xloil
 
       try
       {
+        if (info->propagateErrors() )
+        {
+          for (auto j = 0u; j < info->info()->args.size(); ++j)
+            if (xlArgs[j]->isType(ExcelType::Err))
+              return returner(xlArgs[j]->cast<CellError>(), info);
+        }
+
         py::gil_scoped_acquire gilAcquired;
         PyErr_Clear(); // TODO: required?
         return returner(info->invoke([&](auto i) -> auto& { return *xlArgs[i]; }).ptr());
@@ -262,12 +274,17 @@ namespace xloil
 
     shared_ptr<const DynamicSpec>
       PyFuncInfo::createSpec(
-        const std::shared_ptr<PyFuncInfo>& func)
+        const std::shared_ptr<PyFuncInfo>& func, 
+        const PyAddin& addin)
     {
       // We implement this as a static function taking a shared_ptr rather than using 
       // shared_from_this with PyFuncInfo as the latter causes pybind to catch a 
       // std::bad_weak_ptr during construction which seems rather un-C++ like and irksome
       func->writeExcelArgumentDescription();
+
+      func->setErrorPropagation(addin.propagateErrors());
+      // TODO: function name prefix implement here
+
       auto cfunc = std::const_pointer_cast<const PyFuncInfo>(func);
       if (func->isAsync)
         return make_shared<DynamicSpec>(func->info(), &pythonAsyncCallback, cfunc);
@@ -432,13 +449,15 @@ namespace xloil
       _module = py::reinterpret_steal<py::object>(pyModule);
       vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
 
+      auto addin = _addin.lock();
+
       bool usesRtdAsync = false;
 
       for (auto& f : functions)
       {
         if (!_linkedWorkbook)
           f->isLocalFunc = false;
-        auto spec = PyFuncInfo::createSpec(f);
+        auto spec = PyFuncInfo::createSpec(f, *addin);
 
         if (f->isLocalFunc)
           localFuncs.emplace_back(std::move(spec));
@@ -463,9 +482,11 @@ namespace xloil
     {
       auto addin = _addin.lock();
       // Rescan the module, passing in the module handle if it exists
-      py::gil_scoped_acquire get_gil;
       if (_module && !_module.is_none())
+      {
+        py::gil_scoped_acquire get_gil;
         addin->importModule(_module);
+      }
       else
         addin->importFile(name().c_str(), linkedWorkbook().c_str());
     }
@@ -488,7 +509,6 @@ namespace xloil
         const auto wbName = wcsrchr(newPathName, '\\') + 1;
         auto newSource = make_shared<RegisteredModule>(newSourcePath, addin, wbName);
         addin->context().addSource(newSource);
-        py::gil_scoped_acquire get_gil;
         addin->importFile(newSourcePath.c_str(), newPathName);
       }
       else
@@ -576,6 +596,7 @@ namespace xloil
         weak_ptr<PyAddin>(context),
         modulePath,
         nullptr);
+
       registeredMod->registerPyFuncs(module.release(), functions, append);
     }
 
@@ -642,7 +663,7 @@ namespace xloil
             .def("__str__", &PyFuncArg::str);
 
         py::class_<PyFuncInfo, shared_ptr<PyFuncInfo>>(mod, "_FuncSpec")
-          .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool>(),
+          .def(py::init<py::function, vector<PyFuncArg>, wstring, string, wstring, wstring, bool, bool, unsigned>(),
             py::arg("func"),
             py::arg("args"),
             py::arg("name") = "",
@@ -650,15 +671,26 @@ namespace xloil
             py::arg("help") = "",
             py::arg("category") = "",
             py::arg("local") = true,
-            py::arg("volatile") = false)
+            py::arg("volatile") = false,
+            py::arg("errors") = 0)
+          .def("__str__", pyFuncInfoToString)
           .def_property("return_converter",
             &PyFuncInfo::getReturnConverter,
             &PyFuncInfo::setReturnConverter)
+          .def_property("error_propagation",
+            &PyFuncInfo::getErrorPropagation,
+            &PyFuncInfo::setErrorPropagation,
+            R"(
+              Used internally to control the error propagation setting
+            )")
           .def_property_readonly("args",
             [](const PyFuncInfo& self) { return self.args(); })
-          .def_property("name", // TOOD: writing to name property doesn't make sense when registered
+          .def_property("name",
             [](const PyFuncInfo& self) { return self.info()->name; },
-            [](const PyFuncInfo& self, wstring&& value) { self.info()->name = std::move(value); })
+            [](const PyFuncInfo& self, wstring&& value) { self.info()->name = std::move(value); },
+            R"(
+              Writing to name property doesn't make sense when registered
+            )")
           .def_property_readonly("help",
             [](const PyFuncInfo& self) { return self.info()->help; })
           .def_property("func",
@@ -681,8 +713,8 @@ namespace xloil
             [](const PyFuncInfo& self) { return self.isAsync; },
             R"(
               True if the function used Excel's native async
-            )")
-          .def("__str__", pyFuncInfoToString);
+            )");
+          
 
         mod.def("_register_functions", &registerFunctions,
           py::arg("funcs"),

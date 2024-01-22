@@ -481,7 +481,12 @@ namespace xloil
     /// </summary>
     bool isMissing() const
     {
-      return (xtype() & msxll::xltypeMissing) != 0;
+      return isType(ExcelType::Missing);
+    }
+
+    bool isEmptyStr() const
+    {
+      return isType(ExcelType::Str) && (val.str.data[0] == L'\0');
     }
 
     /// <summary>
@@ -835,6 +840,12 @@ namespace xloil
   {
     assert(xtype() == msxll::xltypeBool);
     return val.xbool;
+  }
+
+  template<> inline CellError ExcelObj::cast() const
+  {
+    assert(xtype() == msxll::xltypeErr);
+    return CellError(val.err);
   }
 
   template<> inline PStringRef ExcelObj::cast() const

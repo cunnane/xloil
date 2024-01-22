@@ -13,35 +13,48 @@ namespace xloil
 {
   namespace Python
   {
-    class UserImpl : public detail::PyFromAny<>
+    namespace
     {
-      PyExcelArray* _ArrayWrapper = nullptr;
-
-    public:
-      using detail::PyFromAny<>::operator();
-
-      PyObject* operator()(const ArrayVal& arr)
+      class CustomConverterArgumentHandler : public detail::PyFromAny<CustomConverterArgumentHandler>
       {
-        _ArrayWrapper = new PyExcelArray(arr);
-        return py::cast(
-          _ArrayWrapper,
-          py::return_value_policy::take_ownership).release().ptr();
-      }
+        // Use of the pointer-trick to avoid breaking const-ness in
+        // operator()
+        PyExcelArray** _ArrayWrapper;
 
-      PyObject* operator()(const PStringRef& pstr)
-      {
-        return detail::PyFromString()(pstr);
-      }
+      public:
+        CustomConverterArgumentHandler(PyExcelArray* wrapper)
+          : _ArrayWrapper(&wrapper)
+        {}
 
-      void checkArrayWrapperDisposed()
-      {
-        if (_ArrayWrapper && _ArrayWrapper->refCount() != 1)
-          XLO_THROW("Held reference to ExcelArray detected. Accessing this object "
-            "in python may crash Excel");
-      }
+        using detail::PyFromAny<CustomConverterArgumentHandler>::operator();
 
-      constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
-    };
+        PyObject* operator()(const ArrayVal& arr) const
+        {
+          *_ArrayWrapper = new PyExcelArray(arr);
+          return py::cast(
+            *_ArrayWrapper,
+            py::return_value_policy::take_ownership).release().ptr();
+        }
+
+        // Normally #N/A inputs are converted to None in PyFromAny. To give the custom converter
+        // maximum flexibility we override that behaviour
+
+        PyObject* operator()(CellError err) const
+        {
+          auto pyObj = pybind11::cast(err);
+          return pyObj.release().ptr();
+        }
+
+        static void checkArrayWrapperDisposed(PyExcelArray* wrapper)
+        {
+          if (wrapper && wrapper->refCount() != 1)
+            XLO_THROW("Held reference to ExcelArray detected. Accessing this object "
+              "in python may crash Excel");
+        }
+
+        constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
+      };
+    }
 
     class CustomConverter : public IPyFromExcel
     {
@@ -80,10 +93,13 @@ namespace xloil
       template<bool TUseCache>
       auto callConverter(const ExcelObj& xl, const_result_ptr defaultVal)
       {
-        PyFromExcel<UserImpl, TUseCache> typeConverter;
+        PyExcelArray* wrapper = nullptr;
+        PyFromExcel<CustomConverterArgumentHandler, TUseCache> typeConverter(wrapper);
+
         auto arg = PySteal(typeConverter(xl, defaultVal));
         auto retVal = _callable(arg);
-        typeConverter._impl.checkArrayWrapperDisposed();
+
+        CustomConverterArgumentHandler::checkArrayWrapperDisposed(wrapper);
         return retVal.release().ptr();
       }
 
@@ -109,7 +125,7 @@ namespace xloil
         py::gil_scoped_acquire getGil;
         _callable = py::object();
       }
-      virtual ExcelObj operator()(const PyObject& target) const override
+      virtual ExcelObj operator()(const PyObject* target) const override
       {
         auto* result = invokeImpl(target);
         if (!result)
@@ -120,17 +136,17 @@ namespace xloil
           PyErr_Clear();
           return ExcelObj();
         }
-        auto converted = PySteal<>(result);
+        auto converted = PySteal(result);
         // TODO: the custom converter should be able to specify the return type rather than generic FromPyObj
         // TODO: the user could create an infinite loop which cycles between two type converters - best way to avoid?
         return FromPyObj()(converted.ptr());
       }
       auto invoke(const py::object& target) const
       {
-        return PySteal<>(invokeImpl(*target.ptr()));
+        return PySteal(invokeImpl(target.ptr()));
       }
 
-      PyObject* invokeImpl(const PyObject& target) const
+      PyObject* invokeImpl(const PyObject* target) const
       {
       // Use raw C API for extra speed as this code is on a critical path
 #if PY_VERSION_HEX < 0x03080000
@@ -139,7 +155,7 @@ namespace xloil
         PyObject* args[] = { nullptr, const_cast<PyObject*>(&target) };
         auto result = _PyObject_Vectorcall(_callable.ptr(), args + 1, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, nullptr);
 #else
-        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(&target));
+        auto result = PyObject_CallOneArg(_callable.ptr(), const_cast<PyObject*>(target));
 #endif
         return result;
       }

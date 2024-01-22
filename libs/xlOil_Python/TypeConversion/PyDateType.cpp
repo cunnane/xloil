@@ -32,7 +32,7 @@ namespace xloil
       return (PyDate_CheckExact(p) || PyDateTime_CheckExact(p));
     }
 
-    ExcelObj pyLocalDateTimeToSerial(PyObject* p)
+    ExcelObj pyLocalDateTimeToSerial(const PyObject* p)
     {
       auto serial = excelSerialDateFromYMDHMS(
         PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p),
@@ -53,7 +53,7 @@ namespace xloil
       }
     }
 
-    ExcelObj pyDateToSerial(PyObject* p)
+    ExcelObj pyDateToSerial(const PyObject* p)
     {
       auto serial = excelSerialDateFromYMD(
         PyDateTime_GET_YEAR(p), PyDateTime_GET_MONTH(p), PyDateTime_GET_DAY(p));
@@ -73,10 +73,10 @@ namespace xloil
       }
     }
 
-    class PyFromDate : public detail::PyFromExcelImpl
+    class PyFromDate : public detail::PyFromExcelImpl<PyFromDate>
     {
     public:
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyFromDate>::operator();
       static constexpr char* const ourName = "date";
 
       PyObject* operator()(int x) const
@@ -100,10 +100,10 @@ namespace xloil
       constexpr wchar_t* failMessage() const { return L"Expected date"; }
     };
 
-    class PyFromDateTime : public detail::PyFromExcelImpl
+    class PyFromDateTime : public detail::PyFromExcelImpl<PyFromDateTime>
     {
     public:
-      using detail::PyFromExcelImpl::operator();
+      using detail::PyFromExcelImpl<PyFromDateTime>::operator();
       static constexpr char* const ourName = "datetime";
 
       PyObject* operator()(int x) const
@@ -135,10 +135,10 @@ namespace xloil
     class PyDateToExcel : public IPyToExcel
     {
     public:
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
-        return PyDate_CheckExact(&obj)
-          ? ExcelObj(pyDateToSerial((PyObject*)&obj))
+        return PyDate_CheckExact(obj)
+          ? ExcelObj(pyDateToSerial(obj))
           : ExcelObj();
       }
       const char* name() const override
@@ -149,10 +149,10 @@ namespace xloil
     class PyDateTimeToExcel : public IPyToExcel
     {
     public:
-      ExcelObj operator()(const PyObject& obj) const override
+      ExcelObj operator()(const PyObject* obj) const override
       {
-        return PyDateTime_CheckExact(&obj)
-          ? ExcelObj(pyDateTimeToSerial((PyObject*)&obj))
+        return PyDateTime_CheckExact(obj)
+          ? ExcelObj(pyDateTimeToSerial(const_cast<PyObject*>(obj)))
           : ExcelObj();
       }
       const char* name() const override
