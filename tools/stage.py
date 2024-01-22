@@ -2,11 +2,12 @@ import os
 from pathlib import Path
 import sys
 import subprocess
-import distutils.dir_util
-import distutils.file_util
 from glob import glob
 import shutil as sh
 from argparse import ArgumentParser
+import shutil
+import pkg_resources
+
 
 def merge_dict(x, y):
     return {**x, **y}
@@ -73,15 +74,24 @@ lib_files = [
 
 
 def copy_tree(src, dst):
-    distutils.dir_util.copy_tree(str(src), str(dst))
+    shutil.copytree(str(src), str(dst), dirs_exist_ok=True)
 
 def copy_file(src, dst):
-    distutils.file_util.copy_file(str(src), str(dst))
+    shutil.copy2(str(src), str(dst))
 
 def latest_file(dir):
     list_of_files = glob(f'{dir}/*')
     return max(list_of_files, key=os.path.getctime)
 
+def check_package_requirements(filepath):
+    with Path(filepath).open() as file:
+        requirements = pkg_resources.parse_requirements(file)
+        for requirement in requirements:
+            requirement = str(requirement)
+            pkg_resources.require(requirement)
+                
+
+check_package_requirements(soln_dir / "docs" / "requirements.txt")
 
 print("Soln dir: ", str(soln_dir))
 
@@ -193,6 +203,8 @@ print(
     '\nTo upload the python package to PyPI:'
     f'\n  > cd {str(python_package_dir)}'
      '\n  > twine upload --repository-url https://test.pypi.org/legacy/ dist/*'
+     '\nor'
+     '\n  > twine upload --repository xlOil dist/*'
      '\nor'
      '\n  > twine upload dist/*'
     )
