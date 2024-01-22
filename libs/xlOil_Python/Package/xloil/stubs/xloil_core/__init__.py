@@ -2169,7 +2169,7 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
     """
     For internal use. Converts a table like object (such as a pandas DataFrame) to 
     RawExcelValue suitable for returning to xlOil.
-
+      
     n, m:
       the number of data fields and the length of the fields
     columns / rows: 
