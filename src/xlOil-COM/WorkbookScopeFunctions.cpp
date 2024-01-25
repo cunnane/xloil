@@ -174,7 +174,10 @@ namespace xloil
 
     void removeExistingXlOilVBA(const wchar_t* workbookName)
     {
-      try {
+      try 
+      {
+        static bool registryChecked = checkRegistryKeys();
+
         auto workbook = thisApp().workbooks().get(workbookName);
 
         auto vbProj = workbook.com().VBProject;
