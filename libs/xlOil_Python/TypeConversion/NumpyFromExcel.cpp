@@ -434,10 +434,7 @@ namespace xloil
 
     PyObject* toNumpyDatetimeFromExcelDateArray(const PyObject* obj)
     {
-      if (!PyArray_Check(obj))
-        XLO_THROW("Expected array");
-
-      const auto array = (PyArrayObject*)obj;
+      auto [pyArr, dims, nDims] = getArrayInfo(obj);
 
       npy_uint32 op_flags[2];
       /*
@@ -448,7 +445,7 @@ namespace xloil
        * Tell the constructor to automatically allocate the output.
        * The data type of the output will match that of the input.
        */
-      PyArrayObject* op[] = { array, nullptr };
+      PyArrayObject* op[] = { pyArr, nullptr };
       op_flags[0] = NPY_ITER_READONLY;
       op_flags[1] = NPY_ITER_WRITEONLY | NPY_ITER_ALLOCATE;
 

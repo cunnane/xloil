@@ -109,15 +109,10 @@ namespace xloil
         if (p.is_none())
           return 0;
 
-        if (!PyArray_Check(p.ptr()))
-          XLO_THROW("Expected an array");
-
-        auto pyArr = (PyArrayObject*)p.ptr();
-        const auto nDims = PyArray_NDIM(pyArr);
-        const auto dims = PyArray_DIMS(pyArr);
-
+        auto[pyArr, dims, nDims] = getArrayInfo(p.ptr());
+        
         if (nDims != 1)
-          XLO_THROW("Expected 1 dim array");
+          XLO_THROW("Expected 1 dim array, got a {} dim one", nDims);
 
         return dims[0];
       }
@@ -208,29 +203,56 @@ namespace xloil
       TableHelpers::Converters converters(
         nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0), !useObjectCache);
 
+      
+      auto i = 0u;
+
       // Examine data frame index
       if (hasIndex)
       {
-        for (auto iter = py::iter(index); iter != py::iterator::sentinel(); ++iter)
+        i = 0;
+        try
         {
-          converters.collect(*iter, nInner);
-          ++nIndexLevels;
+          for (auto iter = py::iter(index); iter != py::iterator::sentinel(); ++iter, ++i)
+          {
+            converters.collect(*iter, nInner);
+            ++nIndexLevels;
+          }
+        }
+        catch (const std::exception& e)
+        {
+          XLO_THROW("Whilst reading index level {}: {}", i, e.what());
         }
       }
 
       
+      i = 0;
       // First loop to establish array size and length of strings
-      for (auto iter = py::iter(tableData); iter != py::iterator::sentinel(); ++iter)
+      for (auto iter = py::iter(tableData); iter != py::iterator::sentinel(); ++iter, ++i)
       {
-        converters.collect(*iter, nInner);
+        try
+        {
+          converters.collect(*iter, nInner);
+        }
+        catch (const std::exception& e)
+        {
+          XLO_THROW("Whilst reading column {}: {}", i, e.what());
+        }
       }
 
       if (hasHeadings)
       {
-        for (auto iter = py::iter(headings); iter != py::iterator::sentinel(); ++iter)
+        i = 0;
+        try
         {
-          converters.collect(*iter, nOuter);
-          ++nHeadingLevels;
+          for (auto iter = py::iter(headings); iter != py::iterator::sentinel(); ++iter)
+          {
+            converters.collect(*iter, nOuter);
+            ++nHeadingLevels;
+          }
+        }
+        catch (const std::exception& e)
+        {
+          XLO_THROW("Whilst reading heading level {}: {}", i, e.what());
         }
       }
 

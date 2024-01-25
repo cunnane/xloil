@@ -17,28 +17,17 @@ namespace xloil
   {
     namespace
     {
-      std::tuple<PyArrayObject*, npy_intp*, int, bool>
-        getArrayInfo(const PyObject* obj)
+      bool isEmptyArray(npy_intp* dims, int nDims)
       {
-        if (!PyArray_Check(obj))
-          XLO_THROW("Expected array");
-
-        auto pyArr = (PyArrayObject*)obj;
-        auto dims = PyArray_DIMS(pyArr);
-        auto nDims = PyArray_NDIM(pyArr);
-
         // Empty arrays are not allowed in Excel, the closest is #N/A.
         // Regardless of nDims, if any is zero the array is empty.
         bool isEmpty = false;
         for (auto i = 0; i < nDims; ++i)
           if (dims[i] == 0)
             isEmpty = true;
-
-        return { pyArr, dims, nDims, isEmpty };
       }
     }
 
-   
     template <int TNpType>
     class XlFromArray1d : public IPyToExcel
     {
@@ -53,9 +42,10 @@ namespace xloil
 
       ExcelObj operator()(const PyObject* obj) const override
       {
-        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        auto [pyArr, dims, nDims] = getArrayInfo(obj);
+
         // Empty arrays are not allowed in Excel, the closest is #N/A.
-        if (isEmpty)
+        if (isEmptyArray(dims, nDims))
           return CellError::NA;
 
         if (nDims != 1)
@@ -90,9 +80,9 @@ namespace xloil
 
       ExcelObj operator()(const PyObject* obj) const override
       {
-        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        auto [pyArr, dims, nDims] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
-        if (isEmpty)
+        if (isEmptyArray(dims, nDims))
           return CellError::NA;
 
         if (nDims != 2)
@@ -134,9 +124,9 @@ namespace xloil
 
       ExcelObj operator()(const PyObject* obj) const override
       {
-        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        auto [pyArr, dims, nDims] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
-        if (isEmpty)
+        if (isEmptyArray(dims, nDims))
           return CellError::NA;
 
         if (nDims != 1)
@@ -175,9 +165,9 @@ namespace xloil
 
       ExcelObj operator()(const PyObject* obj) const override
       {
-        auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+        auto [pyArr, dims, nDims] = getArrayInfo(obj);
         // Empty arrays are not allowed in Excel, the closest is #N/A.
-        if (isEmpty)
+        if (isEmptyArray(dims, nDims))
           return CellError::NA;
 
         if (nDims != 2)
@@ -209,12 +199,8 @@ namespace xloil
 
     ExcelObj numpyArrayToExcel(const PyObject* p)
     {
-      if (!PyArray_Check(p))
-        XLO_THROW("Expected array");
-
-      auto pArr = (PyArrayObject*)p;
-      auto nDims = PyArray_NDIM(pArr);
-      auto dType = PyArray_TYPE(pArr);
+      auto [pyArr, dims, nDims] = getArrayInfo(p);
+      auto dType = PyArray_TYPE(pyArr);
 
       NumpyBeginThreadsDescr releaseGil(dType);
 
@@ -231,9 +217,9 @@ namespace xloil
   
     std::shared_ptr<FPArray> numpyToFPArray(const PyObject* obj)
     {
-      auto [pyArr, dims, nDims, isEmpty] = getArrayInfo(obj);
+      auto [pyArr, dims, nDims] = getArrayInfo(obj);
 
-      if (isEmpty || nDims != 2)
+      if (isEmptyArray(dims, nDims) || nDims != 2)
         XLO_THROW("Expected non-empty 2-d array");
 
       if (PyArray_TYPE(pyArr) != NPY_DOUBLE)
