@@ -337,14 +337,15 @@ namespace xloil
       /// Sent when a file is deleted or renamed
       Delete = 2,
       /// Sent when a file is modified
-      Modified = 4
+      Modify = 4
     };
 
     XLOIL_EXPORT std::wstring to_wstring(const FileAction x);
 
-    XLOIL_EXPORT std::shared_ptr<Event<
-      void(const wchar_t* directory, const wchar_t* filename, FileAction)>>
-      DirectoryChange(const std::wstring& path);
+    using DirectoryChangeEvent_t = Event<void(const wchar_t* directory, const wchar_t* filename, FileAction)>;
+    XLOIL_EXPORT 
+      std::shared_ptr<DirectoryChangeEvent_t>
+        DirectoryChange(const std::wstring& path, const bool subDirs);
   }
 
  
@@ -352,7 +353,7 @@ namespace xloil
   /// <summary>
   /// All the singleton xlOil events as a sequence. Use BOOST_PP_SEQ functions
   /// to iterate over this sequence to create bindings. Non singleton/static
-  /// events such as DirectoryChange as not included here.
+  /// events such as DirectoryChange are not included here.
   /// </summary>
 #define XLOIL_STATIC_EVENTS \
     (AfterCalculate)\

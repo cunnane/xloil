@@ -52,12 +52,12 @@ namespace xloil
 
       struct DirectoryWatchEvent : public DirectoryWatchEventBase
       {
-        DirectoryWatchEvent(const std::wstring& path)
+        DirectoryWatchEvent(const std::wstring& path, const bool subDirs)
           : DirectoryWatchEventBase((L"Watch_" + path).c_str())
           , _lastTickCount(0)
           , _directory(path)
         {
-          theFileWatcher().addDirectory((intptr_t)this, path);
+          theFileWatcher().addDirectory((intptr_t)this, path, subDirs);
           XLO_DEBUG(L"Started directory watch on '{}'", path);
         }
 
@@ -71,14 +71,12 @@ namespace xloil
           const wstring& filename,
           FileAction action)
         {
-          if (filename.find(L'\\') != wstring::npos)
-            return;
-
-          // File updates seem to generate two identical calls so implement a time granularity
+          // File updates seem to generate two identical calls so we implement a time granularity
           auto ticks = GetTickCount64();
-          if (ticks - _lastTickCount < 1000)
+          auto found = _lastTickCount.find(filename);
+          if (found != _lastTickCount.end() && (ticks - found->second < 1000))
             return;
-          _lastTickCount = ticks;
+          _lastTickCount.insert_or_assign(found, filename, ticks);
 
           this->fire(_directory.c_str(), filename.c_str(), action);
         }
@@ -86,7 +84,7 @@ namespace xloil
         auto& directory() const { return _directory; }
 
       private:
-        decltype(GetTickCount64()) _lastTickCount;
+        std::unordered_map<wstring, decltype(GetTickCount64())> _lastTickCount;
         wstring _directory;
       };
 
@@ -107,7 +105,7 @@ namespace xloil
             fwAction = FileAction::Delete;
             break;
           case FILE_ACTION_MODIFIED:
-            fwAction = FileAction::Modified;
+            fwAction = FileAction::Modify;
             break;
           default:
             return;
@@ -131,15 +129,16 @@ namespace xloil
       {
       case FileAction::Add: return L"add";
       case FileAction::Delete: return L"delete";
-      case FileAction::Modified: return L"modified";
+      case FileAction::Modify: return L"modify";
       default:
         return L"unknown";
       }
     }
 
-    XLOIL_EXPORT shared_ptr<DirectoryWatchEventBase> DirectoryChange(const std::wstring& path)
+    XLOIL_EXPORT shared_ptr<DirectoryWatchEventBase> DirectoryChange(const std::wstring& path, const bool subDirs)
     {
-      auto found = theDirectoryWatchers.find(path);
+      auto key = path + (subDirs ? L'<' : L'>');
+      auto found = theDirectoryWatchers.find(key);
       if (found != theDirectoryWatchers.end())
       {
         auto ptr = found->second.lock();
@@ -150,8 +149,8 @@ namespace xloil
           theDirectoryWatchers.erase(found);
       }
 
-      auto event = make_shared<DirectoryWatchEvent>(path);
-      auto [it, ins] = theDirectoryWatchers.emplace(path, event);
+      auto event = make_shared<DirectoryWatchEvent>(path, subDirs);
+      auto [it, ins] = theDirectoryWatchers.emplace(key, event);
       return event;
     }
 

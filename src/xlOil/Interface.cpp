@@ -244,7 +244,7 @@ namespace xloil
       auto path = fs::path(name());
       auto dir = path.remove_filename();
       if (!dir.empty())
-        _fileWatcher = Event::DirectoryChange(dir)->weakBind(
+        _fileWatcher = Event::DirectoryChange(dir, false)->weakBind(
           static_pointer_cast<FileSource>(weak_from_this()),
           &FileSource::handleDirChange);
     }
@@ -364,7 +364,7 @@ namespace xloil
       {
         switch (action)
         {
-          case Event::FileAction::Modified:
+          case Event::FileAction::Modify:
           {
             XLO_INFO(L"Module '{0}' modified, reloading.", self->name().c_str());
             self->reload();

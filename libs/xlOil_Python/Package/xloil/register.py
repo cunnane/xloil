@@ -477,7 +477,7 @@ def scan_module(module, addin=None):
         hook on the import function.
     """
 
-    # Enabling this generates a large amount of unhelpful output
+    # Enabling this log line generates a large amount of unhelpful output
     # log.trace(f"Scanning module {module}")
 
     # We quickly discard modules which do not contain xloil declarations 

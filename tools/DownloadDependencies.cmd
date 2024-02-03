@@ -8,7 +8,7 @@ git clone --single-branch --depth=1 --branch=v3.4.0 https://github.com/marzer/to
 git clone --single-branch --depth=1 --branch=v1.4.2 https://github.com/gabime/spdlog.git spdlog
 git clone --single-branch --depth=1 --branch=v.0.0.2 https://github.com/vit-vit/CTPL.git ctpl
 git clone --single-branch --depth=1 --branch=documentation-stubs https://github.com/cunnane/pybind11-stubgen.git pybind11-stubgen
-git clone --single-branch --depth=1 --branch=master https://github.com/tresorit/rdcfswatcherexample.git rdcfswatcher
+REM git clone --single-branch --depth=1 --branch=master https://github.com/tresorit/rdcfswatcherexample.git rdcfswatcher
 
 REM Cloning sqlite is about 100mb and it's much easier to work with the source amalgamation
 curl.exe --output sqlite.zip --url https://www.sqlite.org/2022/sqlite-amalgamation-3390300.zip

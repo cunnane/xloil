@@ -480,6 +480,12 @@ namespace xloil
 
     void RegisteredModule::reload()
     {
+      // TODO: avoid watching the file in this case!
+      // Changes to non-local modules will be detected by the auto-reloader in
+      // xloil.importer, so we can ignore them here.
+      if (linkedWorkbook().empty())
+        return;
+
       auto addin = _addin.lock();
       // Rescan the module, passing in the module handle if it exists
       if (_module && !_module.is_none())
@@ -488,7 +494,7 @@ namespace xloil
         addin->importModule(_module);
       }
       else
-        addin->importFile(name().c_str(), linkedWorkbook().c_str());
+        addin->importFile(name().c_str(), linkedWorkbook().c_str()); // gets the gil itself
     }
 
     void RegisteredModule::renameWorkbook(const wchar_t* newPathName)

@@ -1,7 +1,9 @@
 """
           A module containing event objects which can be hooked to receive events driven by 
           Excel's UI. The events correspond to COM/VBA events and are described in detail
-          in the Excel Application API.
+          in the Excel Application API. The naming convention (including case) of the VBA events
+          has been preserved for ease of search.
+          
         
           See :ref:`Events:Introduction` and 
           `Excel.Application <https://docs.microsoft.com/en-us/office/vba/api/excel.application(object)#events>`_
@@ -42,7 +44,7 @@
           Python-only Events
           ------------------
 
-          These events specific to python and not documented in the Core documentation:
+          These events are specific to python and not noted in the Core documentation:
 
             * PyBye:
                 Fired just before xlOil finalises its embedded python interpreter. 
@@ -52,6 +54,9 @@
             * UserException:
                 Fired when an exception is raised in a user-supplied python callback, 
                 for example a GUI callback or an RTD publisher. Has no parameters.
+            * file_change:
+                This is a special parameterised event, see the separate documentation
+                for this function.
 
           Examples
           --------
@@ -108,7 +113,7 @@ __all__ = [
     "XllAdd",
     "XllRemove",
     "allow",
-    "boolRef",
+    "file_change",
     "pause"
 ]
 
@@ -116,14 +121,29 @@ __all__ = [
 class Event():
     def __iadd__(self, arg0: object) -> Event: ...
     def __isub__(self, arg0: object) -> Event: ...
-    def clear(self) -> None: ...
+    def add(self, handler: object) -> Event: 
+        """
+        Registers an event handler callback with this event, equivalent to
+        `event += handler`
+        """
+    def clear(self) -> None: 
+        """
+        Removes all handlers from this event
+        """
+    def remove(self, handler: object) -> Event: 
+        """
+        Deregisters an event handler callback with this event, equivalent to
+        `event -= handler`
+        """
     @property
     def handlers(self) -> tuple:
         """
+        The tuple of handlers registered for this event. Read-only.
+
         :type: tuple
         """
     pass
-class boolRef():
+class _bool_ref():
     @property
     def value(self) -> bool:
         """
@@ -137,6 +157,38 @@ def allow() -> None:
     """
     Resumes Excel's event handling after a pause.  Equivalent to VBA's
     `Application.EnableEvents = True` or `xlo.app().enable_events = True` 
+    """
+def file_change(path: str, action: str = 'modify', subdirs: bool = True) -> Event:
+    """
+    This function returns an event specific to the given path and action; the 
+    event fires when a watched file or directory changes.  The returned event 
+    can be hooked in the usual way using `+=` or `add`. Calling this function 
+    with same arguments always returns a reference to the same event object.
+
+    The handler should take a single string argument: the name of the file or 
+    directory which changed.
+
+    The event runs on a background thread.
+
+    Parameters
+    ----------
+
+    path: str
+       Can be a file or a directory. If *path* points to a directory, any change
+       to files in that directory, will trigger the event. Changes to the specified 
+       directory itself will not trigger the event.
+
+    action: str ["add", "remove", "modify"], default "modify"
+       The event will only fire when this type of change is detected:
+
+         *modify*: any update which causes a file's last modified time to change
+         *remove*: file deletion
+         *add*: file creation
+
+       A file rename triggers *remove* followed by *add*.
+
+    subdirs: bool (true)
+       including in subdirectories,
     """
 def pause() -> None:
     """

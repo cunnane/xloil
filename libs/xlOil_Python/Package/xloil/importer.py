@@ -7,6 +7,8 @@ import os
 import inspect
 from importlib.machinery import SourceFileLoader
 
+from xloil.stubs import xloil_core
+from collections.abc import Iterable
 from .register import scan_module
 from ._core import StatusBar, Addin, XLOIL_EMBEDDED
 from .logging import log, log_except
@@ -14,73 +16,6 @@ from .logging import log, log_except
 _module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
 
-
-class _UrlLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
-    """
-    Loads a python module from a URL, then runs `scan_module` on the result
-    """
-    def get_data(self, path):
-        
-        url = self.get_filename()
-
-        log.debug("Loading module name '%s' from URL '%s'", self.name, url)
-
-        # The core already loads the contents onedrive/sharepoint URLs
-        # so we first try to fetch that cached copy, then otherwise fetch
-        # the URL in the normal way with 'requests' 
-        try:
-            from xloil_core import _get_onedrive_source
-            preloaded = _get_onedrive_source(url)
-            return preloaded.encode('utf-8')
-
-        except:
-            import requests
-            response = requests.get(url)
-            return response.text.encode('utf-8')
-
-    def exec_module(self, module):
-        # Exec module as normal
-        super().exec_module(module)
-
-        # Look for xlOil functions to register
-        scan_module(module)
-
-
-class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
-    """
-    Allows importing a module from a path specified in path_map without
-    needing to add it to sys.paths - essentially a private set of import 
-    paths, indexed by module name
-    """
-
-    _path_map = dict()
-
-    def find_spec(self, fullname, path, target=None):
-        path = self._path_map.get(fullname, None)
-        if path is None:
-            return None
-
-        loader = None 
-
-        if path.startswith("http"):
-            loader = _UrlLoader(fullname, path)
-
-        log.debug("Found spec for '%s' with location '%s'", fullname, path)
-        return importlib.util.spec_from_file_location(
-            fullname, path, 
-            loader=loader, submodule_search_locations=[])
-
-    def find_module(self, fullname, path):
-        return None
-
-    def add_path(self, name, path):
-        log.debug("Associating module name '%s' with path '%s'", name, path)
-        self._path_map[name] = path
-
-# Install a sys.meta_path hook. This allows reloads to work for modules 
-# we import from specific path in _import_file
-_module_finder = _SpecifiedPathFinder()
-sys.meta_path.append(_module_finder)
 
 def _pump_message_loop(loop, timeout:float):
     """
@@ -95,6 +30,7 @@ def _pump_message_loop(loop, timeout:float):
 
     all_tasks = asyncio.all_tasks if sys.version_info[:2] > (3, 6) else asyncio.Task.all_tasks
     return len([task for task in all_tasks(loop) if not task.done()])
+
 
 def linked_workbook() -> str:
     """
@@ -138,7 +74,8 @@ def get_event_loop():
 def _import_file(path, addin=None, workbook_name:str=None):
 
     """
-    Imports the specifed py file as a module without adding its path to sys.modules.
+    Imports the specifed py file by path as a module without requiring it to be on 
+    *sys.path* and without adding its path to *sys.modules*.
 
     Optionally also adds xlOil linked workbook information.
     """
@@ -196,11 +133,11 @@ def _import_and_scan(what, addin):
         else:
             return _import_and_scan_mutiple(what, addin)
     except (ImportError, ModuleNotFoundError) as e:
-        import sys
         raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
     
     scan_module(module, addin)
     return module
+
 
 def _import_and_scan_mutiple(module_names, addin):
     result = []
@@ -219,9 +156,11 @@ def _import_and_scan_mutiple(module_names, addin):
             status.msg("xlOil python module load complete")
     return result
 
+
 def _import_file_and_scan(path, addin=None, workbook_name:str=None):
     """
-        Internal use only: called from xlOil Core
+        Internal use only: called from xlOil Core. Wraps _import_file
+        and scan_module with StatusBar display.
     """
 
     with StatusBar(3000) as status:
@@ -293,6 +232,7 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
     if isinstance(names, str):
         if names == "*":
             from inspect import getmembers, isfunction, isclass, iscoroutinefunction, isasyncgenfunction
+            
             source_names = [x[0] for x in getmembers(module, lambda x: 
                 isfunction(x) or isclass(x) or iscoroutinefunction(x) or isasyncgenfunction(x))]
             target_names = source_names
@@ -323,8 +263,14 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
     _register_functions(to_register, module, addin, append=True)
 
 
-
 class _LoadAndScanHook(SourceFileLoader):
+    
+    def __init__(self, fullname: str, path: str) -> None:
+        super().__init__(fullname, path)
+        # A dict of {watched_module_file -> module_name}
+        self._watched = {}
+    
+
     def exec_module(self, module):
         global _module_addin_map
 
@@ -335,9 +281,99 @@ class _LoadAndScanHook(SourceFileLoader):
 
         # Exec module as normal
         super().exec_module(module)
+        
+        try:
+            self._watch_module(module)
+
+            # Look for xlOil functions to register
+            scan_module(module)
+        except Exception as e:
+            log_except(f"Import failed: {e.msg}")
+            raise
+
+    def _watch_module(self, module):
+        
+        if module.__spec__.origin == "frozen" or module.__spec__.origin.startswith(sys.prefix):
+            return
+        
+        filepath = module.__spec__.origin
+
+        if filepath in self._watched:
+            return
+        
+        import xloil_core
+        event = xloil_core.event.file_change(filepath)
+        event += self._on_file_modified
+        
+        self._watched[filepath] = module.__name__
+        
+    def _on_file_modified(self, filepath):
+        module_name = self._watched[filepath]
+        module = sys.modules[module_name]
+        importlib.reload(module)
+
+
+class _UrlLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
+    """
+    Loads a python module from a URL, then runs `scan_module` on the result
+    """
+    def get_data(self, path):
+        
+        url = self.get_filename()
+
+        log.debug("Loading module name '%s' from URL '%s'", self.name, url)
+
+        # The core already loads the contents onedrive/sharepoint URLs
+        # so we first try to fetch that cached copy, then otherwise fetch
+        # the URL in the normal way with 'requests' 
+        try:
+            from xloil_core import _get_onedrive_source
+            preloaded = _get_onedrive_source(url)
+            return preloaded.encode('utf-8')
+
+        except:
+            import requests
+            response = requests.get(url)
+            return response.text.encode('utf-8')
+
+    def exec_module(self, module):
+        # Exec module as normal
+        super().exec_module(module)
 
         # Look for xlOil functions to register
         scan_module(module)
+
+
+class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
+    """
+    Allows importing a module from a path specified in path_map without
+    needing to add it to sys.paths - essentially a private set of import 
+    paths, indexed by module name
+    """
+
+    _path_map = dict()
+
+    def find_spec(self, fullname, path, target=None):
+        path = self._path_map.get(fullname, None)
+        if path is None:
+            return None
+
+        loader = None 
+
+        if path.startswith("http"):
+            loader = _UrlLoader(fullname, path)
+
+        log.debug("Found spec for '%s' with location '%s'", fullname, path)
+        return importlib.util.spec_from_file_location(
+            fullname, path, 
+            loader=loader, submodule_search_locations=[])
+
+    def find_module(self, fullname, path):
+        return None
+
+    def add_path(self, name, path):
+        log.debug("Associating module name '%s' with path '%s'", name, path)
+        self._path_map[name] = path
 
 
 def _install_hook():
@@ -362,5 +398,11 @@ def _install_hook():
 
     log.debug("Installed importlib hook to call scan_module")
 
+
 if XLOIL_EMBEDDED:
     _install_hook()
+
+    # Install a sys.meta_path hook. This allows reloads to work for modules 
+    # we import from specific path in _import_file
+    _module_finder = _SpecifiedPathFinder()
+    sys.meta_path.append(_module_finder)
