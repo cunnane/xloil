@@ -16,6 +16,7 @@ from ._superreload import superreload
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
 _PATH_FINDER = None
 
+
 class ImportHelper(metaclass=Singleton):
     """
     Helps manage modules loaded by xlOil's import machinery. In particular,
@@ -173,45 +174,42 @@ def _import_file(path, addin=None, workbook_name:str=None):
     return module
 
 
-def _import_and_scan(what, addin):
-    """
-    Loads or reloads the specifed module, which can be a string name
-    or module object, then calls scan_module.
 
-    Internal use only: called from xlOil Core
-    """
-    try:
-        if isinstance(what, str):
-            # Remember which addin loaded this module
-            ImportHelper().module_addin[what] = addin.pathname
-            module = importlib.import_module(what)
-        elif inspect.ismodule(what):
-            module = ImportHelper().reload(what)
-        else:
-            return _import_and_scan_mutiple(what, addin)
-    except (ImportError, ModuleNotFoundError) as e:
-        raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
+def _import_and_scan(module_names, addin):
     
-    scan_module(module, addin)
-    return module
-
-
-def _import_and_scan_mutiple(module_names, addin):
-    result = []
-    success = True
-    with StatusBar(2000) as status:
-        for m in module_names:
-            status.msg(f"Loading {m}")
-            log.debug("Loading python module '%s' for addin '%s'", m, addin)
-            try:
-                result.append(_import_and_scan(m, addin))
-            except Exception as e:
-                log_except(f"Failed to load '{m}'")
-                status.msg(f"Failed to load '{m}'. See log")
-                success = False
-        if success:
-            status.msg("xlOil python module load complete")
-    return result
+    def work(target):
+        try:
+            if inspect.ismodule(target):
+                module = importlib.reload(target)
+                
+            elif isinstance(target, str):
+                global _module_addin_map
+                _module_addin_map[target] = addin.pathname
+                module = importlib.import_module(target)
+                
+            else:
+                raise ValueError(target)
+            
+        except (ImportError, ModuleNotFoundError) as e:
+            raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
+                
+        log.debug("Loaded python module '%s' for addin '%s'", module.__name__, addin.pathname)     
+        scan_module(module, addin)
+        return module
+    
+    if isinstance(module_names, str) or not isinstance(module_names, Iterable):
+        success_msg = f"Load {module_names}"
+        module_names = (module_names,)
+    else:
+        success_msg = "xlOil module load"
+    
+    executor = StatusBarExecutor(2000)
+    job = executor.map(work, module_names, 
+                       message=lambda mod: f"Loading {mod}", 
+                       job_name=success_msg)
+    
+    # TODO: raise exceptions
+    return list(job)
 
 
 def _import_file_and_scan(path, addin=None, workbook_name:str=None):
@@ -320,8 +318,6 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
     _register_functions(to_register, module, addin, append=True)
 
 
-
-
 class _LoadAndScanHook(SourceFileLoader):
     
     def __init__(self, fullname: str, path: str) -> None:
@@ -348,7 +344,6 @@ class _LoadAndScanHook(SourceFileLoader):
             raise
 
  
-
 class _UrlLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
     """
     Loads a python module from a URL, then runs `scan_module` on the result

@@ -134,3 +134,38 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+    
+
+class StatusBarExecutor:
+    """
+    Executor which displays messages in Excel's status bar whilst running.
+    Errors are logged rather than raised.
+    """
+    def __init__(self, timeout):
+        self._timeout = timeout
+        
+    def map(self, func, *args, message, job_name: str):
+        """
+        args should be a parameter list of iterables of arguments to pass to *func*,
+        the same as python's built-in map. *message* should be a function which takes
+        the same arguments as *func* and returns a message to be displayed.
+        
+        Errors are logged rather than raised.
+        """
+        success = True
+        with StatusBar(self._timeout) as status:
+            for arg_tuple in zip(*args):
+                msg = message(*arg_tuple)
+                status.msg(msg)
+                try:
+                    yield func(*arg_tuple)
+                except Exception as err:
+                    log_except(f"Failed {msg}")
+                    success = False
+                    yield err
+                    
+            if success:
+                status.msg(f"{job_name} succeeded")
+            else:
+                status.msg(f"{job_name} failed (see log)")
+
