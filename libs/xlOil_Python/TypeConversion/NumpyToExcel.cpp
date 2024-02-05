@@ -17,14 +17,16 @@ namespace xloil
   {
     namespace
     {
+      /// <summary>
+      /// Empty arrays are not allowed in Excel, the closest is #N/A.
+      /// Regardless of nDims, if any is zero the array is empty.
+      /// </summary>
       bool isEmptyArray(npy_intp* dims, int nDims)
       {
-        // Empty arrays are not allowed in Excel, the closest is #N/A.
-        // Regardless of nDims, if any is zero the array is empty.
-        bool isEmpty = false;
         for (auto i = 0; i < nDims; ++i)
           if (dims[i] == 0)
-            isEmpty = true;
+            return true;
+        return false;
       }
     }
 

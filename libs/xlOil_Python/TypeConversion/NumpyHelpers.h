@@ -37,11 +37,11 @@ namespace xloil
     template<> struct TypeTraits<NPY_UNICODE> { using storage = char32_t; };
     template<> struct TypeTraits<NPY_OBJECT> { using storage = PyObject*; };
 
-    std::tuple<PyArrayObject*, npy_intp*, int>
+    inline std::tuple<PyArrayObject*, npy_intp*, int>
       getArrayInfo(const PyObject* obj)
     {
       if (!PyArray_Check(obj))
-        XLO_THROW("Expected an array, got a {}", to_string(pybind11::type::of((PyObject*)obj)));
+        XLO_THROW("Expected an array, got a {}", (std::string)pybind11::str(pybind11::type::of((PyObject*)obj)));
 
       auto pyArr = (PyArrayObject*)obj;
       auto dims = PyArray_DIMS(pyArr);

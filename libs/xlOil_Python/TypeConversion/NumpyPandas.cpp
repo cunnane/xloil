@@ -204,15 +204,15 @@ namespace xloil
         nOuter + (hasHeadings ? 1 : 0) + (hasIndex ? 1 : 0), !useObjectCache);
 
       
-      auto i = 0u;
+      auto iInput = 0u; // Only used for error messages
 
       // Examine data frame index
       if (hasIndex)
       {
-        i = 0;
+        iInput = 0;
         try
         {
-          for (auto iter = py::iter(index); iter != py::iterator::sentinel(); ++iter, ++i)
+          for (auto iter = py::iter(index); iter != py::iterator::sentinel(); ++iter, ++iInput)
           {
             converters.collect(*iter, nInner);
             ++nIndexLevels;
@@ -220,14 +220,14 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_THROW("Whilst reading index level {}: {}", i, e.what());
+          XLO_THROW("Whilst reading index level {}: {}", iInput, e.what());
         }
       }
 
       
-      i = 0;
+      iInput = 0;
       // First loop to establish array size and length of strings
-      for (auto iter = py::iter(tableData); iter != py::iterator::sentinel(); ++iter, ++i)
+      for (auto iter = py::iter(tableData); iter != py::iterator::sentinel(); ++iter, ++iInput)
       {
         try
         {
@@ -235,16 +235,16 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_THROW("Whilst reading column {}: {}", i, e.what());
+          XLO_THROW("Whilst reading column {}: {}", iInput, e.what());
         }
       }
 
       if (hasHeadings)
       {
-        i = 0;
+        iInput = 0;
         try
         {
-          for (auto iter = py::iter(headings); iter != py::iterator::sentinel(); ++iter)
+          for (auto iter = py::iter(headings); iter != py::iterator::sentinel(); ++iter, ++iInput)
           {
             converters.collect(*iter, nOuter);
             ++nHeadingLevels;
@@ -252,7 +252,7 @@ namespace xloil
         }
         catch (const std::exception& e)
         {
-          XLO_THROW("Whilst reading heading level {}: {}", i, e.what());
+          XLO_THROW("Whilst reading heading level {}: {}", iInput, e.what());
         }
       }
 
