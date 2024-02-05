@@ -153,9 +153,12 @@ class StatusBarExecutor:
         Errors are logged rather than raised.
         """
         success = True
+        from .logging import log_except
+        
         with StatusBar(self._timeout) as status:
+             
             for arg_tuple in zip(*args):
-                msg = message(*arg_tuple)
+                msg = message(*arg_tuple)   
                 status.msg(msg)
                 try:
                     yield func(*arg_tuple)

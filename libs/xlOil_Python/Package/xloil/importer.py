@@ -9,7 +9,7 @@ from importlib.machinery import SourceFileLoader
 from typing import List, Dict
 from collections.abc import Iterable
 from .register import scan_module
-from ._core import StatusBar, Addin, XLOIL_EMBEDDED, Singleton
+from ._core import StatusBar, Addin, XLOIL_EMBEDDED, Singleton, StatusBarExecutor
 from .logging import log, log_except
 from ._superreload import superreload
 
@@ -183,8 +183,7 @@ def _import_and_scan(module_names, addin):
                 module = importlib.reload(target)
                 
             elif isinstance(target, str):
-                global _module_addin_map
-                _module_addin_map[target] = addin.pathname
+                ImportHelper().module_addin[target] = addin.pathname
                 module = importlib.import_module(target)
                 
             else:
@@ -202,14 +201,19 @@ def _import_and_scan(module_names, addin):
         module_names = (module_names,)
     else:
         success_msg = "xlOil module load"
-    
+        
+
     executor = StatusBarExecutor(2000)
-    job = executor.map(work, module_names, 
+    jobs = executor.map(work, module_names, 
                        message=lambda mod: f"Loading {mod}", 
                        job_name=success_msg)
     
-    # TODO: raise exceptions
-    return list(job)
+    results = list(jobs)
+
+    for x in results:
+        if isinstance(x, Exception):
+            raise x
+    return results
 
 
 def _import_file_and_scan(path, addin=None, workbook_name:str=None):

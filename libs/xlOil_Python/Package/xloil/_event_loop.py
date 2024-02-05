@@ -1,17 +1,4 @@
-
-def _pump_message_loop(loop, timeout:float):
-    """
-    Called internally to run the asyncio message loop. Returns the number of active tasks
-    """
-    import asyncio
-
-    async def wait():
-        await asyncio.sleep(timeout)
-    
-    loop.run_until_complete(wait())
-
-    all_tasks = asyncio.all_tasks if sys.version_info[:2] > (3, 6) else asyncio.Task.all_tasks
-    return len([task for task in all_tasks(loop) if not task.done()])
+from .logging import log_except
 
 def _logged_wrapper(func):
     """
