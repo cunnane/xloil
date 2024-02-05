@@ -14,7 +14,7 @@
     <Link>
       <AdditionalDependencies>xloilHelpers.lib;python$(PyMajorVer)$(PyMinorVer).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent Condition="'$(Platform)|$(Configuration)|$(PyMajorVer).$(PyMinorVer)'=='x64|Debug|3.12'">
+    <PostBuildEvent Condition="'$(Platform)|$(Configuration)'=='x64|Debug'">
       <Command>set XLOIL_BIN_DIR=$(OutDir)
 py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     </PostBuildEvent>
@@ -60,6 +60,7 @@ py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     <ClCompile Include="TypeConversion\PyExcelArrayType.cpp" />
     <ClCompile Include="PyHelpers.cpp" />
     <ClCompile Include="PyRtd.cpp" />
+	<ClCompile Include="EventLoop.cpp" />
     <ClCompile Include="TypeConversion\PyTupleType.cpp" />
   </ItemGroup>
   <ItemGroup>
