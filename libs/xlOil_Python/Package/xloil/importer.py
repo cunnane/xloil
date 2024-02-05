@@ -6,30 +6,87 @@ import sys
 import os
 import inspect
 from importlib.machinery import SourceFileLoader
-
-from xloil.stubs import xloil_core
+from typing import List, Dict
 from collections.abc import Iterable
 from .register import scan_module
-from ._core import StatusBar, Addin, XLOIL_EMBEDDED
+from ._core import StatusBar, Addin, XLOIL_EMBEDDED, Singleton
 from .logging import log, log_except
+from ._superreload import superreload
 
-_module_addin_map = dict() # Stores which addin loads a particular source file
 _linked_workbooks = dict() # Stores the workbooks associated with an source file 
+_PATH_FINDER = None
 
-
-def _pump_message_loop(loop, timeout:float):
+class ImportHelper(metaclass=Singleton):
     """
-    Called internally to run the asyncio message loop. Returns the number of active tasks
+    Helps manage modules loaded by xlOil's import machinery. In particular,
+    manages the reload-on-modify events for any loaded module.
     """
-    import asyncio
-
-    async def wait():
-        await asyncio.sleep(timeout)
+    def __init__(self):
+        import xloil_core
+        self._watched = {}
+        try:
+            self._ignore_paths = xloil_core.core_addin().settings['xlOil_Python']['AutoReloadExcludePaths']
+        except KeyError:
+            self._ignore_paths = []
+            
+        self._module_addin_map = dict() # Stores 
+        self._reloader = superreload
+        self._sys_prefix_watched = False
+        
+    @property
+    def watched_modules(self) -> Dict[str, str]:
+        """
+        Returns a dict of {watched_module_file -> module_name}
+        """
+        return self._watched
     
-    loop.run_until_complete(wait())
+    @property
+    def module_addin(self):
+        """
+        Keeps tracek of which addin loads a particular source file.
+        Returns a dict of {module_path -> addin_path}
+        """
+        return self._module_addin_map
+    
+    @property
+    def ignore_paths(self) -> List[str]:
+        """
+        List of path prefixes which will be ignored for auto-reloading on modification
+        """
+        return self._ignore_paths
+    
+    def reload(self, module, *args, **kwargs):
+        log.debug(f"Reloading {module}")
+        return self._reloader(module, *args, **kwargs)
+    
+    def watch_module(self, module):
 
-    all_tasks = asyncio.all_tasks if sys.version_info[:2] > (3, 6) else asyncio.Task.all_tasks
-    return len([task for task in all_tasks(loop) if not task.done()])
+        filepath = module.__spec__.origin
+        
+        if filepath == "frozen" or any((filepath.startswith(x) for x in self._ignore_paths)):
+            return
+        
+        if filepath in self._watched:
+            return
+        
+        import xloil_core
+        if filepath.startswith(sys.prefix) and not self._sys_prefix_watched:
+            event = xloil_core.event.file_change(sys.prefix, subdirs=True)
+            event += self._on_file_modified
+            self._sys_prefix_watched = True
+        else:
+            event = xloil_core.event.file_change(filepath)
+            event += self._on_file_modified
+            
+        self._watched[filepath] = module.__name__
+     
+    def _on_file_modified(self, filepath):
+        module_name = self._watched.get(filepath, None)
+        if module_name is None:
+            return
+        
+        module = sys.modules[module_name]
+        self.reload(module)
 
 
 def linked_workbook() -> str:
@@ -54,7 +111,7 @@ def source_addin() -> Addin:
 
     # Get the highest level caller we recognise
     for frame in inspect.stack()[::-1]:
-        addin_path = _module_addin_map.get(frame.filename, None)
+        addin_path = ImportHelper().module_addin.get(frame.filename, None)
         if addin_path is not None:
             break
 
@@ -91,11 +148,11 @@ def _import_file(path, addin=None, workbook_name:str=None):
     if len(root_path) > 0:
         if workbook_name is not None:
             module_name = "xloil_wb_" + filestem # Uniquify accross wb?
-        _module_finder.add_path(module_name, path)
+        _PATH_FINDER.add_path(module_name, path)
 
     addin = addin or source_addin()
 
-    _module_addin_map[path] = addin.pathname
+    ImportHelper().module_addin[path] = addin.pathname
 
     if workbook_name is not None:
         _linked_workbooks[path] = workbook_name
@@ -109,7 +166,7 @@ def _import_file(path, addin=None, workbook_name:str=None):
     # the 'pending funcs' won't be populated for the registration 
     # machinery.
     if module_name in sys.modules:
-        module = importlib.reload(sys.modules[module_name])
+        module = ImportHelper().reload(sys.modules[module_name])
     else:
         module = importlib.import_module(module_name)
 
@@ -126,10 +183,10 @@ def _import_and_scan(what, addin):
     try:
         if isinstance(what, str):
             # Remember which addin loaded this module
-            _module_addin_map[what] = addin.pathname
+            ImportHelper().module_addin[what] = addin.pathname
             module = importlib.import_module(what)
         elif inspect.ismodule(what):
-            module = importlib.reload(what)
+            module = ImportHelper().reload(what)
         else:
             return _import_and_scan_mutiple(what, addin)
     except (ImportError, ModuleNotFoundError) as e:
@@ -263,27 +320,26 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
     _register_functions(to_register, module, addin, append=True)
 
 
+
+
 class _LoadAndScanHook(SourceFileLoader):
     
     def __init__(self, fullname: str, path: str) -> None:
         super().__init__(fullname, path)
-        # A dict of {watched_module_file -> module_name}
-        self._watched = {}
-    
+
 
     def exec_module(self, module):
-        global _module_addin_map
 
         # See if _import_and_scan has written addin info for this module
-        addin = _module_addin_map.get(module.__name__)
+        addin = ImportHelper().module_addin.get(module.__name__)
         if addin is not None:
-            _module_addin_map[module.__file__] = addin
+            ImportHelper().module_addin[module.__file__] = addin
 
         # Exec module as normal
         super().exec_module(module)
         
         try:
-            self._watch_module(module)
+            ImportHelper().watch_module(module)
 
             # Look for xlOil functions to register
             scan_module(module)
@@ -291,27 +347,7 @@ class _LoadAndScanHook(SourceFileLoader):
             log_except(f"Import failed: {e.msg}")
             raise
 
-    def _watch_module(self, module):
-        
-        if module.__spec__.origin == "frozen" or module.__spec__.origin.startswith(sys.prefix):
-            return
-        
-        filepath = module.__spec__.origin
-
-        if filepath in self._watched:
-            return
-        
-        import xloil_core
-        event = xloil_core.event.file_change(filepath)
-        event += self._on_file_modified
-        
-        self._watched[filepath] = module.__name__
-        
-    def _on_file_modified(self, filepath):
-        module_name = self._watched[filepath]
-        module = sys.modules[module_name]
-        importlib.reload(module)
-
+ 
 
 class _UrlLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
     """
@@ -376,7 +412,7 @@ class _SpecifiedPathFinder(importlib.abc.MetaPathFinder):
         self._path_map[name] = path
 
 
-def _install_hook():
+def _install_import_hook():
     # Hooks the import mechanism to run register.scan_module on all .py files.
     # We copy _bootstrap_external._install, replacing the source loader with one which 
     # runs scan_module and install our finder at the start of sys.path_hooks
@@ -400,9 +436,12 @@ def _install_hook():
 
 
 if XLOIL_EMBEDDED:
-    _install_hook()
+    
+    _PATH_FINDER = _SpecifiedPathFinder()
+    
+    _install_import_hook()
 
     # Install a sys.meta_path hook. This allows reloads to work for modules 
     # we import from specific path in _import_file
-    _module_finder = _SpecifiedPathFinder()
-    sys.meta_path.append(_module_finder)
+    sys.meta_path.append(_PATH_FINDER)
+ 

@@ -39,6 +39,8 @@
     <Compile Include="test_SpreadsheetRunner.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="xloil\_event_loop.py" />
+    <Compile Include="xloil\_superreload.py" />
     <Compile Include="xloil\com.py" />
     <Compile Include="xloil\command_line.py" />
     <Compile Include="xloil\debug.py" />

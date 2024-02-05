@@ -46,9 +46,9 @@ elif not XLOIL_READTHEDOCS:
     try:
         with add_dll_path(XLOIL_BIN_DIR):
             mod = importlib.import_module(pyd_name)
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(f"Failed to load {pyd_name} with " +
-            f"sys.path={sys.path} and PATH={os.environ['PATH']}")
+    except (ImportError, ModuleNotFoundError) as e:
+        raise type(e)(f"Failed to load {pyd_name} with " +
+            f"sys.path={sys.path} and XLOIL_BIN_DIR={XLOIL_BIN_DIR} and PATH={os.environ['PATH']}")
 
     sys.path.pop()
     sys.modules['xloil_core'] = mod
@@ -126,3 +126,11 @@ def create_gui(*args, **kwargs) -> ExcelGUI:
     if 'mapper' in kwargs:
         kwargs['funcmap'] = kwargs.pop('mapper')
     return ExcelGUI(*args, **kwargs)
+
+
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
