@@ -25,12 +25,23 @@ namespace std
     return lhs.is(rhs);
   }
 }
+
 namespace xloil 
 {
   namespace Python 
   {
     XLOIL_DEFINE_EVENT(Event_PyBye);
     XLOIL_DEFINE_EVENT(Event_PyUserException);
+
+    class IPyEvent;
+
+    // GLOBALS
+    namespace {
+      std::unordered_map<wstring, shared_ptr<IPyEvent>> theDirChangeEvents;
+      auto theDirChangeEventsCleanup = Event_PyBye().bind([]() { theDirChangeEvents.clear(); });
+
+      std::atomic<bool> theEventsAreEnabled = true;
+    }
 
     namespace
     {
@@ -174,6 +185,9 @@ namespace xloil
 
       void fire(Args... args) const
       {
+        if (!theEventsAreEnabled)
+          return;
+
         try
         {
           py::gil_scoped_acquire get_gil;
@@ -249,6 +263,9 @@ namespace xloil
 
       void fire(const wchar_t* directory, const wchar_t* filename, Event::FileAction action) const
       {
+        if (!theEventsAreEnabled)
+          return;
+
         // Check out action and filename (if specified) match, if not, we don't 
         // need to acquire the gil.
         if (action != _action || (!_filename.empty() && _filename != filename))
@@ -286,6 +303,11 @@ namespace xloil
       bool _watchSubDirs;
       shared_ptr<const void> _coreEventHandler;
     };
+
+    void setAllowPyEvents(bool value)
+    {
+      theEventsAreEnabled = value;
+    }
 
     namespace
     {
@@ -330,19 +352,18 @@ namespace xloil
           .def_property("value",
             [](const RefType& self) { return self.value; },
             [](RefType& self, T val) { self.value = val; });
-      }
-
-      void setAllowEvents(bool value)
+      }      
+      
+      void setEnableEvents(bool value, bool excelEvents)
       {
         py::gil_scoped_release releaseGil;
-        runExcelThread([=]() { thisApp().setEnableEvents(value); });
+        XLO_DEBUG("Events enabled: Excel={}, xlOil={}", !excelEvents || value, value);
+        setAllowPyEvents(value);
+        if (excelEvents)
+          runExcelThread([=]() { 
+            thisApp().setEnableEvents(value); 
+          });
       }
-
- 
-      // TODO: need to clear this lot buddy on PyBye
-      std::unordered_map<wstring, shared_ptr<IPyEvent>> theDirChangeEvents;
-
-      auto theDirChangeEventsCleanup = Event_PyBye().bind([]() { theDirChangeEvents.clear(); });
 
       auto getDirectoryChangeEvent(const wstring& path, wstring& action, bool subDirs)
       {
@@ -457,18 +478,25 @@ namespace xloil
         )";
 
         eventMod.def("allow", 
-          []() { setAllowEvents(true); },
+          [](bool excel) { setEnableEvents(true, excel); },
           R"(
-            Resumes Excel's event handling after a pause.  Equivalent to VBA's
-            `Application.EnableEvents = True` or `xlo.app().enable_events = True` 
-          )" );
+            Resumes event handling after a previous call to *pause*.
+
+            If *excel* is True (the default), also calls `Application.EnableEvents = True`
+            (equivalent to `xlo.app().enable_events = True`)
+          )",
+          py::arg("excel") = true);
 
         eventMod.def("pause", 
-          []() { setAllowEvents(false); },
+          [](bool excel) { setEnableEvents(false, excel); },
           R"(
-            Pauses Excel's event handling. Equivalent to VBA's 
-            `Application.EnableEvents = False` or `xlo.app().enable_events = False` 
-          )");
+            Stops all xlOil event handling - any executing handlers will complete but
+            no further handlers will fire.
+
+            If *excel* is True (the default), also calls `Application.EnableEvents = False`
+            (equivalent to `xlo.app().enable_events = False`)
+          )",
+          py::arg("excel")=true);
 
         bindArithmeticRef<bool>(eventMod);
 

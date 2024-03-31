@@ -5,6 +5,7 @@ from logging import root
 import sys
 import os
 import inspect
+import site
 from importlib.machinery import SourceFileLoader
 from typing import List, Dict
 from collections.abc import Iterable
@@ -22,6 +23,7 @@ class ImportHelper(metaclass=Singleton):
     Helps manage modules loaded by xlOil's import machinery. In particular,
     manages the reload-on-modify events for any loaded module.
     """
+    
     def __init__(self):
         import xloil_core
         self._watched = {}
@@ -32,7 +34,14 @@ class ImportHelper(metaclass=Singleton):
             
         self._module_addin_map = dict() # Stores 
         self._reloader = superreload
-        self._sys_prefix_watched = False
+
+        # Inevitably many files will be imported from the environment's site-packages
+        # directories and it is unlikely that any of these files will be modified at
+        # runtime. To simplify the event structure, create a sub-dir watcher for each
+        # site package location
+        for prefix in site.PREFIXES:
+            event = xloil_core.event.file_change(prefix, subdirs=True)
+            event += self._on_file_modified
         
     @property
     def watched_modules(self) -> Dict[str, str]:
@@ -69,13 +78,11 @@ class ImportHelper(metaclass=Singleton):
         
         if filepath in self._watched:
             return
-        
-        import xloil_core
-        if filepath.startswith(sys.prefix) and not self._sys_prefix_watched:
-            event = xloil_core.event.file_change(sys.prefix, subdirs=True)
-            event += self._on_file_modified
-            self._sys_prefix_watched = True
-        else:
+                
+        # Any file in one the site package directories will be handled
+        # by the watchers created in the __init__ method
+        if not any((filepath.startswith(x) for x in site.PREFIXES)):
+            import xloil_core
             event = xloil_core.event.file_change(filepath)
             event += self._on_file_modified
             
@@ -177,25 +184,33 @@ def _import_file(path, addin=None, workbook_name:str=None):
 
 def _import_and_scan(module_names, addin):
     
+    import xloil_core
+
     def work(target):
         try:
-            if inspect.ismodule(target):
-                module = importlib.reload(target)
+            # Turn off xloil events to avoid possible synchronisation issues whilst loading
+            xloil_core.event.pause(excel=False)
+            try:
+                if inspect.ismodule(target):
+                    module = importlib.reload(target)
                 
-            elif isinstance(target, str):
-                ImportHelper().module_addin[target] = addin.pathname
-                module = importlib.import_module(target)
+                elif isinstance(target, str):
+                    ImportHelper().module_addin[target] = addin.pathname
+                    module = importlib.import_module(target)
                 
-            else:
-                raise ValueError(target)
+                else:
+                    raise ValueError(target)
             
-        except (ImportError, ModuleNotFoundError) as e:
-            raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
+            except (ImportError, ModuleNotFoundError) as e:
+                raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
                 
-        log.debug("Loaded python module '%s' for addin '%s'", module.__name__, addin.pathname)     
-        scan_module(module, addin)
-        return module
-    
+            log.debug("Loaded python module '%s' for addin '%s'", module.__name__, addin.pathname)     
+            scan_module(module, addin)
+            return module
+        
+        finally:
+            xloil_core.event.allow(excel=False)
+            
     if isinstance(module_names, str) or not isinstance(module_names, Iterable):
         success_msg = f"Load {module_names}"
         module_names = (module_names,)
@@ -205,8 +220,8 @@ def _import_and_scan(module_names, addin):
 
     executor = StatusBarExecutor(2000)
     jobs = executor.map(work, module_names, 
-                       message=lambda mod: f"Loading {mod}", 
-                       job_name=success_msg)
+                        message=lambda mod: f"Loading {mod}", 
+                        job_name=success_msg)
     
     results = list(jobs)
 
@@ -221,9 +236,13 @@ def _import_file_and_scan(path, addin=None, workbook_name:str=None):
         Internal use only: called from xlOil Core. Wraps _import_file
         and scan_module with StatusBar display.
     """
-
+    import xloil_core
+    
     with StatusBar(3000) as status:
-        try:
+        try:            
+            #Turn off xloil events to avoid possible synchronisation issues whilst loading
+            xloil_core.event.pause(excel=False)
+
             status.msg(f"Loading {path}...")
             module = _import_file(path, addin, workbook_name)
 
@@ -234,7 +253,9 @@ def _import_file_and_scan(path, addin=None, workbook_name:str=None):
         except Exception as e:
             status.msg(f"Error loading {path}, see log")
             raise ImportError(f"{str(e)} whilst loading {path}", path=path) from e
-
+        
+        finally:
+            xloil_core.event.allow(excel=False)
 
 def import_functions(source:str, names=None, as_names=None, addin:Addin=None, workbook_name:str=None) -> None:
     """
@@ -242,7 +263,7 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
         do not have to be decorated, but are imported as if they were decorated with ``xloil.func``.
         So if the functions have typing annotations, they are respected where possible.
 
-        This function provides an analogue of ``from X import Y as Z`` but with Excel UDFS.
+        This function provides an analogue of ``from X import Y as Z`` but with Excel UDFs.
 
         Note: registering a large number of Excel UDFs will impair the function name-lookup performance 
         (which is by linear search through the name table).
@@ -279,10 +300,13 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
             Optional workbook associated with the registered functions.
 
     """
+    
     addin = addin or source_addin()
     
     module = source if inspect.ismodule(source) else \
         _import_file(source, addin, workbook_name)
+
+    log.info(f"Importing: {names} from {source}")
 
     if names is None: 
         scan_module(module, addin)
@@ -318,7 +342,7 @@ def import_functions(source:str, names=None, as_names=None, addin:Addin=None, wo
         get_spec(getattr(module, source_name), target_name)
         for source_name, target_name in zip(source_names, target_names)
     ]
-   
+    
     _register_functions(to_register, module, addin, append=True)
 
 
