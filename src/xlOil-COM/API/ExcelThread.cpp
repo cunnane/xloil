@@ -3,6 +3,7 @@
 #include <xlOil-COM/XllContextInvoke.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
+#include <xlOil-Dynamic/LocalFunctions.h>
 #include <xloil/Log.h>
 #include <xloil/AppObjects.h>
 #include <xloil/Throw.h>
@@ -301,13 +302,20 @@ namespace xloil
   {
     ++theXllContextCount;
   }
+
   InXllContext::~InXllContext()
   {
     --theXllContextCount;
   }
+
   bool InXllContext::check()
   {
     return theXllContextCount > 0;
+  }
+
+  bool isCallerInfoSafe()
+  {
+    return InXllContext::check() || isExecutingLocalFunction();
   }
 
   namespace detail

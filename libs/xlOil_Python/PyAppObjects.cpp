@@ -529,6 +529,13 @@ namespace xloil
         return app.open(filepath, updateLinks, readOnly, delim);
       }
 
+      auto CallerInfo_Ctor()
+      {
+        if (!isCallerInfoSafe())
+          throw py::value_error("CallerInfo is not available in this context");
+        return CallerInfo();
+      }
+
       auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
       {
         py::gil_scoped_release noGil;
@@ -1185,7 +1192,7 @@ namespace xloil
           calling cell or range. If the function was not called from a sheet (e.g. 
           via a macro), most of the methods return `None`.
         )")
-        .def(py::init<>())
+        .def(py::init(&CallerInfo_Ctor))
         .def("__str__", CallerInfo_Address)
         .def_property_readonly("sheet_name",
           [](const CallerInfo& self)

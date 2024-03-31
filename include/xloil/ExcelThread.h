@@ -17,14 +17,27 @@ namespace xloil
   /// made on the main thread to pass straight through without expensive
   /// context switching.
   /// </summary>
-  class InXllContext
+  class XLOIL_EXPORT InXllContext
   {
   public:
-    XLOIL_EXPORT InXllContext();
-    XLOIL_EXPORT ~InXllContext();
+    InXllContext();
+    ~InXllContext();
     static bool check();
   };
   
+  /// <summary>
+  /// Returns *true* if it is safe to create a <see cref="CallerInfo"/> object.
+  /// Otherwise, the *CallerInfo* ctor may crash during an XLL API call. 
+  /// 
+  /// Generally, it is safe when on the main thread and xlOil has been called
+  /// as an XLL function or a local function.
+  /// 
+  /// *Application.Caller* may work in circumstances where this function returns
+  /// false.
+  /// </summary>
+  /// <returns></returns>
+  XLOIL_EXPORT bool isCallerInfoSafe();
+
   /// <summary>
   /// Determines how <see cref="excelRunOnMainThread"/> will dispatch the provided
   /// function. 

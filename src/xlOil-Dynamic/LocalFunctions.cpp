@@ -22,6 +22,7 @@ using std::move;
 
 namespace xloil
 {
+  // GLOBALS
   namespace
   {
     // Only write/read this from the main thread
@@ -34,6 +35,8 @@ namespace xloil
       for (auto& [k, v] : toRemove)
         theLocalFuncRegistry.erase(v->registerId());
     }
+
+    bool theIsExecutingLocalFunction = false;
   }
 
   LocalWorksheetFunc::LocalWorksheetFunc(
@@ -49,10 +52,12 @@ namespace xloil
   {
     return _spec;
   }
+
   const std::shared_ptr<const FuncInfo>& LocalWorksheetFunc::info() const
   {
     return _spec->info();
   }
+
   intptr_t LocalWorksheetFunc::registerId() const
   {
     return (intptr_t)_spec.get();
@@ -144,6 +149,11 @@ namespace xloil
         unregisterLocalFuncs(toRemove);
       });
   }
+
+  bool isExecutingLocalFunction() 
+  {
+    return theIsExecutingLocalFunction;
+  }
 }
 
 using namespace xloil;
@@ -213,7 +223,9 @@ int __stdcall localFunctionEntryPoint(
       xllArgPtr = &argPtrs[0];
     }
 
+    theIsExecutingLocalFunction = true;
     auto* result = func.call(xllArgPtr);
+    theIsExecutingLocalFunction = false;
 
     // Commands (subroutines) can return a null pointer
     if (result)
@@ -228,6 +240,7 @@ int __stdcall localFunctionEntryPoint(
   }
   catch (const std::exception& e)
   {
+    theIsExecutingLocalFunction = false;
     *returnVal = COM::stringToVariant(e.what());
     return E_FAIL;
   }
