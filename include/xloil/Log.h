@@ -37,7 +37,7 @@ namespace xloil
 {
   /// <summary>
   /// Create an initialise a spdlog logger.
-  /// <param name="debugStringLevel">
+  /// <param name="debugLevel">
   ///   If set to a spdlog level other than "off", a sink which writes to `OutputDebugString`
   ///   is created with the given log level and added to the logger's sinks
   /// </param>
@@ -46,17 +46,15 @@ namespace xloil
   /// </param>
   /// </summary>
   std::shared_ptr<spdlog::logger> 
-    loggerInitialise(const char* debugStringLevel, bool makeDefault = true);
+    loggerInitialise(const std::string_view& debugLevel, bool makeDefault = true);
 
   /// <summary>
   /// Sets the log level at which the logger's sinks should be flushed (written to disk for
-  /// file based sinks). Also optionally adds an event handler which flushes the logger after
-  /// each Excel calc cycle.
+  /// file based sinks).
   /// </summary>
   void loggerSetFlush(
     const std::shared_ptr<spdlog::logger>& logger,
-    const char* flushLevel,
-    bool flushAfterCalc);
+    const std::string_view& flushLevel);
 
   /// <summary>
   /// Adds a logger sink which pops up a log window when log messages exceed a certain
