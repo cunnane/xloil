@@ -94,7 +94,12 @@ class ImportHelper(metaclass=Singleton):
             return
         
         module = sys.modules[module_name]
-        self.reload(module)
+        
+        import xloil_core
+        addin_path = self.module_addin[filepath]
+        addin = xloil_core.xloil_addins[addin_path] 
+        addin.event_loop.call_soon_threadsafe(self.reload, module)
+        
 
 
 def linked_workbook() -> str:
