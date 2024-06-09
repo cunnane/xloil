@@ -55,8 +55,26 @@ namespace xloil
         const py::object& toR,   const py::object& toC,
         const py::object& nRows, const py::object& nCols)
       {
-        const auto toRow = !toR.is_none() ? toR.cast<int>() : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
-        const auto toCol = !toC.is_none() ? toC.cast<int>() : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
+        const auto toRow = !toR.is_none() 
+          ? toR.cast<int>() 
+          : (!nRows.is_none() 
+            ? fromR + nRows.cast<int>() - 1 
+            : Range::TO_END);
+        const auto toCol = !toC.is_none() 
+          ? toC.cast<int>() 
+          : (!nCols.is_none() 
+            ? fromC + nCols.cast<int>() - 1 
+            : Range::TO_END);
+        py::gil_scoped_release noGil;
+        return r.range(fromR, fromC, toRow, toCol);
+      }
+
+      inline auto range_offset(const Range& r,
+        int fromR, int fromC,
+        const py::object& nRows, const py::object& nCols)
+      {
+        const auto toRow = fromR + (!nRows.is_none() ? nRows.cast<int>() - 1 : 0);
+        const auto toCol = fromC + (!nCols.is_none() ? nCols.cast<int>() - 1 : 0);
         py::gil_scoped_release noGil;
         return r.range(fromR, fromC, toRow, toCol);
       }
@@ -722,6 +740,30 @@ namespace xloil
           py::arg("to_col")   = py::none(),
           py::arg("num_rows") = py::none(),
           py::arg("num_cols") = py::none())
+        .def("offset",
+          range_offset,
+          R"(
+            Similar to the *range* function, but with different defaults  
+
+            Parameters
+            ----------
+
+            from_row: int
+                Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+            from_col: int
+                Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+            num_rows: int
+                Number of rows in output range. Defaults to 1
+
+            num_cols: int
+                Number of columns in output range. Defaults to 1.
+          )",
+          py::arg("from_row"),
+          py::arg("from_col"),
+          py::arg("num_rows") = py::none(),
+          py::arg("num_cols") = py::none())
         .def("cell", 
           &Range::cell,
           call_release_gil(),
@@ -1237,6 +1279,14 @@ namespace xloil
         call_release_gil(),
         R"(
           Returns the currently active workbook. Will raise an exception if xlOil
+          has not been loaded as an addin.
+        )");
+
+      mod.def("active_cell",
+        []() { return thisApp().activeCell(); },
+        call_release_gil(),
+        R"(
+          Returns the currently active cell as a Range. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 

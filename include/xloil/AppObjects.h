@@ -162,6 +162,7 @@ namespace xloil
     Workbooks workbooks() const;
     Windows windows() const;
     ExcelWorksheet activeWorksheet() const;
+    ExcelRange activeCell() const;
 
     ExcelObj run(const std::wstring& func, const size_t nArgs, const ExcelObj* args[]);
 
