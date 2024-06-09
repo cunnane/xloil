@@ -57,7 +57,7 @@ def _remove_from_resiliancy(filename, version):
 
     # If we can't find the key or exit the for loop, suppress the error
     with suppress(OSError): 
-        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + "\Resiliency\DisabledItems")
+        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + r"\Resiliency\DisabledItems")
 
         for i in range(1024):
             name, value, = reg.EnumValue(regkey, i)
@@ -70,7 +70,7 @@ def _remove_addin(version):
 
     # If we can't find the key or exit the for loop, suppress the error
     with suppress(OSError): 
-        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + "\Add-in Manager")
+        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + r"\Add-in Manager")
 
         # Cycles through all the properties and delete if it contains the file name.
         for i in range(1024):
@@ -86,8 +86,7 @@ def _toml_lit_string(s:str):
 def _get_python_paths():
     """
         Returns the paths to be set in the xlOil.ini file (the appropriate stubs
-        must already exist). Several paths are required to handle the virtual
-        enviroment case
+        must already exist).
     """
     return { 
         'PYTHONEXECUTABLE': sys.executable
@@ -99,10 +98,9 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
 
     fails = 0
 
-    def do_replace(pat, repl):
-            nonlocal ini_txt
-            ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
-            return True
+    def replace(pat, repl):
+        nonlocal ini_txt
+        ini_txt = re.sub(pat, repl, ini_txt, count=1, flags=re.M)
             
     def check_replace(pat, repl):
         nonlocal fails, ini_txt
@@ -110,7 +108,7 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
             print(f"Failed to match pattern {pat}")
             fails += 1
         else:
-            do_replace(pat, repl)
+            replace(pat, repl)
     
     for var, value in env_vars.items():
         check_replace(r'^(\s*' + var + r'\s*=).*', r'\g<1>' + _toml_lit_string(value))
@@ -123,12 +121,12 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
     if comment_reg_keys:
         
         for key in ["xlOil_PythonRegKey"]:
-            do_replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
+            replace(rf'^(\s*{key}\s*=.*)', r'#\g<1>')
 
     return ini_txt, fails == 0
     
    
-def _install_xloil():
+def install_xloil(ini_template:str=None, replace_ini=False):
 
     ini_path = Path(APP_DATA_DIR) / INIFILE_NAME
 
@@ -151,12 +149,12 @@ def _install_xloil():
     print("Installed ", _XLL_INSTALL_PATH)
     
     # Copy the ini file to APPDATA, avoiding overwriting any existing ini
-    if ini_path.exists():
+    if not replace_ini and ini_path.exists():
         print("Found existing settings file at \n", ini_path)
     else:
         with suppress(FileExistsError):
             ini_path.parent.mkdir()
-        sh.copy(bin_dir / INIFILE_NAME, ini_path)
+        sh.copy(ini_template or bin_dir / INIFILE_NAME, ini_path)
 
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
@@ -232,7 +230,7 @@ def main():
     command = sys.argv[1].lower() if len(sys.argv) > 1 else ""
 
     if command == 'install':
-        _install_xloil()
+        install_xloil(sys.argv[2] if len(sys.argv) > 2 else None)
     elif command == 'remove':
         _remove_xloil()
     elif command == 'uninstall':
