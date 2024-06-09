@@ -68,12 +68,12 @@ namespace xloil
 
       static void createInstance(void* excelInstance)
       {
-        _theInstance.reset(new Messenger((HINSTANCE)excelInstance));
+        _theInstance = new Messenger((HINSTANCE)excelInstance);
       }
 
       static void destroyInstance()
       {
-        _theInstance.reset();
+        _theInstance = nullptr;
       }
 
       static Messenger& instance()
@@ -182,7 +182,7 @@ namespace xloil
       }
 
     private:
-      static std::unique_ptr<Messenger> _theInstance;
+      static std::atomic<Messenger*> _theInstance;
 
       static void CALLBACK TimerCallback(
         HWND /*hwnd*/, UINT /*uMsg*/, UINT_PTR /*idEvent*/, DWORD /*dwTime*/) noexcept
@@ -274,7 +274,7 @@ namespace xloil
       CHandle _threadHandle;
     };
 
-    std::unique_ptr<Messenger> Messenger::_theInstance;
+    std::atomic<Messenger*> Messenger::_theInstance;
   }
 
   void initMessageQueue(void* excelInstance)
@@ -365,7 +365,8 @@ namespace xloil
         try
         {
           COM::connectCom();
-          runExcelThread(func, ExcelRunQueue::XLL_API);
+          func();
+          //runExcelThread(func, ExcelRunQueue::XLL_API); // TODO: why XLL API?
         }
         catch (const ComConnectException&)
         {
