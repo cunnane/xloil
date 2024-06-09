@@ -57,25 +57,34 @@ namespace xloil
         ? utf8ToUtf16(found)
         : fs::path(utf8ToUtf16(*root.source().path)).replace_extension("log").wstring();
     }
-    std::string logLevel(const toml::view_node& root)
+    std::string logLevel(const toml::table& root)
     {
-      return findStr(root, "LogLevel", "warn");
+      auto addinRoot = root[XLOIL_SETTINGS_ADDIN_SECTION];
+      return findStr(addinRoot, "LogLevel", "warn");
     }
-    std::string logPopupLevel(const toml::view_node& root)
+    std::string logPopupLevel(const toml::table& root)
     {
-      return findStr(root, "LogPopupLevel", "error");
+      auto addinRoot = root[XLOIL_SETTINGS_ADDIN_SECTION];
+      return findStr(addinRoot, "LogPopupLevel", "error");
     }
-    std::pair<size_t, size_t> Settings::logRotation(const toml::view_node& root)
+    std::string logFlushLevel(const toml::table& root)
     {
+      auto addinRoot = root[XLOIL_SETTINGS_ADDIN_SECTION];
+      return findStr(addinRoot, "LogFlushLevel", "warning");
+    }
+    std::pair<size_t, size_t> Settings::logRotation(const toml::table& root)
+    {
+      auto addinRoot = root[XLOIL_SETTINGS_ADDIN_SECTION];
       // (size_t) cast needed for 32-bit as TOML lib is hard-coded to 
       // return int64 for all integer types
       return std::make_pair(
-        (size_t)root["LogMaxSize"].value_or(1024u),
-        (size_t)root["LogNumberOfFiles"].value_or(2u));
+        (size_t)addinRoot["LogMaxSize"].value_or(1024u),
+        (size_t)addinRoot["LogNumberOfFiles"].value_or(2u));
     }
-    std::vector<std::wstring> dateFormats(const toml::view_node& root)
+    std::vector<std::wstring> dateFormats(const toml::table& root)
     {
-      return findVecStr(root, "DateFormats");
+      auto addinRoot = root[XLOIL_SETTINGS_ADDIN_SECTION];
+      return findVecStr(addinRoot, "DateFormats");
     }
 
     namespace

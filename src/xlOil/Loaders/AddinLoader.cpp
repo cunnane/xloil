@@ -44,17 +44,17 @@ namespace xloil
       }
       else
       {
-        auto addinRoot = (*settings)[XLOIL_SETTINGS_ADDIN_SECTION];
-
         // Log file settings
         logFile = Settings::logFilePath(*settings);
-        auto logLevel = Settings::logLevel(addinRoot);
-        auto [logMaxSize, logNumFiles] = Settings::logRotation(addinRoot);
+        auto logLevel = Settings::logLevel(*settings);
+        auto [logMaxSize, logNumFiles] = Settings::logRotation(*settings);
 
-        logFile = loggerAddRotatingFileSink(
-          spdlog::default_logger(),
-          logFile.c_str(), logLevel.c_str(),
-          logMaxSize, logNumFiles);
+        logFile = loggerAddRotatingFileSink(spdlog::default_logger(),
+                                            logFile.c_str(), logLevel.c_str(),
+                                            logMaxSize, logNumFiles);
+
+        loggerSetFlush(spdlog::default_logger(),
+                       Settings::logFlushLevel(*settings));
 
         // Write the log message *after* we set up the log file!
         XLO_INFO(L"Found core settings file '{}' for '{}'",
@@ -63,11 +63,10 @@ namespace xloil
         // If this is specified in multiple addins and/or the core, 
         // the last value overrides: not easy to workaround
         setLogWindowPopupLevel(
-          spdlog::level::from_str(
-            Settings::logPopupLevel(addinRoot).c_str()));
+            Settings::logPopupLevel(*settings).c_str());
 
         // Add any requested date formats
-        auto dateFormats = Settings::dateFormats(addinRoot);
+        auto dateFormats = Settings::dateFormats(*settings);
         for (auto& form : dateFormats)
           theDateTimeFormats().push_back(form);
       }
@@ -107,6 +106,8 @@ namespace xloil
       coreDll,
       lastSlash ? lastSlash + 1 : pathName,
       wcslen(coreDll) - 3);
+
+    XLO_DEBUG(L"Creating addin context for '{}'", pathName);
     if (isCore)
     {
       auto context = createCoreAddinContext();
