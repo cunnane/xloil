@@ -38,6 +38,7 @@ __all__ = [
     "Worksheet",
     "Worksheets",
     "WorksheetsIter",
+    "active_cell",
     "active_workbook",
     "active_worksheet",
     "app",
@@ -831,6 +832,25 @@ class Range():
     def clear(self) -> None: 
         """
         Clears all values and formatting.  Any cell in the range will then have Empty type.
+        """
+    def offset(self, from_row: int, from_col: int, num_rows: object = None, num_cols: object = None) -> Range: 
+        """
+        Similar to the *range* function, but with different defaults  
+
+        Parameters
+        ----------
+
+        from_row: int
+            Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+        from_col: int
+            Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+        num_rows: int
+            Number of rows in output range. Defaults to 1
+
+        num_cols: int
+            Number of columns in output range. Defaults to 1.
         """
     def range(self, from_row: int, from_col: int, to_row: object = None, to_col: object = None, num_rows: object = None, num_cols: object = None) -> Range: 
         """
@@ -2185,6 +2205,11 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
     cache_objects:
       if True, place unconvertible objects in the cache and return a ref string
       if False, call str(x) on unconvertible objects
+    """
+def active_cell() -> _ExcelRange:
+    """
+    Returns the currently active cell as a Range. Will raise an exception if xlOil
+    has not been loaded as an addin.
     """
 def active_workbook() -> Workbook:
     """
