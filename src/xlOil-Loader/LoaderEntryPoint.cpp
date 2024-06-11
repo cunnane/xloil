@@ -110,7 +110,7 @@ struct xlOilCoreAddin
     try
     {
       using XllInfo::xllPath;
-      
+
       std::unique_ptr<PushDllDirectory> setDllDir;
 
       // First we try to load a settings file to see if it tells us
@@ -167,15 +167,11 @@ struct xlOilCoreAddin
         throw std::runtime_error("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
       }
 
-
-      Environment::initAppContext();
-
-      // Now we can use the normal logger!
-      XLO_DEBUG("xlOil Core: Opening");
       auto ret = xloil::coreAutoOpenHandler(XllInfo::xllPath.c_str());
 
       if (ret == 1)
       {
+        XLO_DEBUG("Registering xlHandleCalculationCancelled");
         tryCallExcel(msxll::xlEventRegister,
           "xlHandleCalculationCancelled", msxll::xleventCalculationCanceled);
       }

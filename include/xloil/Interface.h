@@ -164,8 +164,9 @@ namespace xloil
     using ContextMap = std::map<std::wstring, std::shared_ptr<FuncSource>>;
 
     AddinContext(
-      const wchar_t* pathName, 
-      const std::shared_ptr<const toml::table>& settings);
+      const std::wstring_view& pathName, 
+      const std::shared_ptr<const toml::table>& settings,
+      const std::wstring_view& logFilePath);
 
     ~AddinContext();
 
@@ -203,6 +204,11 @@ namespace xloil
     const std::wstring& pathName() const { return _pathName; }
 
     /// <summary>
+    /// Returns the full pathname of the log file addin
+    /// </summary>
+    const std::wstring& logFile() const { return _logFilePath; }
+
+    /// <summary>
     /// Returns the filename of the XLL addin
     /// </summary>
     const wchar_t* fileName() const 
@@ -217,8 +223,6 @@ namespace xloil
       source->init();
     }
 
-    std::wstring logFilePath;
-
     void loadPlugins();
     void detachPlugins();
 
@@ -227,6 +231,7 @@ namespace xloil
     AddinContext& operator=(const AddinContext&) = delete;
 
     std::wstring _pathName;
+    std::wstring _logFilePath;
     std::shared_ptr<const toml::table> _settings;
     ContextMap _files;
     std::vector<std::wstring> _plugins;

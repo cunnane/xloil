@@ -52,29 +52,31 @@ namespace xloil
         logFile = loggerAddRotatingFileSink(spdlog::default_logger(),
                                             logFile.c_str(), logLevel.c_str(),
                                             logMaxSize, logNumFiles);
+        // If these are specified in multiple addins and/or the core, 
+        // the last value will override
+        setLogWindowPopupLevel(
+          Settings::logPopupLevel(*settings).c_str());
 
         loggerSetFlush(spdlog::default_logger(),
                        Settings::logFlushLevel(*settings));
 
         // Write the log message *after* we set up the log file!
-        XLO_INFO(L"Found core settings file '{}' for '{}'",
+        XLO_INFO(L"Found settings file '{}' for '{}'",
           utf8ToUtf16(*settings->source().path), xllPath);
-
-        // If this is specified in multiple addins and/or the core, 
-        // the last value overrides: not easy to workaround
-        setLogWindowPopupLevel(
-            Settings::logPopupLevel(*settings).c_str());
 
         // Add any requested date formats
         auto dateFormats = Settings::dateFormats(*settings);
+        
         for (auto& form : dateFormats)
+        {
+          XLO_DEBUG(L"Registering date format '{}'", form);
           theDateTimeFormats().push_back(form);
+        }
       }
 
       auto [ctx, isNew] = theAddinContexts.insert_or_assign(
-        wstring(xllPath), make_shared<AddinContext>(xllPath, settings));
+        wstring(xllPath), make_shared<AddinContext>(xllPath, settings, logFile));
 
-      ctx->second->logFilePath = std::move(logFile);
       return ctx->second;
     }
   }

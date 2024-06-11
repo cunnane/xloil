@@ -42,21 +42,32 @@ namespace xloil
       int retVal = 0;
 
       shared_ptr<FuncSource> coreRegisteredFunctions;
+      std::shared_ptr<spdlog::logger> logger;
 
       if (!theCoreIsLoaded)
       {
+        Environment::initAppContext();
+        Environment::setCoreHandle(theCoreModuleHandle);
+
         // There's no log file until createAddinContext figures out our 
         // settings, so any logging goes to the debug output.  We also flush
         // on trace level so we don't miss any crashes during startup. This
         // has a minimal performance impact vs flushing during sheet calc.
-        auto logger = loggerInitialise("trace");
+        logger = loggerInitialise("trace");
         loggerSetFlush(logger, "trace");
-        
+
         initMessageQueue(Environment::excelProcess().hInstance);
 
-        XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
-
         loggerAddPopupWindowSink(logger);
+      }
+
+      // After the context has been created, we will have a log file
+      auto coreContext = createCoreAddinContext();
+      auto addinContext = createAddinContext(xllPath);
+
+      if (!theCoreIsLoaded)
+      {
+        XLO_DEBUG(L"Loaded xlOil core from: {}", Environment::coreDllPath());
 
         // Flush logger after sheet calculates
         Event::AfterCalculate() += [logger]() { logger->flush(); };
@@ -70,13 +81,7 @@ namespace xloil
 
         // Do the registration
         coreRegisteredFunctions->init();
-      }
 
-      auto addinContext = createAddinContext(xllPath);
-      auto coreContext  = createCoreAddinContext();
-
-      if (!theCoreIsLoaded)
-      {
         // Associate registed functions with the core 
         coreContext->addSource(coreRegisteredFunctions);
         // Signal that the XLL events should be hooked
@@ -103,6 +108,10 @@ namespace xloil
         const auto [firstLoad, secondLoad] = loadBeforeCore
           ? tuple(addinContext, coreContext)
           : tuple(coreContext, addinContext);
+
+        XLO_DEBUG(L"User xll file present, plugin load order is: {}, {}",
+          firstLoad ? firstLoad->pathName() : L"", 
+          firstLoad ? secondLoad->pathName() : L"");
 
         runComSetupOnXllOpen([=]()
         {
