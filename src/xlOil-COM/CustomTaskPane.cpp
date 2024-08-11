@@ -212,12 +212,12 @@ namespace xloil
           _hostingControl->AttachDestroyHandler(events);
       }
 
-      void attach(size_t hwnd) override
+      void attach(size_t hwnd, bool asParent) override
       {
         if (_hostingControl)
         {
           XLO_DEBUG(L"Attaching task pane host control for pane {}", _name);
-          _hostingControl->AttachWindow((HWND)hwnd);
+          _hostingControl->AttachWindow((HWND)hwnd, asParent);
         }
         else
           XLO_INFO("ICustomTaskPane::attach only works for the built-in host control");

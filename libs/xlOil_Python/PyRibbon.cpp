@@ -72,8 +72,8 @@ namespace xloil
         {
           if (position == posName.second)
           {
-            runExcelThread([&]() {
-              self.setPosition(posName.first);
+            runExcelThread([&, location = posName.first]() {
+              self.setPosition(location);
             });
             return;
           }
@@ -361,16 +361,19 @@ namespace xloil
       };
 
       VoidFuture TaskPaneFrame_attach(
-        ICustomTaskPane& self, const py::object& eventHandler, size_t hwnd)
+        ICustomTaskPane& self, 
+        const py::object& eventHandler, 
+        size_t hwnd,
+        bool asParent)
       {
         return runExcelThread([
           &self, 
-          hwnd, 
+          hwnd, asParent,
           handler = make_shared<PyTaskPaneHandler>(eventHandler)
         ]()
         {
           self.listen(handler);
-          self.attach(hwnd);
+          self.attach(hwnd, asParent);
         });
       }
  
@@ -448,7 +451,8 @@ namespace xloil
               with no result.
             )",
             py::arg("handler"), 
-            py::arg("hwnd"));
+            py::arg("hwnd"),
+            py::arg("as_parent")=true);
 
         py::class_<ComAddin>(mod, 
           "ExcelGUI", R"(

@@ -1218,7 +1218,7 @@ class TaskPaneFrame():
     The methods of this object are safe to call from any thread. COM must be used on 
     Excel's main thread, so the methods all wrap their calls to ensure to this happens.
     """
-    def attach(self, handler: object, hwnd: int) -> _Future: 
+    def attach(self, handler: object, hwnd: int, as_parent: bool = True) -> _Future: 
         """
         Associates a `xloil.gui.CustomTaskPane` with this frame. Returns a future
         with no result.

@@ -40,9 +40,9 @@ class CustomTaskPane:
             `xloil.ExcelGUI.attach_frame` and generally should not need to be 
             called directly.
         """
-        self.hwnd = await asyncio.wrap_future(self._get_hwnd())
+        self.hwnd, as_parent = await asyncio.wrap_future(self._get_hwnd())
         self._pane = await frame
-        await self._pane.attach(self, self.hwnd)
+        await self._pane.attach(self, self.hwnd, as_parent)
         _TASK_PANES.add(self)
 
     def _attach_frame(self, frame: typing.Awaitable[TaskPaneFrame]):
@@ -52,14 +52,16 @@ class CustomTaskPane:
             `xloil.ExcelGUI.attach_frame` and generally should not need to be 
             called directly.
         """
-        self.hwnd = self._get_hwnd().result()
+        self.hwnd, as_parent = self._get_hwnd().result()
         self._pane = frame.result()
-        self._pane.attach(self, self.hwnd).result()
+        self._pane.attach(self, self.hwnd, as_parent).result()
         _TASK_PANES.add(self)
         
-    def _get_hwnd(self) -> typing.Awaitable[int]:
+    def _get_hwnd(self) -> typing.Awaitable[int, bool]:
         """
-            Should be implemented by derived classes
+            Should be implemented by derived classes.  The bool argument 
+            determines if the window pointed to by hwnd should be reparented
+            into the task pane.
         """
         raise NotImplementedError()
 
