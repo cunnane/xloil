@@ -198,17 +198,14 @@ namespace xloil
           ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
-      // We have some curious logic to avoid using the COM API whilst
-      // holding the GIL.
-      template<class TFinaliser>
       auto Worksheet_sliceHelper(
-        const ExcelWorksheet& ws, const py::object& loc, TFinaliser finaliser)
+        const ExcelWorksheet& ws, const py::object& loc)
       {
         if (PyUnicode_Check(loc.ptr()))
         {
           const auto address = to_wstring(loc);
           py::gil_scoped_release noGil;
-          return finaliser(ws.range(address));
+          return ws.range(address);
         }
         else
         {
@@ -218,16 +215,15 @@ namespace xloil
             fromRow, fromCol, toRow, toCol);
 
           py::gil_scoped_release noGil;
-          return finaliser(ws.range(
-            (int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
+          return ws.range(
+            (int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1);
         }
       }
 
       py::object worksheet_GetItem(
         const ExcelWorksheet& ws, const py::object& loc)
       {
-        return Worksheet_sliceHelper(ws, loc,
-          [](ExcelRange&& r) { return py::cast(r); });
+        return py::cast(Worksheet_sliceHelper(ws, loc));
       }
 
       void worksheet_SetItem(
@@ -244,12 +240,9 @@ namespace xloil
         else
           value = FromPyObj()(pyValue.ptr());
 
-        Worksheet_sliceHelper(ws, loc,
-          [value = move(value)](ExcelRange&& r) 
-          { 
-            r.set(value); 
-            return 0; 
-          });
+        auto sliced = Worksheet_sliceHelper(ws, loc);
+        py::gil_scoped_release noGil;
+        sliced.set(value);
       }
 
       py::object application_range(const Application& app, const std::wstring& address)
