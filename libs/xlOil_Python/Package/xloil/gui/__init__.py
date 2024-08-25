@@ -57,7 +57,7 @@ class CustomTaskPane:
         self._pane.attach(self, self.hwnd, as_parent).result()
         _TASK_PANES.add(self)
         
-    def _get_hwnd(self) -> typing.Awaitable[int, bool]:
+    def _get_hwnd(self) -> typing.Awaitable[typing.Tuple[int, bool]]:
         """
             Should be implemented by derived classes.  The bool argument 
             determines if the window pointed to by hwnd should be reparented
