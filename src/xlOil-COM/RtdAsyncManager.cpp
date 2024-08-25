@@ -310,9 +310,10 @@ namespace xloil
           const wchar_t* foundTopic = nullptr;
 
           {
-            // Lock 'tasksInCell' in case there is more than one RTD function in the cell
-            // This is unlikely, so we use a lightweight atomic_flag which implies a spin wait
-            // (before C++20).
+            // Lock 'tasksInCell' in case there is more than one RTD function in the cell.
+            // This is unlikely in itself and as they all execute on the same thread, contention
+            // problems are improbable, so we use a lightweight atomic_flag which implies a spin 
+            // wait (before C++20).
             scoped_atomic_flag lockCell(tasksInCell->busy);
 
             if (arraySize == 1 && tasksInCell->arrayCount > 0)
@@ -354,7 +355,20 @@ namespace xloil
           }
 
           assert(foundTopic);
-          return result ? result : rtd->subscribe(foundTopic);
+          if (result)
+            return result;
+       
+          // If the task is still running we resubscribe to all other tasks in the cell.
+          // If an argument to this task is the result of another task in the same cell,
+          // not subscribing will cause Excel to send a disconnect to the inner task. When
+          // this task returns its result, it triggers a cell recalc which will start a new
+          // connection to the inner task and go into a perpetual loop. If the inner task
+          // is still connected, xlOil knows it has already produced a result and returns 
+          // it, avoiding the loop.
+          for (auto& t : tasksInCell->tasks)
+            if (wcscmp(t->topic(), foundTopic) != 0)
+              rtd->subscribe(t->topic());
+          return rtd->subscribe(foundTopic);
         }
       }
 
