@@ -431,11 +431,9 @@ async def press_open_qtconsole(ctrl):
     def open_console():
         global theConsoleQt
         from xloil.gui.qt_console import create_qtconsole_inprocess
-        from qtpy.QtCore import Qt
         console = create_qtconsole_inprocess()
         console.show()
         theConsoleQt = console
-        #console.setAttribute(Qt.WA_DeleteOnClose)
 
     from xloil.gui.qtpy import Qt_thread
     await Qt_thread().submit_async(open_console)
