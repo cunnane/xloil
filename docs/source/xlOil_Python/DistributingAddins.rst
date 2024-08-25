@@ -56,7 +56,6 @@ it; `%APPDATA%\xlOil\myaddin` could be a sensible choice.
     Excel, one settings file must take precedence. You can make your addin take
     precedence with the `LoadBeforeCore` flag in `myaddin.ini`.
 
-For more on packaging addins, see :ref:`core-distributing-addins`.
 
 Packaging Python
 ================
@@ -79,8 +78,10 @@ Note that *--hidden-import* is actually an `argument to *PyInstaller* <https://p
 and can be specified multiple times.  Any other trailing arguments will be passed directly to *PyInstaller*.
 
 The resulting *dist* directory will contain:
+
   * install_main.exe (installs xlOil)
   * _internal (contains the python distribution)
+
 The installer does not copy the python distribution, it is used in-situ
 
 
