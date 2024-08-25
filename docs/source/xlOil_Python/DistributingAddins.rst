@@ -1,17 +1,30 @@
-================================
-xlOil Python Distributing Addins
-================================
+=======================================
+xlOil Python Distribution and Packaging
+=======================================
 
-We might like to distribute our code as a packaged addin so users don't have to edit
-their `xlOil.ini` to load it.  To do this, run the following at a command prompt:
+xlOil supports two possiblilities for distribution:
+   * Creating an XLL addin to distribute code to existing xlOil users
+   * Packaging Python and xlOil to install code for new users
+
+
+Creating an Addin
+=================
+
+The idea of this approach is to create an XLL addin so users don't have to edit
+their `xlOil.ini` to load some packaged code.  
+
+Users of XLL will need access to a python distribution which contains
+the *xlOil* package, however they do not need the xlOil addin installed.
+
+At a command prompt, run:
 
 ::
 
     xloil create myaddin.xll
 
 This will create a `myaddin.xll` and `myaddin.ini` in the current directory.
-By default, the XLL will try to load `myaddin.py` in the same directory, so let's 
-create it:
+By default, the XLL will try to load `myaddin.py` in the same directory, so 
+create this file:
 
 ::
 
@@ -22,14 +35,18 @@ create it:
         '''Adds up numbers'''
         return x + y + z
 
-Now drop `myaddin.xll` into an Excel session and try to use ``MySum``.
+Dropping `myaddin.xll` into an Excel session will create the function ``MySum``.
 
-Users of `myaddin.xll` will need access to a python distribution which contains
-the *xlOil* package, however they do not need the xlOil addin installed.
+If the python distribution will be in a standard directory on users' machines,
+the `PYTHONEXECUTABLE` and `PATH` environment variables in `myaddin.ini` can
+be used to point to it, otherwise these variables can read the python location
+from the registry.
 
-You may be able to place the python distribution on a shared drive and modify
-the `PYTHONPATH`, `PYTHONHOME` and `PATH` environment variables `myaddin.ini`
-to point to it.
+If you copy `myaddin.xll`, `myaddin.ini` and `myaddin.py` to your `%APPDATA%\Microsoft\Excel\XLSTART` 
+directory, Excel attempts to opens the ini file and py files which is not ideal! xlOil will
+look for `myaddin.ini` in `%APPDATA%\xlOil`, so install the ini to there instead. You'll also need 
+to choose a directory to hold `myaddin.py` (or other python modules) and ensure `myaddin.ini` points to 
+it; `%APPDATA%\xlOil\myaddin` could be a sensible choice.
 
 .. important:: 
     If a user of `myaddin.xll` has an ini file at `%APPDATA%\xlOil\xlOil.ini``
@@ -39,13 +56,38 @@ to point to it.
     Excel, one settings file must take precedence. You can make your addin take
     precedence with the `LoadBeforeCore` flag in `myaddin.ini`.
 
-Installing the Addin
---------------------
-
-If you copy `myaddin.xll` and `myaddin.ini` to your `%APPDATA%\Microsoft\Excel\XLSTART` 
-directory, you'll notice that Excel opens the ini file, which is not ideal! xlOil will
-look for `myaddin.ini` in `%APPDATA%\xlOil`, so install the ini to there. You'll also need 
-to choose a directory to hold your python modules and ensure `myaddin.ini` points to it:
-`%APPDATA%\xlOil\myaddin` would be a sensible choice.
-
 For more on packaging addins, see :ref:`core-distributing-addins`.
+
+Packaging Python
+================
+
+xlOil can use `PyInstaller <https://pyinstaller.org/>` to package a python distribution and
+create an installer executable.  Support for this is fairly rudimentary at present.
+
+You shouuld start with a minimum python distribution (ideally based on the standard distribution)
+for the code you want to distribute, otherwise *PyInstaller* may create a very large output.  The
+distribution should include xlOil and be able to load your code in Excel.
+
+To package the settings in the file *myaddin.ini* which loads the python module *excel_funcs.py*, 
+run the following command:
+
+::
+
+    xloil package myaddin.ini --hidden-import excel_funcs
+
+Note that *--hidden-import* is actually an `argument to *PyInstaller* <https://pyinstaller.org/en/stable/usage.html#options>`
+and can be specified multiple times.  Any other trailing arguments will be passed directly to *PyInstaller*.
+
+The resulting *dist* directory will contain:
+  * install_main.exe (installs xlOil)
+  * _internal (contains the python distribution)
+The installer does not copy the python distribution, it is used in-situ
+
+
+Customising the packaging
+-------------------------
+
+Calling `xloil package -makespec myaddin.ini` stops the packaging process before after creation
+of the `PyInstaller spec files <https://pyinstaller.org/en/stable/spec-files.html>`.  You can edit this
+spec file directly as described in the *PyInstaller* docs, then invoke *PyInstaller* on the spec file
+yourself to finish the process.

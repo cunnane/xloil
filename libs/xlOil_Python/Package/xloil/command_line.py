@@ -7,6 +7,7 @@ from contextlib import suppress
 import binascii
 import shutil as sh
 from ._paths import *
+from argparse import ArgumentParser
 
 _XL_START_PATH = Path(os.getenv('APPDATA')) / "Microsoft" / "Excel" / "XLSTART"
 _XLL_INSTALL_PATH = _XL_START_PATH / ADDIN_NAME
@@ -66,16 +67,16 @@ def _remove_from_resiliancy(filename, version):
                 reg.DeleteValue(regkey, name)
 
 
-def _remove_addin(version):
+def _remove_addin(excel_version, addin_path):
 
     # If we can't find the key or exit the for loop, suppress the error
     with suppress(OSError): 
-        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(version) + r"\Add-in Manager")
+        regkey = reg.OpenKey(reg.HKEY_CURRENT_USER, _excel_regpath(excel_version) + r"\Add-in Manager")
 
         # Cycles through all the properties and delete if it contains the file name.
         for i in range(1024):
             name, value, = reg.EnumValue(regkey, i)
-            if _XLL_INSTALL_PATH in value:
+            if addin_path in value:
                 reg.DeleteValue(regkey, name)
 
 
@@ -92,9 +93,10 @@ def _get_python_paths():
         'PYTHONEXECUTABLE': sys.executable
     }
 
-def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
+def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool, replace_paths=None):
 
-    env_vars = _get_python_paths()
+    if replace_paths is None:
+        replace_paths = _get_python_paths()
 
     fails = 0
 
@@ -110,7 +112,7 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
         else:
             replace(pat, repl)
     
-    for var, value in env_vars.items():
+    for var, value in replace_paths.items():
         check_replace(r'^(\s*' + var + r'\s*=).*', r'\g<1>' + _toml_lit_string(value))
         
     # Set XLOIL_PATH
@@ -126,10 +128,16 @@ def _write_python_path_to_ini(ini_txt, bin_dir:str, comment_reg_keys:bool):
     return ini_txt, fails == 0
     
    
-def install_xloil(ini_template:str=None, replace_ini=False):
+def install_xloil(ini_template:str=None, 
+                  addin_name=None,
+                  replace_ini=False, 
+                  replace_paths=None):
 
     ini_path = Path(APP_DATA_DIR) / INIFILE_NAME
 
+    if addin_name is None:
+        addin_name = ADDIN_NAME
+        
     excel_version = _find_excel_version()
 
     # Just in case we got put in Excel's naughty corner for misbehaving addins
@@ -159,7 +167,10 @@ def install_xloil(ini_template:str=None, replace_ini=False):
     # Edit the xloil.ini file. To preserve comments and whitespace it's easier to just use
     # regex replace rather than read the file as structured TOML
     ini_txt = ini_path.read_text(encoding='utf-8')
-    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, True)
+
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, 
+                                                 comment_reg_keys=True, 
+                                                 replace_paths=replace_paths)
 
     # Check if any of the counts is not 1, i.e. the expression matched zero or multiple times
     if not success:
@@ -173,7 +184,7 @@ def _remove_xloil():
     excel_version = _find_excel_version()
     
     # Ensure no xlOil addins are in the registry
-    _remove_addin(excel_version)
+    _remove_addin(excel_version, _XLL_INSTALL_PATH)
     try:
         os.remove(_XLL_INSTALL_PATH)
     except FileNotFoundError:
@@ -194,11 +205,9 @@ def _clean_xloil():
 
     subprocess.Popen(f"{sys.executable} -m pip uninstall --yes xloil", shell=True)
 
-def _create_addin(args):
-    if len(args) != 1:
-        raise Exception("'create' should have one argument, the target filename")
 
-    filename = args[0]
+def _create_addin(filename):
+
     basename = Path(os.path.splitext(filename)[0])
 
     xll_path = basename.with_suffix(".xll")
@@ -217,30 +226,119 @@ def _create_addin(args):
     
     # Assume we want the xlOil_Python plugin as we're running a python script
     ini_txt, count = re.subn(r'^(\s*Plugins\s*=).*', r'\g<1>["xlOil_Python"]', ini_txt, flags=re.M)
-    
+
     # Assume we want the python paths set to the distribution running this script
-    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, True)
+    ini_txt, success = _write_python_path_to_ini(ini_txt, bin_dir, 
+                                                 comment_reg_keys=True)
     
     ini_path.write_text(ini_txt)
 
     print("xlOil_Python plugin enabled using python installed at: ", sys.prefix)
+ 
+    
+def _package_pyinstaller(ini_template: str, 
+                         makespec: bool = False, 
+                         extra_args: str = None):
+
+    if ini_template is None:
+        ini_template = Path(APP_DATA_DIR) / INIFILE_NAME
+    else:
+        ini_template = Path(ini_template)
+        
+    python3_dll = os.path.join(sys.base_exec_prefix, "python3.dll")
+    
+    # Use the filename stems as when the script is run, these files will be
+    # available in its current directory. 
+    ini_filename = ini_template.name
+    addin_filename = "xloil.xll"
+    
+    entry_point = "install_main.py"
+    
+    install_stub = \
+        'import os\n' \
+        'import sys\n' \
+        'from xloil.command_line import install_xloil\n' \
+        f'install_xloil(ini_template="{ini_filename}", addin_name="{addin_filename}",\n' \
+        '   replace_paths={"PYTHONEXECUTABLE": os.path.join(sys.prefix, "python.exe")})\n'
+    
+    Path(entry_point).write_text(install_stub)
+
+    args = [
+        '',
+        entry_point,
+        '--onedir',
+        '--debug=noarchive',
+        '--nowindow',
+        f'--add-data={ini_template}:.',
+        f'--add-data={python3_dll}:.',
+    ]
+
+    if extra_args is not None:
+        args += extra_args
+       
+    print(args)
+    
+    if makespec:
+        from PyInstaller.utils.cliutils.makespec import run
+    else:
+        from PyInstaller.__main__ import run
+    
+    sys.argv = args
+    run()
 
 
 def main():
-    command = sys.argv[1].lower() if len(sys.argv) > 1 else ""
+    parser = ArgumentParser(prog='xlOil', 
+                            description='Excel/Python integration')
+    
+    subparsers = parser.add_subparsers(help='Commands to control local xlOil distribution')
 
-    if command == 'install':
-        install_xloil(sys.argv[2] if len(sys.argv) > 2 else None)
-    elif command == 'remove':
-        _remove_xloil()
-    elif command == 'uninstall':
-        _remove_xloil()
-    elif command == 'create':
-        _create_addin(sys.argv[2:])
-    elif command == 'clean':
-        _clean_xloil()
+    p = subparsers.add_parser('install', 
+                              help='Installs xloil by copying the Excel addin to the XLSTART directory '
+                                   'and sets the correct paths in xloil.ini')
+    p.add_argument("ini_template", nargs='?', type=str, default=None,
+                   help='Path to xloil.ini file to modify and install, if not present the default file is used')
+    p.set_defaults(func=install_xloil)
+    
+    p = subparsers.add_parser('create', 
+                              help='Creates an XLL addin to simplify distribution of Excel funcs to other xlOil users')
+    p.add_argument("filename", type=str, 
+                   help='Name of the XLL file to create')
+    p.set_defaults(func=_create_addin)
+
+    p = subparsers.add_parser('package', 
+                              help='Uses PyInstaller to create a packaged xloil installer. Any arguments '
+                                   'which xlOil does not parse will be passed directly to PyInstaller. '
+                                   'Invoke this function from a minimal python distribution, otherwise the '
+                                   'resulting package may be large. See docs for more details.')
+    p.add_argument("ini_template", type=str, 
+                   help='The xlOil ini file to package and distribute')
+    p.add_argument("--makespec", action='store_true', 
+                   help='If present, creates the PyInstaller spec file then exits. This allows more precise '
+                        'tweaking of the PyInstaller config. See PyInstaller docs on pyi-makespec')
+    p.set_defaults(func=_package_pyinstaller)
+
+    p = subparsers.add_parser('clean', 
+                              help='Uninstalls xlOil and removes its package using pip')
+    p.set_defaults(func=_clean_xloil)
+
+    p = subparsers.add_parser('remove', 
+                              help='Removes the xlOil addin from Excel. Leaves xlOil.ini in place')
+    p.set_defaults(func=_remove_xloil)
+    
+    p = subparsers.add_parser('uninstall', 
+                              help='Equivalent to the remove command')
+    p.set_defaults(func=_remove_xloil)
+    
+    args, more_args = parser.parse_known_args()
+    
+    func_args = vars(args)
+    func = func_args.pop("func")
+    if len(more_args) > 0:
+        func(**vars(args), extra_args=more_args)
     else:
-        raise Exception("Syntax: xloil {install, remove, uninstall, create}")
+        func(**vars(args))
+        
 
 if __name__ == '__main__':
     main()

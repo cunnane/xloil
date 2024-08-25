@@ -86,6 +86,7 @@ setup(
     data_files=[('share/xloil', data_files)],
     entry_points = {
         'console_scripts': ['xloil=xloil.command_line:main'],
+        'pyinstaller40':   ['hook-dirs=xloil._pyinstaller:get_hook_dirs'],
     },
 
     # Doesn't work, but the internet says it should
@@ -106,6 +107,7 @@ setup(
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: C++',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Office/Business :: Financial :: Spreadsheet',
