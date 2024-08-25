@@ -96,7 +96,7 @@ def wx_thread(fn=None, discard=False) -> WxExecutor:
 try:
     import wx
 except ImportError:
-    from ._core import XLOIL_READTHEDOCS
+    from xloil._core import XLOIL_READTHEDOCS
     if not XLOIL_EMBEDDED:
         class wx:
             class Frame:
