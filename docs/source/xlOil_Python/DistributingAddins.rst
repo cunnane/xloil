@@ -74,7 +74,7 @@ run the following command:
 
     xloil package myaddin.ini --hidden-import excel_funcs
 
-Note that *--hidden-import* is actually an `argument to *PyInstaller* <https://pyinstaller.org/en/stable/usage.html#options>`_
+Note that *--hidden-import* is actually an `argument to PyInstaller <https://pyinstaller.org/en/stable/usage.html#options>`_
 and can be specified multiple times.  Any other trailing arguments will be passed directly to *PyInstaller*.
 
 The resulting *dist* directory will contain:
