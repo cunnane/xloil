@@ -42,14 +42,14 @@ the `PYTHONEXECUTABLE` and `PATH` environment variables in `myaddin.ini` can
 be used to point to it, otherwise these variables can read the python location
 from the registry.
 
-If you copy `myaddin.xll`, `myaddin.ini` and `myaddin.py` to your `%APPDATA%\Microsoft\Excel\XLSTART` 
+If you copy `myaddin.xll`, `myaddin.ini` and `myaddin.py` to your `%APPDATA%\\Microsoft\\Excel\\XLSTART` 
 directory, Excel attempts to opens the ini file and py files which is not ideal! xlOil will
-look for `myaddin.ini` in `%APPDATA%\xlOil`, so install the ini to there instead. You'll also need 
+look for `myaddin.ini` in `%APPDATA%\\xlOil`, so install the ini to there instead. You'll also need 
 to choose a directory to hold `myaddin.py` (or other python modules) and ensure `myaddin.ini` points to 
-it; `%APPDATA%\xlOil\myaddin` could be a sensible choice.
+it; `%APPDATA%\\xlOil\\myaddin` could be a sensible choice.
 
 .. important:: 
-    If a user of `myaddin.xll` has an ini file at `%APPDATA%\xlOil\xlOil.ini``
+    If a user of `myaddin.xll` has an ini file at `%APPDATA%\\xlOil\\xlOil.ini``
     the core xlOil.dll is loaded using those settings before `myaddin.xll`.
     The assumption is that the user has the xlOil addin installed in Excel, but 
     since only one instance of xlOil (and one python interpreter) can be hosted in 
@@ -60,7 +60,7 @@ it; `%APPDATA%\xlOil\myaddin` could be a sensible choice.
 Packaging Python
 ================
 
-xlOil can use `PyInstaller <https://pyinstaller.org/>` to package a python distribution and
+xlOil can use `PyInstaller <https://pyinstaller.org/>`_ to package a python distribution and
 create an installer executable.  Support for this is fairly rudimentary at present.
 
 You shouuld start with a minimum python distribution (ideally based on the standard distribution)
@@ -74,7 +74,7 @@ run the following command:
 
     xloil package myaddin.ini --hidden-import excel_funcs
 
-Note that *--hidden-import* is actually an `argument to *PyInstaller* <https://pyinstaller.org/en/stable/usage.html#options>`
+Note that *--hidden-import* is actually an `argument to *PyInstaller* <https://pyinstaller.org/en/stable/usage.html#options>`_
 and can be specified multiple times.  Any other trailing arguments will be passed directly to *PyInstaller*.
 
 The resulting *dist* directory will contain:
@@ -88,7 +88,13 @@ The installer does not copy the python distribution, it is used in-situ
 Customising the packaging
 -------------------------
 
-Calling `xloil package -makespec myaddin.ini` stops the packaging process before after creation
-of the `PyInstaller spec files <https://pyinstaller.org/en/stable/spec-files.html>`.  You can edit this
+Calling 
+
+:: 
+
+    xloil package -makespec myaddin.ini` 
+    
+stops the packaging process before after creation of the 
+`PyInstaller spec files <https://pyinstaller.org/en/stable/spec-files.html>`_.  You can edit this
 spec file directly as described in the *PyInstaller* docs, then invoke *PyInstaller* on the spec file
 yourself to finish the process.
