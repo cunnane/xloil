@@ -92,7 +92,7 @@ Calling
 
 :: 
 
-    xloil package -makespec myaddin.ini` 
+    xloil package -makespec myaddin.ini
     
 stops the packaging process before after creation of the 
 `PyInstaller spec files <https://pyinstaller.org/en/stable/spec-files.html>`_.  You can edit this
