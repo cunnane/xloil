@@ -111,7 +111,7 @@ class TkThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
         # the hwnd in one call because that doesn't work for some reason...
         from ctypes import windll
         return Tk_thread().submit(
-            lambda: windll.user32.GetParent(self._top_level.winfo_id()))
+            lambda: windll.user32.GetParent(self._top_level.winfo_id()), True)
 
     def on_destroy(self):
         super().on_destroy()

@@ -194,7 +194,7 @@ class QtThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
 
             widget.show() # window handle does not exist before show
 
-            return int(widget.winId())
+            return int(widget.winId()), True
 
         return Qt_thread().submit(prepare, self._widget)
 

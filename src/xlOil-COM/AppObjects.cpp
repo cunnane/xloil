@@ -197,6 +197,17 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
+  ExcelRange Application::activeCell() const
+  {
+    try
+    {
+      Excel::Range* range = nullptr;
+      com().ActiveCell->QueryInterface(&range);
+      return ExcelRange(range);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
   void Application::quit(bool silent)
   {
     try

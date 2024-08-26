@@ -19,17 +19,19 @@ namespace xloil
   {
     std::wstring logFilePath(const toml::table& root);
 
-    std::string logLevel(const toml::view_node& root);
+    std::string logLevel(const toml::table& root);
 
-    std::string logPopupLevel(const toml::view_node& root);
+    std::string logPopupLevel(const toml::table& root);
 
-    std::pair<size_t, size_t> logRotation(const toml::view_node& root);
+    std::string logFlushLevel(const toml::table& root);
+
+    std::pair<size_t, size_t> logRotation(const toml::table& root);
 
     std::vector<std::wstring> plugins(const toml::view_node& root);
 
     std::wstring pluginSearchPattern(const toml::view_node& root);
 
-    std::vector<std::wstring> dateFormats(const toml::view_node& root);
+    std::vector<std::wstring> dateFormats(const toml::table& root);
 
     std::vector<std::pair<std::wstring, std::wstring>>
       environmentVariables(const toml::view_node& root);

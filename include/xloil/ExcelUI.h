@@ -165,7 +165,7 @@ namespace xloil
     /// Win32 window to the control and automatically resizes it to fill the pane.
     /// </summary>
     /// <param name="hwnd"></param>
-    virtual void attach(size_t hwnd) = 0;
+    virtual void attach(size_t hwnd, bool asParent=true) = 0;
 
     virtual void destroy() = 0;
   };

@@ -8,6 +8,8 @@
 import xloil
 from xloil.gui import CustomTaskPane, _GuiExecutor, _ConstructInExecutor
 from xloil._core import XLOIL_EMBEDDED
+from xloil import log
+
 
 class WxExecutor(_GuiExecutor):
 
@@ -41,6 +43,8 @@ class WxExecutor(_GuiExecutor):
         # Thread main loop, run until quit
         self._app.MainLoop()
         
+        log.debug("Wx: Finished running main loop, finalising Application")
+
         # See https://stackoverflow.com/questions/49304429/
         wx.DisableAsserts()
 
@@ -92,7 +96,7 @@ def wx_thread(fn=None, discard=False) -> WxExecutor:
 try:
     import wx
 except ImportError:
-    from ._core import XLOIL_READTHEDOCS
+    from xloil._core import XLOIL_READTHEDOCS
     if not XLOIL_EMBEDDED:
         class wx:
             class Frame:
@@ -124,7 +128,10 @@ class WxThreadTaskPane(CustomTaskPane, metaclass=_ConstructInExecutor, executor=
     def _get_hwnd(self):
         def prepare(frame):
             frame.Show()
-            return frame.GetHandle()
+            # import wx
+            # frame.Move(wx.Point(0,0))
+            # Unfortunately, Wx windows can't be reparented, so return False
+            return frame.GetHandle(), False
         return wx_thread().submit(prepare, self._frame)
 
     def on_destroy(self):

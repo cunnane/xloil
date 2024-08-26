@@ -55,8 +55,26 @@ namespace xloil
         const py::object& toR,   const py::object& toC,
         const py::object& nRows, const py::object& nCols)
       {
-        const auto toRow = !toR.is_none() ? toR.cast<int>() : (!nRows.is_none() ? fromR + nRows.cast<int>() - 1 : Range::TO_END);
-        const auto toCol = !toC.is_none() ? toC.cast<int>() : (!nCols.is_none() ? fromC + nCols.cast<int>() - 1 : Range::TO_END);
+        const auto toRow = !toR.is_none() 
+          ? toR.cast<int>() 
+          : (!nRows.is_none() 
+            ? fromR + nRows.cast<int>() - 1 
+            : Range::TO_END);
+        const auto toCol = !toC.is_none() 
+          ? toC.cast<int>() 
+          : (!nCols.is_none() 
+            ? fromC + nCols.cast<int>() - 1 
+            : Range::TO_END);
+        py::gil_scoped_release noGil;
+        return r.range(fromR, fromC, toRow, toCol);
+      }
+
+      inline auto range_offset(const Range& r,
+        int fromR, int fromC,
+        const py::object& nRows, const py::object& nCols)
+      {
+        const auto toRow = fromR + (!nRows.is_none() ? nRows.cast<int>() - 1 : 0);
+        const auto toCol = fromC + (!nCols.is_none() ? nCols.cast<int>() - 1 : 0);
         py::gil_scoped_release noGil;
         return r.range(fromR, fromC, toRow, toCol);
       }
@@ -180,17 +198,14 @@ namespace xloil
           ws, fromR, fromC, toR, toC, nRows, nCols));
       }
 
-      // We have some curious logic to avoid using the COM API whilst
-      // holding the GIL.
-      template<class TFinaliser>
       auto Worksheet_sliceHelper(
-        const ExcelWorksheet& ws, const py::object& loc, TFinaliser finaliser)
+        const ExcelWorksheet& ws, const py::object& loc)
       {
         if (PyUnicode_Check(loc.ptr()))
         {
           const auto address = to_wstring(loc);
           py::gil_scoped_release noGil;
-          return finaliser(ws.range(address));
+          return ws.range(address);
         }
         else
         {
@@ -200,16 +215,15 @@ namespace xloil
             fromRow, fromCol, toRow, toCol);
 
           py::gil_scoped_release noGil;
-          return finaliser(ws.range(
-            (int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
+          return ws.range(
+            (int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1);
         }
       }
 
       py::object worksheet_GetItem(
         const ExcelWorksheet& ws, const py::object& loc)
       {
-        return Worksheet_sliceHelper(ws, loc,
-          [](ExcelRange&& r) { return py::cast(r); });
+        return py::cast(Worksheet_sliceHelper(ws, loc));
       }
 
       void worksheet_SetItem(
@@ -226,12 +240,9 @@ namespace xloil
         else
           value = FromPyObj()(pyValue.ptr());
 
-        Worksheet_sliceHelper(ws, loc,
-          [value = move(value)](ExcelRange&& r) 
-          { 
-            r.set(value); 
-            return 0; 
-          });
+        auto sliced = Worksheet_sliceHelper(ws, loc);
+        py::gil_scoped_release noGil;
+        sliced.set(value);
       }
 
       py::object application_range(const Application& app, const std::wstring& address)
@@ -529,6 +540,13 @@ namespace xloil
         return app.open(filepath, updateLinks, readOnly, delim);
       }
 
+      auto CallerInfo_Ctor()
+      {
+        if (!isCallerInfoSafe())
+          throw py::value_error("CallerInfo is not available in this context");
+        return CallerInfo();
+      }
+
       auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
       {
         py::gil_scoped_release noGil;
@@ -713,6 +731,30 @@ namespace xloil
           py::arg("from_col"),
           py::arg("to_row")   = py::none(),
           py::arg("to_col")   = py::none(),
+          py::arg("num_rows") = py::none(),
+          py::arg("num_cols") = py::none())
+        .def("offset",
+          range_offset,
+          R"(
+            Similar to the *range* function, but with different defaults  
+
+            Parameters
+            ----------
+
+            from_row: int
+                Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+            from_col: int
+                Starting row offset from the top left of the parent range. Zero-based, can be negative
+
+            num_rows: int
+                Number of rows in output range. Defaults to 1
+
+            num_cols: int
+                Number of columns in output range. Defaults to 1.
+          )",
+          py::arg("from_row"),
+          py::arg("from_col"),
           py::arg("num_rows") = py::none(),
           py::arg("num_cols") = py::none())
         .def("cell", 
@@ -1185,7 +1227,7 @@ namespace xloil
           calling cell or range. If the function was not called from a sheet (e.g. 
           via a macro), most of the methods return `None`.
         )")
-        .def(py::init<>())
+        .def(py::init(&CallerInfo_Ctor))
         .def("__str__", CallerInfo_Address)
         .def_property_readonly("sheet_name",
           [](const CallerInfo& self)
@@ -1230,6 +1272,14 @@ namespace xloil
         call_release_gil(),
         R"(
           Returns the currently active workbook. Will raise an exception if xlOil
+          has not been loaded as an addin.
+        )");
+
+      mod.def("active_cell",
+        []() { return thisApp().activeCell(); },
+        call_release_gil(),
+        R"(
+          Returns the currently active cell as a Range. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 

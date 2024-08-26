@@ -16,9 +16,6 @@ to making any declared functions :ref:`xlOil_Python/Functions:Local Functions`
 The function :any:`xloil.linked_workbook` when called from a workbook module retrieves 
 the associated workbook path.
 
-Another way to package python code for distribution is to create an XLL, see
-:ref:`core-distributing-addins`
-
 
 Array Functions
 ---------------

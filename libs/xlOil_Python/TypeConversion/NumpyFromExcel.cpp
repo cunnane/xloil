@@ -230,12 +230,12 @@ namespace xloil
       else if (numpyType == NPY_STRING || numpyType == NPY_UNICODE)
       {
         descr = PyArray_DescrNewFromType(numpyType);
-        descr->elsize = (int)itemsize;
+        PyDataType_SET_ELSIZE(descr, (int)itemsize);
       }
       else
         descr = PyArray_DescrFromType(numpyType);
 
-      assert(descr->elsize > 0);
+      assert(PyDataType_ELSIZE(descr) > 0);
 
       // The flags argument is confusing: if data is null, flags=1 means a 
       // fortran-style array, but if data is not null, flags=1 (i.e. set to
@@ -468,7 +468,7 @@ namespace xloil
          */
         auto iternext = NpyIter_GetIterNext(iter, NULL);
         auto innerstride = NpyIter_GetInnerStrideArray(iter)[0];
-        auto itemsize = NpyIter_GetDescrArray(iter)[0]->elsize;
+        auto itemsize = PyDataType_ELSIZE(NpyIter_GetDescrArray(iter)[0]);
         /*
          * The inner loop size and data pointers may change during the
          * loop, so just cache the addresses.

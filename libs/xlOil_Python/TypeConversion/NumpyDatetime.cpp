@@ -19,7 +19,7 @@ get_datetime_metadata_from_dtype(PyArray_Descr *dtype)
     if (!PyDataType_ISDATETIME(dtype))
       throw std::runtime_error("cannot get datetime metadata from non-datetime type");
 
-    return &(((PyArray_DatetimeDTypeMetaData *)dtype->c_metadata)->meta);
+    return &(((PyArray_DatetimeDTypeMetaData*)PyDataType_C_METADATA(dtype))->meta);
 }
 
 PyArray_Descr *
@@ -40,7 +40,7 @@ create_datetime_dtype(int type_num, PyArray_DatetimeMetaData *meta)
         return NULL;
     }
 
-    dt_data = &(((PyArray_DatetimeDTypeMetaData *)dtype->c_metadata)->meta);
+    dt_data = &(((PyArray_DatetimeDTypeMetaData *)PyDataType_C_METADATA(dtype))->meta);
 
     /* Copy the metadata */
     *dt_data = *meta;

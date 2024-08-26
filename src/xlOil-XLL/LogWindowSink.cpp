@@ -1,13 +1,17 @@
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include "LogWindowSink.h"
-#include <xloil/WindowsSlim.h>
 #include <xloil/StringUtils.h>
 #include <xlOilHelpers/Environment.h>
 #include <xlOilHelpers/Exception.h>
 #include <xlOil/LogWindow.h>
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/details/pattern_formatter.h>
+#include <spdlog/spdlog.h>
 #include <mutex>
 #include <regex>
+
 
 using std::wstring;
 using std::string;
@@ -165,8 +169,9 @@ namespace xloil
     theLogWindow->openWindow();
   }
 
-  void setLogWindowPopupLevel(spdlog::level::level_enum popupLevel)
+  void setLogWindowPopupLevel(const char* popupLevel)
   {
-    MainLogWindow::setPopupLevel(popupLevel);
+    const auto spdLevel = spdlog::level::from_str(popupLevel);
+    MainLogWindow::setPopupLevel(spdLevel);
   }
 }

@@ -26,6 +26,12 @@ namespace xloil
 
     void raiseUserException(const pybind11::error_already_set& e);
     
+    /// <summary>
+    /// If *false* is passed, disables all xlOil_Python event handling. By
+    /// default, events are enabled. Threadsafe.
+    /// </summary>
+    void setAllowPyEvents(bool value);
+
     template<class F, class... Args>
     auto checkUserException(F&& f, Args... args)
     {

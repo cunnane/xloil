@@ -41,9 +41,12 @@ namespace
 namespace xloil
 {
   AddinContext::AddinContext(
-    const wchar_t* pathName, const std::shared_ptr<const toml::table>& settings)
+    const std::wstring_view& pathName, 
+    const std::shared_ptr<const toml::table>& settings,
+    const std::wstring_view& logFilePath)
     : _settings(settings)
     , _pathName(pathName)
+    , _logFilePath(logFilePath)
   {
   }
 
@@ -60,7 +63,6 @@ namespace xloil
     auto pluginNames = Settings::plugins(addinSettings);
 
     auto plugins = std::set<wstring>(pluginNames.cbegin(), pluginNames.cend());
-
 
     const auto xllDir = fs::path(pathName()).remove_filename();
     const auto coreDir = fs::path(Environment::coreDllPath()).remove_filename();

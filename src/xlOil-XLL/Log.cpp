@@ -18,10 +18,10 @@ namespace fs = std::filesystem;
 namespace xloil
 {
   std::shared_ptr<spdlog::logger> loggerInitialise(
-    const char* debugStringLevel,
+    const std::string_view& debugLevel,
     bool makeDefault)
   {
-    const auto debugWriterLevel = spdlog::level::from_str(debugStringLevel);
+    const auto debugWriterLevel = spdlog::level::from_str(string(debugLevel));
 
     auto logger = make_shared<spdlog::logger>("logger");
 
@@ -44,14 +44,10 @@ namespace xloil
 
   void loggerSetFlush(
     const std::shared_ptr<spdlog::logger>& logger,
-    const char* flushLevel,
-    bool flushAfterCalc)
+    const std::string_view& flushLevel)
   {
-    const auto flushSpdLevel = spdlog::level::from_str(flushLevel);
+    const auto flushSpdLevel = spdlog::level::from_str(string(flushLevel));
     logger->flush_on(flushSpdLevel);
-
-    if (flushAfterCalc)
-      Event::AfterCalculate() += [logger]() { logger->flush(); };
   }
 
   void loggerAddPopupWindowSink(

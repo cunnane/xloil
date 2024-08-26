@@ -325,11 +325,14 @@ namespace xloil
           sheetName.pstr(), sheetNameLen);
 
         if (bufLen > sheetNameLen)
+        {
+          buf[sheetNameLen] = L'!';
           wmemcpy_s(
-            buf + sheetNameLen, bufLen - sheetNameLen, 
+            buf + sheetNameLen + 1, bufLen - sheetNameLen - 1,
             objectName.pstr(), nameLen);
+        }
 
-        return std::min<int>((int)bufLen, sheetNameLen + nameLen);
+        return std::min<int>((int)bufLen, sheetNameLen + nameLen + 1);
       }
       case ExcelType::Num: // DLL caller
       {

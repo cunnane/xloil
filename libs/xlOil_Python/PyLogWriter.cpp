@@ -148,7 +148,7 @@ namespace xloil
         auto logFilePath()
         {
           if (theCoreAddin())
-            return theCoreAddin()->context().logFilePath;
+            return theCoreAddin()->context().logFile();
           return wstring();
         }
       };

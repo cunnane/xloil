@@ -1,5 +1,8 @@
 #pragma once
-#include <spdlog/spdlog.h>
+#include <memory>
+#include <xloil/WindowsSlim.h>
+namespace spdlog { namespace sinks { class sink; } }
+
 namespace xloil
 {
   std::shared_ptr<spdlog::sinks::sink>
@@ -8,5 +11,5 @@ namespace xloil
       HINSTANCE parentInstance);
 
   void openLogWindow();
-  void setLogWindowPopupLevel(spdlog::level::level_enum popupLevel);
+  void setLogWindowPopupLevel(const char* popupLevel);
 }

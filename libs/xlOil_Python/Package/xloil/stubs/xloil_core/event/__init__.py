@@ -153,10 +153,12 @@ class _bool_ref():
     def value(self, arg1: bool) -> None:
         pass
     pass
-def allow() -> None:
+def allow(excel: bool = True) -> None:
     """
-    Resumes Excel's event handling after a pause.  Equivalent to VBA's
-    `Application.EnableEvents = True` or `xlo.app().enable_events = True` 
+    Resumes event handling after a previous call to *pause*.
+
+    If *excel* is True (the default), also calls `Application.EnableEvents = True`
+    (equivalent to `xlo.app().enable_events = True`)
     """
 def file_change(path: str, action: str = 'modify', subdirs: bool = True) -> Event:
     """
@@ -190,10 +192,13 @@ def file_change(path: str, action: str = 'modify', subdirs: bool = True) -> Even
     subdirs: bool (true)
        including in subdirectories,
     """
-def pause() -> None:
+def pause(excel: bool = True) -> None:
     """
-    Pauses Excel's event handling. Equivalent to VBA's 
-    `Application.EnableEvents = False` or `xlo.app().enable_events = False` 
+    Stops all xlOil event handling - any executing handlers will complete but
+    no further handlers will fire.
+
+    If *excel* is True (the default), also calls `Application.EnableEvents = False`
+    (equivalent to `xlo.app().enable_events = False`)
     """
 AfterCalculate: Event=None # value = <xloil_core.event.Event object>
 ComAddinsUpdate: Event=None # value = <xloil_core.event.Event object>

@@ -24,14 +24,14 @@ try:
     # to send jobs to Qt's thread.
     import xloil.gui.qtpy
     
-    from qtpy.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QProgressBar
+    from qtpy.QtWidgets import QLabel, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QProgressBar
     from qtpy.QtCore import Signal, Qt
     
     class OurQtPane(QWidget):
         
         _progress = Signal(int)
         
-        def set_progress(self, x: int):
+        def set_progress(self, x: int = 0):
             # Use a signal to send the progress: this is thread safe
             self._progress.emit(x)
             
@@ -43,13 +43,14 @@ try:
             self._progress.connect(progress_bar.setValue, Qt.QueuedConnection)
         
             label = QLabel("Hello from Qt")
-        
-            layout = QHBoxLayout()
-        
+            reset_button = QPushButton(text="Zero", parent=self)
+            reset_button.clicked.connect(self.set_progress)
+            
+            layout = QVBoxLayout()
             layout.addWidget(label)
-
             layout.addWidget(progress_bar)
-        
+            layout.addWidget(reset_button)      
+            
             self.setLayout(layout)
                 
 except ImportError:
@@ -110,17 +111,25 @@ try:
             st.SetFont(font)
 
             self._gauge = wx.Gauge(pnl)
-
+            
+            self._button = wx.Button(pnl,-1,"Click Me")
+            self._button.Bind(wx.EVT_BUTTON,self.OnClicked) 
+            
             # and create a sizer to manage the layout of child widgets
             sizer = wx.BoxSizer(wx.VERTICAL)
             sizer.Add(st, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
             sizer.Add(self._gauge, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
+            sizer.Add(self._button, wx.SizerFlags().Border(wx.TOP|wx.LEFT, 25))
             pnl.SetSizer(sizer)
 
         @wx_thread
         def set_progress(self, x: int):
             self._gauge.SetValue(x)
 
+        def OnClicked(self, event): 
+            btn = event.GetEventObject().GetLabel() 
+            self._gauge.SetValue(0)
+          
 except ImportError:
     class OurWxPane:
         ...

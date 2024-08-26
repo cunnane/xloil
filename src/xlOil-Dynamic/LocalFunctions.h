@@ -45,4 +45,9 @@ namespace xloil
 
   void clearLocalFunctions(
     std::map<std::wstring, std::shared_ptr<const LocalWorksheetFunc>>& existing);
+  
+  /// <summary>
+  /// Returns true if a local function is currently executing
+  /// </summary>
+  bool isExecutingLocalFunction();
 }
