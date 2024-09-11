@@ -256,8 +256,9 @@ namespace xloil
   {
     try
     {
-      auto previousValue = com().EnableEvents == VARIANT_TRUE;
-      com().EnableEvents = _variant_t(value);
+      auto& obj = com();
+      auto previousValue = obj.EnableEvents == VARIANT_TRUE;
+      obj.EnableEvents = _variant_t(value);
       return previousValue;
     }
     XLO_RETHROW_COM_ERROR;
@@ -276,8 +277,9 @@ namespace xloil
   {
     try
     {
-      auto previousValue = com().GetDisplayAlerts() == VARIANT_TRUE;
-      com().PutDisplayAlerts(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      auto& obj = com();
+      auto previousValue = obj.GetDisplayAlerts() == VARIANT_TRUE;
+      obj.PutDisplayAlerts(0, value ? VARIANT_TRUE : VARIANT_FALSE);
       return previousValue;
     }
     XLO_RETHROW_COM_ERROR;
@@ -296,8 +298,9 @@ namespace xloil
   {
     try
     {
-      auto previousValue = com().GetScreenUpdating() == VARIANT_TRUE;
-      com().PutScreenUpdating(0, value ? VARIANT_TRUE : VARIANT_FALSE);
+      auto& obj = com();
+      auto previousValue = obj.GetScreenUpdating() == VARIANT_TRUE;
+      obj.PutScreenUpdating(0, value ? VARIANT_TRUE : VARIANT_FALSE);
       return previousValue;
     }
     XLO_RETHROW_COM_ERROR;
@@ -316,8 +319,9 @@ namespace xloil
   {
     try
     {
-      auto previousValue = com().GetCalculation();
-      com().PutCalculation(0, (Excel::XlCalculation)value);
+      auto& obj = com();
+      auto previousValue = obj.GetCalculation();
+      obj.PutCalculation(0, (Excel::XlCalculation)value);
       return (CalculationMode)previousValue;
     }
     XLO_RETHROW_COM_ERROR;
@@ -549,14 +553,15 @@ namespace xloil
   {
     try
     {
+      auto& obj = com();
       if (toRow == Range::TO_END)
-        toRow = com().Rows->GetCount();
+        toRow = obj.Rows->GetCount();
       if (toCol == Range::TO_END)
-        toCol = com().Columns->GetCount();
+        toCol = obj.Columns->GetCount();
 
-      auto r = com().GetRange(
-        com().Cells->Item[fromRow + 1][fromCol + 1],
-        com().Cells->Item[toRow + 1][toCol + 1]);
+      auto r = obj.GetRange(
+        obj.Cells->Item[fromRow + 1][fromCol + 1],
+        obj.Cells->Item[toRow + 1][toCol + 1]);
       return ExcelRange(r);
     }
     XLO_RETHROW_COM_ERROR;

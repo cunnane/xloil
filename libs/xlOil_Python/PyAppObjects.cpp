@@ -334,6 +334,104 @@ namespace xloil
         app.quit(true);
       }
 
+      Application application_Construct(
+        const py::object& com,
+        const py::object& hwnd,
+        const py::object& wbName)
+      {
+        size_t hWnd = 0;
+        wstring workbook;
+
+        if (!com.is_none())
+        {
+          // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
+          hWnd = py::cast<size_t>(com.attr("hWnd")());
+        }
+        else if (!hwnd.is_none())
+          hWnd = py::cast<size_t>(hwnd);
+        else if (!wbName.is_none())
+          workbook = to_wstring(wbName);
+
+        py::gil_scoped_release noGil;
+        if (hWnd != 0)
+          return Application(hWnd);
+        else if (!workbook.empty())
+          return Application(workbook.c_str());
+        else
+          return Application();
+      }
+
+      auto application_Open(
+        Application& app,
+        const wstring& filepath,
+        bool updateLinks,
+        bool readOnly,
+        const py::object& delimiter)
+      {
+        auto delim = delimiter.is_none() ? wchar_t(0) : to_wstring(delimiter).front();
+        py::gil_scoped_release noGil;
+        return app.open(filepath, updateLinks, readOnly, delim);
+      }
+
+      template<class T>
+      py::object castInvalidToNone(T obj)
+      {
+        return obj.valid() ? py::cast(obj) : py::none();
+      }
+
+      auto application_ActiveWorksheet(Application& app)
+      {
+        ExcelWorksheet obj;
+        {
+          py::gil_scoped_release noGil;
+          obj = app.activeWorksheet();
+        }
+        return castInvalidToNone(obj);
+      }
+
+      auto application_ActiveWorkbook(Application& app)
+      {
+        ExcelWorkbook obj;
+        {
+          py::gil_scoped_release noGil;
+          obj = app.workbooks().active();
+        }
+        return castInvalidToNone(obj);
+      }
+
+      auto application_ActiveCell(Application& app)
+      {
+        ExcelRange obj;
+        {
+          py::gil_scoped_release noGil;
+          obj = app.activeCell();
+        }
+        return castInvalidToNone(obj);
+      }
+
+      auto application_Selection(Application& app)
+      {
+        ExcelRange obj;
+        {
+          py::gil_scoped_release noGil;
+          obj = app.selection();
+        }
+        return castInvalidToNone(obj);
+      }
+
+      auto CallerInfo_Ctor()
+      {
+        if (!isCallerInfoSafe())
+          throw py::value_error("CallerInfo is not available in this context");
+        return CallerInfo();
+      }
+
+      auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
+      {
+        py::gil_scoped_release noGil;
+        return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
+      }
+
       struct RangeIter
       {
         Range& _range;
@@ -500,59 +598,6 @@ namespace xloil
         PyErr_Clear();
         py::setattr(toCom(py::cast<T&>(self), ""), attrName, value);
       }
-
-      Application application_Construct(
-        const py::object& com,
-        const py::object& hwnd,
-        const py::object& wbName)
-      {
-        size_t hWnd = 0;
-        wstring workbook;
-
-        if (!com.is_none())
-        {
-          // TODO: we could get the underlying COM ptr depending on use of comtypes/pywin32
-          hWnd = py::cast<size_t>(com.attr("hWnd")());
-        }
-        else if (!hwnd.is_none())
-          hWnd = py::cast<size_t>(hwnd);
-        else if (!wbName.is_none())
-          workbook = to_wstring(wbName);
-
-        py::gil_scoped_release noGil;
-        if (hWnd != 0)
-          return Application(hWnd);
-        else if (!workbook.empty())
-          return Application(workbook.c_str());
-        else
-          return Application();
-      }
-
-      auto application_Open(
-        Application& app,
-        const wstring& filepath,
-        bool updateLinks,
-        bool readOnly,
-        const py::object& delimiter)
-      {
-        auto delim = delimiter.is_none() ? wchar_t(0) : to_wstring(delimiter).front();
-        py::gil_scoped_release noGil;
-        return app.open(filepath, updateLinks, readOnly, delim);
-      }
-
-      auto CallerInfo_Ctor()
-      {
-        if (!isCallerInfoSafe())
-          throw py::value_error("CallerInfo is not available in this context");
-        return CallerInfo();
-      }
-
-      auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
-      {
-        py::gil_scoped_release noGil;
-        return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
-      }
-
     } // namespace anon
 
     static int theBinder = addBinder([](py::module& mod)
@@ -1217,6 +1262,28 @@ namespace xloil
             in workbooks is discarded, otherwise a prompt is displayed.
           )",
           py::arg("silent") = true)
+        .def_property_readonly("selection", &Application::selection)
+
+        .def_property_readonly("active_worksheet",
+          application_ActiveWorksheet,
+          R"(
+              Returns the currently active worksheet or None.
+          )")
+        .def_property_readonly("active_workbook",
+          application_ActiveWorkbook,
+          R"(
+              Returns the currently active workbook or None.
+          )")
+        .def_property_readonly("active_cell",
+          application_ActiveCell,
+          R"(
+              Returns the currently active cell as a Range or None.
+          )")
+        .def_property_readonly("selection",
+          application_Selection,
+          R"(
+              Returns the currently active cell as a Range or None.
+          )")
         .def("__enter__", Context_Enter)
         .def("__exit__", Application_Exit);
 
@@ -1257,29 +1324,33 @@ namespace xloil
           {
             return createPyRange([&]() { return self.address(); });
           },
-          "Range object corresponding to caller address");
+          "Range object corresponding to caller address.  Will raise an exception if caller is not a range");
 
       mod.def("active_worksheet", 
-        []() { return thisApp().activeWorksheet(); },
-        call_release_gil(),
+        []() { return application_ActiveWorksheet(thisApp()); },
         R"(
-          Returns the currently active worksheet. Will raise an exception if xlOil
+          Returns the currently active worksheet or None. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 
       mod.def("active_workbook", 
-        []() { return thisApp().workbooks().active(); },
-        call_release_gil(),
+        []() { return application_ActiveWorkbook(thisApp()); },
         R"(
-          Returns the currently active workbook. Will raise an exception if xlOil
+          Returns the currently active workbook or None. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 
       mod.def("active_cell",
-        []() { return thisApp().activeCell(); },
-        call_release_gil(),
+        []() { return application_ActiveCell(thisApp()); },
         R"(
-          Returns the currently active cell as a Range. Will raise an exception if xlOil
+          Returns the currently active cell as a Range or None. Will raise an exception if xlOil
+          has not been loaded as an addin.
+        )");
+
+      mod.def("selection",
+        []() { return application_Selection(thisApp()); },
+        R"(
+          Returns the currently selected cells as a Range or None. Will raise an exception if xlOil
           has not been loaded as an addin.
         )");
 

@@ -106,7 +106,12 @@ namespace xloil
     void init(IDispatch* ptr, bool steal = false);
   };
 
-  template <typename T, bool TCheck=false>
+  template <typename T, 
+#ifdef NDEBUG
+    bool TCheck = false>
+#else
+    bool TCheck = true>
+#endif
   class AppObject
   {
     DispatchObject _obj;
@@ -120,7 +125,8 @@ namespace xloil
     {
       if constexpr (TCheck)
       {
-        if (!valid()) throw new NullComObjectException();
+        if (!valid()) 
+          throw new NullComObjectException();
       }
     }
     

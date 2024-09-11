@@ -57,6 +57,7 @@ __all__ = [
     "insert_cell_image",
     "run",
     "run_async",
+    "selection",
     "to_datetime",
     "xloil_addins"
 ]
@@ -227,6 +228,30 @@ class Application():
         'win32com', unless specified in the XLL's ini file.
         """
     @property
+    def active_cell(self) -> object:
+        """
+                      Returns the currently active cell as a Range or None.
+                  
+
+        :type: object
+        """
+    @property
+    def active_workbook(self) -> object:
+        """
+                      Returns the currently active workbook or None.
+                  
+
+        :type: object
+        """
+    @property
+    def active_worksheet(self) -> object:
+        """
+                      Returns the currently active worksheet or None.
+                  
+
+        :type: object
+        """
+    @property
     def enable_events(self) -> bool:
         """
                     Pauses or resumes Excel's event handling. It can be useful when writing to a sheet
@@ -240,6 +265,14 @@ class Application():
         """
         Pauses or resumes Excel's event handling. It can be useful when writing to a sheet
         to pause events both for performance and to prevent side effects.
+        """
+    @property
+    def selection(self) -> object:
+        """
+                      Returns the currently active cell as a Range or None.
+                  
+
+        :type: object
         """
     @property
     def visible(self) -> bool:
@@ -292,7 +325,7 @@ class Caller():
     @property
     def range(self) -> object:
         """
-        Range object corresponding to caller address
+        Range object corresponding to caller address.  Will raise an exception if caller is not a range
 
         :type: object
         """
@@ -2206,19 +2239,19 @@ def _table_converter(n: int, m: int, columns: object = None, rows: object = None
       if True, place unconvertible objects in the cache and return a ref string
       if False, call str(x) on unconvertible objects
     """
-def active_cell() -> _ExcelRange:
+def active_cell() -> object:
     """
-    Returns the currently active cell as a Range. Will raise an exception if xlOil
+    Returns the currently active cell as a Range or None. Will raise an exception if xlOil
     has not been loaded as an addin.
     """
-def active_workbook() -> Workbook:
+def active_workbook() -> object:
     """
-    Returns the currently active workbook. Will raise an exception if xlOil
+    Returns the currently active workbook or None. Will raise an exception if xlOil
     has not been loaded as an addin.
     """
-def active_worksheet() -> Worksheet:
+def active_worksheet() -> object:
     """
-    Returns the currently active worksheet. Will raise an exception if xlOil
+    Returns the currently active worksheet or None. Will raise an exception if xlOil
     has not been loaded as an addin.
     """
 def app() -> Application:
@@ -2347,6 +2380,11 @@ def run_async(func: object, *args) -> _ExcelObjFuture:
     to return a result.
 
     Returns an **awaitable**, i.e. a future which holds the result.
+    """
+def selection() -> object:
+    """
+    Returns the currently selected cells as a Range or None. Will raise an exception if xlOil
+    has not been loaded as an addin.
     """
 def to_datetime(arg0: object) -> object:
     """
