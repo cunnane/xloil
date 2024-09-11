@@ -7,6 +7,7 @@ import os
 import inspect
 import site
 from importlib.machinery import SourceFileLoader
+from types import ModuleType
 from typing import List, Dict
 from collections.abc import Iterable
 from .register import scan_module
@@ -32,7 +33,7 @@ class ImportHelper(metaclass=Singleton):
         except KeyError:
             self._ignore_paths = []
             
-        self._module_addin_map = dict() # Stores 
+        self._module_addin_map = dict()
         self._reloader = superreload
 
         # Inevitably many files will be imported from the environment's site-packages
@@ -51,7 +52,7 @@ class ImportHelper(metaclass=Singleton):
         return self._watched
     
     @property
-    def module_addin(self):
+    def module_addin(self) -> Dict[str, str]:
         """
         Keeps tracek of which addin loads a particular source file.
         Returns a dict of {module_path -> addin_path}
@@ -69,7 +70,7 @@ class ImportHelper(metaclass=Singleton):
         log.debug(f"Reloading {module}")
         return self._reloader(module, *args, **kwargs)
     
-    def watch_module(self, module):
+    def watch_module(self, module: ModuleType):
 
         filepath = module.__spec__.origin
         
@@ -85,7 +86,13 @@ class ImportHelper(metaclass=Singleton):
             import xloil_core
             event = xloil_core.event.file_change(filepath)
             event += self._on_file_modified
-            
+        
+        # If _import_and_scan has not written addin info for this module name
+        # we use the core addin as the most likely choice of originator.
+        import xloil_core
+        self._module_addin_map[filepath] = self._module_addin_map.get(
+            module.__name__, 
+            xloil_core.core_addin().pathname)
         self._watched[filepath] = module.__name__
      
     def _on_file_modified(self, filepath):
@@ -96,10 +103,10 @@ class ImportHelper(metaclass=Singleton):
         module = sys.modules[module_name]
         
         import xloil_core
+   
         addin_path = self.module_addin[filepath]
         addin = xloil_core.xloil_addins[addin_path] 
         addin.event_loop.call_soon_threadsafe(self.reload, module)
-        
 
 
 def linked_workbook() -> str:
@@ -358,11 +365,6 @@ class _LoadAndScanHook(SourceFileLoader):
 
 
     def exec_module(self, module):
-
-        # See if _import_and_scan has written addin info for this module
-        addin = ImportHelper().module_addin.get(module.__name__)
-        if addin is not None:
-            ImportHelper().module_addin[module.__file__] = addin
 
         # Exec module as normal
         super().exec_module(module)
