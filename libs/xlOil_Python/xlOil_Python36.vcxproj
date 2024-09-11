@@ -52,6 +52,12 @@
     <Import Project="PySettings36.props" />
     <Import Project="PySettings.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
+    <Import Project="..\..\src\Debug.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
+    <Import Project="..\..\src\Release.props" />
+  </ImportGroup>
   <ItemDefinitionGroup>
     <Link>
       <AdditionalDependencies>python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
