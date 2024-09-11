@@ -258,7 +258,6 @@ class _GuiExecutor(futures.Executor):
         # We definitely want threading available to shut down our threads.
         xloil.event.PyBye += self.shutdown
 
-        #xloil.log.error(f"Did we make it here")
 
     def _make_ready(self):
         """
@@ -313,6 +312,7 @@ class _GuiExecutor(futures.Executor):
         if wait:
             self._thread.join()
             xloil.log.debug("Joined GUI thread '%s'", self._thread.name)
+            self._thread = None
 
     def _main_loop(self):
 
