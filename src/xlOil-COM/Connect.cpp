@@ -28,7 +28,18 @@ namespace xloil
         __uuidof(Excel::Application),
         NULL,
         CLSCTX_LOCAL_SERVER);
-      return hr == S_OK ? app.Detach() : nullptr;
+      if (hr == S_OK)
+      {
+          return app.Detach();
+      }
+      else
+      {
+          _com_error error(hr);
+          throw ComConnectException(
+              utf16ToUtf8(
+                  fmt::format(L"Failed to create Application object. COM Error {0:#x}: {1}",
+                      (size_t)error.Error(), error.ErrorMessage())).c_str());
+      }
     }
 
     Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle)
@@ -50,9 +61,11 @@ namespace xloil
       auto hwnd2 = FindWindowExA(xlmainHandle, 0, "XLDESK", NULL);
       auto hwnd3 = FindWindowExA(hwnd2, 0, "EXCEL7", NULL);
       Excel::Window* pWindow = NULL;
-      if (AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM,
-        __uuidof(Excel::Window),
-        (void**)&pWindow) == S_OK)
+      HRESULT hr = AccessibleObjectFromWindow(hwnd3, (DWORD)OBJID_NATIVEOM,
+          __uuidof(Excel::Window),
+          (void**)&pWindow);
+
+      if ( hr == S_OK)
       {
         auto parent = pWindow->Parent;
         Excel::_WorkbookPtr parentWorkbook(parent);
@@ -60,6 +73,14 @@ namespace xloil
         
         auto result = parentWorkbook->Application;
         return result.Detach();
+      }
+      else
+      {
+        _com_error error(hr);
+        throw ComConnectException(
+            utf16ToUtf8(
+                fmt::format(L"Failed to create Application object from window handle. COM Error {0:#x}: {1}. {2}",
+                    (size_t)error.Error(), error.ErrorMessage(), error.Description())).c_str());
       }
       return nullptr;
     }
