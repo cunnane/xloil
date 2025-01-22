@@ -5,8 +5,11 @@
 
 namespace xloil
 {
-  decltype(ObjectCacheFactory<std::unique_ptr<const ExcelObj>>::cache) 
-    ObjectCacheFactory<std::unique_ptr<const ExcelObj>>::cache;
+  namespace
+  {
+    using Factory = ObjectCacheFactory<std::unique_ptr<const ExcelObj>>;
+    Factory::cache_type cache(Factory::cache());
+  }
 }
 
 using namespace xloil;

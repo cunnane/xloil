@@ -343,7 +343,8 @@ namespace xloil
   template<typename T>
   struct ObjectCacheFactory
   {
-    static auto& cache() {
+    using cache_type = decltype(*ObjectCache<T, CacheUniquifier<T>>::create());
+    static cache_type& cache() {
       static auto theInstance = ObjectCache<T, CacheUniquifier<T>>::create();
       return *theInstance;
     }
