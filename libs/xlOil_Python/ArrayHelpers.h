@@ -6,7 +6,7 @@ namespace xloil
 {
   namespace Python
   {
-    inline void accumulateObjectStringLength(PyObject* p, size_t& strLength)
+    inline void accumulateObjectStringLength(PyObject* p, size_t& strLength) noexcept
     {
       if (PyUnicode_Check(p))
         strLength += PyUnicode_GetLength(p);

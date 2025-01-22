@@ -20,40 +20,33 @@ namespace xloil
 
       assert(PyIterable_Check(p));
 
-      auto* iter = PyObject_GetIter(p);
-      if (!iter)
-        XLO_THROW("nestedIterableToExcel: could not create iterator");
+      auto iter = py::iter(py::handle(p));
 
       size_t stringLength = 0;
       uint32_t nRows = 0;
       uint16_t nCols = 1;
-      PyObject *item, *innerItem;
 
       // First loop to establish array size and length of strings
-      while ((item = PyIter_Next(iter)) != 0) 
+      while (iter != py::iterator::sentinel())
       {
-        ++nRows;
-
-        if (PyIterable_Check(item) && !PyUnicode_Check(item))
+        if (PyIterable_Check(iter->ptr()) && !PyUnicode_Check(iter->ptr()))
         {
           decltype(nCols) j = 0;
-          auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while ((innerItem = PyIter_Next(innerIter)) != nullptr)
+          auto innerIter = py::iter(*iter);
+          while (innerIter != py::iterator::sentinel())
           {
             ++j;
-            accumulateObjectStringLength(innerItem, stringLength);
-            Py_DECREF(innerItem);
+            accumulateObjectStringLength(innerIter->ptr(), stringLength);
+            ++innerIter;
           }
-          Py_DECREF(innerIter);
-
-          if (PyErr_Occurred())
-            throw py::error_already_set();
-
+          
           nCols = std::max(nCols, j);
         }
         else
-          accumulateObjectStringLength(item, stringLength);
-        Py_DECREF(item);
+          accumulateObjectStringLength(iter->ptr(), stringLength);
+
+        ++nRows;
+        ++iter;
       }
 
       if (nRows > XL_MAX_ROWS)
@@ -61,11 +54,8 @@ namespace xloil
       if (nCols > XL_MAX_COLS)
         XLO_THROW("Max columns exceeded when returning iterator");
 
-
       if (PyErr_Occurred())
         throw py::error_already_set();
-
-      Py_DECREF(iter);
 
       // Python supports an empty tuple, but Excel doesn't support an
       // empty array, so return a Missing type
@@ -75,37 +65,32 @@ namespace xloil
       ExcelArrayBuilder builder(nRows, nCols, stringLength);
 
       // Second loop to fill in array values
-      iter = PyObject_GetIter(p);
+      iter = py::iter(py::handle(p));
       size_t i = 0, j = 0;
-      while ((item = PyIter_Next(iter)) != 0)
+      while (iter != py::iterator::sentinel())
       {
         j = 0;
-        if (PyIterable_Check(item) && !PyUnicode_Check(item))
+        if (PyIterable_Check(iter->ptr()) && !PyUnicode_Check(iter->ptr()))
         {
-          auto* innerIter = PyCheck(PyObject_GetIter(item));
-          while ((innerItem = PyIter_Next(innerIter)) != 0)
+          auto innerIter = py::iter(*iter);
+          while (innerIter != py::iterator::sentinel())
           {
-            builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(innerItem, builder.charAllocator()));
-            Py_DECREF(innerItem);
+            builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(innerIter->ptr(), builder.charAllocator()));
           }
-          if (PyErr_Occurred())
-            throw py::error_already_set();
-          Py_DECREF(innerIter);
         }
         else
-          builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(item, builder.charAllocator()));
+          builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(iter->ptr(), builder.charAllocator()));
+
+        if (PyErr_Occurred())
+          throw py::error_already_set();
 
         // Fill with N/A
         for (; j < nCols; ++j)
           builder(i, j) = CellError::NA;
 
-        Py_DECREF(item);
         ++i;
+        ++iter;
       }
-      Py_DECREF(iter);
-
-      if (PyErr_Occurred())
-        throw py::error_already_set();
 
       return builder.toExcelObj();
     }
