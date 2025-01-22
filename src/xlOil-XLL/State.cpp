@@ -85,6 +85,16 @@ namespace xloil
       , mainThreadId(0)
     {}
 
+    XLOIL_EXPORT bool ExcelProcessInfo::supportsDynamicArrays() const
+    {
+      // https://excel-dna.net/docs/archive/wiki/Dynamic-Arrays/
+      static bool supports = []() {
+        auto [result, retcode] = tryCallExcel(msxll::xlfFilter, 1, 1);
+        return retcode == 0;
+      }();
+      return supports;
+    }
+
     XLOIL_EXPORT const ExcelProcessInfo& excelProcess() noexcept
     {
       return ourExcelState;

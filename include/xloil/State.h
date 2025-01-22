@@ -49,6 +49,12 @@ namespace xloil
       size_t mainThreadId;
 
       bool isEmbedded() const { return mainThreadId != 0; }
+
+      /// <summary>
+      /// Must call on main thread
+      /// </summary>
+      /// <returns></returns>
+      XLOIL_EXPORT bool supportsDynamicArrays() const;
     };
 
     /// <summary>

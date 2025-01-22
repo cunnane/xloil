@@ -1048,6 +1048,7 @@ constexpr int xlfImcosh = 594;
 constexpr int xlfFilterxml = 595;
 constexpr int xlfWebservice = 596;
 constexpr int xlfEncodeurl = 597;
+constexpr int xlfFilter = 614;
 
 /* Excel command numbers */
 constexpr int xlcBeep = 0 | xlCommand;

@@ -5,6 +5,7 @@
 #include <xlOil/ExcelArray.h>
 #include <xlOil/AppObjects.h>
 #include <xlOil/ExcelThread.h>
+#include <xlOil/State.h>
 #include <xlOil-COM/ComVariant.h>
 
 namespace xloil
@@ -175,12 +176,13 @@ namespace xloil
   {
     try
     { 
+      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays();
       VARIANT v;
       COM::excelObjToVariant(&v, formula);
       auto value = _variant_t(v, false);  // Move variant
       if (mode == ARRAY_FORMULA && v.vt == VT_BSTR && size() > 1)
         com().FormulaArray = value;
-      else if (mode == OLD_ARRAY)
+      else if (mode == OLD_ARRAY || !dynamicArrays)
         com().PutFormula(value);
       else
         com().PutFormula2(value);
@@ -192,7 +194,8 @@ namespace xloil
   {
     try
     {
-      return COM::variantToExcelObj(com().Formula2);
+      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays();
+      return COM::variantToExcelObj(dynamicArrays ? com().Formula2 : com().Formula);
     }
     XLO_RETHROW_COM_ERROR;
   }

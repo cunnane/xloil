@@ -1,3 +1,4 @@
+#include "PyAppCallRun.h"
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyFuture.h"
@@ -41,6 +42,22 @@ namespace xloil
           return FromPyObjOrError()(p);
       }
     };
+
+    // Convert all args to Excel objects
+    auto argConvertHelper(const py::args& args)
+    {
+      auto nArgs = args.size();
+
+      vector<ExcelObj> xlArgs;
+      xlArgs.reserve(nArgs);
+
+      // Convert args with None->Missing Arg and Range->ExcelRef
+      for (auto i = 0u; i < nArgs; ++i)
+        xlArgs.emplace_back(ArgFromPyObj()(args[i]));
+
+      return std::move(xlArgs);
+    }
+
 
     using ExcelObjFuture = PyFuture<ExcelObj, PyFromAny>;
 
@@ -99,37 +116,47 @@ namespace xloil
       return callXllAsync(func, args).result();
     }
 
-    auto appRunAsync(const py::object& func, const py::args& args)
+
+    py::object applicationRun(Application& app, const wstring& funcName, const py::args& args)
     {
-      // Convert all args to Excel objects
-      auto nArgs = args.size();
-      if (nArgs > 30)
-        throw py::value_error();
+      vector<ExcelObj> xlArgs = argConvertHelper(args);
 
-      vector<ExcelObj> xlArgs;
-      xlArgs.reserve(nArgs);
+      ExcelObj result;
+      {
+        py::gil_scoped_release releaseGil;
 
-      // Convert args with None->Missing Arg and Range->ExcelRef
-      for (auto i = 0u; i < nArgs; ++i)
-        xlArgs.emplace_back(ArgFromPyObj()(args[i]));
+        const ExcelObj* argsP[30];
+        for (size_t i = 0; i < args.size(); ++i)
+          argsP[i] = &xlArgs[i];
+        result = app.run(funcName, args.size(), argsP);
+      }
+      return PySteal(PyFromAny()(result));
+    }
 
-      auto funcName = to_wstring(func);
+    ExcelObjFuture applicationRunAsync(Application& app, const wstring& funcName, const py::args& args)
+    {
+      vector<ExcelObj> xlArgs = argConvertHelper(args);
 
       py::gil_scoped_release releaseGil;
 
       return ExcelObjFuture(runExcelThread([
-          funcName = std::move(funcName),
-          args = std::move(xlArgs)
-        ]()
-        {
-          const ExcelObj* argsP[30];
-          for (size_t i = 0; i < args.size(); ++i)
-            argsP[i] = &args[i];
-          return thisApp().run(funcName, args.size(), argsP);
-        }));
+        funcName = std::move(funcName),
+        args = std::move(xlArgs),
+        xlApp = app
+      ]() {
+        const ExcelObj* argsP[30];
+        for (size_t i = 0; i < args.size(); ++i)
+          argsP[i] = &args[i];
+        return const_cast<Application&>(xlApp).run(funcName, args.size(), argsP);
+      }));
     }
 
-    auto appRun(const py::object& func, const py::args& args)
+    auto appRunAsync(const wstring& func, const py::args& args)
+    {
+      return applicationRunAsync(thisApp(), func, args);
+    }
+
+    auto appRun(const wstring& func, const py::args& args)
     {
       return appRunAsync(func, args).result();
     }

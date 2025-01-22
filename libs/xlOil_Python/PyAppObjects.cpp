@@ -2,7 +2,9 @@
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyCOM.h"
+#include "PyAppCallRun.h"
 #include <xlOil/AppObjects.h>
+#include <xlOil/State.h>
 
 using std::shared_ptr;
 using std::wstring_view;
@@ -417,6 +419,11 @@ namespace xloil
           obj = app.selection();
         }
         return castInvalidToNone(obj);
+      }
+
+      auto application_Run(Application& app, const std::wstring& func, const pybind11::args& args)
+      {
+        return applicationRun(app, func, args);
       }
 
       auto CallerInfo_Ctor()
@@ -1262,6 +1269,15 @@ namespace xloil
             in workbooks is discarded, otherwise a prompt is displayed.
           )",
           py::arg("silent") = true)
+        .def("run",
+          application_Run,
+          R"(
+            Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+            This can call any user-defined function or macro but not built-in functions.
+
+            The type and order of arguments expected depends on the function being called.
+          )",
+          py::arg("func"))
         .def_property_readonly("selection", &Application::selection)
 
         .def_property_readonly("active_worksheet",
@@ -1284,6 +1300,8 @@ namespace xloil
           R"(
               Returns the currently active cell as a Range or None.
           )")
+        .def_property_readonly("has_dynamic_arrays", 
+          []() { return Environment::excelProcess().supportsDynamicArrays(); })
         .def("__enter__", Context_Enter)
         .def("__exit__", Application_Exit);
 

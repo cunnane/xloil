@@ -32,7 +32,7 @@ py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     <ClCompile Include="AsyncFunctions.cpp" />
     <ClCompile Include="PyAddin.cpp" />
     <ClCompile Include="PyAppObjects.cpp" />
-    <ClCompile Include="PyCallExcelBuiltin.cpp" />
+    <ClCompile Include="PyAppCallRun.cpp" />
     <ClCompile Include="PyLogWriter.cpp" />
     <ClCompile Include="PyRunLater.cpp" />
     <ClCompile Include="PyStatusBar.cpp" />
@@ -88,6 +88,7 @@ py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     <ClInclude Include="TypeConversion\PyExcelArrayType.h" />
     <ClInclude Include="PyHelpers.h" />
     <ClInclude Include="TypeConversion\PyTupleType.h" />
+	<ClInclude Include="PyAppCallRun.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\external\spdlog.vcxproj">
