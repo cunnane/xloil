@@ -5,6 +5,7 @@
 #include <boost/preprocessor/tuple/elem.hpp>
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <xloil/Version.h>
 
 namespace xloil { class ExcelObj; }
 
@@ -54,6 +55,9 @@ namespace xloil { class ExcelObj; }
 /// </summary>
 #define XLO_CACHE_ARG_PTRS_I(z, N, data) &::xloil::objectCacheExpand(BOOST_PP_CAT(data ## N)) BOOST_PP_COMMA_IF(N)
 #define XLO_CACHE_ARG_PTRS(N, prefix) BOOST_PP_REPEAT_FROM_TO(1, BOOST_PP_ADD(1, N), XLO_CACHE_ARG_PTRS_I, prefix)
+
+#define _XLOIL_VERSION_STR (XLOIL_MAJOR_VERSION)(.)(XLOIL_MINOR_VERSION)(.)(XLOIL_PATCH_VERSION)
+#define XLOIL_VERSION_STR XLO_WSTR(BOOST_PP_SEQ_CAT(OUR_VERSION))
 
 namespace xloil
 {

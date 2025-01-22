@@ -3,16 +3,13 @@
 #include <xloil/ArrayBuilder.h>
 #include <xloil/Preprocessor.h>
 #include <xloil/Version.h>
-#include <xloil/Preprocessor.h>
 #include <boost/preprocessor/seq/cat.hpp>
 
 namespace xloil
 {
-#define OUR_VERSION (XLOIL_MAJOR_VERSION)(.)(XLOIL_MINOR_VERSION)(.)(XLOIL_PATCH_VERSION)
-
   XLO_FUNC_START(xloVersion())
   {
-    constexpr wchar_t* version = XLO_WSTR(BOOST_PP_SEQ_CAT(OUR_VERSION));
+    constexpr wchar_t* version = XLOIL_VERSION_STR;
 
     constexpr wchar_t* info[2][2] = { 
       { L"Version", version },

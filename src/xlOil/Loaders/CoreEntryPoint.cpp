@@ -54,6 +54,7 @@ namespace xloil
         // on trace level so we don't miss any crashes during startup. This
         // has a minimal performance impact vs flushing during sheet calc.
         logger = loggerInitialise("trace");
+        XLO_INFO(L"xlOil {} starting", XLOIL_VERSION_STR);
         loggerSetFlush(logger, "trace");
 
         initMessageQueue(Environment::excelProcess().hInstance);

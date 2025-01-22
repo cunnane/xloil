@@ -20,7 +20,7 @@ namespace xloil
 
     /// <summary>
     /// Registers a binder, that is, a function which binds types in the
-    /// xlOil core moddule. This should be called from a static initialiser.
+    /// xlOil core module. This should be called from a static initialiser.
     /// Higher priority items are bound first, this allows coarse control
     /// over dependencies.
     /// </summary>

@@ -509,6 +509,9 @@ namespace xloil
       const auto newSourcePath = addin->getLocalModulePath(newPathName);
       const auto& currentSourcePath = name();
 
+      XLO_INFO(L"Workbook rename: copying source '{0}' to '{1}'",
+        currentSourcePath, newSourcePath);
+
       std::error_code ec;
       if (fs::copy_file(currentSourcePath, newSourcePath, ec))
       {
@@ -518,7 +521,7 @@ namespace xloil
         addin->importFile(newSourcePath.c_str(), newPathName);
       }
       else
-        XLO_WARN(L"On workbook rename, failed to copy source '{0}' to '{1}' because: {3}",
+        XLO_WARN(L"Failed to copy workbook source '{0}' to '{1}' because: {3}",
           currentSourcePath, newSourcePath, utf8ToUtf16(ec.message()));
     }
 
