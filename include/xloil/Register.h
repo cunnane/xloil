@@ -2,6 +2,7 @@
 #include <xloil/ExportMacro.h>
 #include <functional>
 #include <string_view>
+#include <string>
 #include <vector>
 
 namespace xloil { class ExcelObj; }

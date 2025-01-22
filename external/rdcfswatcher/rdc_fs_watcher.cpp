@@ -35,6 +35,7 @@
 #include <array>
 #include <type_traits>
 #include <iostream>
+#include <string>
 
  // Information about a subscription for the changes of a single directory.
 class WatchInfo final
