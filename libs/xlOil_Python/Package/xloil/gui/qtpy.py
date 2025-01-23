@@ -21,13 +21,13 @@ def _create_Qt_app():
     def qt_msg_handler(msg_type, msg_log_context, msg_string):
 
         level = 'info'
-        if msg_type == QtCore.QtDebugMsg:
+        if msg_type == QtCore.QtMsgType.QtDebugMsg:
             level = 'debug'
-        elif msg_type == QtCore.QtInfoMsg:
+        elif msg_type == QtCore.QtMsgType.QtInfoMsg:
             level = 'info'
-        elif msg_type == QtCore.QtWarningMsg:
+        elif msg_type == QtCore.QtMsgType.QtWarningMsg:
             level = 'warn'
-        elif msg_type == QtCore.QtCriticalMsg or msg_type == QtCore.QtFatalMsg:
+        elif msg_type == QtCore.QtMsgType.QtCriticalMsg or msg_type == QtCore.QtMsgType.QtFatalMsg:
             level = 'error'
 
         # Qt raises this on shutdown. No idea why, but don't want it to trigger
