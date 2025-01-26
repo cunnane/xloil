@@ -61,12 +61,10 @@ namespace xloil
         {
           if (!PyLong_Check(obj))
             XLO_THROW("Expected python int, got '{0}'", to_string(obj));
-          int overflow_indicator;
-          long output = PyLong_AsLongAndOverflow((PyObject*)obj, &overflow_indicator);
-          if (overflow_indicator)
-          {
+          int overflowIndicator;
+          long output = PyLong_AsLongAndOverflow((PyObject*)obj, &overflowIndicator);
+          if (overflowIndicator)
             return ExcelObj(PyFloat_AsDouble((PyObject*)obj)); // since obj is not a float, this will call obj.__float__() which exists since PyLong_Check passed above
-          }
           else
             return ExcelObj(output);
         }
