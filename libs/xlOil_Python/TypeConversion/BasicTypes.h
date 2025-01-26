@@ -130,9 +130,9 @@ namespace xloil
         PyObject* operator()(bool x)   const { return operator()(int(x)); }
         PyObject* operator()(double x) const
         {
-          long i;
+          long long i;
           if (floatingToInt(x, i))
-            return PyLong_FromLong(i);
+            return PyLong_FromLongLong(i);
           return nullptr;
         }
         
