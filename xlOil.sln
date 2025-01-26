@@ -19,6 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "[Scripts]", "[Scripts]", "{
 		config\xloil.ini = config\xloil.ini
 		tools\xlOil_Install.ps1 = tools\xlOil_Install.ps1
 		tools\xlOil_NewAddin.ps1 = tools\xlOil_NewAddin.ps1
+		tools\xlOil_RegistryClean.ps1 = tools\xlOil_RegistryClean.ps1
 		tools\xlOil_Remove.ps1 = tools\xlOil_Remove.ps1
 	EndProjectSection
 EndProject
