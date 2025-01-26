@@ -65,7 +65,7 @@ namespace xloil
           long output = PyLong_AsLongAndOverflow((PyObject*)obj, &overflow_indicator);
           if (overflow_indicator)
           {
-            return ExcelObj(PyFloat_AsDouble((PyObject*)obj)); // will call obj.__float__() which exists since we've confirmed it's a long already above
+            return ExcelObj(PyFloat_AsDouble((PyObject*)obj)); // since obj is not a float, this will call obj.__float__() which exists since PyLong_Check passed above
           }
           else
             return ExcelObj(output);
