@@ -200,20 +200,9 @@ namespace xloil
         if (!name)
           XLO_THROW("Com add-in name must be provided");
 
-        // It's possible the addin has already been registered and loaded and 
-        // is just being reinitialised, so we do findAddin twice
-        auto& app = thisApp().com();
+        findAddin(thisApp().com());
 
-        SetAutomationSecurity setSecurity(
-          Office::MsoAutomationSecurity::msoAutomationSecurityLow);
-
-        findAddin(app);
-
-        if (isComAddinConnected())
-        {
-          disconnect();
-        }
-        else
+        if (!_comAddin)
         {
           const auto addinPath = fmt::format(
             L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
@@ -224,11 +213,6 @@ namespace xloil
           if (description)
             _registrar.writeRegistry(
               HKEY_CURRENT_USER, addinPath.c_str(), L"Description", description);
-
-          app.GetCOMAddIns()->Update();
-          findAddin(app);
-          if (!_comAddin)
-            XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
         }
       }
 
@@ -298,6 +282,30 @@ namespace xloil
             _ribbon = createRibbon(xml, mapper);
             impl().ribbon = _ribbon->getRibbon();
           }
+
+          SetAutomationSecurity setSecurity(
+            Office::MsoAutomationSecurity::msoAutomationSecurityLow);
+
+          // It's possible the addin has already been registered. We ensure it is 
+          // reconnected, so that any new Ribbon XML is picked up by calling 
+          // findAddin then disconnecting it.
+          if (isComAddinConnected())
+          {
+            disconnect();
+          }
+
+          // If the addin has already been registered, this Update call can cause Excel to 
+          // query it for ribbon XML which is why we run this after setting the XML.
+          auto& app = thisApp().com();
+          app.GetCOMAddIns()->Update();
+          if (!_comAddin)
+          {
+            findAddin(app);
+
+            if (!_comAddin)
+              XLO_THROW(L"Add-in connect: could not find addin '{0}'", progid());
+          }
+
           _comAddin->Connect = VARIANT_TRUE;
           _connected = true;
         }
