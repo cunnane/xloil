@@ -7,7 +7,7 @@
 #include <xlOilHelpers/Exception.h>
 #include <xlOil/LogWindow.h>
 #include <spdlog/sinks/base_sink.h>
-#include <spdlog/details/pattern_formatter.h>
+#include <spdlog/pattern_formatter.h>
 #include <spdlog/spdlog.h>
 #include <mutex>
 #include <regex>
