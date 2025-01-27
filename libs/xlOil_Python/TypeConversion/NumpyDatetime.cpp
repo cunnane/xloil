@@ -438,7 +438,7 @@ NpyDatetime_ConvertDatetime64ToDatetimeStruct(
 
         case NPY_FR_M:
             out->year  = 1970 + extract_unit_64(&dt, 12);
-            out->month = dt + 1;
+            out->month = (npy_int32)dt + 1;
             break;
 
         case NPY_FR_W:
