@@ -187,9 +187,13 @@ namespace xloil
       COMAddIn*                 _comAddin = nullptr;
       TaskPaneMap               _panes;
       shared_ptr<const void>    _closeHandler;
+      std::wstring              _name;
+      std::wstring              _description;
     
       ComAddinCreator(const wchar_t* name, const wchar_t* description)
         : _impl(new ComAddinImpl())
+        , _name(name)
+        , _description(description ? description : L"")
         , _registrar(
           [p = _impl.p]() { return p; },
           formatStr(L"%s.ComAddin", name ? name : L"xlOil").c_str())
@@ -199,21 +203,6 @@ namespace xloil
 
         if (!name)
           XLO_THROW("Com add-in name must be provided");
-
-        findAddin(thisApp().com());
-
-        if (!_comAddin)
-        {
-          const auto addinPath = fmt::format(
-            L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
-          _registrar.writeRegistry(
-            HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", name);
-          _registrar.writeRegistry(
-            HKEY_CURRENT_USER, addinPath.c_str(), L"LoadBehavior", (DWORD)0);
-          if (description)
-            _registrar.writeRegistry(
-              HKEY_CURRENT_USER, addinPath.c_str(), L"Description", description);
-        }
       }
 
     public:
@@ -283,20 +272,36 @@ namespace xloil
             impl().ribbon = _ribbon->getRibbon();
           }
 
+          auto& app = thisApp().com();
+
           SetAutomationSecurity setSecurity(
             Office::MsoAutomationSecurity::msoAutomationSecurityLow);
 
           // It's possible the addin has already been registered. We ensure it is 
           // reconnected, so that any new Ribbon XML is picked up by calling 
           // findAddin then disconnecting it.
-          if (isComAddinConnected())
+          // 
+          // If the addin has already been registered, the findAddin call can cause Excel 
+          // to query it for ribbon XML which is why we run this after setting the XML.
+          findAddin(app);
+
+          if (!_comAddin)
+          {
+            const auto addinPath = fmt::format(
+              L"Software\\Microsoft\\Office\\Excel\\AddIns\\{0}", _registrar.progid());
+            _registrar.writeRegistry(
+              HKEY_CURRENT_USER, addinPath.c_str(), L"FriendlyName", _name.c_str());
+            _registrar.writeRegistry(
+              HKEY_CURRENT_USER, addinPath.c_str(), L"LoadBehavior", (DWORD)0);
+            if (_description.c_str())
+              _registrar.writeRegistry(
+                HKEY_CURRENT_USER, addinPath.c_str(), L"Description", _description.c_str());
+          } 
+          else if (isComAddinConnected())
           {
             disconnect();
           }
-
-          // If the addin has already been registered, this Update call can cause Excel to 
-          // query it for ribbon XML which is why we run this after setting the XML.
-          auto& app = thisApp().com();
+          
           app.GetCOMAddIns()->Update();
           if (!_comAddin)
           {
