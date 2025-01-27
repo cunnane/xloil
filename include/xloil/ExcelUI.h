@@ -248,7 +248,7 @@ namespace xloil
 
   /// <summary>
   /// Registers a COM add-in with the specified name (which must be unique)
-  /// and an option description to show in Excel's add-in options.  The add-in
+  /// and an optional description to show in Excel's add-in options.  The add-in
   /// is not activated until you call the <see cref="IComAddin::connect"/> method.
   /// </summary>
   /// <returns>A pointer to an a <see cref="IComAddin"/> object which controls

@@ -364,17 +364,16 @@ namespace xloil
       {
         try
         {
-          COM::connectCom();
-          func();
-          //runExcelThread(func, ExcelRunQueue::XLL_API); // TODO: why XLL API?
-        }
-        catch (const ComConnectException&)
-        {
-          XLO_DEBUG("Could not connect COM: trying again in 1 second...");
-          runExcelThread(
-            RetryAtStartup{ func },
-            ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,
-            1000); // wait 1 second before call
+          if (COM::connectCom())
+            func();
+          else
+          {
+            XLO_DEBUG("Could not connect COM: trying again in 1 second...");
+            runExcelThread(
+              RetryAtStartup{ func },
+              ExcelRunQueue::ENQUEUE | ExcelRunQueue::NO_RETRY,
+              1000); // wait 1 second before call
+          }
         }
         catch (const std::exception& e)
         {

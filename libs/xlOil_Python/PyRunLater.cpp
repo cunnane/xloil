@@ -63,6 +63,8 @@ namespace xloil
           R"(
             Schedules a callback to be run in the main thread. Much of the COM API in unavailable
             during the calc cycle, in particular anything which involves writing to the sheet.
+            COM is also unavailable whilst xlOil is loading.
+ 
             Returns a future which can be awaited.
 
             Parameters

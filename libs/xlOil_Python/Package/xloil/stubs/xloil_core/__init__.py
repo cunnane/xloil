@@ -41,6 +41,7 @@ __all__ = [
     "active_cell",
     "active_workbook",
     "active_worksheet",
+    "all_workbooks",
     "app",
     "cache",
     "call",
@@ -219,6 +220,13 @@ class Application():
         """
         Create a range object from an external address such as "[Book]Sheet!A1"
         """
+    def run(self, func: str, *args) -> object: 
+        """
+        Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
+        This can call any user-defined function or macro but not built-in functions.
+
+        The type and order of arguments expected depends on the function being called.
+        """
     def to_com(self, lib: str = '') -> object: 
         """
         Returns a managed COM object which can be used to invoke Excel's full 
@@ -265,6 +273,11 @@ class Application():
         """
         Pauses or resumes Excel's event handling. It can be useful when writing to a sheet
         to pause events both for performance and to prevent side effects.
+        """
+    @property
+    def has_dynamic_arrays(self) -> bool:
+        """
+        :type: bool
         """
     @property
     def selection(self) -> object:
@@ -2254,6 +2267,11 @@ def active_worksheet() -> object:
     Returns the currently active worksheet or None. Will raise an exception if xlOil
     has not been loaded as an addin.
     """
+def all_workbooks() -> Workbooks:
+    """
+    Collection of workbooks for the current application. Equivalent to 
+    `xloil.app().workbooks`.
+    """
 def app() -> Application:
     """
     Returns the parent Excel Application object when xlOil is loaded as an
@@ -2295,6 +2313,8 @@ def excel_callback(func: object, wait: int = 0, retry: int = 500, api: str = '')
     """
     Schedules a callback to be run in the main thread. Much of the COM API in unavailable
     during the calc cycle, in particular anything which involves writing to the sheet.
+    COM is also unavailable whilst xlOil is loading.
+
     Returns a future which can be awaited.
 
     Parameters
@@ -2360,7 +2380,7 @@ def insert_cell_image(writer: object, size: object = None, pos: object = None, o
     compress:
         if True, compresses the resulting image before storing in the sheet
     """
-def run(func: object, *args) -> object:
+def run(func: str, *args) -> object:
     """
     Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
     This can call any user-defined function or macro but not built-in functions.
@@ -2370,7 +2390,7 @@ def run(func: object, *args) -> object:
     Must be called on Excel's main thread, for example in worksheet function or 
     command.
     """
-def run_async(func: object, *args) -> _ExcelObjFuture:
+def run_async(func: str, *args) -> _ExcelObjFuture:
     """
     Calls VBA's `Application.Run` taking the function name and up to 30 arguments.
     This can call any user-defined function or macro but not built-in functions.

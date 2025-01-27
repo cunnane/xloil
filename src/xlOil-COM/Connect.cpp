@@ -70,24 +70,38 @@ namespace xloil
       {
       public:
         COMConnector()
-          : _excelWindowHandle((HWND)Environment::excelProcess().hWnd)
-          , _xlApp((size_t)_excelWindowHandle)
+          : _xlApp(nullptr)
+        {}
+
+        bool connect()
         {
+          if (connected())
+            return true;
+
           try
           {
-            _handler = COM::createEventSink(&_xlApp.com());
+            auto excelWindowHandle = (HWND)Environment::excelProcess().hWnd;
+            auto application = applicationObjectFromWindow(excelWindowHandle);
+            if (!application)
+              return false;
+
+            _xlApp = Application(application);
             
             XLO_DEBUG(L"Made COM connection to Excel at '{}' with hwnd={}",
-              (const wchar_t*)_xlApp.com().Path, (size_t)_excelWindowHandle);
+              (const wchar_t*)_xlApp.com().Path, (size_t)excelWindowHandle);
+
+            _handler = COM::createEventSink(&_xlApp.com());
           }
           catch (_com_error& error)
           {
-            throw ComConnectException(
-              utf16ToUtf8(
-                fmt::format(L"COM Error {0:#x}: {1}",
-                (size_t)error.Error(), error.ErrorMessage())).c_str());
+            XLO_DEBUG(L"COM connect failed: {0:#x}: {1}",
+              (size_t)error.Error(), error.ErrorMessage());
           }
+
+          return connected();
         }
+
+        bool connected() const { return _xlApp.valid(); }
 
         ~COMConnector()
         {
@@ -96,20 +110,22 @@ namespace xloil
           CoUninitialize();
         }
 
-        Application& thisApp() { return _xlApp; }
+        Application& thisApp() { return (Application&)_xlApp; }
        
       private:
-        HWND _excelWindowHandle;
-        Application _xlApp;
+        AppObject<Excel::_Application, true> _xlApp;
         std::shared_ptr<Excel::AppEvents> _handler;
       };
-
-      std::unique_ptr<COMConnector> theComConnector;
     }
 
-    void connectCom()
+    static std::unique_ptr<COMConnector> theComConnector(new COMConnector());
+
+    bool connectCom()
     {
-      theComConnector.reset(new COMConnector());
+      if (theComConnector->connected())
+        return true;
+      else
+        return theComConnector->connect();
     }
 
     void disconnectCom()
@@ -119,7 +135,7 @@ namespace xloil
 
     bool isComApiAvailable() noexcept
     {
-      if (!theComConnector)
+      if (!theComConnector->connected())
         return false;
       
       // Do some random COM thing - is this the fastest thing?
@@ -130,7 +146,7 @@ namespace xloil
 
     Application& attachedApplication()
     {
-      if (!theComConnector)
+      if (!theComConnector->connected())
         throw ComConnectException("COM Connection not ready");
       return theComConnector->thisApp();
     }

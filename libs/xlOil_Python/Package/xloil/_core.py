@@ -69,22 +69,6 @@ except ImportError:
     # Not completely sure this part is necessary in stubs mode
     from .stubs import xloil_core
     sys.modules['xloil_core'] = xloil_core
-
-    #
-    # If we are not called from an xlOil embedded interpreter, some symbols are 
-    # missing so we define stubs for them. OK, it's just one
-    #
-    workbooks = xloil_core.Workbooks()
-    """
-        Collection of all open workbooks as Workbook objects.
-    
-        Examples
-        --------
-
-            workbooks['MyBook'].path
-            workbooks.active.path
-
-    """
    
 
 if XLOIL_READTHEDOCS:
@@ -103,13 +87,51 @@ if XLOIL_READTHEDOCS:
     _fix_module_for_docs(locals(), xloil_core.__name__, 'xloil')
 
 class _ActiveWorksheets:
+    def __getattr__(self, name):
+        return getattr(active_workbook().worksheets, name)
+
     def __getitem__(self, name):
         return active_workbook().worksheets[name]
 
+class _ActiveWorkbooks:
+
+    _impl = None
+    
+    @property
+    def _obj(self):
+        if self._impl is None:
+            self._impl = all_workbooks()
+        return self._impl
+
+    def __getattr__(self, name):
+        return getattr(self._obj, name)
+
+    def __getitem__(self, name):
+        return self._obj[name]
+
 worksheets = _ActiveWorksheets()
+"""
+    Collection of all open workbooks as Workbook objects for the current
+    application. Equivalent to `xloil.app().workbooks`. 
+
+    Wraps `xloil_core.all_workbooks()` to match Excel's *Workbooks* 
+    collection. 
+
+    Examples
+    --------
+
+        workbooks['MyBook'].path
+        workbooks.active.path
+
+"""
+
+workbooks = _ActiveWorkbooks()
 """
     Collection of Worksheets of the active Workbook
     
+    Wraps `active_workbook().worksheets` to match Excel's *Worksheets* 
+    collection. 
+
     Examples
     --------
 

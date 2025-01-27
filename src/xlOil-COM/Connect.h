@@ -32,7 +32,12 @@ namespace xloil
     /// </summary>
     Excel::_Application* applicationObjectFromWindow(HWND xlmainHandle);
 
-    void connectCom();
+    /// <summary>
+    /// Tries to connect the COM interface if it is not already connected. Returns true 
+    /// if the COM interface is available.
+    /// </summary>
+    bool connectCom();
+
     void disconnectCom();
 
     /// <summary>

@@ -1378,17 +1378,11 @@ namespace xloil
           addin. Will throw if xlOil has been imported to run automation.
         )");
 
-      // We can only define these objects when running embedded in existing Excel
-      // application. thisApp() will throw a ComConnectException if this is not
-      // the case
-      try
-      {
-        // Use 'new' with this return value policy or we get a segfault later. 
-        mod.add_object("workbooks", 
-          py::cast(new PyWorkbooks(thisApp()), py::return_value_policy::take_ownership));
-      }
-      catch (ComConnectException)
-      {}
+      mod.def("all_workbooks", []() { return PyWorkbooks(thisApp()); },
+        R"(
+          Collection of workbooks for the current application. Equivalent to 
+          `xloil.app().workbooks`.
+        )");
     }, 50); 
     // Up the priority of this binding to 50 as there are other places where app 
     // objects are returned and pybind needs to know the python types beforehand

@@ -202,22 +202,15 @@ namespace xloil
           addin->importFile(modulePath.c_str(), wbPathName.c_str(), addin->useLoaderThread());
         }
       };
-
-      void checkExistingWorkbooks(const WorkbookOpenHandler& handler, Application& app)
-      {
-        for (const auto& wb : app.workbooks().list())
-          handler(wb.path().c_str(), wb.name().c_str());
-      }
     }
 
     std::shared_ptr<const void>
-      createWorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext, Application& app)
+      createWorkbookOpenHandler(const weak_ptr<PyAddin>& loadContext)
     {
       if (!loadContext.lock()->loadLocalModules())
         return std::shared_ptr<const void>();
 
       WorkbookOpenHandler handler(loadContext);
-      checkExistingWorkbooks(handler, app);
       return Event::WorkbookOpen().bind(handler);
     }
 

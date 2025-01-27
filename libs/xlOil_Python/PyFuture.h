@@ -171,6 +171,8 @@ namespace xloil
 
       Iter _iter;
 
+      PyFuture() = default;
+
       /// <summary>
       /// Consumes a std::future<T> to give a PyFuture<T>
       /// </summary>

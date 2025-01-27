@@ -192,20 +192,20 @@ namespace xloil
         Event::SheetChange().fire(
           ((Worksheet*)Sh)->Name, ExcelRange(Target));
       }
-      void WorkbookOpen(Workbook* Wb)
+      static void WorkbookOpen(Workbook* Wb)
       {
         Event::WorkbookOpen().fire(Wb->Path, Wb->Name);
         WorkbookMonitor::checkOnOpenWorkbook(Wb);
       }
-      void WorkbookActivate(Workbook* Wb)
+      static void WorkbookActivate(Workbook* Wb)
       {
         Event::WorkbookActivate().fire(Wb->Name);
       }
-      void WorkbookDeactivate(Workbook* Wb)
+      static void WorkbookDeactivate(Workbook* Wb)
       {
         Event::WorkbookDeactivate().fire(Wb->Name);
       }
-      void WorkbookBeforeClose(
+      static void WorkbookBeforeClose(
         Workbook* Wb,
         VARIANT_BOOL* Cancel)
       {
@@ -222,7 +222,7 @@ namespace xloil
           runExcelThread([]() { WorkbookMonitor::check(); }, ExcelRunQueue::COM_API, 2000, 1000);
         }
       }
-      void WorkbookBeforeSave(
+      static void WorkbookBeforeSave(
         Workbook* Wb,
         VARIANT_BOOL SaveAsUI,
         VARIANT_BOOL* Cancel)
@@ -232,7 +232,7 @@ namespace xloil
         WorkbookMonitor::Workbook_BeforeSave();
         *Cancel = cancel ? -1 : 0;
       }
-      void WorkbookAfterSave(
+      static void WorkbookAfterSave(
         Workbook* Wb, 
         VARIANT_BOOL success)
       {
@@ -420,6 +420,13 @@ namespace xloil
           p->Release(); 
         }); 
       p->AddRef();
+
+      // Trigger WorkbookOpen for any already open workbooks: the COM interface
+      // is only available when at least one workbook has been opened. This allows
+      // for code to rely on inspecting workbooks as they are opened.
+      for (auto i = 1; i <= source->Workbooks->Count; ++i)
+        EventHandler::WorkbookOpen(source->Workbooks->GetItem(i));
+
       return p;
     }
     const std::set<std::wstring>& workbookPaths()

@@ -89,15 +89,9 @@ namespace xloil
         retVal = 1;
       }
 
-      // Although we are on the main thread, Excel's COM interface may not
-      // be ready yet. Plugins may use that interface so we delay load them.
-
       if (addinContext == coreContext || theCoreIsLoaded)
       {
-        runComSetupOnXllOpen([=]()
-        {
-            addinContext->loadPlugins();
-        });
+        addinContext->loadPlugins();
       }
       else
       {
@@ -114,14 +108,14 @@ namespace xloil
           firstLoad ? firstLoad->pathName() : L"", 
           firstLoad ? secondLoad->pathName() : L"");
 
-        runComSetupOnXllOpen([=]()
-        {
-          if (firstLoad)
-            firstLoad->loadPlugins();
-          if (secondLoad)
-            secondLoad->loadPlugins();
-        });
+        if (firstLoad)
+          firstLoad->loadPlugins();
+        if (secondLoad)
+          secondLoad->loadPlugins();
       }
+
+      runComSetupOnXllOpen([]() {});
+
       theCoreIsLoaded = true;
       return retVal;
     }
