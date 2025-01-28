@@ -234,7 +234,7 @@ namespace xloil
           parent = ::GetParent(hwnd);
           if (parent == hwnd || parent == NULL)
             XLO_THROW(L"Failed to find parent window with class {}", className);
-          ::GetClassName(parent, winClass, len);
+          ::GetClassName(parent, winClass, (int)len);
         } while (wcscmp(className, winClass) != 0);
 
         return parent;
