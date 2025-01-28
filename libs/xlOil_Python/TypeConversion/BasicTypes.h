@@ -130,9 +130,9 @@ namespace xloil
         PyObject* operator()(bool x)   const { return operator()(int(x)); }
         PyObject* operator()(double x) const
         {
-          long i;
+          long long i;
           if (floatingToInt(x, i))
-            return PyLong_FromLong(i);
+            return PyLong_FromLongLong(i);
           return nullptr;
         }
         
@@ -403,7 +403,13 @@ namespace xloil
         }
         else if (PyLong_Check(p))
         {
-          return ExcelObj(PyLong_AsLong(p));
+          int overflowIndicator;
+          auto out = PyLong_AsLongAndOverflow(p, &overflowIndicator);
+          if (overflowIndicator)
+            return ExcelObj(PyFloat_AsDouble(p));
+          else
+            return ExcelObj(out);
+
         }
         else if (PyFloat_Check(p))
         {
