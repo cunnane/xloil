@@ -106,9 +106,9 @@ namespace xloil
 
       bool disconnect(size_t numSubscribers) override
       {
+        if (numSubscribers != 0)
+          XLO_ERROR(L"AsyncTaskPublisher: unexpected subscribers for {}", topic());
         RtdPublisher::disconnect(numSubscribers);
-        // TODO: check numSubscribers == 0
-        stop();
         auto p = _parent.lock();
         if (p)
         {

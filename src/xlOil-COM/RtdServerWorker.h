@@ -1,7 +1,7 @@
 #pragma once
 #include "RtdManager.h"
 #include <xloil/Log.h>
-
+#include <xlOilHelpers/Utils.h>
 #include <atlbase.h>
 #include <string>
 #include <unordered_map>
@@ -98,6 +98,9 @@ namespace xloil
         {
           unique_lock lock(_lockRecords);
           auto& record = _records[job->topic()];
+          if (record.publisher == job)
+            return;
+
           std::swap(record.publisher, existingJob);
           if (existingJob)
             _cancelledPublishers.push_back(existingJob);
@@ -375,15 +378,12 @@ namespace xloil
               if (topicId != 0)
                 disconnectTopic(topicId, topic);
 
-            // Remove any cancelled publishers which have finalised.  Don't destroy 
-            // them whilst holding the lock.  Note the i++ as the iterator passed to 
-            // splice will be invalidated.
+            // Remove any cancelled publishers which have finalised. Don't destroy 
+            // them whilst holding the lock. 
             decltype(_cancelledPublishers) finalisedPublishers;
             {
               unique_lock lock(_lockRecords);
-              for (auto i = _cancelledPublishers.begin(); i != _cancelledPublishers.end(); ++i)
-                if ((*i)->done())
-                  finalisedPublishers.splice(finalisedPublishers.end(), _cancelledPublishers, i++);
+              move_if(_cancelledPublishers, finalisedPublishers, [](auto x) { return x->done(); });
             }
 
             // Now run the dtors, but catch to avoid killing the RTD server
@@ -503,17 +503,13 @@ namespace xloil
           // we have to wait until any threads it created have exited
           if (publisher->disconnect(numSubscribers))
           {
-            const auto done = publisher->done();
-            if (!done)
-              publisher->stop();
-
             XLO_TRACE(L"Removing publisher and record for topic {}", topic);
 
             {
               unique_lock lock(_lockRecords);
 
               // Not done, so add to this list and check back later
-              if (!done)
+              if (!publisher->done())
                 _cancelledPublishers.emplace_back(publisher);
 
               // Disconnect should only return true when num_subscribers = 0, 

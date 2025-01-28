@@ -28,6 +28,7 @@
     <ClInclude Include="Exception.h" />
     <ClInclude Include="GuidUtils.h" />
     <ClInclude Include="Settings.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>

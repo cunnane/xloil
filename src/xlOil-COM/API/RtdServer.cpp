@@ -31,6 +31,7 @@ namespace xloil
   {
     try
     {
+      XLO_TRACE(L"RtdPublisher for topic '{}' running dtor", _topic);
       // Send cancellation and wait for graceful shutdown
       stop();
       _task->wait();
@@ -52,6 +53,7 @@ namespace xloil
   {
     if (numSubscribers == 0)
     {
+      XLO_TRACE(L"RtdPublisher stopping '{}' because it has no subscribers", _topic);
       stop();
       return true;
     }
