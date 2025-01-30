@@ -17,7 +17,6 @@ namespace xloil
 
     public:
       PyExcelArray(const PyExcelArray& from);
-      PyExcelArray(ExcelArray&& arr);
       PyExcelArray(const ExcelArray& arr);
       PyExcelArray(const ExcelObj& arr);
       ~PyExcelArray();

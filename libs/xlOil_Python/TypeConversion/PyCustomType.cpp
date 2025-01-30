@@ -15,25 +15,30 @@ namespace xloil
   {
     namespace
     {
-      class CustomConverterArgumentHandler : public detail::PyFromAny<CustomConverterArgumentHandler>
+      /// <summary>
+      /// Wraps the usual PyFromAny but intercepts the array handling to return 
+      /// a PyExcelArray object, then checks that the object passed to python was
+      /// properly disposed of and no reference to the temporary array object remains.
+      /// </summary>
+      class CustomConverterArrayHandler : 
+        public detail::PyFromAny<CustomConverterArrayHandler>
       {
-        // Use of the pointer-trick to avoid breaking const-ness in
-        // operator()
-        PyExcelArray** _ArrayWrapper;
+        py::object _ArrayWrapper;
+        PyExcelArray* _excelArray;
 
       public:
-        CustomConverterArgumentHandler(PyExcelArray* wrapper)
-          : _ArrayWrapper(&wrapper)
+        CustomConverterArrayHandler() : _excelArray(nullptr)
         {}
 
-        using detail::PyFromAny<CustomConverterArgumentHandler>::operator();
+        using detail::PyFromAny<CustomConverterArrayHandler>::operator();
 
         PyObject* operator()(const ArrayVal& arr) const
         {
-          *_ArrayWrapper = new PyExcelArray(arr);
-          return py::cast(
-            *_ArrayWrapper,
-            py::return_value_policy::take_ownership).release().ptr();
+          const_cast<CustomConverterArrayHandler*>(this)->setWrapper(
+            new PyExcelArray(arr));
+          // Inc ref count as this function should return a stealable reference
+          _ArrayWrapper.inc_ref();
+          return _ArrayWrapper.ptr();
         }
 
         // Normally #N/A inputs are converted to None in PyFromAny. To give the custom converter
@@ -45,11 +50,21 @@ namespace xloil
           return pyObj.release().ptr();
         }
 
-        static void checkArrayWrapperDisposed(PyExcelArray* wrapper)
+        ~CustomConverterArrayHandler()
         {
-          if (wrapper && wrapper->refCount() != 1)
-            XLO_THROW("Held reference to ExcelArray detected. Accessing this object "
+          if (_excelArray && (_ArrayWrapper.ref_count() != 1 || _excelArray->refCount() != 1))
+            XLO_ERROR("Held reference to ExcelArray detected. Accessing this object "
               "in python may crash Excel");
+        }
+
+        void setWrapper(PyExcelArray* ptr)
+        {
+          // This class should only be used for a single ExcelObj, then disposed of.
+          assert(!_excelArray);
+          _excelArray = ptr;
+          _ArrayWrapper = py::cast(
+            ptr,
+            py::return_value_policy::take_ownership);
         }
 
         constexpr wchar_t* failMessage() const { return L"Custom converter failed"; }
@@ -93,13 +108,9 @@ namespace xloil
       template<bool TUseCache>
       auto callConverter(const ExcelObj& xl, const_result_ptr defaultVal)
       {
-        PyExcelArray* wrapper = nullptr;
-        PyFromExcel<CustomConverterArgumentHandler, TUseCache> typeConverter(wrapper);
-
+        PyFromExcel<CustomConverterArrayHandler, TUseCache> typeConverter;
         auto arg = PySteal(typeConverter(xl, defaultVal));
         auto retVal = _callable(arg);
-
-        CustomConverterArgumentHandler::checkArrayWrapperDisposed(wrapper);
         return retVal.release().ptr();
       }
 

@@ -33,18 +33,14 @@ namespace xloil
       *_refCount += 1;
     }
 
-    PyExcelArray::PyExcelArray(ExcelArray&& arr)
-      : _base(std::move(arr))
-      , _refCount(new size_t(1))
-    {}
-
     PyExcelArray::PyExcelArray(const ExcelArray& arr)
       : _base(arr)
       , _refCount(new size_t(1))
     {}
 
     PyExcelArray::PyExcelArray(const ExcelObj & arr)
-      : PyExcelArray(ExcelArray(arr))
+      : _base(arr)
+      , _refCount(new size_t(1))
     {}
 
     PyExcelArray::~PyExcelArray()
@@ -102,13 +98,14 @@ namespace xloil
         size_t fromRow, fromCol, toRow, toCol;
         bool singleElem = getItemIndexReader2d(loc, nRows(), nCols(),
           fromRow, fromCol, toRow, toCol);
-        return singleElem
-          ? operator()(fromRow, fromCol)
-          : py::cast<PyExcelArray>(
-              PyExcelArray(*this, 
-              ExcelArray(_base, 
-                (ExcelObj::row_t)fromRow, (ExcelObj::col_t)fromCol,
-                (ExcelObj::row_t)toRow,   (ExcelObj::col_t)toCol)));
+        if (singleElem)
+          return operator()(fromRow, fromCol);
+
+        auto subarray = ExcelArray(_base,
+          (ExcelObj::row_t)fromRow, (ExcelObj::col_t)fromCol,
+          (ExcelObj::row_t)toRow, (ExcelObj::col_t)toCol);
+
+        return py::cast(PyExcelArray(*this, std::move(subarray)));
       }
     }
 
