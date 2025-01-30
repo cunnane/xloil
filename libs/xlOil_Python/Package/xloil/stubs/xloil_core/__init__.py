@@ -486,11 +486,16 @@ class ExcelArray():
 class ExcelGUI():
     """
     An `ExcelGUI` wraps a COM addin which allows Ribbon customisation and creation
-    of custom task panes. The methods of this object are safe to call from any thread;  
-    however, since COM calls must be made on Excel's main thread, the methods schedule 
-    those calls and return an *awaitable* future to the result. This could lead to deadlocks
-    if the future's result is requested synchronously and, for example, one of Excel's event
-    handlers is triggered. The object's properties do not return futures and are thread-safe.
+    of custom task panes. 
+
+    The methods of this object are safe to call from any thread; however, since COM calls 
+    must be made on Excel's main thread, the methods schedule  those calls and return an 
+    *awaitable* future to the result. This could lead to deadlocks if, for example, the 
+    future's result is requested synchronously and one of Excel's event handlers is 
+    triggered.  For a safer non-blocking approach, use `excel_callback` to invoke code 
+    which manipulates the *ExcelGUI* object.
+
+    The object's properties do not return futures and are thread-safe.
     """
     def __init__(self, name: object = None, ribbon: object = None, funcmap: object = None, connect: bool = True) -> None: 
         """
@@ -523,10 +528,14 @@ class ExcelGUI():
             If None, uses the filename at the call site as the addin name.
 
         connect: bool
-            Defaults to True, meaning the object creation is blocking. If False
-            is passed, the object will not been fully constructed until the async
-            `connect` method is called.  In this case, no *ExcelGUI* methods can 
-            be called until the `connect` method has returned a result.
+            If True (the default) initiates a connection request for the addin, 
+            which causes Excel to load it and any associated ribbons. The connection
+            is *scheduled* in Excel's main thread when the COM interface is available.
+            Note that COM is not available when xlOil is starting up.
+
+            If you want to call other methods on *ExcelGUI* then to ensure it is 
+            connected use `ExcelGUI.connect().result()` to block on the future or
+            use `excel_callback`.
         """
     def _create_task_pane_frame(self, name: str, progid: object = None, window: object = None) -> _CTPFuture: 
         """
