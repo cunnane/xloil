@@ -172,7 +172,8 @@ namespace xloil
 
   /// <summary>
   /// The methods of classes of this type must be called on Excel's main thread, 
-  /// unless otherwise noted.
+  /// unless otherwise noted.  This includes the destructor unless close has previously
+  /// been called.
   /// </summary>
   class IComAddin
   {
@@ -181,7 +182,6 @@ namespace xloil
       void(const RibbonControl&, VARIANT*, int, VARIANT**)>;
     using RibbonMap = std::function<RibbonCallback(const wchar_t*)>;
 
-    virtual ~IComAddin() {}
     /// <summary>
     /// COM ProgID used to register this add-in
     /// </summary>
@@ -244,6 +244,11 @@ namespace xloil
 
     using TaskPaneMap = std::multimap<std::wstring, std::shared_ptr<ICustomTaskPane>>;
     virtual const TaskPaneMap& panes() const = 0;
+
+    /// <summary>
+    /// Invalidates the object, do not call any further methods after this
+    /// </summary>
+    virtual void close() noexcept = 0;
   };
 
   /// <summary>

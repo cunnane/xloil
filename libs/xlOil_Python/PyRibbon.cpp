@@ -190,8 +190,10 @@ namespace xloil
 
         ~ComAddin()
         {
-          py::gil_scoped_release noGil;
-          runExcelThread([this]() { _addin.reset(); }).get();
+          // If we have an addin object, transfer ownership to a functor which can
+          // safely close the addin on the main thresad.
+          if (_addin)
+            runExcelThread([addin = _addin]() { addin->close(); }).get();
         }
 
         VoidFuture connect()

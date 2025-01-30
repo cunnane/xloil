@@ -219,7 +219,7 @@ namespace xloil
         XLO_RETHROW_COM_ERROR;
       }
 
-      ~ComAddinCreator()
+      void close() noexcept override
       {
         try
         {
