@@ -209,7 +209,7 @@ namespace xloil
       const wchar_t* value)
     {
       addedKey(hive, path);
-      XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name ? name : L"", value);
+      XLO_DEBUG(L"Writing registry key {}\\{} = {}", path, name ? name : L"", value);
       return regWrite(hive, path, name, value);
     }
 
@@ -220,7 +220,7 @@ namespace xloil
       DWORD value)
     {
       addedKey(hive, path);
-      XLO_TRACE(L"Writing registry key {}\\{} = {}", path, name, value);
+      XLO_DEBUG(L"Writing registry key {}\\{} = {}", path, name, value);
       return regWrite(hive, path, name, value);
     }
 

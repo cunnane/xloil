@@ -52,7 +52,7 @@ namespace xloil
         ~PyCache()
         {
           _theInstance = nullptr;
-          XLO_TRACE("Python object cache destroyed");
+          XLO_DEBUG("Python object cache destroyed");
         }
 
         static PyCache* construct()

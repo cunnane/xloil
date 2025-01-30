@@ -15,11 +15,7 @@
 #include <xloil/ExportMacro.h>
 #include <string>
 
-#ifdef _DEBUG
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-#else
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
-#endif 
 
 #define SPDLOG_WCHAR_FILENAMES
 #define SPDLOG_WCHAR_TO_UTF8_SUPPORT
@@ -27,7 +23,7 @@
 #include <spdlog/spdlog.h> 
 
 
-#define XLO_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
+#define XLO_TRACE(...) {if (spdlog::default_logger_raw()->should_log(spdlog::level::trace)) SPDLOG_TRACE(__VA_ARGS__);}
 #define XLO_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
 #define XLO_INFO(...) SPDLOG_INFO(__VA_ARGS__)
 #define XLO_WARN(...) SPDLOG_WARN(__VA_ARGS__)

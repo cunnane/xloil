@@ -320,19 +320,24 @@ namespace xloil
         // Never return a string longer than the advertised max length
         const auto nameLen = std::min<uint16_t>(objectName.length(), maxLen);
         
-        wmemcpy_s(
-          buf, bufLen, 
-          sheetName.pstr(), sheetNameLen);
+        size_t nWritten = 0;
 
-        if (bufLen > sheetNameLen)
+        if (sheetNameLen > 0)
         {
-          buf[sheetNameLen] = L'!';
           wmemcpy_s(
-            buf + sheetNameLen + 1, bufLen - sheetNameLen - 1,
-            objectName.pstr(), nameLen);
+            buf, bufLen,
+            sheetName.pstr(), sheetNameLen);
+          buf[sheetNameLen] = L'!';
+          nWritten += sheetNameLen + 1;
         }
 
-        return std::min<int>((int)bufLen, sheetNameLen + nameLen + 1);
+        wmemcpy_s(
+          buf + nWritten, bufLen - nWritten,
+          objectName.pstr(), nameLen);
+
+        nWritten += nameLen;
+
+        return (int)std::min(bufLen, nWritten);
       }
       case ExcelType::Num: // DLL caller
       {
