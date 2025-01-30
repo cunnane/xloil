@@ -42,7 +42,7 @@ class Test_SpreadsheetRunner(unittest.TestCase):
     
             app.calculate(full=True)
             names = wb.to_com().Names
-    
+            
             # Some of the python test functions (not RTD or async) require this 
             # wait time to work. I'm not completely sure why.
             if "settings_wait" in [x.Name.lower() for x in names]:
@@ -50,6 +50,7 @@ class Test_SpreadsheetRunner(unittest.TestCase):
                 import time
                 time.sleep(wait_time)
                 app.calculate()
+                time.sleep(1)
         
             for named_range in names:
                 if named_range.Name.lower().startswith(RESULT_RANGE_PREFIX):
