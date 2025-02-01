@@ -76,6 +76,7 @@ namespace xloil
           while (innerIter != py::iterator::sentinel())
           {
             builder(i, j++).take(FromPyObj<detail::ReturnToCache, true>()(innerIter->ptr(), builder.charAllocator()));
+            ++innerIter;
           }
         }
         else
