@@ -196,8 +196,8 @@ namespace xloil
 
       // Contains the number of characters per numpy array element multiplied 
       // by the number of char16 we will need
-      const size_t stringLength;
       const uint16_t itemLength;
+      const size_t stringLength;
 
       FromArrayImpl(PyArrayObject* pArr)
         : itemLength(std::min<uint16_t>(
