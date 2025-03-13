@@ -55,6 +55,7 @@ namespace xloil
       ourExcelState.hInstance = getExcelHInstance();
       ourExcelState.hWnd = (long long)getExcelHWnd();
       ourExcelState.mainThreadId = GetCurrentThreadId();
+      ourExcelState.supportsDynamicArrays();
     }
     void setCoreHandle(void* coreHInstance)
     {

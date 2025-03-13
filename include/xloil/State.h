@@ -47,14 +47,12 @@ namespace xloil
       /// Thread Id of Excel's main thread
       /// </summary>
       size_t mainThreadId;
+      /// <summary>
+      /// Checks for dynamic array support
+      /// </summary>
+      bool supportsDynamicArrays;
 
       bool isEmbedded() const { return mainThreadId != 0; }
-
-      /// <summary>
-      /// Must call on main thread
-      /// </summary>
-      /// <returns></returns>
-      XLOIL_EXPORT bool supportsDynamicArrays() const;
     };
 
     /// <summary>
