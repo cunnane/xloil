@@ -45,6 +45,13 @@ namespace xloil
       auto hwnd = callExcel(msxll::xlGetHwnd);
       return (HWND)IntToPtr(hwnd.val.w);
     }
+
+    bool checkDynamicArraySupport() 
+    {
+      // https://excel-dna.net/docs/archive/wiki/Dynamic-Arrays/
+      auto [result, retcode] = tryCallExcel(msxll::xlfFilter, 1, 1);
+      return retcode == 0;
+    }
   }
 
   namespace Environment
@@ -55,7 +62,7 @@ namespace xloil
       ourExcelState.hInstance = getExcelHInstance();
       ourExcelState.hWnd = (long long)getExcelHWnd();
       ourExcelState.mainThreadId = GetCurrentThreadId();
-      ourExcelState.supportsDynamicArrays();
+      ourExcelState.supportsDynamicArrays = checkDynamicArraySupport();
     }
     void setCoreHandle(void* coreHInstance)
     {
@@ -86,15 +93,6 @@ namespace xloil
       , mainThreadId(0)
     {}
 
-    XLOIL_EXPORT bool ExcelProcessInfo::supportsDynamicArrays() const
-    {
-      // https://excel-dna.net/docs/archive/wiki/Dynamic-Arrays/
-      static bool supports = []() {
-        auto [result, retcode] = tryCallExcel(msxll::xlfFilter, 1, 1);
-        return retcode == 0;
-      }();
-      return supports;
-    }
 
     XLOIL_EXPORT const ExcelProcessInfo& excelProcess() noexcept
     {
