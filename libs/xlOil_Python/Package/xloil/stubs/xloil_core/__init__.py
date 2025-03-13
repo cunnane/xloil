@@ -370,8 +370,13 @@ class CellError():
     """
                   Enum-type class which represents an Excel error condition of the 
                   form `#N/A!`, `#NAME!`, etc passed as a function argument. If a 
-                  function argument does not specify a type (e.g. int, str) it may be passed 
-                  a CellError, which it can handle based on the error condition.
+                  registered function argument does not explicitly specify a type 
+                  (e.g. int or str via an annotation), it may be passed a *CellError*, 
+                  which it can handle based on the error type.
+
+                  The integer value of a *CellError* corresponds to it's VBA/COM error
+                  number, so for example we can write 
+                  `if cell.Value2 == CellError.NA.value: ...`
                 
 
     Members:
