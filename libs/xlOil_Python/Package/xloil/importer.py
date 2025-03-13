@@ -71,6 +71,8 @@ class ImportHelper(metaclass=Singleton):
         return self._reloader(module, *args, **kwargs)
     
     def watch_module(self, module: ModuleType):
+        if not module.__spec__:
+            return
 
         filepath = module.__spec__.origin
         
