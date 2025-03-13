@@ -342,7 +342,7 @@ namespace xloil
 
   void LinkedSource::handleRename(const wchar_t* wbName, const wchar_t* prevName)
   {
-    if (_wcsicmp(prevName, linkedWorkbook().c_str()) != 0)
+    if (_wcsicmp(prevName, linkedWorkbook().c_str()) == 0)
       renameWorkbook(wbName);
   }
 
