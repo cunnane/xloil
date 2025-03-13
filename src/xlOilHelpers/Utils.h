@@ -12,7 +12,13 @@ namespace xloil
   {
     // Note the postfix i++ as the iterator passed to splice will be invalidated.
     for (auto i = from.begin(); i != from.end(); ++i)
+    {
       if (predicate(*i))
+      {
         to.splice(to.end(), from, i++);
+        if (i == from.end())
+          break;
+      }
+    }
   }
 }
