@@ -1301,7 +1301,7 @@ namespace xloil
               Returns the currently active cell as a Range or None.
           )")
         .def_property_readonly("has_dynamic_arrays", 
-          []() { return Environment::excelProcess().supportsDynamicArrays(); })
+          []() { return Environment::excelProcess().supportsDynamicArrays; })
         .def("__enter__", Context_Enter)
         .def("__exit__", Application_Exit);
 

@@ -176,7 +176,7 @@ namespace xloil
   {
     try
     { 
-      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays();
+      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays;
       VARIANT v;
       COM::excelObjToVariant(&v, formula);
       auto value = _variant_t(v, false);  // Move variant
@@ -194,7 +194,7 @@ namespace xloil
   {
     try
     {
-      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays();
+      static bool dynamicArrays = Environment::excelProcess().supportsDynamicArrays;
       return COM::variantToExcelObj(dynamicArrays ? com().Formula2 : com().Formula);
     }
     XLO_RETHROW_COM_ERROR;
