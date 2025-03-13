@@ -35,7 +35,7 @@ namespace xloil
 
         virtual ~ConverterHolder() {}
 
-        size_t stringLength() const { return _impl.stringLength; }
+        auto stringLength() const { return _impl.stringLength(); }
 
         virtual void operator()(ExcelArrayBuilder& builder,
           xloil::detail::ArrayBuilderIterator& start,

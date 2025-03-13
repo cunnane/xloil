@@ -55,7 +55,7 @@ namespace xloil
 
         TImpl converter(pyArr);
 
-        ExcelArrayBuilder builder((row_t)dims[0], 1, converter.stringLength);
+        ExcelArrayBuilder builder((row_t)dims[0], 1, converter.stringLength());
         auto elementPtr = PyArray_BYTES(pyArr);
         const auto stride = PyArray_STRIDE(pyArr, 0);
         for (auto j = 0; j < dims[0]; ++j, elementPtr += stride)
@@ -93,7 +93,7 @@ namespace xloil
         TImpl converter(pyArr);
 
         ExcelArrayBuilder builder((uint32_t)dims[0], (uint32_t)dims[1],
-          converter.stringLength);
+          converter.stringLength());
 
         const auto stride1 = PyArray_STRIDE(pyArr, 0);
         const auto stride2 = PyArray_STRIDE(pyArr, 1);
@@ -175,7 +175,7 @@ namespace xloil
         if (nDims != 2)
           XLO_THROW("Expected 2-d array");
 
-        size_t stringLength = dims[0] * dims[1] * 4; // err why?
+        size_t stringLength = dims[0] * dims[1] * 4; // 4 seems like a respectable length?
 
         SequentialArrayBuilder builder((row_t)dims[0], (col_t)dims[1], stringLength);
         auto charAllocator = builder.charAllocator();

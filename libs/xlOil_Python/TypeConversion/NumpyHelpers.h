@@ -10,9 +10,9 @@
 #include <numpy/npy_math.h>
 #undef NO_IMPORT_ARRAY
 
-#include <xlOil/ExcelArray.h>
-#include <xlOil/ArrayBuilder.h>
-#include <xloil/StringUtils.h>
+#include "xlOil/ExcelArray.h"
+#include "xlOil/ArrayBuilder.h"
+#include "xloil/StringUtils.h"
 #include <pybind11/pybind11.h>
 
 
@@ -153,7 +153,7 @@ namespace xloil
       FromArrayImpl(PyArrayObject* /*pArr*/)
       {}
 
-      static constexpr size_t stringLength = 0;
+      static constexpr size_t stringLength() { return 0; }
 
       auto toExcelObj(
         ExcelArrayBuilder&,
@@ -165,14 +165,17 @@ namespace xloil
     };
 
     template <int TNpType>
-    struct FromArrayImpl<TNpType, std::enable_if_t<(TNpType == NPY_FLOAT) || (TNpType == NPY_DOUBLE) || (TNpType == NPY_LONGDOUBLE)>>
+    struct FromArrayImpl<TNpType, std::enable_if_t<
+        (TNpType == NPY_FLOAT) || 
+        (TNpType == NPY_DOUBLE) || 
+        (TNpType == NPY_LONGDOUBLE)>>
     {
       using TDataType = typename TypeTraits<TNpType>::storage;
 
       FromArrayImpl(PyArrayObject* /*pArr*/)
       {}
 
-      static constexpr size_t stringLength = 0;
+      static constexpr size_t stringLength() { return 0; }
 
       auto toExcelObj(
         ExcelArrayBuilder&,
@@ -186,38 +189,47 @@ namespace xloil
     };
 
     template <int TNpType>
-    struct FromArrayImpl<TNpType, std::enable_if_t<(TNpType == NPY_UNICODE) || (TNpType == NPY_STRING)>>
+    class FromArrayImpl<TNpType, std::enable_if_t<
+        (TNpType == NPY_UNICODE) || 
+        (TNpType == NPY_STRING)>>
     {
+    private:
       using data_type = typename TypeTraits<TNpType>::storage;
 
       // The number of char16 we require to hold any character in the array
-      static constexpr uint16_t charMultiple =
+      static constexpr uint16_t _charMultiple =
         std::max<uint16_t>(1, sizeof(data_type) / sizeof(char16_t));
 
+      // The string length of each array element
+      const uint16_t _elementLength;
+
+      size_t _stringLength;
+
+    public:
       // Contains the number of characters per numpy array element multiplied 
       // by the number of char16 we will need
-      const size_t stringLength;
-      const uint16_t itemLength;
-
+     
       FromArrayImpl(PyArrayObject* pArr)
-        : itemLength(std::min<uint16_t>(
-          USHRT_MAX,
-          (uint16_t)PyArray_ITEMSIZE(pArr) / sizeof(data_type)))
-        , stringLength(charMultiple* itemLength* PyArray_SIZE(pArr))
+        : _elementLength(std::min<uint16_t>(
+            USHRT_MAX,
+            (uint16_t)PyArray_ITEMSIZE(pArr) / sizeof(data_type)))
       {
+        _stringLength = _charMultiple * _elementLength * PyArray_SIZE(pArr);
         const auto type = PyArray_TYPE(pArr);
         if (type != NPY_UNICODE && type != NPY_STRING)
           XLO_THROW("Incorrect array type: expected string or unicode");
       }
 
+      auto stringLength() const { return _stringLength; }
+
       auto toExcelObj(
         ExcelArrayBuilder& builder,
         void* arrayPtr) const
       {
-        const auto x = (const char32_t*)arrayPtr;
-        const auto len = strlen32(x, itemLength);
+        auto x = (const char32_t*)arrayPtr;
+        const auto len = strlen32(x, _elementLength);
         auto pstr = builder.string((uint16_t)len);
-        auto nChars = ConvertUTF32ToUTF16()(
+        const auto nChars = ConvertUTF32ToUTF16()(
           (char16_t*)pstr.pstr(), pstr.length(), x, x + len);
 
         // Because not every UTF-32 char takes two UTF-16 chars and not
@@ -230,7 +242,7 @@ namespace xloil
     template<>
     struct FromArrayImpl<NPY_DATETIME>
     {
-      static constexpr size_t stringLength = 0;
+      static constexpr size_t stringLength() { return 0; }
 
       const PyArray_DatetimeMetaData* _meta;
 
