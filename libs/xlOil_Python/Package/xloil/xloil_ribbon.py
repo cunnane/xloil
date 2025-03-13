@@ -8,6 +8,16 @@ from itertools import islice
 import sys
 import os
 
+from xloil.stubs.xloil_core import CellError
+
+@xloil.func
+def test_name(x):
+    return x
+
+@xloil.func
+async def test_name2(x):
+    yield x
+
 class Settings:
     """
         Manages accessing and saving the settings file
@@ -467,6 +477,10 @@ def set_error_propagation(ctrl, value):
 def get_error_propagation(ctrl):
     return bool(_settings.addin.get('ErrorPropagation', False))
 
+def _fix_name_errors(ctrl):    
+    xloil.fix_name_errors(xloil.active_workbook())
+
+
 #
 # Ribbon creation
 # ---------------
@@ -558,7 +572,12 @@ _ribbon_ui = xloil.ExcelGUI(ribbon=r'''
                             value, otherwise all argument values are handled by the function"
                 supertip="(requires restart)"
                 getPressed="get_error_propagation"              
-                onAction="set_error_propagation"/>          
+                onAction="set_error_propagation"/>
+              <button id="fixNameErrors" size="normal" label="Fix #NAME!" imageMso="ErrorChecking" 
+                onAction="_fix_name_errors"
+                screentip="Marks #NAME! errors in current workbook for recalculation."
+                supertip="These errors cannot simply be resolved just by Ctrl-Alt-F9. May not be performant in 
+                          large workbooks with many errors."/>
             </group>
           </tab>
         </tabs>

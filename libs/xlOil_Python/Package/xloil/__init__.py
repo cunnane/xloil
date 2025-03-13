@@ -20,7 +20,8 @@ from .importer import (
 
 from .com import (
     constants,
-    PauseExcel
+    PauseExcel,
+    fix_name_errors
     )
 
 from .rtd import RtdSimplePublisher

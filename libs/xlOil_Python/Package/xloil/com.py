@@ -62,3 +62,22 @@ class PauseExcel():
         if self._screen_updating is not None:
             app.ScreenUpdating = self._screen_updating
 
+
+def fix_name_errors(workbook):
+    """
+        Marks #NAME! errors in current workbook for recalculation. Can be used
+        when missing addin functions have caused #NAME! errors - these errors cannot
+        simply be resolved by full recalc (Ctrl-Alt-F9).
+
+        May not be performant in large workbooks with many errors.
+    """
+    for ws in workbook.worksheets:
+        try:
+            # Unfortunately we have to drop into COM as we don't have an implementation
+            # of SpecialCells in xloil
+            for cell in ws.UsedRange.SpecialCells(constants.xlCellTypeFormulas, constants.xlErrors):
+                if cell.Value2 == _core.CellError.NAME.value:
+                    cell.Formula = cell.Formula
+        except:
+            # SpecialCells throws if it's empty so we catch and ignore
+            pass

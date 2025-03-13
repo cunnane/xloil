@@ -93,6 +93,10 @@ class _ActiveWorksheets:
     def __getitem__(self, name):
         return active_workbook().worksheets[name]
 
+    def __iter__(self):
+        return iter(active_workbook().worksheets)
+
+
 class _ActiveWorkbooks:
 
     _impl = None
@@ -108,6 +112,9 @@ class _ActiveWorkbooks:
 
     def __getitem__(self, name):
         return self._obj[name]
+
+    def __iter__(self):
+        return iter(self._impl)
 
 worksheets = _ActiveWorksheets()
 """

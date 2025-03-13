@@ -400,7 +400,6 @@ class CellError():
     def __int__(self) -> int: ...
     def __ne__(self, other: object) -> bool: ...
     def __repr__(self) -> str: ...
-    def __setstate__(self, state: int) -> None: ...
     @property
     def name(self) -> str:
         """
@@ -411,15 +410,15 @@ class CellError():
         """
         :type: int
         """
-    DIV: xloil_core.CellError=None # value = <CellError.DIV: 7>
-    GETTING_DATA: xloil_core.CellError=None # value = <CellError.GETTING_DATA: 43>
-    NA: xloil_core.CellError=None # value = <CellError.NA: 42>
-    NAME: xloil_core.CellError=None # value = <CellError.NAME: 29>
-    NULL: xloil_core.CellError=None # value = <CellError.NULL: 0>
-    NUM: xloil_core.CellError=None # value = <CellError.NUM: 36>
-    REF: xloil_core.CellError=None # value = <CellError.REF: 23>
-    VALUE: xloil_core.CellError=None # value = <CellError.VALUE: 15>
-    __members__: dict=None # value = {'NULL': <CellError.NULL: 0>, 'DIV': <CellError.DIV: 7>, 'VALUE': <CellError.VALUE: 15>, 'REF': <CellError.REF: 23>, 'NAME': <CellError.NAME: 29>, 'NUM': <CellError.NUM: 36>, 'NA': <CellError.NA: 42>, 'GETTING_DATA': <CellError.GETTING_DATA: 43>}
+    DIV: xloil_core.CellError=None # value = <CellError.DIV: -2146826281>
+    GETTING_DATA: xloil_core.CellError=None # value = <CellError.GETTING_DATA: -2146826245>
+    NA: xloil_core.CellError=None # value = <CellError.NA: -2146826246>
+    NAME: xloil_core.CellError=None # value = <CellError.NAME: -2146826259>
+    NULL: xloil_core.CellError=None # value = <CellError.NULL: -2146826288>
+    NUM: xloil_core.CellError=None # value = <CellError.NUM: -2146826252>
+    REF: xloil_core.CellError=None # value = <CellError.REF: -2146826265>
+    VALUE: xloil_core.CellError=None # value = <CellError.VALUE: -2146826273>
+    __members__: dict=None # value = {'NULL': <CellError.NULL: -2146826288>, 'DIV': <CellError.DIV: -2146826281>, 'VALUE': <CellError.VALUE: -2146826273>, 'REF': <CellError.REF: -2146826265>, 'NAME': <CellError.NAME: -2146826259>, 'NUM': <CellError.NUM: -2146826252>, 'NA': <CellError.NA: -2146826246>, 'GETTING_DATA': <CellError.GETTING_DATA: -2146826245>}
     pass
 class ComBusyError(Exception, BaseException):
     pass
