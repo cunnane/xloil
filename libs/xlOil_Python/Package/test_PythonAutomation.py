@@ -6,31 +6,50 @@ from TestConfig import *
 
 
 class Test_PythonAutomation(unittest.TestCase):
+    def __init__(self, methodName: str = "runTest") -> None:
+        super().__init__(methodName)
+
+        import xloil
+        self._app = xloil.Application()
+        self._wb = self._app.workbooks.add()
+
     def test_A(self):
 
         import xloil as xlo
 
-        with xlo.Application() as app:
-
-            # Can be useful for debugging
-            # app.visible=True
+        # Can be useful for debugging
+        # app.visible=True
             
-            wb = app.workbooks.add()
-            ws = wb.worksheets.add()
-            range = ws["A1:C1"]
+        ws = self._wb.worksheets.add()
+        range = ws["A1:C1"]
 
-            # Empty range: trimming returns top left cell
-            firstR, firstC, lastR, lastC = range.trim().bounds
-            self.assertEqual(firstR, lastR)
-            self.assertEqual(firstC, lastC)
+        # Empty range: trimming returns top left cell
+        firstR, firstC, lastR, lastC = range.trim().bounds
+        self.assertEqual(firstR, lastR)
+        self.assertEqual(firstC, lastC)
 
-            # Make range non empty
-            range.set(1)
-            firstR, firstC, lastR, lastC = range.trim().bounds
-            self.assertEqual(firstR, 0)
-            self.assertEqual(firstC, 0)
-            self.assertEqual(lastR, 0)
-            self.assertEqual(lastC, 2)
+        # Make range non empty, now trimming returns entire range
+        range.set(1)
+        firstR, firstC, lastR, lastC = range.trim().bounds
+        self.assertEqual(range.trim().bounds, range.bounds)
+
+        numbers = range.special_cells("constants", "numbers")
+        self.assertEqual(numbers.bounds, range.bounds)
+
+
+    def test_specialcells(self):
+
+        ws = self._wb.worksheets.add()
+        ws["A1"] = 1
+        ws["A2"] = "world"
+        ws["B2"] = 2
+        ws["B1"] = "hello"
+        
+        text_cells = ws["A1:B2"].special_cells("constants", str)
+        message = " ".join((cell.value for cell in text_cells))
+        self.assertEqual(message, "hello world")
+
+
 class Test_PythonUtils(unittest.TestCase):
     
     def test_convert_address_a1(self):

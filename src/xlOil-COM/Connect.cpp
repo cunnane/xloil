@@ -13,6 +13,8 @@ using std::wstring;
 
 namespace xloil
 {
+  using detail::AppObject;
+
   namespace COM
   {
     HWND nextExcelMainWindow(HWND startFrom)

@@ -137,55 +137,6 @@ namespace xloil
         return str;
       }
 
-      /// <summary>
-      /// A hack to pybind's enum code to allow us to patch up the enum value to
-      /// be the correct COM error code whilst allowing the enum to be created from
-      /// the values in CellError, which correspond to the XLL error codes. This 
-      /// allows us to write code like `if cell.Value2 == CellError.NAME.value`
-      /// </summary>
-      class CellErrorEnum : public py::class_<CellError> {
-      public:
-        using Base = class_<CellError>;
-        using Base::attr;
-        using Base::def;
-        using Base::def_property_readonly;
-        using Base::def_property_readonly_static;
-        using Underlying = typename std::underlying_type<CellError>::type;
-        using Scalar = int;
-
-        static auto patchValue(CellError value)
-        {
-          return (int)(0x800a07D0 + (unsigned)value);
-        }
-
-        template <typename... Extra>
-        CellErrorEnum(const handle& scope, const char* name, const Extra &...extra)
-          : class_<CellError>(scope, name, extra...), m_base(*this, scope) 
-        {
-          constexpr bool is_arithmetic = false;
-          constexpr bool is_convertible = false;
-          m_base.init(is_arithmetic, is_convertible);
-
-          def(py::init([](Scalar i) { return static_cast<CellError>(i); }), py::arg("value"));
-
-          def_property_readonly("value", patchValue);
-          def("__int__", patchValue);
-          def("__index__", patchValue);
-
-          for (auto e : theCellErrors)
-            value(cellErrorSymbol(e).c_str(), e); // (0x800a07ed + (int)e) - (1 << 32));
-        }
-
-        /// Add an enumeration entry
-        void value(char const* name, CellError value, const char* doc = nullptr) 
-        {
-          m_base.value(name, py::cast(value, py::return_value_policy::copy), doc);
-        }
-
-      private:
-        py::detail::enum_base m_base;
-      };
-
       void initialiseCore(pybind11::module& mod)
       {
         XLO_DEBUG("Python importing numpy");
@@ -262,7 +213,7 @@ namespace xloil
         // TODO: move to basictypes but beware of pybind declaration order!
         {
           // Bind CellError type to xloil::CellError enum
-          auto eType = CellErrorEnum(mod, "CellError", 
+          auto eType = py::BetterEnum<CellError>(mod, "CellError", 0x800a07D0,
             R"(
               Enum-type class which represents an Excel error condition of the 
               form `#N/A!`, `#NAME!`, etc passed as a function argument. If a 
@@ -275,6 +226,8 @@ namespace xloil
               `if cell.Value2 == CellError.NA.value: ...`
             )");
 
+          for (auto e : theCellErrors)
+            eType.value(cellErrorSymbol(e).c_str(), e);
 
           theCellErrorType = (PyTypeObject*)eType.ptr();
         }

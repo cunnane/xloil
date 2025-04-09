@@ -1,22 +1,56 @@
+#include <xlOil/ExcelTypeLib.h>
 #include <xloil/AppObjects.h>
 #include <xlOil-COM/Connect.h>
 #include <xlOil-COM/ComVariant.h>
 #include <xlOil-COM/ComEventSink.h>
-#include <xlOil/ExcelTypeLib.h>
+
 #include <xlOil/Range.h>
 #include <xloil/Log.h>
 #include <xloil/Throw.h>
 #include <xloil/State.h>
 #include <functional>
 #include <comdef.h>
+#include <tuple>
+
 
 using std::shared_ptr;
 using std::make_shared;
 using std::vector;
 using std::wstring;
 
+void workaroundVisualStudioBug()
+{
+  /*
+  As far as COM is concerned, "templates" are a new-fangled trick, to be
+  treated with suspicion and comtempt.  Duly, Microsoft's compiler
+  declines to look inside templated code for references to function bodies
+  which it really ought to have been pulling from the TLI file. Therefore,
+  we need to specify which functions we want to use in this nice explicit way
+  which should be impossible for even the most simple-minded compiler to get
+  wrong.
+  */
+  ((Excel::Windows*)(nullptr))->Get_NewEnum();
+  ((Excel::Windows*)(nullptr))->GetCount();
+  ((Excel::Windows*)(nullptr))->GetApplication();
+  ((Excel::Windows*)(nullptr))->GetItem(_variant_t());
+  ((Excel::Workbooks*)(nullptr))->Get_NewEnum();
+  ((Excel::Workbooks*)(nullptr))->GetCount();
+  ((Excel::Workbooks*)(nullptr))->GetApplication();
+  ((Excel::Sheets*)(nullptr))->Get_NewEnum();
+  ((Excel::Sheets*)(nullptr))->GetCount();
+  ((Excel::Sheets*)(nullptr))->GetApplication();
+  ((Excel::Sheets*)(nullptr))->GetItem(_variant_t());
+  ((Excel::Areas*)(nullptr))->Get_NewEnum();
+  ((Excel::Areas*)(nullptr))->GetCount();
+  ((Excel::Areas*)(nullptr))->GetApplication();
+  ((Excel::Areas*)(nullptr))->GetItem(0);
+}
+
 namespace xloil
 {
+  using detail::UnknownObject;
+  using detail::AppObject;
+
   namespace
   {
     template <class T>
@@ -42,56 +76,104 @@ namespace xloil
       return TAppObj(comPtrCast<ComType<TAppObj>, V>()(v).Detach(), true);
     }
 
-    template <class T>
-    struct CollectionToVector
+    template<typename Sig>
+    struct signature;
+
+    template<typename R, typename ...Args>
+    struct signature<R(Args...)>
     {
-      template <class V>
-      vector<T> operator()(const V& collection) const
-      {
-        try
-        {
-          const auto N = collection->GetCount();
-          vector<T> result;
-          for (auto i = 1; i <= N; ++i)
-            result.emplace_back(fromComPtr<T>(collection->GetItem(i)));
-          return std::move(result);
-        }
-        XLO_RETHROW_COM_ERROR;
-      }
+      using type = std::tuple<Args...>;
     };
 
-    _variant_t stringToVariant(const std::wstring_view& str)
+    template<typename C, typename R, typename ...Args>
+    struct signature<R (C::*)(Args...)>
+    {
+      using type = std::tuple<Args...>;
+    };
+
+// C5046: Symbol involving type with internal linkage not defined
+#pragma warning(disable: 5046)
+
+    template<typename F>
+    auto arguments(const F&) -> typename signature<F>::type;
+
+    void throwIfRequired(HRESULT hr)
+    {
+      if (FAILED(hr))
+      {
+        auto error = _com_error(hr);
+        XLO_THROW(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
+      }
+    }
+
+    template<class T>
+    _variant_t toVariant(const T& x)
+    {
+      return _variant_t(x);
+    }
+    
+    template<>
+    _variant_t toVariant(const std::wstring_view& str)
     {
       auto variant = COM::stringToVariant(str);
       return _variant_t(variant, false);
     }
 
-    template<class TRes, class TObj>
-    TRes comGet(const TObj& obj, const std::wstring_view& what)
+    template<class TObj, class V = TObj::get_Item>
+    IDispatch* getItemHelper(TObj& obj, const _variant_t& what, HRESULT& retCode)
     {
-      try
-      {
-        return fromComPtr<TRes>(obj->GetItem(stringToVariant(what)));
-      }
-      XLO_RETHROW_COM_ERROR;
+      auto resultType = std::get<1>(arguments(&TObj::get_Item));
+      std::remove_pointer_t<decltype(resultType)> result;
+      retCode = obj.get_Item(what, &result);
+      return result;
     }
 
-    template<class TObj, class TRes>
-    bool comTryGet(const TObj& obj, const std::wstring_view& what, TRes& out)
+    template<class TObj>
+    IDispatch* getItemHelper(TObj& obj, const _variant_t& what, HRESULT& retCode)
     {
-      // See other possibility here. Seems a bit crazy?
-      // https://stackoverflow.com/questions/9373082/detect-whether-excel-workbook-is-already-open
       try
       {
-        out = fromComPtr<TRes>(obj->GetItem(stringToVariant(what)));
-        return true;
+        retCode = S_OK;
+        return obj.GetItem(what).Detach();
       }
       catch (_com_error& error)
       {
-        if (error.Error() == DISP_E_BADINDEX)
-          return false;
-        XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+        retCode = error.Error();
+        return nullptr;
       }
+    }
+
+    template<class TObj, class TRes, class TArg>
+    bool comTryGet(TObj& obj, const TArg& what, TRes& out)
+    {
+      HRESULT hr;
+      auto result = getItemHelper(obj, toVariant(what), hr);
+      if (hr == DISP_E_BADINDEX)
+        return false;
+
+      throwIfRequired(hr);
+
+      out = TRes((ComType<TRes>*)result, true);
+      return true;
+    }
+
+    template<class TRes, class TObj, class TArg>
+    TRes comGetItem(TObj& obj, const TArg& what)
+    {
+      TRes result;
+      auto found = comTryGet(obj, what, result);
+      if (!found)
+        XLO_THROW(L"Collection: could not find '{}'", what);
+      return std::move(result);
+    }
+
+    template<class T, class V=T::get_Application>
+    auto comGetApp(T& x)
+    {
+      struct Excel::_Application* _result = 0;
+      HRESULT hr = x.get_Application(&_result);
+      throwIfRequired(hr);
+      return Application(_result);
     }
 
     template<class T>
@@ -103,6 +185,25 @@ namespace xloil
       }
       XLO_RETHROW_COM_ERROR;
     }
+
+    template<class T, class V = T::get_Count>
+    auto comGetCount(T& x)
+    {
+      long result = 0;
+      HRESULT hr = com().get_Count(&result);
+      throwIfRequired(hr);
+      return result
+    }
+
+    template<class T>
+    auto comGetCount(T& x)
+    {
+      try
+      {
+        return x.GetCount();
+      }
+      XLO_RETHROW_COM_ERROR;
+    }
   }
 
   Application& thisApp()
@@ -110,7 +211,7 @@ namespace xloil
     return COM::attachedApplication();
   }
 
-  void DispatchObject::release()
+  void detail::UnknownObject::release()
   {
     if (_ptr)
     {
@@ -119,7 +220,7 @@ namespace xloil
     }
   }
 
-  void DispatchObject::init(IDispatch* ptr, bool steal)
+  void detail::UnknownObject::init(IUnknown* ptr, bool steal)
   {
     _ptr = ptr;
     if (!steal && ptr)
@@ -415,7 +516,7 @@ namespace xloil
           if (caption.empty())
             return app.com().ActiveWindow.Detach();
           else
-            return app.com().Windows->GetItem(stringToVariant(caption)).Detach();
+            return app.com().Windows->GetItem(toVariant(caption)).Detach();
         }
         XLO_RETHROW_COM_ERROR;
       }(), true)
@@ -433,7 +534,11 @@ namespace xloil
 
   Application ExcelWindow::app() const
   {
-    return comGetApp(com());
+    try
+    {
+      return Application(com().Application.Detach());
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
   ExcelWorkbook ExcelWindow::workbook() const
@@ -454,7 +559,7 @@ namespace xloil
           else
           {
             auto workbooks = app.com().Workbooks;
-            return workbooks->GetItem(stringToVariant(name)).Detach();
+            return workbooks->GetItem(toVariant(name)).Detach();
           }
         }
         XLO_RETHROW_COM_ERROR;
@@ -508,7 +613,7 @@ namespace xloil
       if (filepath.empty())
         com().Save();
       else
-        com().SaveAs(stringToVariant(filepath), 
+        com().SaveAs(toVariant(filepath), 
           vtMissing, vtMissing, vtMissing, vtMissing, vtMissing, 
           Excel::XlSaveAsAccessMode::xlNoChange);
     }
@@ -618,15 +723,9 @@ namespace xloil
   {
     try
     {
-      com().Name = stringToVariant(name).bstrVal;
+      com().Name = toVariant(name).bstrVal;
     }
     XLO_RETHROW_COM_ERROR;
-  }
-
-  
-  bool Workbooks::tryGet(const std::wstring_view& workbookName, ExcelWorkbook& wb) const
-  {
-    return comTryGet(&com(), workbookName, wb);
   }
 
   ExcelWorkbook Workbooks::add()
@@ -638,107 +737,192 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  Application Workbooks::app() const
+  namespace
   {
-    return comGetApp(com());
+    auto variantToUnknown(const VARIANT& v)
+    {
+      if (v.vt != VT_DISPATCH)
+        XLO_THROW("Unexpected variant type, should be IDispatch");
+      return UnknownObject(v.pdispVal, true);
+    }
   }
 
-  Worksheets::Worksheets(const Application& app)
-    : parent(app.workbooks().active())
+  detail::ComIteratorBase::ComIteratorBase(
+    IUnknown* ptr,
+    UnknownObject next)
+    : AppObject([=]() {
+        IEnumVARIANT* iterator;
+        ptr->QueryInterface(&iterator);
+        return iterator;
+      }(), true)
+    , _next(next)
   {
-    if (!parent.valid())
-      XLO_THROW("No active workbook");
   }
 
-  Worksheets::Worksheets(const ExcelWorkbook& workbook)
-    : parent(workbook)
-  {}
+  UnknownObject detail::ComIteratorBase::get()
+  {
+    return _next;
+  }
 
-  vector<ExcelWorksheet> Worksheets::list() const
+  void detail::ComIteratorBase::increment()
   {
     try
     {
-      const auto collection = parent.com().Worksheets;
-      const auto N = collection->GetCount();
-      vector<ExcelWorksheet> result;
-      for (auto i = 1; i <= N; ++i)
-        result.emplace_back(fromComPtr<ExcelWorksheet>(collection->GetItem(i)));
-      return std::move(result);
-      
-
-      // This seemingly identical code gives a link error 2019: missing 
-      // Excel::Sheets::GetItem. Looks like a compiler bug.
-      //return CollectionToVector<ExcelWorksheet>()(parent.com().Worksheets);
+      VARIANT next;
+      ULONG nFetched;
+      if (SUCCEEDED(com().Next(1, &next, &nFetched)) && nFetched > 0)
+        _next = variantToUnknown(next);
+      else
+        _next = UnknownObject();
     }
     XLO_RETHROW_COM_ERROR;
   }
 
-  ExcelWorksheet Worksheets::get(const std::wstring_view& name) const
+  detail::ComIteratorBase detail::ComIteratorBase::excrement()
   {
-    return comGet<ExcelWorksheet>(parent.com().Worksheets, name);
-  }
-  
-  bool Worksheets::tryGet(const std::wstring_view& name, ExcelWorksheet& out) const
-  {
-    return comTryGet(parent.com().Worksheets, name, out);
+    try
+    {
+      IEnumVARIANT* clone;
+      if (FAILED(com().Clone(&clone)))
+        XLO_THROW("ComIterator: internal error copy failed");
+
+      auto prev = UnknownObject(std::move(_next));
+      increment();
+
+      return ComIteratorBase(clone, prev);
+    }
+    XLO_RETHROW_COM_ERROR;
   }
 
-  size_t Worksheets::count() const
+  bool detail::ComIteratorBase::operator==(const detail::ComIteratorBase& other) const
   {
-    return parent.com().Worksheets->GetCount();
+    return _next.ptr() == other._next.ptr();
+  }
+
+  void detail::ComIteratorBase::getMany(size_t n, std::vector<UnknownObject>& result)
+  {
+    try
+    {
+      // We take the value in _next and fetch *n* more values 
+      vector<VARIANT> variants(n);
+      ULONG nFetched;
+      com().Next((ULONG)n, variants.data(), &nFetched);
+    
+      result.emplace_back(std::move(_next));
+
+      for (auto i = 0u; i < std::min(n - 1, (size_t)nFetched); ++i)
+        result.emplace_back(variantToUnknown(variants[i]));
+      
+      // If iterator was exhausted, leave _next as null value, otherwise
+      // take the last value we fetched
+      _next = variantToUnknown(variants[n - 1]);
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
+  template<class T, class Ptr>
+  T Collection<T, Ptr>::get(const std::wstring_view& name) const
+  {
+    return comGetItem<T>(com(), name);
+  }
+
+  template<class T, class Ptr>
+  T Collection<T, Ptr>::get(const size_t index) const
+  {
+    return comGetItem<T>(com(), index);
+  }
+
+  template<class T, class Ptr>
+  bool Collection<T, Ptr>::tryGet(const std::wstring_view& name, T& out) const
+  {
+    return comTryGet(com(), name, out);
+  }
+
+  template<class T, class Ptr>
+  bool Collection<T, Ptr>::tryGet(const size_t index, T& out) const
+  {
+    return comTryGet(com(), index, out);
+  }
+
+  template<class T, class Ptr>
+  size_t Collection<T, Ptr>::count() const
+  {
+    return comGetCount(com());
+  }
+
+  template<class T, class Ptr>
+  Application Collection<T, Ptr>::app() const
+  {
+    return comGetApp(com());
+  }
+
+  template<class T, class Ptr>
+  std::vector<T> Collection<T, Ptr>::list() const
+  {
+    try
+    {
+      auto iterator = ComIterator<T>((IUnknown*)com().Get_NewEnum());
+      return iterator.getMany(count());
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+  
+  template<class T, class Ptr>
+  ComIterator<T> Collection<T, Ptr>::begin() const
+  {
+    return ComIterator<T>(com().Get_NewEnum());
+  }
+
+  Worksheets::Worksheets(const Application& app)
+    : Worksheets(app.workbooks().active())
+  {}
+
+  Worksheets::Worksheets(const ExcelWorkbook& workbook)
+    : Collection(workbook.valid()
+      ? workbook.com().Worksheets.Detach()
+      : nullptr)
+  {
+    if (!valid())
+      XLO_THROW("No active workbook or workbook invalid");
+  }
+
+  ExcelWorkbook Worksheets::parent() const
+  {
+    return fromComPtr<ExcelWorkbook>(com().Parent);
   }
 
   Workbooks::Workbooks(const Application& app)
-    : AppObject(app.com().Workbooks.Detach(), true)
+    : Collection(app.com().Workbooks.Detach())
   {}
 
-  ExcelWorkbook Workbooks::active() const
-  {
-    return ExcelWorkbook(std::wstring_view(), app());
-  }
-
-  std::vector<ExcelWorkbook> Workbooks::list() const
-  {
-    return CollectionToVector<ExcelWorkbook>()(&com());
-  }
-
-  size_t Workbooks::count() const
-  {
-    return com().GetCount();
-  }
-
   Windows::Windows(const Application& app)
-    : AppObject(app.com().Windows.Detach(), true)
+    : Collection(app.com().Windows.Detach())
   {}
 
   Windows::Windows(const ExcelWorkbook& workbook)
-    : AppObject(workbook.com().Windows.Detach(), true)
+    : Collection(workbook.com().Windows.Detach())
   {}
 
-  ExcelWindow Windows::active() const
-  {
-    return ExcelWindow(std::wstring_view(), app());
-  }
+  //template<>
+  //bool Collection<ExcelWindow, Excel::Windows>::tryGet(
+  //  const std::wstring_view& name, ExcelWindow& out) const
+  //{
+  //  try
+  //  {
+  //    out = fromComPtr<ExcelWindow>(com().GetItem(toVariant(name)));
+  //    return true;
+  //  }
+  //  catch (_com_error& error)
+  //  {
+  //    if (error.Error() == DISP_E_BADINDEX)
+  //      return false;
+  //    XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
+  //  }
+  //}
 
-  Application Windows::app() const
-  {
-    return Application(com().Application.Detach());
-  }
-
-  bool Windows::tryGet(const std::wstring_view& name, ExcelWindow& out) const
-  {
-    return comTryGet(&com(), name, out);
-  }
-
-  std::vector<ExcelWindow> Windows::list() const
-  {
-    return CollectionToVector<ExcelWindow>()(&com());
-  }
-
-  size_t Windows::count() const
-  {
-    return com().GetCount();
-  }
+  Ranges::Ranges(const ExcelRange& multiRange)
+    : Collection(multiRange.com().Areas.Detach())
+  { }
 
   const std::set<std::wstring>& Application::workbookPaths()
   {

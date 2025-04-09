@@ -23,14 +23,31 @@ constants = _Win32ComConstants()
 class PauseExcel():
     """
     A context manager which pauses Excel by disabling events, turning off screen updating 
-    and switching to manual calculation mode.  Which of these changees are applied can
+    and switching to manual calculation mode.  Which of these changes are applied can
     be controlled by parameters to the constructor - the default is to apply all of them.
+    Previous settings are restored when the context scope closes.
+
+    Parameters
+    ----------
+    events: bool (default False)
+        if False, pauses Excel's event model (Application.EnableEvents in VBA)
+
+    calculation: bool (default False)
+        if False, sets the calculation mode to manual (Application.Calculation in VBA)
+
+    screen_updating: bool
+        if False, disables screen updating in Excel (Application.ScreenUpdating in VBA)
+
+    alerts: bool
+        if False, disables alerts in Excel (Application.DisplayAlerts in VBA)
+
     """
     _calc_mode = None
     _screen_updating = None
     _events = None
+    _alerts = None
 
-    def __enter__(self, events=False, calculation=False, screen_updating=False):
+    def __enter__(self, events=False, calculation=False, screen_updating=False, alerts=False):
         app = _core.app()
 
         if not events:
@@ -47,6 +64,10 @@ class PauseExcel():
             self._screen_updating = app.ScreenUpdating
             app.ScreenUpdating = False
 
+        if not alerts:
+            self._alerts = app.DisplayAlerts
+            app.DisplayAlerts = False
+
         return self
 
     def __exit__(self, type, value, traceback):
@@ -62,6 +83,9 @@ class PauseExcel():
         if self._screen_updating is not None:
             app.ScreenUpdating = self._screen_updating
 
+        if self._alerts is not None:
+            app.DisplayAlerts = self._alerts
+
 
 def fix_name_errors(workbook):
     """
@@ -72,12 +96,9 @@ def fix_name_errors(workbook):
         May not be performant in large workbooks with many errors.
     """
     for ws in workbook.worksheets:
-        try:
-            # Unfortunately we have to drop into COM as we don't have an implementation
-            # of SpecialCells in xloil
-            for cell in ws.UsedRange.SpecialCells(constants.xlCellTypeFormulas, constants.xlErrors):
-                if cell.Value2 == _core.CellError.NAME.value:
-                    cell.Formula = cell.Formula
-        except:
-            # SpecialCells throws if it's empty so we catch and ignore
-            pass
+        errors = ws.used_range.special_cells("formulas", "errors")
+        if errors is None:
+            continue
+        for cell in errors:
+            if cell.Value2 == _core.CellError.NAME.value:
+                cell.Formula = cell.Formula

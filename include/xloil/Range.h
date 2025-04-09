@@ -64,6 +64,8 @@ namespace xloil
     /// </summary>
     virtual std::tuple<row_t, col_t, row_t, col_t> bounds() const = 0;
 
+    virtual size_t nAreas() const = 0;
+
     /// <summary>
     /// Returns the number of rows in the range
     /// </summary>

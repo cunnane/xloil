@@ -2,6 +2,7 @@
 #include "PyHelpers.h"
 #include "TypeConversion/BasicTypes.h"
 #include "PyCOM.h"
+#include "PyCore.h"
 #include "PyAppCallRun.h"
 #include <xlOil/AppObjects.h>
 #include <xlOil/State.h>
@@ -20,7 +21,7 @@ namespace xloil
   namespace Python
   {
     PyTypeObject *theRangeType, *theXllRangeType, *theExcelRangeType;
-
+    
     bool isRangeType(const PyObject* obj)
     {
       const auto* type = Py_TYPE(obj);
@@ -29,6 +30,17 @@ namespace xloil
 
     namespace
     {
+      std::unordered_map<std::string, SpecialCells> theSpecialCellsEntries;
+
+      SpecialCells specialCellsFromString(const std::string& value)
+      {
+        auto found = theSpecialCellsEntries.find(value);
+        if (found != theSpecialCellsEntries.end())
+          return found->second;
+        throw py::value_error(value);
+      }
+
+
       auto range_Construct(const wchar_t* address)
       {
         py::gil_scoped_release noGil; 
@@ -170,6 +182,114 @@ namespace xloil
           : py::cast(range.range((int)fromRow, (int)fromCol, (int)toRow - 1, (int)toCol - 1));
       }
 
+      int specialCellsValueHelper(const py::handle& values, int existing = 0)
+      {
+        auto p = values.ptr();
+        if (PyUnicode_Check(p))
+        {
+          auto str = to_string(p);
+          toLower(str);
+          if (str.find(",") != string::npos)
+          {
+            XLO_THROW("Not supported");
+          }
+          if (str == "errors")
+            return existing | int(ExcelType::Err);
+          else if (str == "numbers")
+            return existing | int(ExcelType::Num);
+          else if (str == "logical")
+            return existing | int(ExcelType::Bool);
+          else if (str == "text")
+            return existing | int(ExcelType::Str);
+        }
+        else if (PyType_Check(values.ptr()))
+        {
+          if ((PyTypeObject*)p == &PyUnicode_Type)
+            return existing | int(ExcelType::Str);
+          else if ((PyTypeObject*)p == theCellErrorType)
+            return existing | int(ExcelType::Err);
+          else if ((PyTypeObject*)p == &PyFloat_Type)
+            return existing | int(ExcelType::Num);
+          else if ((PyTypeObject*)p == &PyBool_Type)
+            return existing | int(ExcelType::Bool);
+        }
+        else if (PyIterable_Check(values.ptr()))
+        {
+          auto iter = py::iter(values);
+          while (iter != py::iterator::sentinel())
+          {
+            existing = specialCellsValueHelper(*iter, existing);
+            ++iter;
+          }
+        }
+
+        throw py::value_error("values");
+      }
+
+      py::object range_SpecialCells(
+        Range& r,
+        const py::object& type, 
+        const py::object& values)
+      {
+        const auto specialCellsType = PyUnicode_Check(type.ptr())
+          ? specialCellsFromString(to_string(type))
+          : py::cast<SpecialCells>(type);
+
+        int cellValues = 0;
+        if (!values.is_none())
+          cellValues = specialCellsValueHelper(values);
+
+        py::gil_scoped_release noGil;
+        auto result = ExcelRange(r).specialCells(
+          specialCellsType, (ExcelType)cellValues);
+        if (!result.valid())
+          return py::none();
+        else
+          return py::cast(result);
+      }
+
+      py::object range_Areas(Range& r)
+      {
+        if (r.nAreas() == 1)
+          return py::make_tuple(py::cast(r));
+
+        // If nAreas > 1, we must already be a com range
+        auto excelRange = dynamic_cast<ExcelRange*>(&r);
+        if (!excelRange)
+          XLO_THROW("Internal Error: unexpected range");
+
+        vector<ExcelRange> areas;
+        {
+          py::gil_scoped_release noGil;
+          areas = excelRange->areas().list();
+        }
+
+        return py::cast(areas);
+      }
+
+      auto range_Iter(Range& r)
+      {
+        auto noGil = std::make_unique<py::gil_scoped_release>();
+
+        auto excelRange = dynamic_cast<ExcelRange*>(&r);
+        if (excelRange)
+        {
+          auto begin = excelRange->begin();
+          auto end = excelRange->end();
+          noGil.reset();
+          return py::make_iterator(std::move(begin), std::move(end));
+        }
+        auto xllRange = dynamic_cast<XllRange*>(&r);
+        if (xllRange)
+        {
+          auto begin = xllRange->begin();
+          auto end = xllRange->end();
+          noGil.reset();
+          return py::make_iterator(std::move(begin), std::move(end));
+        }
+
+        XLO_THROW("Range Iterator: internal error, unexpected type");
+      }
       // This is clearly not a very optimised implementation as the values
       // must be converted to / from ExcelObj and possibly Variant several times. 
       // However, it's not clear the that effort of writing ExcelObj and Variant  
@@ -439,23 +559,6 @@ namespace xloil
         return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
       }
 
-      struct RangeIter
-      {
-        Range& _range;
-        Range::row_t _i;
-        Range::col_t _j;
-
-        RangeIter(Range& r) : _range(r), _i(0), _j(0)
-        {}
-
-        auto next()
-        {
-          if (++_j == _range.nCols())
-            if (++_i == _range.nRows())
-              throw py::stop_iteration();
-          return PyFromAny()(_range.value(_i, _j));
-        }
-      };
 
       template<class T>
       struct BindCollection
@@ -466,20 +569,7 @@ namespace xloil
           : _collection(x)
         {}
 
-        using value_t = decltype(_collection.active());
-        struct Iter
-        {
-          vector<value_t> _objects;
-          size_t i = 0;
-          Iter(const T& collection) : _objects(collection.list()) {}
-          Iter(const Iter&) = delete;
-          value_t next()
-          {
-            if (i >= _objects.size())
-              throw py::stop_iteration();
-            return std::move(_objects[i++]);
-          }
-        };
+        using value_t = decltype(_collection.get(wstring()));
 
         auto getitem(const wstring& name)
         {
@@ -504,7 +594,12 @@ namespace xloil
 
         auto iter()
         {
-          return new Iter(_collection);
+          auto noGil = std::make_unique<py::gil_scoped_release>();
+          auto begin = _collection.begin();
+          auto end = _collection.end();
+          noGil.reset();
+
+          return py::make_iterator(std::move(begin), std::move(end));
         }
 
         size_t count() const { return _collection.count(); }
@@ -514,6 +609,40 @@ namespace xloil
           value_t result(nullptr);
           return _collection.tryGet(name, result);
         }
+
+        template<class K>
+        static auto _bind(K&& klass)
+        {
+          using this_t = BindCollection<T>;
+
+          return klass
+            .def("__getitem__", &getitem)
+            .def("__iter__", &iter)
+            .def("__len__", &count)
+            .def("__contains__", &contains)
+            .def("get",
+              &getdefaulted,
+              R"(
+                Tries to get the named object, returning the default if not found
+              )",
+              py::arg("name"),
+              py::arg("default") = py::none());
+        }
+
+        static auto startBinding(
+          const py::module& mod,
+          const char* name,
+          const char* doc = nullptr)
+        {
+          return _bind(
+            py::class_<BindCollection<T>>(mod, name, doc));
+        }
+      };
+
+      template<class T>
+      struct BindCollectionWithActive : public BindCollection<T>
+      {
+        using BindCollection<T>::BindCollection;
 
         py::object active()
         {
@@ -527,56 +656,45 @@ namespace xloil
           return py::cast(std::move(obj));
         }
 
-        static auto startBinding(const py::module& mod, const char* name, const char* doc = nullptr)
+        static auto startBinding(
+          const py::module& mod,
+          const char* name,
+          const char* doc = nullptr)
         {
-          using this_t = BindCollection<T>;
-
-          py::class_<Iter>(mod, (string(name) + "Iter").c_str())
-            .def("__iter__", [](const py::object& self) { return self; })
-            .def("__next__", &Iter::next);
-
-          return py::class_<this_t>(mod, name, doc)
-            .def("__getitem__", &getitem)
-            .def("__iter__", &iter)
-            .def("__len__", &count)
-            .def("__contains__", &contains)
-            .def("get",
-              &getdefaulted,
-              R"(
-              Tries to get the named object, returning the default if not found
-            )",
-              py::arg("name"),
-              py::arg("default") = py::none())
+          return BindCollection<T>::_bind(
+            py::class_<BindCollectionWithActive<T>>(mod, name, doc))
             .def_property_readonly("active",
               &active,
               R"(
-              Gives the active (as displayed in the GUI) object in the collection
-              or None if no object has been activated.
-            )");
+                Gives the active (as displayed in the GUI) object in the collection
+                or None if no object has been activated.
+              )");
         }
       };
 
       ExcelWorksheet addWorksheetToWorkbook(
-        ExcelWorkbook& wb,
+        const ExcelWorkbook& wb,
         const py::object& name,
         const py::object& before,
         const py::object& after)
       {
-        auto cname = name.is_none() ? wstring() : to_wstring(name);
-        auto cbefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
-        auto cafter = after.is_none() ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
+        auto cName   = name.is_none()   ? wstring() : to_wstring(name);
+        auto cBefore = before.is_none() ? ExcelWorksheet(nullptr) : before.cast<ExcelWorksheet>();
+        auto cAfter  = after.is_none()  ? ExcelWorksheet(nullptr) : after.cast<ExcelWorksheet>();
 
         py::gil_scoped_release noGil;
-        return wb.add(cname, cbefore, cafter);
+        return wb.add(cName, cBefore, cAfter);
       }
 
       auto addWorksheetToCollection(
-        BindCollection<Worksheets>& worksheets,
+        BindCollectionWithActive<Worksheets>& worksheets,
         const py::object& name,
         const py::object& before,
         const py::object& after)
       {
-        return addWorksheetToWorkbook(worksheets._collection.parent, name, before, after);
+        return addWorksheetToWorkbook(
+          worksheets._collection.parent(), 
+          name, before, after);
       }
 
       template<class T>
@@ -584,6 +702,7 @@ namespace xloil
       {
         return comToPy(p.com(), binder);
       }
+
       template<>
       auto toCom(Range& range, const char* binder)
       {
@@ -635,6 +754,26 @@ namespace xloil
 
 #define XLO_CITE_API_SUFFIX(what, suffix) "See `Excel." #what " <https://docs.microsoft.com/en-us/office/vba/api/excel." #what #suffix">`_ "
 #define XLO_CITE_API(what) XLO_CITE_API_SUFFIX(what, what)
+      
+      auto specialCellsEnum = py::BetterEnum<SpecialCells>(mod, "SpecialCells")
+        .value("blanks", SpecialCells::Blanks, "Empty cells")
+        .value("constants", SpecialCells::Constants, "Cells containing constants")
+        .value("formulas", SpecialCells::Formulas, "Cells containing formulas")
+        .value("last_cell", SpecialCells::LastCell, "The last cell in the used range")
+        .value("comments", SpecialCells::Comments, "Cells containing notes")
+        .value("visible", SpecialCells::Visible, "All visible cells")
+        .value("all_format", SpecialCells::AllFormatConditions, "Cells of any format")
+        .value("same_format", SpecialCells::SameFormatConditions, "Cells having the same format")
+        .value("all_validation", SpecialCells::AllValidation, "Cells having validation criteria")
+        .value("same_validation", SpecialCells::SameValidation, "Cells having the same validation criteria");
+
+      theSpecialCellsEntries = specialCellsEnum.entries;
+
+      // It used to be possible to support string conversion via 
+      //    py::implicitly_convertible<std::string, Enum>()
+      // But this seems to be perma-broken with the follow issue open for years:
+      // https://github.com/pybind/pybind11/issues/2114
+      // Leaving this note here in case a hero emerges to tackle the pybind issue.
 
 
       // We "forward declare" all our classes before defining their functions
@@ -702,9 +841,9 @@ namespace xloil
           A document window which displays a view of a workbook.
           )" XLO_CITE_API(Window));
 
-      using PyWorkbooks = BindCollection<Workbooks>;
-      using PyWindows = BindCollection<Windows>;
-      using PyWorksheets = BindCollection<Worksheets>;
+      using PyWorkbooks = BindCollectionWithActive<Workbooks>;
+      using PyWindows = BindCollectionWithActive<Windows>;
+      using PyWorksheets = BindCollectionWithActive<Worksheets>;
 
       PyWorkbooks::startBinding(mod, "Workbooks",
         R"(
@@ -736,11 +875,6 @@ namespace xloil
           py::arg("name") = py::none(),
           py::arg("before") = py::none(),
           py::arg("after") = py::none());
-
-
-      py::class_<RangeIter>(mod, "RangeIter")
-        .def("__iter__", [](const py::object& self) { return self; })
-        .def("__next__", &RangeIter::next);
 
       declare_Range
         .def(py::init(std::function(range_Construct)), 
@@ -827,14 +961,13 @@ namespace xloil
             at least a single cell, even if it's empty.  
           )")
         .def("__iter__", 
-          [](Range& self) { return new RangeIter(self); },
-          call_release_gil())
+          range_Iter)
         .def("__getitem__", 
           range_getItem,
           R"(
             Given a 2-tuple, slices the range to return a sub Range or a single element.Uses
-            normal python slicing conventions i.e[left included, right excluded), negative
-            numbers are offset from the end.If the tuple specifies a single cell, returns
+            normal python slicing conventions i.e. [left included, right excluded), negative
+            numbers are offset from the end. If the tuple specifies a single cell, returns
             the value in that cell, otherwise returns a Range object.
           )")
         .def("__len__", 
@@ -882,6 +1015,32 @@ namespace xloil
             If *local* is set to true, everything prior to the '!' is omitted.
           )",
           py::arg("local") = false)
+        .def("special_cells", 
+          range_SpecialCells, 
+          py::arg("kind"),
+          py::arg("values"),
+          R"(
+            Returns a sub-range containg only cells of a specificed type or None if none 
+            are found.  Behaves like VBA's `SpecialCells <https://learn.microsoft.com/en-us/office/vba/api/excel.range.specialcells>`_.
+            The returned range is likely to be a multi-area range, you can use the `xloil.range.areas`
+            property or a range iterator to step through the returned value.
+
+            Parameters
+            ----------
+
+            kind: xloil.SpecialCells | str
+              The kind of cells to return, a string value is convertered to the corresponding 
+              enum value
+
+            values: Optional[type | str | Iterable[type|str]]
+              If `kind` is "constants" or "formulas", determine which types of cells to return.
+              If the argument is omitted, all constants or formulas will be returned
+              The argument can be one or an iterable of:
+                * "errors" or *xloil.CellError*
+                * "numbers" or *float*
+                * "logical" or *bool*
+                * "text" or *str*
+          )")
         .def_property_readonly("nrows", 
           &Range::nRows,
           call_release_gil(),
@@ -901,6 +1060,12 @@ namespace xloil
             Returns a zero-based tuple (top-left-row, top-left-col, bottom-right-row, bottom-right-col)
             which defines the Range area (currently only rectangular ranges are supported).
           )")
+        .def_property_readonly("areas",
+          &range_Areas,
+          R"(
+            For a rectangular range, the property returns a 1-element list containing the range itself.
+            For a multiple-area range, the property returns a list of the contigous/rectangular sub-ranges.
+          )")
         .def_property("formula", 
           range_GetFormula, range_SetFormula,
           R"(
@@ -916,8 +1081,9 @@ namespace xloil
           )")
         .def("set_formula", range_SetFormulaExtra, 
           R"(
-            The `how` parameter determines how this function differs from setting the `formula` 
-            property:
+            The `how` parameter allows setting a range formula in a different way to setting its 
+            `formula` property. It's unlikely you will need to use this functionality with modern
+            Excel sheets. 
 
               * *dynamic* (or omitted): identical to setting the `formula` property
               * *array*: if the target range is larger than one cell and a single string is passed,

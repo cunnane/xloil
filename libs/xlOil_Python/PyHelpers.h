@@ -68,6 +68,64 @@ namespace pybind11
     auto v_h = ((py::detail::instance*)p)->get_value_and_holder();
     return T(std::move(*v_h.value_ptr<T>()));
   }
+
+  /// <summary>
+  /// A hack to pybind's enum code to allow us to do two things:
+  /// 
+  /// 1. patch up the enum value to be the correct COM error code whilst 
+  ///    allowing the enum to be created from  the values in CellError, which 
+  ///    correspond to the XLL error codes. This 
+  ///    allows us to write code like `if cell.Value2 == CellError.NAME.value`
+  /// 2. access the enum's entries to enable a fromString function
+  /// </summary>
+  /// 
+  template<class TEnum>
+  class BetterEnum : public class_<TEnum> {
+  public:
+    using Base = class_<TEnum>;
+    using Base::attr;
+    using Base::def;
+    using Base::def_property_readonly;
+    using Base::def_property_readonly_static;
+    using Underlying = typename std::underlying_type<TEnum>::type;
+    using Scalar = int;
+
+    template <typename... Extra>
+    BetterEnum(const handle& scope, const char* name, const int patchValue = 0, const Extra &...extra)
+      : class_<TEnum>(scope, name, extra...)
+      , m_base(*this, scope)
+    {
+      constexpr bool is_arithmetic = false;
+      constexpr bool is_convertible = false;
+      m_base.init(is_arithmetic, is_convertible);
+
+      def(py::init([](Scalar i) {
+        return static_cast<TEnum>(i);
+        }),
+        py::arg("value"));
+
+      auto valuePatcher = [patchValue](TEnum value) {
+        return (int)(patchValue + (unsigned)value);
+        };
+
+      def_property_readonly("value", valuePatcher);
+      def("__int__", valuePatcher);
+      def("__index__", valuePatcher);
+    }
+
+    /// Add an enumeration entry
+    auto value(char const* name, TEnum value, const char* doc = nullptr)
+    {
+      m_base.value(name, py::cast(value, py::return_value_policy::copy), doc);
+      entries[name] = value;
+      return *this;
+    }
+
+    std::unordered_map<std::string, TEnum> entries;
+
+  private:
+    detail::enum_base m_base;
+  };
 }
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, pybind11::ReferenceHolder<T>, true);

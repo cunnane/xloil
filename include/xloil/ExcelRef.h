@@ -310,11 +310,54 @@ namespace xloil
     explicit XllRange(ExcelRef&& ref)      noexcept : _ref(ref) {}
     explicit XllRange(const ExcelObj& ref) noexcept : _ref(ExcelRef(ref)) {}
 
+    template<class T>
+    class Iter
+    {
+    private:
+      T& _range;
+      XllRange::row_t _i;
+      XllRange::col_t _j;
+
+    public:
+      Iter(
+        T& r,
+        XllRange::row_t i = 0,
+        XllRange::col_t j = 0)
+        : _range(r)
+        , _i(i)
+        , _j(j)
+      {}
+
+      Iter& operator++()
+      {
+        if (++_j == _range.nCols())
+        {
+          _j = 0;
+          ++_i;
+        }
+
+        return (*this);
+      }
+
+      auto operator*() const
+      {
+        return _range.value(_i, _j);
+      }
+
+      bool operator==(const Iter<T>& that)
+      {
+        return &_range == &that._range 
+          && _i == that._i 
+          && _j == that._j;
+      }
+    };
+
     std::unique_ptr<Range> range(
       int fromRow, int fromCol,
       int toRow = TO_END, int toCol = TO_END) const final override
     {
-      return std::make_unique<XllRange>(_ref.range(fromRow, fromCol, toRow, toCol));
+      return std::make_unique<XllRange>(
+        _ref.range(fromRow, fromCol, toRow, toCol));
     }
 
     std::unique_ptr<Range> trim() const final override
@@ -336,6 +379,11 @@ namespace xloil
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override
     {
       return _ref.bounds();
+    }
+
+    size_t nAreas() const override
+    {
+      return 1;
     }
 
     /// <summary>
@@ -392,6 +440,23 @@ namespace xloil
     void clear() final
     {
       _ref.clear();
+    }
+
+    auto begin()
+    {
+      return Iter<XllRange>(*this);
+    }
+    auto end()
+    {
+      return Iter<XllRange>(*this, nRows(), nCols());
+    }
+    auto cbegin()
+    {
+      return Iter<const XllRange>(*this);
+    }
+    auto cend()
+    {
+      return Iter<const XllRange>(*this, nRows(), nCols());
     }
 
     const ExcelRef& asRef() const { return _ref; }

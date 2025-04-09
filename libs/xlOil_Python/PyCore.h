@@ -13,6 +13,8 @@ namespace xloil
     constexpr char* const theReadConverterPrefix = "_Read_";
     constexpr char* const theReturnConverterPrefix = "_Return_";
 
+    extern PyTypeObject* theCellErrorType;
+
     // TODO: constexpr string concat instead of relying on macros?
 #define XLOPY_UNCACHED_PREFIX "_Uncached_"
 

@@ -10,6 +10,9 @@
 
 // Forward Declarations from Typelib
 struct IDispatch;
+struct IUnknown;
+struct IEnumUnknown;
+struct IEnumVARIANT;
 
 namespace Excel 
 {
@@ -21,6 +24,7 @@ namespace Excel
   struct Windows;
   struct Workbooks;
   struct Sheets;
+  struct Areas;
 }
 
 namespace xloil
@@ -32,6 +36,8 @@ namespace xloil
   class Worksheets;
   class ExcelWorkbook;
   class ExcelRange;
+  class Application;
+  class Ranges;
 }
 
 namespace xloil
@@ -59,85 +65,187 @@ namespace xloil
     {}
   };
 
-  /// <summary>
-  /// IDispatch ptr holder. Used internally.
-  /// </summary>
-  class DispatchObject
+  namespace detail
+  {
+    /// <summary>
+    /// IUnknown ptr holder. Used internally.
+    /// </summary>
+    class UnknownObject
+    {
+    public:
+      UnknownObject(IUnknown* ptr = nullptr, bool steal = false)
+      {
+        init(ptr, steal);
+      }
+
+      UnknownObject(UnknownObject&& that) noexcept
+        : _ptr(nullptr)
+      {
+        std::swap(_ptr, that._ptr);
+      }
+
+      UnknownObject(const UnknownObject& that) 
+        : UnknownObject(that._ptr, false) 
+      {}
+
+      UnknownObject& operator=(const UnknownObject& that) noexcept
+      {
+        release();
+        init(that._ptr);
+        return *this;
+      }
+
+      UnknownObject& operator=(UnknownObject&& that) noexcept
+      {
+        release();
+        std::swap(_ptr, that._ptr);
+        return *this;
+      }
+
+      ~UnknownObject()
+      {
+        release();
+      }
+
+      IUnknown* ptr() const { return _ptr; }
+      bool valid() const { return _ptr; }
+      XLOIL_EXPORT void release();
+
+    private:
+      IUnknown* _ptr;
+
+      XLOIL_EXPORT void init(IUnknown* ptr, bool steal = false);
+    };
+
+    template <typename T,
+#ifdef NDEBUG
+      bool TCheck = false>
+#else
+      bool TCheck = true >
+#endif
+    class AppObject : public UnknownObject
+    {
+    public:
+      AppObject(T* ptr = nullptr, bool steal = false)
+        : UnknownObject((IUnknown*)(ptr), steal)
+      {}
+
+      AppObject(const UnknownObject& obj)
+        : UnknownObject(obj)
+      {}
+
+      AppObject(UnknownObject&& obj)
+        : UnknownObject(obj)
+      {}
+
+      void check() const
+      {
+        if constexpr (TCheck)
+        {
+          if (!valid())
+            throw new NullComObjectException();
+        }
+      }
+
+      T& com() const { check(); return *(T*)ptr(); }
+    };
+ 
+    // C4661: no suitable definition provided for explicit template instantiation request
+    #pragma warning(disable: 4661)
+
+    class XLOIL_EXPORT ComIteratorBase : public AppObject<IEnumVARIANT>
+    {
+    public:
+      ComIteratorBase(IUnknown* ptr, UnknownObject next);
+      ComIteratorBase(IUnknown* ptr)
+        : ComIteratorBase(ptr, UnknownObject())
+      {
+        increment();
+      }
+      ComIteratorBase()
+        : AppObject(nullptr)
+        , _next(nullptr)
+      {}
+
+      UnknownObject get();
+      void increment();
+      ComIteratorBase excrement();
+      bool operator==(const ComIteratorBase& other) const;
+
+      void getMany(size_t n, std::vector<UnknownObject>& result);
+
+    private:
+      UnknownObject _next;
+    };
+  }
+
+  template<class T>
+  class ComIterator : private detail::ComIteratorBase
   {
   public:
-    DispatchObject(IDispatch* ptr = nullptr, bool steal = false) 
-    { 
-      init(ptr, steal); 
-    }
+    using detail::ComIteratorBase::ComIteratorBase;
 
-    DispatchObject(DispatchObject&& that) noexcept 
-      : _ptr(nullptr) 
-    { 
-      std::swap(_ptr, that._ptr); 
-    }
-
-    DispatchObject(const DispatchObject& that) : DispatchObject(that._ptr) {}
-
-    DispatchObject& operator=(const DispatchObject& that) noexcept 
-    { 
-      release();
-      init(that._ptr);
-      return *this; 
-    }
-
-    DispatchObject& operator=(DispatchObject&& that) noexcept 
-    { 
-      release(); 
-      std::swap(_ptr, that._ptr); 
-      return *this; 
-    }
-
-    ~DispatchObject()
+    T operator*()
     {
-      release();
+      return T(get());
     }
-
-    IDispatch* ptr() const { return _ptr; }
-    bool valid() const { return _ptr; }
-    void release();
-
-  private:
-    IDispatch* _ptr;
-    void init(IDispatch* ptr, bool steal = false);
+    ComIterator& operator++()
+    {
+      increment();
+      return *this;
+    }
+    ComIterator operator++(int)
+    {
+      return (ComIterator)excrement();
+    }
+    std::vector<T> getMany(size_t n)
+    {
+      std::vector<UnknownObject> objects;
+      std::vector<T> result;
+      detail::ComIteratorBase::getMany(n, objects);
+      std::transform(objects.cbegin(), objects.cend(), std::back_inserter(result),
+        [](auto x) { return T(x); });
+      return result;
+    }
+    bool operator==(const ComIterator<T>& that) const
+    {
+      return detail::ComIteratorBase::operator==(that);
+    }
   };
 
-  template <typename T, 
-#ifdef NDEBUG
-    bool TCheck = false>
-#else
-    bool TCheck = true>
-#endif
-  class AppObject
-  {
-    DispatchObject _obj;
 
+  template<class T, class Ptr>
+  class Collection : public detail::AppObject<Ptr>
+  {
   public:
-    AppObject(T* ptr = nullptr, bool steal = false) 
-      : _obj((IDispatch*)ptr, steal)
+    Collection(Ptr* ptr)
+      : AppObject(ptr, true)
     {}
 
-    void check() const 
+    T get(const std::wstring_view& name) const;
+    T get(const size_t index) const;
+    bool tryGet(const std::wstring_view& name, T& wb) const;
+    bool tryGet(const size_t index, T& wb) const;
+
+    auto operator[](const std::wstring_view& name) const
     {
-      if constexpr (TCheck)
-      {
-        if (!valid()) 
-          throw new NullComObjectException();
-      }
+      return get(name);
+    };
+
+    std::vector<T> list() const;
+    size_t count() const;
+
+    Application app() const;
+
+    ComIterator<T> begin() const;
+    ComIterator<T> end() const
+    {
+      return ComIterator<T>();
     }
-    
-    bool valid() const { return _obj.valid(); }
-    void release() { _obj.release(); }
-    auto dispatchPtr() const { return _obj.ptr(); }
-    T& com() const { check(); return *(T*)_obj.ptr(); }
   };
 
 
-  class XLOIL_EXPORT Application : public AppObject<Excel::_Application, true>
+  class XLOIL_EXPORT Application : public detail::AppObject<Excel::_Application, true>
   {
   public:
     /// <summary>
@@ -226,7 +334,21 @@ namespace xloil
   /// </summary>
   XLOIL_EXPORT Application& thisApp();
 
-  class XLOIL_EXPORT ExcelRange : public Range, public AppObject<Excel::Range>
+  enum class SpecialCells : int
+  {
+    Blanks = 4,
+    Constants = 2,
+    Formulas = -4123,
+    LastCell = 11,
+    Comments = -4144,
+    Visible = 12,
+    AllFormatConditions = -4172,
+    SameFormatConditions = -4173,
+    AllValidation = -4174,
+    SameValidation = -4175
+  };
+
+  class XLOIL_EXPORT ExcelRange : public Range, public detail::AppObject<Excel::Range>
   {
   public:
     /// <summary>
@@ -240,7 +362,7 @@ namespace xloil
     ExcelRange(const Range& range);
     ExcelRange(const ExcelRef& ref) : ExcelRange(ref.address()) {}
 
-    using AppObject<Excel::Range>::AppObject;
+    using detail::AppObject<Excel::Range>::AppObject;
 
     std::unique_ptr<Range> range(
       int fromRow, int fromCol,
@@ -253,6 +375,8 @@ namespace xloil
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
 
     std::wstring address(bool local = false) const final override;
+
+    size_t nAreas() const;
 
     ExcelObj value() const final override;
 
@@ -314,16 +438,28 @@ namespace xloil
     /// Returns the Application object which owns this Range
     /// </summary>
     Application app() const;
+
+    ExcelRange specialCells(SpecialCells type, 
+                            ExcelType values = ExcelType(0)) const;
+
+    Ranges areas() const;
+
+
+    ComIterator<ExcelRange> begin() const;
+    ComIterator<ExcelRange> end() const
+    {
+      return ComIterator<ExcelRange>();
+    }
   };
 
 
   /// <summary>
   /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
   /// </summary>
-  class XLOIL_EXPORT ExcelWorksheet : public AppObject<Excel::_Worksheet>
+  class XLOIL_EXPORT ExcelWorksheet : public detail::AppObject<Excel::_Worksheet>
   {
   public:
-    using AppObject<Excel::_Worksheet>::AppObject;
+    using detail::AppObject<Excel::_Worksheet>::AppObject;
 
     /// <summary>
     /// Returns the window title
@@ -403,7 +539,7 @@ namespace xloil
   /// Wraps a Workbook (https://docs.microsoft.com/en-us/office/vba/api/excel.workbook) in
   /// Excel's object model but with very limited functionality at present
   /// </summary>
-  class XLOIL_EXPORT ExcelWorkbook : public AppObject<Excel::_Workbook>
+  class XLOIL_EXPORT ExcelWorkbook : public detail::AppObject<Excel::_Workbook>
   {
   public:
     /// <summary>
@@ -414,7 +550,7 @@ namespace xloil
       const std::wstring_view& name = std::wstring_view(), 
       Application app = thisApp());
     
-    using AppObject<Excel::_Workbook>::AppObject;
+    using detail::AppObject<Excel::_Workbook>::AppObject;
 
     std::wstring name() const;
 
@@ -485,10 +621,10 @@ namespace xloil
   /// <summary>
   /// Wraps an COM Excel::Window object to avoid exposing the COM typelib
   /// </summary>
-  class XLOIL_EXPORT ExcelWindow : public AppObject<Excel::Window>
+  class XLOIL_EXPORT ExcelWindow : public detail::AppObject<Excel::Window>
   {
   public:
-    using AppObject<Excel::Window>::AppObject;
+    using detail::AppObject<Excel::Window>::AppObject;
 
     /// <summary>
     /// Gives the ExcelWindow object associated with the given window caption, or the active window
@@ -534,57 +670,54 @@ namespace xloil
       return static_cast<const XllRange&>(range).asRef();
   }
 
-  class XLOIL_EXPORT Worksheets
+
+  class XLOIL_EXPORT Worksheets : public Collection<ExcelWorksheet, Excel::Sheets>
   {
   public:
     Worksheets(const Application& app = thisApp());
     Worksheets(const ExcelWorkbook& workbook);
     ExcelWorksheet active() const { return app().activeWorksheet(); }
-    ExcelWorksheet get(const std::wstring_view& name) const;
-    auto operator[](const std::wstring_view& name) const { return get(name); };
-    bool tryGet(const std::wstring_view& name, ExcelWorksheet& wb) const;
-    std::vector<ExcelWorksheet> list() const;
-    size_t count() const;
     ExcelWorksheet add(
       const std::wstring_view& name = std::wstring_view(),
       const ExcelWorksheet& before = ExcelWorksheet(nullptr),
       const ExcelWorksheet& after = ExcelWorksheet(nullptr)) const
     {
-      return parent.add(name, before, after);
+      return parent().add(name, before, after);
     }
-    Application app() const { return parent.app(); }
-    ExcelWorkbook parent;
+    ExcelWorkbook parent() const;
   };
 
-  class XLOIL_EXPORT Workbooks : public AppObject<Excel::Workbooks>
+
+  class XLOIL_EXPORT Workbooks : public Collection<ExcelWorkbook, Excel::Workbooks>
   {
   public:
     Workbooks(const Application& app = thisApp());
-    ExcelWorkbook active() const;
-    auto get(const std::wstring_view& name) const { return ExcelWorkbook(name, app()); }
-    auto operator[](const std::wstring_view& name) const { return get(name); };
-    bool tryGet(const std::wstring_view& name, ExcelWorkbook& wb) const;
-    std::vector<ExcelWorkbook> list() const;
-    size_t count() const;
+    ExcelWorkbook active() const 
+    {
+      return ExcelWorkbook(std::wstring_view(), app());
+    }
     ExcelWorkbook add();
-
-    Application app() const;
   };
 
-  class XLOIL_EXPORT Windows : public AppObject<Excel::Windows>
+
+  class XLOIL_EXPORT Windows : public Collection<ExcelWorksheet, Excel::Windows>
   {
   public:
     Windows(const Application& app = thisApp());
     Windows(const ExcelWorkbook& workbook);
-    ExcelWindow active() const;
-    auto get(const std::wstring_view& name) const { return ExcelWindow(name, app()); }
-    auto operator[](const std::wstring_view& name) const { return get(name); };
-    bool tryGet(const std::wstring_view& name, ExcelWindow& window) const;
-    std::vector<ExcelWindow> list() const;
-    size_t count() const;
-
-    Application app() const;
+    ExcelWindow active() const
+    {
+      return ExcelWindow(std::wstring_view(), app());
+    }
   };
+
+
+  class XLOIL_EXPORT Ranges : public Collection<ExcelRange, Excel::Areas>
+  {
+  public:
+    Ranges(const ExcelRange& multiRange);
+  };
+
 
   class PauseExcel
   {
@@ -639,4 +772,19 @@ namespace xloil
   {
     return worksheets().get(name);
   }
+
+  inline Ranges ExcelRange::areas() const
+  {
+    return Ranges(*this);
+  }
 }
+
+template<class T>
+struct std::iterator_traits<xloil::ComIterator<T>>
+{
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = T;
+  using reference = const T&;
+  using pointer = const T*;
+  using difference_type = size_t;
+};
