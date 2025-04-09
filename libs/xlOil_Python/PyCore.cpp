@@ -143,6 +143,8 @@ namespace xloil
         if (!importNumpy())
           throw py::error_already_set();
 
+        importDatetime();
+
         theExcelObjType = (PyTypeObject*)py::class_<ExcelObj>(
           mod, 
           "_RawExcelValue"
@@ -225,7 +227,7 @@ namespace xloil
               number, so for example we can write 
               `if cell.Value2 == CellError.NA.value: ...`
             )");
-
+          
           for (auto e : theCellErrors)
             eType.value(cellErrorSymbol(e).c_str(), e);
 
