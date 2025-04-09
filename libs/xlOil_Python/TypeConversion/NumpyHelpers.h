@@ -2,6 +2,8 @@
 
 
 #include "CPython.h"
+// Disable C4127: conditional expression is constant caused by numpy headers
+#pragma warning(disable: 4127)
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define PY_ARRAY_UNIQUE_SYMBOL xloil_PyArray_API
 #define NO_IMPORT_ARRAY
@@ -9,6 +11,7 @@
 #include <numpy/arrayscalars.h>
 #include <numpy/npy_math.h>
 #undef NO_IMPORT_ARRAY
+#pragma warning(default: 4127)
 
 #include "xlOil/ExcelArray.h"
 #include "xlOil/ArrayBuilder.h"

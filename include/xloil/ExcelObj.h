@@ -31,7 +31,7 @@ namespace xloil
     BigData = msxll::xltypeStr | msxll::xltypeInt,
 
     /// Type group: Types that can be elements of an array. In theory nested arrays
-    /// are possible by Excel will never pass one.
+    /// are possible but Excel will never pass one.
     ArrayValue = Num | Str | Bool | Err | Int | Nil,
 
     /// Type group: Types which refer to ranges
