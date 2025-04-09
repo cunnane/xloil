@@ -22,13 +22,15 @@ namespace xloil
   /// </summary>
   constexpr uint16_t XL_FILENAME_MAX_LEN = 260;
   /// <summary>
-  /// Max string length for an A1-style full address including workbook name
+  /// Max string length for an A1-style full address including workbook name.
+  /// Includes allowance of 2 for quoting the filename part
   /// </summary>
-  constexpr uint16_t XL_FULL_ADDRESS_A1_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_A1_MAX_LEN;
+  constexpr uint16_t XL_FULL_ADDRESS_A1_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_A1_MAX_LEN + 2;
   /// <summary>
   /// Max string length for an RC-style full address including workbook name
+  /// Includes allowance of 2 for quoting the filename part
   /// </summary>
-  constexpr uint16_t XL_FULL_ADDRESS_RC_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_RC_MAX_LEN;
+  constexpr uint16_t XL_FULL_ADDRESS_RC_MAX_LEN = XL_FILENAME_MAX_LEN + XL_SHEET_NAME_MAX_LEN + XL_CELL_ADDRESS_RC_MAX_LEN + 2;
   /// <summary>
   /// Max string length for a (pascal) string in an ExcelObj
   /// </summary>

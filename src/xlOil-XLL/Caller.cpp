@@ -165,9 +165,11 @@ namespace xloil
       return 3;
     }
 
-    uint8_t writeColumnNameW(size_t colIndex, wchar_t buf[3])
+    uint8_t writeColumnNameW(size_t colIndex, wchar_t*& buf)
     {
-      return writeColumn(colIndex, buf);
+      auto n = writeColumn(colIndex, buf);
+      buf += n;
+      return n;
     }
 
     void writeDecimal(size_t value, wchar_t*& buf, size_t& bufSize)
@@ -182,10 +184,19 @@ namespace xloil
       static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_A1_MAX_LEN;
       void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
       {
-        auto nWritten = writeColumnNameW(col, buf);
-        buf += nWritten;
-        bufSize -= nWritten;
+        bufSize -= writeColumnNameW(col, buf);
+        writeDecimal(row + 1u, buf, bufSize);
+      }
+    };
 
+    struct WriteA1Absolute
+    {
+      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_A1_MAX_LEN;
+      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
+      {
+        *buf++ = L'$';
+        bufSize -= writeColumnNameW(col, buf) + 2;
+        *buf++ = L'$';
         writeDecimal(row + 1u, buf, bufSize);
       }
     };
@@ -208,9 +219,30 @@ namespace xloil
       }
     };
 
+    struct WriteRCAbsolute
+    {
+      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_RC_MAX_LEN;
+      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize)
+      {
+        // Note we add one everywhere here as row/col is zero-based but 
+        // A1/RC format is 1-based
+        *buf++ = L'$';
+        *buf++ = L'R';
+        bufSize -= 2;
+        writeDecimal(row + 1u, buf, bufSize);
+
+        *buf++ = L'$';
+        *buf++ = L'C';
+        bufSize -= 2;
+        writeDecimal(col + 1u, buf, bufSize);
+      }
+    };
+
     template<class TWriter>
     uint16_t writeLocalAddress(
-      const msxll::XLREF12& ref, wchar_t* buf, size_t bufSize)
+      const msxll::XLREF12& ref,
+      wchar_t* buf,
+      size_t bufSize)
     {
       // Rather than checking the bufSize at every step, just give up
       // if it can't hold the maxiumum possible size
@@ -241,26 +273,30 @@ namespace xloil
       wchar_t* buf,
       size_t bufLen,
       const msxll::XLREF12& sheetRef,
-      const PStringRef& fullSheetName,
-      const bool A1Style,
-      const bool quoteSheetName)
+      const std::wstring_view& fullSheetName,
+      const AddressStyle style)
     {
+      const bool a1Style = (style & AddressStyle::RC) == 0;
+      const bool quoteSheetName = (style & AddressStyle::NOQUOTE) == 0;
+      const bool absolute = (style & AddressStyle::ABSOLUTE) != 0;
+
       uint16_t nWritten = 0;
-      const auto sheetNamePStr = fullSheetName.pstr();
-      const uint16_t sheetNameLength = fullSheetName.length();
+      const auto sheetNameLength = (uint16_t)fullSheetName.length();
 
       // There are some complicated but unwritten rules on when Excel quotes
       // the sheet name in an address.  See https://stackoverflow.com/questions/41677779/
       // We avoid the complexity of checking this and simply quote everything
       if (sheetNameLength > 0)
       {
+        const auto sheetNameStr = fullSheetName.data();
+
         if (quoteSheetName)
         {
           if (bufLen <= sheetNameLength + 1u + 2)
             return 0;
 
           *(buf++) = L'\'';
-          wmemcpy(buf, sheetNamePStr, sheetNameLength);
+          wmemcpy(buf, sheetNameStr, sheetNameLength);
           buf += sheetNameLength;
           *(buf++) = L'\'';
 
@@ -270,7 +306,7 @@ namespace xloil
         {
           if (bufLen <= sheetNameLength + 1u)
             return 0;
-          wmemcpy(buf, sheetNamePStr, sheetNameLength);
+          wmemcpy(buf, sheetNameStr, sheetNameLength);
           buf += sheetNameLength;
         }
 
@@ -279,9 +315,13 @@ namespace xloil
         bufLen -= nWritten;
       }
 
-      nWritten += A1Style
-        ? writeLocalAddress<WriteA1>(sheetRef, buf, bufLen)
-        : writeLocalAddress<WriteRC>(sheetRef, buf, bufLen);
+      nWritten += a1Style
+        ? absolute
+          ? writeLocalAddress<WriteA1Absolute>(sheetRef, buf, bufLen)
+          : writeLocalAddress<WriteA1>(sheetRef, buf, bufLen)
+        : absolute 
+          ? writeLocalAddress<WriteRCAbsolute>(sheetRef, buf, bufLen)
+          : writeLocalAddress<WriteRC>(sheetRef, buf, bufLen);
 
       return nWritten;
     }
@@ -293,19 +333,17 @@ namespace xloil
       const PStringRef& sheetName,
       AddressStyle style)
     {
-      const bool a1Style    = (style & AddressStyle::RC) == 0;
-      const bool quoteSheet = (style & AddressStyle::NOQUOTE) == 0;
       switch (address.type())
       {
       case ExcelType::SRef:
       {
         return writeSheetAddress(buf, bufLen, address.val.sref.ref,
-          sheetName, a1Style, quoteSheet);
+          sheetName, style);
       }
       case ExcelType::Ref:
       {
         return writeSheetAddress(buf, bufLen, address.val.mref.lpmref->reftbl[0],
-          sheetName, a1Style, quoteSheet);
+          sheetName, style);
       }
       case ExcelType::Str: // Graphic object or Auto_Open/Auto_Close/Auto_Activate/... macro caller
       {
@@ -313,13 +351,14 @@ namespace xloil
         // Buttons can only be clicked on the active sheet I presume!
         const auto sheetNameLen = sheetName.length();
         const auto objectName = address.cast<PStringRef>();
-        const uint16_t maxLen = 
-          (a1Style ? XL_FULL_ADDRESS_A1_MAX_LEN : XL_FULL_ADDRESS_RC_MAX_LEN)
-          + (quoteSheet ? 2 : 0) 
+        const uint16_t maxLen =
+          ((style & AddressStyle::RC) != 0 
+            ? XL_FULL_ADDRESS_RC_MAX_LEN 
+            : XL_FULL_ADDRESS_A1_MAX_LEN)
           - sheetNameLen;
         // Never return a string longer than the advertised max length
         const auto nameLen = std::min<uint16_t>(objectName.length(), maxLen);
-        
+
         size_t nWritten = 0;
 
         if (sheetNameLen > 0)
@@ -366,7 +405,7 @@ namespace xloil
     }
   }
 
-  namespace 
+  namespace
   {
     // A local reference used to get the active sheet name
     ExcelObj theA1Ref(msxll::xlref12{ 1, 1, 1, 1 });
@@ -375,10 +414,10 @@ namespace xloil
   CallerInfo::CallerInfo()
   {
     callExcelRaw(xlfCaller, &_address);
-    callExcelRaw(xlSheetNm, &_sheetName, 
+    callExcelRaw(xlSheetNm, &_sheetName,
       _address.isType(ExcelType::RangeRef) ? &_address : &theA1Ref);
   }
-  
+
   CallerInfo::CallerInfo(
     const ExcelObj& address, const wchar_t* fullSheetName)
     : _address(address)
@@ -410,14 +449,14 @@ namespace xloil
   }
 
   int CallerInfo::writeAddress(
-    wchar_t* buf, 
-    size_t bufLen, 
+    wchar_t* buf,
+    size_t bufLen,
     AddressStyle style) const
   {
     return writeAddressImpl(
       buf, bufLen, _address, _sheetName.cast<PStringRef>(), style);
   }
-  
+
   std::wstring CallerInfo::address(AddressStyle style) const
   {
     std::wstring result;
@@ -452,37 +491,32 @@ namespace xloil
     return writeColumn(colIndex, buf);
   }
 
-  XLOIL_EXPORT uint16_t xlrefToLocalA1(
-    const msxll::XLREF12& ref,
-    wchar_t* buf,
-    size_t bufSize)
-  {
-    return writeLocalAddress<WriteA1>(ref, buf, bufSize);
-  }
-
-  XLOIL_EXPORT uint16_t xlrefToLocalRC(
-    const msxll::XLREF12& ref,
-    wchar_t* buf,
-    size_t bufSize)
-  {
-    return writeLocalAddress<WriteRC>(ref, buf, bufSize);
-  }
-
   XLOIL_EXPORT uint16_t xlrefWriteWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize,
-    bool A1Style,
-    bool quoteSheet)
+    AddressStyle style)
   {
     ExcelObj sheetNm;
     sheetNm.xltype = msxll::xltypeRef;
     sheetNm.val.mref.idSheet = sheet;
     callExcelRaw(msxll::xlSheetNm, &sheetNm, &sheetNm);
 
-    return writeSheetAddress(buf, bufSize, ref, sheetNm.cast<PStringRef>(), A1Style, quoteSheet);
+    return writeSheetAddress(buf, bufSize, ref, sheetNm.cast<PStringRef>(), style);
   }
+
+
+  XLOIL_EXPORT uint16_t xlrefToAddress(
+    const msxll::XLREF12& ref,
+    wchar_t* buf,
+    size_t bufSize,
+    const std::wstring_view& sheetName,
+    AddressStyle style)
+  {
+    return writeSheetAddress(buf, bufSize, ref, sheetName, style);
+  }
+
 
   namespace
   {
@@ -551,8 +585,8 @@ namespace xloil
     constexpr auto(*parseC)(const wchar_t*&, const wchar_t*) = &readPrefixedNumber<L'C', 5, XL_MAX_COLS>;
     constexpr auto(*parseRowNumber)(const wchar_t*&, const wchar_t*) = &readNumberPart<7, XL_MAX_ROWS>;
   }
-  
-  bool localAddressToXlRef(msxll::XLREF12& r, const std::wstring_view& address)
+
+  bool localAddressToXlRef(const std::wstring_view& address, msxll::XLREF12& r)
   {
     const wchar_t* c = address.data();
     const wchar_t* end = c + address.size();
@@ -560,19 +594,19 @@ namespace xloil
 
     r.colFirst = parseColLetters(c, end);
     r.rwFirst = parseRowNumber(c, end);
-    
+
     if (c == end)
     {
       r.colLast = r.colFirst;
       r.rwLast = r.rwFirst;
-    } 
+    }
     else if (*c == L':') // Look for the address separator
     {
       ++c;
       r.colLast = parseColLetters(c, end);
       r.rwLast = parseRowNumber(c, end);
     }
-    else 
+    else
     {
       // Failed to read address as A1-type, try RC-type.  We know that 
       // The first Rxxx will have been read by the A1-parser as the 
@@ -596,6 +630,19 @@ namespace xloil
     // Return true if parsing was successful
     return r.colFirst >= 0 && r.rwFirst >= 0 && r.rwLast >= 0 && r.colLast >= 0;
   }
+
+
+  bool addressToXlRef(
+    const std::wstring_view& address,
+    msxll::XLREF12& result,
+    std::wstring* sheetName)
+  {
+    const auto pling = address.find_last_of(L'!');
+    if (sheetName)
+      *sheetName = address.substr(0, pling);
+    return localAddressToXlRef(address.substr(pling + 1), result);
+  }
+
 
   bool inFunctionWizard()
   {

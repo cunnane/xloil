@@ -1,4 +1,5 @@
 #pragma once
+#include <xloil/WindowsSlim.h>
 #include <Objbase.h>
 #include <atlcomcli.h>
 #include <xloil/Throw.h>

@@ -1,9 +1,9 @@
 #include "ComAddin.h"
+#include <xlOil/ExcelTypeLib.h>
 #include "ClassFactory.h"
 #include "Connect.h"
 #include "RibbonExtensibility.h"
 #include "CustomTaskPane.h"
-#include <xlOil/ExcelTypeLib.h>
 #include <xlOil/AppObjects.h>
 #include <xlOil/State.h>
 #include <xlOil/Log.h>
@@ -12,6 +12,7 @@
 #include <xlOil/Events.h>
 #include <map>
 #include <functional>
+
 
 using std::wstring;
 using std::map;
@@ -372,7 +373,7 @@ namespace xloil
           createCustomTaskPane(
             *factory, 
             name, 
-            window ? window->dispatchPtr() : nullptr, 
+            window ? (IDispatch*)window->ptr() : nullptr, 
             progId));
 
         _panes.insert(make_pair(pane->window().workbook().name(), pane));

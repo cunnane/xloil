@@ -55,7 +55,7 @@ namespace xloil
       std::wstring address(bool local = false) const
       {
         return local
-          ? xlrefToLocalAddress(up().ref())
+          ? xlrefToAddress(up().ref())
           : xlrefToWorkbookAddress(up().sheetId(), up().ref());
       }
 

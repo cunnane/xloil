@@ -47,7 +47,7 @@ namespace xloil
       XLO_THROW(L"Could not find sheet name from address {}", address);
 
     msxll::XLREF12 sref;
-    if (!localAddressToXlRef(sref, address.substr(pling + 1)))
+    if (!localAddressToXlRef(address.substr(pling + 1), sref))
     {
       // If the address cannot be parsed, it may be RC format or an Excel
       // range name, so we call the API to resolve it. Note, indirect only  

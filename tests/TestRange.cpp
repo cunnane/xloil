@@ -67,13 +67,13 @@ namespace Tests
     {
       wchar_t address[std::max(XL_FULL_ADDRESS_A1_MAX_LEN, XL_FULL_ADDRESS_RC_MAX_LEN)];
       if (a1style)
-        xlrefToLocalA1(ref, address, _countof(address));
+        xlrefToAddress(ref, address, _countof(address), std::wstring_view(), AddressStyle::A1);
       else
-        xlrefToLocalRC(ref, address, _countof(address));
+        xlrefToAddress(ref, address, _countof(address), std::wstring_view(), AddressStyle::A1);
       if (lowerCase)
         std::transform(address, address + _countof(address), address, towlower);
       msxll::XLREF12 outRef;
-      localAddressToXlRef(outRef, address);
+      addressToXlRef(address, outRef);
       Assert::AreEqual(ref, outRef);
     }
 
@@ -94,12 +94,12 @@ namespace Tests
 
       msxll::XLREF12 outRef;
 
-      Assert::IsFalse(localAddressToXlRef(outRef, L"100:AB"));
-      Assert::IsFalse(localAddressToXlRef(outRef, L"BuzZ100"));
-      Assert::IsFalse(localAddressToXlRef(outRef, L"A1-B2"));
+      Assert::IsFalse(addressToXlRef(L"100:AB", outRef));
+      Assert::IsFalse(addressToXlRef(L"BuzZ100", outRef));
+      Assert::IsFalse(addressToXlRef(L"A1-B2", outRef));
 
-      Assert::IsTrue(localAddressToXlRef(outRef, L"$A1"));
-      Assert::IsTrue(localAddressToXlRef(outRef, L"$A1:B$1"));
+      Assert::IsTrue(addressToXlRef(L"$A1", outRef));
+      Assert::IsTrue(addressToXlRef(L"$A1:B$1", outRef));
     }
     TEST_METHOD(TestAddressParseRC)
     {
@@ -118,10 +118,10 @@ namespace Tests
 
       msxll::XLREF12 outRef;
 
-      Assert::IsFalse(localAddressToXlRef(outRef, L"R1-C1"));
+      Assert::IsFalse(addressToXlRef(L"R1-C1", outRef));
 
-      Assert::IsTrue(localAddressToXlRef(outRef, L"$R1C1"));
-      Assert::IsTrue(localAddressToXlRef(outRef, L"$R1C1:R2$C1"));
+      Assert::IsTrue(addressToXlRef(L"$R1C1", outRef));
+      Assert::IsTrue(addressToXlRef(L"$R1C1:R2$C1", outRef));
     }
     TEST_METHOD(TestAddressWriteA1)
     {

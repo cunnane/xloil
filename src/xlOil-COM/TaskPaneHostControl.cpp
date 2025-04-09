@@ -1,10 +1,12 @@
+#define WIN32_LEAN_AND_MEAN
+#include <atlbase.h>
+#include <atlctl.h>
+
 #include "TaskPaneHostControl.h"
 #include "ClassFactory.h"
 #include <xloil/Log.h>
 #include <xloil/ExcelUI.h>
 #include <xloil/State.h>
-#include <atlbase.h>
-#include <atlctl.h>
 
 #pragma comment(lib, "comctl32.lib")
 

@@ -23,9 +23,13 @@ namespace xloil
     /// </summary>
     RC = 1,
     /// <summary>
+    /// Makes the address absolute, e.g. $A$1
+    /// </summary>
+    ABSOLUTE = 2,
+    /// <summary>
     /// Does not quote sheet name, e.g. [Book1]Sheet1!A1:B2
     /// </summary>
-    NOQUOTE = 2,
+    NOQUOTE = 4,
   };
 
   /// <summary>
@@ -151,8 +155,7 @@ namespace xloil
     const msxll::XLREF12& ref,
     wchar_t* buf,
     size_t bufSize,
-    bool A1Style = true,
-    bool quoteSheetName = true);
+    AddressStyle style = AddressStyle::A1);
 
   /// <summary>
   /// Version of <see cref="xlrefToWorkbookAddress"/> which returns a string rather
@@ -161,62 +164,63 @@ namespace xloil
   inline std::wstring xlrefToWorkbookAddress(
     const msxll::IDSHEET& sheet,
     const msxll::XLREF12& ref,
-    bool A1Style = true,
-    bool quoteSheetName = true)
+    AddressStyle style = AddressStyle::A1)
   {
     return captureWStringBuffer([&](auto buf, auto sz)
     {
-      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, A1Style, quoteSheetName);
+      return xlrefWriteWorkbookAddress(sheet, ref, buf, sz, style);
     });
   }
-  
-  /// <summary>
-  /// Writes a simple Excel ref (not including sheet name) to 'RxCy' or 
-  /// 'RaCy:RxCy' format in the provided string buffer. 
-  /// <returns>The number of characters written</returns>
-  /// </summary>
-  XLOIL_EXPORT uint16_t xlrefToLocalRC(
-    const msxll::XLREF12& ref, 
-    wchar_t* buf,
-    size_t bufSize);
+
 
   /// <summary>
-  /// Writes a local Excel ref (not including sheet name) to 'A1' or 'A1:Z9' 
-  /// format in the provided string buffer. Writes a null-terminator.
+  /// Writes an Excel ref to 'A1'/'A1:Z9' or 'RxCy'/'RaCy:RxCy' format
+  /// in the provided string buffer. Includes a null-terminator.
   /// <returns>
-  ///   The number of characters written not including the null terminator or zero
-  ///   if the bufSize is insufficient.
+  ///   The number of characters written not including the null terminator or 
+  ///   zero if the bufSize is insufficient.
   /// </returns>
   /// </summary>
-  XLOIL_EXPORT uint16_t xlrefToLocalA1(
+  XLOIL_EXPORT uint16_t xlrefToAddress(
     const msxll::XLREF12& ref,
     wchar_t* buf,
-    size_t bufSize);
+    size_t bufSize,
+    const std::wstring_view& sheetName = std::wstring_view(),
+    AddressStyle style = AddressStyle::A1);
 
   /// <summary>
-  /// Similar to <see cref="xlrefToWorkbookAddress"/>, but without the sheet name
+  /// Version of <see cref="xlrefToAddress"/> which writes to a string
   /// </summary>
-  inline std::wstring xlrefToLocalAddress(
+  inline std::wstring xlrefToAddress(
     const msxll::XLREF12& ref,
-    bool A1Style = true)
+    const std::wstring_view& sheetName = std::wstring_view(),
+    AddressStyle style = AddressStyle::A1)
   {
     return captureWStringBuffer([&](auto buf, auto sz)
       {
-        return A1Style
-          ? xlrefToLocalA1(ref, buf, sz)
-          : xlrefToLocalRC(ref, buf, sz);
+        return xlrefToAddress(ref, buf, sz, sheetName, style);
       },
       XL_CELL_ADDRESS_A1_MAX_LEN);
   }
 
   /// <summary>
-  /// Parses a local Excel ref (not including sheet name) from a string such as 
+  /// Parses a local Excel address (not including sheet name) from a string such as 
   /// 'A1' or 'A1:Z9' or 'R1C4' to an XLREF12 object. Returns false if the string 
-  /// could not be parsed into a valid XLREF12 and sets the offending members to -1.
+  /// could not be parsed into a valid XLREF12.
   /// </summary>
-  XLOIL_EXPORT bool localAddressToXlRef(
+  bool localAddressToXlRef(
+    const std::wstring_view& address,
+    msxll::XLREF12& result);
+
+  /// <summary>
+  /// Parses an Excel address including sheet name from a string such as 
+  /// 'A1' or 'A1:Z9' or 'R1C4' to an XLREF12 object. Returns false if the string 
+  /// could not be parsed into a valid XLREF12.
+  /// </summary>
+  XLOIL_EXPORT bool addressToXlRef(
+    const std::wstring_view& address,
     msxll::XLREF12& result,
-    const std::wstring_view& address);
+    std::wstring* sheetName = nullptr);
 
   /// <summary>
   /// Returns true if the user is currently in the function wizard.

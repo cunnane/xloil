@@ -1,3 +1,9 @@
+#define WIN32_LEAN_AND_MEAN
+#include <atlbase.h>
+#include <atlcom.h>
+#include <atlwin.h>
+#include <Objbase.h>
+
 #include <xlOil/ExcelTypeLib.h>
 #include "ComVariant.h"
 #include "ClassFactory.h"
@@ -10,11 +16,6 @@
 #include <xloil/ExcelCall.h>
 #include <xloil/Events.h>
 #include <xloil/Log.h>
-
-#include <atlbase.h>
-#include <atlcom.h>
-#include <atlwin.h>
-#include <Objbase.h>
 
 #include <memory>
 #include <atomic>

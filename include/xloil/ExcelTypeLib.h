@@ -15,6 +15,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+// Let's please not have a macro called "ABSOLUTE"
+#define NOGDI
 #include <windows.h>
 
 #include <xloil/ExcelThread.h> // for ComBusyException

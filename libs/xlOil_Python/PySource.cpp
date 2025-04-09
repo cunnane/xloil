@@ -5,6 +5,7 @@
 #include "PyAddin.h"
 #include "PyCOM.h"
 
+#include <xlOil/WindowsSlim.h>
 #include <winreg/WinReg/WinReg.hpp>
 #include <xlOil/AppObjects.h>
 #include <xloil/Log.h>
