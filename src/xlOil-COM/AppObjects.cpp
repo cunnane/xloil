@@ -660,9 +660,9 @@ namespace xloil
     {
       auto& obj = com();
       if (toRow == Range::TO_END)
-        toRow = obj.Rows->GetCount();
+        toRow = obj.Rows->GetCount() - 1;
       if (toCol == Range::TO_END)
-        toCol = obj.Columns->GetCount();
+        toCol = obj.Columns->GetCount() - 1;
 
       auto r = obj.GetRange(
         obj.Cells->Item[fromRow + 1][fromCol + 1],
@@ -769,7 +769,7 @@ namespace xloil
     try
     {
       VARIANT next;
-      ULONG nFetched;
+      ULONG nFetched = 0;
       if (SUCCEEDED(com().Next(1, &next, &nFetched)) && nFetched > 0)
         _next = variantToUnknown(next);
       else
@@ -815,7 +815,8 @@ namespace xloil
       
       // If iterator was exhausted, leave _next as null value, otherwise
       // take the last value we fetched
-      _next = variantToUnknown(variants[n - 1]);
+      if (nFetched == n)
+        _next = variantToUnknown(variants[n - 1]);
     }
     XLO_RETHROW_COM_ERROR;
   }
@@ -902,23 +903,6 @@ namespace xloil
   Windows::Windows(const ExcelWorkbook& workbook)
     : Collection(workbook.com().Windows.Detach())
   {}
-
-  //template<>
-  //bool Collection<ExcelWindow, Excel::Windows>::tryGet(
-  //  const std::wstring_view& name, ExcelWindow& out) const
-  //{
-  //  try
-  //  {
-  //    out = fromComPtr<ExcelWindow>(com().GetItem(toVariant(name)));
-  //    return true;
-  //  }
-  //  catch (_com_error& error)
-  //  {
-  //    if (error.Error() == DISP_E_BADINDEX)
-  //      return false;
-  //    XLO_THROW(L"COM Error {0:#x}: {1}", (size_t)error.Error(), error.ErrorMessage());
-  //  }
-  //}
 
   Ranges::Ranges(const ExcelRange& multiRange)
     : Collection(multiRange.com().Areas.Detach())
