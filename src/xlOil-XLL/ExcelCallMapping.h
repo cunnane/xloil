@@ -15,6 +15,7 @@ namespace xloil
 
     Entry sortedNames[] = { 
       {"a1r1c1",xlcA1R1c1},
+      {"abort",xlAbort},
       {"abs",xlfAbs},
       {"absref",xlfAbsref},
       {"accrint",xlfAccrint},

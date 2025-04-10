@@ -214,6 +214,15 @@ namespace xloil
     return result;
   }
 
+  inline auto checkAbort()
+  {
+    ExcelObj result;
+    auto code = callExcelRaw(msxll::xlAbort, &result);
+    if (code != 0)
+      return false;
+    return result.get<bool>(false);
+  }
+
   /// <summary>
   /// Convert an Excel built-in function name to a number for use <see cref="callExcel"/>
   /// </summary>

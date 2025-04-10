@@ -116,7 +116,6 @@ namespace xloil
       return callXllAsync(func, args).result();
     }
 
-
     py::object applicationRun(Application& app, const wstring& funcName, const py::args& args)
     {
       vector<ExcelObj> xlArgs = argConvertHelper(args);
@@ -224,6 +223,15 @@ namespace xloil
             Returns an **awaitable**, i.e. a future which holds the result.
           )",
           py::arg("func"));
+
+        mod.def("check_abort", 
+          checkAbort,
+          R"(
+          Returns True if the user pressed the Escape key. It is good practice to poll this function 
+          during long-running worksheet functions or macros.
+
+          This function runs in XLL context so should not be called from genral code.
+          )");
       });
     }
   }

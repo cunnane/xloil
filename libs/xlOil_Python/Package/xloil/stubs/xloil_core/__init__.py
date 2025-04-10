@@ -44,6 +44,7 @@ __all__ = [
     "cache",
     "call",
     "call_async",
+    "check_abort",
     "core_addin",
     "date_formats",
     "deregister_functions",
@@ -2517,6 +2518,13 @@ def call_async(func: object, *args) -> _ExcelObjFuture:
     to return a result.
 
     Returns an **awaitable**, i.e. a future which holds the result.
+    """
+def check_abort() -> bool:
+    """
+    Returns True if the user pressed the Escape key. It is good practice to poll this function 
+    during long-running worksheet functions or macros.
+
+    This function runs in XLL context so should not be called from genral code.
     """
 def core_addin() -> Addin:
     pass

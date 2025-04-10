@@ -246,6 +246,7 @@ Everything else
 	date_formats
 	linked_workbook
 	excel_state
+	check_abort
 	Address
 	run
 	run_async
@@ -271,7 +272,7 @@ Everything else
 	:no-value:
 
 .. automodule:: xloil
-	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin
+	:members: in_wizard,get_async_loop,get_event_loop,from_excel_date,linked_workbook,source_addin,excel_state,run,run_async,call,call_async,excel_callback,source_addin,xloil_addins,core_addin,check_abort
 	:imported-members:
 	:undoc-members:
 
