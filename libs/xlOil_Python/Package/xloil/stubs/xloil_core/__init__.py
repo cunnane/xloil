@@ -10,6 +10,7 @@ import typing
 
 __all__ = [
     "Addin",
+    "Address",
     "Application",
     "Caller",
     "CannotConvert",
@@ -20,24 +21,21 @@ __all__ = [
     "ExcelState",
     "ExcelWindow",
     "ExcelWindows",
-    "ExcelWindowsIter",
     "IPyFromExcel",
     "IPyToExcel",
     "ObjectCache",
     "Range",
-    "RangeIter",
     "RibbonControl",
     "RtdPublisher",
     "RtdReturn",
     "RtdServer",
+    "SpecialCells",
     "StatusBar",
     "TaskPaneFrame",
     "Workbook",
     "Workbooks",
-    "WorkbooksIter",
     "Worksheet",
     "Worksheets",
-    "WorksheetsIter",
     "active_cell",
     "active_workbook",
     "active_worksheet",
@@ -136,6 +134,98 @@ class Addin():
                     
 
         :type: str
+        """
+    pass
+class Address():
+    """
+    Converts cell addresses between different formats. This class
+    only performs manipulation on the address strings, so it is fast
+    and does not need to run on the main thread. However, it does not
+    check the validity of the addresses. 
+
+    Parameters
+    ----------
+
+    address: string|tuple
+      either an address string in A1 format e.g. "D2:R2" or RC format, 
+      e.g. "R5C3:R6C6" or a tuple of ints `(row, col)` or 
+      `(from_row, from_col, to_row, to_col)`.  A string address may be
+      absolute (contain dollars) and contain a workbook/sheet name, separated
+      by a pling (!).  A tuple follows python conventions so is zero-based.
+
+    sheet: [string]
+      optional sheet name in case it was not passed as part of the address
+    """
+    def __init__(self, address: object, sheet: object = None) -> None: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def string(self, style: str = 'a1', local: bool = False) -> str: 
+        """
+        Writes the address to a string in the specified style.
+
+        Parameters
+        ----------
+        style: str
+          The address format: "a1" or "rc". To produce an absolute / fixed addresses
+          use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you need
+          both row and column to be fixed.
+        """
+    @property
+    def a1(self) -> str:
+        """
+        The address in A1 format
+
+        :type: str
+        """
+    @property
+    def a1_fixed(self) -> str:
+        """
+        The absolute address in A1 format (i.e. with $s)
+
+        :type: str
+        """
+    @property
+    def from_col(self) -> int:
+        """
+        :type: int
+        """
+    @property
+    def from_row(self) -> int:
+        """
+        :type: int
+        """
+    @property
+    def rc(self) -> str:
+        """
+        The address in RC format
+
+        :type: str
+        """
+    @property
+    def rc_fixed(self) -> str:
+        """
+        The absolute address in RC format (i.e. with $s)
+
+        :type: str
+        """
+    @property
+    def sheet(self) -> str:
+        """
+        :type: str
+        """
+    @property
+    def to_col(self) -> int:
+        """
+        :type: int
+        """
+    @property
+    def to_row(self) -> int:
+        """
+        :type: int
+        """
+    @property
+    def tuple(self) -> tuple:
+        """
+        :type: tuple
         """
     pass
 class Application():
@@ -717,8 +807,8 @@ class ExcelWindows():
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
     def __contains__(self, arg0: str) -> bool: ...
-    def __getitem__(self, arg0: str) -> ExcelWindow: ...
-    def __iter__(self) -> ExcelWindowsIter: ...
+    def __getitem__(self, arg0: str) -> Worksheet: ...
+    def __iter__(self) -> typing.Iterator: ...
     def __len__(self) -> int: ...
     def get(self, name: str, default: object = None) -> object: 
         """
@@ -727,16 +817,12 @@ class ExcelWindows():
     @property
     def active(self) -> object:
         """
-                      Gives the active (as displayed in the GUI) object in the collection
-                      or None if no object has been activated.
-                    
+                        Gives the active (as displayed in the GUI) object in the collection
+                        or None if no object has been activated.
+                      
 
         :type: object
         """
-    pass
-class ExcelWindowsIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> ExcelWindow: ...
     pass
 class IPyFromExcel():
     def __call__(self, arg0: object) -> None: ...
@@ -864,20 +950,20 @@ class Range():
     def __getitem__(self, arg0: object) -> object: 
         """
         Given a 2-tuple, slices the range to return a sub Range or a single element.Uses
-        normal python slicing conventions i.e[left included, right excluded), negative
-        numbers are offset from the end.If the tuple specifies a single cell, returns
+        normal python slicing conventions i.e. [left included, right excluded), negative
+        numbers are offset from the end. If the tuple specifies a single cell, returns
         the value in that cell, otherwise returns a Range object.
         """
     def __iadd__(self, arg0: object) -> object: ...
     def __imul__(self, arg0: object) -> object: ...
     def __init__(self, address: str) -> None: ...
     def __isub__(self, arg0: object) -> object: ...
-    def __iter__(self) -> RangeIter: ...
+    def __iter__(self) -> typing.Iterator: ...
     def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
     def __setattr__(self, arg0: object, arg1: object) -> None: ...
     def __str__(self) -> str: ...
-    def address(self, local: bool = False) -> str: 
+    def address(self, style: str = 'a1', local: bool = False) -> str: 
         """
         Returns the address of the range in A1 format, e.g. *[Book]SheetNm!A1:Z5*. The 
         sheet name may be surrounded by single quote characters if it contains a space.
@@ -954,13 +1040,37 @@ class Range():
         """
     def set_formula(self, formula: object, how: str = '') -> None: 
         """
-        The `how` parameter determines how this function differs from setting the `formula` 
-        property:
+        The `how` parameter allows setting a range formula in a different way to setting its 
+        `formula` property. It's unlikely you will need to use this functionality with modern
+        Excel sheets. 
 
           * *dynamic* (or omitted): identical to setting the `formula` property
           * *array*: if the target range is larger than one cell and a single string is passed,
             set this as an array formula for the range
           * *implicit*: uses old-style implicit intersection - see "Formula vs Formula2" on MSDN
+        """
+    def special_cells(self, kind: object, values: object) -> object: 
+        """
+        Returns a sub-range containg only cells of a specificed type or None if none 
+        are found.  Behaves like VBA's `SpecialCells <https://learn.microsoft.com/en-us/office/vba/api/excel.range.specialcells>`_.
+        The returned range is likely to be a multi-area range, you can use the `xloil.range.areas`
+        property or a range iterator to step through the returned value.
+
+        Parameters
+        ----------
+
+        kind: xloil.SpecialCells | str
+          The kind of cells to return, a string value is convertered to the corresponding 
+          enum value
+
+        values: Optional[type | str | Iterable[type|str]]
+          If `kind` is "constants" or "formulas", determine which types of cells to return.
+          If the argument is omitted, all constants or formulas will be returned
+          The argument can be one or an iterable of:
+            * "errors" or *xloil.CellError*
+            * "numbers" or *float*
+            * "logical" or *bool*
+            * "text" or *str*
         """
     def to_com(self, lib: str = '') -> object: 
         """
@@ -975,6 +1085,15 @@ class Range():
         Returns a sub-range by trimming to the last non-empty (i.e. not Nil, #N/A or "") 
         row and column. The top-left remains the same so the function always returns
         at least a single cell, even if it's empty.  
+        """
+    @property
+    def areas(self) -> object:
+        """
+                    For a rectangular range, the property returns a 1-element list containing the range itself.
+                    For a multiple-area range, the property returns a list of the contigous/rectangular sub-ranges.
+                  
+
+        :type: object
         """
     @property
     def bounds(self) -> typing.Tuple[int, int, int, int]:
@@ -1013,6 +1132,15 @@ class Range():
         When setting, if the range is larger than one cell and a single value is passed that value
         is filled into each cell. Alternatively, you can set the formula to an array of the same 
         dimensions.
+        """
+    @property
+    def has_formula(self) -> typing.Optional[bool]:
+        """
+                  Returns True if every cell in the range contains a formula, False if no cell
+                  contains a formula and None otherwise.
+                  
+
+        :type: typing.Optional[bool]
         """
     @property
     def ncols(self) -> int:
@@ -1067,10 +1195,6 @@ class Range():
         the entire rectangle. If you use a rectangular array, and it is too small for the 
         rectangular range you want to put it in, that range is padded with #N/As.
         """
-    pass
-class RangeIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> _object: ...
     pass
 class RibbonControl():
     """
@@ -1238,6 +1362,60 @@ class RtdServer():
         """
         :type: str
         """
+    pass
+class SpecialCells():
+    """
+    Members:
+
+      blanks : Empty cells
+
+      constants : Cells containing constants
+
+      formulas : Cells containing formulas
+
+      last_cell : The last cell in the used range
+
+      comments : Cells containing notes
+
+      visible : All visible cells
+
+      all_format : Cells of any format
+
+      same_format : Cells having the same format
+
+      all_validation : Cells having validation criteria
+
+      same_validation : Cells having the same validation criteria
+    """
+    def __eq__(self, other: object) -> bool: ...
+    def __getstate__(self) -> int: ...
+    def __hash__(self) -> int: ...
+    def __index__(self) -> int: ...
+    def __init__(self, value: int) -> None: ...
+    def __int__(self) -> int: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __repr__(self) -> str: ...
+    @property
+    def name(self) -> str:
+        """
+        :type: str
+        """
+    @property
+    def value(self) -> int:
+        """
+        :type: int
+        """
+    __members__: dict=None # value = {'blanks': <SpecialCells.blanks: 4>, 'constants': <SpecialCells.constants: 2>, 'formulas': <SpecialCells.formulas: -4123>, 'last_cell': <SpecialCells.last_cell: 11>, 'comments': <SpecialCells.comments: -4144>, 'visible': <SpecialCells.visible: 12>, 'all_format': <SpecialCells.all_format: -4172>, 'same_format': <SpecialCells.same_format: -4173>, 'all_validation': <SpecialCells.all_validation: -4174>, 'same_validation': <SpecialCells.same_validation: -4175>}
+    all_format: xloil_core.SpecialCells=None # value = <SpecialCells.all_format: -4172>
+    all_validation: xloil_core.SpecialCells=None # value = <SpecialCells.all_validation: -4174>
+    blanks: xloil_core.SpecialCells=None # value = <SpecialCells.blanks: 4>
+    comments: xloil_core.SpecialCells=None # value = <SpecialCells.comments: -4144>
+    constants: xloil_core.SpecialCells=None # value = <SpecialCells.constants: 2>
+    formulas: xloil_core.SpecialCells=None # value = <SpecialCells.formulas: -4123>
+    last_cell: xloil_core.SpecialCells=None # value = <SpecialCells.last_cell: 11>
+    same_format: xloil_core.SpecialCells=None # value = <SpecialCells.same_format: -4173>
+    same_validation: xloil_core.SpecialCells=None # value = <SpecialCells.same_validation: -4175>
+    visible: xloil_core.SpecialCells=None # value = <SpecialCells.visible: 12>
     pass
 class StatusBar():
     """
@@ -1444,7 +1622,7 @@ class Workbooks():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Workbook: ...
-    def __iter__(self) -> WorkbooksIter: ...
+    def __iter__(self) -> typing.Iterator: ...
     def __len__(self) -> int: ...
     def add(self) -> Workbook: 
         """
@@ -1457,16 +1635,12 @@ class Workbooks():
     @property
     def active(self) -> object:
         """
-                      Gives the active (as displayed in the GUI) object in the collection
-                      or None if no object has been activated.
-                    
+                        Gives the active (as displayed in the GUI) object in the collection
+                        or None if no object has been activated.
+                      
 
         :type: object
         """
-    pass
-class WorkbooksIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> Workbook: ...
     pass
 class Worksheet():
     """
@@ -1487,7 +1661,12 @@ class Worksheet():
         numbers are offset from the end.
         """
     def __setattr__(self, arg0: object, arg1: object) -> None: ...
-    def __setitem__(self, arg0: object, arg1: object) -> None: ...
+    def __setitem__(self, arg0: object, arg1: object) -> None: 
+        """
+        Slices a range as per __getitem__. If the value being set starts with a equals sign 
+        (=), the range formula is set, otherwise the value is set.  To force setting the value
+        assign to `Range.value` instead.
+        """
     def __str__(self) -> str: ...
     def activate(self) -> None: 
         """
@@ -1579,7 +1758,7 @@ class Worksheets():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
-    def __iter__(self) -> WorksheetsIter: ...
+    def __iter__(self) -> typing.Iterator: ...
     def __len__(self) -> int: ...
     def add(self, name: object = None, before: object = None, after: object = None) -> Worksheet: 
         """
@@ -1602,16 +1781,12 @@ class Worksheets():
     @property
     def active(self) -> object:
         """
-                      Gives the active (as displayed in the GUI) object in the collection
-                      or None if no object has been activated.
-                    
+                        Gives the active (as displayed in the GUI) object in the collection
+                        or None if no object has been activated.
+                      
 
         :type: object
         """
-    pass
-class WorksheetsIter():
-    def __iter__(self) -> object: ...
-    def __next__(self) -> Worksheet: ...
     pass
 class _AddinsDict():
     """
