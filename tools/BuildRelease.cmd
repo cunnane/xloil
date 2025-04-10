@@ -7,6 +7,6 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\vsde
 
 pushd %SOLN_DIR%
 
-devenv xlOil.sln /Build "Release|%ARCH%"
+msbuild xlOil.sln /p:Configuration=Release /p:Platform=%ARCH%
 
 popd
