@@ -129,7 +129,7 @@ if "XLOIL_BIN_DIR" in os.environ:
 
     zipObj = ZipFile('_build/xlOilExamples.zip', 'w', compression=zipfile.ZIP_BZIP2)
     try:
-        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsm")
+        zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.xlsm", "PythonTest.xlsx")
         zipObj.write(soln_dir / "tests" / "ManualSheets" / "python" / "PythonTestAsync.xlsm", "PythonTestAsync.xlsm")
         zipObj.write(soln_dir / "tests" / "AutoSheets" / "PythonTest.py", "PythonTest.py")
         zipObj.write(soln_dir / "tests" / "AutoSheets" / "TestModule.py", "TestModule.py")

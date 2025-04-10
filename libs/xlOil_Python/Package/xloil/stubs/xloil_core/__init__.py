@@ -156,9 +156,7 @@ class Address():
     sheet: [string]
       optional sheet name in case it was not passed as part of the address
     """
-    def __init__(self, address: object, sheet: object = None) -> None: ...
-    def __iter__(self) -> typing.Iterator: ...
-    def string(self, style: str = 'a1', local: bool = False) -> str: 
+    def __call__(self, style: str = 'a1', local: bool = False) -> str: 
         """
         Writes the address to a string in the specified style.
 
@@ -166,9 +164,14 @@ class Address():
         ----------
         style: str
           The address format: "a1" or "rc". To produce an absolute / fixed addresses
-          use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you need
+          use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
           both row and column to be fixed.
+        local: bool
+          If True, omits sheet and workbook infomation.
         """
+    def __init__(self, address: object, sheet: object = None) -> None: ...
+    def __iter__(self) -> typing.Iterator: ...
+    def __str__(self) -> str: ...
     @property
     def a1(self) -> str:
         """
@@ -420,10 +423,19 @@ class Caller():
     via a macro), most of the methods return `None`.
     """
     def __init__(self) -> None: ...
-    def __str__(self, arg0: bool) -> str: ...
-    def address(self, a1style: bool = False) -> str: 
+    def __str__(self, arg0: str, arg1: bool) -> str: ...
+    def address(self, style: str = 'a1', local: bool = False) -> str: 
         """
-        Gives the sheet address either in A1 form: '[Book]Sheet!A1' or RC form: '[Book]Sheet!R1C1'
+        Writes the address to a string in the specified style.
+
+        Parameters
+        ----------
+        style: str
+          The address format: "a1" or "rc". To produce an absolute / fixed addresses
+          use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
+          both row and column to be fixed.
+        local: bool
+          If True, omits sheet and workbook infomation.
         """
     @property
     def range(self) -> object:
@@ -802,7 +814,7 @@ class ExcelWindow():
 class ExcelWindows():
     """
     A collection of all the document window objects in Excel. A document window 
-    shows a view of a Workbook.
+    shows a view of a Workbook.  The collection is iterable.
 
     See `Excel.Windows <https://docs.microsoft.com/en-us/office/vba/api/excel.WindowsWindows>`_ 
     """
@@ -944,6 +956,14 @@ class Range():
 
         x[:-1, :-1] # A sub-range omitting the last row and column
 
+    Ranges support the iterator protocol with iteration over the individual cells.
+    Iteration takes place column-wise then row-wise within each range area:
+
+    ::
+        
+        for cell in my_range.special_cells("constants", float):
+          cell.value += 1
+
     See `Excel.Range <https://docs.microsoft.com/en-us/office/vba/api/excel.Range(object)>`_ 
     """
     def __getattr__(self, arg0: str) -> object: ...
@@ -965,9 +985,16 @@ class Range():
     def __str__(self) -> str: ...
     def address(self, style: str = 'a1', local: bool = False) -> str: 
         """
-        Returns the address of the range in A1 format, e.g. *[Book]SheetNm!A1:Z5*. The 
-        sheet name may be surrounded by single quote characters if it contains a space.
-        If *local* is set to true, everything prior to the '!' is omitted.
+        Writes the address to a string in the specified style, e.g. *[Book]SheetNm!A1:Z5*.
+
+        Parameters
+        ----------
+        style: str
+          The address format: "a1" or "rc". To produce an absolute / fixed addresses
+          use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
+          both row and column to be fixed.
+        local: bool
+          If True, omits sheet and workbook infomation.
         """
     def cell(self, row: int, col: int) -> Range: 
         """
@@ -1616,7 +1643,7 @@ class Workbook():
 class Workbooks():
     """
     A collection of all the Workbook objects that are currently open in the 
-    Excel application.  
+    Excel application.  The collection is iterable.
 
     See `Excel.Workbooks <https://docs.microsoft.com/en-us/office/vba/api/excel.WorkbooksWorkbooks>`_ 
     """
@@ -1753,6 +1780,7 @@ class Worksheet():
 class Worksheets():
     """
     A collection of all the Worksheet objects in the specified or active workbook. 
+    The collection is iterable.
 
     See `Excel.Worksheets <https://docs.microsoft.com/en-us/office/vba/api/excel.WorksheetsWorksheets>`_ 
     """

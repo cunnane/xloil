@@ -238,7 +238,7 @@ When write addresses used in formula strings, :any:`xloil.Address` can be useful
     sum_start_row=0
     sum_end_row=9
     address = xlo.Address((sum_start_row, 1, sum_end_row, 1), sheet="Sheet1")
-    xlo.app().Range("A1").formula = f'=SUM({address.a1})'  # Will be '=SUM(Sheet1!B1:B10)'
+    xlo.app().Range("A1").formula = f'=SUM({address})'  # Will be '=SUM(Sheet1!B1:B10)'
 
 
 Since the introduction of dynamic arrays, array formulae have become largely obselete, but it
