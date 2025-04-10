@@ -67,7 +67,7 @@ class BinaryDistribution(Distribution):
         return True
 
 setup(
-    name="xlOil",
+    name="xloil",
     version=args.version,
     author="Steven Cunnane",
     author_email="replace-this-with-my-surname@gmail.com",
