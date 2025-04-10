@@ -569,12 +569,16 @@ namespace xloil
         return CallerInfo();
       }
 
-      auto CallerInfo_Address(const CallerInfo& self, bool a1style = true)
+      auto CallerInfo_Address(const CallerInfo& self, std::string& style, bool local)
       {
-        py::gil_scoped_release noGil;
-        return self.address(a1style ? AddressStyle::A1 : AddressStyle::RC);
-      }
+        toLower(style);
+        auto s = parseAddressStyle(style);
+        if (local)
+          s |= AddressStyle::LOCAL;
 
+        py::gil_scoped_release noGil;
+        return self.address(s);
+      }
 
       template<class T>
       struct BindCollection
@@ -837,6 +841,14 @@ namespace xloil
 
               x[:-1, :-1] # A sub-range omitting the last row and column
 
+          Ranges support the iterator protocol with iteration over the individual cells.
+          Iteration takes place column-wise then row-wise within each range area:
+
+          ::
+              
+              for cell in my_range.special_cells("constants", float):
+                cell.value += 1
+ 
           )" XLO_CITE_API_SUFFIX(Range, (object)));
 
       auto declare_Worksheet = py::class_<ExcelWorksheet>(mod, "Worksheet",
@@ -864,7 +876,7 @@ namespace xloil
       PyWorkbooks::startBinding(mod, "Workbooks",
         R"(
           A collection of all the Workbook objects that are currently open in the 
-          Excel application.  
+          Excel application.  The collection is iterable.
           
           )" XLO_CITE_API(Workbooks))
         .def("add",
@@ -876,14 +888,15 @@ namespace xloil
       PyWindows::startBinding(mod, "ExcelWindows",
         R"(
           A collection of all the document window objects in Excel. A document window 
-          shows a view of a Workbook.
+          shows a view of a Workbook.  The collection is iterable.
 
           )" XLO_CITE_API(Windows));
 
       PyWorksheets::startBinding(mod, "Worksheets",
         R"(
           A collection of all the Worksheet objects in the specified or active workbook. 
-          
+          The collection is iterable.
+
           )" XLO_CITE_API(Worksheets))
         .def("add",
           addWorksheetToCollection,
@@ -1026,9 +1039,16 @@ namespace xloil
           range_Address,
           call_release_gil(),
           R"(
-            Returns the address of the range in A1 format, e.g. *[Book]SheetNm!A1:Z5*. The 
-            sheet name may be surrounded by single quote characters if it contains a space.
-            If *local* is set to true, everything prior to the '!' is omitted.
+            Writes the address to a string in the specified style, e.g. *[Book]SheetNm!A1:Z5*.
+
+            Parameters
+            ----------
+            style: str
+              The address format: "a1" or "rc". To produce an absolute / fixed addresses
+              use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
+              both row and column to be fixed.
+            local: bool
+              If True, omits sheet and workbook infomation.
           )",
           py::arg("style") = "a1",
           py::arg("local") = false)
@@ -1528,9 +1548,19 @@ namespace xloil
         .def("address",
           CallerInfo_Address,
           R"(
-            Gives the sheet address either in A1 form: '[Book]Sheet!A1' or RC form: '[Book]Sheet!R1C1'
+            Writes the address to a string in the specified style.
+
+            Parameters
+            ----------
+            style: str
+              The address format: "a1" or "rc". To produce an absolute / fixed addresses
+              use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
+              both row and column to be fixed.
+            local: bool
+              If True, omits sheet and workbook infomation.
           )",
-          py::arg("a1style") = false)
+          py::arg("style") = "a1",
+          py::arg("local") = false)
         .def_property_readonly("range",
           [](const CallerInfo& self)
           {

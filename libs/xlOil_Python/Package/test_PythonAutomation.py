@@ -89,7 +89,7 @@ class Test_PythonUtils(unittest.TestCase):
         import xloil as xlo
 
         self.assertEqual(
-            xlo.Address((0, 0)).string(style="a1"),
+            xlo.Address((0, 0))(style="a1"),
             "A1")
 
         self.assertEqual(
@@ -101,11 +101,11 @@ class Test_PythonUtils(unittest.TestCase):
             "$A$1:$B$2")
 
         self.assertEqual(
-            xlo.Address((0, 0, 1, 1)).string(style="$a$1"),
+            xlo.Address((0, 0, 1, 1))(style="$a$1"),
             "$A$1:$B$2")
 
         self.assertEqual(
-            xlo.Address("Sheet1!r1c1").string(style="a1"),
+            xlo.Address("Sheet1!r1c1")(style="a1"),
             "'Sheet1'!A1")
 
         count = 0
@@ -113,13 +113,14 @@ class Test_PythonUtils(unittest.TestCase):
             self.assertEqual(cell.from_row, cell.to_row)
             self.assertEqual(cell.from_col, cell.to_col)
             count += 1
-        self.assertEqual(count, 4)
+
+        self.assertEqual(count, 6)
 
     def test_convert_address_rc(self):
         import xloil as xlo
 
         self.assertEqual(
-            xlo.Address((0, 0, 1, 1)).string(style="rc"),
+            xlo.Address((0, 0, 1, 1))(style="rc"),
             "R1C1:R2C2")
 
         self.assertEqual(

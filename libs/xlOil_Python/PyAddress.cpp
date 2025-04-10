@@ -129,7 +129,7 @@ namespace xloil
       class ParsedAddressIter
       {
       private:
-        const msxll::XLREF12& _parent;
+        msxll::XLREF12 _parent;
         ParsedAddress _current;
 
       public:
@@ -145,7 +145,7 @@ namespace xloil
         ParsedAddressIter(const ParsedAddress& r)
           : _parent(r._ref)
           , _current(msxll::XLREF12{
-              r.toRow(), r.toRow(),
+              r.toRow() + 1, r.toRow() + 1,
               r.fromCol(), r.fromCol()
             })
         {
@@ -211,7 +211,10 @@ namespace xloil
             .def(py::init<const py::object&, const py::object& >(),
               py::arg("address"),
               py::arg("sheet") = py::none())
-            .def("string",
+            .def("__str__", [](ParsedAddress& x) { return x.string(AddressStyle::A1); })
+            .def("__iter__",
+              &ParsedAddress::iter)
+            .def("__call__",
               &ParsedAddress::address,
               py::arg("style") = "a1",
               py::arg("local") = false,
@@ -222,8 +225,11 @@ namespace xloil
               ----------
               style: str
                 The address format: "a1" or "rc". To produce an absolute / fixed addresses
-                use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you need
+                use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you want
                 both row and column to be fixed.
+              local: bool
+                If True, omits sheet and workbook infomation.
+
               )")
             .def_property_readonly("a1",
               [](ParsedAddress& x) { return x.string(AddressStyle::A1); },
@@ -237,8 +243,6 @@ namespace xloil
             .def_property_readonly("rc_fixed",
               [](ParsedAddress& x) { return x.string(AddressStyle::RC | AddressStyle::ROW_FIXED | AddressStyle::COL_FIXED); },
               "The absolute address in RC format (i.e. with $s)")
-            .def("__iter__",
-              &ParsedAddress::iter)
             .def_property_readonly("tuple", &ParsedAddress::tuple)
             .def_property_readonly("from_row", &ParsedAddress::fromRow)
             .def_property_readonly("from_col", &ParsedAddress::fromCol)
