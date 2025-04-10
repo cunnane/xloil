@@ -125,11 +125,18 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
-  std::wstring ExcelRange::address(bool local) const
+  std::wstring ExcelRange::address(AddressStyle style) const
   {
     try
     {
-      auto result = com().GetAddress(true, true, Excel::xlA1, !local);
+      const bool rowFixed = (style & AddressStyle::ROW_FIXED) != 0;
+      const bool colFixed = (style & AddressStyle::COL_FIXED) != 0;
+      const auto refStyle = (style & AddressStyle::RC) != 0
+        ? Excel::xlR1C1
+        : Excel::xlA1;
+      const bool local = (style & AddressStyle::LOCAL) != 0;
+      auto result = com().GetAddress(
+        rowFixed, colFixed, refStyle, !local);
       return std::wstring(result);
     }
     XLO_RETHROW_COM_ERROR;
@@ -209,6 +216,19 @@ namespace xloil
     XLO_RETHROW_COM_ERROR;
   }
 
+  std::optional<bool> ExcelRange::hasFormula() const
+  {
+    try
+    {
+      auto result = com().HasFormula;
+      if (result.vt == VT_BOOL)
+        return (bool)result;
+      else
+        return std::optional<bool>();
+    }
+    XLO_RETHROW_COM_ERROR;
+  }
+
   void ExcelRange::clear()
   {
     try
@@ -220,7 +240,7 @@ namespace xloil
 
   std::wstring ExcelRange::name() const
   {
-    return address(false);
+    return address();
   }
 
   ExcelWorksheet ExcelRange::parent() const

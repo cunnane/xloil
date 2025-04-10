@@ -10,29 +10,6 @@
 namespace xloil
 {
   /// <summary>
-   /// Species the format used to write sheet addresses
-   /// </summary>
-  enum class AddressStyle : int
-  {
-    /// <summary>
-    /// A1 Format: '[Book1]Sheet1'!A1:B2
-    /// </summary>
-    A1 = 0,
-    /// <summary>
-    /// RC Format: '[Book1]Sheet1'!R1C1:R2C2
-    /// </summary>
-    RC = 1,
-    /// <summary>
-    /// Makes the address absolute, e.g. $A$1
-    /// </summary>
-    ABSOLUTE = 2,
-    /// <summary>
-    /// Does not quote sheet name, e.g. [Book1]Sheet1!A1:B2
-    /// </summary>
-    NOQUOTE = 4,
-  };
-
-  /// <summary>
   /// Captures and writes information about the calling cell or context 
   /// provided by xlfCaller. Only returns useful information when the
   /// caller was a worksheet

@@ -374,7 +374,7 @@ namespace xloil
 
     std::tuple<row_t, col_t, row_t, col_t> bounds() const final override;
 
-    std::wstring address(bool local = false) const final override;
+    std::wstring address(AddressStyle style = AddressStyle::A1) const final override;
 
     size_t nAreas() const;
 
@@ -385,6 +385,8 @@ namespace xloil
     void set(const ExcelObj& value) final override;
 
     ExcelObj formula() const final override;
+
+    std::optional<bool> hasFormula() const final override;
 
     void clear() final override;
 

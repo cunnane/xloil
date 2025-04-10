@@ -1,6 +1,7 @@
 import unittest
 import sys
 import os
+import numpy as np
 
 from TestConfig import *
 
@@ -12,16 +13,25 @@ class Test_PythonAutomation(unittest.TestCase):
         import xloil
         self._app = xloil.Application()
         self._wb = self._app.workbooks.add()
+        # Can be useful for debugging
+        # app.visible=True
 
-    def test_A(self):
+    def test_range_trim(self):
 
         import xloil as xlo
 
-        # Can be useful for debugging
-        # app.visible=True
-            
         ws = self._wb.worksheets.add()
-        range = ws["A1:C1"]
+        address = "A1:C1"
+        range = ws[address]
+
+        self.assertEqual(range.address(local=True), address)
+
+        self.assertEqual(len(range.areas), 1)
+
+        # Create the range another way, check we have the same result
+        self.assertEqual(range.bounds, 
+                         ws.range(from_row=0, from_col=0, 
+                                  num_rows=1, num_cols=3).bounds)
 
         # Empty range: trimming returns top left cell
         firstR, firstC, lastR, lastC = range.trim().bounds
@@ -33,8 +43,18 @@ class Test_PythonAutomation(unittest.TestCase):
         firstR, firstC, lastR, lastC = range.trim().bounds
         self.assertEqual(range.trim().bounds, range.bounds)
 
-        numbers = range.special_cells("constants", "numbers")
+        # Try getting special cells constants - should return
+        # the entire range
+        numbers = range.special_cells("constants", ("numbers", "logical"))
         self.assertEqual(numbers.bounds, range.bounds)
+
+        # Double values in the range and check the sum doubles
+        range *= 2
+        self.assertEqual(np.sum(range.value), 2 * len(range))
+
+        # Clear the range, now trimming should give 1 cell again
+        range.clear()
+        self.assertEqual(range.trim().shape, (1, 1))
 
 
     def test_specialcells(self):
@@ -46,8 +66,21 @@ class Test_PythonAutomation(unittest.TestCase):
         ws["B1"] = "hello"
         
         text_cells = ws["A1:B2"].special_cells("constants", str)
+
+        # Should be a 2 area range
+        self.assertEqual(len(text_cells.areas), 2)
+
         message = " ".join((cell.value for cell in text_cells))
         self.assertEqual(message, "hello world")
+
+    def test_formula(self):
+        ws = self._wb.worksheets.add()
+        ws["A1"] = "=A2+1"
+        ws["A2"] = 2
+
+        self.assertEqual(ws["A1"].has_formula, True)
+        self.assertEqual(ws["A1"].formula, "=A2+1")
+
 
 
 class Test_PythonUtils(unittest.TestCase):

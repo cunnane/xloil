@@ -52,11 +52,9 @@ namespace xloil
       /// <summary>
       /// Returns the address of the range in the form '[Book]SheetNm'!A1:Z5
       /// </summary>
-      std::wstring address(bool local = false) const
+      std::wstring address(AddressStyle style = AddressStyle::A1) const
       {
-        return local
-          ? xlrefToAddress(up().ref())
-          : xlrefToWorkbookAddress(up().sheetId(), up().ref());
+        return xlrefToWorkbookAddress(up().sheetId(), up().ref(), style);
       }
 
       /// <summary>
@@ -390,9 +388,9 @@ namespace xloil
     /// Returns the address of the range in the form
     /// 'SheetNm!A1:Z5'
     /// </summary>
-    std::wstring address(bool local = false) const final override
+    std::wstring address(AddressStyle style = AddressStyle::A1) const final override
     {
-      return _ref.address(local);
+      return _ref.address(style);
     }
 
     /// <summary>
@@ -432,6 +430,13 @@ namespace xloil
       // xlfGetFormula always returns RC references, but GetCell uses the
       // workspace settings to return RC or A1 style.
       return callExcel(msxll::xlfGetCell, 6, _ref);
+    }
+
+    std::optional<bool> hasFormula() const final override
+    {
+      // xlfGetFormula always returns RC references, but GetCell uses the
+      // workspace settings to return RC or A1 style.
+      return callExcel(msxll::xlfIsformula, _ref).get<bool>();
     }
 
     /// <summary>

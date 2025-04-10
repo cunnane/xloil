@@ -181,66 +181,42 @@ namespace xloil
 
     struct WriteA1
     {
-      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_A1_MAX_LEN;
-      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
-      {
-        bufSize -= writeColumnNameW(col, buf);
-        writeDecimal(row + 1u, buf, bufSize);
-      }
-    };
+      bool fixedRow, fixedCol;
 
-    struct WriteA1Absolute
-    {
       static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_A1_MAX_LEN;
       void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
       {
-        *buf++ = L'$';
-        bufSize -= writeColumnNameW(col, buf) + 2;
-        *buf++ = L'$';
+        if (fixedCol) *buf++ = L'$';
+        bufSize -= writeColumnNameW(col, buf);
+        if (fixedRow) *buf++ = L'$';
         writeDecimal(row + 1u, buf, bufSize);
       }
     };
 
     struct WriteRC
     {
+      bool fixedRow, fixedCol;
+      // Note we add one everywhere here as row/col is zero-based but 
+      // A1/RC format is 1-based
       static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_RC_MAX_LEN;
-      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize)
-      {
-        // Note we add one everywhere here as row/col is zero-based but 
-        // A1/RC format is 1-based
 
+      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize) const
+      {
+        if (fixedRow) *buf++ = L'$';
         *buf++ = L'R';
         bufSize -= 1;
         writeDecimal(row + 1u, buf, bufSize);
-
+        if (fixedCol) *buf++ = L'$';
         *buf++ = L'C';
         bufSize -= 1;
-        writeDecimal(col + 1u, buf, bufSize);
-      }
-    };
-
-    struct WriteRCAbsolute
-    {
-      static constexpr size_t MAX_LEN = XL_CELL_ADDRESS_RC_MAX_LEN;
-      void operator()(size_t row, size_t col, wchar_t*& buf, size_t& bufSize)
-      {
-        // Note we add one everywhere here as row/col is zero-based but 
-        // A1/RC format is 1-based
-        *buf++ = L'$';
-        *buf++ = L'R';
-        bufSize -= 2;
-        writeDecimal(row + 1u, buf, bufSize);
-
-        *buf++ = L'$';
-        *buf++ = L'C';
-        bufSize -= 2;
         writeDecimal(col + 1u, buf, bufSize);
       }
     };
 
     template<class TWriter>
-    uint16_t writeLocalAddress(
+    uint16_t writeLocalAddressImpl(
       const msxll::XLREF12& ref,
+      const TWriter writer,
       wchar_t* buf,
       size_t bufSize)
     {
@@ -250,7 +226,6 @@ namespace xloil
         return 0;
 
       auto initialBuf = buf;
-      TWriter writer;
       if (ref.rwFirst == ref.rwLast && ref.colFirst == ref.colLast)
       {
         // Single cell address
@@ -269,6 +244,22 @@ namespace xloil
       return (uint16_t)(buf - initialBuf);
     }
 
+    uint16_t writeLocalAddress(
+      wchar_t* buf,
+      size_t bufLen,
+      const msxll::XLREF12& sheetRef,
+      const AddressStyle style)
+    {
+      const bool a1Style = (style & AddressStyle::RC) == 0;
+      const bool fixedRow = (style & AddressStyle::ROW_FIXED) != 0;
+      const bool fixedCol = (style & AddressStyle::COL_FIXED) != 0;
+
+      return a1Style
+        ? writeLocalAddressImpl(sheetRef, WriteA1{ fixedRow, fixedCol }, buf, bufLen)
+        : writeLocalAddressImpl(sheetRef, WriteRC{ fixedRow, fixedCol }, buf, bufLen);
+
+    }
+
     uint16_t writeSheetAddress(
       wchar_t* buf,
       size_t bufLen,
@@ -276,10 +267,6 @@ namespace xloil
       const std::wstring_view& fullSheetName,
       const AddressStyle style)
     {
-      const bool a1Style = (style & AddressStyle::RC) == 0;
-      const bool quoteSheetName = (style & AddressStyle::NOQUOTE) == 0;
-      const bool absolute = (style & AddressStyle::ABSOLUTE) != 0;
-
       uint16_t nWritten = 0;
       const auto sheetNameLength = (uint16_t)fullSheetName.length();
 
@@ -289,6 +276,7 @@ namespace xloil
       if (sheetNameLength > 0)
       {
         const auto sheetNameStr = fullSheetName.data();
+        const bool quoteSheetName = (style & AddressStyle::NOQUOTE) == 0;
 
         if (quoteSheetName)
         {
@@ -315,13 +303,7 @@ namespace xloil
         bufLen -= nWritten;
       }
 
-      nWritten += a1Style
-        ? absolute
-          ? writeLocalAddress<WriteA1Absolute>(sheetRef, buf, bufLen)
-          : writeLocalAddress<WriteA1>(sheetRef, buf, bufLen)
-        : absolute 
-          ? writeLocalAddress<WriteRCAbsolute>(sheetRef, buf, bufLen)
-          : writeLocalAddress<WriteRC>(sheetRef, buf, bufLen);
+      nWritten += writeLocalAddress(buf, bufLen, sheetRef, style);
 
       return nWritten;
     }
@@ -479,9 +461,7 @@ namespace xloil
       return std::wstring();
     }
 
-    auto nWritten = style == AddressStyle::A1
-      ? writeLocalAddress<WriteA1>(*sheetRef, buf, _countof(buf))
-      : writeLocalAddress<WriteRC>(*sheetRef, buf, _countof(buf));
+    auto nWritten = writeLocalAddress(buf, _countof(buf), *sheetRef, style);
 
     return std::wstring(buf, nWritten);
   }

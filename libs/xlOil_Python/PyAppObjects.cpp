@@ -4,6 +4,7 @@
 #include "PyCOM.h"
 #include "PyCore.h"
 #include "PyAppCallRun.h"
+#include "PyAddress.h"
 #include <xlOil/AppObjects.h>
 #include <xlOil/State.h>
 
@@ -39,7 +40,6 @@ namespace xloil
           return found->second;
         throw py::value_error(value);
       }
-
 
       auto range_Construct(const wchar_t* address)
       {
@@ -135,6 +135,15 @@ namespace xloil
         r.clear();
       }
       
+      auto range_Address(Range& r, std::string& style, const bool local)
+      {
+        toLower(style);
+        auto s = parseAddressStyle(style);
+        if (local)
+          s |= AddressStyle::LOCAL;
+        return r.address(s);
+      }
+
       auto range_GetFormula(Range& r)
       {
         // XllRange::formula only works from non-local functions so to 
@@ -221,6 +230,7 @@ namespace xloil
             existing = specialCellsValueHelper(*iter, existing);
             ++iter;
           }
+          return existing;
         }
 
         throw py::value_error("values");
@@ -349,7 +359,9 @@ namespace xloil
       }
 
       void worksheet_SetItem(
-        const ExcelWorksheet& ws, const py::object& loc, py::object pyValue)
+        const ExcelWorksheet& ws, 
+        const py::object& loc, 
+        const py::object& pyValue)
       {
         ExcelObj value;
 
@@ -363,8 +375,12 @@ namespace xloil
           value = FromPyObj()(pyValue.ptr());
 
         auto sliced = Worksheet_sliceHelper(ws, loc);
+
         py::gil_scoped_release noGil;
-        sliced.set(value);
+        if (value.asStringView()._Starts_with(L"="))
+          sliced.setFormula(value);
+        else
+          sliced.set(value);
       }
 
       py::object application_range(const Application& app, const std::wstring& address)
@@ -974,7 +990,7 @@ namespace xloil
           [](const Range& r) { return r.nRows() * r.nCols(); },
           call_release_gil())
         .def("__str__", 
-          [](const Range& r) { return r.address(false); },
+          [](const Range& r) { return r.address(); },
           call_release_gil())
         .def("__iadd__", XLOIL_RANGE_OPERATOR("iadd"))
         .def("__isub__", XLOIL_RANGE_OPERATOR("isub"))
@@ -1007,13 +1023,14 @@ namespace xloil
             Clears all values and formatting.  Any cell in the range will then have Empty type.
           )")
         .def("address", 
-          &Range::address,
+          range_Address,
           call_release_gil(),
           R"(
             Returns the address of the range in A1 format, e.g. *[Book]SheetNm!A1:Z5*. The 
             sheet name may be surrounded by single quote characters if it contains a space.
             If *local* is set to true, everything prior to the '!' is omitted.
           )",
+          py::arg("style") = "a1",
           py::arg("local") = false)
         .def("special_cells", 
           range_SpecialCells, 
@@ -1093,6 +1110,11 @@ namespace xloil
           )", 
           py::arg("formula"), 
           py::arg("how") = "")
+        .def_property_readonly("has_formula", &Range::hasFormula,
+          R"(
+          Returns True if every cell in the range contains a formula, False if no cell
+          contains a formula and None otherwise.
+          )")
         .def("to_com", 
           toCom<Range>,
           toComDocString, 
@@ -1139,7 +1161,13 @@ namespace xloil
             Uses normal python slicing conventions, i.e [left included, right excluded), negative
             numbers are offset from the end.
           )")
-        .def("__setitem__", worksheet_SetItem)
+        .def("__setitem__", 
+          worksheet_SetItem, 
+          R"(
+            Slices a range as per __getitem__. If the value being set starts with a equals sign 
+            (=), the range formula is set, otherwise the value is set.  To force setting the value
+            assign to `Range.value` instead.
+          )")
         .def("range", 
           worksheet_subRange,
           R"(

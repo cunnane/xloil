@@ -12,6 +12,28 @@ namespace xloil
 {
   namespace Python
   {
+    AddressStyle parseAddressStyle(const std::string_view& style)
+    {
+      if (style == "" || style == "a1")
+        return AddressStyle::A1;
+      else if (style == "$a1")
+        return AddressStyle::A1 | AddressStyle::COL_FIXED;
+      else if (style == "a$1")
+        return AddressStyle::A1 | AddressStyle::ROW_FIXED;
+      else if (style == "$a$1")
+        return AddressStyle::A1 | AddressStyle::ROW_FIXED | AddressStyle::COL_FIXED;
+      else if (style == "rc")
+        return AddressStyle::RC;
+      else if (style == "$rc")
+        return AddressStyle::RC | AddressStyle::ROW_FIXED;
+      else if (style == "r$c")
+        return AddressStyle::RC | AddressStyle::COL_FIXED;
+      else if (style == "$r$c")
+        return AddressStyle::RC | AddressStyle::ROW_FIXED | AddressStyle::COL_FIXED;
+      
+      XLO_THROW("Unknown address style '{}'", style);
+    }
+
     namespace
     {
       class ParsedAddress
@@ -84,21 +106,16 @@ namespace xloil
           wchar_t buf[XL_FULL_ADDRESS_RC_MAX_LEN];
           auto nWritten = xlrefToAddress(_ref, buf, sizeof(buf),
             _sheetName, style);
-          return py::cast(std::wstring_view(buf, nWritten));
+          return std::wstring(buf, nWritten);
         }
 
-        auto address(std::string& style) const
+        auto address(std::string& style, const bool local) const
         {
           toLower(style);
-          if (style == "rc")
-            return string(AddressStyle::RC);
-          else if (style == "$r$c")
-            return string(AddressStyle::RC | AddressStyle::ABSOLUTE);
-          else if (style == "a1")
-            return string(AddressStyle::A1);
-          else if (style == "$a$1")
-            return string(AddressStyle::A1 | AddressStyle::ABSOLUTE);
-          throw py::value_error(style);
+          auto s = parseAddressStyle(style);
+          if (local)
+            s |= AddressStyle::LOCAL;
+          return string(s);
         }
 
         auto iter() const;
@@ -196,27 +213,29 @@ namespace xloil
               py::arg("sheet") = py::none())
             .def("string",
               &ParsedAddress::address,
-              py::arg("style"),
+              py::arg("style") = "a1",
+              py::arg("local") = false,
               R"(
-            Writes the address to a string in the specified style.
+              Writes the address to a string in the specified style.
 
-            Parameters
-            ----------
-            style: str
-              The address format: "a1" or "rc". To produce an absolute address use 
-              "$a$1" or "$r$c".
-            )")
+              Parameters
+              ----------
+              style: str
+                The address format: "a1" or "rc". To produce an absolute / fixed addresses
+                use "$a$1", "$r$c", "$a1", "a$1", etc. depending on whether you need
+                both row and column to be fixed.
+              )")
             .def_property_readonly("a1",
               [](ParsedAddress& x) { return x.string(AddressStyle::A1); },
               "The address in A1 format")
             .def_property_readonly("a1_fixed",
-              [](ParsedAddress& x) { return x.string(AddressStyle::A1 | AddressStyle::ABSOLUTE); },
+              [](ParsedAddress& x) { return x.string(AddressStyle::A1 | AddressStyle::ROW_FIXED | AddressStyle::COL_FIXED); },
               "The absolute address in A1 format (i.e. with $s)")
             .def_property_readonly("rc",
               [](ParsedAddress& x) { return x.string(AddressStyle::RC); },
               "The address in RC format")
             .def_property_readonly("rc_fixed",
-              [](ParsedAddress& x) { return x.string(AddressStyle::RC | AddressStyle::ABSOLUTE); },
+              [](ParsedAddress& x) { return x.string(AddressStyle::RC | AddressStyle::ROW_FIXED | AddressStyle::COL_FIXED); },
               "The absolute address in RC format (i.e. with $s)")
             .def("__iter__",
               &ParsedAddress::iter)

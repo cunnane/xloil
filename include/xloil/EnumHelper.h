@@ -3,8 +3,36 @@
 
 namespace xloil
 {
-  // TODO: obviously having to declare things like this is a bit naff... could improve here
-  enum class AddressStyle : int;
+  /// <summary>
+  /// Species the format used to write sheet addresses
+  /// </summary>
+  enum class AddressStyle : int
+  {
+    /// <summary>
+    /// A1 Format: '[Book1]Sheet1'!A1:B2
+    /// </summary>
+    A1 = 0,
+    /// <summary>
+    /// RC Format: '[Book1]Sheet1'!R1C1:R2C2
+    /// </summary>
+    RC = 1,
+    /// <summary>
+    /// Makes the address absolute, e.g. $A$1
+    /// </summary>
+    ROW_FIXED = 2,
+    /// <summary>
+    /// Makes the address absolute, e.g. $A$1
+    /// </summary>
+    COL_FIXED = 4,
+    /// <summary>
+    /// Omits the sheet/workbook name
+    /// </summary>
+    LOCAL = 8,
+    /// <summary>
+    /// Does not quote sheet name, e.g. [Book1]Sheet1!A1:B2
+    /// </summary>
+    NOQUOTE = 16,
+  };
 
   namespace detail
   {

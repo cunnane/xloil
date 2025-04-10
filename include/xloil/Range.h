@@ -1,5 +1,6 @@
 #pragma once
 #include <xlOil/ExcelObj.h>
+#include <xlOil/EnumHelper.h>
 
 namespace Excel { struct Range; }
 
@@ -98,7 +99,7 @@ namespace xloil
     /// satifies various other conditions.
     /// If *local* is set to true, the workbook and sheet name are omitted.
     /// </summary>
-    virtual std::wstring address(bool local = false) const = 0;
+    virtual std::wstring address(AddressStyle style = AddressStyle::A1) const = 0;
 
     /// <summary>
     /// Converts the referenced range to an ExcelObj. References to single
@@ -137,6 +138,12 @@ namespace xloil
     /// </summary>
     /// <returns></returns>
     virtual ExcelObj formula() const = 0;
+
+    /// <summary>
+    /// Returns True if every cell in the range contains a formula, False if no cell
+    /// contains a formula and no value otherwise.
+    /// </summary>
+    virtual std::optional<bool> hasFormula() const = 0;
 
     Range& operator=(const ExcelObj& value)
     {

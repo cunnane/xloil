@@ -68,6 +68,7 @@ py -$(PyMajorVer).$(PyMinorVer) $(ProjectDir)package\generate_stubs.py</Command>
     <ClInclude Include="ArrayHelpers.h" />
     <ClInclude Include="EventLoop.h" />
     <ClInclude Include="PyAddin.h" />
+	<ClInclude Include="PyAddress.h" />
     <ClInclude Include="PyCOM.h" />
     <ClInclude Include="PyFuture.h" />
     <ClInclude Include="AsyncFunctions.h" />
