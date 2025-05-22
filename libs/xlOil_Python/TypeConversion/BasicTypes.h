@@ -63,7 +63,8 @@ namespace xloil
             pybind11::object cached;
             if (pyCacheGet(pStr, cached))
               return cached.release().ptr();
-
+            if (pyCacheGet(pStr, cached, *getPyRTDObjectCache< py::object >()))
+                return cached.release().ptr();
             auto* cacheVal = getCached<ExcelObj>(pStr);
             if (cacheVal)
               return TBase::operator()(*cacheVal);
@@ -217,7 +218,7 @@ namespace xloil
     struct PyFromExcel
     {
       typename std::conditional_t<TUseCache,
-                                  detail::PyFromCache<TImpl>,
+                            detail::PyFromCache<TImpl>,
                                   TImpl> _impl;
 
       static constexpr auto ourName = TImpl::ourName;
@@ -354,6 +355,27 @@ namespace xloil
         }
       };
 
+    /// <summary>
+    /// Used with FromPyObj to return unknown objects as a cache ref using a specific key rather than relying on CallerInfo
+    /// This is used with RTD publishers
+    /// </summary>
+      struct ReturnToSingleValueCache
+      {
+          const wchar_t* key;
+
+          // Constructor requires key to be provided and Delete default constructor to prevent uninitialized usage
+          explicit ReturnToSingleValueCache(const wchar_t* k) : key(k) {}
+          ReturnToSingleValueCache() = delete;
+
+
+          template <class TAlloc>
+          auto operator()(PyObject* obj, const TAlloc& stringAllocator)
+          {
+              return ExcelObj(BasicPString<wchar_t, TAlloc>(
+                  addCachedSingle(PyBorrow(obj), key).asStringView(),
+                  stringAllocator));
+          };
+      };
       /// <summary>
       /// Used with FromPyObj to return unknown objects as `str(obj)`
       /// </summary>
@@ -381,6 +403,9 @@ namespace xloil
     struct FromPyObj
     {
       TDefault _defaultHandler;
+      FromPyObj(const TDefault& handler = TDefault())
+          : _defaultHandler(handler)
+      {}
 
       template <class TAlloc = PStringAllocator<wchar_t>>
       auto operator()(

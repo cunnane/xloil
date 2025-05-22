@@ -298,9 +298,9 @@ namespace xloil
         }
         else
         {
-          xlValue = converter
-            ? (*converter)(ptr)
-            : FromPyObj()(ptr);
+            xlValue = converter
+                ? (*converter)(ptr)
+                : FromPyObj < detail::ReturnToSingleValueCache, true > (detail::ReturnToSingleValueCache{topic})(ptr);
         }
 
         py::gil_scoped_release releaseGil;
@@ -317,7 +317,7 @@ namespace xloil
           return py::none();
         return PySteal<>(converter
           ? (*converter)(*value)
-          : PyFromAny()(*value));
+            : PyFromAny()(*value));
       }
 
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)

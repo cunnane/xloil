@@ -125,19 +125,32 @@ namespace xloil
         caller ? CallerInfo(ExcelObj(caller)) : CallerInfo(),
         name);
     }
+    ExcelObj addCachedSingle(
+        const py::object& obj,
+        const wchar_t* key)
+    {
+        return getPyRTDObjectCache< py::object >()->add(
+            py::object(obj), key);
+    }
 
     bool pyCacheGet(const std::wstring_view& str, py::object& obj)
     {
       auto& cache = *PyCache::instance()._cache;
-      if (!cache.valid(str))
-        return false;
+      return pyCacheGet(str, obj, cache);
+    }
 
-      const auto* p = cache.fetch(str);
-      if (!p)
-        return false;
+    template <typename TCache>
+    bool pyCacheGet(const std::wstring_view& str, py::object& obj, TCache& cache = *PyCache::instance()._cache)
+    {
+        if (!cache.valid(str))
+            return false;
 
-      obj = *p;
-      return true;
+        const auto* p = cache.fetch(str);
+        if (!p)
+            return false;
+
+        obj = *p;
+        return true;
     }
 
     namespace
