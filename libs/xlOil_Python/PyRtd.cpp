@@ -199,6 +199,8 @@ namespace xloil
       shared_ptr<IRtdServer> _impl;
       shared_ptr<const void> _cleanup;
       std::future<shared_ptr<IRtdServer>> _initialiser;
+      using rtdCacheType = std::unordered_map<std::wstring, py::object>;
+      rtdCacheType _rtdCache;
 
       IRtdServer& impl()
       {
@@ -241,6 +243,8 @@ namespace xloil
     public:
       PyRtdServer()
       {
+        _rtdCache = rtdCacheType();
+
         // We don't need the COM or XLL APIs so flags = 0
         _initialiser = runExcelThread([]() 
         { 
@@ -278,60 +282,23 @@ namespace xloil
         const py::object& value, 
         IPyToExcel* converter=nullptr)
       {
-        auto ptr = value.ptr();
-        ExcelObj xlValue;
-
-        if (PyExceptionInstance_Check(ptr))
-        {
-          auto tb = PySteal(PyException_GetTraceback(ptr));
-
-          // We need to set the python error state so that the error_string 
-          // function works
-          PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.ptr());
-          auto errStr = py::detail::error_string();
-          // Restore the error state to clear before proceeding to avoid 
-          // strange behaviour in the event call.
-          PyErr_Clear();
-
-          Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, tb);
-          xlValue = errStr;
-        }
-        else
-        {
-          xlValue = converter
-            ? (*converter)(ptr)
-            : FromPyObj()(ptr);
-        }
-
+        _rtdCache[std::wstring(topic)] = py::object(value);
         py::gil_scoped_release releaseGil;
-        return impl().publish(topic, std::move(xlValue));
+        return impl().trigger_update(topic);
       }
       py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
       {
-        shared_ptr<const ExcelObj> value;
-        {
-          py::gil_scoped_release releaseGil;
-          value = impl().subscribe(topic);
-        }
-        if (!value)
-          return py::none();
-        return PySteal<>(converter
-          ? (*converter)(*value)
-          : PyFromAny()(*value));
+        impl().subscribe_to_calc_triggers(topic);
+        if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
+          _rtdCache.try_emplace(std::wstring(topic), py::none());
+        return _rtdCache[std::wstring(topic)];
       }
 
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
       {
-        shared_ptr<const ExcelObj> value;
-        {
-          py::gil_scoped_release releaseGil;
-          value = impl().peek(topic);
-        }
-        if (!value)
-          return py::none();
-        return PySteal<>(converter
-          ? (*converter)(*value)
-          : PyFromAny()(*value));
+        if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
+          _rtdCache.try_emplace(std::wstring(topic), py::none()); // Ensure the topic exists in the cache
+        return _rtdCache[std::wstring(topic)];
       }
 
       void drop(const wchar_t* topic)
