@@ -282,6 +282,10 @@ namespace xloil
         const wchar_t* topic, 
         const py::object& value)
       {
+        if (PyExceptionInstance_Check(value.ptr()))
+        {
+          Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, PySteal(PyException_GetTraceback(value.ptr())));
+        }
         _rtdCache[topic] = value; // Note we are implicitly using the GIL to synchronize access thread to this cache.
         py::gil_scoped_release releaseGil;
         return impl().publish(topic);
@@ -289,16 +293,29 @@ namespace xloil
       py::object subscribe(const wchar_t* topic)
       {
         impl().subscribeOnly(topic);
-        if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
-            return py::none();
-        return _rtdCache[std::wstring(topic)];
+        return peek(topic);
       }
 
       py::object peek(const wchar_t* topic)
       {
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
-            return py::none();
-        return _rtdCache[std::wstring(topic)];
+          return py::none();
+        py::gil_scoped_acquire getGil;
+        auto value = _rtdCache[topic];
+        if (PyExceptionInstance_Check(value.ptr()))
+        {
+          #if PY_VERSION_HEX < 0x030c0000
+            auto tb = PySteal(PyException_GetTraceback(value.ptr()));
+            Py_INCREF(value.get_type().ptr());
+            Py_INCREF(value.ptr());
+            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.ptr()); // deprecated
+          #else
+           Py_INCREF(value.ptr());
+           PyErr_SetRaisedException(value.ptr()); //part of stable ABI as of 3.12*/
+          #endif
+          throw py::error_already_set();
+        }
+        return value;
       }
 
       void drop(const wchar_t* topic)
@@ -452,7 +469,7 @@ namespace xloil
               on any thread.
 
               An Exception object can be passed at the value, this will trigger the debugging
-              hook if it is set. The exception string and it's traceback will be published.
+              hook if it is set. The exception object will be published.
             )",
             py::arg("topic"), 
             py::arg("value"))
@@ -463,7 +480,9 @@ namespace xloil
               exists, it returns None, but the subscription is held open and will connect
               to a publisher created later. If there is no published value, it will return 
               CellError.NA.  
-        
+              
+              Re-raises exceptions which have been published to the topic.
+
               This calls Excel's RTD function, which means the calling cell will be
               recalculated every time a new value is published.
 
@@ -477,6 +496,8 @@ namespace xloil
               Looks up a value for a specified topic, but does not subscribe.
               If there is no active publisher for the topic, it returns None.
               If there is no published value, it will return CellError.NA.
+              
+              Re-raises exceptions which have been published to the topic.
 
               This function does not use any Excel API and is safe to call at
               any time on any thread.

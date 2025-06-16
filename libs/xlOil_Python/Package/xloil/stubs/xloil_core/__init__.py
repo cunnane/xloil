@@ -1348,6 +1348,8 @@ class RtdServer():
         If there is no active publisher for the topic, it returns None.
         If there is no published value, it will return CellError.NA.
 
+        Re-raises exceptions which have been published to the topic.
+
         This function does not use any Excel API and is safe to call at
         any time on any thread.
         """
@@ -1360,7 +1362,7 @@ class RtdServer():
         on any thread.
 
         An Exception object can be passed at the value, this will trigger the debugging
-        hook if it is set. The exception string and it's traceback will be published.
+        hook if it is set. The exception object will be published.
         """
     def start(self, topic: RtdPublisher) -> None: 
         """
@@ -1378,6 +1380,8 @@ class RtdServer():
         exists, it returns None, but the subscription is held open and will connect
         to a publisher created later. If there is no published value, it will return 
         CellError.NA.  
+
+        Re-raises exceptions which have been published to the topic.
 
         This calls Excel's RTD function, which means the calling cell will be
         recalculated every time a new value is published.
