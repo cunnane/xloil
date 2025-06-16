@@ -243,18 +243,13 @@ namespace xloil
           value = make_shared<ExcelObj>(CellError::NA);
         return value;
       }
-      void subscribe_to_calc_triggers(const wchar_t* topic) override
+      void subscribeOnly(const wchar_t* topic) override
       {
         callRtd(topic);
       }
-      bool publish(const wchar_t* topic, ExcelObj&& value) override
+      bool publish(const wchar_t* topic, ExcelObj&& value = ExcelObj( std::clock() )) override
       {
         server().update(topic, make_shared<ExcelObj>(std::move(value)));
-        return true;
-      }
-      bool trigger_update(const wchar_t* topic) override
-      {
-        server().update(topic, make_shared<ExcelObj>(CellError::NA));
         return true;
       }
       shared_ptr<const ExcelObj> 

@@ -325,7 +325,7 @@ namespace xloil
     /// </summary>
     /// <param name="topic"></param>
     virtual void
-      subscribe_to_calc_triggers(
+      subscribeOnly(
         const wchar_t* topic) = 0;
 
     /// <summary>/// Looks up a value for a specified topic, but does not subscribe.
@@ -350,16 +350,8 @@ namespace xloil
     virtual bool 
       publish(
         const wchar_t* topic,
-        ExcelObj&& value) = 0;
+        ExcelObj&& value = ExcelObj(std::clock())) = 0;
 
-    /// <summary>
-    /// Trigger an update to be propagated for the provided rtd Topic
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <returns>True if the producer was found and the value was set</returns>
-    virtual bool
-      trigger_update(
-        const wchar_t* topic) = 0;
 
     /// <summary>
     /// Drops the producer for a topic by calling RtdPublisher::stop, then waits

@@ -284,11 +284,11 @@ namespace xloil
       {
         _rtdCache[std::wstring(topic)] = py::object(value);
         py::gil_scoped_release releaseGil;
-        return impl().trigger_update(topic);
+        return impl().publish(topic);
       }
       py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
       {
-        impl().subscribe_to_calc_triggers(topic);
+        impl().subscribeOnly(topic);
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
           _rtdCache.try_emplace(std::wstring(topic), py::none());
         return _rtdCache[std::wstring(topic)];
