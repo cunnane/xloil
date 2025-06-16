@@ -243,8 +243,6 @@ namespace xloil
     public:
       PyRtdServer()
       {
-        _rtdCache = rtdCacheType();
-
         // We don't need the COM or XLL APIs so flags = 0
         _initialiser = runExcelThread([]() 
         { 
@@ -264,12 +262,15 @@ namespace xloil
         // interpreter, so capturing 'this' is safe.
         _cleanup = Event_PyBye().bind([this]
         { 
+          _rtdCache.clear();
           _impl.reset(); 
         });
       }
       ~PyRtdServer()
       {
+        _rtdCache.clear();
         py::gil_scoped_release releaseGil;
+      
         _impl.reset();
       }
       void start(const py_shared_ptr<IRtdPublisher>& topic)
@@ -290,14 +291,14 @@ namespace xloil
       {
         impl().subscribeOnly(topic);
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
-          _rtdCache.try_emplace(std::wstring(topic), py::none());
+            return py::none();
         return _rtdCache[std::wstring(topic)];
       }
 
       py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
       {
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
-          _rtdCache.try_emplace(std::wstring(topic), py::none()); // Ensure the topic exists in the cache
+            return py::none();
         return _rtdCache[std::wstring(topic)];
       }
 
