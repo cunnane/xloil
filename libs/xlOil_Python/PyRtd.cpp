@@ -283,7 +283,7 @@ namespace xloil
         const py::object& value, 
         IPyToExcel* converter=nullptr)
       {
-        _rtdCache[std::wstring(topic)] = py::object(value);
+        _rtdCache[topic] = value; // Note we are implicitly using the GIL to synchronize access thread to this cache.
         py::gil_scoped_release releaseGil;
         return impl().publish(topic);
       }
