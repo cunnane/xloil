@@ -280,14 +280,13 @@ namespace xloil
       }
       bool publish(
         const wchar_t* topic, 
-        const py::object& value, 
-        IPyToExcel* converter=nullptr)
+        const py::object& value)
       {
         _rtdCache[topic] = value; // Note we are implicitly using the GIL to synchronize access thread to this cache.
         py::gil_scoped_release releaseGil;
         return impl().publish(topic);
       }
-      py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
+      py::object subscribe(const wchar_t* topic)
       {
         impl().subscribeOnly(topic);
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
@@ -295,7 +294,7 @@ namespace xloil
         return _rtdCache[std::wstring(topic)];
       }
 
-      py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
+      py::object peek(const wchar_t* topic)
       {
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
             return py::none();
@@ -456,8 +455,7 @@ namespace xloil
               hook if it is set. The exception string and it's traceback will be published.
             )",
             py::arg("topic"), 
-            py::arg("value"), 
-            py::arg("converter") = nullptr)
+            py::arg("value"))
           .def("subscribe", 
             &PyRtdServer::subscribe,
             R"(
@@ -472,8 +470,7 @@ namespace xloil
               Calling this function outside of a worksheet function called by Excel may
               produce undesired results and possibly crash Excel.
             )",
-            py::arg("topic"), 
-            py::arg("converter") = nullptr)
+            py::arg("topic"))
           .def("peek", 
             &PyRtdServer::peek,
             R"(
@@ -484,8 +481,7 @@ namespace xloil
               This function does not use any Excel API and is safe to call at
               any time on any thread.
             )",
-            py::arg("topic"), 
-            py::arg("converter") = nullptr)
+            py::arg("topic"))
           .def("drop", 
             &PyRtdServer::drop,
             R"(
