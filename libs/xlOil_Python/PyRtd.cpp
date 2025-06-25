@@ -262,7 +262,6 @@ namespace xloil
         // interpreter, so capturing 'this' is safe.
         _cleanup = Event_PyBye().bind([this]
         { 
-          _rtdCache.clear();
           _impl.reset(); 
         });
       }
@@ -300,7 +299,6 @@ namespace xloil
       {
         if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
           return py::none();
-        py::gil_scoped_acquire getGil;
         auto value = _rtdCache[topic];
         if (PyExceptionInstance_Check(value.ptr()))
         {
@@ -308,7 +306,7 @@ namespace xloil
             auto tb = PySteal(PyException_GetTraceback(value.ptr()));
             Py_INCREF(value.get_type().ptr());
             Py_INCREF(value.ptr());
-            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.ptr()); // deprecated
+            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.release().ptr()); // deprecated
           #else
            Py_INCREF(value.ptr());
            PyErr_SetRaisedException(value.ptr()); //part of stable ABI as of 3.12*/
