@@ -303,13 +303,12 @@ namespace xloil
         if (PyExceptionInstance_Check(value.ptr()))
         {
           #if PY_VERSION_HEX < 0x030c0000
-            auto tb = PySteal(PyException_GetTraceback(value.ptr()));
+            auto tb = PyException_GetTraceback(value.ptr());
             Py_INCREF(value.get_type().ptr());
             Py_INCREF(value.ptr());
-            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.release().ptr()); // deprecated
+            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb ); // deprecated
           #else
-           Py_INCREF(value.ptr());
-           PyErr_SetRaisedException(value.ptr()); //part of stable ABI as of 3.12*/
+           PyErr_SetRaisedException(value.release().ptr()); //part of stable ABI as of 3.12*/
           #endif
           throw py::error_already_set();
         }
