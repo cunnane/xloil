@@ -318,7 +318,17 @@ namespace xloil
         const wchar_t* topic) = 0;
 
     /// <summary>
-    /// Looks up a value for a specified topic, but does not subscribe.
+    /// This calls Excel's RTD function, which means the
+    /// calling cell will be recalculated every time a new value is published.
+    /// 
+    /// Does not return a value. Just subscribes to updates
+    /// </summary>
+    /// <param name="topic"></param>
+    virtual void
+      subscribeOnly(
+        const wchar_t* topic) = 0;
+
+    /// <summary>/// Looks up a value for a specified topic, but does not subscribe.
     /// If there is no publisher for the topic, the returned pointer will
     /// be null. If there is no published value, it will point to N/A.
     /// This does not call Excel's RTD function.
@@ -340,7 +350,8 @@ namespace xloil
     virtual bool 
       publish(
         const wchar_t* topic,
-        ExcelObj&& value) = 0;
+        ExcelObj&& value = ExcelObj(std::clock())) = 0;
+
 
     /// <summary>
     /// Drops the producer for a topic by calling RtdPublisher::stop, then waits

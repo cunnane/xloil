@@ -199,6 +199,8 @@ namespace xloil
       shared_ptr<IRtdServer> _impl;
       shared_ptr<const void> _cleanup;
       std::future<shared_ptr<IRtdServer>> _initialiser;
+      using rtdCacheType = std::unordered_map<std::wstring, py::object>;
+      rtdCacheType _rtdCache;
 
       IRtdServer& impl()
       {
@@ -265,7 +267,9 @@ namespace xloil
       }
       ~PyRtdServer()
       {
+        _rtdCache.clear();
         py::gil_scoped_release releaseGil;
+      
         _impl.reset();
       }
       void start(const py_shared_ptr<IRtdPublisher>& topic)
@@ -275,63 +279,40 @@ namespace xloil
       }
       bool publish(
         const wchar_t* topic, 
-        const py::object& value, 
-        IPyToExcel* converter=nullptr)
+        const py::object& value)
       {
-        auto ptr = value.ptr();
-        ExcelObj xlValue;
-
-        if (PyExceptionInstance_Check(ptr))
+        if (PyExceptionInstance_Check(value.ptr()))
         {
-          auto tb = PySteal(PyException_GetTraceback(ptr));
-
-          // We need to set the python error state so that the error_string 
-          // function works
-          PyErr_Restore(value.get_type().ptr(), value.ptr(), tb.ptr());
-          auto errStr = py::detail::error_string();
-          // Restore the error state to clear before proceeding to avoid 
-          // strange behaviour in the event call.
-          PyErr_Clear();
-
-          Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, tb);
-          xlValue = errStr;
+          Event_PyUserException().fire(PyBorrow(value.get_type().ptr()), value, PySteal(PyException_GetTraceback(value.ptr())));
         }
-        else
-        {
-          xlValue = converter
-            ? (*converter)(ptr)
-            : FromPyObj()(ptr);
-        }
-
+        _rtdCache[topic] = value; // Note we are implicitly using the GIL to synchronize access thread to this cache.
         py::gil_scoped_release releaseGil;
-        return impl().publish(topic, std::move(xlValue));
+        return impl().publish(topic);
       }
-      py::object subscribe(const wchar_t* topic, IPyFromExcel* converter=nullptr)
+      py::object subscribe(const wchar_t* topic)
       {
-        shared_ptr<const ExcelObj> value;
-        {
-          py::gil_scoped_release releaseGil;
-          value = impl().subscribe(topic);
-        }
-        if (!value)
-          return py::none();
-        return PySteal<>(converter
-          ? (*converter)(*value)
-          : PyFromAny()(*value));
+        impl().subscribeOnly(topic);
+        return peek(topic);
       }
 
-      py::object peek(const wchar_t* topic, IPyFromExcel* converter = nullptr)
+      py::object peek(const wchar_t* topic)
       {
-        shared_ptr<const ExcelObj> value;
-        {
-          py::gil_scoped_release releaseGil;
-          value = impl().peek(topic);
-        }
-        if (!value)
+        if (_rtdCache.find(std::wstring(topic)) == _rtdCache.end())
           return py::none();
-        return PySteal<>(converter
-          ? (*converter)(*value)
-          : PyFromAny()(*value));
+        auto value = _rtdCache[topic];
+        if (PyExceptionInstance_Check(value.ptr()))
+        {
+          #if PY_VERSION_HEX < 0x030c0000
+            auto tb = PyException_GetTraceback(value.ptr());
+            Py_INCREF(value.get_type().ptr());
+            Py_INCREF(value.ptr());
+            PyErr_Restore(value.get_type().ptr(), value.ptr(), tb ); // deprecated
+          #else
+           PyErr_SetRaisedException(value.release().ptr()); //part of stable ABI as of 3.12*/
+          #endif
+          throw py::error_already_set();
+        }
+        return value;
       }
 
       void drop(const wchar_t* topic)
@@ -485,11 +466,10 @@ namespace xloil
               on any thread.
 
               An Exception object can be passed at the value, this will trigger the debugging
-              hook if it is set. The exception string and it's traceback will be published.
+              hook if it is set. The exception object will be published.
             )",
             py::arg("topic"), 
-            py::arg("value"), 
-            py::arg("converter") = nullptr)
+            py::arg("value"))
           .def("subscribe", 
             &PyRtdServer::subscribe,
             R"(
@@ -497,27 +477,29 @@ namespace xloil
               exists, it returns None, but the subscription is held open and will connect
               to a publisher created later. If there is no published value, it will return 
               CellError.NA.  
-        
+              
+              Re-raises exceptions which have been published to the topic.
+
               This calls Excel's RTD function, which means the calling cell will be
               recalculated every time a new value is published.
 
               Calling this function outside of a worksheet function called by Excel may
               produce undesired results and possibly crash Excel.
             )",
-            py::arg("topic"), 
-            py::arg("converter") = nullptr)
+            py::arg("topic"))
           .def("peek", 
             &PyRtdServer::peek,
             R"(
               Looks up a value for a specified topic, but does not subscribe.
               If there is no active publisher for the topic, it returns None.
               If there is no published value, it will return CellError.NA.
+              
+              Re-raises exceptions which have been published to the topic.
 
               This function does not use any Excel API and is safe to call at
               any time on any thread.
             )",
-            py::arg("topic"), 
-            py::arg("converter") = nullptr)
+            py::arg("topic"))
           .def("drop", 
             &PyRtdServer::drop,
             R"(

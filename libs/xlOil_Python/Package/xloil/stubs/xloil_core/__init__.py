@@ -1342,16 +1342,18 @@ class RtdServer():
         Drops the producer for a topic by calling `RtdPublisher.stop()`, then waits
         for it to complete and publishes #N/A to all subscribers.
         """
-    def peek(self, topic: str, converter: IPyFromExcel = None) -> object: 
+    def peek(self, topic: str) -> object: 
         """
         Looks up a value for a specified topic, but does not subscribe.
         If there is no active publisher for the topic, it returns None.
         If there is no published value, it will return CellError.NA.
 
+        Re-raises exceptions which have been published to the topic.
+
         This function does not use any Excel API and is safe to call at
         any time on any thread.
         """
-    def publish(self, topic: str, value: object, converter: IPyToExcel = None) -> bool: 
+    def publish(self, topic: str, value: object) -> bool: 
         """
         Publishes a new value for the specified topic and updates all subscribers.
         This function can be called even if no RtdPublisher has been started.
@@ -1360,7 +1362,7 @@ class RtdServer():
         on any thread.
 
         An Exception object can be passed at the value, this will trigger the debugging
-        hook if it is set. The exception string and it's traceback will be published.
+        hook if it is set. The exception object will be published.
         """
     def start(self, topic: RtdPublisher) -> None: 
         """
@@ -1372,12 +1374,14 @@ class RtdServer():
         Launch a publishing task for a `topic` given a func and a return converter.
         The function should take a single `xloil.RtdReturn` argument.
         """
-    def subscribe(self, topic: str, converter: IPyFromExcel = None) -> object: 
+    def subscribe(self, topic: str) -> object: 
         """
         Subscribes to the specified topic. If no publisher for the topic currently 
         exists, it returns None, but the subscription is held open and will connect
         to a publisher created later. If there is no published value, it will return 
         CellError.NA.  
+
+        Re-raises exceptions which have been published to the topic.
 
         This calls Excel's RTD function, which means the calling cell will be
         recalculated every time a new value is published.
@@ -2642,7 +2646,7 @@ def to_datetime(arg0: object) -> object:
 
     Raises `ValueError` if conversion is not possible.
     """
-_return_converter_hook: _CustomReturnConverter=None # value = <xloil_core._CustomReturnConverter object>
-cache: ObjectCache=None # value = <xloil_core.ObjectCache object>
-date_formats: _DateFormatList=None # value = <xloil_core._DateFormatList object>
-xloil_addins: _AddinsDict=None # value = <xloil_core._AddinsDict object>
+_return_converter_hook: xloil_core._CustomReturnConverter=None
+cache: xloil_core.ObjectCache=None
+date_formats: xloil_core._DateFormatList=None
+xloil_addins: xloil_core._AddinsDict=None
