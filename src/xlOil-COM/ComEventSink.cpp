@@ -383,13 +383,16 @@ namespace xloil
         { 
           if (error.Error() == VBA_E_IGNORE)
           {
-            pexcepinfo->scode = 0;
-            pexcepinfo->wCode = error.WCode();
-            pexcepinfo->bstrDescription = nullptr;
-            pexcepinfo->bstrHelpFile = nullptr;
-            pexcepinfo->bstrSource = nullptr;
-            pexcepinfo->pfnDeferredFillIn = nullptr;
-            return DISP_E_EXCEPTION;
+            if (pexcepinfo) {
+              // ensure the invoker is ready to recieve exception info. If the pointer is null, they don't want to hear about it!
+              pexcepinfo->scode = 0;
+              pexcepinfo->wCode = error.WCode();
+              pexcepinfo->bstrDescription = nullptr;
+              pexcepinfo->bstrHelpFile = nullptr;
+              pexcepinfo->bstrSource = nullptr;
+              pexcepinfo->pfnDeferredFillIn = nullptr;
+              return DISP_E_EXCEPTION;
+            }
           }
           XLO_ERROR(L"COM Error {0:#x}: {1}", (unsigned)error.Error(), error.ErrorMessage());
         }
