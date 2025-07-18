@@ -79,19 +79,19 @@ namespace xloil
       _name.clear();
       _previous.clear();
     }
-    PushDllDirectory::PushDllDirectory(const wchar_t* path)
+    PushDllDirectory::PushDllDirectory(const wchar_t* path) noexcept
     {
       static_assert(_countof(_previous) == MAX_PATH);
       GetDllDirectory(_countof(_previous), _previous);
       SetDllDirectory(path);
     }
-    PushDllDirectory::PushDllDirectory(const char* path)
+    PushDllDirectory::PushDllDirectory(const char* path) noexcept
     {
       static_assert(_countof(_previous) == MAX_PATH);
       GetDllDirectory(_countof(_previous), _previous);
       SetDllDirectoryA(path);
     }
-    PushDllDirectory::~PushDllDirectory()
+    PushDllDirectory::~PushDllDirectory() noexcept
     {
       SetDllDirectory(_previous);
     }

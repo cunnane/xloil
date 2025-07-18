@@ -56,9 +56,9 @@ namespace xloil
   private:
     wchar_t _previous[260]; // MAX_PATH = 260
   public:
-    PushDllDirectory(const wchar_t* path);
-    PushDllDirectory(const char* path);
-    ~PushDllDirectory();
+    PushDllDirectory(const wchar_t* path) noexcept;
+    PushDllDirectory(const char* path) noexcept;
+    ~PushDllDirectory() noexcept;
   };
 
   /// <summary>
