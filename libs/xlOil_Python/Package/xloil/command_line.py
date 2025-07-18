@@ -246,7 +246,7 @@ def _package_pyinstaller(ini_template: str,
         ini_template = Path(ini_template)
         
     python3_dll = os.path.join(sys.base_exec_prefix, "python3.dll")
-    
+
     # Use the filename stems as when the script is run, these files will be
     # available in its current directory. 
     ini_filename = ini_template.name
@@ -271,6 +271,7 @@ def _package_pyinstaller(ini_template: str,
         '--nowindow',
         f'--add-data={ini_template}:.',
         f'--add-data={python3_dll}:.',
+        f'--add-data={sys.executable}:.',
     ]
 
     if extra_args is not None:
@@ -278,11 +279,14 @@ def _package_pyinstaller(ini_template: str,
        
     print(args)
     
-    if makespec:
-        from PyInstaller.utils.cliutils.makespec import run
-    else:
-        from PyInstaller.__main__ import run
-    
+    try:
+        if makespec:
+            from PyInstaller.utils.cliutils.makespec import run
+        else:
+            from PyInstaller.__main__ import run
+    except ImportError:
+        raise ImportError("To run `xloil package` you need the pyinstaller package installed")
+
     sys.argv = args
     run()
 
