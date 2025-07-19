@@ -5,7 +5,7 @@ xlOil Development Guide
 Getting started as developer
 ----------------------------
 
-- You need Visual Studio 2019 or newer
+- You need Visual Studio 2022 or newer
 - All xlOil_Core dependencies are already in the `external` folder. Some of them are compressed, 
   so unpack them.
 - To build the `xlOil-COM` library you need the ATL headers which can be installed with the Visual
