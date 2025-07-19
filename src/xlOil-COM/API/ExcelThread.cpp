@@ -23,6 +23,7 @@ using std::scoped_lock;
 using std::shared_ptr;
 using std::make_shared;
 using std::vector;
+using std::wstring;
 
 namespace xloil
 {
@@ -38,11 +39,15 @@ namespace xloil
         if (!_threadHandle)
           XLO_THROW(L"Failed create message queue thread: {0}", writeWindowsError());
 
+        auto windowClass = wstring(Environment::coreDllName());
+        windowClass.resize(windowClass.size() - 4);  // Drop ".exe"
+        windowClass += L"Hidden";
+
         WNDCLASS wc;
         memset(&wc, 0, sizeof(WNDCLASS));
         wc.lpfnWndProc = WindowProc;
         wc.hInstance = excelInstance;
-        wc.lpszClassName = L"xlOilHidden";
+        wc.lpszClassName = windowClass.c_str();
         if (RegisterClass(&wc) == 0)
           XLO_THROW(L"Failed to register window class: {0}", writeWindowsError());
 
