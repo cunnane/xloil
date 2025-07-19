@@ -244,10 +244,10 @@ namespace detail
 // Break this macro into two as the requirements for the Core addin are slightly
 // different to user-built XLLs
 
-#define _XLO_DECLARE_ADDIN_IMPL(T) \
-  namespace { T theRegistedAddin; } \
+#define _XLO_DECLARE_ADDIN_IMPL(AddinType, InfoFunc) \
+  namespace { AddinType theRegistedAddin; } \
   void autoOpenDefinedInMacro()  { theRegistedAddin.autoOpen(); } \
   void autoCloseDefinedInMacro() { theRegistedAddin.autoClose(); } \
-  std::wstring addInManagerInfo() { return ::detail::callAddInManagerInfo((T*)nullptr); }
+  std::wstring addInManagerInfo() { return InfoFunc; }
 
-#define XLO_DECLARE_ADDIN(T) _XLO_DECLARE_ADDIN_IMPL(RegisterAddin<T>)
+#define XLO_DECLARE_ADDIN(T) _XLO_DECLARE_ADDIN_IMPL(RegisterAddin<T>, ::detail::callAddInManagerInfo((T*)nullptr))

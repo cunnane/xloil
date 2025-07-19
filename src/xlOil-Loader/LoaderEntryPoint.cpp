@@ -203,10 +203,10 @@ struct xlOilCoreAddin
     theXllIsOpen = false;
   }
 
-  auto addInManagerInfo()
+  static auto addInManagerInfo()
   {
     return std::wstring(L"xlOil Core");
   }
 };
 
-_XLO_DECLARE_ADDIN_IMPL(xlOilCoreAddin);
+_XLO_DECLARE_ADDIN_IMPL(xlOilCoreAddin, xlOilCoreAddin::addInManagerInfo());
