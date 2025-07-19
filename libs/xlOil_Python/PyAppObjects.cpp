@@ -942,8 +942,8 @@ namespace xloil
                 Number of columns in output range. Must be positive. If neither `num_cols` or `to_cols` 
                 are specified, the range ends at the last column of the parent range.
           )",
-          py::arg("from_row"),
-          py::arg("from_col"),
+          py::arg("from_row") = 0,
+          py::arg("from_col") = 0,
           py::arg("to_row")   = py::none(),
           py::arg("to_col")   = py::none(),
           py::arg("num_rows") = py::none(),
@@ -1090,6 +1090,12 @@ namespace xloil
           &Range::shape,
           call_release_gil(),
           "Returns a tuple (num columns, num rows)")
+        .def_property_readonly("row", 
+          [](Range& r) { return std::get<0>(r.bounds()); },
+          call_release_gil())
+        .def_property_readonly("column",
+          [](Range& r) { return std::get<1>(r.bounds()); },
+          call_release_gil())
         .def_property_readonly("bounds", 
           &Range::bounds,
           call_release_gil(),
@@ -1218,8 +1224,8 @@ namespace xloil
                 Number of columns in output range. Must be positive. If neither `num_cols` or `to_cols` 
                 are specified, the range ends at the end of the sheet.
           )",
-          py::arg("from_row"),
-          py::arg("from_col"),
+          py::arg("from_row") = 0,
+          py::arg("from_col") = 0,
           py::arg("to_row") = py::none(),
           py::arg("to_col") = py::none(),
           py::arg("num_rows") = py::none(),

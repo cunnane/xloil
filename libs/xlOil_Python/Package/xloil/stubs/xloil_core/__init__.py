@@ -1025,7 +1025,7 @@ class Range():
         num_cols: int
             Number of columns in output range. Defaults to 1.
         """
-    def range(self, from_row: int, from_col: int, to_row: object = None, to_col: object = None, num_rows: object = None, num_cols: object = None) -> Range: 
+    def range(self, from_row: int = 0, from_col: int = 0, to_row: object = None, to_col: object = None, num_rows: object = None, num_cols: object = None) -> Range: 
         """
         Creates a subrange using offsets from the top left corner of the parent range.
         Like Excel's Range function, we allow negative offsets to select ranges outside the
@@ -1133,6 +1133,11 @@ class Range():
         :type: typing.Tuple[int, int, int, int]
         """
     @property
+    def column(self) -> int:
+        """
+        :type: int
+        """
+    @property
     def formula(self) -> object:
         """
                     Get / sets the formula for the range. If the cell contains a constant, this property returns 
@@ -1190,6 +1195,11 @@ class Range():
         Returns the parent Worksheet for this Range
 
         :type: Worksheet
+        """
+    @property
+    def row(self) -> int:
+        """
+        :type: int
         """
     @property
     def shape(self) -> typing.Tuple[int, int]:
@@ -1713,7 +1723,7 @@ class Worksheet():
         Returns a Range object which consists of a single cell. The indices are zero-based 
         from the top left of the parent range.
         """
-    def range(self, from_row: int, from_col: int, to_row: object = None, to_col: object = None, num_rows: object = None, num_cols: object = None) -> Range: 
+    def range(self, from_row: int = 0, from_col: int = 0, to_row: object = None, to_col: object = None, num_rows: object = None, num_cols: object = None) -> Range: 
         """
         Specifies a range in this worksheet.
 
