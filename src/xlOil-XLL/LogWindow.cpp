@@ -294,29 +294,21 @@ namespace xloil
     }
   }
 
-  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg, bool openWindow) noexcept
+  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg, bool openWindow)
   {
     // This function is always called from the main thread so can use
     // statics and the single-threaded version of LogWindow. 
-    std::wstring msgStr;
-    try
-    {
-      auto t = std::time(nullptr);
-      tm tm;
-      localtime_s(&tm, &t);
-      msgStr = formatStr(L"%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg);
+    auto t = std::time(nullptr);
+    tm tm;
+    localtime_s(&tm, &t);
+    auto msgStr = formatStr(L"%d-%d-%d: ", tm.tm_hour, tm.tm_min, tm.tm_sec).append(msg);
 
-      static auto logWindow = make_shared<LogWindow>(
-        (HWND)0, parent, L"xlOil Load Failure", (HMENU)0, (WNDPROC)0, 100);
+    static auto logWindow = make_shared<LogWindow>(
+      (HWND)0, parent, L"xlOil Load Failure", (HMENU)0, (WNDPROC)0, 100);
 
-      OutputDebugString(msgStr.data());
-      logWindow->appendMessage(std::move(msgStr));
-      if (openWindow)
-        logWindow->openWindow();
-    }
-    catch (...)
-    {
-      OutputDebugString(msgStr.c_str());
-    }
+    OutputDebugString(msgStr.data());
+    logWindow->appendMessage(std::move(msgStr));
+    if (openWindow)
+      logWindow->openWindow();
   }
 }

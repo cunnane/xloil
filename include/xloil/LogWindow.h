@@ -43,5 +43,5 @@ namespace xloil
   /// main logger has started.  Must be called on main thread - should be
   /// the case since is is called from AutoOpen.
   /// </summary>
-  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg, bool openWindow) noexcept;
+  void loadFailureLogWindow(HINSTANCE parent, const std::wstring_view& msg, bool openWindow);
 }

@@ -28,10 +28,19 @@ using namespace std::string_literals;
 
 namespace
 {
-  void writeToStartUpLog(const string& msg, bool openWindow=false) noexcept
+  // Name of core dll. Not sure if there's an automatic way to get this
+  // maybe some build env vars?
+  constexpr wchar_t* const xloil_dll = L"xlOil.dll";
+  constexpr char* const xloil_dll_c = "xlOil.dll";
+
+  void writeToStartUpLog(const char* msg, bool openWindow=false) noexcept
   {
-    OutputDebugStringA(msg.c_str());
-    loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(msg), openWindow);
+    OutputDebugStringA(msg);
+    try
+    {
+      loadFailureLogWindow(XllInfo::dllHandle, utf8ToUtf16(msg), openWindow);
+    }
+    catch (...) {}
   }
 }
 
@@ -39,28 +48,26 @@ namespace
 /// Hook for delay load failures so we an return a sensible error
 /// if xlOil.dll is not found
 /// </summary>
-FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo * pdli)
+FARPROC WINAPI delayLoadFailureHook(unsigned dliNotify, DelayLoadInfo* pdli) noexcept
 {
-  std::string msg;
-  switch (dliNotify)
-  {
-  case dliFailGetProc:
-    msg = formatStr("Unable to find procedure: %s in %s", pdli->dlp.szProcName, pdli->szDll);
-    break;
-  default:
-    msg = formatStr("Unable to load library: %s", pdli->szDll);
-  }
-  writeToStartUpLog(msg);
+  char msg[512];
+  int result;
+
+  if (dliNotify == dliFailGetProc)
+    result = sprintf_s(msg, sizeof(msg), "Unable to find procedure: %s in %s", pdli->dlp.szProcName, pdli->szDll);
+  else
+    result = sprintf_s(msg, sizeof(msg), "Unable to load library: %s", pdli->szDll);
+
+  if (result > 0)
+    writeToStartUpLog(msg);
+
   return nullptr;
 }
 
 extern "C" PfnDliHook __pfnDliFailureHook2 = nullptr;
+
 namespace
 {
-  // Name of core dll. Not sure if there's an automatic way to get this
-  // maybe some build env vars?
-  constexpr wchar_t* const xloil_dll = L"xlOil.dll";
-
   void loadEnvironmentBlock(const toml::table& settings)
   {
     auto environment = Settings::environmentVariables(settings[XLOIL_SETTINGS_ADDIN_SECTION]);
@@ -74,23 +81,24 @@ namespace
     }
   }
 
-  auto findAllCoreDllImports()
+  auto findAllCoreDllImports() noexcept
   {
     // If the delay load fails, it will throw a SEH exception, so we must use
     // __try/__except to avoid this crashing Excel.
     auto previousHook = __pfnDliFailureHook2;
+    auto found = true;
     __pfnDliFailureHook2 = &delayLoadFailureHook;
     __try
     {
-      __HrLoadAllImportsForDll("xlOil.dll"); // This is CASE SENSITIVE!
+      __HrLoadAllImportsForDll(xloil_dll_c); // This is CASE SENSITIVE!
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
-      // TODO: add GetExceptionCode(), without using string
-      return false;
+      // TODO: add GetExceptionCode() info, without using string
+      found = false;
     }
     __pfnDliFailureHook2 = previousHook;
-    return true;
+    return found;
   }
 }
 
@@ -162,10 +170,7 @@ struct xlOilCoreAddin
       log("Environment PATH=%s", getEnvironmentVar("PATH").c_str());
     
       if (!findAllCoreDllImports())
-      {
-        SetDllDirectory(NULL);
         throw std::runtime_error("Failed to load xlOil.dll, check XLOIL_PATH in ini file");
-      }
 
       auto ret = xloil::coreAutoOpenHandler(XllInfo::xllPath.c_str());
 
@@ -181,7 +186,7 @@ struct xlOilCoreAddin
     catch (const std::exception& e)
     {
       for (auto& msg : _loadingMessages)
-        writeToStartUpLog(msg);
+        writeToStartUpLog(msg.c_str());
 
       writeToStartUpLog(e.what(), true);
     }
