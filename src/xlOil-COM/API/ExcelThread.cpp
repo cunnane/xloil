@@ -73,6 +73,7 @@ namespace xloil
 
       static void destroyInstance()
       {
+        delete _theInstance;
         _theInstance = nullptr;
       }
 
