@@ -159,7 +159,14 @@ namespace xloil
     /// </summary>
     inline pybind11::object PyBorrow(const pybind11::weakref& wr)
     {
+#if PY_VERSION_HEX < 0x030d0000
       return PyBorrow(PyWeakref_GetObject(wr.ptr()));
+#else
+      PyObject* result;
+      if (PyWeakref_GetRef(wr.ptr(), &result) == -1)
+        throw pybind11::error_already_set();
+      return pybind11::reinterpret_steal<pybind11::object>(result);
+#endif
     }
 
     /// <summary>
