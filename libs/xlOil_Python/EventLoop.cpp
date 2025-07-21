@@ -1,24 +1,17 @@
 #include "EventLoop.h"
 #include "PyHelpers.h"
 #include "PyEvents.h"
-#include <xlOil/Preprocessor.h>
 #include <CTPL/ctpl_stl.h>
 #include <xlOil/Log.h>
-#define ARSE BOOST_PP_CAT("foo", "bar")
+
 namespace py = pybind11;
 
 namespace xloil
 {
   namespace Python
   {
-#if PY_VERSION_HEX < 0x03070000
-#define ALL_TASKS "asyncio.Task.all_tasks"
-#else
-#define ALL_TASKS "asyncio.all_tasks"
-#endif
 
-
-#define XLO_PUMP_CODE BOOST_PP_CAT(BOOST_PP_CAT(R"(
+#define _XLO_PUMP_CODE(ALL_TASKS) R"(
 def pump(loop, timeout):
 
     import asyncio
@@ -28,9 +21,14 @@ def pump(loop, timeout):
 
     loop.run_until_complete(wait())
 
-    all_tasks = )", ALL_TASKS) R"(
-    return len([task for task in all_tasks(loop) if not task.done()])
-)")
+    all_tasks = )" ALL_TASKS R"(
+    return len([task for task in all_tasks(loop) if not task.done()]))"
+
+#if PY_VERSION_HEX < 0x03070000
+#define XLO_PUMP_CODE _XLO_PUMP_CODE("asyncio.Task.all_tasks")
+#else
+#define XLO_PUMP_CODE _XLO_PUMP_CODE("asyncio.all_tasks")
+#endif
 
     // We create the loop pumper here rather than in the xloil package to avoid 
     // a dependency on that package (in particular, processing __init__. It's
@@ -52,7 +50,6 @@ def pump(loop, timeout):
       auto func = PyBorrow(PyDict_GetItemString(locals.ptr(), "pump"));
       return func;
     }
-
 
     EventLoop::EventLoop(unsigned asyncioTimeout_, unsigned sleepTime_)
       : _thread(new ctpl::thread_pool(1))
