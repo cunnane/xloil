@@ -25,5 +25,7 @@ def _set_test_environment():
         os.environ['XLOIL_BIN_DIR'] = str(bin_path)
         # Need to do this so when we launch Excel, we can see the python package
         os.environ["PYTHONPATH"] = str(PACKAGE_PATH)
+    else:
+        os.environ["PYTHONPATH"] = os.curdir
 
 _set_test_environment()
