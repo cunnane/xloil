@@ -68,10 +68,10 @@ def _get_environment_strings():
             if end == start:
                 break
                 
-            keyval = p[start:end].decode(locale.getpreferredencoding()).split('=')
+            keyval = p[start:end].decode(locale.getpreferredencoding()).partition('=')
             # GetEnvironmentStrings returns some strange entries starting with '='
             if any(keyval[0]):
-                result[keyval[0]] = keyval[1]
+                result[keyval[0]] = keyval[2]
                 
             end += 1    # Step over null terminator
             start = end # Move string start pointer
