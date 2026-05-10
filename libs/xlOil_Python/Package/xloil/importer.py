@@ -137,8 +137,10 @@ def source_addin() -> Addin:
         if addin_path is not None:
             break
 
-    return xloil_core.core_addin() if addin_path is None \
-        else xloil_core.xloil_addins[addin_path] 
+    if addin_path is None:
+        return xloil_core.core_addin()
+    else:
+        return xloil_core.xloil_addins[addin_path] 
 
 
 def get_event_loop():
@@ -216,7 +218,7 @@ def _import_and_scan(module_names, addin):
                     raise ValueError(target)
             
             except (ImportError, ModuleNotFoundError) as e:
-                raise ImportError(f"{e.msg} with sys.path={sys.path}") from e
+                raise ImportError(f"{e} with sys.path={sys.path}") from e
                 
             log.debug("Loaded python module '%s' for addin '%s'", module.__name__, addin.pathname)     
             scan_module(module, addin)
@@ -377,7 +379,7 @@ class _LoadAndScanHook(SourceFileLoader):
             # Look for xlOil functions to register
             scan_module(module)
         except Exception as e:
-            log_except(f"Import failed: {e.msg}")
+            log_except(f"Import failed: {e}")
             raise
 
  

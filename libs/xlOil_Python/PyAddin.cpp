@@ -199,7 +199,7 @@ namespace xloil
       {
         auto found = _map.find(key);
         if (found == _map.end())
-          throw py::key_error();
+          throw py::key_error(utf16ToUtf8(key));
         return found->second;
       }
       size_t len() const { return _map.size(); }
