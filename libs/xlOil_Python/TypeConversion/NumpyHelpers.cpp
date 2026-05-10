@@ -1,13 +1,17 @@
 #include "CPython.h"
 
+// Disable C4127: conditional expression is constant caused by numpy headers
+#pragma warning(disable: 4127)
 #define PY_ARRAY_UNIQUE_SYMBOL xloil_PyArray_API
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
+#pragma warning(default: 4127)
 
 #include "NumpyHelpers.h"
 #include "NumpyDatetime.h"
 #include "Numpy.h"
 #include <xloil/Date.h>
+
 
 typedef npy_int64 npy_datetime;
 

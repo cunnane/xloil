@@ -274,7 +274,7 @@ namespace xloil
           .def("set_done", &AsyncReturn::set_done)
           .def("set_task", &AsyncReturn::set_task)
           .def_property_readonly("caller", &AsyncReturn::caller)
-          .def_property_readonly("loop", [](py::object x) { return asyncEventLoop().loop(); });
+          .def_property_readonly("loop", [](py::object) { return asyncEventLoop().loop(); });
 
         mod.def("get_async_loop", 
           []() { return asyncEventLoop().loop(); },
