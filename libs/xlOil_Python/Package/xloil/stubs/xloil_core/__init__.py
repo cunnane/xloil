@@ -66,11 +66,11 @@ __all__ = [
 class Addin():
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
-    def functions(self) -> typing.List[_FuncSpec]: 
+    def functions(self) -> list[_FuncSpec]: 
         """
         Returns a list of all functions declared by this addin.
         """
-    def source_files(self) -> typing.List[str]: ...
+    def source_files(self) -> list[str]: ...
     @property
     def async_slice(self) -> int:
         """
@@ -171,7 +171,7 @@ class Address():
           If True, omits sheet and workbook infomation.
         """
     def __init__(self, address: object, sheet: object = None) -> None: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[Address]: ...
     def __str__(self) -> str: ...
     @property
     def a1(self) -> str:
@@ -508,6 +508,7 @@ class CellError():
     def __int__(self) -> int: ...
     def __ne__(self, other: object) -> bool: ...
     def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
     @property
     def name(self) -> str:
         """
@@ -821,7 +822,7 @@ class ExcelWindows():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[Worksheet]: ...
     def __len__(self) -> int: ...
     def get(self, name: str, default: object = None) -> object: 
         """
@@ -979,7 +980,7 @@ class Range():
     def __imul__(self, arg0: object) -> object: ...
     def __init__(self, address: str) -> None: ...
     def __isub__(self, arg0: object) -> object: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[Range]: ...
     def __itruediv__(self, arg0: object) -> object: ...
     def __len__(self) -> int: ...
     def __setattr__(self, arg0: object, arg1: object) -> None: ...
@@ -1124,13 +1125,13 @@ class Range():
         :type: object
         """
     @property
-    def bounds(self) -> typing.Tuple[int, int, int, int]:
+    def bounds(self) -> tuple[int, int, int, int]:
         """
                     Returns a zero-based tuple (top-left-row, top-left-col, bottom-right-row, bottom-right-col)
                     which defines the Range area (currently only rectangular ranges are supported).
                   
 
-        :type: typing.Tuple[int, int, int, int]
+        :type: tuple[int, int, int, int]
         """
     @property
     def column(self) -> int:
@@ -1202,11 +1203,11 @@ class Range():
         :type: int
         """
     @property
-    def shape(self) -> typing.Tuple[int, int]:
+    def shape(self) -> tuple[int, int]:
         """
         Returns a tuple (num columns, num rows)
 
-        :type: typing.Tuple[int, int]
+        :type: tuple[int, int]
         """
     @property
     def value(self) -> object:
@@ -1437,6 +1438,7 @@ class SpecialCells():
     def __int__(self) -> int: ...
     def __ne__(self, other: object) -> bool: ...
     def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
     @property
     def name(self) -> str:
         """
@@ -1523,11 +1525,11 @@ class TaskPaneFrame():
         Gets/sets the dock position, one of: bottom, floating, left, right, top
         """
     @property
-    def size(self) -> typing.Tuple[int, int]:
+    def size(self) -> tuple[int, int]:
         """
         Gets/sets the task pane size as a tuple (width, height)
 
-        :type: typing.Tuple[int, int]
+        :type: tuple[int, int]
         """
     @size.setter
     def size(self, arg1: tuple) -> None:
@@ -1664,7 +1666,7 @@ class Workbooks():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Workbook: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[Workbook]: ...
     def __len__(self) -> int: ...
     def add(self) -> Workbook: 
         """
@@ -1801,7 +1803,7 @@ class Worksheets():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Worksheet: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[Worksheet]: ...
     def __len__(self) -> int: ...
     def add(self, name: object = None, before: object = None, after: object = None) -> Worksheet: 
         """
@@ -1838,11 +1840,11 @@ class _AddinsDict():
     """
     def __contains__(self, arg0: str) -> bool: ...
     def __getitem__(self, arg0: str) -> Addin: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[str]: ...
     def __len__(self) -> int: ...
-    def items(self) -> typing.Iterator: ...
-    def keys(self) -> typing.Iterator: ...
-    def values(self) -> typing.Iterator: ...
+    def items(self) -> typing.Iterator[tuple[str, Addin]]: ...
+    def keys(self) -> typing.Iterator[str]: ...
+    def values(self) -> typing.Iterator[Addin]: ...
     pass
 class _AsyncReturn():
     def set_done(self) -> None: ...
@@ -1947,7 +1949,7 @@ class _DateFormatList():
     def __init__(self, arg0: _DateFormatList) -> None: ...
     @typing.overload
     def __init__(self, arg0: typing.Iterable) -> None: ...
-    def __iter__(self) -> typing.Iterator: ...
+    def __iter__(self) -> typing.Iterator[str]: ...
     def __len__(self) -> int: ...
     def __ne__(self, arg0: _DateFormatList) -> bool: ...
     @typing.overload
@@ -2063,12 +2065,12 @@ class _FuncArg():
         """
     pass
 class _FuncSpec():
-    def __init__(self, func: function, args: typing.List[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, errors: int = 0) -> None: ...
+    def __init__(self, func: typing.Callable, args: list[_FuncArg], name: str = '', features: str = None, help: str = '', category: str = '', local: bool = True, volatile: bool = False, errors: int = 0) -> None: ...
     def __str__(self) -> str: ...
     @property
-    def args(self) -> typing.List[_FuncArg]:
+    def args(self) -> list[_FuncArg]:
         """
-        :type: typing.List[_FuncArg]
+        :type: list[_FuncArg]
         """
     @property
     def error_propagation(self) -> bool:
@@ -2084,16 +2086,16 @@ class _FuncSpec():
         Used internally to control the error propagation setting
         """
     @property
-    def func(self) -> function:
+    def func(self) -> typing.Callable:
         """
                       Yes you can change the function which is called by Excel! Use
                       with caution.
                     
 
-        :type: function
+        :type: typing.Callable
         """
     @func.setter
-    def func(self, arg1: function) -> None:
+    def func(self, arg1: typing.Callable) -> None:
         """
         Yes you can change the function which is called by Excel! Use
         with caution.
@@ -2246,11 +2248,11 @@ class _LogWriter():
         :type: int
         """
     @property
-    def levels(self) -> typing.List[str]:
+    def levels(self) -> list[str]:
         """
         A list of the available log levels
 
-        :type: typing.List[str]
+        :type: list[str]
         """
     @property
     def path(self) -> str:
@@ -2460,7 +2462,7 @@ class _XllRange(Range):
     pass
 def _get_onedrive_source(arg0: str) -> str:
     pass
-def _register_functions(funcs: typing.List[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
+def _register_functions(funcs: list[_FuncSpec], module: object = None, addin: object = None, append: bool = False) -> None:
     pass
 def _table_converter(n: int, m: int, columns: object = None, rows: object = None, headings: object = None, index: object = None, index_name: object = None, cache_objects: bool = False) -> _RawExcelValue:
     """

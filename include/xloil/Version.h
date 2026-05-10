@@ -1,5 +1,5 @@
 #pragma once
 
 #define XLOIL_MAJOR_VERSION 0
-#define XLOIL_MINOR_VERSION 21
+#define XLOIL_MINOR_VERSION 22
 #define XLOIL_PATCH_VERSION 0 
