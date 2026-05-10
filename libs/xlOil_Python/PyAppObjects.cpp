@@ -277,7 +277,7 @@ namespace xloil
         return py::cast(areas);
       }
 
-      auto range_Iter(Range& r)
+      pybind11::typing::Iterator<xloil::Range> range_Iter(Range& r)
       {
         auto noGil = std::make_unique<py::gil_scoped_release>();
 

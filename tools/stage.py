@@ -27,7 +27,7 @@ include_dir = soln_dir / "include"
 
 architectures = ["x64", "Win32"]
 
-python_versions = ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+python_versions = ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 python_package_dir = staging_dir / "pypackage"
 
 build_files = {}
@@ -187,7 +187,7 @@ for arch in architectures:
         # Guido probably wouldn't approve but it seems to work.
         cmd = f"py -{pyver} setup.py bdist_wheel --arch {arch} --pyver {pyver} --version {pypi_version} --plat-name {plat_name}"
         print(f"Running: {cmd}.")
-        subprocess.run(cmd, cwd=f"{python_package_dir}")
+        subprocess.run(cmd, cwd=f"{python_package_dir}", check=True)
 
 #
 # Next steps

@@ -16,7 +16,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil", "src\xlOil\xlOil.vc
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "[Scripts]", "[Scripts]", "{67EB80BB-D718-428C-80BD-E409C27FAD25}"
 	ProjectSection(SolutionItems) = preProject
-		config\xloil.ini = config\xloil.ini
 		tools\xlOil_Install.ps1 = tools\xlOil_Install.ps1
 		tools\xlOil_NewAddin.ps1 = tools\xlOil_NewAddin.ps1
 		tools\xlOil_RegistryClean.ps1 = tools\xlOil_RegistryClean.ps1
@@ -30,11 +29,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOilHelpers", "src\xlOilHelpers\xlOilHelpers.vcxproj", "{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "libs", "libs", "{70522729-EFAA-4F6D-8C6D-752676BF6752}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python36", "libs\xlOil_Python\xlOil_Python36.vcxproj", "{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DF88A189-295A-4AC8-BEFC-D199155EC8CB} = {DF88A189-295A-4AC8-BEFC-D199155EC8CB}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python37", "libs\xlOil_Python\xlOil_Python37.vcxproj", "{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -131,6 +125,15 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python312", "libs\xlO
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python313", "libs\xlOil_Python\xlOil_Python313.vcxproj", "{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{CCCC356E-3DE3-47DD-97A5-195C67CB79F6}"
+	ProjectSection(SolutionItems) = preProject
+		config\xloil.ini = config\xloil.ini
+		config\xloil_local.ini = config\xloil_local.ini
+		config\xloil_local_32.ini = config\xloil_local_32.ini
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xlOil_Python314", "libs\xlOil_Python\xlOil_Python314.vcxproj", "{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -205,22 +208,6 @@ Global
 		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}.ReleaseStatic|Win32.Build.0 = Release|Win32
 		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}.ReleaseStatic|x64.ActiveCfg = Release|x64
 		{F7AA4C6F-C223-4ED1-BBB3-836E7EC044F2}.ReleaseStatic|x64.Build.0 = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|Win32.ActiveCfg = Debug|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Debug|x64.ActiveCfg = Debug|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.DebugStatic|Any CPU.ActiveCfg = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.DebugStatic|Any CPU.Build.0 = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.DebugStatic|Win32.ActiveCfg = Debug|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.DebugStatic|x64.ActiveCfg = Debug|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|Any CPU.ActiveCfg = Release|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|Win32.ActiveCfg = Release|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|Win32.Build.0 = Release|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|x64.ActiveCfg = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.Release|x64.Build.0 = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.ReleaseStatic|Any CPU.ActiveCfg = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.ReleaseStatic|Any CPU.Build.0 = Release|x64
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30}.ReleaseStatic|x64.ActiveCfg = Release|x64
 		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9}.Debug|x64.ActiveCfg = Debug|x64
@@ -575,15 +562,12 @@ Global
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|Any CPU.Build.0 = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|Win32.Build.0 = Debug|Win32
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|x64.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Debug|x64.Build.0 = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|Any CPU.ActiveCfg = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|Any CPU.Build.0 = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|Win32.ActiveCfg = Debug|Win32
-		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|Win32.Build.0 = Debug|Win32
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|x64.ActiveCfg = Debug|x64
-		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.DebugStatic|x64.Build.0 = Debug|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Release|Any CPU.ActiveCfg = Release|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Release|Any CPU.Build.0 = Release|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.Release|Win32.ActiveCfg = Release|Win32
@@ -593,15 +577,30 @@ Global
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|Any CPU.ActiveCfg = Release|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|Any CPU.Build.0 = Release|x64
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
-		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|Win32.Build.0 = Release|Win32
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|x64.ActiveCfg = Release|x64
-		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F}.ReleaseStatic|x64.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Debug|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Debug|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.DebugStatic|Any CPU.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.DebugStatic|Any CPU.Build.0 = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.DebugStatic|Win32.ActiveCfg = Debug|Win32
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.DebugStatic|x64.ActiveCfg = Debug|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|Win32.Build.0 = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|x64.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.Release|x64.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.ReleaseStatic|Any CPU.ActiveCfg = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.ReleaseStatic|Any CPU.Build.0 = Release|x64
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.ReleaseStatic|Win32.ActiveCfg = Release|Win32
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F}.ReleaseStatic|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{C28B8E78-3CE7-4381-AA3B-846A85AB1F30} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 		{C825E9C6-17F8-4D47-954C-D4FC3BE35AE9} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 		{C1EDF1FF-7061-4A34-82A2-FF77ACB9C8F4} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 		{3A73598C-38CA-4ADB-B0BB-F634A1A97C56} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
@@ -618,6 +617,7 @@ Global
 		{B853DF1D-B9D1-43BC-A655-41224C5EAFCF} = {67EB80BB-D718-428C-80BD-E409C27FAD25}
 		{0D856EA8-A97D-45AC-84AF-68AECF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 		{0D856EA8-A97D-45AC-84AF-68A1CF67ED6F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
+		{0D856EA8-A97D-45AC-84AF-A8A1CF67E36F} = {70522729-EFAA-4F6D-8C6D-752676BF6752}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4C948047-E838-4EA3-AD64-392D149AD565}
