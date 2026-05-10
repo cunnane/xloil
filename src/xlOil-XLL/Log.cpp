@@ -34,8 +34,6 @@ namespace xloil
 
     spdlog::initialize_logger(logger);
 
-    // Flush on warnings or above
-
     if (makeDefault)
       spdlog::set_default_logger(logger);
 
