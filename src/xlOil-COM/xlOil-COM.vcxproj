@@ -102,7 +102,7 @@
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)'=='DebugStatic'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Debug\spdlog.lib $(OutDir)..\Debug\SimpleFileWatcher.lib</Command>
+      <Command Condition="'$(Configuration)'=='DebugStatic'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Debug\spdlog.lib $(OutDir)..\Debug\rdcfswatcher.lib</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='ReleaseStatic'">
@@ -110,7 +110,7 @@
       <PreprocessorDefinitions>XLOIL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent>
-      <Command Condition="'$(Configuration)'=='ReleaseStatic'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Release\spdlog.lib $(OutDir)..\Release\SimpleFileWatcher.lib</Command>
+      <Command Condition="'$(Configuration)'=='ReleaseStatic'">lib /OUT:$(OutDir)xlOil-External.lib $(OutDir)..\Release\spdlog.lib $(OutDir)..\Release\rdcfswatcher.lib</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
