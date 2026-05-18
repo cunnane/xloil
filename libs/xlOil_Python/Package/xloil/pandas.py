@@ -115,7 +115,7 @@ class PDFrame:
             if self._parse_dates is not None:
                 for col in self._parse_dates:
                     if col in df:
-                        df[col] = to_datetime(df[col].values.ravel())
+                        df[col] = to_datetime(df[col].to_numpy().ravel())
 
             if self._index is not None:
                 df.set_index(self._index, inplace=True)
@@ -125,7 +125,7 @@ class PDFrame:
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
     def _convert_timezone(self, x: pd.Series):
-       return x.dt.tz_convert(tz=self._timezone).dt.tz_localize(None).values 
+       return x.dt.tz_convert(tz=self._timezone).dt.tz_localize(None).to_numpy()
 
     def write(self, frame: pd.DataFrame):
 
@@ -140,14 +140,14 @@ class PDFrame:
         from pandas.api.types import is_datetime64tz_dtype
 
         columns = [
-            col.values if not is_datetime64tz_dtype(col) else self._convert_timezone(col) 
+            col.to_numpy() if not is_datetime64tz_dtype(col) else self._convert_timezone(col)
             for _, col in frame.items()
             ]
 
         # If outputting the index, we prepare an array for each index level
         if self._index is not False:
             index = [
-                frame.index.get_level_values(i).values
+                frame.index.get_level_values(i).to_numpy()
                 for i in range(frame.index.nlevels)
                 ]
         else:
@@ -156,7 +156,7 @@ class PDFrame:
         # If outputting the columns, we prepare an array for each column level
         if self._headings:
             headings = [
-                frame.columns.get_level_values(i).values
+                frame.columns.get_level_values(i).to_numpy()
                 for i in range(frame.columns.nlevels)
                 ]
         else:
