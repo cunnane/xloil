@@ -1,0 +1,21 @@
+[submodule "winreg"]
+	path = external/winreg
+	url = https://github.com/GiovanniDicanio/WinReg
+[submodule "pybind11"]
+	path = external/pybind11
+	url = https://github.com/cunnane/pybind11.git
+[submodule "tomlplusplus"]
+	path = external/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git
+[submodule "spdlog"]
+	path = external/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "ctpl"]
+	path = external/ctpl
+	url = https://github.com/vit-vit/CTPL.git
+[submodule "pybind11-stubgen"]
+	path = external/pybind11-stubgen
+	url = https://github.com/cunnane/pybind11-stubgen.git
+[submodule "asmjit"]
+	path = external/asmjit
+	url = https://github.com/asmjit/asmjit.git
