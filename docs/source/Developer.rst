@@ -6,12 +6,20 @@ Getting started as developer
 ----------------------------
 
 - You need Visual Studio 2022 or newer
-- All xlOil_Core dependencies are already in the `external` folder. Some of them are compressed, 
-  so unpack them.
+- Run `scripts\DownloadDependencies.cmd` to fetch external dependencies from github
+- You need to manually unpack `external\python.7z` if you want to build the python libs.
 - To build the `xlOil-COM` library you need the ATL headers which can be installed with the Visual
   Studio installer (under C++ development). 
-- For debugging, set xlOil_Loader as the target project, with 
-  command=`<Path-to-Excel.exe>` args=`$(OutDir)\xloil.xll`
+
+Debugging
+=========
+  
+For C++ native debugging, set xlOil_Loader as the target project and point the debugger to your *Excel.exe*, typically:
+  * *command*=`C:\Program Files\Microsoft Office\root\Office16\Excel.exe` 
+  * *args*=`$(OutDir)\xloil.xll`
+  * *environment*=`PYTHONPATH=$(SolutionDir)libs\xlOil_Python\Package;XLOIL_SETTINGS_DIR=$(OutDir)$(LocalDebuggerEnvironment)`
+
+Mixed mode python/C++ debugging may now work, but at the time of writing, it takes a very long time to startup, then fails to hit many python breakpoints.
 
 
 Release Instructions
