@@ -91,8 +91,10 @@ namespace xloil
           ? funcNameMap.attr("__getitem__")
           : funcNameMap;
         
-        return [pyMapper = PyObjectHolder(pyMapper), eventLoop = getEventLoop().get()](
-          const wchar_t* name)
+        return [
+          pyMapper = make_shared<PyObjectHolder>(pyMapper), 
+          eventLoop = getEventLoop().get()
+        ](const wchar_t* name)
         {
           try
           {  
@@ -106,7 +108,7 @@ namespace xloil
                   // callbacks this might be a feasible approach when IPictureDisp
                   // support is introduced.
                   py::gil_scoped_acquire getGil;
-                  auto callback = pyMapper(funcname);
+                  auto callback = (*pyMapper)(funcname);
 
                   py::tuple args(nArgs);
                   for (auto i = 0; i < nArgs; ++i)
@@ -205,10 +207,18 @@ namespace xloil
 
           return runExcelThread([this, mapper = std::move(ribbonMap)]() mutable
           {
-            if (!_addin)
-              _addin = makeComAddin(_name.c_str(), nullptr);
-            _addin->connect(_xml.c_str(), mapper);
-            _connected = true;
+            try 
+            {
+              if (!_addin)
+                _addin = makeComAddin(_name.c_str(), nullptr);
+              _addin->connect(_xml.c_str(), mapper);
+              _connected = true;
+            }
+            catch (const std::exception& e)
+            {
+              XLO_ERROR("Error during python COM addin connect: {}", e.what());
+              throw;
+            }
           });
         }
 
