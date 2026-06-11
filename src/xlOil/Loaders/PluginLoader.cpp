@@ -5,6 +5,7 @@
 #include <xlOil/Log.h>
 #include <xlOil/Throw.h>
 #include <xlOil/State.h>
+#include <xlOil/ExcelThread.h>
 #include <xlOilHelpers/Settings.h>
 #include <xlOil/StaticRegister.h>
 #include <xlOil-XLL/FuncRegistry.h>
@@ -191,6 +192,13 @@ namespace xloil
   bool unloadPluginImpl(const wchar_t* name, LoadedPlugin& plugin) noexcept
   {
     XLO_DEBUG(L"Unloading plugin {0}", name);
+    // We clear the message queue as the plugin may have unprocessed
+    // messages whose destructors rely on objects loaded by the plugin.
+    // It is not possible for the plugin to force the messages to be 
+    // processed. Keeping track of the queue per plugin is possible (but
+    // complicated) and in practice we only unload plugins at xlOil / Excel
+    // shutdown
+    clearMessageQueue();
     PluginContext context = { 
       PluginContext::Unload, 
       name, 

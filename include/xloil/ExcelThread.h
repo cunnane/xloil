@@ -194,4 +194,10 @@ namespace xloil
   /// is finalised
   /// </summary>
   void teardownMessageQueue();
+
+  /// <summary>
+  /// Internal use: called during teardown to ensure the queue 
+  /// is finalised
+  /// </summary>
+  void clearMessageQueue();
 }
