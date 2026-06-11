@@ -440,13 +440,15 @@ namespace xloil
     }
 
     void RegisteredModule::registerPyFuncs(
-      const py::handle& pyModule,
+      const py::object& pyModule,
       const vector<shared_ptr<PyFuncInfo>>& functions,
       const bool append)
     {
-      // This function takes a handle from .release() rather than a py::object
-      // to avoid needing the GIL to change the refcount.
-      _module = py::reinterpret_steal<py::object>(pyModule);
+      {
+        py::gil_scoped_acquire getGil;
+        _module = pyModule;
+      }
+      
       vector<shared_ptr<const WorksheetFuncSpec>> nonLocal, localFuncs;
 
       auto addin = _addin.lock();
@@ -526,7 +528,7 @@ namespace xloil
     }
 
     std::shared_ptr<RegisteredModule>
-      FunctionRegistry::addModule(
+      FunctionRegistry::findOrAddModule(
         const weak_ptr<PyAddin>& addin,
         const std::wstring& modulePath,
         const wchar_t* workbookName)
@@ -601,12 +603,12 @@ namespace xloil
         : py::cast<shared_ptr<PyAddin>>(addinContext);
 
       py::gil_scoped_release releaseGil;
-      auto registeredMod = FunctionRegistry::addModule(
+      auto registeredMod = FunctionRegistry::findOrAddModule(
         weak_ptr<PyAddin>(context),
         modulePath,
         nullptr);
 
-      registeredMod->registerPyFuncs(module.release(), functions, append);
+      registeredMod->registerPyFuncs(module, functions, append);
     }
 
     void deregisterFunctions(
