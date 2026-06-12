@@ -125,7 +125,7 @@ class PDFrame:
         raise CannotConvert(f"Unsupported type: {type(x)!r}")
 
     def _convert_timezone(self, x: pd.Series):
-       return x.dt.tz_convert(tz=self._timezone).dt.tz_localize(None).to_numpy() 
+       return x.dt.tz_convert(tz=self._timezone).dt.tz_localize(None).to_numpy()
 
     def write(self, frame: pd.DataFrame):
 
@@ -140,7 +140,7 @@ class PDFrame:
         from pandas.api.types import is_datetime64tz_dtype
 
         columns = [
-            col.to_numpy() if not is_datetime64tz_dtype(col) else self._convert_timezone(col) 
+            col.to_numpy() if not is_datetime64tz_dtype(col) else self._convert_timezone(col)
             for _, col in frame.items()
         ]
 

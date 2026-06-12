@@ -42,15 +42,6 @@ __pycache__
 
 # External libraries
 /external/python/
-/external/sqlite
-/external/pybind11-stubgen
-/external/CTPL
-/external/tomlplusplus
-/external/spdlog
-/external/pybind11
-/external/rdcfswatcher
-/external/asmjit
-/external/winreg
 /docs/source/_build
 
 ~$*

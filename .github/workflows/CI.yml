@@ -1,0 +1,61 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - master
+      - wip/add-submodules
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install 7-Zip
+        shell: pwsh
+        run: choco install 7zip -y
+
+      - name: Download sqlite-amalgamation
+        shell: pwsh
+        run: Invoke-WebRequest -Uri https://www.sqlite.org/2022/sqlite-amalgamation-3390300.zip -OutFile external\sqlite-amalgamation.zip
+
+      - name: Extract sqlite-amalgamation
+        shell: pwsh
+        run: 7z x external\sqlite-amalgamation.zip -oexternal -y
+
+      - name: Rename extracted sqlite-amalgamation directory to match expected path
+        shell: pwsh
+        run: Rename-Item -Path (Get-ChildItem -Directory external\sqlite-amalgamation*) -NewName "sqlite"
+
+      - name: Extract bundled Python dependencies
+        shell: pwsh
+        run: 7z x external\python.7z -oexternal -y
+
+      - name: Install Office to get the necessary Excel DLLs
+        shell: pwsh
+        run: choco install office365business
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v3
+
+      - name: Set up MSVC build environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build solution
+        shell: pwsh
+        run: msbuild xlOil.sln /m /p:Configuration=Release /p:Platform=x64
+
+      - name: List build directory contents to allow inspection of build artifacts
+        shell: pwsh
+        run: Get-ChildItem build -Recurse | Where-Object { $_.FullName -notlike "*\build\obj\*" } | Select-Object FullName, Length, LastWriteTime
