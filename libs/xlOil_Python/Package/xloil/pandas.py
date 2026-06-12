@@ -142,14 +142,14 @@ class PDFrame:
         columns = [
             col.to_numpy() if not is_datetime64tz_dtype(col) else self._convert_timezone(col)
             for _, col in frame.items()
-            ]
+        ]
 
         # If outputting the index, we prepare an array for each index level
         if self._index is not False:
             index = [
                 frame.index.get_level_values(i).to_numpy()
                 for i in range(frame.index.nlevels)
-                ]
+            ]
         else:
             index = None
 
@@ -158,7 +158,7 @@ class PDFrame:
             headings = [
                 frame.columns.get_level_values(i).to_numpy()
                 for i in range(frame.columns.nlevels)
-                ]
+            ]
         else:
             headings = None
 

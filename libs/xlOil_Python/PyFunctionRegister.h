@@ -32,7 +32,7 @@ namespace xloil
       /// returns a reference to it.
       /// </summary>
       std::shared_ptr<RegisteredModule>
-        addModule(
+        findOrAddModule(
           const std::weak_ptr<PyAddin>& context,
           const std::wstring& modulePath,
           const wchar_t* workbookName);
@@ -216,7 +216,7 @@ namespace xloil
       ~RegisteredModule();
 
       void registerPyFuncs(
-        const pybind11::handle& pyModule,
+        const pybind11::object& pyModule,
         const std::vector<std::shared_ptr<PyFuncInfo>>& functions,
         const bool append);
 

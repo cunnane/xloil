@@ -197,7 +197,7 @@ namespace xloil
           // First add the module, if the scan fails it will still be on the
           // file change watchlist. Note we always add workbook modules to the 
           // core context to avoid confusion.
-          FunctionRegistry::addModule(_loadContext, modulePath, wbName);
+          FunctionRegistry::findOrAddModule(_loadContext, modulePath, wbName);
           auto wbPathName = wstring(wbPath) + separator + wbName;
 
           addin->importFile(modulePath.c_str(), wbPathName.c_str(), addin->useLoaderThread());

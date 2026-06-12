@@ -187,6 +187,12 @@ namespace xloil
         }
       }
 
+      void clear()
+      {
+        scoped_lock lock(_lock);
+        _timerQueue.clear();
+      }
+
     private:
       static std::atomic<Messenger*> _theInstance;
 
@@ -291,6 +297,11 @@ namespace xloil
   void teardownMessageQueue()
   {
     Messenger::destroyInstance();
+  }
+
+  void clearMessageQueue()
+  {
+    Messenger::instance().clear();
   }
 
   bool isMainThread()
